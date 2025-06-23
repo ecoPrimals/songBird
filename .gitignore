@@ -1,0 +1,152 @@
+# Rust/Cargo build artifacts
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Environment and configuration files
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+*.env
+
+# Logs and runtime data
+/logs/
+*.log
+audit.log
+*.log.*
+log/
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store?
+ehthumbs.db
+Icon?
+
+# Certificates and keys (security sensitive)
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+*.jks
+*.keystore
+private_key*
+public_key*
+tls/
+ssl/
+certs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Configuration overrides
+config/local.toml
+config/development.toml
+config/production.toml
+config/staging.toml
+local_config.*
+override_config.*
+
+# Docker and container files
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Kubernetes secrets and configs
+k8s/secrets/
+*.secret.yaml
+*.secret.yml
+
+# Build and deployment artifacts
+dist/
+build/
+out/
+pkg/
+
+# Test coverage and reports
+coverage/
+*.lcov
+*.gcda
+*.gcno
+
+# Memory dumps and core files
+*.dmp
+core
+core.*
+
+# Performance profiling
+perf.data*
+*.prof
+
+# Backup files
+backup/
+*.backup
+*.bak
+
+# Large binary files and media
+*.zip
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+*.iso
+*.img
+*.bin
+*.exe (unless specifically needed)
+
+# Node modules (if any frontend components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python cache (if any Python scripts)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Documentation builds
+docs/_build/
+site/
+
+# Local development tools
+.local/
+.cache/
+.tmp/
+
+# Service mesh and orchestration specifics
+consul/data/
+etcd/data/
+registry/data/
+discovery/cache/
+
+# Load balancer configs with sensitive data
+lb/secrets/
+proxy/secrets/
+
+# Federation private keys
+federation/private/
+federation/*.key 

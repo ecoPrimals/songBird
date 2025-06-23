@@ -1,0 +1,184 @@
+[package]
+name = "songbird-orchestrator"
+version = "0.1.0"
+edition = "2021"
+description = "Universal service orchestration platform for Rust projects"
+license = "MIT"
+authors = ["NestGate Project Contributors"]
+repository = "https://github.com/your-org/songbird-orchestrator"
+keywords = ["orchestration", "microservices", "service-discovery", "load-balancing"]
+categories = ["network-programming", "web-programming"]
+
+# This makes it a standalone crate, not part of the NestGate workspace
+[workspace]
+
+[dependencies]
+# Async runtime and utilities
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+futures-util = "0.3"
+async-stream = "0.3"
+
+# Serialization and data structures
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+dashmap = "6.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Web framework and HTTP
+axum = { version = "0.7", features = ["ws", "macros"] }
+axum-server = { version = "0.6", features = ["tls-rustls"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+hyper = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+
+# Communication
+tokio-tungstenite = { version = "0.20", features = ["native-tls"] }
+tonic = { version = "0.10", optional = true }
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
+
+# Configuration
+config = "0.14"
+dotenvy = "0.15"
+toml = "0.8"
+
+# Time and date handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Concurrency and synchronization
+parking_lot = "0.12"
+rand = "0.8"
+
+# Hashing and cryptography
+sha2 = "0.10"
+ring = "0.17"
+base64 = "0.21"
+
+# Service discovery backends (optional)
+etcd-rs = { version = "1.0", optional = true }
+k8s-openapi = { version = "0.20", optional = true, features = ["v1_28"] }
+kube = { version = "0.87", optional = true }
+
+# OPTIONAL: External monitoring integration (NOT required for core functionality)
+# Our internal observability system is pure Rust and self-contained
+prometheus = { version = "0.13", optional = true }
+
+# Utilities
+clap = { version = "4.0", features = ["derive"] }
+num_cpus = "1.16"
+
+# Certificate validation and cryptography
+x509-parser = "0.15"
+webpki = "0.22"
+rustls = "0.21"
+rustls-webpki = "0.101"
+pem = "3.0"
+
+# Enhanced networking
+trust-dns-resolver = "0.23"
+socket2 = "0.5"
+url = "2.5.4"
+sys-info = "0.9.1"
+
+# Enhanced networking and reliability
+metrics = "0.21"
+
+# OPTIONAL: External observability integrations (NOT required for core functionality)
+opentelemetry = { version = "0.20", optional = true }
+opentelemetry-jaeger = { version = "0.19", optional = true }
+opentelemetry-prometheus = { version = "0.13", optional = true }
+
+# Security enhancements
+jwt = "0.16"
+oauth2 = { version = "4.4", optional = true }
+jsonwebtoken = "9.0"
+
+# Additional async utilities for circuit breakers
+tokio-stream = "0.1"
+
+# Additional dependencies for production security
+bincode = "1.3"
+urlencoding = "2.1"
+
+# Built-in observability (pure Rust, no external dependencies)
+sysinfo = "0.30"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tracing-test = "0.2"
+wiremock = "0.5"
+tempfile = "3.8"
+criterion = "0.5"
+futures = "0.3.31"
+rand = "0.8"
+
+[features]
+# DEFAULT: Pure Rust with built-in observability
+default = ["file-config", "http-communication", "built-in-observability"]
+
+# Core features (pure Rust)
+built-in-observability = []  # Our own internal monitoring system
+file-config = []
+env-config = []
+
+# Communication backends
+http-communication = []
+grpc-communication = ["tonic"]
+
+# Service discovery backends
+etcd-discovery = ["etcd-rs"]
+kubernetes-discovery = ["k8s-openapi", "kube"]
+
+# OPTIONAL: External monitoring integrations (for compatibility)
+prometheus-export = ["prometheus"]  # Export metrics in Prometheus format
+external-observability = ["opentelemetry", "opentelemetry-prometheus"]
+jaeger-tracing = ["opentelemetry", "opentelemetry-jaeger"]
+
+# Security enhancements
+mtls = []
+production-security = []
+oauth = ["oauth2"]
+
+# Production features
+circuit-breakers = []
+
+# All features (including external integrations)
+full = [
+    "file-config", "env-config",
+    "http-communication", "grpc-communication", 
+    "etcd-discovery", "kubernetes-discovery",
+    "built-in-observability", "prometheus-export", "external-observability", "jaeger-tracing",
+    "mtls", "oauth", "production-security",
+    "circuit-breakers"
+]
+
+[[example]]
+name = "federation_demo"
+path = "examples/federation_demo.rs"
+
+[[example]]
+name = "api_demo"
+path = "examples/api_demo.rs"
+
+[[example]]
+name = "websocket_demo"
+path = "examples/websocket_demo.rs"
+
+[[example]]
+name = "nestgate_integration"
+path = "examples/nestgate_integration.rs"
+
+[[example]]
+name = "proxy_demo"
+path = "examples/proxy_demo.rs"
+
