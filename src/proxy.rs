@@ -309,15 +309,19 @@ impl ConnectionProxy {
                 let index = rand::thread_rng().gen_range(0..service_instances.len());
                 &service_instances[index]
             }
-            LoadBalancingStrategy::LeastConnections => service_instances
-                .iter()
-                .min_by_key(|instance| {
-                    load_balancer
-                        .connection_counts
-                        .get(&instance.id)
-                        .unwrap_or(&0)
-                })
-                .unwrap(),
+            LoadBalancingStrategy::LeastConnections => {
+                service_instances
+                    .iter()
+                    .min_by_key(|instance| {
+                        load_balancer
+                            .connection_counts
+                            .get(&instance.id)
+                            .unwrap_or(&0)
+                    })
+                    .ok_or_else(|| SongbirdError::Internal {
+                        message: "No service instances available for least connections selection".to_string(),
+                    })?
+            }
             _ => &service_instances[0],
         };
 

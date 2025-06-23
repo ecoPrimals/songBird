@@ -151,14 +151,23 @@ async fn prometheus_api(State(state): State<DashboardState>) -> impl IntoRespons
             Response::builder()
                 .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
                 .body(prometheus_data)
-                .unwrap()
+                .unwrap_or_else(|e| {
+                    error!("Failed to build Prometheus response: {}", e);
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body("Error building response".to_string())
+                        .unwrap_or_default()
+                })
         }
         Err(e) => {
             error!("Failed to export Prometheus metrics: {}", e);
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(format!("Error: {}", e))
-                .unwrap()
+                .unwrap_or_else(|build_err| {
+                    error!("Failed to build error response: {}", build_err);
+                    Response::default()
+                })
         }
     }
 }

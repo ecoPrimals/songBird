@@ -199,8 +199,11 @@ impl AuthenticationProvider for JwtAuthProvider {
                         metadata: HashMap::new(),
                     };
                     
-                    // Generate JWT token
-                    let security_provider = super::ProductionSecurityProvider::new(super::SecurityConfig::default())
+                    // Generate JWT token using our JWT secret
+                    let mut config = super::SecurityConfig::default();
+                    config.jwt_secret = self.jwt_secret.clone();
+                    
+                    let security_provider = super::ProductionSecurityProvider::new(config)
                         .map_err(|e| crate::errors::SongbirdError::Service {
                             message: format!("Failed to create security provider: {}", e),
                         })?;
@@ -257,7 +260,11 @@ impl AuthenticationProvider for JwtAuthProvider {
     }
 
     async fn validate_token(&self, token: &str) -> crate::errors::Result<SessionInfo> {
-        let security_provider = super::ProductionSecurityProvider::new(super::SecurityConfig::default())
+        // Create a security config with our JWT secret
+        let mut config = super::SecurityConfig::default();
+        config.jwt_secret = self.jwt_secret.clone();
+        
+        let security_provider = super::ProductionSecurityProvider::new(config)
             .map_err(|e| crate::errors::SongbirdError::Service {
                 message: format!("Failed to create security provider: {}", e),
             })?;

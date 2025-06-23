@@ -62,7 +62,7 @@ pub enum ApiEvent {
 }
 
 /// Standard API response wrapper
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
     pub success: bool,
     pub data: Option<T>,
@@ -71,7 +71,7 @@ pub struct ApiResponse<T> {
 }
 
 /// Service registration request
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RegisterServiceRequest {
     pub name: String,
     pub service_type: String,
@@ -84,14 +84,14 @@ pub struct RegisterServiceRequest {
 }
 
 /// Service operation request
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServiceOperationRequest {
     pub operation: String,
     pub parameters: Option<HashMap<String, serde_json::Value>>,
 }
 
 /// Message send request
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SendMessageRequest {
     pub target_service: String,
     pub message_type: MessageType,
@@ -102,7 +102,7 @@ pub struct SendMessageRequest {
 }
 
 /// Broadcast message request
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BroadcastMessageRequest {
     pub message_type: MessageType,
     pub topic: Option<String>,
