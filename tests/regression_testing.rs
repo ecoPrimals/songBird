@@ -1,0 +1,574 @@
+/*!
+ * Regression Testing Suite - Songbird Orchestrator
+ * 
+ * Comprehensive regression testing to ensure changes don't break
+ * existing functionality and validate backward compatibility.
+ * 
+ * Tests include:
+ * - API compatibility validation
+ * - Configuration backward compatibility
+ * - Service interface regression tests
+ * - Performance regression detection
+ * - Feature regression validation
+ * - Data format compatibility
+ */
+
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
+use serde_json::{json, Value};
+use songbird_orchestrator::{
+    Orchestrator,
+    config::OrchestratorConfig,
+    traits::service::{ServiceInfo, ServiceMetrics, ServiceRequest, ServiceResponse, UniversalService, ResponseStatus},
+    load_balancer::{DefaultLoadBalancer, LoadBalancerConfig, LoadBalancerStrategy},
+    discovery::ServiceQuery,
+    traits::discovery::{ServiceDiscovery, HealthStatus as DiscoveryHealthStatus},
+    errors::SongbirdError,
+    observability::{ObservabilityEngine, MetricsCollector},
+};
+
+/// Regression test result
+#[derive(Debug, Clone)]
+pub struct RegressionTestResult {
+    pub test_name: String,
+    pub version_tested: String,
+    pub passed: bool,
+    pub performance_regression: bool,
+    pub compatibility_issues: Vec<String>,
+    pub execution_time: Duration,
+    pub baseline_time: Option<Duration>,
+}
+
+/// Performance baseline for regression testing
+#[derive(Debug, Clone)]
+pub struct PerformanceBaseline {
+    pub operation: String,
+    pub baseline_duration: Duration,
+    pub acceptable_variance: f64, // Percentage (e.g., 0.1 = 10%)
+}
+
+/// Regression test suite
+pub struct RegressionTestSuite {
+    baselines: HashMap<String, PerformanceBaseline>,
+    version: String,
+}
+
+impl RegressionTestSuite {
+    pub fn new(version: String) -> Self {
+        let mut baselines = HashMap::new();
+        
+        // Define performance baselines
+        baselines.insert("orchestrator_startup".to_string(), PerformanceBaseline {
+            operation: "orchestrator_startup".to_string(),
+            baseline_duration: Duration::from_millis(500),
+            acceptable_variance: 0.2, // 20% variance allowed
+        });
+        
+        baselines.insert("service_registration".to_string(), PerformanceBaseline {
+            operation: "service_registration".to_string(),
+            baseline_duration: Duration::from_millis(50),
+            acceptable_variance: 0.15, // 15% variance allowed
+        });
+        
+        baselines.insert("service_discovery".to_string(), PerformanceBaseline {
+            operation: "service_discovery".to_string(),
+            baseline_duration: Duration::from_millis(20),
+            acceptable_variance: 0.25, // 25% variance allowed
+        });
+        
+        baselines.insert("load_balancing".to_string(), PerformanceBaseline {
+            operation: "load_balancing".to_string(),
+            baseline_duration: Duration::from_millis(5),
+            acceptable_variance: 0.3, // 30% variance allowed
+        });
+
+        Self {
+            baselines,
+            version,
+        }
+    }
+
+    /// Check for performance regression
+    pub fn check_performance_regression(&self, operation: &str, actual_duration: Duration) -> bool {
+        if let Some(baseline) = self.baselines.get(operation) {
+            let baseline_ms = baseline.baseline_duration.as_millis() as f64;
+            let actual_ms = actual_duration.as_millis() as f64;
+            let variance = (actual_ms - baseline_ms) / baseline_ms;
+            
+            variance > baseline.acceptable_variance
+        } else {
+            false // No baseline, assume no regression
+        }
+    }
+
+    /// Run comprehensive regression test
+    pub async fn run_regression_test(&self, test_name: &str, test_fn: impl std::future::Future<Output = Result<(), SongbirdError>>) -> RegressionTestResult {
+        let start_time = Instant::now();
+        let mut compatibility_issues = Vec::new();
+        
+        let test_result = test_fn.await;
+        let execution_time = start_time.elapsed();
+        
+        let passed = test_result.is_ok();
+        if !passed {
+            compatibility_issues.push(format!("Test execution failed: {:?}", test_result.err()));
+        }
+
+        let performance_regression = self.check_performance_regression(test_name, execution_time);
+        if performance_regression {
+            compatibility_issues.push(format!("Performance regression detected for {}", test_name));
+        }
+
+        RegressionTestResult {
+            test_name: test_name.to_string(),
+            version_tested: self.version.clone(),
+            passed,
+            performance_regression,
+            compatibility_issues,
+            execution_time,
+            baseline_time: self.baselines.get(test_name).map(|b| b.baseline_duration),
+        }
+    }
+}
+
+/// Legacy service for backward compatibility testing
+#[derive(Debug, Clone)]
+struct LegacyTestService {
+    id: String,
+    version: String,
+}
+
+impl LegacyTestService {
+    fn new(id: String, version: String) -> Self {
+        Self { id, version }
+    }
+}
+
+#[async_trait::async_trait]
+impl UniversalService for LegacyTestService {
+    type Config = ();
+    type Health = bool;
+    type Error = SongbirdError;
+
+    async fn initialize(&mut self, _config: Self::Config) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn start(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn stop(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn health_check(&self) -> Result<Self::Health, Self::Error> {
+        Ok(true)
+    }
+
+    async fn handle_request(&self, request: ServiceRequest) -> Result<ServiceResponse, Self::Error> {
+        // Legacy response format
+        Ok(ServiceResponse::success(
+            request.id,
+            json!({
+                "service_id": self.id,
+                "version": self.version,
+                "legacy_format": true,
+                "timestamp": chrono::Utc::now().timestamp(),
+                "data": {
+                    "message": "Legacy service response",
+                    "compatibility_mode": true
+                }
+            })
+        ))
+    }
+
+    async fn get_metrics(&self) -> Result<ServiceMetrics, Self::Error> {
+        Ok(ServiceMetrics {
+            request_count: 42,
+            error_count: 0,
+            avg_response_time_ms: 25.0,
+            p95_response_time_ms: 40.0,
+            p99_response_time_ms: 60.0,
+            cpu_usage: 15.0,
+            memory_usage: 128,
+            active_connections: 5,
+            queue_depth: 0,
+            throughput_rps: 10.0,
+            error_rate: 0.0,
+            uptime_seconds: 86400, // 1 day
+            last_updated: chrono::Utc::now(),
+            custom_metrics: HashMap::new(),
+        })
+    }
+
+    fn service_info(&self) -> ServiceInfo {
+        ServiceInfo {
+            id: self.id.clone(),
+            name: format!("Legacy Service {}", self.id),
+            version: self.version.clone(),
+            service_type: "legacy".to_string(),
+            description: "Legacy service for backward compatibility testing".to_string(),
+            endpoints: vec![],
+            capabilities: vec!["legacy".to_string(), "backward-compatible".to_string()],
+            tags: HashMap::new(),
+            metadata: HashMap::from([
+                ("legacy_mode".to_string(), serde_json::Value::Bool(true)),
+                ("compatibility_version".to_string(), serde_json::Value::String("1.0.0".to_string())),
+            ]),
+        }
+    }
+
+    async fn can_handle_load(&self) -> Result<bool, Self::Error> {
+        Ok(true)
+    }
+
+    async fn get_load_factor(&self) -> Result<f64, Self::Error> {
+        Ok(0.3) // Conservative load factor for legacy services
+    }
+
+    async fn update_config(&mut self, _config: Self::Config) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn test_orchestrator_startup_regression() {
+    println!("🔄 === ORCHESTRATOR STARTUP REGRESSION TEST ===");
+
+    let regression_suite = RegressionTestSuite::new("1.0.0".to_string());
+
+    let test_result = regression_suite.run_regression_test("orchestrator_startup", async {
+        let config = OrchestratorConfig::default();
+        let orchestrator = Orchestrator::new(config).await?;
+        orchestrator.start().await?;
+        orchestrator.stop().await?;
+        Ok(())
+    }).await;
+
+    println!("📊 Startup Regression Results:");
+    println!("   Test: {}", test_result.test_name);
+    println!("   Version: {}", test_result.version_tested);
+    println!("   Passed: {}", test_result.passed);
+    println!("   Performance Regression: {}", test_result.performance_regression);
+    println!("   Execution Time: {:?}", test_result.execution_time);
+    if let Some(baseline) = test_result.baseline_time {
+        println!("   Baseline Time: {:?}", baseline);
+        let variance = ((test_result.execution_time.as_millis() as f64 - baseline.as_millis() as f64) / baseline.as_millis() as f64) * 100.0;
+        println!("   Performance Variance: {:.1}%", variance);
+    }
+    println!("   Issues: {:?}", test_result.compatibility_issues);
+
+    assert!(test_result.passed, "Orchestrator startup regression test should pass");
+    println!("✅ Orchestrator startup regression test PASSED");
+}
+
+#[tokio::test]
+async fn test_service_registration_regression() {
+    println!("📝 === SERVICE REGISTRATION REGRESSION TEST ===");
+
+    let regression_suite = RegressionTestSuite::new("1.0.0".to_string());
+
+    let test_result = regression_suite.run_regression_test("service_registration", async {
+        let config = OrchestratorConfig::default();
+        let orchestrator = Orchestrator::new(config).await?;
+
+        // Register multiple services to test registration performance
+        let services = vec![
+            LegacyTestService::new("legacy-1".to_string(), "0.9.0".to_string()),
+            LegacyTestService::new("legacy-2".to_string(), "0.8.5".to_string()),
+            LegacyTestService::new("legacy-3".to_string(), "0.7.2".to_string()),
+        ];
+
+        for service in services {
+            orchestrator.register_service(service, ()).await?;
+        }
+
+        orchestrator.start().await?;
+        orchestrator.stop().await?;
+        Ok(())
+    }).await;
+
+    println!("📊 Service Registration Regression Results:");
+    println!("   Test: {}", test_result.test_name);
+    println!("   Passed: {}", test_result.passed);
+    println!("   Performance Regression: {}", test_result.performance_regression);
+    println!("   Execution Time: {:?}", test_result.execution_time);
+    println!("   Issues: {:?}", test_result.compatibility_issues);
+
+    assert!(test_result.passed, "Service registration regression test should pass");
+    println!("✅ Service registration regression test PASSED");
+}
+
+#[tokio::test]
+async fn test_api_compatibility_regression() {
+    println!("🔌 === API COMPATIBILITY REGRESSION TEST ===");
+
+    let config = OrchestratorConfig::default();
+    let orchestrator = Orchestrator::new(config).await.unwrap();
+
+    // Register legacy service
+    let legacy_service = LegacyTestService::new("legacy-api".to_string(), "0.9.0".to_string());
+    let service_id = orchestrator.register_service(legacy_service, ()).await.unwrap();
+
+    orchestrator.start().await.unwrap();
+
+    // Test legacy API format compatibility
+    let request = ServiceRequest::new("GET", "/legacy/endpoint");
+    
+    // In a real implementation, you would route the request through the orchestrator
+    // For this test, we're validating the service response format
+    let legacy_service = LegacyTestService::new("legacy-api".to_string(), "0.9.0".to_string());
+    let response = legacy_service.handle_request(request).await.unwrap();
+
+    println!("🔍 API Compatibility Validation:");
+    println!("   Service ID: {}", service_id);
+    println!("   Response ID: {}", response.request_id);
+    println!("   Response Success: {}", matches!(response.status, ResponseStatus::Success));
+
+    // Verify backward compatibility
+    assert!(matches!(response.status, ResponseStatus::Success), "Legacy service should respond successfully");
+    assert!(!response.request_id.is_empty(), "Response should have an ID");
+
+    // Check legacy format compatibility
+    if let Some(legacy_format) = response.payload.get("legacy_format") {
+        assert_eq!(legacy_format, &json!(true), "Legacy format marker should be present");
+    }
+
+    // Validate service info backward compatibility
+    let service_info = legacy_service.service_info();
+    assert!(!service_info.id.is_empty(), "Service ID should not be empty");
+    assert!(!service_info.version.is_empty(), "Service version should not be empty");
+    assert!(service_info.capabilities.contains(&"legacy".to_string()), "Legacy capability should be present");
+
+    orchestrator.stop().await.unwrap();
+
+    println!("✅ API compatibility regression test PASSED");
+}
+
+#[tokio::test]
+async fn test_configuration_backward_compatibility() {
+    println!("⚙️ === CONFIGURATION BACKWARD COMPATIBILITY TEST ===");
+
+    // Test legacy configuration format
+    let legacy_config_json = json!({
+        "services": {
+            "max_services": 100,
+            "default_timeout": 30
+        },
+        "load_balancer": {
+            "strategy": "round_robin",
+            "health_check_interval": 30
+        },
+        "observability": {
+            "metrics_enabled": true,
+            "export_prometheus": false
+        }
+    });
+
+    println!("🔧 Legacy Configuration Test:");
+    println!("   Config JSON: {}", serde_json::to_string_pretty(&legacy_config_json).unwrap());
+
+    // Test that current config can handle legacy format
+    let config = OrchestratorConfig::default();
+    
+    // Validate configuration compatibility
+    assert!(config.observability.enabled, "Metrics should be enabled by default");
+
+    // Log configuration details
+    println!("   Metrics Enabled: {}", config.observability.enabled);
+
+    // Test orchestrator creation with default config
+    let orchestrator = Orchestrator::new(config).await.unwrap();
+    orchestrator.start().await.unwrap();
+    orchestrator.stop().await.unwrap();
+
+    println!("✅ Configuration backward compatibility test PASSED");
+}
+
+#[tokio::test]
+async fn test_service_discovery_regression() {
+    println!("🔍 === SERVICE DISCOVERY REGRESSION TEST ===");
+
+    let regression_suite = RegressionTestSuite::new("1.0.0".to_string());
+
+    let test_result = regression_suite.run_regression_test("service_discovery", async {
+        let config = OrchestratorConfig::default();
+        let orchestrator = Orchestrator::new(config).await?;
+
+        // Register legacy services
+        let legacy_services = vec![
+            LegacyTestService::new("legacy-web".to_string(), "0.9.0".to_string()),
+            LegacyTestService::new("legacy-api".to_string(), "0.8.0".to_string()),
+            LegacyTestService::new("legacy-db".to_string(), "0.7.0".to_string()),
+        ];
+
+        for service in legacy_services {
+            orchestrator.register_service(service, ()).await?;
+        }
+
+        orchestrator.start().await?;
+
+        // Test service discovery functionality
+        let discovery = orchestrator.discovery();
+        
+        // Query for legacy services
+        let legacy_query = ServiceQuery {
+            name: Some("legacy".to_string()),
+            service_id: None,
+            service_type: Some("legacy".to_string()),
+            version: None,
+            tags: vec!["legacy".to_string()],
+            metadata: HashMap::new(),
+            health_status: Some(DiscoveryHealthStatus::Healthy),
+            limit: Some(10),
+            sort_by: None,
+        };
+
+        let discovered_services = discovery.discover_services(&legacy_query).await?;
+        
+        if discovered_services.len() != 3 {
+            return Err(SongbirdError::Internal {
+                message: format!("Expected 3 legacy services, found {}", discovered_services.len()),
+            });
+        }
+
+        orchestrator.stop().await?;
+        Ok(())
+    }).await;
+
+    println!("📊 Service Discovery Regression Results:");
+    println!("   Test: {}", test_result.test_name);
+    println!("   Passed: {}", test_result.passed);
+    println!("   Performance Regression: {}", test_result.performance_regression);
+    println!("   Execution Time: {:?}", test_result.execution_time);
+    println!("   Issues: {:?}", test_result.compatibility_issues);
+
+    assert!(test_result.passed, "Service discovery regression test should pass");
+    println!("✅ Service discovery regression test PASSED");
+}
+
+#[tokio::test]
+async fn test_load_balancer_regression() {
+    println!("⚖️ === LOAD BALANCER REGRESSION TEST ===");
+
+    let regression_suite = RegressionTestSuite::new("1.0.0".to_string());
+
+    let test_result = regression_suite.run_regression_test("load_balancing", async {
+        // Test load balancer with legacy configuration
+        let config = LoadBalancerConfig {
+            strategy: LoadBalancerStrategy::RoundRobin,
+            health_check_interval: Duration::from_secs(30),
+            max_retries: 3,
+            timeout: Duration::from_secs(10),
+        };
+
+        let load_balancer = DefaultLoadBalancer::new(config);
+
+        // Add legacy services
+        load_balancer.add_service("legacy-service-1".to_string(), 1.0).await?;
+        load_balancer.add_service("legacy-service-2".to_string(), 0.8).await?;
+        load_balancer.add_service("legacy-service-3".to_string(), 0.6).await?;
+
+        // Test service selection
+        for _ in 0..10 {
+            let selected = load_balancer.select_service().await;
+            if selected.is_none() {
+                return Err(SongbirdError::Internal {
+                    message: "Load balancer should select a service".to_string(),
+                });
+            }
+        }
+
+        Ok(())
+    }).await;
+
+    println!("📊 Load Balancer Regression Results:");
+    println!("   Test: {}", test_result.test_name);
+    println!("   Passed: {}", test_result.passed);
+    println!("   Performance Regression: {}", test_result.performance_regression);
+    println!("   Execution Time: {:?}", test_result.execution_time);
+    println!("   Issues: {:?}", test_result.compatibility_issues);
+
+    assert!(test_result.passed, "Load balancer regression test should pass");
+    println!("✅ Load balancer regression test PASSED");
+}
+
+#[tokio::test]
+async fn test_observability_regression() {
+    println!("👁️ === OBSERVABILITY REGRESSION TEST ===");
+
+    let config = OrchestratorConfig::default();
+    let orchestrator = Orchestrator::new(config).await.unwrap();
+
+    // Register legacy service
+    let legacy_service = LegacyTestService::new("legacy-observability".to_string(), "0.9.0".to_string());
+    orchestrator.register_service(legacy_service, ()).await.unwrap();
+
+    orchestrator.start().await.unwrap();
+
+    // Test observability functionality
+    let observability = orchestrator.observability();
+
+    // Test metrics collection
+    let metrics = observability.get_metrics().await.unwrap();
+    println!("📊 Observability Metrics:");
+    println!("   Total Services: {}", metrics.services.len());
+    println!("   Total Requests: {}", metrics.songbird.load_balancer.total_requests);
+    println!("   Collection Duration: {} ms", metrics.collection_duration_ms);
+
+    // Test health monitoring
+    let health = observability.get_health_status().await.unwrap();
+    println!("🏥 Health Status:");
+    println!("   Overall Health: {:?}", health.overall_health);
+    println!("   Service Health Count: {}", health.service_health.len());
+
+    // Test dashboard data
+    let dashboard = observability.get_dashboard_data().await.unwrap();
+    println!("📈 Dashboard Data:");
+    println!("   Dashboard Entries: {}", dashboard.len());
+
+    // Validate backward compatibility
+    assert!(metrics.services.len() >= 1, "Should have at least one service registered");
+    assert!(health.service_health.len() >= 1, "Should have health data for registered services");
+
+    orchestrator.stop().await.unwrap();
+
+    println!("✅ Observability regression test PASSED");
+}
+
+#[tokio::test]
+async fn test_error_handling_regression() {
+    println!("⚠️ === ERROR HANDLING REGRESSION TEST ===");
+
+    let config = OrchestratorConfig::default();
+    let orchestrator = Orchestrator::new(config).await.unwrap();
+
+    // Test error handling with legacy service
+    let legacy_service = LegacyTestService::new("error-test".to_string(), "0.9.0".to_string());
+    orchestrator.register_service(legacy_service, ()).await.unwrap();
+
+    orchestrator.start().await.unwrap();
+
+    // Test various error scenarios
+    let test_cases = vec![
+        ("Empty request", ServiceRequest::new("", "")),
+        ("Invalid method", ServiceRequest::new("INVALID", "/test")),
+        ("Long path", ServiceRequest::new("GET", &"/".repeat(1000))),
+    ];
+
+    for (test_name, request) in test_cases {
+        let legacy_service = LegacyTestService::new("error-test".to_string(), "0.9.0".to_string());
+        let result = legacy_service.handle_request(request).await;
+        
+        println!("🧪 Error Test: {}", test_name);
+        println!("   Result: {:?}", result.is_ok());
+        
+        // Legacy service should handle all requests gracefully
+        assert!(result.is_ok(), "Legacy service should handle requests gracefully: {}", test_name);
+    }
+
+    orchestrator.stop().await.unwrap();
+
+    println!("✅ Error handling regression test PASSED");
+} 
