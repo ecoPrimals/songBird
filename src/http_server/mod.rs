@@ -151,7 +151,7 @@ where
         Ok(health) => {
             Ok(Json(HttpServiceResponse {
                 success: true,
-                data: Some(serde_json::to_value(health).unwrap_or(serde_json::json!({}))),
+                data: Some(serde_json::to_value(health).unwrap_or_else(|_| serde_json::json!({}))),
                 error: None,
                 timestamp: chrono::Utc::now(),
                 request_id,
@@ -183,7 +183,7 @@ where
         Ok(metrics) => {
             Ok(Json(HttpServiceResponse {
                 success: true,
-                data: Some(serde_json::to_value(metrics).unwrap_or(serde_json::json!({}))),
+                data: Some(serde_json::to_value(metrics).unwrap_or_else(|_| serde_json::json!({}))),
                 error: None,
                 timestamp: chrono::Utc::now(),
                 request_id,
@@ -213,7 +213,7 @@ where
     
     Json(HttpServiceResponse {
         success: true,
-        data: Some(serde_json::to_value(info).unwrap_or(serde_json::json!({}))),
+        data: Some(serde_json::to_value(info).unwrap_or_else(|_| serde_json::json!({}))),
         error: None,
         timestamp: chrono::Utc::now(),
         request_id,
@@ -256,7 +256,7 @@ where
     let mut enhanced_payload = payload;
     if enhanced_payload.is_object() {
         if !query_params.is_empty() {
-            enhanced_payload["query_params"] = serde_json::to_value(query_params).unwrap();
+            enhanced_payload["query_params"] = serde_json::to_value(query_params).unwrap_or_else(|_| serde_json::json!({}));
         }
     }
 

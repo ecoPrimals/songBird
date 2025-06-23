@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+pub mod validation;
+
 /// Result type alias for Songbird operations
 pub type Result<T> = std::result::Result<T, SongbirdError>;
 

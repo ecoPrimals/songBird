@@ -893,7 +893,11 @@ impl HttpCommunication {
             .timeout(timeout)
             .user_agent("songbird-orchestrator/0.1.0")
             .build()
-            .expect("Failed to create HTTP client");
+            .unwrap_or_else(|e| {
+                tracing::error!("Failed to create HTTP client: {}", e);
+                // Create a default client as fallback
+                reqwest::Client::new()
+            });
 
         Self {
             base_url,
@@ -969,7 +973,11 @@ impl HttpCommunication {
             .timeout(timeout)
             .user_agent("songbird-orchestrator/0.1.0")
             .build()
-            .expect("Failed to create HTTP client");
+            .unwrap_or_else(|e| {
+                tracing::error!("Failed to create HTTP client with timeout: {}", e);
+                // Keep existing client as fallback
+                self.client.clone()
+            });
         self
     }
 
@@ -1076,7 +1084,7 @@ impl HttpCommunication {
     }
 
     /// Test connectivity to a service endpoint
-    async fn test_service_connectivity(&self, target: &ServiceAddress) -> Result<bool> {
+    pub async fn test_service_connectivity(&self, target: &ServiceAddress) -> Result<bool> {
         let url = self.build_url(target, Some("/health")).await.unwrap_or_else(|_| {
             format!("{}/services/{}/health", self.base_url.trim_end_matches('/'), target.service_id)
         });

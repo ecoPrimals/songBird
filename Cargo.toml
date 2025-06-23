@@ -121,6 +121,9 @@ tempfile = "3.8"
 criterion = "0.5"
 futures = "0.3.31"
 rand = "0.8"
+proptest = "1.7.0"
+mockall = "0.13.1"
+axum-test = "17.3.0"
 
 [features]
 # DEFAULT: Pure Rust with built-in observability

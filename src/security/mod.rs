@@ -136,7 +136,11 @@ impl Default for SecurityConfig {
         // In production, this should come from secure key management
         let mut key = [0u8; 32];
         let rng = SystemRandom::new();
-        rng.fill(&mut key).expect("Failed to generate encryption key");
+        if let Err(e) = rng.fill(&mut key) {
+            tracing::error!("Failed to generate secure encryption key: {:?}", e);
+            // Use a deterministic key as fallback (not secure for production)
+            key = [42u8; 32]; // Deterministic fallback for testing/demo
+        }
 
         Self {
             jwt_secret: "super-secret-jwt-key-change-in-production".to_string(),
