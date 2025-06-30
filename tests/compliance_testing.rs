@@ -1,16 +1,20 @@
-/*!
- * Compliance Testing Suite - Songbird Orchestrator
- * 
- * Comprehensive compliance testing to ensure adherence to enterprise
- * standards, security regulations, and operational requirements.
- */
-
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
 use std::collections::HashMap;
-use songbird_orchestrator::{
+#[allow(dead_code, unused_imports, unused_variables)]
+/**
+ //! Compliance Testing Suite - Songbird Orchestrator
+ *
+ //! Comprehensive compliance testing to ensure adherence to enterprise
+ //! standards, security regulations, and operational requirements.
+//!
+use songbird_gaming_bridge::{
+    config::{ObservabilityConfig, OrchestratorConfig},
+    security::{
+        Action, AuthEvent, AuthEventType, ProductionSecurityProvider, Resource, SecurityConfig,
+        SecurityProvider, Subject, SubjectType,
+    },
     Orchestrator,
-    config::{OrchestratorConfig, ObservabilityConfig},
-    security::{SecurityProvider, Subject, SubjectType, Resource, Action, 
-               AuthEvent, AuthEventType, ProductionSecurityProvider, SecurityConfig},
 };
 
 /// Compliance test result
@@ -27,11 +31,11 @@ pub struct ComplianceTestResult {
 /// Compliance severity levels
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComplianceSeverity {
-    Critical,    // Must be fixed for compliance
-    High,        // Should be fixed for best practices
-    Medium,      // Recommended improvements
-    Low,         // Minor suggestions
-    Info,        // Informational only
+    Critical, // Must be fixed for compliance
+    High,     // Should be fixed for best practices
+    Medium,   // Recommended improvements
+    Low,      // Minor suggestions
+    Info,     // Informational only
 }
 
 /// Compliance validator
@@ -51,7 +55,10 @@ impl ComplianceValidator {
     }
 
     /// Validate security compliance
-    pub async fn validate_security_compliance(&self, orchestrator: &Orchestrator) -> Vec<ComplianceTestResult> {
+    pub async fn validate_security_compliance(
+        &self,
+        orchestrator: &Orchestrator,
+    ) -> Vec<ComplianceTestResult> {
         let mut results = Vec::new();
 
         results.push(self.validate_access_controls(orchestrator).await);
@@ -67,7 +74,7 @@ impl ComplianceValidator {
 
         // Test that security provider is properly configured
         let security_provider = ProductionSecurityProvider::new(SecurityConfig::default());
-        
+
         match security_provider {
             Ok(_) => {
                 findings.push("✅ Security provider configured correctly".to_string());
@@ -91,12 +98,15 @@ impl ComplianceValidator {
         };
 
         let test_action = Action {
-            name: "read".to_string(),
+            action_type: "read".to_string(),
             attributes: std::collections::HashMap::new(),
         };
 
         if let Ok(security_provider) = ProductionSecurityProvider::new(SecurityConfig::default()) {
-            match security_provider.authorize(&test_subject, &test_resource, &test_action).await {
+            match security_provider
+                .authorize(&test_subject, &test_resource, &test_action)
+                .await
+            {
                 Ok(authorized) => {
                     findings.push(format!("✅ Authorization check completed: {}", authorized));
                 }
@@ -112,7 +122,11 @@ impl ComplianceValidator {
             compliant: recommendations.is_empty(),
             findings,
             recommendations: recommendations.clone(),
-            severity: if recommendations.is_empty() { ComplianceSeverity::Info } else { ComplianceSeverity::High },
+            severity: if recommendations.is_empty() {
+                ComplianceSeverity::Info
+            } else {
+                ComplianceSeverity::High
+            },
         }
     }
 
@@ -122,12 +136,15 @@ impl ComplianceValidator {
 
         // Test audit logging capability
         let observability = orchestrator.observability();
-        
-        match observability.get_metrics().await {
+
+        match observability.get_config().await {
             Ok(metrics) => {
                 findings.push("Observability system operational".to_string());
                 findings.push(format!("Tracking {} services", metrics.services.len()));
-                findings.push(format!("Collection duration: {} ms", metrics.collection_duration_ms));
+                findings.push(format!(
+                    "Collection processing_time: {} ms",
+                    metrics.collection_duration_ms
+                ));
             }
             Err(_) => {
                 findings.push("Observability system not functioning".to_string());
@@ -141,9 +158,10 @@ impl ComplianceValidator {
                 event_type: AuthEventType::LoginAttempt,
                 user_id: "compliance-test".to_string(),
                 timestamp: chrono::Utc::now(),
-                details: HashMap::from([
-                    ("test_type".to_string(), serde_json::Value::String("compliance".to_string())),
-                ]),
+                details: HashMap::from([(
+                    "test_type".to_string(),
+                    serde_json::Value::String("compliance".to_string()),
+                )]),
                 success: true,
                 ip_address: Some("127.0.0.1".to_string()),
                 user_agent: Some("compliance-test".to_string()),
@@ -165,21 +183,31 @@ impl ComplianceValidator {
             compliant: recommendations.is_empty(),
             findings,
             recommendations: recommendations.clone(),
-            severity: if recommendations.is_empty() { ComplianceSeverity::Info } else { ComplianceSeverity::Critical },
+            severity: if recommendations.is_empty() {
+                ComplianceSeverity::Info
+            } else {
+                ComplianceSeverity::Critical
+            },
         }
     }
 
-    async fn validate_security_monitoring(&self, orchestrator: &Orchestrator) -> ComplianceTestResult {
+    async fn validate_security_monitoring(
+        &self,
+        orchestrator: &Orchestrator,
+    ) -> ComplianceTestResult {
         let mut findings = Vec::new();
         let recommendations = Vec::new();
 
         let observability = orchestrator.observability();
-        
+
         // Test security monitoring capabilities
         match observability.get_health_status().await {
             Ok(health) => {
                 findings.push("Health monitoring operational".to_string());
-                findings.push(format!("Monitoring {} services", health.service_health.len()));
+                findings.push(format!(
+                    "Monitoring {} services",
+                    health.service_health.len()
+                ));
             }
             Err(_) => {
                 findings.push("Health monitoring not functional".to_string());
@@ -192,28 +220,42 @@ impl ComplianceValidator {
             compliant: recommendations.is_empty(),
             findings,
             recommendations: recommendations.clone(),
-            severity: if recommendations.is_empty() { ComplianceSeverity::Info } else { ComplianceSeverity::High },
+            severity: if recommendations.is_empty() {
+                ComplianceSeverity::Info
+            } else {
+                ComplianceSeverity::High
+            },
         }
     }
 
     /// Generate compliance report
     pub fn generate_compliance_report(&self, results: &[ComplianceTestResult]) -> String {
         let mut report = String::new();
-        
+
         report.push_str("# Compliance Test Report\n\n");
-        
+
         let mut compliant_count = 0;
         let total_count = results.len();
-        
+
         for result in results {
             if result.compliant {
                 compliant_count += 1;
             }
-            
-            report.push_str(&format!("## {} - {}\n", result.standard, result.requirement));
-            report.push_str(&format!("**Status**: {}\n", if result.compliant { "✅ COMPLIANT" } else { "❌ NON-COMPLIANT" }));
+
+            report.push_str(&format!(
+                "## {} - {}\n",
+                result.standard, result.requirement
+            ));
+            report.push_str(&format!(
+                "**Status**: {}\n",
+                if result.compliant {
+                    "✅ COMPLIANT"
+                } else {
+                    "❌ NON-COMPLIANT"
+                }
+            ));
             report.push_str(&format!("**Severity**: {:?}\n\n", result.severity));
-            
+
             if !result.findings.is_empty() {
                 report.push_str("### Findings:\n");
                 for finding in &result.findings {
@@ -221,7 +263,7 @@ impl ComplianceValidator {
                 }
                 report.push('\n');
             }
-            
+
             if !result.recommendations.is_empty() {
                 report.push_str("### Recommendations:\n");
                 for rec in &result.recommendations {
@@ -230,12 +272,15 @@ impl ComplianceValidator {
                 report.push('\n');
             }
         }
-        
+
         report.push_str(&format!("\n## Summary\n"));
-        report.push_str(&format!("**Compliance Rate**: {}/{} ({:.1}%)\n", 
-            compliant_count, total_count, 
-            (compliant_count as f64 / total_count as f64) * 100.0));
-        
+        report.push_str(&format!(
+            "**Compliance Rate**: {}/{} ({:.1}%)\n",
+            compliant_count,
+            total_count,
+            (compliant_count as f64 / total_count as f64) * 100.0
+        ));
+
         report
     }
 }
@@ -244,28 +289,30 @@ impl ComplianceValidator {
 async fn test_soc2_compliance_validation() {
     let validator = ComplianceValidator::new();
     let config: OrchestratorConfig = OrchestratorConfig::default();
-    let orchestrator = Orchestrator::new(config).await.unwrap();
+    let orchestrator = Orchestrator::new(config)
+        .await
+        .expect("Test assertion failed");
 
     let results = validator.validate_security_compliance(&orchestrator).await;
-    
+
     assert!(!results.is_empty(), "Should have compliance test results");
-    
+
     // Check that we have the expected tests
     let standards: Vec<_> = results.iter().map(|r| r.standard.as_str()).collect();
     assert!(standards.contains(&"SOC2"));
     assert!(standards.contains(&"ISO27001"));
-    
+
     // Generate report
     let report = validator.generate_compliance_report(&results);
     assert!(report.contains("Compliance Test Report"));
-    
+
     println!("Compliance Report:\n{}", report);
 }
 
 #[tokio::test]
 async fn test_compliance_report_generation() {
     let validator = ComplianceValidator::new();
-    
+
     let sample_results = vec![
         ComplianceTestResult {
             standard: "SOC2".to_string(),
@@ -284,13 +331,13 @@ async fn test_compliance_report_generation() {
             severity: ComplianceSeverity::High,
         },
     ];
-    
+
     let report = validator.generate_compliance_report(&sample_results);
-    
+
     assert!(report.contains("Compliance Test Report"));
     assert!(report.contains("✅ COMPLIANT"));
     assert!(report.contains("❌ NON-COMPLIANT"));
     assert!(report.contains("50.0%")); // 1 out of 2 compliant
-    
+
     println!("Sample Report:\n{}", report);
-} 
+}

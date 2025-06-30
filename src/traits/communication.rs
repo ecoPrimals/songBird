@@ -1,13 +1,12 @@
+// Module imports
 //! Communication Traits
 
+use crate::errors::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-use crate::errors::Result;
-
 /// Communication layer trait
 #[async_trait]
 pub trait CommunicationLayer: Send + Sync {
@@ -17,32 +16,25 @@ pub trait CommunicationLayer: Send + Sync {
         target: ServiceAddress,
         message: ServiceMessage,
     ) -> Result<CommunicationResponse>;
-
     /// Broadcast a message to all services
     async fn broadcast(&self, message: ServiceMessage) -> Result<Vec<CommunicationResponse>>;
-
     /// Listen for incoming messages
-    async fn listen(&self) -> Result<Box<dyn Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>>;
-
+    async fn listen(
+        &self,
+    ) -> Result<Box<dyn Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>>;
     /// Subscribe to a topic
     async fn subscribe(&self, topic: &str) -> Result<()>;
-
     /// Unsubscribe from a topic
     async fn unsubscribe(&self, topic: &str) -> Result<()>;
-
     /// Connect to the communication layer
     async fn connect(&self) -> Result<()>;
-
     /// Disconnect from the communication layer  
     async fn disconnect(&self) -> Result<()>;
-
     /// Check if connected
     async fn is_connected(&self) -> bool;
-
     /// Get communication statistics
     async fn get_stats(&self) -> Result<CommunicationStats>;
 }
-
 /// Service address for routing messages
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ServiceAddress {
@@ -50,7 +42,6 @@ pub struct ServiceAddress {
     pub instance_id: Option<String>,
     pub endpoint: Option<String>,
 }
-
 /// Message between services
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceMessage {
@@ -64,7 +55,6 @@ pub struct ServiceMessage {
     pub reply_to: Option<ServiceAddress>,
     pub ttl: Option<u64>,
 }
-
 /// Communication response (renamed to avoid conflict with service::ServiceResponse)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommunicationResponse {
@@ -72,9 +62,7 @@ pub struct CommunicationResponse {
     pub success: bool,
     pub payload: Option<serde_json::Value>,
     pub error: Option<String>,
-    pub timestamp: DateTime<Utc>,
 }
-
 /// Type of message
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MessageType {
@@ -84,7 +72,6 @@ pub enum MessageType {
     Command,
     Notification,
 }
-
 /// Communication statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CommunicationStats {

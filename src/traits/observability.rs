@@ -1,81 +1,71 @@
-//! Observability Traits
+//! Observability Trait
 //!
-//! Universal observability patterns for tracing, metrics, and monitoring
+//! Provides monitoring, logging, and tracing capabilities
 
+use crate::errors::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::Duration;
-use uuid::Uuid;
 
-use crate::errors::Result;
-
-/// Universal request context for tracing and correlation
+/// Request context for tracing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RequestContext {
-    /// Unique trace identifier for request correlation
     pub trace_id: String,
-    
-    /// Span identifier within the trace
     pub span_id: String,
-    
-    /// Parent span identifier for nested operations
     pub parent_span_id: Option<String>,
-    
-    /// Request baggage for cross-service context
     pub baggage: HashMap<String, String>,
-    
-    /// Request start timestamp
-    pub started_at: DateTime<Utc>,
-    
-    /// Service-specific metadata
-    pub service_metadata: HashMap<String, serde_json::Value>,
-    
-    /// User/session context
     pub user_context: Option<UserContext>,
+    pub service_name: String,
+    pub operation_name: String,
+    pub start_time: DateTime<Utc>,
+    pub tags: HashMap<String, String>,
 }
 
 impl RequestContext {
-    /// Create a new root request context
-    pub fn new() -> Self {
+    pub fn new(service_name: String, operation_name: String) -> Self {
         Self {
-            trace_id: Uuid::new_v4().to_string(),
-            span_id: Uuid::new_v4().to_string(),
+            trace_id: uuid::Uuid::new_v4().to_string(),
+            span_id: uuid::Uuid::new_v4().to_string(),
             parent_span_id: None,
             baggage: HashMap::new(),
-            started_at: Utc::now(),
-            service_metadata: HashMap::new(),
             user_context: None,
+            service_name,
+            operation_name,
+            start_time: Utc::now(),
+            tags: HashMap::new(),
         }
     }
-    
-    /// Create a child span from this context
+
     pub fn child_span(&self, operation: &str) -> Self {
-        let mut child = self.clone();
-        child.parent_span_id = Some(child.span_id.clone());
-        child.span_id = Uuid::new_v4().to_string();
-        child.baggage.insert("operation".to_string(), operation.to_string());
-        child
+        Self {
+            trace_id: self.trace_id.clone(),
+            span_id: uuid::Uuid::new_v4().to_string(),
+            parent_span_id: Some(self.span_id.clone()),
+            baggage: self.baggage.clone(),
+            user_context: self.user_context.clone(),
+            service_name: self.service_name.clone(),
+            operation_name: operation.to_string(),
+            start_time: Utc::now(),
+            tags: HashMap::new(),
+        }
     }
-    
-    /// Add baggage item for cross-service context
+
     pub fn with_baggage(mut self, key: &str, value: &str) -> Self {
         self.baggage.insert(key.to_string(), value.to_string());
         self
     }
 }
 
-/// User context for request attribution
+/// User context for observability
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserContext {
     pub user_id: String,
     pub session_id: Option<String>,
     pub roles: Vec<String>,
-    pub attributes: HashMap<String, String>,
 }
 
-/// Span information for distributed tracing
+/// Span information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Span {
     pub trace_id: String,
@@ -84,24 +74,24 @@ pub struct Span {
     pub operation_name: String,
     pub start_time: DateTime<Utc>,
     pub end_time: Option<DateTime<Utc>>,
-    pub duration: Option<Duration>,
-    pub tags: HashMap<String, String>,
-    pub logs: Vec<LogEntry>,
+    pub duration: Option<std::time::Duration>,
     pub status: SpanStatus,
+    pub tags: HashMap<String, String>,
+    pub logs: Vec<SpanLog>,
 }
 
-/// Span completion status
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Span status enumeration
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SpanStatus {
     Ok,
-    Error { message: String },
+    Error,
+    Timeout,
     Cancelled,
-    DeadlineExceeded,
 }
 
-/// Log entry within a span
+/// Span log entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogEntry {
+pub struct SpanLog {
     pub timestamp: DateTime<Utc>,
     pub level: LogLevel,
     pub message: String,
@@ -109,201 +99,208 @@ pub struct LogEntry {
 }
 
 /// Log level enumeration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LogLevel {
-    Trace,
-    Debug,
-    Info,
-    Warn,
     Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
 }
 
-/// Universal tracing provider trait
+/// Metric data point
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetricPoint {
+    pub name: String,
+    pub value: f64,
+    pub timestamp: DateTime<Utc>,
+    pub tags: HashMap<String, String>,
+    pub metric_type: MetricType,
+}
+
+/// Metric type enumeration
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MetricType {
+    Counter,
+    Gauge,
+    Histogram,
+    Summary,
+}
+
+/// Observability trait for monitoring and tracing
 #[async_trait]
-pub trait TracingProvider: Send + Sync {
+pub trait Observability: Send + Sync {
     /// Start a new span
-    async fn start_span(&self, context: &RequestContext, operation: &str) -> Result<Span>;
-    
-    /// Finish a span with status
-    async fn finish_span(&self, span: Span, status: SpanStatus) -> Result<()>;
-    
-    /// Add tags to a span
-    async fn add_span_tags(&self, span_id: &str, tags: HashMap<String, String>) -> Result<()>;
-    
-    /// Log an event within a span
-    async fn log_event(&self, span_id: &str, entry: LogEntry) -> Result<()>;
-    
-    /// Extract context from headers/metadata
-    fn extract_context(&self, headers: &HashMap<String, String>) -> Option<RequestContext>;
-    
-    /// Inject context into headers/metadata
-    fn inject_context(&self, context: &RequestContext) -> HashMap<String, String>;
-    
-    /// Get provider information
-    fn provider_info(&self) -> TracingProviderInfo;
+    async fn start_span(&self, context: RequestContext) -> Result<Span>;
+
+    /// Finish a span
+    async fn finish_span(&self, span: &mut Span) -> Result<()>;
+
+    /// Log a message within a span
+    async fn log(&self, span: &Span, level: LogLevel, message: String) -> Result<()>;
+
+    /// Record a metric
+    async fn record_metric(&self, metric: MetricPoint) -> Result<()>;
+
+    /// Increment a counter
+    async fn increment_counter(&self, name: String, tags: HashMap<String, String>) -> Result<()>;
+
+    /// Set a gauge value
+    async fn set_gauge(
+        &self,
+        name: String,
+        value: f64,
+        tags: HashMap<String, String>,
+    ) -> Result<()>;
+
+    /// Record a histogram value
+    async fn record_histogram(
+        &self,
+        name: String,
+        value: f64,
+        tags: HashMap<String, String>,
+    ) -> Result<()>;
+
+    /// Get metrics summary
+    async fn get_metrics_summary(&self) -> Result<MetricsSummary>;
+
+    /// Export traces
+    async fn export_traces(&self, traces: Vec<Span>) -> Result<()>;
 }
 
-/// Tracing provider information
+/// Metrics summary
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct MetricsSummary {
+    pub counters: HashMap<String, u64>,
+    pub gauges: HashMap<String, f64>,
+    pub histograms: HashMap<String, HistogramSummary>,
+    pub collection_time: DateTime<Utc>,
+}
+
+/// Histogram summary statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TracingProviderInfo {
-    pub name: String,
-    pub version: String,
-    pub supports_distributed: bool,
-    pub supports_sampling: bool,
-    pub backend_type: String,
-}
-
-/// Universal metrics provider trait
-#[async_trait]
-pub trait MetricsProvider: Send + Sync {
-    /// Record a counter metric
-    async fn record_counter(&self, name: &str, value: u64, tags: &HashMap<String, String>) -> Result<()>;
-    
-    /// Record a gauge metric
-    async fn record_gauge(&self, name: &str, value: f64, tags: &HashMap<String, String>) -> Result<()>;
-    
-    /// Record a histogram metric
-    async fn record_histogram(&self, name: &str, value: f64, tags: &HashMap<String, String>) -> Result<()>;
-    
-    /// Record a timer metric
-    async fn record_timer(&self, name: &str, duration: Duration, tags: &HashMap<String, String>) -> Result<()>;
-    
-    /// Get current metric values
-    async fn get_metrics(&self, filter: Option<&str>) -> Result<HashMap<String, MetricValue>>;
-    
-    /// Get provider information
-    fn provider_info(&self) -> MetricsProviderInfo;
-}
-
-/// Metric value enumeration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum MetricValue {
-    Counter(u64),
-    Gauge(f64),
-    Histogram { 
-        count: u64, 
-        sum: f64, 
-        buckets: Vec<HistogramBucket> 
-    },
-    Timer {
-        count: u64,
-        sum: Duration,
-        percentiles: HashMap<String, Duration>,
-    },
-}
-
-/// Histogram bucket for distribution metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HistogramBucket {
-    pub upper_bound: f64,
+pub struct HistogramSummary {
     pub count: u64,
+    pub sum: f64,
+    pub min: f64,
+    pub max: f64,
+    pub mean: f64,
+    pub percentiles: HashMap<String, f64>, // e.g., "p50", "p95", "p99"
 }
 
-/// Metrics provider information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MetricsProviderInfo {
-    pub name: String,
-    pub version: String,
-    pub supports_histograms: bool,
-    pub supports_tags: bool,
-    pub backend_type: String,
+/// Default observability implementation
+pub struct DefaultObservability {
+    #[allow(dead_code)]
+    service_name: String,
+    #[allow(dead_code)]
+    spans: Vec<Span>,
+    metrics: MetricsSummary,
 }
 
-/// Observability configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ObservabilityConfig {
-    /// Tracing configuration
-    pub tracing: TracingConfig,
-    
-    /// Metrics configuration
-    pub metrics: MetricsConfig,
-    
-    /// Sampling configuration
-    pub sampling: SamplingConfig,
-    
-    /// Export configuration
-    pub export: ExportConfig,
-}
-
-/// Tracing-specific configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TracingConfig {
-    pub enabled: bool,
-    pub provider: String,
-    pub service_name: String,
-    pub service_version: String,
-    pub environment: String,
-    pub resource_attributes: HashMap<String, String>,
-}
-
-/// Metrics-specific configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MetricsConfig {
-    pub enabled: bool,
-    pub provider: String,
-    pub collection_interval: Duration,
-    pub export_interval: Duration,
-    pub default_tags: HashMap<String, String>,
-}
-
-/// Sampling configuration for trace data
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SamplingConfig {
-    pub strategy: SamplingStrategy,
-    pub rate: f64,
-    pub max_traces_per_second: Option<u64>,
-}
-
-/// Sampling strategy enumeration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SamplingStrategy {
-    Always,
-    Never,
-    Probabilistic,
-    RateLimited,
-    Adaptive,
-}
-
-/// Export configuration for observability data
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExportConfig {
-    pub endpoint: Option<String>,
-    pub headers: HashMap<String, String>,
-    pub compression: bool,
-    pub batch_size: usize,
-    pub export_timeout: Duration,
-}
-
-impl Default for ObservabilityConfig {
-    fn default() -> Self {
+impl DefaultObservability {
+    pub fn new(service_name: String) -> Self {
         Self {
-            tracing: TracingConfig {
-                enabled: true,
-                provider: "console".to_string(),
-                service_name: "songbird-orchestrator".to_string(),
-                service_version: "0.1.0".to_string(),
-                environment: "development".to_string(),
-                resource_attributes: HashMap::new(),
-            },
-            metrics: MetricsConfig {
-                enabled: true,
-                provider: "prometheus".to_string(),
-                collection_interval: Duration::from_secs(10),
-                export_interval: Duration::from_secs(30),
-                default_tags: HashMap::new(),
-            },
-            sampling: SamplingConfig {
-                strategy: SamplingStrategy::Probabilistic,
-                rate: 0.1,
-                max_traces_per_second: Some(100),
-            },
-            export: ExportConfig {
-                endpoint: None,
-                headers: HashMap::new(),
-                compression: true,
-                batch_size: 100,
-                export_timeout: Duration::from_secs(10),
-            },
+            service_name,
+            spans: Vec::new(),
+            metrics: MetricsSummary::default(),
         }
     }
-} 
+}
+
+#[async_trait]
+impl Observability for DefaultObservability {
+    async fn start_span(&self, context: RequestContext) -> Result<Span> {
+        Ok(Span {
+            trace_id: context.trace_id,
+            span_id: context.span_id,
+            parent_span_id: context.parent_span_id,
+            operation_name: context.operation_name,
+            start_time: context.start_time,
+            end_time: None,
+            duration: None,
+            status: SpanStatus::Ok,
+            tags: context.tags,
+            logs: Vec::new(),
+        })
+    }
+
+    async fn finish_span(&self, span: &mut Span) -> Result<()> {
+        let now = Utc::now();
+        span.end_time = Some(now);
+        span.duration = Some((now - span.start_time).to_std().unwrap_or_default());
+        tracing::info!(
+            "Finished span: {} ({}ms)",
+            span.operation_name,
+            span.duration.unwrap_or_default().as_millis()
+        );
+        Ok(())
+    }
+
+    async fn log(&self, span: &Span, level: LogLevel, message: String) -> Result<()> {
+        let _log_entry = SpanLog {
+            timestamp: Utc::now(),
+            level,
+            message: message.clone(),
+            fields: HashMap::new(),
+        };
+
+        match level {
+            LogLevel::Error => tracing::error!("[{}] {}", span.operation_name, message),
+            LogLevel::Warn => tracing::warn!("[{}] {}", span.operation_name, message),
+            LogLevel::Info => tracing::info!("[{}] {}", span.operation_name, message),
+            LogLevel::Debug => tracing::debug!("[{}] {}", span.operation_name, message),
+            LogLevel::Trace => tracing::trace!("[{}] {}", span.operation_name, message),
+        }
+
+        Ok(())
+    }
+
+    async fn record_metric(&self, metric: MetricPoint) -> Result<()> {
+        tracing::debug!(
+            "Recorded metric: {} = {} ({})",
+            metric.name,
+            metric.value,
+            metric.metric_type as u8
+        );
+        Ok(())
+    }
+
+    async fn increment_counter(&self, name: String, tags: HashMap<String, String>) -> Result<()> {
+        tracing::debug!("Incremented counter: {} (tags: {:?})", name, tags);
+        Ok(())
+    }
+
+    async fn set_gauge(
+        &self,
+        name: String,
+        value: f64,
+        tags: HashMap<String, String>,
+    ) -> Result<()> {
+        tracing::debug!("Set gauge: {} = {} (tags: {:?})", name, value, tags);
+        Ok(())
+    }
+
+    async fn record_histogram(
+        &self,
+        name: String,
+        value: f64,
+        tags: HashMap<String, String>,
+    ) -> Result<()> {
+        tracing::debug!(
+            "Recorded histogram: {} = {} (tags: {:?})",
+            name,
+            value,
+            tags
+        );
+        Ok(())
+    }
+
+    async fn get_metrics_summary(&self) -> Result<MetricsSummary> {
+        Ok(self.metrics.clone())
+    }
+
+    async fn export_traces(&self, traces: Vec<Span>) -> Result<()> {
+        tracing::info!("Exported {} traces", traces.len());
+        Ok(())
+    }
+}

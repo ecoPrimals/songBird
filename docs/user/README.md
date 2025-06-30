@@ -62,8 +62,8 @@ Songbird Orchestrator is a **Rust library** that provides enterprise-grade servi
 
 ## 🤝 Community & Support
 
-- **GitHub Issues**: [Report bugs and request features](https://github.com/your-org/songbird-orchestrator/issues)
-- **Documentation Issues**: Found a problem with these docs? [Let us know](https://github.com/your-org/songbird-orchestrator/issues/new?labels=documentation)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/songbird-project/songbird-orchestrator/issues)
+- **Documentation Issues**: Found a problem with these docs? [Let us know](https://github.com/songbird-project/songbird-orchestrator/issues/new?labels=documentation)
 
 ## 📄 License
 

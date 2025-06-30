@@ -15,17 +15,17 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::sleep;
 
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     prelude::*,
     scalability_types::{
-        PerformanceConfig, PerformanceMetrics, PerformanceThresholds, ResourceConfig, 
-        ResourcePool, ResourceUsage, ScalabilityConfig, ScalabilityManager, ScalingAction, 
-        ScalingDecision, ScalingStrategy, ServiceScalingConfig,
+        PerformanceConfig, PerformanceMetrics, PerformanceThresholds, ResourceConfig, ResourcePool,
+        ResourceUsage, ScalabilityConfig, ScalabilityManager, ScalingAction, ScalingDecision,
+        ScalingStrategy, ServiceScalingConfig,
     },
 };
 
 // Import ScalingGroup, LoadBalancingConfig, and LoadBalancingAlgorithm from scalability module
-use songbird_orchestrator::scalability::{
+use songbird_gaming_bridge::scalability::{
     LoadBalancingAlgorithm, LoadBalancingConfig, ScalingGroup,
 };
 
@@ -175,11 +175,11 @@ async fn demo_service_instance_management() -> Result<()> {
         name: format!("{} Instance", service_id),
         version: "1.0.0".to_string(),
         service_type: "web".to_string(),
-        description: "Mock service instance".to_string(),
+        description: Some("Mock service instance").to_string(),
         endpoints: vec![],
-        capabilities: vec!["http".to_string()],
+        tags: std::collections::HashMap::new(),
         tags: HashMap::new(),
-        metadata: HashMap::new(),
+        
     };
 
     // Create a scaling group for the service
@@ -197,7 +197,7 @@ async fn demo_service_instance_management() -> Result<()> {
         .add_scaling_group(service_id.to_string(), _scaling_group)
         .await?;
 
-    println!("Created scaling group for service: {}", service_id);
+    println!("Created scaling group for service_id: {}", service_id);
     println!("  - Min Instances: 1");
     println!("  - Max Instances: 10");
     println!("  - CPU Target: 70%");
@@ -445,8 +445,14 @@ async fn demo_resource_management() -> Result<()> {
     println!("Allocated to web-api-1:");
     println!("  - CPU: {}%", resource_usage.cpu_percentage);
     println!("  - Memory: {} MB", resource_usage.memory_usage_mb);
-    println!("  - Disk I/O: {} bytes/sec", resource_usage.disk_io_bytes_per_sec);
-    println!("  - Network: {} bytes/sec", resource_usage.network_bytes_per_sec);
+    println!(
+        "  - Disk I/O: {} bytes/sec",
+        resource_usage.disk_io_bytes_per_sec
+    );
+    println!(
+        "  - Network: {} bytes/sec",
+        resource_usage.network_bytes_per_sec
+    );
 
     // Calculate utilization
     let cpu_utilization = (frontend_pool.max_cpu_cores - frontend_pool.available_cpu_cores) as f64

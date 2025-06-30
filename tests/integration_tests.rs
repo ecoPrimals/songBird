@@ -1,19 +1,22 @@
-//! Integration tests for service lifecycle management
-//!
-//! These tests verify end-to-end service registration, lifecycle management,
-//! and orchestrator integration functionality.
-
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+// Integration tests for service lifecycle management
+//
+// These tests verify end-to-end service registration, lifecycle management,
+// and orchestrator integration functionality.
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     config::OrchestratorConfig,
     errors::{Result, SongbirdError},
-    traits::service::{
+    traits::service_id::{
         ServiceInfo, ServiceMetrics, ServiceRequest, ServiceResponse, UniversalService,
     },
     Orchestrator,
 };
-use std::collections::HashMap;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -55,22 +58,22 @@ impl UniversalService for TestIntegrationService {
     type Health = TestServiceHealth;
     type Error = SongbirdError;
 
-    async fn initialize(&mut self, config: Self::Config) -> std::result::Result<(), Self::Error> {
+    async fn initialize(&mut self, config: Self::Config) -> std::result::Result<()> {
         self.config = Some(config);
         Ok(())
     }
 
-    async fn start(&mut self) -> std::result::Result<(), Self::Error> {
+    async fn start(&mut self) -> std::result::Result<()> {
         self.started.store(true, Ordering::Relaxed);
         Ok(())
     }
 
-    async fn stop(&mut self) -> std::result::Result<(), Self::Error> {
+    async fn stop(&mut self) -> std::result::Result<()> {
         self.started.store(false, Ordering::Relaxed);
         Ok(())
     }
 
-    async fn health_check(&self) -> std::result::Result<Self::Health, Self::Error> {
+    async fn health_check(&self) -> std::result::Result<Self::Health> {
         Ok(TestServiceHealth {
             status: if self.started.load(Ordering::Relaxed) {
                 "running".to_string()
@@ -85,7 +88,7 @@ impl UniversalService for TestIntegrationService {
     async fn handle_request(
         &self,
         request: ServiceRequest,
-    ) -> std::result::Result<ServiceResponse, Self::Error> {
+    ) -> std::result::Result<ServiceResponse> {
         if !self.started.load(Ordering::Relaxed) {
             return Ok(ServiceResponse::error(
                 request.id,
@@ -97,7 +100,7 @@ impl UniversalService for TestIntegrationService {
         match request.path.as_str() {
             "/ping" => Ok(ServiceResponse::success(
                 request.id,
-                serde_json::json!({"status": "pong", "service": self.id}),
+                serde_json::json!({"status": "pong", "service": self.resource_id}),
             )),
             "/info" => Ok(ServiceResponse::success(
                 request.id,
@@ -115,36 +118,36 @@ impl UniversalService for TestIntegrationService {
         }
     }
 
-    async fn get_metrics(&self) -> std::result::Result<ServiceMetrics, Self::Error> {
+    async fn get_metrics(&self) -> std::result::Result<ServiceMetrics> {
         Ok(ServiceMetrics::default())
     }
 
     fn service_info(&self) -> ServiceInfo {
         ServiceInfo {
-            id: self.id.clone(),
+            service_service_id: self.id.clone(),
             name: format!("Test Integration Service {}", self.id),
             version: "1.0.0".to_string(),
             service_type: "test".to_string(),
-            description: "Test service for integration testing".to_string(),
+            description: Some("Test service for integration testing").to_string(),
             endpoints: vec![],
-            capabilities: vec!["integration-test".to_string()],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         }
     }
 
-    async fn can_handle_load(&self) -> std::result::Result<bool, Self::Error> {
+    async fn can_handle_load(&self) -> std::result::Result<bool> {
         Ok(self.started.load(Ordering::Relaxed))
     }
 
-    async fn get_load_factor(&self) -> std::result::Result<f64, Self::Error> {
+    async fn get_load_factor(&self) -> std::result::Result<f64> {
         Ok(0.5)
     }
 
     async fn update_config(
         &mut self,
         config: Self::Config,
-    ) -> std::result::Result<(), Self::Error> {
+    ) -> std::result::Result<()> {
         self.config = Some(config);
         Ok(())
     }
@@ -171,7 +174,7 @@ async fn test_service_registration_and_lifecycle() -> Result<()> {
     orchestrator.start().await?;
 
     // Verify orchestrator metrics
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     assert!(metrics.total_services >= 1);
 
     // Stop the orchestrator
@@ -202,7 +205,7 @@ async fn test_multiple_service_registration() -> Result<()> {
     orchestrator.start().await?;
 
     // Verify metrics
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     assert!(metrics.total_services >= 3);
 
     // Verify services are listed
@@ -316,7 +319,10 @@ async fn test_concurrent_orchestrator_operations() -> Result<()> {
 
     // Wait for all concurrent operations
     for handle in handles {
-        handle.await.unwrap().unwrap();
+        handle
+            .await
+            .expect("Test assertion failed")
+            .expect("Test assertion failed");
     }
 
     // Verify all services were registered

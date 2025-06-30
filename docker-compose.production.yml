@@ -1,0 +1,255 @@
+# Songbird Gaming Bridge - Production Deployment
+# 
+# LICENSE STRUCTURE:
+# - Core Gaming Bridge Services (songbird-bridge-*): AGPL 3.0 (Free Forever)
+# - External Monitoring/Production Services: BearDog Licensed (Biome Edge)
+#
+# BearDog Crypto-Locked Services:
+# - Grafana, Prometheus, HAProxy, Redis, Fluentd are crypto-locked
+# - Free BearDog signed licenses for universities, research, power users  
+# - Commercial use requires paid BearDog signed license
+#
+# Core gaming functionality remains 100% open source under AGPL 3.0
+
+version: '3.8'
+
+services:
+  # =================================================================
+  # CORE GAMING BRIDGE SERVICES - AGPL 3.0 (Free Forever)
+  # =================================================================
+  
+  # Gaming Bridge - Primary Service (AGPL 3.0)
+  songbird-bridge-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: songbird-bridge-1
+    restart: unless-stopped
+    ports:
+      - "7000-7499:7000-7499/udp"  # Gaming port range - instance 1
+      - "8080:8080/tcp"            # HTTP API
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./docker/songbird-production.toml:/app/config/production.toml:ro
+    environment:
+      - RUST_LOG=info
+      - SONGBIRD_INSTANCE_ID=bridge-1
+      - SONGBIRD_GAMING_PORT_START=7000
+      - SONGBIRD_GAMING_PORT_END=7499
+      - SONGBIRD_LICENSE=AGPL3
+    cap_add:
+      - NET_RAW          # For packet capture
+      - NET_ADMIN        # For network configuration
+    sysctls:
+      - net.core.rmem_max=134217728
+      - net.core.wmem_max=134217728
+      - net.ipv4.udp_mem=102400 873800 16777216
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    healthcheck:
+      test: ["CMD", "songbird", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - songbird-network
+
+  # Gaming Bridge - Secondary Service (AGPL 3.0)
+  songbird-bridge-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: songbird-bridge-2
+    restart: unless-stopped
+    ports:
+      - "7500-7999:7500-7999/udp"  # Gaming port range - instance 2
+      - "8081:8080/tcp"            # HTTP API (different external port)
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./docker/songbird-production.toml:/app/config/production.toml:ro
+    environment:
+      - RUST_LOG=info
+      - SONGBIRD_INSTANCE_ID=bridge-2
+      - SONGBIRD_GAMING_PORT_START=7500
+      - SONGBIRD_GAMING_PORT_END=7999
+      - SONGBIRD_LICENSE=AGPL3
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    sysctls:
+      - net.core.rmem_max=134217728
+      - net.core.wmem_max=134217728
+      - net.ipv4.udp_mem=102400 873800 16777216
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    healthcheck:
+      test: ["CMD", "songbird", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - songbird-network
+
+  # =================================================================
+  # BIOME EDGE SERVICES - BEARDOG CRYPTO-LOCKED
+  # =================================================================
+  
+  # Load Balancer (HAProxy) - REQUIRES BEARDOG LICENSE
+  songbird-lb:
+    image: haproxy:2.8-alpine
+    container_name: songbird-lb
+    restart: unless-stopped
+    ports:
+      - "80:80/tcp"      # HTTP load balancer
+      - "443:443/tcp"    # HTTPS (if certificates added)
+      - "8404:8404/tcp"  # HAProxy stats
+    volumes:
+      - ./docker/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    environment:
+      - BEARDOG_LICENSE_REQUIRED=true
+      - BEARDOG_SERVICE_TYPE=load_balancer
+      - BEARDOG_COMMERCIAL_USE_RESTRICTED=true
+    depends_on:
+      - songbird-bridge-1
+      - songbird-bridge-2
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8404/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - songbird-network
+
+  # Prometheus - REQUIRES BEARDOG LICENSE
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: songbird-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090/tcp"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    environment:
+      - BEARDOG_LICENSE_REQUIRED=true
+      - BEARDOG_SERVICE_TYPE=monitoring
+      - BEARDOG_COMMERCIAL_USE_RESTRICTED=true
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    networks:
+      - songbird-network
+
+  # Grafana - REQUIRES BEARDOG LICENSE
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: songbird-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000/tcp"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana-datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=songbird2024
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - BEARDOG_LICENSE_REQUIRED=true
+      - BEARDOG_SERVICE_TYPE=visualization
+      - BEARDOG_COMMERCIAL_USE_RESTRICTED=true
+    depends_on:
+      - prometheus
+    networks:
+      - songbird-network
+
+  # Redis - REQUIRES BEARDOG LICENSE
+  redis:
+    image: redis:7.0-alpine
+    container_name: songbird-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379/tcp"
+    volumes:
+      - redis-data:/data
+      - ./docker/redis.conf:/etc/redis/redis.conf:ro
+    environment:
+      - BEARDOG_LICENSE_REQUIRED=true
+      - BEARDOG_SERVICE_TYPE=caching
+      - BEARDOG_COMMERCIAL_USE_RESTRICTED=true
+    command: redis-server /etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - songbird-network
+
+  # Log Aggregation - REQUIRES BEARDOG LICENSE
+  fluentd:
+    image: fluent/fluentd:v1.16-1
+    container_name: songbird-fluentd
+    restart: unless-stopped
+    ports:
+      - "24224:24224/tcp"
+      - "24224:24224/udp"
+    volumes:
+      - ./docker/fluentd.conf:/fluentd/etc/fluent.conf:ro
+      - ./logs:/app/logs
+    environment:
+      - BEARDOG_LICENSE_REQUIRED=true
+      - BEARDOG_SERVICE_TYPE=logging
+      - BEARDOG_COMMERCIAL_USE_RESTRICTED=true
+    networks:
+      - songbird-network
+
+# =================================================================
+# BEARDOG CRYPTO-LOCK VALIDATOR SERVICE
+# =================================================================
+
+  # BearDog License Validator
+  beardog-license-validator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.beardog-validator
+    container_name: beardog-license-validator
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - BEARDOG_VALIDATION_ENABLED=true
+      - BEARDOG_GRACE_PERIOD_DAYS=30
+      - BEARDOG_UNIVERSITY_WHITELIST_ENABLED=true
+      - BEARDOG_RESEARCH_WHITELIST_ENABLED=true
+    networks:
+      - songbird-network
+
+networks:
+  songbird-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  redis-data:
+    driver: local 

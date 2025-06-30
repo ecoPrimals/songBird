@@ -2,14 +2,13 @@
 //!
 //! Supporting static configuration, Songbird native, Kubernetes, and other discovery mechanisms.
 
+use crate::errors::Result;
+use crate::traits::service::ServiceInfo;
 use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::pin::Pin;
-
-use crate::errors::Result;
-use crate::traits::service::ServiceInfo;
 
 /// Core trait for service discovery implementations
 #[async_trait]
@@ -35,11 +34,7 @@ pub trait ServiceDiscovery: Send + Sync {
     ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>>;
 
     /// Update service health status
-    async fn update_health(
-        &self,
-        service_id: &str,
-        health: ServiceHealthStatus,
-    ) -> Result<()>;
+    async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()>;
 
     /// List all registered services
     async fn list_all(&self) -> Result<Vec<ServiceInfo>>;
@@ -66,28 +61,20 @@ pub trait ServiceDiscovery: Send + Sync {
 pub struct ServiceQuery {
     /// Service name pattern (supports wildcards)
     pub name: Option<String>,
-
     /// Service ID filter (for exact service lookup)
     pub service_id: Option<String>,
-
     /// Service type filter
     pub service_type: Option<String>,
-
     /// Version constraint
     pub version: Option<String>,
-
     /// Tags that must be present
     pub tags: Vec<String>,
-
     /// Metadata filters
     pub metadata: HashMap<String, serde_json::Value>,
-
     /// Health status filter
     pub health_status: Option<HealthStatus>,
-
     /// Maximum number of results
     pub limit: Option<usize>,
-
     /// Sort order
     pub sort_by: Option<SortBy>,
 }
@@ -155,19 +142,35 @@ pub enum ServiceHealthStatus {
 /// Service discovery event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServiceEvent {
-    ServiceRegistered { service: ServiceInfo },
-    ServiceUnregistered { service_id: String },
-    ServiceHealthChanged { service_id: String, health: ServiceHealthStatus },
-    ServiceMetadataUpdated { service_id: String },
+    ServiceRegistered {
+        service: Box<ServiceInfo>,
+    },
+    ServiceUnregistered {
+        service_id: String,
+    },
+    ServiceHealthChanged {
+        service_id: String,
+        health: ServiceHealthStatus,
+    },
+    ServiceMetadataUpdated {
+        service_id: String,
+    },
+    NodeJoined {
+        node_id: String,
+    },
+    NodeHealthChanged {
+        node_id: String,
+        health: ServiceHealthStatus,
+    },
 }
 
 /// Health status for service discovery
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum HealthStatus {
     Healthy,
+    Degraded,
     Unhealthy,
     Unknown,
-    Degraded,
 }
 
 /// Sort options for service queries
@@ -188,7 +191,7 @@ pub struct ServiceRegistration {
     pub ttl: Option<std::time::Duration>,
     pub health_check_interval: Option<std::time::Duration>,
     pub tags: Vec<String>,
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: HashMap<String, String>,
 }
 
 impl ServiceRegistration {
@@ -209,16 +212,6 @@ impl ServiceRegistration {
 
     pub fn with_health_check_interval(mut self, interval: std::time::Duration) -> Self {
         self.health_check_interval = Some(interval);
-        self
-    }
-
-    pub fn with_tag(mut self, tag: impl Into<String>) -> Self {
-        self.tags.push(tag.into());
-        self
-    }
-
-    pub fn with_metadata(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
-        self.metadata.insert(key.into(), value);
         self
     }
 }

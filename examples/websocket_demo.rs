@@ -4,7 +4,7 @@
 //! of the Songbird Orchestrator.
 
 use chrono::Utc;
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     communication::{WebSocketCommunication, WebSocketConfig},
     traits::communication::{CommunicationLayer, MessageType, ServiceMessage},
     Orchestrator, OrchestratorConfig,
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             id: Uuid::new_v4().to_string(),
             message_type: MessageType::Event,
             topic: Some("service.status".to_string()),
-            payload: serde_json::json!({
+            body: serde_json::json!({
                 "service": "demo-service",
                 "status": "started",
                 "timestamp": Utc::now()
@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             id: Uuid::new_v4().to_string(),
             message_type: MessageType::Notification,
             topic: Some("system.health".to_string()),
-            payload: serde_json::json!({
+            body: serde_json::json!({
                 "system": "orchestrator",
                 "health": "healthy",
                 "metrics": {
@@ -149,7 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Show orchestrator metrics
     println!("\n📈 Orchestrator Metrics:");
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     println!("   - Total services: {}", metrics.total_services);
     println!("   - Healthy services: {}", metrics.healthy_services);
     println!("   - Total requests: {}", metrics.total_requests);

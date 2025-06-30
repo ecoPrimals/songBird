@@ -14,17 +14,17 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     prelude::*,
     robustness_types::{
-        BulkheadConfig, CircuitBreaker, CircuitBreakerConfig, HealthCheckConfig, HealthCheckStrategy,
-        RateLimitConfig, RateLimitStrategy, RateLimiter, RetryConfig, RetryExecutor, 
-        RobustnessConfig, RobustnessManager,
+        BulkheadConfig, CircuitBreaker, CircuitBreakerConfig, HealthCheckConfig,
+        HealthCheckStrategy, RateLimitConfig, RateLimitStrategy, RateLimiter, RetryConfig,
+        RetryExecutor, RobustnessConfig, RobustnessManager,
     },
 };
 
 // Import TimeoutConfig from robustness module specifically
-use songbird_orchestrator::robustness::TimeoutConfig;
+use songbird_gaming_bridge::robustness::TimeoutConfig;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -385,7 +385,7 @@ async fn demo_configuration_options() -> Result<()> {
             adaptive_timeout_percentile: 0.99,
         },
         bulkhead: BulkheadConfig {
-            max_concurrent_per_service: 50,
+            max_concurrent_per_service_id: 50,
             max_concurrent_global: 500,
             queue_size: 200,
             resource_pools: [
@@ -407,10 +407,7 @@ async fn demo_configuration_options() -> Result<()> {
                     "http".to_string(),
                     HealthCheckStrategy::HttpEndpoint("/health".to_string()),
                 ),
-                (
-                    "tcp".to_string(),
-                    HealthCheckStrategy::Ping,
-                ),
+                ("tcp".to_string(), HealthCheckStrategy::Ping),
             ]
             .into_iter()
             .collect(),

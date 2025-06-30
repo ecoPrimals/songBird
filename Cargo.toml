@@ -1,16 +1,21 @@
 [package]
-name = "songbird-orchestrator"
+name = "songbird-gaming-bridge"
 version = "0.1.0"
 edition = "2021"
-description = "Universal service orchestration platform for Rust projects"
-license = "MIT"
-authors = ["NestGate Project Contributors"]
-repository = "https://github.com/your-org/songbird-orchestrator"
-keywords = ["orchestration", "microservices", "service-discovery", "load-balancing"]
-categories = ["network-programming", "web-programming"]
+description = "Universal gaming network bridge for legacy LAN games - AGPL 3.0 free forever"
+license = "AGPL-3.0"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+repository = "https://github.com/ecoPrimals/SongBird"
+homepage = "https://songbird-gaming.ecoprimals.dev"
+keywords = ["gaming", "network", "bridge", "lan", "legacy-games"]
+categories = ["network-programming", "games", "command-line-utilities"]
 
 # This makes it a standalone crate, not part of the NestGate workspace
 [workspace]
+
+[[bin]]
+name = "songbird"
+path = "src/bin/songbird.rs"
 
 [dependencies]
 # Async runtime and utilities
@@ -35,16 +40,22 @@ axum = { version = "0.7", features = ["ws", "macros"] }
 axum-server = { version = "0.6", features = ["tls-rustls"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
-hyper = { version = "1.0", features = ["full"] }
-reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+# NEW: Native Hyper HTTP client (pure Rust stack)
+hyper = { version = "1.0", features = ["client", "http1", "http2"] }
+hyper-rustls = { version = "0.26", features = ["webpki-tokio"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "tokio"] }
+http-body-util = "0.1"
+bytes = "1.5"  # Required for hyper body handling
+
+# reqwest dependency removed - migration to hyper complete
 
 # Communication
 tokio-tungstenite = { version = "0.20", features = ["native-tls"] }
-tonic = { version = "0.10", optional = true }
+tonic = { version = "0.11", features = ["tls", "tls-roots"], optional = true }
 
 # Logging and tracing
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 
 # Configuration
@@ -63,6 +74,7 @@ rand = "0.8"
 sha2 = "0.10"
 ring = "0.17"
 base64 = "0.21"
+hex = "0.4"
 
 # Service discovery backends (optional)
 etcd-rs = { version = "1.0", optional = true }
@@ -73,9 +85,21 @@ kube = { version = "0.87", optional = true }
 # Our internal observability system is pure Rust and self-contained
 prometheus = { version = "0.13", optional = true }
 
-# Utilities
+# CLI dependencies
 clap = { version = "4.0", features = ["derive"] }
+dialoguer = { version = "0.11", features = ["fuzzy-select"] }
+indicatif = "0.17"
+colored = "2.0"
+console = "0.15"
+crossterm = "0.27"
+dirs = "5.0"
+whoami = "1.4"
+hostname = "0.3"
+term_size = "0.3"
+
+# Utilities
 num_cpus = "1.16"
+gethostname = "0.4"
 
 # Certificate validation and cryptography
 x509-parser = "0.15"
@@ -93,6 +117,17 @@ sys-info = "0.9.1"
 # Enhanced networking and reliability
 metrics = "0.21"
 
+# Network packet capture for gaming protocol detection
+pnet = "0.34"
+pcap = { version = "1.0", optional = true }
+byteorder = "1.5"
+
+# WireGuard tunnel implementation (immediate secure gaming)
+boringtun = "0.6"  # Pure Rust WireGuard implementation
+x25519-dalek = "=2.0.0-rc.3"  # Elliptic curve cryptography for WireGuard (match boringtun requirement)
+ip_network = "0.4"  # IP address and network management
+tun = "0.6"  # TUN interface management
+
 # OPTIONAL: External observability integrations (NOT required for core functionality)
 opentelemetry = { version = "0.20", optional = true }
 opentelemetry-jaeger = { version = "0.19", optional = true }
@@ -109,9 +144,23 @@ tokio-stream = "0.1"
 # Additional dependencies for production security
 bincode = "1.3"
 urlencoding = "2.1"
+md5 = "0.7"
+regex = "1.0"
 
 # Built-in observability (pure Rust, no external dependencies)
 sysinfo = "0.30"
+
+# System calls for resource detection
+libc = "0.2"
+local-ip-address = "0.6.5"
+
+# Windows API for system calls
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["fileapi"] }
+
+# Unix system calls for privilege detection
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -120,10 +169,10 @@ wiremock = "0.5"
 tempfile = "3.8"
 criterion = "0.5"
 futures = "0.3.31"
-rand = "0.8"
 proptest = "1.7.0"
 mockall = "0.13.1"
 axum-test = "17.3.0"
+walkdir = "2.5.0"
 
 [features]
 # DEFAULT: Pure Rust with built-in observability

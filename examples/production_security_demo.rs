@@ -6,11 +6,10 @@
 //! - OAuth2 integration
 //! - Comprehensive audit logging
 
-use songbird_orchestrator::security::{
-    ProductionSecurityProvider, SecurityConfig, UserInfo, 
-    AuthenticationProvider, JwtAuthProvider, Credentials,
-    encrypt_with_password, decrypt_with_password,
-    AuditLogger, AuditConfig, AuthEvent, AuthEventType,
+use songbird_gaming_bridge::security::{
+    decrypt_with_password, encrypt_with_password, AuditConfig, AuditLogger, AuthEvent,
+    AuthEventType, AuthenticationProvider, Credentials, JwtAuthProvider,
+    ProductionSecurityProvider, SecurityConfig, UserInfo,
 };
 use std::collections::HashMap;
 use std::time::Duration;
@@ -25,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let security_config = SecurityConfig {
         jwt_secret: "production-secret-key-secure-in-real-deployment".to_string(),
         jwt_expiration: Duration::from_secs(3600), // 1 hour
-        encryption_key: [1u8; 32], // In production, use proper key management
+        encryption_key: [1u8; 32],                 // In production, use proper key management
         enable_oauth: false,
         oauth_config: None,
         enable_audit: true,
@@ -37,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Demonstrate JWT Authentication
     println!("2️⃣  JWT Authentication Demo...");
-    
+
     // Create a user
     let user = UserInfo {
         id: "user123".to_string(),
@@ -45,8 +44,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         email: Some("alice@example.com".to_string()),
         roles: vec!["admin".to_string(), "developer".to_string()],
         metadata: HashMap::from([
-            ("department".to_string(), serde_json::Value::String("engineering".to_string())),
-            ("clearance_level".to_string(), serde_json::Value::Number(serde_json::Number::from(5))),
+            (
+                "department".to_string(),
+                serde_json::Value::String("engineering".to_string()),
+            ),
+            (
+                "clearance_level".to_string(),
+                serde_json::Value::Number(serde_json::Number::from(5)),
+            ),
         ]),
     };
 
@@ -91,13 +96,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   Generated token: {}...", &token.token[..30]);
         }
     } else {
-        println!("❌ Authentication failed: {}", auth_result.error.unwrap_or_default());
+        println!(
+            "❌ Authentication failed: {}",
+            auth_result.error.unwrap_or_else(|_| Default::default())
+        );
     }
     println!();
 
     // 4. Demonstrate AES-256-GCM Encryption (Production-grade)
     println!("4️⃣  AES-256-GCM Encryption Demo (replacing XOR)...");
-    
+
     let sensitive_data = b"This is highly sensitive user data that needs proper encryption!";
     let password = "user-secure-password-123";
 
@@ -106,9 +114,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let encrypted_data = encrypt_with_password(sensitive_data, password)?;
     println!("✅ Data encrypted successfully!");
     println!("   Algorithm: {:?}", encrypted_data.algorithm);
-    println!("   Ciphertext length: {} bytes", encrypted_data.ciphertext.len());
+    println!(
+        "   Ciphertext length: {} bytes",
+        encrypted_data.ciphertext.len()
+    );
     println!("   Nonce length: {} bytes", encrypted_data.nonce.len());
-    
+
     // Decrypt the data
     println!("🔓 Decrypting data...");
     let decrypted_data = decrypt_with_password(&encrypted_data, password)?;
@@ -129,26 +140,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 6. Demonstrate Raw AES encryption
     println!("6️⃣  Raw AES-256-GCM Encryption Demo...");
     let plaintext = b"Raw encryption test data";
-    
+
     let encrypted = security_provider.encrypt(plaintext)?;
     println!("✅ Raw encryption successful: {} bytes", encrypted.len());
-    
+
     let decrypted = security_provider.decrypt(&encrypted)?;
-    println!("✅ Raw decryption successful: {}", String::from_utf8_lossy(&decrypted));
+    println!(
+        "✅ Raw decryption successful: {}",
+        String::from_utf8_lossy(&decrypted)
+    );
     println!();
 
     // 7. Demonstrate Audit Logging
     println!("7️⃣  Audit Logging Demo...");
     let audit_logger = security_provider.audit_logger();
-    
+
     // Log authentication event
     audit_logger.log_auth_event(AuthEvent {
         event_type: AuthEventType::Login,
         user_id: "alice".to_string(),
         timestamp: chrono::Utc::now(),
         details: HashMap::from([
-            ("login_method".to_string(), serde_json::Value::String("jwt".to_string())),
-            ("source_ip".to_string(), serde_json::Value::String("192.168.1.100".to_string())),
+            (
+                "login_method".to_string(),
+                serde_json::Value::String("jwt".to_string()),
+            ),
+            (
+                "source_ip".to_string(),
+                serde_json::Value::String("192.168.1.100".to_string()),
+            ),
         ]),
         success: true,
         ip_address: Some("192.168.1.100".to_string()),
@@ -172,9 +192,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let aes_time = start.elapsed();
 
     println!("✅ AES-256-GCM Performance:");
-    println!("   {} iterations of 1KB encrypt/decrypt: {:?}", iterations, aes_time);
+    println!(
+        "   {} iterations of 1KB encrypt/decrypt: {:?}",
+        iterations, aes_time
+    );
     println!("   Average per operation: {:?}", aes_time / iterations);
-    println!("   Throughput: {:.2} MB/s", (iterations as f64 * 1024.0) / (aes_time.as_secs_f64() * 1024.0 * 1024.0));
+    println!(
+        "   Throughput: {:.2} MB/s",
+        (iterations as f64 * 1024.0) / (aes_time.as_secs_f64() * 1024.0 * 1024.0)
+    );
     println!();
 
     println!("🎉 PRODUCTION SECURITY DEMO COMPLETE!");
@@ -191,4 +217,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 READY FOR PRODUCTION DEPLOYMENT!");
 
     Ok(())
-} 
+}

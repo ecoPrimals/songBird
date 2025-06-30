@@ -1,6 +1,9 @@
-//! Unit tests for the Songbird Orchestrator
-
-use songbird_orchestrator::{errors::Result, Orchestrator, OrchestratorConfig};
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+// Unit tests for the Songbird Orchestrator
+use songbird_gaming_bridge::{errors::Result, Orchestrator, OrchestratorConfig};
 
 mod common;
 use common::{MockConfig, MockService};
@@ -45,7 +48,7 @@ async fn test_service_metrics() -> Result<()> {
     orchestrator.start().await?;
 
     // Get orchestrator metrics
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     assert_eq!(metrics.total_services, 1);
     assert_eq!(metrics.healthy_services, 1);
 

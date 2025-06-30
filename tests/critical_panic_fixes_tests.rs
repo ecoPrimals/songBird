@@ -1,13 +1,13 @@
-//! Critical Panic Fixes Tests
-//! 
-//! Tests to verify that critical panic risks have been eliminated
-//! and error handling works correctly in edge cases
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+// Critical Panic Fixes Tests
+//
+// Tests to verify that critical panic risks have been eliminated
+// and error handling works correctly in edge cases
 
+use songbird_gaming_bridge::{communication::HttpCommunication, security::SecurityConfig};
 use std::time::Duration;
-use songbird_orchestrator::{
-    communication::HttpCommunication,
-    security::SecurityConfig,
-};
 
 #[cfg(test)]
 mod panic_fixes_tests {
@@ -54,7 +54,7 @@ mod panic_fixes_tests {
         // Test that SecurityConfig::default() never panics
         for _ in 0..10 {
             let config = SecurityConfig::default();
-            
+
             // Verify config is valid
             assert!(!config.jwt_secret.is_empty());
             assert!(config.jwt_expiration.as_secs() > 0);
@@ -66,35 +66,41 @@ mod panic_fixes_tests {
     #[test]
     fn test_security_config_encryption_key_is_valid() {
         let config = SecurityConfig::default();
-        
+
         // Verify the encryption key is not all zeros (which would indicate failure)
         let all_zeros = [0u8; 32];
-        let all_same = config.encryption_key.iter().all(|&x| x == config.encryption_key[0]);
-        
+        let all_same = config
+            .encryption_key
+            .iter()
+            .all(|&x| x == config.encryption_key[0]);
+
         // Key should either be random (not all same) or our fallback pattern
         assert!(
             !all_same || config.encryption_key == [42u8; 32],
             "Encryption key should be random or fallback pattern"
         );
-        
+
         // Should not be all zeros
-        assert_ne!(config.encryption_key, all_zeros, "Encryption key should not be all zeros");
+        assert_ne!(
+            config.encryption_key, all_zeros,
+            "Encryption key should not be all zeros"
+        );
     }
 
     #[test]
     fn test_multiple_http_clients_creation() {
         // Test creating multiple HTTP clients doesn't cause issues
         let mut clients = Vec::new();
-        
+
         for i in 0..10 {
             let base_url = format!("http://localhost:808{}", i);
             let comm = HttpCommunication::new(base_url);
             clients.push(comm);
         }
-        
+
         // All clients should be created successfully
         assert_eq!(clients.len(), 10);
-        
+
         // Test with timeout modifications
         for (i, client) in clients.into_iter().enumerate() {
             let timeout = Duration::from_secs(i as u64 + 1);
@@ -118,8 +124,11 @@ mod panic_fixes_tests {
                 let comm = HttpCommunication::new("http://localhost:8080".to_string());
                 comm.with_timeout(timeout)
             });
-            
-            assert!(result.is_ok(), "HTTP client creation should not panic with extreme timeout");
+
+            assert!(
+                result.is_ok(),
+                "HTTP client creation should not panic with extreme timeout"
+            );
         }
     }
 
@@ -127,19 +136,19 @@ mod panic_fixes_tests {
     fn test_security_config_consistency() {
         // Test that multiple SecurityConfig instances are consistent
         let configs: Vec<SecurityConfig> = (0..5).map(|_| SecurityConfig::default()).collect();
-        
+
         // JWT secret should be consistent
         let first_jwt_secret = &configs[0].jwt_secret;
         for config in &configs {
             assert_eq!(&config.jwt_secret, first_jwt_secret);
         }
-        
+
         // Expiration should be consistent
         let first_expiration = configs[0].jwt_expiration;
         for config in &configs {
             assert_eq!(config.jwt_expiration, first_expiration);
         }
-        
+
         // Encryption keys should be valid (random or fallback)
         for config in &configs {
             assert!(config.encryption_key.len() == 32);
@@ -147,4 +156,4 @@ mod panic_fixes_tests {
             assert_ne!(config.encryption_key, [0u8; 32]);
         }
     }
-} 
+}

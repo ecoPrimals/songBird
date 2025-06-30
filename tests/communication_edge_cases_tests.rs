@@ -1,27 +1,32 @@
-//! Communication Edge Cases and Unused Methods Testing Suite
-//!
-//! Tests covering:
-//! - Unused communication methods (test_service_connectivity, broadcast)
-//! - Protocol router edge cases
-//! - Load balancer edge cases
-//! - Circuit breaker scenarios
-//! - Service registry integration
-
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Duration;
 use chrono::Utc;
 use serde_json::json;
+#[allow(dead_code, unused_imports, unused_variables)]
+// Communication Edge Cases and Unused Methods Testing Suite
+//
+// Tests covering:
+// - Unused communication methods (test_service_connectivity, broadcast)
+// - Protocol router edge cases
+// - Load balancer edge cases
+// - Circuit breaker scenarios
+// - Service registry integration
+use std::sync::Arc;
+use std::time::Duration;
 use uuid::Uuid;
 
-use songbird_orchestrator::{
-    communication::{HttpCommunication, WebSocketCommunication, InMemoryCommunication, ProtocolRouter, ServiceRegistry},
-    traits::communication::{
-        CommunicationLayer, ServiceAddress, ServiceMessage, MessageType, CommunicationStats,
+use songbird_gaming_bridge::{
+    communication::{
+        HttpCommunication, InMemoryCommunication, ProtocolRouter, ServiceRegistry,
+        WebSocketCommunication,
     },
-    traits::service::{ServiceInfo, ServiceEndpoint},
-    traits::discovery::ServiceHealthStatus,
     errors::SongbirdError,
+    traits::communication::{
+        CommunicationLayer, CommunicationStats, MessageType, ServiceAddress, ServiceMessage,
+    },
+    traits::discovery::ServiceHealthStatus,
+    traits::service_id::{ServiceEndpoint, ServiceInfo},
 };
 
 #[cfg(test)]
@@ -45,7 +50,7 @@ mod communication_edge_cases_tests {
             id: Uuid::new_v4().to_string(),
             message_type,
             topic: Some("test.topic".to_string()),
-            payload: json!({"test": "data", "timestamp": Utc::now()}),
+            body: json!({"test": "data", "timestamp": Utc::now()}),
             headers: HashMap::from([
                 ("source".to_string(), "test-suite".to_string()),
                 ("priority".to_string(), "high".to_string()),
@@ -65,13 +70,15 @@ mod communication_edge_cases_tests {
             version: "1.0.0".to_string(),
             description: format!("Test service for {}", service_id),
             endpoints: vec![ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                 path: format!("http://localhost:8080/services/{}", service_id),
                 method: "GET".to_string(),
-                description: "Main endpoint".to_string(),
+                description: Some("Main endpoint").to_string(),
                 parameters: vec![],
                 response_schema: None,
             }],
-            capabilities: vec!["http".to_string()],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::from([
                 ("protocol".to_string(), "http".to_string()),
                 ("environment".to_string(), "test".to_string()),
@@ -102,11 +109,17 @@ mod communication_edge_cases_tests {
 
     #[async_trait::async_trait]
     impl ServiceRegistry for MockServiceRegistry {
-        async fn get_service_endpoint(&self, service_id: &str) -> Result<Option<String>, SongbirdError> {
+        async fn get_service_endpoint(
+            &self,
+            service_id: &str,
+        ) -> Result<Option<String>, SongbirdError> {
             Ok(self.services.get(service_id).cloned())
         }
 
-        async fn get_service_info(&self, _service_id: &str) -> Result<Option<ServiceInfo>, SongbirdError> {
+        async fn get_service_info(
+            &self,
+            _service_id: &str,
+        ) -> Result<Option<ServiceInfo>, SongbirdError> {
             Ok(None)
         }
 
@@ -133,7 +146,7 @@ mod communication_edge_cases_tests {
 
         // This should succeed since httpbin.org/health is a valid endpoint
         let result = http_comm.test_service_connectivity(&target).await;
-        
+
         // Note: This might fail in CI/CD without internet, so we test both cases
         match result {
             Ok(is_connected) => {
@@ -156,7 +169,7 @@ mod communication_edge_cases_tests {
         };
 
         let result = http_comm.test_service_connectivity(&target).await;
-        
+
         // This should return false since localhost:9999 is unlikely to be running
         match result {
             Ok(is_connected) => assert!(!is_connected),
@@ -169,7 +182,7 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_http_communication_test_service_connectivity_various_endpoints() {
         let http_comm = HttpCommunication::new("http://localhost:8080".to_string());
-        
+
         let test_targets = vec![
             ServiceAddress {
                 service_id: "test1".to_string(),
@@ -190,7 +203,7 @@ mod communication_edge_cases_tests {
 
         for target in test_targets {
             let result = http_comm.test_service_connectivity(&target).await;
-            
+
             // All should return Ok(false) since these services don't exist
             match result {
                 Ok(is_connected) => assert!(!is_connected),
@@ -207,10 +220,10 @@ mod communication_edge_cases_tests {
         let message = create_test_service_message(MessageType::Event);
 
         let result = http_comm.broadcast(message).await;
-        
+
         // Should succeed but return empty vec since no registry is configured
         assert!(result.is_ok());
-        let responses = result.unwrap();
+        let responses = result.expect("Test assertion failed");
         assert!(responses.is_empty());
     }
 
@@ -219,21 +232,21 @@ mod communication_edge_cases_tests {
         let registry = Arc::new(MockServiceRegistry::new());
         let http_comm = HttpCommunication::new("http://localhost:8080".to_string())
             .with_service_registry(registry);
-        
+
         let message = create_test_service_message(MessageType::Event);
 
         let result = http_comm.broadcast(message).await;
-        
+
         // Should succeed and return responses for each registered service
         assert!(result.is_ok());
-        let responses = result.unwrap();
+        let responses = result.expect("Test assertion failed");
         assert_eq!(responses.len(), 3); // MockServiceRegistry has 3 services
-        
+
         // All should be failures since the services don't actually exist
         for response in responses {
             assert!(!response.success);
             assert!(response.error.is_some());
-            assert!(response.payload.is_some());
+            assert!(response.body.is_some());
         }
     }
 
@@ -242,7 +255,7 @@ mod communication_edge_cases_tests {
         let registry = Arc::new(MockServiceRegistry::new());
         let http_comm = HttpCommunication::new("http://localhost:8080".to_string())
             .with_service_registry(registry);
-        
+
         let large_payload = json!({
             "data": "x".repeat(10000), // 10KB of data
             "metadata": {
@@ -250,12 +263,12 @@ mod communication_edge_cases_tests {
                 "type": "large_payload_test"
             }
         });
-        
+
         let message = ServiceMessage {
             id: Uuid::new_v4().to_string(),
             message_type: MessageType::Event,
             topic: Some("large.message.test".to_string()),
-            payload: large_payload,
+            body: large_payload,
             headers: HashMap::new(),
             timestamp: Utc::now(),
             correlation_id: None,
@@ -264,10 +277,10 @@ mod communication_edge_cases_tests {
         };
 
         let result = http_comm.broadcast(message).await;
-        
+
         // Should handle large messages gracefully
         assert!(result.is_ok());
-        let responses = result.unwrap();
+        let responses = result.expect("Test assertion failed");
         assert_eq!(responses.len(), 3);
     }
 
@@ -281,17 +294,17 @@ mod communication_edge_cases_tests {
         let message = create_test_service_message(MessageType::Event);
 
         let result = websocket_comm.broadcast(message).await;
-        
+
         // Should succeed but return empty vec since no connections
         assert!(result.is_ok());
-        let responses = result.unwrap();
+        let responses = result.expect("Test assertion failed");
         assert!(responses.is_empty());
     }
 
     #[tokio::test]
     async fn test_websocket_communication_broadcast_message_types() {
         let websocket_comm = WebSocketCommunication::new("127.0.0.1".to_string(), 8082);
-        
+
         let message_types = vec![
             MessageType::Request,
             MessageType::Response,
@@ -303,10 +316,10 @@ mod communication_edge_cases_tests {
         for message_type in message_types {
             let message = create_test_service_message(message_type);
             let result = websocket_comm.broadcast(message).await;
-            
+
             // Should succeed for all message types
             assert!(result.is_ok());
-            let responses = result.unwrap();
+            let responses = result.expect("Test assertion failed");
             assert!(responses.is_empty()); // No connections yet
         }
     }
@@ -321,10 +334,10 @@ mod communication_edge_cases_tests {
         let message = create_test_service_message(MessageType::Event);
 
         let result = in_memory_comm.broadcast(message).await;
-        
+
         // Should succeed and return empty vec (in-memory implementation)
         assert!(result.is_ok());
-        let responses = result.unwrap();
+        let responses = result.expect("Test assertion failed");
         assert!(responses.is_empty());
     }
 
@@ -370,7 +383,7 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_protocol_router_service_registration() {
         let router = ProtocolRouter::new();
-        
+
         // Test registering services with different protocols
         let http_service = create_test_service_info("http-service", "http");
         let websocket_service = create_test_service_info("ws-service", "websocket");
@@ -392,10 +405,10 @@ mod communication_edge_cases_tests {
         let message = create_test_service_message(MessageType::Event);
 
         let result = router.broadcast(message).await;
-        
+
         // Should succeed and aggregate responses from all layers
         assert!(result.is_ok());
-        let responses = result.unwrap();
+        let responses = result.expect("Test assertion failed");
         // Should be empty since no connections on any layer
         assert!(responses.is_empty());
     }
@@ -403,7 +416,7 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_protocol_router_send_message_different_protocols() {
         let router = ProtocolRouter::new();
-        
+
         // Register services with different protocols
         let http_service = create_test_service_info("http-service", "http");
         let mut websocket_service = create_test_service_info("ws-service", "websocket");
@@ -428,8 +441,8 @@ mod communication_edge_cases_tests {
             // Results will vary based on protocol and connection state
             // We just verify the router doesn't crash
             match result {
-                Ok(_) => {}, // Success is good
-                Err(_) => {}, // Errors are expected for non-connected services
+                Ok(_) => {}  // Success is good
+                Err(_) => {} // Errors are expected for non-connected services
             }
         }
     }
@@ -437,7 +450,7 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_protocol_router_listen() {
         let router = ProtocolRouter::new();
-        
+
         let result = router.listen().await;
         assert!(result.is_ok());
         // Should return WebSocket listener stream
@@ -446,10 +459,10 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_protocol_router_subscribe_unsubscribe() {
         let router = ProtocolRouter::new();
-        
+
         let subscribe_result = router.subscribe("test.topic").await;
         assert!(subscribe_result.is_ok());
-        
+
         let unsubscribe_result = router.unsubscribe("test.topic").await;
         assert!(unsubscribe_result.is_ok());
     }
@@ -461,7 +474,7 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_communication_stats_default() {
         let stats = CommunicationStats::default();
-        
+
         assert_eq!(stats.messages_sent, 0);
         assert_eq!(stats.messages_received, 0);
         assert_eq!(stats.bytes_sent, 0);
@@ -474,11 +487,11 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_websocket_communication_stats() {
         let websocket_comm = WebSocketCommunication::new("127.0.0.1".to_string(), 8083);
-        
+
         let result = websocket_comm.get_stats().await;
         assert!(result.is_ok());
-        
-        let stats = result.unwrap();
+
+        let stats = result.expect("Test assertion failed");
         // Initial stats should be zero
         assert_eq!(stats.messages_sent, 0);
         assert_eq!(stats.messages_received, 0);
@@ -488,11 +501,11 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_http_communication_stats() {
         let http_comm = HttpCommunication::new("http://localhost:8080".to_string());
-        
+
         let result = http_comm.get_stats().await;
         assert!(result.is_ok());
-        
-        let stats = result.unwrap();
+
+        let stats = result.expect("Test assertion failed");
         // HTTP stats should be available
         assert_eq!(stats.messages_sent, 0);
         assert_eq!(stats.messages_received, 0);
@@ -519,7 +532,9 @@ mod communication_edge_cases_tests {
             ServiceAddress {
                 service_id: "special-chars-!@#$%^&*()".to_string(),
                 instance_id: Some("instance-with-dashes-and_underscores".to_string()),
-                endpoint: Some("https://complex.example.com:8443/path/to/service?param=value".to_string()),
+                endpoint: Some(
+                    "https://complex.example.com:8443/path/to/service?param=value".to_string(),
+                ),
             },
         ];
 
@@ -544,7 +559,7 @@ mod communication_edge_cases_tests {
                 id: "".to_string(), // Empty ID
                 message_type: MessageType::Request,
                 topic: None,
-                payload: json!(null),
+                body: json!(null),
                 headers: HashMap::new(),
                 timestamp: Utc::now(),
                 correlation_id: None,
@@ -555,8 +570,10 @@ mod communication_edge_cases_tests {
                 id: "x".repeat(1000), // Very long ID
                 message_type: MessageType::Event,
                 topic: Some("very.long.topic.".to_string() + &"segment.".repeat(100)),
-                payload: json!({"large_array": vec![1; 10000]}),
-                headers: (0..1000).map(|i| (format!("header_{}", i), format!("value_{}", i))).collect(),
+                body: json!({"large_array": vec![1; 10000]}),
+                headers: (0..1000)
+                    .map(|i| (format!("header_{}", i), format!("value_{}", i)))
+                    .collect(),
                 timestamp: Utc::now(),
                 correlation_id: Some("correlation-".to_string() + &"x".repeat(500)),
                 reply_to: Some(create_test_service_address("reply-service")),
@@ -574,7 +591,7 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_websocket_communication_connection_count() {
         let websocket_comm = WebSocketCommunication::new("127.0.0.1".to_string(), 8084);
-        
+
         // Test connection count method
         let count = websocket_comm.connection_count();
         assert_eq!(count, 0); // No connections initially
@@ -583,7 +600,7 @@ mod communication_edge_cases_tests {
     #[tokio::test]
     async fn test_http_communication_url_building_edge_cases() {
         let http_comm = HttpCommunication::new("http://localhost:8080/".to_string()); // Trailing slash
-        
+
         let edge_case_targets = vec![
             ServiceAddress {
                 service_id: "service-with-path".to_string(),
@@ -601,8 +618,8 @@ mod communication_edge_cases_tests {
             let result = http_comm.test_service_connectivity(&target).await;
             // Should handle URL building without crashing
             match result {
-                Ok(_) => {},
-                Err(_) => {}, // Network errors are acceptable
+                Ok(_) => {}
+                Err(_) => {} // Network errors are acceptable
             }
         }
     }
@@ -611,7 +628,7 @@ mod communication_edge_cases_tests {
     async fn test_communication_concurrent_operations() {
         let in_memory_comm = Arc::new(InMemoryCommunication::new());
         let target = create_test_service_address("concurrent-test");
-        
+
         // Test concurrent send operations
         let send_tasks = (0..10).map(|i| {
             let comm = Arc::clone(&in_memory_comm);
@@ -621,7 +638,7 @@ mod communication_edge_cases_tests {
                     id: format!("concurrent-message-{}", i),
                     message_type: MessageType::Request,
                     topic: Some(format!("concurrent.test.{}", i)),
-                    payload: json!({"index": i}),
+                    body: json!({"index": i}),
                     headers: HashMap::new(),
                     timestamp: Utc::now(),
                     correlation_id: None,
@@ -633,10 +650,10 @@ mod communication_edge_cases_tests {
         });
 
         let results = futures::future::join_all(send_tasks).await;
-        
+
         // All concurrent operations should succeed
         for result in results {
             assert!(result.is_ok());
         }
     }
-} 
+}

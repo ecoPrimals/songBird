@@ -1,0 +1,145 @@
+.TH SONGBIRD 1 "January 2025" "songbird-orchestrator 0.1.0" "User Commands"
+.SH NAME
+songbird \- Universal service orchestration platform with legacy gaming network bridging
+.SH SYNOPSIS
+.B songbird
+[\fI\,OPTIONS\/\fR] \fI\,COMMAND\/\fR [\fI\,ARGS\/\fR]...
+.SH DESCRIPTION
+Songbird Orchestrator is a universal service orchestration platform focused on legacy gaming network bridging. It makes 1990s/2000s games playable over the internet as if they were on a LAN by detecting and bridging gaming protocols like IPX, DirectPlay, NetBIOS, UDP, and TCP.
+
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print help information
+.TP
+.BR \-V ", " \-\-version
+Print version information
+.TP
+.BR \-v ", " \-\-verbose
+Use verbose output
+.TP
+.BR \-q ", " \-\-quiet
+Use quiet output (minimal logging)
+
+.SH COMMANDS
+.TP
+.B gaming
+Gaming network bridge commands for protocol detection and session management
+.TP
+.B orchestrator  
+Service orchestration commands for managing distributed services
+.TP
+.B config
+Configuration management commands
+.TP
+.B status
+Display system status and health information
+.TP
+.B discovery
+Service discovery commands
+.TP
+.B init
+Initialize new Songbird configuration
+.TP
+.B join
+Join existing Songbird network
+.TP
+.B quick
+Quick setup commands for common scenarios
+.TP
+.B service
+Service management commands
+.TP
+.B firewall
+Firewall configuration commands
+.TP
+.B logs
+Log management and viewing commands
+.TP
+.B version
+Display version information
+
+.SH GAMING PROTOCOL SUPPORT
+Songbird can detect and bridge the following gaming protocols:
+.TP
+.B IPX
+Internetwork Packet Exchange (StarCraft, Age of Empires)
+.TP
+.B DirectPlay
+Microsoft DirectPlay protocol (Age of Empires II, many 90s games)
+.TP
+.B NetBIOS
+Network Basic Input/Output System (various legacy games)
+.TP
+.B UDP
+User Datagram Protocol gaming sessions
+.TP
+.B TCP
+Transmission Control Protocol gaming sessions
+
+.SH EXAMPLES
+.TP
+.B songbird gaming scan
+Scan for active gaming sessions on the local network
+.TP
+.B songbird gaming bridge --game starcraft
+Create a bridge for StarCraft gaming sessions
+.TP
+.B songbird orchestrator start
+Start the service orchestrator
+.TP
+.B songbird config init
+Initialize a new configuration file
+.TP
+.B songbird status
+Display current system status
+
+.SH FILES
+.TP
+.I ~/.config/songbird/config.toml
+Main configuration file
+.TP
+.I ~/.config/songbird/networks.toml
+Network configuration
+.TP
+.I ~/.local/share/songbird/logs/
+Log files directory
+
+.SH ENVIRONMENT
+.TP
+.B SONGBIRD_CONFIG_PATH
+Override default configuration file path
+.TP
+.B SONGBIRD_LOG_LEVEL
+Set logging level (error, warn, info, debug, trace)
+.TP
+.B SONGBIRD_BIND_ADDRESS  
+Override default bind address for services
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+.TP
+.B 1
+General error
+.TP
+.B 2
+Configuration error
+.TP
+.B 3
+Network error
+
+.SH SEE ALSO
+.BR songbird-gaming (1),
+.BR songbird-orchestrator (1),
+.BR songbird-config (1)
+
+.SH BUGS
+Report bugs at: https://github.com/songbird-project/songbird-orchestrator/issues
+
+.SH AUTHOR
+NestGate Project Contributors
+
+.SH COPYRIGHT
+This is free software; see the source for copying conditions. There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 

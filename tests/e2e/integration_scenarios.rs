@@ -1,15 +1,19 @@
-//! End-to-End Integration Tests
-//!
-//! Comprehensive integration scenarios testing full system functionality
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+// End-to-End Integration Tests
+//
+// Comprehensive integration scenarios testing full system functionality
 
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     orchestrator::Orchestrator,
     config::OrchestratorConfig,
     discovery::{ServiceRegistry, InMemoryServiceRegistry},
     communication::{HttpCommunication, WebSocketCommunication, CommunicationLayer},
     proxy::{ConnectionProxy, ProxyConfig},
     traits::{
-        service::{UniversalService, ServiceInfo, ServiceEndpoint, EndpointParameter, ServiceRequest, ServiceResponse, ResponseStatus, ServiceMetrics},
+        service_id::{UniversalService, ServiceInfo, ServiceEndpoint, EndpointParameter, ServiceRequest, ServiceResponse, ResponseStatus, ServiceMetrics},
         communication::{ServiceMessage, ServiceAddress, MessageType},
     },
 };
@@ -17,7 +21,7 @@ use songbird_orchestrator::{
 use async_trait::async_trait;
 use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 /// E2E Test Configuration
@@ -26,7 +30,7 @@ pub struct E2ETestConfig {
     /// Number of services to deploy
     pub service_count: usize,
     /// Test duration
-    pub test_duration: Duration,
+    pub test_processing_time: Duration,
     /// Request complexity (number of service hops)
     pub request_complexity: usize,
     /// Enable real network communication
@@ -39,7 +43,7 @@ impl Default for E2ETestConfig {
     fn default() -> Self {
         Self {
             service_count: 5,
-            test_duration: Duration::from_secs(30),
+            test_processing_time: Duration::from_secs(30),
             request_complexity: 3,
             use_real_network: false,
             enable_observability: true,
@@ -104,22 +108,22 @@ impl UniversalService for TestService {
     type Health = TestHealth;
     type Error = TestError;
 
-    async fn initialize(&mut self, _config: Self::Config) -> std::result::Result<(), Self::Error> {
-        println!("✅ Initialized test service: {}", self.id);
+    async fn initialize(&mut self, _config: Self::Config) -> std::result::Result<()> {
+        println!("✅ Initialized test service_id: {}", self.id);
         Ok(())
     }
 
-    async fn start(&mut self) -> std::result::Result<(), Self::Error> {
-        println!("🚀 Started test service: {}", self.id);
+    async fn start(&mut self) -> std::result::Result<()> {
+        println!("🚀 Started test service_id: {}", self.id);
         Ok(())
     }
 
-    async fn stop(&mut self) -> std::result::Result<(), Self::Error> {
-        println!("🛑 Stopped test service: {}", self.id);
+    async fn stop(&mut self) -> std::result::Result<()> {
+        println!("🛑 Stopped test service_id: {}", self.id);
         Ok(())
     }
 
-    async fn health_check(&self) -> std::result::Result<Self::Health, Self::Error> {
+    async fn health_check(&self) -> std::result::Result<Self::Health> {
         Ok(TestHealth {
             status: "healthy".to_string(),
             uptime_seconds: 300,
@@ -127,7 +131,7 @@ impl UniversalService for TestService {
         })
     }
 
-    async fn handle_request(&self, request: ServiceRequest) -> std::result::Result<ServiceResponse, Self::Error> {
+    async fn handle_request(&self, request: ServiceRequest) -> std::result::Result<ServiceResponse> {
         self.request_count.fetch_add(1, Ordering::Relaxed);
         
         // Simulate processing time
@@ -146,18 +150,18 @@ impl UniversalService for TestService {
                 serde_json::json!({
                     "service": self.id,
                     "type": "data-processor",
-                    "processed_data": request.payload,
+                    "processed_data": request.body,
                     "timestamp": chrono::Utc::now().to_rfc3339(),
                     "processing_time_ms": 10
                 })
             }
             "validator" => {
-                let is_valid = request.payload.get("data").is_some();
+                let is_valid = request.body.get("data").is_some();
                 serde_json::json!({
                     "service": self.id,
                     "type": "validator",
                     "valid": is_valid,
-                    "original_request": request.payload,
+                    "original_request": request.body,
                     "validation_timestamp": chrono::Utc::now().to_rfc3339()
                 })
             }
@@ -165,7 +169,7 @@ impl UniversalService for TestService {
                 serde_json::json!({
                     "service": self.id,
                     "type": "aggregator",
-                    "aggregated_results": [request.payload],
+                    "aggregated_results": [request.body],
                     "count": 1,
                     "aggregation_timestamp": chrono::Utc::now().to_rfc3339()
                 })
@@ -176,7 +180,7 @@ impl UniversalService for TestService {
                     "type": "notifier",
                     "notification_sent": true,
                     "recipients": ["user@example.com"],
-                    "message": format!("Processed: {:?}", request.payload),
+                    "message": format!("Processed: {:?}", request.body),
                     "sent_at": chrono::Utc::now().to_rfc3339()
                 })
             }
@@ -184,7 +188,7 @@ impl UniversalService for TestService {
                 serde_json::json!({
                     "service": self.id,
                     "type": "generic",
-                    "echo": request.payload,
+                    "echo": request.body,
                     "processed_at": chrono::Utc::now().to_rfc3339()
                 })
             }
@@ -194,51 +198,53 @@ impl UniversalService for TestService {
             request_id: request.id,
             status: ResponseStatus::Success,
             headers: HashMap::new(),
-            payload: response_data,
+            body: response_data,
             timestamp: chrono::Utc::now(),
-            duration: Duration::from_millis(10),
-            processing_time: 10,
-            metadata: HashMap::new(),
+            processing_time: Duration::from_millis(10),
+            processing_time: std::time::Duration::from_millis(10),
+            
         })
     }
 
-    async fn update_config(&mut self, _config: Self::Config) -> std::result::Result<(), Self::Error> {
+    async fn update_config(&mut self, _config: Self::Config) -> std::result::Result<()> {
         Ok(())
     }
 
-    async fn get_metrics(&self) -> std::result::Result<ServiceMetrics, Self::Error> {
+    async fn get_metrics(&self) -> std::result::Result<ServiceMetrics> {
         let mut metrics = ServiceMetrics::default();
         metrics.request_count = self.request_count.load(Ordering::Relaxed);
         metrics.uptime_seconds = 300;
         Ok(metrics)
     }
 
-    async fn can_handle_load(&self) -> std::result::Result<bool, Self::Error> {
+    async fn can_handle_load(&self) -> std::result::Result<bool> {
         Ok(true)
     }
 
-    async fn get_load_factor(&self) -> std::result::Result<f64, Self::Error> {
+    async fn get_load_factor(&self) -> std::result::Result<f64> {
         Ok(0.1)
     }
 
     fn service_info(&self) -> ServiceInfo {
         ServiceInfo {
-            id: self.id.clone(),
+            service_service_id: self.id.clone(),
             name: format!("Test Service {}", self.id),
             version: "1.0.0".to_string(),
             service_type: self.service_type.clone(),
             description: format!("Test service of type: {}", self.service_type),
             endpoints: vec![
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/process".to_string(),
                     method: "POST".to_string(),
-                    description: "Process data".to_string(),
+                    description: Some("Process data").to_string(),
                     parameters: vec![
                         EndpointParameter {
                             name: "data".to_string(),
                             param_type: "object".to_string(),
                             required: true,
-                            description: "Data to process".to_string(),
+                            description: Some("Data to process").to_string(),
                             default: None,
                         }
                     ],
@@ -252,9 +258,9 @@ impl UniversalService for TestService {
                     })),
                 }
             ],
-            capabilities: vec![self.service_type.clone()],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         }
     }
 }
@@ -266,7 +272,7 @@ async fn test_multi_service_workflow() {
     
     let config = E2ETestConfig {
         service_count: 4,
-        test_duration: Duration::from_secs(20),
+        test_processing_time: Duration::from_secs(20),
         request_complexity: 3,
         ..Default::default()
     };
@@ -292,7 +298,7 @@ async fn test_service_discovery_load_balancing() {
     
     let config = E2ETestConfig {
         service_count: 6,
-        test_duration: Duration::from_secs(15),
+        test_processing_time: Duration::from_secs(15),
         ..Default::default()
     };
     
@@ -314,7 +320,7 @@ async fn test_circuit_breaker_integration() {
     
     let config = E2ETestConfig {
         service_count: 3,
-        test_duration: Duration::from_secs(12),
+        test_processing_time: Duration::from_secs(12),
         ..Default::default()
     };
     
@@ -336,7 +342,7 @@ async fn test_real_time_communication() {
     
     let config = E2ETestConfig {
         service_count: 4,
-        test_duration: Duration::from_secs(10),
+        test_processing_time: Duration::from_secs(10),
         use_real_network: false, // Simulated for testing
         ..Default::default()
     };
@@ -362,7 +368,7 @@ async fn test_proxy_integration() {
     
     let config = E2ETestConfig {
         service_count: 3,
-        test_duration: Duration::from_secs(8),
+        test_processing_time: Duration::from_secs(8),
         ..Default::default()
     };
     
@@ -384,7 +390,7 @@ async fn test_full_system_integration() {
     
     let config = E2ETestConfig {
         service_count: 8,
-        test_duration: Duration::from_secs(25),
+        test_processing_time: Duration::from_secs(25),
         request_complexity: 4,
         enable_observability: true,
         ..Default::default()
@@ -489,13 +495,13 @@ async fn run_multi_service_workflow(config: E2ETestConfig) -> WorkflowResults {
             path: "/process".to_string(),
             method: "POST".to_string(),
             headers: HashMap::new(),
-            payload: serde_json::json!({
+            body: serde_json::json!({
                 "data": format!("workflow-data-{}", total_requests),
                 "timestamp": chrono::Utc::now().to_rfc3339()
             }),
             timestamp: chrono::Utc::now(),
             timeout: Some(Duration::from_secs(5)),
-            metadata: HashMap::new(),
+            
         };
         
         match services[0].handle_request(data_request).await {
@@ -508,10 +514,10 @@ async fn run_multi_service_workflow(config: E2ETestConfig) -> WorkflowResults {
                     path: "/validate".to_string(),
                     method: "POST".to_string(),
                     headers: HashMap::new(),
-                    payload: response.payload,
+                    body: response.body,
                     timestamp: chrono::Utc::now(),
                     timeout: Some(Duration::from_secs(5)),
-                    metadata: HashMap::new(),
+                    
                 };
                 
                 match services[1].handle_request(validation_request).await {
@@ -524,10 +530,10 @@ async fn run_multi_service_workflow(config: E2ETestConfig) -> WorkflowResults {
                             path: "/aggregate".to_string(),
                             method: "POST".to_string(),
                             headers: HashMap::new(),
-                            payload: validated_response.payload,
+                            body: validated_response.body,
                             timestamp: chrono::Utc::now(),
                             timeout: Some(Duration::from_secs(5)),
-                            metadata: HashMap::new(),
+                            
                         };
                         
                         if services[2].handle_request(aggregation_request).await.is_ok() {
@@ -581,11 +587,11 @@ async fn run_load_balancing_test(config: E2ETestConfig) -> LoadBalancingResults 
             name: format!("Load Test Service {}", i),
             version: "1.0.0".to_string(),
             service_type: "load-test".to_string(),
-            description: "Service for load balancing test".to_string(),
+            description: Some("Service for load balancing test").to_string(),
             endpoints: vec![],
-            capabilities: vec![],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         };
         registry.register_service(service).await.expect("Failed to register service");
         request_distribution.insert(format!("load-test-service-{}", i), 0);
@@ -680,10 +686,10 @@ async fn run_circuit_breaker_test(config: E2ETestConfig) -> CircuitBreakerResult
                 path: "/test".to_string(),
                 method: "POST".to_string(),
                 headers: HashMap::new(),
-                payload: serde_json::json!({"test": "data"}),
+                body: serde_json::json!({"test": "data"}),
                 timestamp: chrono::Utc::now(),
                 timeout: Some(Duration::from_secs(5)),
-                metadata: HashMap::new(),
+                
             };
             
             match service.handle_request(request).await {
@@ -733,7 +739,7 @@ async fn run_real_time_communication_test(config: E2ETestConfig) -> RealTimeResu
             id: format!("realtime-{}", messages_sent),
             message_type: MessageType::Event,
             topic: "real-time-test".to_string(),
-            payload: serde_json::json!({
+            body: serde_json::json!({
                 "event": "test-event",
                 "timestamp": chrono::Utc::now().to_rfc3339(),
                 "sequence": messages_sent
@@ -795,19 +801,21 @@ async fn run_proxy_integration_test(config: E2ETestConfig) -> ProxyResults {
             name: format!("Proxy Test Service {}", i),
             version: "1.0.0".to_string(),
             service_type: "http".to_string(),
-            description: "Service for proxy testing".to_string(),
+            description: Some("Service for proxy testing").to_string(),
             endpoints: vec![
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: format!("/api/service-{}", i),
                     method: "POST".to_string(),
-                    description: "Test endpoint".to_string(),
+                    description: Some("Test endpoint").to_string(),
                     parameters: vec![],
                     response_schema: None,
                 }
             ],
-            capabilities: vec!["http".to_string()],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         };
         services.push(service);
     }
@@ -830,9 +838,9 @@ async fn run_proxy_integration_test(config: E2ETestConfig) -> ProxyResults {
         let request_start = Instant::now();
         
         // Create proxy request
-        let proxy_request = songbird_orchestrator::proxy::ProxyRequest {
+        let proxy_request = songbird_gaming_bridge::proxy::ProxyRequest {
             method: axum::http::Method::POST,
-            uri: format!("/api/service-{}", total_requests % config.service_count).parse().unwrap(),
+            uri: format!("/api/service-{}", total_requests % config.service_count).parse().expect("Test assertion failed"),
             headers: axum::http::HeaderMap::new(),
             body: b"proxy test data".to_vec(),
             source_ip: Some("127.0.0.1".to_string()),

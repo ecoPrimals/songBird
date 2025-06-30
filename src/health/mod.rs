@@ -1,110 +1,123 @@
+// Module imports
 //! Health Monitoring Module
 //!
 //! Comprehensive health monitoring system
 
-use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use futures_util::Stream;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::time::Duration;
-
 use crate::errors::Result;
+use std::sync::Arc;
 
-/// Health monitor trait
-#[async_trait]
+/// Health monitor trait for implementing custom health monitoring
+#[async_trait::async_trait]
 pub trait HealthMonitor: Send + Sync {
-    /// Register a service for health monitoring
-    async fn register_service(
-        &self,
-        service_id: &str,
-        checks: Vec<Box<dyn HealthCheck>>,
-    ) -> Result<()>;
+    /// Get overall health status
+    async fn get_health_status(&self) -> Result<HealthStatusDetails>;
 
-    /// Check health of a specific service
-    async fn check_health(&self, service_id: &str) -> Result<HealthStatus>;
+    /// Get detailed health information
+    async fn get_detailed_health(&self) -> Result<Vec<HealthCheckResult>>;
 
-    /// Get health history for a service
-    async fn get_health_history(
-        &self,
-        service_id: &str,
-        duration: Duration,
-    ) -> Result<Vec<HealthRecord>>;
-
-    /// Watch health status changes
-    async fn watch_health(&self, service_id: &str) -> impl Stream<Item = HealthStatus>;
-
-    /// Set health thresholds
-    async fn set_health_thresholds(
-        &self,
-        service_id: &str,
-        thresholds: HealthThresholds,
-    ) -> Result<()>;
+    /// Set health check thresholds
+    async fn set_health_thresholds(&self, thresholds: HealthThresholds) -> Result<()>;
 }
 
-/// Health check trait
-#[async_trait]
-pub trait HealthCheck: Send + Sync {
-    /// Perform the health check
-    async fn check(&self) -> Result<HealthCheckResult>;
-
-    /// Get the name of this health check
-    fn name(&self) -> &str;
-
-    /// Get the description
-    fn description(&self) -> &str;
-
-    /// Get the timeout for this check
-    fn timeout(&self) -> Duration;
-
-    /// Get the interval for this check
-    fn interval(&self) -> Duration;
+/// Health status enumeration
+#[derive(Debug, Clone, PartialEq)]
+pub enum HealthStatus {
+    Healthy,
+    Degraded,
+    Unhealthy,
 }
 
 /// Health check result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct HealthCheckResult {
-    pub status: HealthState,
+    pub name: String,
+    pub status: HealthStatus,
     pub message: String,
-    pub metrics: HashMap<String, f64>,
-    pub timestamp: DateTime<Utc>,
-    pub duration: Duration,
+    pub response_time_ms: u64,
 }
 
-/// Health status
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthStatus {
-    pub service_id: String,
-    pub overall_status: HealthState,
-    pub checks: Vec<HealthCheckResult>,
-    pub last_updated: DateTime<Utc>,
-    pub uptime: Duration,
-    pub metadata: HashMap<String, serde_json::Value>,
+/// Health status details
+#[derive(Debug, Clone)]
+pub struct HealthStatusDetails {
+    pub state: HealthState,
+    pub score: f64,
+    pub checks_passed: u32,
+    pub checks_failed: u32,
+    pub last_updated: std::time::SystemTime,
+    pub metadata: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// Health state enumeration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum HealthState {
     Healthy,
-    Degraded { reason: String, severity: u8 },
-    Unhealthy { reason: String },
+    Degraded,
+    Unhealthy,
+    Critical,
     Unknown,
     Maintenance,
 }
 
 /// Health record for history
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthRecord {
-    pub timestamp: DateTime<Utc>,
-    pub status: HealthStatus,
+    pub timestamp: std::time::SystemTime,
+    pub status: HealthState,
+    pub checks: Vec<HealthCheckResult>,
+    pub response_time: Option<std::time::Duration>,
 }
 
 /// Health thresholds
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthThresholds {
-    pub degraded_threshold: u8,  // 0-100
-    pub unhealthy_threshold: u8, // 0-100
-    pub recovery_threshold: u8,  // 0-100
-    pub check_interval: Duration,
+    pub response_time_threshold: std::time::Duration,
+    pub error_rate_threshold: f64,
+    pub cpu_threshold: f64,
+    pub memory_threshold: f64,
+    pub disk_threshold: f64,
     pub failure_count_threshold: u32,
+}
+
+/// Collection of health checks
+pub struct HealthChecker {
+    checks: Vec<Arc<dyn HealthCheckAsync + Send + Sync>>,
+}
+
+impl Default for HealthChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl HealthChecker {
+    pub fn new() -> Self {
+        Self { checks: Vec::new() }
+    }
+
+    pub fn add_check(&mut self, check: Arc<dyn HealthCheckAsync + Send + Sync>) {
+        self.checks.push(check);
+    }
+
+    pub async fn check_all(&self) -> Vec<HealthCheckResult> {
+        let mut results = Vec::new();
+
+        for check in &self.checks {
+            match check.check().await {
+                Ok(result) => results.push(result),
+                Err(err) => results.push(HealthCheckResult {
+                    name: "Unknown".to_string(),
+                    status: HealthStatus::Unhealthy,
+                    message: format!("Check failed: {:?}", err),
+                    response_time_ms: 0,
+                }),
+            }
+        }
+
+        results
+    }
+}
+
+/// Health check trait for async checks
+#[async_trait::async_trait]
+pub trait HealthCheckAsync: Send + Sync {
+    /// Perform the health check
+    async fn check(&self) -> Result<HealthCheckResult>;
 }

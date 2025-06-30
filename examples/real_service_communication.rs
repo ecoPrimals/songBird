@@ -1,9 +1,3 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::time::sleep;
-use serde::{Deserialize, Serialize};
-use tokio::net::TcpListener;
 use axum::{
     extract::Json,
     http::StatusCode,
@@ -11,14 +5,20 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::net::TcpListener;
+use tokio::time::sleep;
 
-use songbird_orchestrator::config::OrchestratorConfig;
-use songbird_orchestrator::orchestrator::Orchestrator;
-use songbird_orchestrator::traits::service::{
-    ServiceRequest, ServiceResponse, ResponseStatus, UniversalService, 
-    ServiceInfo, ServiceEndpoint, ServiceMetrics
+use songbird_gaming_bridge::config::OrchestratorConfig;
+use songbird_gaming_bridge::errors::SongbirdError;
+use songbird_gaming_bridge::orchestrator::Orchestrator;
+use songbird_gaming_bridge::traits::service_id::{
+    ResponseStatus, ServiceEndpoint, ServiceInfo, ServiceMetrics, ServiceRequest, ServiceResponse,
+    UniversalService,
 };
-use songbird_orchestrator::errors::SongbirdError;
 
 /// A real HTTP service that runs an actual HTTP server
 #[derive(Clone)]
@@ -56,7 +56,7 @@ struct EchoRequest {
 #[derive(Debug, Serialize, Deserialize)]
 struct EchoResponse {
     echo: String,
-    service: String,
+    service_id: String,
     port: u16,
     processed_at: i64,
 }
@@ -64,7 +64,7 @@ struct EchoResponse {
 #[derive(Debug, Serialize, Deserialize)]
 struct HealthResponse {
     status: String,
-    service: String,
+    service_id: String,
     port: u16,
     uptime: String,
 }
@@ -77,13 +77,19 @@ impl UniversalService for RealHttpService {
 
     async fn initialize(&mut self, config: Self::Config) -> Result<(), Self::Error> {
         self.port = config.port;
-        println!("🔧 Initializing {} on {}:{}", self.name, config.bind_address, self.port);
+        println!(
+            "🔧 Initializing {} on {}:{}",
+            self.name, config.bind_address, self.port
+        );
         Ok(())
     }
 
     async fn start(&mut self) -> Result<(), Self::Error> {
-        println!("🚀 Starting {} HTTP server on port {}", self.name, self.port);
-        
+        println!(
+            "🚀 Starting {} HTTP server on port {}",
+            self.name, self.port
+        );
+
         // Create HTTP server
         let app = self.create_http_app();
         let addr = format!("127.0.0.1:{}", self.port);
@@ -91,11 +97,12 @@ impl UniversalService for RealHttpService {
             .await
             .map_err(|e| SongbirdError::Service {
                 message: format!("Service startup failed: {}", e),
+                service_service_id: self.id.clone(),
             })?;
 
         let service_name = self.name.clone();
         let service_port = self.port;
-        
+
         // Start server in background
         let handle = tokio::spawn(async move {
             println!("✅ {} is listening on {}", service_name, addr);
@@ -106,21 +113,24 @@ impl UniversalService for RealHttpService {
 
         // Store handle for cleanup
         *self.server_handle.lock().await = Some(handle);
-        
+
         // Give server time to start
         sleep(Duration::from_millis(100)).await;
-        
-        println!("✅ {} is now running and ready to accept connections", self.name);
+
+        println!(
+            "✅ {} is now running and ready to accept connections",
+            self.name
+        );
         Ok(())
     }
 
     async fn stop(&mut self) -> Result<(), Self::Error> {
         println!("🛑 Stopping {} HTTP server", self.name);
-        
+
         if let Some(handle) = self.server_handle.lock().await.take() {
             handle.abort();
         }
-        
+
         Ok(())
     }
 
@@ -128,11 +138,17 @@ impl UniversalService for RealHttpService {
         Ok(format!("healthy on port {}", self.port))
     }
 
-    async fn handle_request(&self, request: ServiceRequest) -> Result<ServiceResponse, Self::Error> {
+    async fn handle_request(
+        &self,
+        request: ServiceRequest,
+    ) -> Result<ServiceResponse, Self::Error> {
         // This method is for internal orchestrator communication
         // The actual HTTP endpoints are handled by the Axum server
-        println!("📨 {} received internal request: {} {}", self.name, request.method, request.path);
-        
+        println!(
+            "📨 {} received internal request: {} {}",
+            self.name, request.method, request.path
+        );
+
         let response_payload = serde_json::json!({
             "service": self.name,
             "port": self.port,
@@ -144,11 +160,11 @@ impl UniversalService for RealHttpService {
             request_id: request.id,
             status: ResponseStatus::Success,
             headers: HashMap::new(),
-            payload: response_payload,
+            body: response_payload,
             timestamp: chrono::Utc::now(),
-            duration: Duration::from_millis(5),
-            processing_time: 5,
-            metadata: HashMap::new(),
+            processing_time: std::time::Duration::from_millis( Duration::from_millis(5),
+            processing_time: std::time::Duration::from_millis(5),
+            
         })
     }
 
@@ -168,35 +184,39 @@ impl UniversalService for RealHttpService {
 
     fn service_info(&self) -> ServiceInfo {
         ServiceInfo {
-            id: self.id.clone(),
+            service_id: self.id.clone(),
             name: self.name.clone(),
             version: "1.0.0".to_string(),
             service_type: "http".to_string(),
-            description: "Real HTTP service with actual endpoints".to_string(),
+            description: Some("Real HTTP service with actual endpoints").to_string(),
             endpoints: vec![
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: format!("http://127.0.0.1:{}/echo", self.port),
                     method: "POST".to_string(),
-                    description: "Echo endpoint".to_string(),
+                    description: Some("Echo endpoint").to_string(),
                     parameters: Vec::new(),
                     response_schema: None,
                 },
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: format!("http://127.0.0.1:{}/health", self.port),
                     method: "GET".to_string(),
-                    description: "Health check endpoint".to_string(),
+                    description: Some("Health check endpoint").to_string(),
                     parameters: Vec::new(),
                     response_schema: None,
-                }
+                },
             ],
-            capabilities: vec!["http".to_string(), "echo".to_string(), "health".to_string()],
+            tags: std::collections::HashMap::new(),
             tags: {
                 let mut tags = HashMap::new();
                 tags.insert("type".to_string(), "real-http".to_string());
                 tags.insert("port".to_string(), self.port.to_string());
                 tags
             },
-            metadata: HashMap::new(),
+            
         }
     }
 
@@ -213,44 +233,53 @@ impl RealHttpService {
         let service_id = self.id.clone();
 
         Router::new()
-            .route("/health", get({
-                let service_name = service_name.clone();
-                move || async move {
-                    let response = HealthResponse {
-                        status: "healthy".to_string(),
-                        service: service_name,
-                        port: service_port,
-                        uptime: "unknown".to_string(),
-                    };
-                    (StatusCode::OK, ResponseJson(response))
-                }
-            }))
-            .route("/echo", post({
-                let service_name = service_name.clone();
-                move |Json(payload): Json<EchoRequest>| async move {
-                    let response = EchoResponse {
-                        echo: payload.message,
-                        service: service_name,
-                        port: service_port,
-                        processed_at: chrono::Utc::now().timestamp(),
-                    };
-                    (StatusCode::OK, ResponseJson(response))
-                }
-            }))
-            .route("/info", get({
-                let service_name = service_name.clone();
-                let service_id = service_id.clone();
-                move || async move {
-                    let info = serde_json::json!({
-                        "service_id": service_id,
-                        "service_name": service_name,
-                        "port": service_port,
-                        "status": "running",
-                        "endpoints": ["/health", "/echo", "/info"]
-                    });
-                    (StatusCode::OK, ResponseJson(info))
-                }
-            }))
+            .route(
+                "/health",
+                get({
+                    let service_name = service_name.clone();
+                    move || async move {
+                        let response = HealthResponse {
+                            status: "healthy".to_string(),
+                            service_id: service_name,
+                            port: service_port,
+                            uptime: "unknown".to_string(),
+                        };
+                        (StatusCode::OK, ResponseJson(response))
+                    }
+                }),
+            )
+            .route(
+                "/echo",
+                post({
+                    let service_name = service_name.clone();
+                    move |Json(payload): Json<EchoRequest>| async move {
+                        let response = EchoResponse {
+                            echo: payload.message,
+                            service_id: service_name,
+                            port: service_port,
+                            processed_at: chrono::Utc::now().timestamp(),
+                        };
+                        (StatusCode::OK, ResponseJson(response))
+                    }
+                }),
+            )
+            .route(
+                "/info",
+                get({
+                    let service_name = service_name.clone();
+                    let service_id = service_id.clone();
+                    move || async move {
+                        let info = serde_json::json!({
+                            "service_id": service_id,
+                            "service_name": service_name,
+                            "port": service_port,
+                            "status": "running",
+                            "endpoints": ["/health", "/echo", "/info"]
+                        });
+                        (StatusCode::OK, ResponseJson(info))
+                    }
+                }),
+            )
     }
 }
 
@@ -258,39 +287,39 @@ impl RealHttpService {
 async fn test_real_communication() -> Result<(), Box<dyn std::error::Error>> {
     println!("🎼 Testing Real HTTP Service Communication");
     println!("========================================");
-    
+
     // Create orchestrator
     let config = OrchestratorConfig::default();
     let orchestrator = Orchestrator::new(config).await?;
-    
+
     // Start orchestrator
     orchestrator.start().await?;
-    
+
     // Create and register real HTTP services
     let service1 = RealHttpService::new("http-service-1".to_string(), 9001);
     let config1 = RealHttpConfig {
         port: 9001,
         bind_address: "127.0.0.1".to_string(),
     };
-    
+
     let service2 = RealHttpService::new("http-service-2".to_string(), 9002);
     let config2 = RealHttpConfig {
         port: 9002,
         bind_address: "127.0.0.1".to_string(),
     };
-    
+
     println!("\n📝 Registering real HTTP services...");
     let service1_id = orchestrator.register_service(service1, config1).await?;
     let service2_id = orchestrator.register_service(service2, config2).await?;
-    
+
     // Wait for services to fully start
     sleep(Duration::from_secs(2)).await;
-    
+
     // Test direct HTTP communication to services
     println!("\n🌐 Testing direct HTTP communication...");
-    
+
     let client = reqwest::Client::new();
-    
+
     // Test service 1 health
     match client.get("http://127.0.0.1:9001/health").send().await {
         Ok(response) => {
@@ -299,64 +328,73 @@ async fn test_real_communication() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => println!("❌ Service 1 health failed: {}", e),
     }
-    
+
     // Test service 2 echo
     let echo_request = EchoRequest {
         message: "Hello from test client!".to_string(),
         timestamp: Some(chrono::Utc::now().timestamp()),
     };
-    
-    match client.post("http://127.0.0.1:9002/echo")
+
+    match client
+        .post("http://127.0.0.1:9002/echo")
         .json(&echo_request)
-        .send().await {
-            Ok(response) => {
-                let body: serde_json::Value = response.json().await?;
-                println!("✅ Service 2 echo: {}", body);
-            }
-            Err(e) => println!("❌ Service 2 echo failed: {}", e),
+        .send()
+        .await
+    {
+        Ok(response) => {
+            let body: serde_json::Value = response.json().await?;
+            println!("✅ Service 2 echo: {}", body);
+        }
+        Err(e) => println!("❌ Service 2 echo failed: {}", e),
     }
-    
+
     // Now test orchestrator communication
     println!("\n🎼 Testing orchestrator-mediated communication...");
-    
+
     // This will test if the orchestrator can route requests to our real HTTP services
     let request = ServiceRequest {
-        id: "test-orchestrator-request".to_string(),
+        service_id: "test-orchestrator-request".to_string(),
         method: "POST".to_string(),
         path: "/echo".to_string(),
         headers: HashMap::new(),
-        payload: serde_json::json!({
+        body: serde_json::json!({
             "message": "Hello through orchestrator!",
             "timestamp": chrono::Utc::now().timestamp()
         }),
         timestamp: chrono::Utc::now(),
         timeout: Some(Duration::from_secs(10)),
         client_info: None,
-        metadata: HashMap::new(),
+        
     };
-    
-    match orchestrator.handle_service_request(&service1_id, request).await {
+
+    match orchestrator
+        .handle_service_request(&service1_id, request)
+        .await
+    {
         Ok(response) => {
-            println!("✅ Orchestrator communication successful: {:?}", response.status);
-            println!("   Response: {}", response.payload);
+            println!(
+                "✅ Orchestrator communication successful: {:?}",
+                response.status
+            );
+            println!("   Response: {}", response.body);
         }
         Err(e) => {
             println!("⚠️  Orchestrator communication failed: {}", e);
             println!("   This is expected - we need to wire the communication layer to our HTTP endpoints");
         }
     }
-    
+
     // Show metrics
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     println!("\n📊 Final Metrics:");
     println!("   - Total services: {}", metrics.total_services);
     println!("   - Healthy services: {}", metrics.healthy_services);
-    
+
     // Cleanup
     println!("\n🧹 Cleaning up...");
     orchestrator.unregister_service(&service1_id).await?;
     orchestrator.unregister_service(&service2_id).await?;
-    
+
     println!("✅ Test completed!");
     Ok(())
 }
@@ -364,4 +402,4 @@ async fn test_real_communication() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     test_real_communication().await
-} 
+}

@@ -1,170 +1,230 @@
-/*!
- * Songbird Orchestrator - Production-Grade Service Orchestration Platform
- * 
- * A comprehensive service orchestration platform built in Rust, designed for
- * enterprise-grade deployments with built-in security, observability, and scalability.
- */
+//! Songbird Gaming Bridge - Comprehensive Gaming Network Orchestrator
+//!
+//! High-performance, distributed orchestration platform for gaming infrastructure.
+//! Provides seamless gaming platform integration, service discovery, load balancing,
+//! and advanced security features including BearDog integration.
+//!
+// Songbird Orchestrator - Core Library
+// Main library entry point with minimal modules for BearDog integration
 
-// ============================================================================
-// CORE MODULES - Fundamental building blocks
-// ============================================================================
+// Core modules that compile and are needed for BearDog
+pub mod cli; // CLI module for error handling
+pub mod config; // Configuration management
+pub mod errors; // Error handling
+pub mod federation; // Federation with encrypted snapshots
+pub mod load_balancer;
+pub mod network; // Network layer with gaming support
+pub mod observability; // Basic observability
+pub mod proxy; // Basic proxy functionality
+pub mod security; // Security providers (including BearDog)
+pub mod traits; // Core traits // Load balancer module
 
-pub mod config;
-pub mod errors;
-pub mod traits;
+// Additional modules
+pub mod accessibility;
+pub mod basic_iot; // Universal IoT device connectivity
+pub mod communication; // Communication protocols
+pub mod discovery; // Service discovery
+pub mod firewall; // System-agnostic firewall
+pub mod health; // Health monitoring
+pub mod http_server; // HTTP server for web interface
+pub mod orchestrator; // Main orchestrator
+pub mod zero_touch; // Zero touch deployment // Universal accessibility - "Free for All"
 
-// ============================================================================
-// SERVICE MANAGEMENT - Core service orchestration
-// ============================================================================
-
-pub mod orchestrator;
-pub mod registry;
-pub mod discovery;
-
-// ============================================================================
-// COMMUNICATION & NETWORKING - Service-to-service communication
-// ============================================================================
-
-pub mod communication;
-pub mod network;
-pub mod http_server;
-
-// ============================================================================
-// RELIABILITY & PERFORMANCE - Production-grade reliability
-// ============================================================================
-
-pub mod robustness;      // Circuit breakers, retries, timeouts
-pub mod load_balancer;   // Load balancing strategies
-pub mod scalability;     // Auto-scaling and resource management
-
-// ============================================================================
-// INFRASTRUCTURE - Supporting systems
-// ============================================================================
-
-pub mod security;        // Authentication, authorization, encryption
-pub mod observability;   // Metrics, monitoring, health checks
-pub mod federation;      // Multi-cluster federation
-pub mod proxy;          // Reverse proxy functionality
-pub mod health;         // Health checking systems
-pub mod api;            // REST/GraphQL APIs
-
-// ============================================================================
-// CORE EXPORTS - Main public interface
-// ============================================================================
-
-// Primary orchestrator
-pub use orchestrator::{Orchestrator, OrchestratorEvent, OrchestratorMetrics};
-
-// Configuration
-pub use config::OrchestratorConfig;
-
-// Error handling
+// Re-export core types for easier access
+pub use config::SongbirdConfig;
 pub use errors::{Result, SongbirdError};
 
-// Service traits and types
-pub use traits::service::{
-    ServiceEndpoint, ServiceInfo, ServiceMetrics, ServiceRequest, ServiceResponse, UniversalService,
+// Re-export BearDog integration types
+pub use security::{
+    BearDogAction, BearDogAuditLevel, BearDogComplianceReport, BearDogEncryptedData,
+    BearDogKeyHandle, BearDogKeyPurpose, BearDogKeySpec, BearDogPrincipal, BearDogResource,
+    BearDogRotationPolicy, BearDogSecurityContext, BearDogSecurityEvent, BearDogSecurityEventType,
+    BearDogSecurityLevel, BearDogSecurityProvider,
 };
 
-// Discovery and registry
-pub use discovery::{SongbirdDiscovery, SongbirdDiscoveryConfig};
-pub use observability::{ObservabilityEngine, ClusterStatus};
+// Re-export federation types
+pub use federation::{
+    EncryptedSnapshotManager, Federation, FederationConfig, FederationManager, FederationMode,
+    FederationStatus, ProductionSnapshotSecurityAdapter, SnapshotDistributionStats,
+    SnapshotFilters, SnapshotMetadata, SnapshotRequest, SnapshotRequestType,
+    SnapshotSecurityProvider, SnapshotType, StoragePreferences,
+};
 
-// ============================================================================
-// STRUCTURED RE-EXPORTS - Organized by functional area
-// ============================================================================
+// Re-export gaming network types
+pub use network::gaming::{
+    DetectedGameSession, GameProtocolClass, GamingManager, PlayerEndpoint, VirtualNetwork,
+};
 
-/// Communication and messaging
-pub mod communication_types {
-    pub use crate::traits::communication::{CommunicationLayer, MessageType, ServiceMessage};
-    pub use crate::communication::HttpCommunication;
+// Universal Security and Accessibility - "Free for All, Secure for All"
+pub use accessibility::{
+    convenience, AccessibilityConfig, InterfaceMode, UniversalAccessManager, UniversalHelpSystem,
+    UserSkillLevel,
+};
+
+pub use security::{
+    ConnectionSecurityStatus, DeviceSecurityPolicy, FamilyProtectionConfig, FriendTrustLevel,
+    ScammerProtectionConfig, ScammerProtectionResult, SecurityLevel, UniversalSecurityManager,
+};
+
+// Library version
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// Library description
+pub const DESCRIPTION: &str =
+    "Songbird Orchestrator - Federated Service Management with BearDog Security Integration";
+
+/// Initialize the Songbird Orchestrator library
+pub fn init() -> Result<()> {
+    // Initialize logging if not already done
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info");
+    }
+
+    // Initialize tracing
+    tracing_subscriber::fmt::init();
+
+    tracing::info!("Songbird Orchestrator {} initialized", VERSION);
+    tracing::info!("BearDog security integration available");
+
+    Ok(())
+
 }
 
-/// Load balancing and routing
-pub mod load_balancing {
-    pub use crate::load_balancer::{
-        DefaultLoadBalancer, LoadBalancer, LoadBalancerConfig, LoadBalancerStats,
-        LoadBalancerStrategy, ServiceInstance,
-    };
-    pub use crate::traits::load_balancer::LoadBalancingAlgorithm;
+// CLI types for internet connection commands
+#[derive(Debug)]
+pub enum CliError {
+    Config(String),
+    Network(String),
+    Io(std::io::Error),
 }
 
-/// Security and authentication
-pub mod security_types {
-    pub use crate::security::{
-        AuthEvent, AuthEventType, Subject, SubjectType,
-        AuthenticationProvider, Credentials, 
-        ProductionSecurityProvider, SecurityConfig, UserInfo, AuthToken,
-        SecurityProvider, Resource, Action, Permission,
-    };
+impl std::fmt::Display for CliError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            CliError::Config(msg) => write!(f, "Configuration error: {}", msg),
+            CliError::Network(msg) => write!(f, "Network error: {}", msg),
+            CliError::Io(err) => write!(f, "IO error: {}", err),
+        }
+    }
 }
 
-/// Federation and clustering
-pub mod federation_types {
-    pub use crate::federation::{
-        FederationConfig, FederationManager, FederationMode, FederationStatus,
-    };
-}
+impl std::error::Error for CliError {}
 
-/// Robustness and reliability
-pub mod robustness_types {
-    pub use crate::robustness::{
-        BulkheadConfig, CircuitBreaker, CircuitBreakerConfig, CircuitState, 
-        HealthCheckConfig, HealthCheckStrategy, RateLimitConfig, RateLimitStrategy, 
-        RateLimiter, RetryConfig, RetryExecutor, RobustnessConfig, RobustnessManager, 
-        RobustnessStats, TimeoutConfig as RobustnessTimeoutConfig,
-    };
-}
-
-/// Proxy and routing
-pub mod proxy_types {
-    pub use crate::proxy::{
-        CircuitBreakerState, ConnectionProxy, LoadBalancerState, LoadBalancingStrategy, 
-        ProxyConfig, ProxyRequest, ProxyResponse, ProxyStats,
-    };
-}
-
-/// Network management
-pub mod network_types {
-    pub use crate::network::{
-        DomainConfig, LoadBalancerStrategy as NetworkLoadBalancerStrategy, NetworkConfig,
-        NetworkManager, ProxyHealthCheck, ProxyRoute, ProxyType, SslConfig, TimeoutConfig,
-    };
-}
-
-/// Scalability and resource management
-pub mod scalability_types {
-    pub use crate::scalability::{
-        InstanceHealth, LoadBalancingAlgorithm as ScalabilityLoadBalancingAlgorithm,
-        LoadBalancingConfig as ScalabilityLoadBalancingConfig, PerformanceConfig, 
-        PerformanceMetrics, PerformanceThresholds, ResourceConfig, ResourcePool, 
-        ResourceUsage, ScalabilityConfig, ScalabilityManager, ScalabilityStats, 
-        ScalingAction, ScalingDecision, ScalingStrategy,
-        ServiceInstance as ScalabilityServiceInstance, ServiceScalingConfig,
-    };
-}
-
-// ============================================================================
-// CONVENIENCE PRELUDE - For easy imports
-// ============================================================================
-
-/// Common imports for most use cases
-pub mod prelude {
-    // Core types
-    pub use crate::{
-        Orchestrator, OrchestratorConfig, Result, SongbirdError,
-        SongbirdDiscovery, ObservabilityEngine,
-    };
+pub mod commands {
+    use std::path::PathBuf;
     
-    // Service traits and types
-    pub use crate::traits::service::{
-        UniversalService, ServiceInfo, ServiceRequest, ServiceResponse, ServiceMetrics,
-        ServiceEndpoint, ResponseStatus, EndpointParameter,
-    };
+    #[derive(Debug)]
+    pub enum InternetCommands {
+        Wizard {
+            environment: Option<String>,
+            tunnel: Option<String>,
+            network_name: Option<String>,
+            no_discovery: bool,
+        },
+        Status,
+        Connect { network: String },
+        Disconnect,
+        Config { action: InternetConfigAction },
+    }
     
-    // Common functionality
-    pub use crate::communication_types::CommunicationLayer;
-    pub use crate::load_balancing::{LoadBalancer, LoadBalancerStrategy};
-    pub use crate::security_types::{SecurityProvider, AuthEvent, Subject};
-    pub use crate::http_server::HttpServiceExt;
+    #[derive(Debug)]
+    pub enum InternetConfigAction {
+        Show,
+        Validate { config: Option<PathBuf> },
+        Ports,
+    }
 }
+
+pub mod ui {
+    use colored::*;
+    
+    pub fn title(text: &str) -> String {
+        text.bright_blue().bold().to_string()
+    }
+    
+    pub fn info(text: &str) -> String {
+        text.bright_cyan().to_string()
+    }
+    
+    pub fn success(text: &str) -> String {
+        text.bright_green().to_string()
+    }
+}
+
+// Internet connection configuration types
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct InternetConnectionConfig {
+    pub connection_type: String,
+    pub security_enabled: bool,
+    pub monitoring_enabled: bool,
+    pub family_safe_mode: bool,
+}
+
+impl Default for InternetConnectionConfig {
+    fn default() -> Self {
+        Self {
+            connection_type: "direct".to_string(),
+            security_enabled: true,
+            monitoring_enabled: false,
+            family_safe_mode: false,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct InternetConnectionWizard {
+    #[allow(dead_code)] config: InternetConnectionConfig,
+}
+
+impl InternetConnectionWizard {
+    pub fn new(config: InternetConnectionConfig) -> Self {
+        Self { config }
+    }
+    
+    pub async fn discover_songbird_ports(&self) -> std::result::Result<SongbirdPorts, String> {
+        Ok(SongbirdPorts {
+            orchestrator_port: 8080,
+            federation_port: 8081,
+            metrics_port: 8082,
+            discovery_port: 8083,
+            additional_service_ports: vec![8084, 8085],
+        })
+    }
+}
+
+// Port discovery types
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SongbirdPorts {
+    pub orchestrator_port: u16,
+    pub federation_port: u16,
+    pub metrics_port: u16,
+    pub discovery_port: u16,
+    pub additional_service_ports: Vec<u16>,
+}
+
+impl SongbirdPorts {
+    pub fn get_all_required_ports(&self) -> Vec<u16> {
+        let mut ports = vec![
+            self.orchestrator_port,
+            self.federation_port,
+            self.metrics_port,
+            self.discovery_port,
+        ];
+        ports.extend(&self.additional_service_ports);
+        ports
+    }
+}
+
+impl Default for SongbirdPorts {
+    fn default() -> Self {
+        Self {
+            orchestrator_port: 8080,
+            federation_port: 8081,
+            metrics_port: 8082,
+            discovery_port: 8083,
+            additional_service_ports: Vec::new(),
+        }
+    }
+}
+pub use orchestrator::Orchestrator as SongbirdOrchestrator;
+pub use config::NetworkConfig;

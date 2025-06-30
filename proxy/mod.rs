@@ -509,13 +509,13 @@ impl ConnectionProxy {
                 &service_instances[index]
             }
             LoadBalancingStrategy::LeastConnections => {
-                // Find instance with least connections
+                // Select instance with least connections
                 service_instances
                     .iter()
                     .min_by_key(|instance| {
                         load_balancer.connection_counts.get(&instance.id).unwrap_or(&0)
                     })
-                    .unwrap()
+                    .ok_or_else(|| SongbirdError::LoadBalancer("No service instances available".to_string()))?
             }
             _ => &service_instances[0], // Default to first instance
         };
@@ -551,50 +551,54 @@ impl ConnectionProxy {
             ));
         };
         
-        // Create HTTP client with timeouts
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(self.config.request_timeout))
-            .connect_timeout(std::time::Duration::from_secs(self.config.connection_timeout))
-            .build()
+        // Create HTTP client with timeouts using our native hyper client
+        let client = crate::communication::hyper_client::HyperHttpClient::new()
             .map_err(|e| SongbirdError::Communication(
                 format!("Failed to create HTTP client: {}", e)
             ))?;
         
-        // Create the request
-        let mut req_builder = match request.method {
-            Method::GET => client.get(&target_url),
-            Method::POST => client.post(&target_url),
-            Method::PUT => client.put(&target_url),
-            Method::DELETE => client.delete(&target_url),
-            Method::HEAD => client.head(&target_url),
-            Method::PATCH => client.patch(&target_url),
-            _ => client.request(request.method.clone(), &target_url),
-        };
+        // Add proxy headers to client
+        client.add_default_header("X-Forwarded-For".to_string(), 
+            request.source_ip.as_deref().unwrap_or("unknown").to_string()).await;
+        client.add_default_header("X-Forwarded-Proto".to_string(), "http".to_string()).await;
+        client.add_default_header("X-Proxy-Service".to_string(), service.id.clone()).await;
         
         // Copy headers from original request
         for (name, value) in request.headers.iter() {
             // Skip hop-by-hop headers that shouldn't be forwarded
-            if !is_hop_by_hop_header(name.as_str()) {
-                req_builder = req_builder.header(name, value);
+            if !Self::is_hop_by_hop_header(name.as_str()) {
+                if let Ok(value_str) = value.to_str() {
+                    client.add_default_header(name.to_string(), value_str.to_string()).await;
+                }
             }
         }
         
-        // Add proxy headers
-        req_builder = req_builder.header("X-Forwarded-For", 
-            request.source_ip.as_deref().unwrap_or("unknown"));
-        req_builder = req_builder.header("X-Forwarded-Proto", "http");
-        req_builder = req_builder.header("X-Proxy-Service", &service.id);
-        
-        // Add request body if present
-        if !request.body.is_empty() {
-            req_builder = req_builder.body(request.body);
-        }
-        
-        // Send the request
-        let response = req_builder.send().await
-            .map_err(|e| SongbirdError::Communication(
-                format!("Failed to forward request to {}: {}", target_url, e)
-            ))?;
+        // Send the request using appropriate method
+        let response = match request.method {
+            Method::GET => client.get(&target_url).await,
+            Method::POST => {
+                if !request.body.is_empty() {
+                    // Convert body to JSON for POST requests
+                    let body_json: serde_json::Value = serde_json::from_slice(&request.body)
+                        .unwrap_or_else(|_| serde_json::json!({}));
+                    client.post_json(&target_url, &body_json).await
+                } else {
+                    client.post_json(&target_url, &serde_json::json!({})).await
+                }
+            },
+            Method::PUT => {
+                if !request.body.is_empty() {
+                    let body_json: serde_json::Value = serde_json::from_slice(&request.body)
+                        .unwrap_or_else(|_| serde_json::json!({}));
+                    client.put_json(&target_url, &body_json).await
+                } else {
+                    client.put_json(&target_url, &serde_json::json!({})).await
+                }
+            },
+            _ => client.request(request.method.clone(), &target_url, None::<&serde_json::Value>).await,
+        }.map_err(|e| SongbirdError::Communication(
+            format!("Failed to forward request to {}: {}", target_url, e)
+        ))?;
         
         // Extract response data
         let status_code = response.status();
@@ -602,22 +606,21 @@ impl ConnectionProxy {
         
         // Copy response headers (excluding hop-by-hop headers)
         for (name, value) in response.headers().iter() {
-            if !is_hop_by_hop_header(name.as_str()) {
+            if !Self::is_hop_by_hop_header(name.as_str()) {
                 headers.insert(name.clone(), value.clone());
             }
         }
         
         // Add proxy response headers
-        headers.insert("X-Proxy-Response-Time", 
-            start_time.elapsed().as_millis().to_string().parse().unwrap());
-        headers.insert("X-Proxy-Service", service.id.parse().unwrap());
+        if let Ok(response_time_value) = start_time.elapsed().as_millis().to_string().parse() {
+            headers.insert("X-Proxy-Response-Time", response_time_value);
+        }
+        if let Ok(service_id_value) = service.id.parse() {
+            headers.insert("X-Proxy-Service", service_id_value);
+        }
         
-        // Read response body
-        let body = response.bytes().await
-            .map_err(|e| SongbirdError::Communication(
-                format!("Failed to read response body: {}", e)
-            ))?
-            .to_vec();
+        // Get response body
+        let body = response.body().to_vec();
         
         let response_time = start_time.elapsed();
         

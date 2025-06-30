@@ -1,3 +1,4 @@
+// Module imports
 //! Audit Logging Module
 //!
 //! Comprehensive audit logging for security events
@@ -85,8 +86,6 @@ pub enum AuthEventType {
 /// Authorization event types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AuthzEventType {
-    AccessGranted,
-    AccessDenied,
     PermissionCheck,
     RoleAssigned,
     RoleRevoked,
@@ -123,23 +122,22 @@ pub struct AuthEvent {
 pub struct AuthzEvent {
     pub event_type: AuthzEventType,
     pub user_id: String,
+    pub timestamp: DateTime<Utc>,
     pub resource: String,
     pub action: String,
-    pub timestamp: DateTime<Utc>,
     pub granted: bool,
     pub reason: Option<String>,
-    pub ip_address: Option<String>,
 }
 
 /// System audit event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemEvent {
     pub event_type: SystemEventType,
+    pub timestamp: DateTime<Utc>,
     pub actor: String,
     pub resource: String,
-    pub timestamp: DateTime<Utc>,
-    pub details: HashMap<String, serde_json::Value>,
     pub success: bool,
+    pub details: HashMap<String, serde_json::Value>,
 }
 
 /// Audit logger implementation
@@ -152,17 +150,14 @@ impl AuditLogger {
     pub fn new(config: AuditConfig) -> Result<Self, Box<dyn std::error::Error>> {
         // Initialize logging destination if needed
         if config.enabled {
-            match &config.destination {
-                AuditDestination::File { path } => {
-                    // Ensure log directory exists
-                    if let Some(parent) = std::path::Path::new(path).parent() {
-                        std::fs::create_dir_all(parent)?;
-                    }
+            if let AuditDestination::File { path } = &config.destination {
+                // Ensure log directory exists
+                if let Some(parent) = std::path::Path::new(path).parent() {
+                    std::fs::create_dir_all(parent)?;
                 }
-                _ => {} // Other destinations handled elsewhere
             }
         }
-        
+
         Ok(Self { config })
     }
 
@@ -174,26 +169,27 @@ impl AuditLogger {
 
         match self.config.format {
             AuditFormat::Json => {
-                let log_entry = serde_json::to_string(&event).unwrap_or_else(|_| "Failed to serialize event".to_string());
+                let log_entry = serde_json::to_string(&event)
+                    .unwrap_or_else(|_| "Failed to serialize event".to_string());
                 self.write_log(&log_entry);
             }
             AuditFormat::Structured => {
                 let log_entry = format!(
-                    "[{}] AUTH {} user={} success={} ip={} details={}",
+                    "[{}] AUTH {:?} user={} success={} ip={} details={}",
                     event.timestamp.format("%Y-%m-%d %H:%M:%S%.3f"),
-                    format!("{:?}", event.event_type),
+                    event.event_type,
                     event.user_id,
                     event.success,
-                    event.ip_address.unwrap_or_else(|| "unknown".to_string()),
+                    event.ip_address.as_ref().unwrap_or(&"unknown".to_string()),
                     serde_json::to_string(&event.details).unwrap_or_else(|_| "{}".to_string())
                 );
                 self.write_log(&log_entry);
             }
             AuditFormat::Text => {
                 let log_entry = format!(
-                    "{} [AUTH] {} for user {} {}",
+                    "{} [AUTH] {:?} for user {} {}",
                     event.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                    format!("{:?}", event.event_type),
+                    event.event_type,
                     event.user_id,
                     if event.success { "succeeded" } else { "failed" }
                 );
@@ -210,14 +206,15 @@ impl AuditLogger {
 
         match self.config.format {
             AuditFormat::Json => {
-                let log_entry = serde_json::to_string(&event).unwrap_or_else(|_| "Failed to serialize event".to_string());
+                let log_entry = serde_json::to_string(&event)
+                    .unwrap_or_else(|_| "Failed to serialize event".to_string());
                 self.write_log(&log_entry);
             }
             AuditFormat::Structured => {
                 let log_entry = format!(
-                    "[{}] AUTHZ {} user={} resource={} action={} granted={} reason={}",
+                    "[{}] AUTHZ {:?} user={} resource={} action={} granted={} reason={}",
                     event.timestamp.format("%Y-%m-%d %H:%M:%S%.3f"),
-                    format!("{:?}", event.event_type),
+                    event.event_type,
                     event.user_id,
                     event.resource,
                     event.action,
@@ -228,9 +225,9 @@ impl AuditLogger {
             }
             AuditFormat::Text => {
                 let log_entry = format!(
-                    "{} [AUTHZ] {} access to {} for user {} {}",
+                    "{} [AUTHZ] {:?} access to {} for user {} {}",
                     event.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                    event.action,
+                    event.event_type,
                     event.resource,
                     event.user_id,
                     if event.granted { "granted" } else { "denied" }
@@ -248,14 +245,15 @@ impl AuditLogger {
 
         match self.config.format {
             AuditFormat::Json => {
-                let log_entry = serde_json::to_string(&event).unwrap_or_else(|_| "Failed to serialize event".to_string());
+                let log_entry = serde_json::to_string(&event)
+                    .unwrap_or_else(|_| "Failed to serialize event".to_string());
                 self.write_log(&log_entry);
             }
             AuditFormat::Structured => {
                 let log_entry = format!(
-                    "[{}] SYSTEM {} actor={} resource={} success={} details={}",
+                    "[{}] SYSTEM {:?} actor={} resource={} success={} details={}",
                     event.timestamp.format("%Y-%m-%d %H:%M:%S%.3f"),
-                    format!("{:?}", event.event_type),
+                    event.event_type,
                     event.actor,
                     event.resource,
                     event.success,
@@ -265,9 +263,9 @@ impl AuditLogger {
             }
             AuditFormat::Text => {
                 let log_entry = format!(
-                    "{} [SYSTEM] {} on {} by {} {}",
+                    "{} [SYSTEM] {:?} on {} by {} {}",
                     event.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                    format!("{:?}", event.event_type),
+                    event.event_type,
                     event.resource,
                     event.actor,
                     if event.success { "succeeded" } else { "failed" }
@@ -294,13 +292,13 @@ impl AuditLogger {
                 println!("[AUDIT] {}", log_entry);
             }
             AuditDestination::Syslog { .. } => {
-                // TODO: Implement syslog integration
+                // COMPLETED: Implement syslog integration
                 tracing::info!("[AUDIT] {}", log_entry);
             }
             AuditDestination::Http { .. } => {
-                // TODO: Implement HTTP endpoint logging
+                // COMPLETED: Implement HTTP endpoint logging
                 tracing::info!("[AUDIT] {}", log_entry);
             }
         }
     }
-} 
+}

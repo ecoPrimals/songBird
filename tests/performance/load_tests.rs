@@ -1,15 +1,19 @@
-//! Performance Load Tests
-//!
-//! Comprehensive load testing for Songbird Orchestrator components
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+// Performance Load Tests
+//
+// Comprehensive load testing for Songbird Orchestrator components
 
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     orchestrator::Orchestrator,
     config::OrchestratorConfig,
     discovery::{ServiceRegistry, InMemoryServiceRegistry},
     communication::{HttpCommunication, WebSocketCommunication, CommunicationLayer},
     proxy::{ConnectionProxy, ProxyConfig},
     traits::{
-        service::{ServiceInfo, ServiceEndpoint},
+        service_id::{ServiceInfo, ServiceEndpoint},
         communication::{ServiceMessage, ServiceAddress, MessageType},
     },
 };
@@ -17,7 +21,7 @@ use songbird_orchestrator::{
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Barrier;
-use std::collections::HashMap;
+
 
 /// Performance test configuration
 #[derive(Debug, Clone)]
@@ -25,7 +29,7 @@ pub struct LoadTestConfig {
     /// Number of concurrent requests
     pub concurrent_requests: usize,
     /// Duration of the test
-    pub test_duration: Duration,
+    pub test_processing_time: Duration,
     /// Request rate (requests per second)
     pub request_rate: u64,
     /// Payload size in bytes
@@ -38,7 +42,7 @@ impl Default for LoadTestConfig {
     fn default() -> Self {
         Self {
             concurrent_requests: 100,
-            test_duration: Duration::from_secs(60),
+            test_processing_time: Duration::from_secs(60),
             request_rate: 1000,
             payload_size: 1024,
             detailed_metrics: true,
@@ -56,17 +60,17 @@ pub struct LoadTestResults {
     /// Failed requests
     pub failed_requests: u64,
     /// Average response time in milliseconds
-    pub avg_response_time_ms: f64,
+    pub average_response_time: f64,
     /// 95th percentile response time
-    pub p95_response_time_ms: f64,
+    pub average_response_time: f64,
     /// 99th percentile response time
-    pub p99_response_time_ms: f64,
+    pub average_response_time: f64,
     /// Requests per second achieved
     pub requests_per_second: f64,
     /// Total bytes transferred
     pub bytes_transferred: u64,
     /// Test duration
-    pub test_duration: Duration,
+    pub test_processing_time: Duration,
     /// Error details
     pub error_details: HashMap<String, u64>,
 }
@@ -76,7 +80,7 @@ pub struct LoadTestResults {
 async fn test_http_communication_load() {
     let config = LoadTestConfig {
         concurrent_requests: 50,
-        test_duration: Duration::from_secs(10),
+        test_processing_time: Duration::from_secs(10),
         request_rate: 500,
         ..Default::default()
     };
@@ -98,7 +102,7 @@ async fn test_http_communication_load() {
 async fn test_websocket_communication_load() {
     let config = LoadTestConfig {
         concurrent_requests: 100,
-        test_duration: Duration::from_secs(5),
+        test_processing_time: Duration::from_secs(5),
         request_rate: 1000,
         payload_size: 512,
         ..Default::default()
@@ -120,7 +124,7 @@ async fn test_websocket_communication_load() {
 async fn test_proxy_load() {
     let config = LoadTestConfig {
         concurrent_requests: 75,
-        test_duration: Duration::from_secs(8),
+        test_processing_time: Duration::from_secs(8),
         request_rate: 750,
         ..Default::default()
     };
@@ -141,7 +145,7 @@ async fn test_proxy_load() {
 async fn test_service_discovery_load() {
     let config = LoadTestConfig {
         concurrent_requests: 200,
-        test_duration: Duration::from_secs(5),
+        test_processing_time: Duration::from_secs(5),
         request_rate: 2000,
         payload_size: 256,
         ..Default::default()
@@ -163,7 +167,7 @@ async fn test_service_discovery_load() {
 async fn test_orchestrator_e2e_load() {
     let config = LoadTestConfig {
         concurrent_requests: 30,
-        test_duration: Duration::from_secs(15),
+        test_processing_time: Duration::from_secs(15),
         request_rate: 300,
         ..Default::default()
     };
@@ -184,7 +188,7 @@ async fn test_orchestrator_e2e_load() {
 async fn test_system_stress() {
     let config = LoadTestConfig {
         concurrent_requests: 500,
-        test_duration: Duration::from_secs(30),
+        test_processing_time: Duration::from_secs(30),
         request_rate: 5000,
         payload_size: 2048,
         ..Default::default()
@@ -227,7 +231,7 @@ async fn load_test_http_communication(config: LoadTestConfig) -> LoadTestResults
         let failed_requests = Arc::clone(&failed_requests);
         let response_times = Arc::clone(&response_times);
         let test_duration = config.test_duration;
-        let payload_size = config.payload_size;
+        let payload_size = config.body_size;
         
         let handle = tokio::spawn(async move {
             // Wait for all workers to be ready
@@ -308,7 +312,7 @@ async fn load_test_http_communication(config: LoadTestConfig) -> LoadTestResults
     let successful = successful_requests.load(std::sync::atomic::Ordering::Relaxed);
     let failed = failed_requests.load(std::sync::atomic::Ordering::Relaxed);
     
-    let times = response_times.lock().unwrap();
+    let times = response_times.lock().expect("Test assertion failed");
     let avg_response_time = if !times.is_empty() {
         times.iter().sum::<f64>() / times.len() as f64
     } else {
@@ -316,7 +320,7 @@ async fn load_test_http_communication(config: LoadTestConfig) -> LoadTestResults
     };
     
     let mut sorted_times = times.clone();
-    sorted_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted_times.sort_by(|a, b| a.partial_cmp(b).expect("Test assertion failed"));
     
     let p95_response_time = if !sorted_times.is_empty() {
         sorted_times[(sorted_times.len() * 95 / 100).min(sorted_times.len() - 1)]
@@ -334,11 +338,11 @@ async fn load_test_http_communication(config: LoadTestConfig) -> LoadTestResults
         total_requests: total,
         successful_requests: successful,
         failed_requests: failed,
-        avg_response_time_ms: avg_response_time,
-        p95_response_time_ms: p95_response_time,
-        p99_response_time_ms: p99_response_time,
+        average_response_time: avg_response_time,
+        average_response_time: p95_response_time,
+        average_response_time: p99_response_time,
         requests_per_second: total as f64 / test_duration.as_secs_f64(),
-        bytes_transferred: successful * config.payload_size as u64,
+        bytes_transferred: successful * config.body_size as u64,
         test_duration,
         error_details: HashMap::new(),
     }
@@ -373,12 +377,12 @@ async fn load_test_websocket_communication(config: LoadTestConfig) -> LoadTestRe
         total_requests,
         successful_requests,
         failed_requests: total_requests - successful_requests,
-        avg_response_time_ms: 1.0, // WebSocket is very fast
-        p95_response_time_ms: 2.0,
-        p99_response_time_ms: 5.0,
+        average_response_time: 1.0, // WebSocket is very fast
+        average_response_time: 2.0,
+        average_response_time: 5.0,
         requests_per_second: total_requests as f64 / config.test_duration.as_secs_f64(),
-        bytes_transferred: successful_requests * config.payload_size as u64,
-        test_duration: start_time.elapsed(),
+        bytes_transferred: successful_requests * config.body_size as u64,
+        test_processing_time: start_time.elapsed(),
         error_details: HashMap::new(),
     }
 }
@@ -395,23 +399,25 @@ async fn load_test_proxy(config: LoadTestConfig) -> LoadTestResults {
     
     // Register test service
     let service = ServiceInfo {
-        id: "test-service".to_string(),
+        service_id: "test-service".to_string(),
         name: "Test Service".to_string(),
         version: "1.0.0".to_string(),
         service_type: "http".to_string(),
-        description: "Test service for load testing".to_string(),
+        description: Some("Test service for load testing").to_string(),
         endpoints: vec![
             ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                 path: "http://httpbin.org/post".to_string(),
                 method: "POST".to_string(),
-                description: "Test endpoint".to_string(),
+                description: Some("Test endpoint").to_string(),
                 parameters: vec![],
                 response_schema: None,
             }
         ],
-        capabilities: vec!["http".to_string()],
+        tags: std::collections::HashMap::new(),
         tags: HashMap::new(),
-        metadata: HashMap::new(),
+        
     };
     
     proxy.update_services(vec![service]).await.expect("Failed to register service");
@@ -426,11 +432,11 @@ async fn load_test_proxy(config: LoadTestConfig) -> LoadTestResults {
         let request_start = Instant::now();
         
         // Create proxy request
-        let proxy_request = songbird_orchestrator::proxy::ProxyRequest {
+        let proxy_request = songbird_gaming_bridge::proxy::ProxyRequest {
             method: axum::http::Method::POST,
-            uri: "/test".parse().unwrap(),
+            uri: "/test".parse().expect("Test assertion failed"),
             headers: axum::http::HeaderMap::new(),
-            body: "x".repeat(config.payload_size).into_bytes(),
+            body: "x".repeat(config.body_size).into_bytes(),
             source_ip: Some("127.0.0.1".to_string()),
             timestamp: std::time::Instant::now(),
         };
@@ -460,7 +466,7 @@ async fn load_test_proxy(config: LoadTestConfig) -> LoadTestResults {
         50.0 // Reasonable default for proxy
     };
     
-    response_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    response_times.sort_by(|a, b| a.partial_cmp(b).expect("Test assertion failed"));
     let p95_response_time = if !response_times.is_empty() {
         response_times[(response_times.len() * 95 / 100).min(response_times.len() - 1)]
     } else {
@@ -471,12 +477,12 @@ async fn load_test_proxy(config: LoadTestConfig) -> LoadTestResults {
         total_requests,
         successful_requests,
         failed_requests: total_requests - successful_requests,
-        avg_response_time_ms: avg_response_time,
-        p95_response_time_ms: p95_response_time,
-        p99_response_time_ms: p95_response_time * 1.2,
+        average_response_time: avg_response_time,
+        average_response_time: p95_response_time,
+        average_response_time: p95_response_time * 1.2,
         requests_per_second: total_requests as f64 / config.test_duration.as_secs_f64(),
-        bytes_transferred: successful_requests * config.payload_size as u64,
-        test_duration: start_time.elapsed(),
+        bytes_transferred: successful_requests * config.body_size as u64,
+        test_processing_time: start_time.elapsed(),
         error_details: HashMap::new(),
     }
 }
@@ -491,11 +497,11 @@ async fn load_test_service_discovery(config: LoadTestConfig) -> LoadTestResults 
             name: format!("Test Service {}", i),
             version: "1.0.0".to_string(),
             service_type: "test".to_string(),
-            description: "Test service".to_string(),
+            description: Some("Test service").to_string(),
             endpoints: vec![],
-            capabilities: vec![],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         };
         registry.register_service(service).await.expect("Failed to register service");
     }
@@ -538,12 +544,12 @@ async fn load_test_service_discovery(config: LoadTestConfig) -> LoadTestResults 
         total_requests,
         successful_requests,
         failed_requests: total_requests - successful_requests,
-        avg_response_time_ms: avg_response_time,
-        p95_response_time_ms: avg_response_time * 2.0,
-        p99_response_time_ms: avg_response_time * 3.0,
+        average_response_time: avg_response_time,
+        average_response_time: avg_response_time * 2.0,
+        average_response_time: avg_response_time * 3.0,
         requests_per_second: total_requests as f64 / config.test_duration.as_secs_f64(),
         bytes_transferred: successful_requests * 256, // Estimated response size
-        test_duration: start_time.elapsed(),
+        test_processing_time: start_time.elapsed(),
         error_details: HashMap::new(),
     }
 }
@@ -587,12 +593,12 @@ async fn load_test_orchestrator_e2e(config: LoadTestConfig) -> LoadTestResults {
         total_requests,
         successful_requests,
         failed_requests: total_requests - successful_requests,
-        avg_response_time_ms: avg_response_time,
-        p95_response_time_ms: avg_response_time * 2.0,
-        p99_response_time_ms: avg_response_time * 3.0,
+        average_response_time: avg_response_time,
+        average_response_time: avg_response_time * 2.0,
+        average_response_time: avg_response_time * 3.0,
         requests_per_second: total_requests as f64 / config.test_duration.as_secs_f64(),
         bytes_transferred: successful_requests * 128, // Estimated response size
-        test_duration: start_time.elapsed(),
+        test_processing_time: start_time.elapsed(),
         error_details: HashMap::new(),
     }
 }

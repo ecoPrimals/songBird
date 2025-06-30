@@ -1,7 +1,7 @@
 /*!
  * Federation Demo - Songbird Orchestrator
  *
- * Demonstrates federation capabilities:
+ * Demonstrates federation tags:
  * - Standalone mode operation
  * - Cluster mode federation
  * - Federation status monitoring
@@ -11,11 +11,11 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
-use songbird_orchestrator::{
-    orchestrator::{Orchestrator, DiscoveryBackend},
+use songbird_gaming_bridge::{
     config::OrchestratorConfig,
-    discovery::{SongbirdDiscoveryConfig, NodeType},
-    traits::discovery::{ServiceQuery, ServiceHealthStatus},
+    discovery::{NodeType, SongbirdDiscoveryConfig},
+    orchestrator::{DiscoveryBackend, Orchestrator},
+    traits::discovery::{ServiceHealthStatus, ServiceQuery},
 };
 
 /// Demo service for testing federation
@@ -57,15 +57,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         node_discovery_interval_secs: 60,
         trust_verification_enabled: true,
         max_federation_nodes: 1000,
-        network: songbird_orchestrator::discovery::NetworkConfig::default(),
-        monitoring: songbird_orchestrator::discovery::MonitoringConfig::default(),
-        trust: songbird_orchestrator::discovery::TrustConfig::default(),
+        network: songbird_gaming_bridge::discovery::NetworkConfig::default(),
+        monitoring: songbird_gaming_bridge::discovery::MonitoringConfig::default(),
+        trust: songbird_gaming_bridge::discovery::TrustConfig::default(),
     };
 
     let mit_orchestrator = Orchestrator::new_with_discovery(
         config.clone(),
         DiscoveryBackend::Songbird(mit_songbird_config),
-    ).await?;
+    )
+    .await?;
 
     println!("✅ MIT orchestrator created with federation enabled");
 
@@ -80,30 +81,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         node_discovery_interval_secs: 60,
         trust_verification_enabled: true,
         max_federation_nodes: 1000,
-        network: songbird_orchestrator::discovery::NetworkConfig::default(),
-        monitoring: songbird_orchestrator::discovery::MonitoringConfig::default(),
-        trust: songbird_orchestrator::discovery::TrustConfig::default(),
+        network: songbird_gaming_bridge::discovery::NetworkConfig::default(),
+        monitoring: songbird_gaming_bridge::discovery::MonitoringConfig::default(),
+        trust: songbird_gaming_bridge::discovery::TrustConfig::default(),
     };
 
     let harvard_orchestrator = Orchestrator::new_with_discovery(
         config.clone(),
         DiscoveryBackend::Songbird(harvard_songbird_config),
-    ).await?;
+    )
+    .await?;
 
     println!("✅ Harvard orchestrator created with federation enabled");
 
     // Demo 3: NIH Gateway Node
     println!("\n🏛️ Creating NIH Gateway Node...");
-    let nih_orchestrator = Orchestrator::new_with_federation(
-        config.clone(),
-        Some("NIH".to_string()),
-    ).await?;
+    let nih_orchestrator =
+        Orchestrator::new_with_federation(config.clone(), Some("NIH".to_string())).await?;
 
     println!("✅ NIH gateway orchestrator created");
 
     // Start orchestrators
     println!("\n🚀 Starting Federation Nodes...");
-    
+
     let mit_start = mit_orchestrator.start();
     let harvard_start = harvard_orchestrator.start();
     let nih_start = nih_orchestrator.start();
@@ -121,14 +121,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Register a genomics service on MIT node
     if let Some(mit_songbird) = mit_orchestrator.songbird_discovery() {
-        let genomics_service = songbird_orchestrator::traits::service::ServiceInfo {
+        let genomics_service = songbird_gaming_bridge::traits::service_id::ServiceInfo {
             id: "mit-genomics-pipeline".to_string(),
             name: "MIT Genomics Analysis Pipeline".to_string(),
             version: "3.1.0".to_string(),
             service_type: "scientific-computing".to_string(),
-            description: "High-throughput genomics analysis with AI acceleration".to_string(),
+            description: Some("High-throughput genomics analysis with AI acceleration").to_string(),
             endpoints: vec![],
-            capabilities: vec![
+            tags: vec![
                 "variant-calling".to_string(),
                 "genome-assembly".to_string(),
                 "ai-annotation".to_string(),
@@ -140,26 +140,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tags.insert("domain".to_string(), "genomics".to_string());
                 tags.insert("gpu-accelerated".to_string(), "true".to_string());
                 tags.insert("min-memory-gb".to_string(), "128".to_string());
-                tags.insert("requires-dataset".to_string(), "human-genome-ref".to_string());
+                tags.insert(
+                    "requires-dataset".to_string(),
+                    "human-genome-ref".to_string(),
+                );
                 tags
             },
             metadata: std::collections::HashMap::new(),
         };
 
-        mit_orchestrator.discovery().register(genomics_service).await?;
+        mit_orchestrator
+            .discovery()
+            .register(genomics_service)
+            .await?;
         println!("✅ Registered genomics service on MIT node");
     }
 
     // Register a protein folding service on Harvard node
     if let Some(harvard_songbird) = harvard_orchestrator.songbird_discovery() {
-        let protein_service = songbird_orchestrator::traits::service::ServiceInfo {
+        let protein_service = songbird_gaming_bridge::traits::service_id::ServiceInfo {
             id: "harvard-alphafold".to_string(),
             name: "Harvard AlphaFold Service".to_string(),
             version: "2.3.0".to_string(),
             service_type: "scientific-computing".to_string(),
-            description: "Protein structure prediction using AlphaFold".to_string(),
+            description: Some("Protein structure prediction using AlphaFold").to_string(),
             endpoints: vec![],
-            capabilities: vec![
+            tags: vec![
                 "structure-prediction".to_string(),
                 "molecular-dynamics".to_string(),
                 "drug-discovery".to_string(),
@@ -175,36 +181,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             metadata: std::collections::HashMap::new(),
         };
 
-        harvard_orchestrator.discovery().register(protein_service).await?;
+        harvard_orchestrator
+            .discovery()
+            .register(protein_service)
+            .await?;
         println!("✅ Registered protein folding service on Harvard node");
     }
 
     // Test cross-institution service discovery
     println!("\n🔍 Testing Cross-Institution Service Discovery...");
-    
+
     // MIT discovers all genomics services across federation
     let genomics_query = ServiceQuery::new()
         .with_tag("domain".to_string())
         .with_metadata("domain".to_string(), "genomics".into());
-    
+
     let genomics_services = mit_orchestrator.discover_services(genomics_query).await?;
-    println!("   MIT found {} genomics services across federation", genomics_services.len());
-    
+    println!(
+        "   MIT found {} genomics services across federation",
+        genomics_services.len()
+    );
+
     for service in &genomics_services {
-        println!("   - {} v{} ({})", service.name, service.version, 
-                service.tags.get("institution").unwrap_or(&"Unknown".to_string()));
+        println!(
+            "   - {} v{} ({})",
+            service.name,
+            service.version,
+            service
+                .tags
+                .get("institution")
+                .unwrap_or(&"Unknown".to_string())
+        );
     }
 
     // Harvard discovers all scientific computing services
-    let science_query = ServiceQuery::new()
-        .with_service_type("scientific-computing".to_string());
-    
-    let science_services = harvard_orchestrator.discover_services(science_query).await?;
-    println!("\n   Harvard found {} scientific computing services", science_services.len());
-    
+    let science_query = ServiceQuery::new().with_service_type("scientific-computing".to_string());
+
+    let science_services = harvard_orchestrator
+        .discover_services(science_query)
+        .await?;
+    println!(
+        "\n   Harvard found {} scientific computing services",
+        science_services.len()
+    );
+
     for service in &science_services {
-        println!("   - {} v{} ({})", service.name, service.version,
-                service.tags.get("institution").unwrap_or(&"Unknown".to_string()));
+        println!(
+            "   - {} v{} ({})",
+            service.name,
+            service.version,
+            service
+                .tags
+                .get("institution")
+                .unwrap_or(&"Unknown".to_string())
+        );
     }
 
     // Test Songbird-specific federation features
@@ -216,9 +246,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("   📊 Federation Health:");
         println!("      Total Nodes: {}", federation_health.total_nodes);
         println!("      Total Services: {}", federation_health.total_services);
-        println!("      Overall Health: {:.1}%", federation_health.federation_health * 100.0);
-        println!("      Average Trust Score: {:.2}", federation_health.average_trust_score);
-        println!("      Total CPU Cores: {}", federation_health.total_cpu_cores);
+        println!(
+            "      Overall Health: {:.1}%",
+            federation_health.federation_health * 100.0
+        );
+        println!(
+            "      Average Trust Score: {:.2}",
+            federation_health.average_trust_score
+        );
+        println!(
+            "      Total CPU Cores: {}",
+            federation_health.total_cpu_cores
+        );
 
         // Note: get_network_topology method not available, using federation stats instead
         let topology_info = mit_songbird.get_federation_stats().await;
@@ -227,28 +266,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("      Compute Nodes: {}", topology_info.compute_nodes);
         println!("      Storage Nodes: {}", topology_info.storage_nodes);
         println!("      Gateway Nodes: {}", topology_info.gateway_nodes);
-        
+
         // Note: Network partitions info not available in FederationStats
         println!("      Network Status: Healthy (no partition data available)");
 
         // Test trust verification
-        let nodes = mit_songbird.get_trusted_nodes(
-            songbird_orchestrator::discovery::TrustLevel::Institutional
-        ).await?;
+        let nodes = mit_songbird
+            .get_trusted_nodes(songbird_gaming_bridge::discovery::TrustLevel::Institutional)
+            .await?;
         println!("\n   🔒 Trusted Institutional Nodes: {}", nodes.len());
-        
+
         for node in &nodes {
-            println!("      - {} ({}) - Trust: {:?}, Reputation: {:.2}", 
-                    node.id, 
-                    node.institution.as_deref().unwrap_or("Unknown"),
-                    node.trust_level,
-                    node.reputation_score);
+            println!(
+                "      - {} ({}) - Trust: {:?}, Reputation: {:.2}",
+                node.id,
+                node.institution.as_deref().unwrap_or("Unknown"),
+                node.trust_level,
+                node.reputation_score
+            );
         }
     }
 
     // Test communication across federation
     println!("\n📡 Testing Multi-Protocol Communication...");
-    
+
     let comm_stats = mit_orchestrator.get_communication_stats().await?;
     println!("   Messages Sent: {}", comm_stats.messages_sent);
     println!("   Messages Received: {}", comm_stats.messages_received);
@@ -257,7 +298,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test load balancer integration
     println!("\n⚖️ Testing Load Balancer Integration...");
-    
+
     let lb_stats = mit_orchestrator.get_load_balancer_stats().await?;
     println!("   Total Requests: {}", lb_stats.total_requests);
     println!("   Successful Requests: {}", lb_stats.successful_requests);
@@ -267,17 +308,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Simulate some federation activity
     println!("\n🔄 Simulating Federation Activity...");
-    
+
     // Update service health
-    mit_orchestrator.update_service_health_in_discovery(
-        "mit-genomics-pipeline",
-        ServiceHealthStatus::Healthy,
-    ).await?;
-    
-    harvard_orchestrator.update_service_health_in_discovery(
-        "harvard-alphafold",
-        ServiceHealthStatus::Healthy,
-    ).await?;
+    mit_orchestrator
+        .update_service_health_in_discovery("mit-genomics-pipeline", ServiceHealthStatus::Healthy)
+        .await?;
+
+    harvard_orchestrator
+        .update_service_health_in_discovery("harvard-alphafold", ServiceHealthStatus::Healthy)
+        .await?;
 
     println!("✅ Updated service health across federation");
 
@@ -286,7 +325,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Final federation statistics
     println!("\n📈 Final Federation Statistics:");
-    
+
     if let Some(nih_songbird) = nih_orchestrator.songbird_discovery() {
         let final_stats = nih_songbird.get_federation_stats().await;
         println!("   📊 NIH Gateway View:");
@@ -295,7 +334,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("      Compute Nodes: {}", final_stats.compute_nodes);
         println!("      Total CPU Cores: {}", final_stats.total_cpu_cores);
         println!("      Total Memory: {} GB", final_stats.total_memory_gb);
-        println!("      Total Storage: {} TB", final_stats.total_storage_gb / 1000);
+        println!(
+            "      Total Storage: {} TB",
+            final_stats.total_storage_gb / 1000
+        );
     }
 
     println!("\n🎉 Federation Demo Complete!");
@@ -304,12 +346,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Real-time federation health monitoring active");
     println!("✅ Multi-protocol communication established");
     println!("✅ Advanced resource-aware node selection functional");
-    
+
     println!("\n🌟 Songbird Orchestrator: Beyond Alpha - Production Ready!");
 
     // Graceful shutdown
     println!("\n🛑 Shutting down federation nodes...");
-    
+
     let mit_stop = mit_orchestrator.stop();
     let harvard_stop = harvard_orchestrator.stop();
     let nih_stop = nih_orchestrator.stop();

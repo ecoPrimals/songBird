@@ -1,29 +1,33 @@
-//! Chaos Engineering Tests
-//!
-//! Fault injection and resilience testing for Songbird Orchestrator
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+// Chaos Engineering Tests
+//
+// Fault injection and resilience testing for Songbird Orchestrator
 
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     orchestrator::Orchestrator,
     config::OrchestratorConfig,
     discovery::{ServiceRegistry, InMemoryServiceRegistry},
     communication::{HttpCommunication, CommunicationLayer, CircuitBreaker, CircuitBreakerConfig},
     proxy::{ConnectionProxy, ProxyConfig},
     traits::{
-        service::{ServiceInfo, ServiceEndpoint},
+        service_id::{ServiceInfo, ServiceEndpoint},
         communication::{ServiceMessage, ServiceAddress, MessageType},
     },
 };
 
 use std::sync::{Arc, atomic::{AtomicBool, AtomicU64, Ordering}};
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
+
 use tokio::time::timeout;
 
 /// Chaos test configuration
 #[derive(Debug, Clone)]
 pub struct ChaosConfig {
     /// Duration of chaos injection
-    pub chaos_duration: Duration,
+    pub chaos_processing_time: Duration,
     /// Failure rate (0.0 to 1.0)
     pub failure_rate: f64,
     /// Network delay simulation
@@ -39,7 +43,7 @@ pub struct ChaosConfig {
 impl Default for ChaosConfig {
     fn default() -> Self {
         Self {
-            chaos_duration: Duration::from_secs(30),
+            chaos_processing_time: Duration::from_secs(30),
             failure_rate: 0.1, // 10% failure rate
             network_delay: Some(Duration::from_millis(100)),
             memory_pressure: false,
@@ -113,7 +117,7 @@ async fn test_network_partition_resilience() {
     println!("🌐 Testing Network Partition Resilience");
     
     let chaos_config = ChaosConfig {
-        chaos_duration: Duration::from_secs(10),
+        chaos_processing_time: Duration::from_secs(10),
         failure_rate: 0.8, // High failure rate to simulate partition
         network_delay: Some(Duration::from_millis(500)),
         ..Default::default()
@@ -140,7 +144,7 @@ async fn test_service_failure_recovery() {
     println!("🔧 Testing Service Failure and Recovery");
     
     let chaos_config = ChaosConfig {
-        chaos_duration: Duration::from_secs(15),
+        chaos_processing_time: Duration::from_secs(15),
         service_kill_rate: 0.3, // 30% chance of service failure
         failure_rate: 0.2,
         ..Default::default()
@@ -168,7 +172,7 @@ async fn test_high_load_with_failures() {
     println!("🚀 Testing High Load with Random Failures");
     
     let chaos_config = ChaosConfig {
-        chaos_duration: Duration::from_secs(20),
+        chaos_processing_time: Duration::from_secs(20),
         failure_rate: 0.15, // 15% random failure rate
         network_delay: Some(Duration::from_millis(50)),
         memory_pressure: true,
@@ -196,7 +200,7 @@ async fn test_proxy_chaos_resilience() {
     println!("🌐 Testing Proxy Resilience Under Chaos");
     
     let chaos_config = ChaosConfig {
-        chaos_duration: Duration::from_secs(12),
+        chaos_processing_time: Duration::from_secs(12),
         failure_rate: 0.25, // 25% failure rate
         network_delay: Some(Duration::from_millis(200)),
         ..Default::default()
@@ -221,7 +225,7 @@ async fn test_discovery_chaos_resilience() {
     println!("🔍 Testing Service Discovery Resilience Under Chaos");
     
     let chaos_config = ChaosConfig {
-        chaos_duration: Duration::from_secs(8),
+        chaos_processing_time: Duration::from_secs(8),
         failure_rate: 0.3, // 30% failure rate
         service_kill_rate: 0.2, // 20% service kill rate
         ..Default::default()
@@ -283,7 +287,7 @@ async fn simulate_network_partition(config: ChaosConfig) -> ChaosResults {
                     id: format!("chaos-test-{}", total_ops.load(Ordering::Relaxed)),
                     message_type: MessageType::Request,
                     topic: "chaos-test".to_string(),
-                    payload: serde_json::json!({"test": "data"}),
+                    body: serde_json::json!({"test": "data"}),
                     timestamp: chrono::Utc::now(),
                     correlation_id: None,
                     ttl: Some(Duration::from_secs(5)),
@@ -347,7 +351,7 @@ async fn simulate_network_partition(config: ChaosConfig) -> ChaosResults {
             id: format!("recovery-test-{}", recovery_attempts),
             message_type: MessageType::Request,
             topic: "recovery-test".to_string(),
-            payload: serde_json::json!({"test": "recovery"}),
+            body: serde_json::json!({"test": "recovery"}),
             timestamp: chrono::Utc::now(),
             correlation_id: None,
             ttl: Some(Duration::from_secs(10)),
@@ -394,11 +398,11 @@ async fn simulate_service_failures(config: ChaosConfig) -> ChaosResults {
             name: format!("Test Service {}", i),
             version: "1.0.0".to_string(),
             service_type: "test".to_string(),
-            description: "Test service for chaos testing".to_string(),
+            description: Some("Test service for chaos testing").to_string(),
             endpoints: vec![],
-            capabilities: vec![],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         };
         registry.register_service(service).await.expect("Failed to register service");
     }
@@ -448,11 +452,11 @@ async fn simulate_service_failures(config: ChaosConfig) -> ChaosResults {
             name: format!("Recovered Service {}", i),
             version: "1.0.1".to_string(),
             service_type: "test".to_string(),
-            description: "Recovered test service".to_string(),
+            description: Some("Recovered test service").to_string(),
             endpoints: vec![],
-            capabilities: vec![],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         };
         registry.register_service(service).await.expect("Failed to re-register service");
     }
@@ -577,19 +581,21 @@ async fn simulate_proxy_chaos(config: ChaosConfig) -> ChaosResults {
         name: "Chaos Test Service".to_string(),
         version: "1.0.0".to_string(),
         service_type: "http".to_string(),
-        description: "Service for chaos testing".to_string(),
+        description: Some("Service for chaos testing").to_string(),
         endpoints: vec![
             ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                 path: "http://httpbin.org/post".to_string(),
                 method: "POST".to_string(),
-                description: "Test endpoint".to_string(),
+                description: Some("Test endpoint").to_string(),
                 parameters: vec![],
                 response_schema: None,
             }
         ],
-        capabilities: vec!["http".to_string()],
+        tags: std::collections::HashMap::new(),
         tags: HashMap::new(),
-        metadata: HashMap::new(),
+        
     };
     
     proxy.update_services(vec![service]).await.expect("Failed to register service");
@@ -605,9 +611,9 @@ async fn simulate_proxy_chaos(config: ChaosConfig) -> ChaosResults {
         total_operations.fetch_add(1, Ordering::Relaxed);
         
         // Create proxy request
-        let proxy_request = songbird_orchestrator::proxy::ProxyRequest {
+        let proxy_request = songbird_gaming_bridge::proxy::ProxyRequest {
             method: axum::http::Method::POST,
-            uri: "/chaos-test".parse().unwrap(),
+            uri: "/chaos-test".parse().expect("Test assertion failed"),
             headers: axum::http::HeaderMap::new(),
             body: b"chaos test data".to_vec(),
             source_ip: Some("127.0.0.1".to_string()),
@@ -664,11 +670,11 @@ async fn simulate_discovery_chaos(config: ChaosConfig) -> ChaosResults {
             name: format!("Chaos Service {}", i),
             version: "1.0.0".to_string(),
             service_type: "chaos".to_string(),
-            description: "Service for chaos testing".to_string(),
+            description: Some("Service for chaos testing").to_string(),
             endpoints: vec![],
-            capabilities: vec![],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         };
         registry.register_service(service).await.expect("Failed to register service");
     }
@@ -722,11 +728,11 @@ async fn simulate_discovery_chaos(config: ChaosConfig) -> ChaosResults {
             name: format!("Recovered Chaos Service {}", i),
             version: "1.0.1".to_string(),
             service_type: "chaos".to_string(),
-            description: "Recovered service".to_string(),
+            description: Some("Recovered service").to_string(),
             endpoints: vec![],
-            capabilities: vec![],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         };
         registry.register_service(service).await.expect("Failed to re-register service");
     }

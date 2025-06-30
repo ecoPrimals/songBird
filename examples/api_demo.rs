@@ -4,7 +4,7 @@
 //! communication, and monitoring in the Songbird Orchestrator.
 
 use chrono::Utc;
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     api::start_server as start_api_server,
     communication::{WebSocketCommunication, WebSocketConfig},
     traits::communication::CommunicationLayer,
@@ -297,7 +297,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Final status
     println!("\n📊 Final Status:");
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     println!(
         "   - Orchestrator uptime: {} seconds",
         metrics.uptime_seconds

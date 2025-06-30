@@ -1,12 +1,16 @@
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
 use chrono::Utc;
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     scalability::{
         InstanceHealth, LoadBalancingAlgorithm, LoadBalancingConfig, PerformanceConfig,
         PerformanceMetrics, PerformanceThresholds, ResourceConfig, ResourcePool, ResourceUsage,
-        ScalabilityConfig, ScalabilityManager, ScalingAction, ScalingGroup,
-        ScalingStrategy, ServiceInstance, ServiceScalingConfig,
+        ScalabilityConfig, ScalabilityManager, ScalingAction, ScalingGroup, ScalingStrategy,
+        ServiceInstance, ServiceScalingConfig,
     },
-    traits::service::ServiceInfo,
+    traits::service_id::ServiceInfo,
 };
 use std::time::Duration;
 
@@ -17,9 +21,9 @@ fn create_test_service_instance(id: &str, healthy: bool) -> ServiceInstance {
             name: format!("Test Service {}", id),
             version: "1.0.0".to_string(),
             service_type: "test".to_string(),
-            description: "Test service".to_string(),
+            description: Some("Test service").to_string(),
             endpoints: vec![],
-            capabilities: vec![],
+            tags: std::collections::HashMap::new(),
             tags: std::collections::HashMap::new(),
             metadata: std::collections::HashMap::new(),
         },
@@ -80,7 +84,7 @@ async fn test_scalability_manager_creation() {
     let config = create_test_scalability_config();
     let manager = ScalabilityManager::new(config);
 
-    assert!(manager.config.enabled);
+    assert!(manager.config.mode == crate::federation::FederationMode::Peer);
     assert!(matches!(
         manager.config.strategy,
         ScalingStrategy::Automatic
@@ -167,7 +171,10 @@ async fn test_scaling_group_remove_instance() {
 
     let mut instance = create_test_service_instance("instance-1", true);
     instance.instance_id = "test-instance-id".to_string();
-    group.add_instance(instance).await.unwrap();
+    group
+        .add_instance(instance)
+        .await
+        .expect("Test assertion failed");
 
     let result = group.remove_instance("test-instance-id").await;
     assert!(result.is_ok());
@@ -189,8 +196,14 @@ async fn test_scaling_group_get_healthy_instances() {
     let healthy_instance = create_test_service_instance("instance1", true);
     let unhealthy_instance = create_test_service_instance("instance2", false);
 
-    group.add_instance(healthy_instance).await.unwrap();
-    group.add_instance(unhealthy_instance).await.unwrap();
+    group
+        .add_instance(healthy_instance)
+        .await
+        .expect("Test assertion failed");
+    group
+        .add_instance(unhealthy_instance)
+        .await
+        .expect("Test assertion failed");
 
     let healthy_instances = group.get_healthy_instances();
     assert_eq!(healthy_instances.len(), 1);
@@ -237,11 +250,11 @@ async fn test_scaling_decision_scale_up() {
     manager
         .add_scaling_group("test-service".to_string(), group)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
 
     // Create metrics that should trigger scale up
     let metrics = PerformanceMetrics {
-        avg_response_time_ms: 1500,
+        average_response_time: 1500,
         throughput_rps: 150,
         error_rate: 0.02,
         cpu_utilization: 85.0, // Above max threshold (80%)
@@ -252,7 +265,7 @@ async fn test_scaling_decision_scale_up() {
     let decision = manager
         .make_scaling_decision("test-service", &metrics)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
     assert!(matches!(decision.action, ScalingAction::ScaleUp));
     assert_eq!(decision.target_instances, 1); // 0 + 1 = 1
 }
@@ -276,20 +289,20 @@ async fn test_scaling_decision_scale_down() {
     group
         .add_instance(create_test_service_instance("instance1", true))
         .await
-        .unwrap();
+        .expect("Test assertion failed");
     group
         .add_instance(create_test_service_instance("instance2", true))
         .await
-        .unwrap();
+        .expect("Test assertion failed");
 
     manager
         .add_scaling_group("test-service".to_string(), group)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
 
     // Create metrics that should trigger scale down
     let metrics = PerformanceMetrics {
-        avg_response_time_ms: 200,
+        average_response_time: 200,
         throughput_rps: 50,
         error_rate: 0.01,
         cpu_utilization: 20.0, // Low utilization
@@ -300,7 +313,7 @@ async fn test_scaling_decision_scale_down() {
     let decision = manager
         .make_scaling_decision("test-service", &metrics)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
     assert!(matches!(decision.action, ScalingAction::ScaleDown));
     assert_eq!(decision.target_instances, 1); // 2 - 1 = 1
 }
@@ -322,16 +335,16 @@ async fn test_scaling_decision_no_action() {
     group
         .add_instance(create_test_service_instance("instance1", true))
         .await
-        .unwrap();
+        .expect("Test assertion failed");
 
     manager
         .add_scaling_group("test-service".to_string(), group)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
 
     // Create metrics that should not trigger scaling
     let metrics = PerformanceMetrics {
-        avg_response_time_ms: 500,
+        average_response_time: 500,
         throughput_rps: 100,
         error_rate: 0.02,
         cpu_utilization: 60.0, // Within acceptable range
@@ -342,7 +355,7 @@ async fn test_scaling_decision_no_action() {
     let decision = manager
         .make_scaling_decision("test-service", &metrics)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
     assert!(matches!(decision.action, ScalingAction::NoAction));
     assert_eq!(decision.target_instances, 1); // No change
 }
@@ -353,7 +366,7 @@ async fn test_scaling_decision_nonexistent_service() {
     let manager = ScalabilityManager::new(config);
 
     let metrics = PerformanceMetrics {
-        avg_response_time_ms: 500,
+        average_response_time: 500,
         throughput_rps: 100,
         error_rate: 0.02,
         cpu_utilization: 60.0,
@@ -370,7 +383,7 @@ async fn test_scalability_manager_get_stats() {
     let config = create_test_scalability_config();
     let manager = ScalabilityManager::new(config);
 
-    let stats = manager.get_stats().await.unwrap();
+    let stats = manager.get_stats().await.expect("Test assertion failed");
     assert_eq!(stats.total_instances, 0);
     assert_eq!(stats.healthy_instances, 0);
     assert_eq!(stats.total_requests, 0);
@@ -479,7 +492,7 @@ async fn test_resource_usage_creation() {
     let usage = ResourceUsage {
         cpu_percentage: 75.0,
         memory_usage_mb: 1024,
-        network_bytes_per_sec: 104857600, // 100 Mbps
+        network_bytes_per_sec: 104857600,  // 100 Mbps
         disk_io_bytes_per_sec: 5368709120, // 5 GB/s
     };
 
@@ -506,13 +519,16 @@ async fn test_scaling_decision_making() {
     let high_usage = ResourceUsage {
         cpu_percentage: 85.0,
         memory_usage_mb: 512,
-        network_bytes_per_sec: 1048576, // 1 MB/s
+        network_bytes_per_sec: 1048576,  // 1 MB/s
         disk_io_bytes_per_sec: 10485760, // 10 MB/s
     };
 
     let instance = create_test_service_instance("instance-1", true);
-    group.add_instance(instance).await.unwrap();
-    
+    group
+        .add_instance(instance)
+        .await
+        .expect("Test assertion failed");
+
     // Note: should_scale method may not exist, so we'll skip this test for now
     // let decision = group.should_scale(&high_usage);
     // assert_eq!(decision, ScalingAction::ScaleUp);
@@ -563,7 +579,10 @@ async fn test_scalability_manager() {
     };
 
     let group = ScalingGroup::new("test-service".to_string(), scaling_config);
-    manager.add_scaling_group("test-service".to_string(), group).await.unwrap();
+    manager
+        .add_scaling_group("test-service".to_string(), group)
+        .await
+        .expect("Test assertion failed");
 
     // Note: get_scaling_group method may not exist, so we'll skip this assertion
     // assert!(manager.get_scaling_group("test-service").is_some());
@@ -574,7 +593,7 @@ async fn test_resource_usage_calculation() {
     let usage = ResourceUsage {
         cpu_percentage: 75.0,
         memory_usage_mb: 1024,
-        network_bytes_per_sec: 104857600, // 100 Mbps
+        network_bytes_per_sec: 104857600,  // 100 Mbps
         disk_io_bytes_per_sec: 5368709120, // 5 GB/s
     };
 
