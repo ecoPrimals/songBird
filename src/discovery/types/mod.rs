@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
 use crate::traits::discovery::ServiceHealthStatus;
 use crate::traits::service::ServiceInfo;
 
@@ -12,31 +13,20 @@ pub type NodeId = String;
 pub enum FederationMessage {
     /// Node announces itself to the federation
     NodeAnnouncement {
-        node: NodeInfo,
+        node: Box<NodeInfo>,
         timestamp: DateTime<Utc>,
     },
     /// Request for node information
-    NodeDiscoveryRequest {
-        sender_id: NodeId,
-        timestamp: DateTime<Utc>,
-    },
+    NodeDiscoveryRequest { sender_id: NodeId },
     /// Response to discovery request
-    NodeDiscoveryResponse {
-        nodes: Vec<NodeInfo>,
-        timestamp: DateTime<Utc>,
-    },
+    NodeDiscoveryResponse { nodes: Vec<NodeInfo> },
     /// Periodic heartbeat
     Heartbeat {
         node_id: NodeId,
         resource_usage: ResourceUsage,
-        timestamp: DateTime<Utc>,
     },
     /// Service advertisement
-    ServiceAdvertisement {
-        node_id: NodeId,
-        services: Vec<ServiceInfo>,
-        timestamp: DateTime<Utc>,
-    },
+    ServiceAdvertisement { services: Vec<ServiceInfo> },
 }
 
 /// Local node information
@@ -55,27 +45,26 @@ pub struct LocalNode {
 pub struct NodeInfo {
     /// Basic identification
     pub id: NodeId,
-    pub address: String,
     pub node_type: NodeType,
     pub institution: Option<String>,
-    
+    pub address: String,
+
     /// Compute capabilities
     pub resources: ComputeResources,
     pub current_load: ResourceUsage,
-    
+
     /// Data capabilities  
     pub available_datasets: Vec<DatasetInfo>,
     pub storage_capacity: StorageInfo,
-    
+
     /// Federation metadata
     pub trust_level: TrustLevel,
     pub reputation_score: f64,
-    
+
     /// Network optimization
-    pub network_location: NetworkLocation,
     pub bandwidth_measurements: HashMap<NodeId, f64>, // Mbps
-    pub latency_measurements: HashMap<NodeId, f64>,   // ms
-    
+    pub latency_measurements: HashMap<NodeId, f64>, // ms
+
     /// Operational
     pub last_seen: DateTime<Utc>,
     pub health_status: ServiceHealthStatus,
@@ -112,8 +101,8 @@ pub struct ComputeResources {
 /// GPU information for scientific computing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuInfo {
-    pub model: String,        // "NVIDIA A100", "AMD MI250X"
-    pub memory_gb: u32,       // GPU memory
+    pub model: String,                      // "NVIDIA A100", "AMD MI250X"
+    pub memory_gb: u32,                     // GPU memory
     pub compute_capability: Option<String>, // For CUDA compatibility
     pub utilization_percent: f32,
 }
@@ -121,7 +110,7 @@ pub struct GpuInfo {
 /// Storage device information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageDevice {
-    pub device_type: String,  // "NVMe", "SSD", "HDD"
+    pub device_type: String, // "NVMe", "SSD", "HDD"
     pub capacity_gb: u64,
     pub available_gb: u64,
     pub mount_point: String,
@@ -131,9 +120,9 @@ pub struct StorageDevice {
 /// Performance classification for storage
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub enum StoragePerformanceTier {
-    HighPerformance,  // NVMe, fast SSDs
-    Standard,         // Regular SSDs
-    Archive,          // HDDs, bulk storage
+    HighPerformance, // NVMe, fast SSDs
+    Standard,        // Regular SSDs
+    Archive,         // HDDs, bulk storage
 }
 
 /// Current resource usage
@@ -154,7 +143,7 @@ pub struct DatasetInfo {
     pub name: String,
     pub dataset_type: DatasetType,
     pub size_bytes: u64,
-    pub format: String,        // "FASTA", "FASTQ", "BAM", "VCF", etc.
+    pub format: String, // "FASTA", "FASTQ", "BAM", "VCF", etc.
     pub checksum: String,
     pub access_level: AccessLevel,
     pub last_updated: DateTime<Utc>,
@@ -175,14 +164,14 @@ pub enum DatasetType {
 /// Data access levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AccessLevel {
-    Public,       // Openly available
+    Public,        // Openly available
     Institutional, // Within institution only
-    Consortium,   // Multi-institutional consortium
-    Private,      // Restricted access
+    Consortium,    // Multi-institutional consortium
+    Private,       // Restricted access
 }
 
 /// Storage capacity information
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageInfo {
     pub total_capacity_gb: u64,
     pub available_capacity_gb: u64,
@@ -190,8 +179,9 @@ pub struct StorageInfo {
 }
 
 /// Trust level in federation
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Eq, Default)]
 pub enum TrustLevel {
+    #[default]
     Unknown,
     Basic,
     Verified,
@@ -199,18 +189,11 @@ pub enum TrustLevel {
     Consortium,
 }
 
-impl Default for TrustLevel {
-    fn default() -> Self {
-        TrustLevel::Unknown
-    }
-}
-
 /// Network location for optimization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkLocation {
-    pub region: String,           // "us-east", "eu-west", etc.
-    pub institution: Option<String>,
-    pub subnet: Option<String>,   // For local optimization
+    pub region: String,         // "us-east", "eu-west", etc.
+    pub subnet: Option<String>, // For local optimization
     pub external_ip: Option<String>,
     pub internal_ip: Option<String>,
 }
@@ -245,9 +228,8 @@ pub struct FederationStats {
 }
 
 /// Federation health metrics
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FederationHealth {
-    pub total_nodes: u32,
     pub healthy_nodes: u32,
     pub degraded_nodes: u32,
     pub unhealthy_nodes: u32,
@@ -255,7 +237,6 @@ pub struct FederationHealth {
     pub average_cpu_utilization: f32,
     pub average_memory_utilization: f64,
     pub network_partition_detected: bool,
-    pub last_updated: DateTime<Utc>,
 }
 
 /// Node interaction result for reputation updates
@@ -269,9 +250,8 @@ pub enum InteractionResult {
 }
 
 /// Network topology information
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkTopology {
-    pub total_nodes: u32,
     pub nodes_by_region: HashMap<String, u32>,
     pub average_latencies: HashMap<NodeId, f64>,
     pub network_partitions: Vec<NetworkPartition>,
@@ -319,7 +299,7 @@ pub struct ResourceUpdate {
 }
 
 /// Detailed CPU usage information
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpuUsage {
     pub overall_percent: f32,
     pub per_core_percent: Vec<f32>,
@@ -329,11 +309,10 @@ pub struct CpuUsage {
 }
 
 /// Detailed memory usage information  
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryUsage {
     pub total_gb: u64,
     pub used_gb: u64,
-    pub available_gb: u64,
     pub cached_gb: u64,
     pub buffer_gb: u64,
     pub swap_total_gb: u64,
@@ -352,7 +331,7 @@ pub struct GpuUsage {
 }
 
 /// Network interface usage
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkUsage {
     pub bytes_sent_per_sec: u64,
     pub bytes_received_per_sec: u64,
@@ -370,6 +349,5 @@ pub struct StorageUsage {
     pub writes_per_sec: u64,
     pub read_bytes_per_sec: u64,
     pub write_bytes_per_sec: u64,
-    pub utilization_percent: f32,
     pub queue_depth: f32,
-} 
+}

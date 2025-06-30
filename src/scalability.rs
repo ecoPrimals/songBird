@@ -1,354 +1,662 @@
-use crate::errors::SongbirdError;
-use crate::traits::service::ServiceInfo;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+//! Scalability Module
+//!
+//! Provides auto-scaling capabilities for services
+
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use serde::{Deserialize, Serialize};
+use tracing::{info, warn};
 
+use crate::errors::{Result, SongbirdError};
+
+/// Service scaling configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceInstance {
-    pub service_info: ServiceInfo,
-    pub instance_id: String,
-    pub weight: u32,
-    pub current_connections: u32,
-    pub is_healthy: bool,
-    pub last_health_check: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Clone, Default)]
 pub struct ServiceScalingConfig {
-    pub min_instances: usize,
-    pub max_instances: usize,
-    pub target_cpu_utilization: f64,
+    pub min_instances: u32,
+    pub max_instances: u32,
+    pub target_cpu_percent: f64,
+    pub target_memory_percent: f64,
     pub scale_up_threshold: f64,
     pub scale_down_threshold: f64,
-    pub cooldown_period: Duration,
 }
 
-#[derive(Debug, Clone, Default)]
+/// Scalability statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScalabilityStats {
-    pub total_instances: usize,
-    pub healthy_instances: usize,
-    pub avg_cpu_utilization: f64,
-    pub avg_memory_utilization: f64,
-    pub total_requests: u64,
-    pub successful_requests: u64,
-    pub failed_requests: u64,
+    pub total_scale_events: u64,
+    pub scale_up_events: u64,
+    pub scale_down_events: u64,
+    pub average_response_time: f64,
+    pub current_load: f64,
+    pub resource_utilization: ResourceUsage,
 }
 
-#[derive(Debug, Clone, Default)]
+/// Resource pool for managing compute resources
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourcePool {
-    pub max_cpu_cores: u32,
-    pub max_memory_mb: u64,
+    pub total_cpu_cores: u32,
+    pub total_memory_mb: u32,
     pub available_cpu_cores: u32,
-    pub available_memory_mb: u64,
-    pub allocated_instances: HashMap<String, ResourceUsage>,
+    pub available_memory_mb: u32,
 }
 
-#[derive(Debug, Clone, Default)]
+/// Resource usage metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceUsage {
-    pub cpu_percentage: f64,
-    pub memory_usage_mb: u64,
-    pub network_bytes_per_sec: u64,
-    pub disk_io_bytes_per_sec: u64,
+    pub cpu_percent: f64,
+    pub memory_percent: f64,
+    pub network_io_mbps: f64,
+    pub disk_io_mbps: f64,
 }
 
+/// Resource configuration for services
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceConfig {
     pub cpu_request: f64,
+    pub memory_request_mb: u32,
     pub cpu_limit: f64,
-    pub memory_request_mb: u64,
-    pub memory_limit_mb: u64,
-    pub disk_limit_mb: u64,
+    pub memory_limit_mb: u32,
 }
 
+/// Performance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceConfig {
-    pub response_time_threshold_ms: u64,
-    pub throughput_threshold_rps: u64,
-    pub error_rate_threshold: f64,
-    pub monitoring_interval: Duration,
+    pub max_concurrent_requests: u32,
+    pub request_timeout_ms: u64,
+    pub connection_pool_size: u32,
+    pub cache_size_mb: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceMetrics {
-    pub avg_response_time_ms: u64,
-    pub throughput_rps: u64,
-    pub error_rate: f64,
-    pub cpu_utilization: f64,
-    pub memory_utilization: f64,
-    pub timestamp: DateTime<Utc>,
+impl Default for ServiceScalingConfig {
+    fn default() -> Self {
+        Self {
+            min_instances: 1,
+            max_instances: 10,
+            target_cpu_percent: 70.0,
+            target_memory_percent: 80.0,
+            scale_up_threshold: 80.0,
+            scale_down_threshold: 30.0,
+        }
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceThresholds {
-    pub max_response_time_ms: u64,
-    pub min_throughput_rps: u64,
-    pub max_error_rate: f64,
-    pub max_cpu_utilization: f64,
-    pub max_memory_utilization: f64,
+impl Default for ResourceUsage {
+    fn default() -> Self {
+        Self {
+            cpu_percent: 0.0,
+            memory_percent: 0.0,
+            network_io_mbps: 0.0,
+            disk_io_mbps: 0.0,
+        }
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LoadBalancingAlgorithm {
-    RoundRobin,
-    LeastConnections,
-    WeightedRoundRobin,
-    Random,
-    HealthAware,
+impl Default for ResourceConfig {
+    fn default() -> Self {
+        Self {
+            cpu_request: 0.5,
+            memory_request_mb: 512,
+            cpu_limit: 1.0,
+            memory_limit_mb: 1024,
+        }
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoadBalancingConfig {
-    pub algorithm: LoadBalancingAlgorithm,
-    pub health_check_enabled: bool,
-    pub health_check_interval: Duration,
-    pub session_affinity: bool,
+impl Default for PerformanceConfig {
+    fn default() -> Self {
+        Self {
+            max_concurrent_requests: 100,
+            request_timeout_ms: 30000,
+            connection_pool_size: 10,
+            cache_size_mb: 128,
+        }
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ScalingStrategy {
-    Manual,
-    Automatic,
-    Predictive,
-    Reactive,
+/// Auto-scaler for managing service instances
+pub struct AutoScaler {
+    config: ServiceScalingConfig,
+    stats: ScalabilityStats,
+    resource_pool: ResourcePool,
+    scaling_history: Vec<ScalingEvent>,
+    last_scaling_time: Option<Instant>,
+    cooldown_period: Duration,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ScalingAction {
-    ScaleUp,
-    ScaleDown,
+/// Scaling decision
+#[derive(Debug, Clone)]
+pub enum ScalingDecision {
+    ScaleUp(u32),
+    ScaleDown(u32),
     NoAction,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ScalingDecision {
-    pub action: ScalingAction,
-    pub target_instances: usize,
-    pub reason: String,
-    pub timestamp: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum InstanceHealth {
-    Healthy,
-    Unhealthy,
-    Unknown,
-    Degraded,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ScalabilityConfig {
-    pub enabled: bool,
-    pub strategy: ScalingStrategy,
-    pub performance_config: PerformanceConfig,
-    pub resource_config: ResourceConfig,
-    pub load_balancing_config: LoadBalancingConfig,
-    pub thresholds: PerformanceThresholds,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ScalingGroup {
+/// Scaling event for history tracking
+#[derive(Debug, Clone)]
+pub struct ScalingEvent {
+    pub timestamp: Instant,
     pub service_id: String,
-    pub instances: Vec<ServiceInstance>,
-    pub config: ServiceScalingConfig,
-    pub resource_pool: ResourcePool,
-    pub metrics: ScalabilityStats,
+    pub decision: ScalingDecision,
+    pub reason: String,
+    pub current_instances: u32,
+    pub target_instances: u32,
 }
 
-impl ScalingGroup {
-    pub fn new(service_id: String, config: ServiceScalingConfig) -> Self {
+impl AutoScaler {
+    /// Create a new auto-scaler
+    pub fn new(config: ServiceScalingConfig, resource_pool: ResourcePool) -> Self {
         Self {
-            service_id,
-            instances: Vec::new(),
             config,
-            resource_pool: ResourcePool::default(),
-            metrics: ScalabilityStats {
-                total_instances: 0,
-                healthy_instances: 0,
-                avg_cpu_utilization: 0.0,
-                avg_memory_utilization: 0.0,
-                total_requests: 0,
-                successful_requests: 0,
-                failed_requests: 0,
+            stats: ScalabilityStats {
+                total_scale_events: 0,
+                scale_up_events: 0,
+                scale_down_events: 0,
+                average_response_time: 0.0,
+                current_load: 0.0,
+                resource_utilization: ResourceUsage::default(),
             },
+            resource_pool,
+            scaling_history: Vec::new(),
+            last_scaling_time: None,
+            cooldown_period: Duration::from_secs(300), // 5 minutes
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.instances.is_empty()
+    /// Evaluate scaling decision based on current metrics
+    pub fn evaluate_scaling(
+        &mut self,
+        service_id: &str,
+        current_instances: u32,
+        resource_usage: &ResourceUsage,
+        request_rate: f64,
+    ) -> Result<ScalingDecision> {
+        // Check cooldown period
+        if let Some(last_time) = self.last_scaling_time {
+            if last_time.elapsed() < self.cooldown_period {
+                return Ok(ScalingDecision::NoAction);
+            }
+        }
+
+        // Determine scaling decision based on resource usage
+        let decision = if resource_usage.cpu_percent > self.config.scale_up_threshold
+            || resource_usage.memory_percent > self.config.scale_up_threshold
+        {
+            if current_instances < self.config.max_instances {
+                let scale_factor = self.calculate_scale_factor(resource_usage, request_rate);
+                let target_instances = (current_instances + scale_factor).min(self.config.max_instances);
+                ScalingDecision::ScaleUp(target_instances - current_instances)
+            } else {
+                ScalingDecision::NoAction
+            }
+        } else if resource_usage.cpu_percent < self.config.scale_down_threshold
+            && resource_usage.memory_percent < self.config.scale_down_threshold
+        {
+            if current_instances > self.config.min_instances {
+                ScalingDecision::ScaleDown(1)
+            } else {
+                ScalingDecision::NoAction
+            }
+        } else {
+            ScalingDecision::NoAction
+        };
+
+        // Record scaling event
+        if !matches!(decision, ScalingDecision::NoAction) {
+            let target_instances = match decision {
+                ScalingDecision::ScaleUp(delta) => current_instances + delta,
+                ScalingDecision::ScaleDown(delta) => current_instances - delta,
+                ScalingDecision::NoAction => current_instances,
+            };
+
+            let event = ScalingEvent {
+                timestamp: Instant::now(),
+                service_id: service_id.to_string(),
+                decision: decision.clone(),
+                reason: self.generate_scaling_reason(&decision, resource_usage),
+                current_instances,
+                target_instances,
+            };
+
+            self.scaling_history.push(event);
+            self.last_scaling_time = Some(Instant::now());
+
+            // Update statistics
+            self.stats.total_scale_events += 1;
+            match decision {
+                ScalingDecision::ScaleUp(_) => self.stats.scale_up_events += 1,
+                ScalingDecision::ScaleDown(_) => self.stats.scale_down_events += 1,
+                ScalingDecision::NoAction => {}
+            }
+        }
+
+        // Update current metrics
+        self.stats.resource_utilization = resource_usage.clone();
+        self.stats.current_load = request_rate;
+
+        Ok(decision)
     }
 
-    pub fn len(&self) -> usize {
-        self.instances.len()
+    /// Calculate scale factor based on resource usage
+    fn calculate_scale_factor(&self, resource_usage: &ResourceUsage, request_rate: f64) -> u32 {
+        // Simple scaling algorithm - can be made more sophisticated
+        let cpu_factor = if resource_usage.cpu_percent > 90.0 { 2 } else { 1 };
+        let memory_factor = if resource_usage.memory_percent > 90.0 { 2 } else { 1 };
+        let load_factor = if request_rate > 1000.0 { 2 } else { 1 };
+
+        cpu_factor.max(memory_factor).max(load_factor)
     }
 
-    pub fn push(&mut self, instance: ServiceInstance) {
-        self.instances.push(instance);
+    /// Generate reason for scaling decision
+    fn generate_scaling_reason(&self, decision: &ScalingDecision, resource_usage: &ResourceUsage) -> String {
+        match decision {
+            ScalingDecision::ScaleUp(_) => {
+                format!(
+                    "High resource usage: CPU {}%, Memory {}%",
+                    resource_usage.cpu_percent,
+                    resource_usage.memory_percent
+                )
+            }
+            ScalingDecision::ScaleDown(_) => {
+                format!(
+                    "Low resource usage: CPU {}%, Memory {}%",
+                    resource_usage.cpu_percent,
+                    resource_usage.memory_percent
+                )
+            }
+            ScalingDecision::NoAction => "No scaling required".to_string(),
+        }
     }
 
-    pub fn pop(&mut self) -> Option<ServiceInstance> {
-        self.instances.pop()
+    /// Execute scaling action
+    pub async fn execute_scaling(
+        &mut self,
+        service_id: &str,
+        decision: &ScalingDecision,
+    ) -> Result<()> {
+        match decision {
+            ScalingDecision::ScaleUp(instances) => {
+                info!("Scaling up service {}: adding {} instances", service_id, instances);
+                self.scale_up_service(service_id, *instances).await?;
+            }
+            ScalingDecision::ScaleDown(instances) => {
+                info!("Scaling down service {}: removing {} instances", service_id, instances);
+                self.scale_down_service(service_id, *instances).await?;
+            }
+            ScalingDecision::NoAction => {
+                // Do nothing
+            }
+        }
+
+        Ok(())
     }
 
-    pub async fn add_instance(&mut self, instance: ServiceInstance) -> Result<(), SongbirdError> {
-        if self.instances.len() >= self.config.max_instances {
-            return Err(SongbirdError::Configuration {
-                field: "max_instances".to_string(),
-                message: "Maximum instances reached".to_string(),
+    /// Scale up service instances
+    async fn scale_up_service(&mut self, service_id: &str, instances: u32) -> Result<()> {
+        // Check if we have enough resources
+        let required_cpu = self.config.min_instances as f64 * 0.5; // Assume 0.5 CPU per instance
+        let required_memory = self.config.min_instances * 512; // Assume 512MB per instance
+
+        if (self.resource_pool.available_cpu_cores as f64) < required_cpu {
+            return Err(SongbirdError::ResourceExhausted {
+                resource: "CPU".to_string(),
+                requested: required_cpu,
+                available: self.resource_pool.available_cpu_cores as f64,
             });
         }
-        self.instances.push(instance);
-        self.metrics.total_instances = self.instances.len();
+
+        if self.resource_pool.available_memory_mb < required_memory {
+            return Err(SongbirdError::ResourceExhausted {
+                resource: "Memory".to_string(),
+                requested: required_memory as f64,
+                available: self.resource_pool.available_memory_mb as f64,
+            });
+        }
+
+        // Reserve resources
+        self.resource_pool.available_cpu_cores -= (required_cpu as u32).min(self.resource_pool.available_cpu_cores);
+        self.resource_pool.available_memory_mb -= required_memory.min(self.resource_pool.available_memory_mb);
+
+        info!("Scaled up service {}: added {} instances", service_id, instances);
         Ok(())
     }
 
-    pub async fn remove_instance(&mut self, instance_id: &str) -> Result<(), SongbirdError> {
-        self.instances.retain(|i| i.instance_id != instance_id);
-        self.metrics.total_instances = self.instances.len();
+    /// Scale down service instances
+    async fn scale_down_service(&mut self, service_id: &str, instances: u32) -> Result<()> {
+        // Free up resources
+        let freed_cpu = instances as f64 * 0.5; // Assume 0.5 CPU per instance
+        let freed_memory = instances * 512; // Assume 512MB per instance
+
+        self.resource_pool.available_cpu_cores += freed_cpu as u32;
+        self.resource_pool.available_memory_mb += freed_memory;
+
+        // Ensure we don't exceed total resources
+        self.resource_pool.available_cpu_cores = self.resource_pool.available_cpu_cores
+            .min(self.resource_pool.total_cpu_cores);
+        self.resource_pool.available_memory_mb = self.resource_pool.available_memory_mb
+            .min(self.resource_pool.total_memory_mb);
+
+        info!("Scaled down service {}: removed {} instances", service_id, instances);
         Ok(())
     }
 
-    pub fn get_healthy_instances(&self) -> Vec<&ServiceInstance> {
-        self.instances.iter().filter(|i| i.is_healthy).collect()
+    /// Get scaling statistics
+    pub fn get_stats(&self) -> &ScalabilityStats {
+        &self.stats
+    }
+
+    /// Get scaling history
+    pub fn get_scaling_history(&self) -> &[ScalingEvent] {
+        &self.scaling_history
+    }
+
+    /// Get resource pool status
+    pub fn get_resource_pool(&self) -> &ResourcePool {
+        &self.resource_pool
+    }
+
+    /// Update resource pool
+    pub fn update_resource_pool(&mut self, resource_pool: ResourcePool) {
+        self.resource_pool = resource_pool;
+    }
+
+    /// Set cooldown period
+    pub fn set_cooldown_period(&mut self, duration: Duration) {
+        self.cooldown_period = duration;
     }
 }
 
-pub struct ScalabilityManager {
-    pub config: ScalabilityConfig,
-    pub scaling_groups: HashMap<String, ScalingGroup>,
-    pub stats: ScalabilityStats,
+/// Performance optimizer for service configurations
+pub struct PerformanceOptimizer {
+    performance_config: PerformanceConfig,
+    optimization_history: Vec<OptimizationEvent>,
 }
 
-impl ScalabilityManager {
-    pub fn new(config: ScalabilityConfig) -> Self {
+/// Optimization event
+#[derive(Debug, Clone)]
+pub struct OptimizationEvent {
+    pub timestamp: Instant,
+    pub service_id: String,
+    pub optimization_type: OptimizationType,
+    pub old_value: f64,
+    pub new_value: f64,
+    pub improvement_percent: f64,
+}
+
+/// Types of optimizations
+#[derive(Debug, Clone)]
+pub enum OptimizationType {
+    ConnectionPoolSize,
+    CacheSize,
+    RequestTimeout,
+    ConcurrentRequests,
+}
+
+impl PerformanceOptimizer {
+    /// Create a new performance optimizer
+    pub fn new(performance_config: PerformanceConfig) -> Self {
         Self {
-            config,
-            scaling_groups: HashMap::new(),
-            stats: ScalabilityStats {
-                total_instances: 0,
-                healthy_instances: 0,
-                avg_cpu_utilization: 0.0,
-                avg_memory_utilization: 0.0,
-                total_requests: 0,
-                successful_requests: 0,
-                failed_requests: 0,
-            },
+            performance_config,
+            optimization_history: Vec::new(),
         }
     }
 
-    pub async fn add_scaling_group(
+    /// Optimize performance based on metrics
+    pub fn optimize_performance(
         &mut self,
-        service_id: String,
-        group: ScalingGroup,
-    ) -> Result<(), SongbirdError> {
-        self.scaling_groups.insert(service_id, group);
-        Ok(())
-    }
-
-    pub async fn make_scaling_decision(
-        &self,
         service_id: &str,
         metrics: &PerformanceMetrics,
-    ) -> Result<ScalingDecision, SongbirdError> {
-        let group = self.scaling_groups.get(service_id).ok_or_else(|| {
-            SongbirdError::Configuration {
-                field: "service_id".to_string(),
-                message: format!("Service {} not found", service_id),
-            }
-        })?;
+    ) -> Result<Vec<OptimizationRecommendation>> {
+        let mut recommendations = Vec::new();
 
-        let current_instances = group.instances.len();
-        let healthy_instances = group.get_healthy_instances().len();
+        // Optimize connection pool size
+        if let Some(recommendation) = self.optimize_connection_pool(metrics) {
+            recommendations.push(recommendation);
+        }
 
-        let action = if metrics.cpu_utilization > self.config.thresholds.max_cpu_utilization
-            && current_instances < group.config.max_instances
-        {
-            ScalingAction::ScaleUp
-        } else if metrics.cpu_utilization
-            < self.config.performance_config.response_time_threshold_ms as f64 * 0.5
-            && current_instances > group.config.min_instances
-        {
-            ScalingAction::ScaleDown
+        // Optimize cache size
+        if let Some(recommendation) = self.optimize_cache_size(metrics) {
+            recommendations.push(recommendation);
+        }
+
+        // Optimize request timeout
+        if let Some(recommendation) = self.optimize_request_timeout(metrics) {
+            recommendations.push(recommendation);
+        }
+
+        // Record optimization events
+        for recommendation in &recommendations {
+            let event = OptimizationEvent {
+                timestamp: Instant::now(),
+                service_id: service_id.to_string(),
+                optimization_type: recommendation.optimization_type.clone(),
+                old_value: recommendation.current_value,
+                new_value: recommendation.recommended_value,
+                improvement_percent: recommendation.expected_improvement,
+            };
+            self.optimization_history.push(event);
+        }
+
+        Ok(recommendations)
+    }
+
+    /// Optimize connection pool size
+    fn optimize_connection_pool(&self, metrics: &PerformanceMetrics) -> Option<OptimizationRecommendation> {
+        if metrics.connection_pool_utilization > 90.0 {
+            let new_size = (self.performance_config.connection_pool_size as f64 * 1.5) as u32;
+            Some(OptimizationRecommendation {
+                optimization_type: OptimizationType::ConnectionPoolSize,
+                current_value: self.performance_config.connection_pool_size as f64,
+                recommended_value: new_size as f64,
+                expected_improvement: 20.0,
+                reason: "High connection pool utilization detected".to_string(),
+            })
+        } else if metrics.connection_pool_utilization < 30.0 {
+            let new_size = (self.performance_config.connection_pool_size as f64 * 0.7) as u32;
+            Some(OptimizationRecommendation {
+                optimization_type: OptimizationType::ConnectionPoolSize,
+                current_value: self.performance_config.connection_pool_size as f64,
+                recommended_value: new_size as f64,
+                expected_improvement: 10.0,
+                reason: "Low connection pool utilization detected".to_string(),
+            })
         } else {
-            ScalingAction::NoAction
-        };
-
-        let target_instances = match action {
-            ScalingAction::ScaleUp => (current_instances + 1).min(group.config.max_instances),
-            ScalingAction::ScaleDown => (current_instances - 1).max(group.config.min_instances),
-            ScalingAction::NoAction => current_instances,
-        };
-
-        Ok(ScalingDecision {
-            action,
-            target_instances,
-            reason: format!(
-                "CPU: {:.2}%, Instances: {}/{}",
-                metrics.cpu_utilization, healthy_instances, current_instances
-            ),
-            timestamp: Utc::now(),
-        })
-    }
-
-    pub async fn get_stats(&self) -> Result<ScalabilityStats, SongbirdError> {
-        Ok(self.stats.clone())
-    }
-
-    pub async fn scale_up(&mut self, service_id: &str) -> Result<(), SongbirdError> {
-        let mut instances = self.scaling_groups.get(service_id).cloned().unwrap_or_default();
-
-        if instances.is_empty() {
-            return Err(SongbirdError::Configuration {
-                field: "service_id".to_string(),
-                message: format!("Service {} not found", service_id),
-            });
+            None
         }
-
-        // Create new instance
-        let instance_id = format!("{}_{}", service_id, instances.len() + 1);
-        let instance = ServiceInstance {
-            service_info: ServiceInfo {
-                id: service_id.to_string(),
-                name: service_id.to_string(),
-                version: "1.0.0".to_string(),
-                service_type: "hpc-service".to_string(),
-                description: format!("HPC service instance for {}", service_id),
-                endpoints: vec![],
-                capabilities: vec!["compute".to_string(), "storage".to_string()],
-                tags: std::collections::HashMap::new(),
-                metadata: std::collections::HashMap::new(),
-            },
-            instance_id: instance_id.clone(),
-            weight: 1,
-            current_connections: 0,
-            is_healthy: true,
-            last_health_check: Some(chrono::Utc::now()),
-        };
-
-        instances.push(instance);
-        self.scaling_groups.insert(service_id.to_string(), instances);
-
-        tracing::info!("Scaled up service {}: new instance {}", service_id, instance_id);
-        Ok(())
     }
 
-    /// Scale down a service by removing an instance
-    pub async fn scale_down(&mut self, service_id: &str) -> Result<(), SongbirdError> {
-        let mut instances = self.scaling_groups.get(service_id).cloned().unwrap_or_default();
-
-        if instances.is_empty() {
-            return Err(SongbirdError::Configuration {
-                field: "service_id".to_string(),
-                message: format!("Service {} not found", service_id),
-            });
+    /// Optimize cache size
+    fn optimize_cache_size(&self, metrics: &PerformanceMetrics) -> Option<OptimizationRecommendation> {
+        if metrics.cache_hit_rate < 70.0 {
+            let new_size = (self.performance_config.cache_size_mb as f64 * 1.3) as u32;
+            Some(OptimizationRecommendation {
+                optimization_type: OptimizationType::CacheSize,
+                current_value: self.performance_config.cache_size_mb as f64,
+                recommended_value: new_size as f64,
+                expected_improvement: 15.0,
+                reason: "Low cache hit rate detected".to_string(),
+            })
+        } else {
+            None
         }
+    }
 
-        // Remove the last instance
-        instances.pop();
-        self.scaling_groups.insert(service_id.to_string(), instances);
+    /// Optimize request timeout
+    fn optimize_request_timeout(&self, metrics: &PerformanceMetrics) -> Option<OptimizationRecommendation> {
+        if metrics.timeout_rate > 5.0 {
+            let new_timeout = (self.performance_config.request_timeout_ms as f64 * 1.2) as u64;
+            Some(OptimizationRecommendation {
+                optimization_type: OptimizationType::RequestTimeout,
+                current_value: self.performance_config.request_timeout_ms as f64,
+                recommended_value: new_timeout as f64,
+                expected_improvement: 8.0,
+                reason: "High timeout rate detected".to_string(),
+            })
+        } else {
+            None
+        }
+    }
 
-        tracing::info!("Scaled down service {}: removed last instance", service_id);
-        Ok(())
+    /// Get optimization history
+    pub fn get_optimization_history(&self) -> &[OptimizationEvent] {
+        &self.optimization_history
     }
 }
+
+/// Performance metrics for optimization
+#[derive(Debug, Clone)]
+pub struct PerformanceMetrics {
+    pub average_response_time: f64,
+    pub request_rate: f64,
+    pub error_rate: f64,
+    pub timeout_rate: f64,
+    pub connection_pool_utilization: f64,
+    pub cache_hit_rate: f64,
+    pub memory_usage_percent: f64,
+    pub cpu_usage_percent: f64,
+}
+
+/// Optimization recommendation
+#[derive(Debug, Clone)]
+pub struct OptimizationRecommendation {
+    pub optimization_type: OptimizationType,
+    pub current_value: f64,
+    pub recommended_value: f64,
+    pub expected_improvement: f64,
+    pub reason: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_resource_pool() -> ResourcePool {
+        ResourcePool {
+            total_cpu_cores: 16,
+            total_memory_mb: 32768,
+            available_cpu_cores: 8,
+            available_memory_mb: 16384,
+        }
+    }
+
+    fn create_test_resource_usage(cpu: f64, memory: f64) -> ResourceUsage {
+        ResourceUsage {
+            cpu_percent: cpu,
+            memory_percent: memory,
+            network_io_mbps: 10.0,
+            disk_io_mbps: 5.0,
+        }
+    }
+
+    #[test]
+    fn test_auto_scaler_creation() {
+        let config = ServiceScalingConfig::default();
+        let resource_pool = create_test_resource_pool();
+        let scaler = AutoScaler::new(config, resource_pool);
+
+        assert_eq!(scaler.stats.total_scale_events, 0);
+        assert!(scaler.scaling_history.is_empty());
+    }
+
+    #[test]
+    fn test_scaling_decision_scale_up() {
+        let config = ServiceScalingConfig::default();
+        let resource_pool = create_test_resource_pool();
+        let mut scaler = AutoScaler::new(config, resource_pool);
+
+        let high_usage = create_test_resource_usage(85.0, 85.0);
+        let decision = scaler.evaluate_scaling("test-service", 2, &high_usage, 100.0).unwrap();
+
+        match decision {
+            ScalingDecision::ScaleUp(_) => (),
+            _ => panic!("Expected scale up decision"),
+        }
+    }
+
+    #[test]
+    fn test_scaling_decision_scale_down() {
+        let config = ServiceScalingConfig::default();
+        let resource_pool = create_test_resource_pool();
+        let mut scaler = AutoScaler::new(config, resource_pool);
+
+        let low_usage = create_test_resource_usage(20.0, 25.0);
+        let decision = scaler.evaluate_scaling("test-service", 3, &low_usage, 10.0).unwrap();
+
+        match decision {
+            ScalingDecision::ScaleDown(_) => (),
+            _ => panic!("Expected scale down decision"),
+        }
+    }
+
+    #[test]
+    fn test_scaling_decision_no_action() {
+        let config = ServiceScalingConfig::default();
+        let resource_pool = create_test_resource_pool();
+        let mut scaler = AutoScaler::new(config, resource_pool);
+
+        let normal_usage = create_test_resource_usage(50.0, 60.0);
+        let decision = scaler.evaluate_scaling("test-service", 2, &normal_usage, 50.0).unwrap();
+
+        match decision {
+            ScalingDecision::NoAction => (),
+            _ => panic!("Expected no action decision"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scale_up_execution() {
+        let config = ServiceScalingConfig::default();
+        let resource_pool = create_test_resource_pool();
+        let mut scaler = AutoScaler::new(config, resource_pool);
+
+        let decision = ScalingDecision::ScaleUp(2);
+        let result = scaler.execute_scaling("test-service", &decision).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_scale_down_execution() {
+        let config = ServiceScalingConfig::default();
+        let resource_pool = create_test_resource_pool();
+        let mut scaler = AutoScaler::new(config, resource_pool);
+
+        let decision = ScalingDecision::ScaleDown(1);
+        let result = scaler.execute_scaling("test-service", &decision).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_performance_optimizer() {
+        let config = PerformanceConfig::default();
+        let mut optimizer = PerformanceOptimizer::new(config);
+
+        let metrics = PerformanceMetrics {
+            average_response_time: 200.0,
+            request_rate: 100.0,
+            error_rate: 1.0,
+            timeout_rate: 2.0,
+            connection_pool_utilization: 95.0,
+            cache_hit_rate: 60.0,
+            memory_usage_percent: 70.0,
+            cpu_usage_percent: 80.0,
+        };
+
+        let recommendations = optimizer.optimize_performance("test-service", &metrics).unwrap();
+        assert!(!recommendations.is_empty());
+    }
+
+    #[test]
+    fn test_config_defaults() {
+        let scaling_config = ServiceScalingConfig::default();
+        assert_eq!(scaling_config.min_instances, 1);
+        assert_eq!(scaling_config.max_instances, 10);
+        assert_eq!(scaling_config.target_cpu_percent, 70.0);
+
+        let resource_config = ResourceConfig::default();
+        assert_eq!(resource_config.cpu_request, 0.5);
+        assert_eq!(resource_config.memory_request_mb, 512);
+
+        let performance_config = PerformanceConfig::default();
+        assert_eq!(performance_config.max_concurrent_requests, 100);
+        assert_eq!(performance_config.request_timeout_ms, 30000);
+    }
+} 

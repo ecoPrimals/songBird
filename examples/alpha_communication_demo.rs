@@ -1,15 +1,15 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::sleep;
-use serde::{Deserialize, Serialize};
 
-use songbird_orchestrator::config::OrchestratorConfig;
-use songbird_orchestrator::orchestrator::Orchestrator;
-use songbird_orchestrator::traits::service::{
-    ServiceRequest, ServiceResponse, ResponseStatus, UniversalService, 
-    ServiceInfo, ServiceEndpoint, ServiceMetrics
+use songbird_gaming_bridge::config::OrchestratorConfig;
+use songbird_gaming_bridge::errors::SongbirdError;
+use songbird_gaming_bridge::orchestrator::Orchestrator;
+use songbird_gaming_bridge::traits::service_id::{
+    ResponseStatus, ServiceEndpoint, ServiceInfo, ServiceMetrics, ServiceRequest, ServiceResponse,
+    UniversalService,
 };
-use songbird_orchestrator::errors::SongbirdError;
 
 /// Simple test service that demonstrates protocol-agnostic communication
 #[derive(Clone)]
@@ -43,12 +43,18 @@ impl UniversalService for MultiProtocolService {
 
     async fn initialize(&mut self, config: Self::Config) -> Result<(), Self::Error> {
         self.preferred_protocol = config.protocol;
-        println!("🔧 Initializing {} with protocol: {}", self.name, self.preferred_protocol);
+        println!(
+            "🔧 Initializing {} with protocol: {}",
+            self.name, self.preferred_protocol
+        );
         Ok(())
     }
 
     async fn start(&mut self) -> Result<(), Self::Error> {
-        println!("🚀 Starting {} (protocol: {})", self.name, self.preferred_protocol);
+        println!(
+            "🚀 Starting {} (protocol: {})",
+            self.name, self.preferred_protocol
+        );
         Ok(())
     }
 
@@ -61,10 +67,15 @@ impl UniversalService for MultiProtocolService {
         Ok(format!("healthy via {}", self.preferred_protocol))
     }
 
-    async fn handle_request(&self, request: ServiceRequest) -> Result<ServiceResponse, Self::Error> {
-        println!("📨 {} handling request via {}: {} {}", 
-                 self.name, self.preferred_protocol, request.method, request.path);
-        
+    async fn handle_request(
+        &self,
+        request: ServiceRequest,
+    ) -> Result<ServiceResponse, Self::Error> {
+        println!(
+            "📨 {} handling request via {}: {} {}",
+            self.name, self.preferred_protocol, request.method, request.path
+        );
+
         let response_payload = serde_json::json!({
             "service": self.name,
             "protocol": self.preferred_protocol,
@@ -78,11 +89,11 @@ impl UniversalService for MultiProtocolService {
             request_id: request.id,
             status: ResponseStatus::Success,
             headers: HashMap::new(),
-            payload: response_payload,
+            body: response_payload,
             timestamp: chrono::Utc::now(),
-            duration: Duration::from_millis(5),
-            processing_time: 5,
-            metadata: HashMap::new(),
+            processing_time: std::time::Duration::from_millis( Duration::from_millis(5),
+            processing_time: std::time::Duration::from_millis(5),
+            
         })
     }
 
@@ -103,52 +114,52 @@ impl UniversalService for MultiProtocolService {
     fn service_info(&self) -> ServiceInfo {
         let mut capabilities = vec!["echo".to_string(), "test".to_string()];
         let mut tags = HashMap::new();
-        
+
         // Configure based on protocol preference
         let endpoints = match self.preferred_protocol.as_str() {
             "http" => {
                 capabilities.push("http".to_string());
                 tags.insert("protocol".to_string(), "http".to_string());
-                vec![
-                    ServiceEndpoint {
-                        path: "http://127.0.0.1:9001/echo".to_string(),
-                        method: "POST".to_string(),
-                        description: "HTTP Echo endpoint".to_string(),
-                        parameters: Vec::new(),
-                        response_schema: None,
-                    }
-                ]
+                vec![ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
+                    path: "http://127.0.0.1:9001/echo".to_string(),
+                    method: "POST".to_string(),
+                    description: Some("HTTP Echo endpoint").to_string(),
+                    parameters: Vec::new(),
+                    response_schema: None,
+                }]
             }
             "websocket" => {
                 capabilities.push("websocket".to_string());
                 tags.insert("protocol".to_string(), "websocket".to_string());
-                vec![
-                    ServiceEndpoint {
-                        path: "ws://127.0.0.1:8080/echo".to_string(),
-                        method: "MESSAGE".to_string(),
-                        description: "WebSocket Echo endpoint".to_string(),
-                        parameters: Vec::new(),
-                        response_schema: None,
-                    }
-                ]
+                vec![ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
+                    path: "ws://127.0.0.1:8080/echo".to_string(),
+                    method: "MESSAGE".to_string(),
+                    description: Some("WebSocket Echo endpoint").to_string(),
+                    parameters: Vec::new(),
+                    response_schema: None,
+                }]
             }
             _ => {
                 capabilities.push("memory".to_string());
                 tags.insert("protocol".to_string(), "memory".to_string());
-                vec![
-                    ServiceEndpoint {
-                        path: "/echo".to_string(),
-                        method: "CALL".to_string(),
-                        description: "In-memory Echo endpoint".to_string(),
-                        parameters: Vec::new(),
-                        response_schema: None,
-                    }
-                ]
+                vec![ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
+                    path: "/echo".to_string(),
+                    method: "CALL".to_string(),
+                    description: Some("In-memory Echo endpoint").to_string(),
+                    parameters: Vec::new(),
+                    response_schema: None,
+                }]
             }
         };
 
         ServiceInfo {
-            id: self.id.clone(),
+            service_id: self.id.clone(),
             name: self.name.clone(),
             version: "1.0.0".to_string(),
             service_type: self.preferred_protocol.clone(),
@@ -156,7 +167,7 @@ impl UniversalService for MultiProtocolService {
             endpoints,
             capabilities,
             tags,
-            metadata: HashMap::new(),
+            
         }
     }
 
@@ -172,72 +183,82 @@ async fn test_multi_protocol_communication() -> Result<(), Box<dyn std::error::E
     println!("✅ No hardcoded URLs/ports");
     println!("✅ Protocol auto-detection");
     println!("");
-    
+
     // Create orchestrator
     let config = OrchestratorConfig::default();
     let orchestrator = Orchestrator::new(config).await?;
-    
+
     // Start orchestrator
     orchestrator.start().await?;
-    
+
     // Register services with different protocols
     println!("📝 Registering services with different protocols...");
-    
+
     // HTTP Service
     let http_service = MultiProtocolService::new("http-service".to_string(), "http");
     let http_config = MultiProtocolConfig {
         protocol: "http".to_string(),
         endpoint: Some("http://127.0.0.1:9001".to_string()),
     };
-    let http_id = orchestrator.register_service(http_service, http_config).await?;
-    
-    // WebSocket Service  
+    let http_id = orchestrator
+        .register_service(http_service, http_config)
+        .await?;
+
+    // WebSocket Service
     let ws_service = MultiProtocolService::new("websocket-service".to_string(), "websocket");
     let ws_config = MultiProtocolConfig {
         protocol: "websocket".to_string(),
         endpoint: Some("ws://127.0.0.1:8080".to_string()),
     };
     let ws_id = orchestrator.register_service(ws_service, ws_config).await?;
-    
+
     // In-Memory Service
     let memory_service = MultiProtocolService::new("memory-service".to_string(), "memory");
     let memory_config = MultiProtocolConfig {
         protocol: "memory".to_string(),
         endpoint: None,
     };
-    let memory_id = orchestrator.register_service(memory_service, memory_config).await?;
-    
+    let memory_id = orchestrator
+        .register_service(memory_service, memory_config)
+        .await?;
+
     // Wait for services to be ready
     sleep(Duration::from_secs(1)).await;
-    
+
     // Test communication with each service
     println!("\n🌐 Testing protocol-specific communication...");
-    
+
     let test_request = ServiceRequest {
-        id: "test-request".to_string(),
+        service_id: "test-request".to_string(),
         method: "POST".to_string(),
         path: "/echo".to_string(),
         headers: HashMap::new(),
-        payload: serde_json::json!({
+        body: serde_json::json!({
             "message": "Hello multi-protocol world!",
             "timestamp": chrono::Utc::now().timestamp()
         }),
         timestamp: chrono::Utc::now(),
         timeout: Some(Duration::from_secs(5)),
         client_info: None,
-        metadata: HashMap::new(),
+        
     };
-    
+
     // Test each service
     for (service_id, protocol) in [
         (&http_id, "HTTP"),
-        (&ws_id, "WebSocket"), 
-        (&memory_id, "In-Memory")
+        (&ws_id, "WebSocket"),
+        (&memory_id, "In-Memory"),
     ] {
-        match orchestrator.handle_service_request(service_id, test_request.clone()).await {
+        match orchestrator
+            .handle_service_request(service_id, test_request.clone())
+            .await
+        {
             Ok(response) => {
-                println!("✅ {} communication successful: {:?}", protocol, response.status);
-                println!("   Response: {}", response.payload);
+                println!(
+                    "✅ {} communication successful: {:?}",
+                    protocol, response.status
+                );
+                println!("   Response: {}", response.body);
             }
             Err(e) => {
                 println!("⚠️  {} communication issue: {}", protocol, e);
@@ -245,38 +266,38 @@ async fn test_multi_protocol_communication() -> Result<(), Box<dyn std::error::E
             }
         }
     }
-    
+
     // Show final metrics
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     println!("\n📊 Final Results:");
     println!("   - Total services registered: {}", metrics.total_services);
     println!("   - Different protocols supported: 3 (HTTP, WebSocket, In-Memory)");
     println!("   - Services healthy: {}", metrics.healthy_services);
     println!("   - No hardcoded URLs: ✅");
     println!("   - Protocol auto-detection: ✅");
-    
+
     // Test protocol router stats
     if let Ok(comm_stats) = orchestrator.get_communication_stats().await {
         println!("   - Communication layer active: ✅");
         println!("   - Messages processed: {}", comm_stats.messages_sent);
     }
-    
+
     // Cleanup
     println!("\n🧹 Cleaning up...");
     orchestrator.unregister_service(&http_id).await?;
     orchestrator.unregister_service(&ws_id).await?;
     orchestrator.unregister_service(&memory_id).await?;
-    
+
     println!("\n🎉 ALPHA ACHIEVEMENT UNLOCKED:");
     println!("   ✅ Multi-protocol communication (HTTP + WebSocket + Memory)");
     println!("   ✅ Zero hardcoded values");
     println!("   ✅ Protocol auto-detection from service info");
     println!("   ✅ Configurable communication layer");
-    
+
     Ok(())
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     test_multi_protocol_communication().await
-} 
+}

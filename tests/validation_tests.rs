@@ -1,13 +1,16 @@
-//! Unit tests for validation module
-//! This module tests all validation functions in src/errors/validation.rs
-//! Coverage target: 95%+
-
-use songbird_orchestrator::errors::validation::ConfigValidator;
-use songbird_orchestrator::errors::SongbirdError;
-use tempfile::TempDir;
-use url::Url;
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+// Unit tests for validation module
+// This module tests all validation functions in src/errors/validation.rs
+// Coverage target: 95%+
+use songbird_gaming_bridge::errors::validation::ConfigValidator;
+use songbird_gaming_bridge::errors::SongbirdError;
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
+use tempfile::TempDir;
+use url::Url;
 
 #[cfg(test)]
 mod port_validation_tests {
@@ -49,7 +52,7 @@ mod port_validation_tests {
         // Test exact boundaries
         assert!(ConfigValidator::validate_port(1, "min_port").is_ok());
         assert!(ConfigValidator::validate_port(65535, "max_port").is_ok());
-        
+
         // Port 0 should fail
         assert!(ConfigValidator::validate_port(0, "zero_port").is_err());
     }
@@ -126,7 +129,10 @@ mod url_validation_tests {
                     assert_eq!(field, name);
                     assert!(message.contains("Unsupported URL scheme"));
                 }
-                _ => panic!("Expected Configuration error for unsupported scheme: {}", url_str),
+                _ => panic!(
+                    "Expected Configuration error for unsupported scheme: {}",
+                    url_str
+                ),
             }
         }
     }
@@ -146,7 +152,10 @@ mod url_validation_tests {
                     assert_eq!(field, name);
                     assert!(message.contains("Invalid URL format"));
                 }
-                _ => panic!("Expected Configuration error for malformed URL: {}", url_str),
+                _ => panic!(
+                    "Expected Configuration error for malformed URL: {}",
+                    url_str
+                ),
             }
         }
     }
@@ -287,12 +296,12 @@ mod ip_validation_tests {
     #[test]
     fn test_validate_socket_address_invalid() {
         let invalid_addrs = [
-            "127.0.0.1",          // Missing port
-            ":8080",              // Missing IP
-            "127.0.0.1:70000",    // Invalid port
-            "256.1.1.1:8080",     // Invalid IP
-            "localhost:8080",     // Hostname not allowed
-            "",                   // Empty
+            "127.0.0.1",       // Missing port
+            ":8080",           // Missing IP
+            "127.0.0.1:70000", // Invalid port
+            "256.1.1.1:8080",  // Invalid IP
+            "localhost:8080",  // Hostname not allowed
+            "",                // Empty
         ];
 
         for addr_str in &invalid_addrs {
@@ -301,7 +310,10 @@ mod ip_validation_tests {
                     assert_eq!(field, "invalid_addr");
                     assert!(message.contains("Invalid socket address format"));
                 }
-                _ => panic!("Expected Configuration error for invalid socket address: {}", addr_str),
+                _ => panic!(
+                    "Expected Configuration error for invalid socket address: {}",
+                    addr_str
+                ),
             }
         }
     }
@@ -316,7 +328,10 @@ mod timeout_validation_tests {
         // Test valid timeout within bounds
         let result = ConfigValidator::validate_timeout(5000, "test_timeout", 1000, 10000);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Duration::from_millis(5000));
+        assert_eq!(
+            result.expect("Test assertion failed"),
+            Duration::from_millis(5000)
+        );
     }
 
     #[test]
@@ -355,7 +370,7 @@ mod timeout_validation_tests {
         assert!(ConfigValidator::validate_connection_timeout(30000).is_ok());
 
         // Invalid connection timeouts
-        assert!(ConfigValidator::validate_connection_timeout(50).is_err());  // Too low
+        assert!(ConfigValidator::validate_connection_timeout(50).is_err()); // Too low
         assert!(ConfigValidator::validate_connection_timeout(70000).is_err()); // Too high
     }
 
@@ -366,7 +381,7 @@ mod timeout_validation_tests {
         assert!(ConfigValidator::validate_request_timeout(120000).is_ok());
 
         // Invalid request timeouts
-        assert!(ConfigValidator::validate_request_timeout(500).is_err());    // Too low
+        assert!(ConfigValidator::validate_request_timeout(500).is_err()); // Too low
         assert!(ConfigValidator::validate_request_timeout(400000).is_err()); // Too high
     }
 
@@ -377,8 +392,9 @@ mod timeout_validation_tests {
         assert!(ConfigValidator::validate_health_check_interval(60000).is_ok());
 
         // Invalid health check intervals
-        assert!(ConfigValidator::validate_health_check_interval(500).is_err());    // Too low
-        assert!(ConfigValidator::validate_health_check_interval(400000).is_err()); // Too high
+        assert!(ConfigValidator::validate_health_check_interval(500).is_err()); // Too low
+        assert!(ConfigValidator::validate_health_check_interval(400000).is_err());
+        // Too high
     }
 }
 
@@ -409,7 +425,7 @@ mod retry_validation_tests {
     fn test_validate_retry_config_invalid_delay() {
         // Delay too short
         assert!(ConfigValidator::validate_retry_config(3, 5).is_err());
-        
+
         // Delay too long
         assert!(ConfigValidator::validate_retry_config(3, 35000).is_err());
     }
@@ -442,7 +458,7 @@ mod thread_pool_validation_tests {
     fn test_validate_thread_pool_size_large() {
         let cpu_count = num_cpus::get();
         let large_size = cpu_count * 8; // Very large
-        
+
         // Should warn but not fail
         assert!(ConfigValidator::validate_thread_pool_size(large_size, "large_pool").is_ok());
     }
@@ -484,10 +500,10 @@ mod memory_validation_tests {
         // This might warn but shouldn't error (depending on system memory)
         let very_high_limit = 1024 * 1024; // 1TB
         let result = ConfigValidator::validate_memory_limit(very_high_limit);
-        
+
         // Result depends on system memory, but should be either Ok (with warning) or Error
         match result {
-            Ok(_) => {}, // OK if system has enough memory
+            Ok(_) => {} // OK if system has enough memory
             Err(SongbirdError::Configuration { field, message }) => {
                 assert_eq!(field, "memory_limit");
                 assert!(message.contains("exceeds system memory"));
@@ -536,7 +552,7 @@ mod buffer_validation_tests {
         assert!(ConfigValidator::validate_buffer_size(1024, "buffer", 512, 8192).is_ok());
         assert!(ConfigValidator::validate_buffer_size(2048, "buffer", 512, 8192).is_ok());
         assert!(ConfigValidator::validate_buffer_size(4096, "buffer", 512, 8192).is_ok());
-        
+
         // Non-power of 2 sizes (should warn but pass)
         assert!(ConfigValidator::validate_buffer_size(3000, "buffer", 512, 8192).is_ok());
         assert!(ConfigValidator::validate_buffer_size(5000, "buffer", 512, 8192).is_ok());
@@ -625,18 +641,18 @@ mod file_path_validation_tests {
     #[test]
     fn test_validate_file_path_existing() {
         // Create temporary file for testing
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("Test assertion failed");
         let temp_file = temp_dir.path().join("test_file.txt");
-        std::fs::write(&temp_file, "test content").unwrap();
+        std::fs::write(&temp_file, "test content").expect("Test assertion failed");
 
         // Test with must_exist = true
         let result = ConfigValidator::validate_file_path(
-            temp_file.to_str().unwrap(), 
-            "existing_file", 
-            true
+            temp_file.to_str().expect("Test assertion failed"),
+            "existing_file",
+            true,
         );
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), temp_file);
+        assert_eq!(result.expect("Test assertion failed"), temp_file);
     }
 
     #[test]
@@ -655,7 +671,8 @@ mod file_path_validation_tests {
     fn test_validate_file_path_non_existing_optional() {
         // Test non-existing file with must_exist = false
         // This should fail because parent directory doesn't exist
-        match ConfigValidator::validate_file_path("/non/existing/file.txt", "optional_file", false) {
+        match ConfigValidator::validate_file_path("/non/existing/file.txt", "optional_file", false)
+        {
             Err(SongbirdError::Configuration { field, message }) => {
                 assert_eq!(field, "optional_file");
                 assert!(message.contains("Parent directory") && message.contains("does not exist"));
@@ -666,26 +683,26 @@ mod file_path_validation_tests {
 
     #[test]
     fn test_validate_directory_path_existing() {
-        let temp_dir = TempDir::new().unwrap();
-        
+        let temp_dir = TempDir::new().expect("Test assertion failed");
+
         let result = ConfigValidator::validate_directory_path(
-            temp_dir.path().to_str().unwrap(),
+            temp_dir.path().to_str().expect("Test assertion failed"),
             "existing_dir",
-            false
+            false,
         );
         assert!(result.is_ok());
     }
 
-    #[test] 
+    #[test]
     fn test_validate_directory_path_create_missing() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("Test assertion failed");
         let new_dir = temp_dir.path().join("new_directory");
 
         // Test creating missing directory
         let result = ConfigValidator::validate_directory_path(
-            new_dir.to_str().unwrap(),
+            new_dir.to_str().expect("Test assertion failed"),
             "new_dir",
-            true
+            true,
         );
         assert!(result.is_ok());
         assert!(new_dir.exists());
@@ -695,7 +712,11 @@ mod file_path_validation_tests {
     #[test]
     fn test_validate_directory_path_non_existing_no_create() {
         // Test non-existing directory without create permission
-        match ConfigValidator::validate_directory_path("/non/existing/directory", "missing_dir", false) {
+        match ConfigValidator::validate_directory_path(
+            "/non/existing/directory",
+            "missing_dir",
+            false,
+        ) {
             Err(SongbirdError::Configuration { field, message }) => {
                 assert_eq!(field, "missing_dir");
                 assert!(message.contains("does not exist"));
@@ -706,15 +727,15 @@ mod file_path_validation_tests {
 
     #[test]
     fn test_validate_directory_path_file_not_directory() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("Test assertion failed");
         let temp_file = temp_dir.path().join("not_a_directory.txt");
-        std::fs::write(&temp_file, "test content").unwrap();
+        std::fs::write(&temp_file, "test content").expect("Test assertion failed");
 
         // Test file path instead of directory
         match ConfigValidator::validate_directory_path(
-            temp_file.to_str().unwrap(),
+            temp_file.to_str().expect("Test assertion failed"),
             "not_dir",
-            false
+            false,
         ) {
             Err(SongbirdError::Configuration { field, message }) => {
                 assert_eq!(field, "not_dir");
@@ -728,14 +749,14 @@ mod file_path_validation_tests {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use songbird_orchestrator::config::OrchestratorConfig;
+    use songbird_gaming_bridge::config::OrchestratorConfig;
 
     #[test]
     fn test_validate_all_default_config() {
         // Test validation of default configuration
         let config = OrchestratorConfig::default();
         let result = ConfigValidator::validate_all(&config);
-        
+
         // Default config should be valid
         match result {
             Ok(()) => {
@@ -746,4 +767,4 @@ mod integration_tests {
             }
         }
     }
-} 
+}

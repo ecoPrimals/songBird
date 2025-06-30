@@ -1,4 +1,8 @@
-use songbird_orchestrator::{
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+use songbird_gaming_bridge::{
     traits::health::{
         CustomHealthCheck, DefaultHealthMonitor, HealthCheck, HealthCheckConfig, HealthMonitor,
         HealthStatus, HttpHealthCheck, TcpHealthCheck,
@@ -36,7 +40,7 @@ async fn test_health_monitor_unregistration() {
     monitor
         .register_health_check("service1".to_string(), health_check)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
 
     let result = monitor.unregister_health_check("service1").await;
     assert!(result.is_ok());
@@ -55,7 +59,10 @@ async fn test_http_health_check_healthy() {
         config,
     );
 
-    let result = health_check.check("service1").await.unwrap();
+    let result = health_check
+        .check("service1")
+        .await
+        .expect("Test assertion failed");
     assert!(matches!(result.status, HealthStatus::Healthy));
     assert!(result.message.contains("HTTP health check"));
     assert_eq!(health_check.name(), "test-http");
@@ -70,7 +77,10 @@ async fn test_http_health_check_unhealthy() {
         config,
     );
 
-    let result = health_check.check("service1").await.unwrap();
+    let result = health_check
+        .check("service1")
+        .await
+        .expect("Test assertion failed");
     assert!(matches!(result.status, HealthStatus::Unhealthy));
 }
 
@@ -83,7 +93,10 @@ async fn test_http_health_check_degraded() {
         config,
     );
 
-    let result = health_check.check("service1").await.unwrap();
+    let result = health_check
+        .check("service1")
+        .await
+        .expect("Test assertion failed");
     assert!(matches!(result.status, HealthStatus::Degraded));
 }
 
@@ -93,7 +106,10 @@ async fn test_tcp_health_check() {
     let health_check =
         TcpHealthCheck::new("test-tcp".to_string(), "127.0.0.1:8080".to_string(), config);
 
-    let result = health_check.check("service1").await.unwrap();
+    let result = health_check
+        .check("service1")
+        .await
+        .expect("Test assertion failed");
     assert!(matches!(result.status, HealthStatus::Healthy));
     assert!(result.message.contains("TCP health check"));
     assert_eq!(health_check.name(), "test-tcp");
@@ -105,7 +121,7 @@ async fn test_custom_health_check_healthy() {
     let health_check = CustomHealthCheck::new(
         "test-custom".to_string(),
         config,
-        |service_id: &str| -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        |service_id: &str| -> Result<bool>> {
             if service_id == "healthy-service" {
                 Ok(true)
             } else {
@@ -114,7 +130,10 @@ async fn test_custom_health_check_healthy() {
         },
     );
 
-    let result = health_check.check("healthy-service").await.unwrap();
+    let result = health_check
+        .check("healthy-service")
+        .await
+        .expect("Test assertion failed");
     assert!(matches!(result.status, HealthStatus::Healthy));
     assert_eq!(health_check.name(), "test-custom");
 }
@@ -125,7 +144,7 @@ async fn test_custom_health_check_unhealthy() {
     let health_check = CustomHealthCheck::new(
         "test-custom".to_string(),
         config,
-        |service_id: &str| -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        |service_id: &str| -> Result<bool>> {
             if service_id == "healthy-service" {
                 Ok(true)
             } else {
@@ -134,7 +153,10 @@ async fn test_custom_health_check_unhealthy() {
         },
     );
 
-    let result = health_check.check("unhealthy-service").await.unwrap();
+    let result = health_check
+        .check("unhealthy-service")
+        .await
+        .expect("Test assertion failed");
     assert!(matches!(result.status, HealthStatus::Unhealthy));
 }
 
@@ -144,7 +166,7 @@ async fn test_custom_health_check_error() {
     let health_check = CustomHealthCheck::new(
         "test-custom".to_string(),
         config,
-        |_service_id: &str| -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        |_service_id: &str| -> Result<bool>> {
             Err("Simulated error".into())
         },
     );
@@ -166,9 +188,12 @@ async fn test_health_monitor_get_health_status() {
     monitor
         .register_health_check("service1".to_string(), health_check)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
 
-    let result = monitor.get_health_status("service1").await.unwrap();
+    let result = monitor
+        .get_health_status("service1")
+        .await
+        .expect("Test assertion failed");
     assert!(matches!(result.status, HealthStatus::Healthy));
 }
 
@@ -191,13 +216,16 @@ async fn test_health_monitor_get_all_health_statuses() {
     monitor
         .register_health_check("service1".to_string(), health_check1)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
     monitor
         .register_health_check("service2".to_string(), health_check2)
         .await
-        .unwrap();
+        .expect("Test assertion failed");
 
-    let results = monitor.get_all_health_statuses().await.unwrap();
+    let results = monitor
+        .get_all_health_statuses()
+        .await
+        .expect("Test assertion failed");
     assert_eq!(results.len(), 2);
 
     let service1_status = &results["service1"];
@@ -222,7 +250,7 @@ async fn test_health_monitor_start_stop_monitoring() {
 async fn test_health_check_config_defaults() {
     let config = HealthCheckConfig::default();
 
-    assert!(config.enabled);
+    assert!(config.mode == crate::federation::FederationMode::Peer);
     assert_eq!(config.interval, Duration::from_secs(30));
     assert_eq!(config.timeout, Duration::from_secs(5));
     assert_eq!(config.retries, 3);
@@ -243,7 +271,7 @@ async fn test_health_check_config_custom() {
         success_threshold: 3,
     };
 
-    assert!(!config.enabled);
+    assert!(!config.mode == crate::federation::FederationMode::Peer);
     assert_eq!(config.interval, Duration::from_secs(60));
     assert_eq!(config.timeout, Duration::from_secs(10));
     assert_eq!(config.retries, 5);
@@ -261,7 +289,10 @@ async fn test_health_check_result_details() {
         config,
     );
 
-    let result = health_check.check("service1").await.unwrap();
+    let result = health_check
+        .check("service1")
+        .await
+        .expect("Test assertion failed");
 
     assert!(result.details.contains_key("url"));
     assert!(result.details.contains_key("method"));
@@ -285,7 +316,11 @@ async fn test_health_monitor_nonexistent_service() {
     let result = monitor.get_health_status("nonexistent-service").await;
     assert!(result.is_err());
 
-    if let Err(SongbirdError::HealthCheck { message }) = result {
+    if let Err(SongbirdError::health_check_failed("service",  {
+        message,
+        service_id: _,
+    }) = result
+    {
         assert!(message.contains("No health check registered"));
     } else {
         panic!("Expected HealthCheck error");

@@ -120,13 +120,13 @@ where
         let router = self.build_router();
         let listener = TcpListener::bind(self.addr)
             .await
-            .map_err(|e| SongbirdError::Network { message: e.to_string() })?;
+            .map_err(|e| SongbirdError::Network { service: "HTTP Server".to_string(), message: e.to_string(), details: None })?;
 
         info!("HTTP server starting on {}", self.addr);
 
         axum::serve(listener, router)
             .await
-            .map_err(|e| SongbirdError::Network { message: e.to_string() })?;
+            .map_err(|e| SongbirdError::Network { service: "HTTP Server".to_string(), message: e.to_string(), details: None })?;
 
         Ok(())
     }
@@ -254,10 +254,8 @@ where
 
     // Add query parameters to payload
     let mut enhanced_payload = payload;
-    if enhanced_payload.is_object() {
-        if !query_params.is_empty() {
-            enhanced_payload["query_params"] = serde_json::to_value(query_params).unwrap_or_else(|_| serde_json::json!({}));
-        }
+    if enhanced_payload.is_object() && !query_params.is_empty() {
+        enhanced_payload["query_params"] = serde_json::to_value(query_params).unwrap_or_else(|_| serde_json::json!({}));
     }
 
     // Create ServiceRequest
@@ -266,11 +264,14 @@ where
         method: method.to_string(),
         path: uri.path().to_string(),
         headers: header_map,
-        payload: enhanced_payload,
+        body: Some(enhanced_payload),
         timestamp: chrono::Utc::now(),
+        query_params: HashMap::new(),
+        auth_info: None,
+        correlation_id: None,
+        trace_id: None,
         timeout: Some(std::time::Duration::from_secs(30)),
         client_info: None,
-        metadata: HashMap::new(),
     };
 
     // Handle the request
@@ -280,10 +281,10 @@ where
             
             Ok(Json(HttpServiceResponse {
                 success,
-                data: Some(response.payload),
+                data: response.body,
                 error: if success { None } else { 
                     match response.status {
-                        crate::traits::service::ResponseStatus::Error { message, .. } => Some(message),
+                        crate::traits::service::ResponseStatus::Error => response.error_message,
                         _ => Some("Request failed".to_string()),
                     }
                 },

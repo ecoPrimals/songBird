@@ -1,0 +1,110 @@
+# Songbird Gaming Bridge Production Configuration
+# Optimized for <50ms latency and high throughput
+
+[server]
+# Network configuration optimized for gaming
+bind_address = "0.0.0.0"
+port = 8080
+max_connections = 1000
+keep_alive_timeout = 30
+read_timeout = 10
+write_timeout = 10
+
+[gaming]
+# Gaming bridge performance settings
+enabled = true
+batch_processing = true
+batch_size = 64
+worker_threads = 8
+packet_queue_size = 10000
+buffer_pool_size = 1000
+zero_copy_enabled = true
+
+# Port range for gaming sessions
+port_range_start = 7000
+port_range_end = 8000
+
+# Session management
+max_concurrent_sessions = 100
+session_timeout_minutes = 60
+player_timeout_seconds = 300
+auto_cleanup_interval_minutes = 5
+
+# Performance optimizations
+packet_processing_timeout_ms = 1
+translation_cache_size = 10000
+compression_enabled = false  # Disabled for minimal latency
+
+[nat_traversal]
+# STUN configuration for NAT traversal
+enabled = true
+stun_servers = [
+    "stun.l.google.com:19302",
+    "stun1.l.google.com:19302", 
+    "stun.stunprotocol.org:3478"
+]
+hole_punch_attempts = 10
+hole_punch_interval_ms = 50  # Faster for gaming
+connection_timeout_seconds = 15
+
+[protocols]
+# Gaming protocol support
+ipx_enabled = true
+directplay_enabled = true
+udp_bridge_enabled = true
+tcp_bridge_enabled = true
+netbios_enabled = true
+
+# Protocol-specific optimizations
+ipx_translation_cache = 5000
+directplay_session_cache = 1000
+protocol_detection_timeout_ms = 100
+
+[security]
+# Production security settings
+authentication_required = false  # For gaming demo mode
+rate_limiting_enabled = true
+max_requests_per_minute = 6000  # High limit for gaming
+ddos_protection_enabled = true
+firewall_rules_enabled = false  # Managed externally
+
+[monitoring]
+# Observability and metrics
+metrics_enabled = true
+health_checks_enabled = true
+performance_monitoring = true
+latency_tracking = true
+
+# Metrics export
+prometheus_enabled = true
+prometheus_port = 9090
+
+# Logging
+log_level = "info"
+log_format = "json"
+access_logs_enabled = true
+
+[load_balancer]
+# Load balancing for high availability
+algorithm = "least_connections"
+health_check_interval = 5
+max_retries = 3
+circuit_breaker_enabled = true
+
+[resources]
+# Resource limits and optimization
+max_memory_mb = 512
+max_cpu_percent = 80
+gc_tuning_enabled = true
+
+# Network buffer sizes (optimized for gaming)
+tcp_buffer_size = 65536
+udp_buffer_size = 65536
+socket_buffer_size = 131072
+
+[feature_flags]
+# Feature toggles for production
+real_packet_capture = true
+advanced_protocol_detection = true
+performance_benchmarking = true
+zero_touch_config = true 

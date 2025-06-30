@@ -1,0 +1,128 @@
+# Songbird Gaming Bridge - Core AGPL 3.0 Configuration
+# 100% Open Source Gaming Bridge Configuration
+# LICENSE: AGPL 3.0 (Free Forever)
+
+[gaming]
+# Core gaming bridge settings
+enabled = true
+mode = "core"  # Core mode - no external dependencies
+
+# Performance optimization (same great performance!)
+target_latency_ms = 50
+batch_processing = true
+zero_copy_buffers = true
+priority_queuing = true
+
+# Worker configuration
+worker_thread_count = 8
+packet_queue_size = 10000
+batch_size = 64
+
+# Gaming protocol support
+protocols = ["ipx", "directplay", "netbios", "udp", "tcp"]
+
+# Port configuration
+gaming_port_start = 7000
+gaming_port_end = 8000
+api_port = 8080
+
+[network]
+# Network bridge settings
+bridge_mode = "universal"
+nat_traversal = true
+upnp_enabled = true
+packet_capture = true
+interface = "auto"
+
+# Buffer sizes for optimal performance
+socket_buffer_size = 65536
+receive_buffer_size = 131072
+send_buffer_size = 131072
+
+[session]
+# Gaming session management
+max_concurrent_sessions = 100
+session_timeout_minutes = 30
+session_code_length = 6
+broadcast_discovery = true
+
+# Session storage (in-memory for core)
+storage_type = "memory"  # No external Redis needed
+session_cleanup_interval_seconds = 300
+
+[security]
+# Basic security settings (no BearDog required)
+packet_validation = true
+rate_limiting = true
+max_packets_per_second = 10000
+connection_timeout_seconds = 30
+
+# Basic access control
+allow_all_interfaces = false
+trusted_networks = ["192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12"]
+
+[monitoring]
+# Built-in monitoring (no external Prometheus/Grafana)
+enabled = true
+type = "builtin"
+metrics_port = 8081
+metrics_path = "/metrics"
+
+# Performance metrics
+track_latency = true
+track_throughput = true
+track_errors = true
+track_sessions = true
+
+# Built-in health check endpoint
+health_check_enabled = true
+health_check_path = "/health"
+
+[logging]
+# Logging configuration (no external Fluentd)
+level = "info"
+format = "json"
+output = "stdout"
+
+# Log files (local only)
+file_logging = true
+log_directory = "/app/logs"
+max_log_file_size_mb = 100
+max_log_files = 10
+
+[discovery]
+# Gaming session discovery
+lan_discovery = true
+broadcast_interval_seconds = 30
+discovery_port = 7999
+session_announcement = true
+
+# Protocol auto-detection
+auto_detect_protocols = true
+detection_timeout_seconds = 5
+signature_matching = true
+
+[performance]
+# Performance tuning for <50ms latency
+cpu_affinity = true
+numa_awareness = true
+lock_memory = true
+high_priority = true
+
+# Optimization flags
+tcp_nodelay = true
+socket_reuse_port = true
+socket_keep_alive = true
+zero_copy_send = true
+
+[compatibility]
+# Legacy gaming compatibility
+legacy_protocol_support = true
+protocol_translation = true
+packet_fragmentation = true
+mtu_discovery = true
+
+# Game-specific optimizations
+starcraft_ipx_mode = true
+age_of_empires_directplay = true
+lan_game_broadcasting = true 

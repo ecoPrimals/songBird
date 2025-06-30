@@ -1,13 +1,17 @@
-//! Common test utilities for Songbird Orchestrator
-
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+// Common test utilities for Songbird Orchestrator
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     errors::{Result, SongbirdError},
-    traits::service::{ServiceMetrics, UniversalService},
-    Orchestrator, OrchestratorConfig, ServiceInfo, ServiceRequest, ServiceResponse,
+    orchestrator::Orchestrator,
+    traits::{
+        config::OrchestratorConfig,
+        service_id::{ServiceInfo, ServiceMetrics, ServiceRequest, ServiceResponse, UniversalService},
+    },
 };
-use std::collections::HashMap;
+
 use tempfile::TempDir;
 use tokio::time::Duration;
 
@@ -21,15 +25,13 @@ pub struct TestOrchestrator {
 impl TestOrchestrator {
     /// Create a new test orchestrator instance
     pub async fn new() -> Result<Self> {
-        let temp_dir = TempDir::new().map_err(|e| {
-            SongbirdError::Configuration {
-                field: "temp_directory".to_string(),
-                message: format!("Failed to create temp dir: {}", e),
-            }
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::Configuration {
+            field: "temp_directory".to_string(),
+            message: format!("Failed to create temp dir: {}", e),
         })?;
 
         let config = OrchestratorConfig::default();
-        let orchestrator = Orchestrator::new(config.clone()).await?;
+        let orchestrator = Orchestrator::new(config.clone())?;
 
         Ok(Self {
             orchestrator,
@@ -40,14 +42,12 @@ impl TestOrchestrator {
 
     /// Create a test orchestrator with custom configuration
     pub async fn with_config(config: OrchestratorConfig) -> Result<Self> {
-        let temp_dir = TempDir::new().map_err(|e| {
-            SongbirdError::Configuration {
-                field: "temp_directory".to_string(),
-                message: format!("Failed to create temp dir: {}", e),
-            }
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::Configuration {
+            field: "temp_directory".to_string(),
+            message: format!("Failed to create temp dir: {}", e),
         })?;
 
-        let orchestrator = Orchestrator::new(config.clone()).await?;
+        let orchestrator = Orchestrator::new(config.clone())?;
 
         Ok(Self {
             orchestrator,
@@ -73,22 +73,30 @@ impl TestOrchestrator {
 
     /// Create a test service info
     pub fn create_test_service(&self, id: &str, service_type: &str) -> ServiceInfo {
+        use chrono::Utc;
         ServiceInfo {
-            id: id.to_string(),
+            service_id: id.to_string(),
             name: format!("Test {}", id),
             service_type: service_type.to_string(),
             version: "1.0.0".to_string(),
-            description: format!("Test service {}", id),
+            description: Some(format!("Test service {}", id)),
+            health_check_endpoint: Some("/health".to_string()),
             endpoints: vec![],
-            capabilities: vec!["test".to_string()],
             tags: std::collections::HashMap::new(),
-            metadata: std::collections::HashMap::new(),
+            
+            dependencies: vec![],
+            status: songbird_gaming_bridge::traits::service_id::ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            host: "localhost".to_string(),
+            instance_id: format!("{}-instance", id),
+            port: 8080,
         }
     }
 
     /// Create a test request
     pub fn create_test_request(&self, method: &str, path: &str) -> ServiceRequest {
-        ServiceRequest::new(method, path)
+        ServiceRequest::new(method.to_string(), path.to_string())
     }
 
     /// Wait for a condition to be true with timeout
@@ -122,32 +130,40 @@ impl TestOrchestrator {
 
 /// Create a test service info with default values
 pub fn create_test_service_info(id: &str, service_type: &str) -> ServiceInfo {
+    use chrono::Utc;
     ServiceInfo {
-        id: id.to_string(),
+        service_id: id.to_string(),
         name: format!("Test {}", id),
         service_type: service_type.to_string(),
         version: "1.0.0".to_string(),
-        description: format!("Test service {}", id),
+        description: Some(format!("Test service {}", id)),
+        health_check_endpoint: Some("/health".to_string()),
         endpoints: vec![],
-        capabilities: vec!["test".to_string()],
         tags: std::collections::HashMap::new(),
-        metadata: std::collections::HashMap::new(),
+        
+        dependencies: vec![],
+        status: songbird_gaming_bridge::traits::service_id::ServiceStatus::Running,
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+        host: "localhost".to_string(),
+        instance_id: format!("{}-instance", id),
+        port: 8080,
     }
 }
 
 /// Create a test request with default values
 pub fn create_test_request(method: &str, path: &str) -> ServiceRequest {
-    ServiceRequest::new(method, path)
+    ServiceRequest::new(method.to_string(), path.to_string())
 }
 
 /// Create a success response
 pub fn create_success_response(request_id: String, data: serde_json::Value) -> ServiceResponse {
-    ServiceResponse::success(request_id, data)
+    ServiceResponse::success(request_id).with_body(data)
 }
 
 /// Create an error response
 pub fn create_error_response(request_id: String, error: String) -> ServiceResponse {
-    ServiceResponse::error(request_id, 500, error)
+    ServiceResponse::error(request_id, error)
 }
 
 /// Assert that a result is ok and return the value
@@ -242,103 +258,92 @@ impl MockService {
 
 #[async_trait]
 impl UniversalService for MockService {
-    type Config = MockConfig;
-    type Health = MockHealth;
     type Error = SongbirdError;
 
-    async fn initialize(&mut self, config: Self::Config) -> std::result::Result<(), Self::Error> {
-        self.config = config;
-        Ok(())
-    }
-
-    async fn start(&mut self) -> std::result::Result<(), Self::Error> {
+    async fn start(&mut self) -> std::result::Result<()> {
         self.running
             .store(true, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
 
-    async fn stop(&mut self) -> std::result::Result<(), Self::Error> {
+    async fn stop(&mut self) -> std::result::Result<()> {
         self.running
             .store(false, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
 
-    async fn restart(&mut self) -> std::result::Result<(), Self::Error> {
-        self.stop().await?;
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        self.start().await
-    }
-
-    async fn health_check(&self) -> std::result::Result<Self::Health, Self::Error> {
-        let health = self.health.read().await.clone();
-        Ok(health)
+    async fn health_check(
+        &self,
+    ) -> std::result::Result<songbird_gaming_bridge::traits::service_id::HealthStatus>
+    {
+        Ok(if self.is_running() {
+            songbird_gaming_bridge::traits::service_id::HealthStatus::Healthy
+        } else {
+            songbird_gaming_bridge::traits::service_id::HealthStatus::Unhealthy
+        })
     }
 
     async fn handle_request(
         &self,
         request: ServiceRequest,
-    ) -> std::result::Result<ServiceResponse, Self::Error> {
+    ) -> std::result::Result<ServiceResponse> {
         if !self.is_running() {
             return Ok(ServiceResponse::error(
                 request.id.clone(),
-                503,
                 "Service not running".to_string(),
             ));
         }
 
-        Ok(ServiceResponse::success(
-            request.id.clone(),
+        Ok(ServiceResponse::success(request.id.clone()).with_body(
             serde_json::json!({"message": "Mock response", "path": request.path.clone()}),
         ))
     }
 
     async fn update_config(
         &mut self,
-        config: Self::Config,
-    ) -> std::result::Result<(), Self::Error> {
-        self.config = config;
+        config: serde_json::Value,
+    ) -> std::result::Result<()> {
+        // For testing purposes, we'll ignore the config update
         Ok(())
     }
 
-    async fn get_metrics(&self) -> std::result::Result<ServiceMetrics, Self::Error> {
+    async fn get_metrics(&self) -> std::result::Result<ServiceMetrics> {
         Ok(ServiceMetrics {
             request_count: 0,
             error_count: 0,
-            avg_response_time_ms: 10.0,
-            p95_response_time_ms: 15.0,
-            p99_response_time_ms: 20.0,
-            cpu_usage: 0.1,
-            memory_usage: 1024 * 1024, // 1MB
+            average_response_time: 10.0,
+            cpu_usage: Some()Some(0.1),
+            memory_usage: Some()Some(1024 * 1024), // 1MB
             active_connections: 0,
-            queue_depth: 0,
-            throughput_rps: 0.0,
-            error_rate: 0.0,
-            uptime_seconds: 0,
-            last_updated: chrono::Utc::now(),
+            uptime: Duration::from_secs(0),
             custom_metrics: HashMap::new(),
         })
     }
 
     fn service_info(&self) -> ServiceInfo {
+        use chrono::Utc;
         ServiceInfo {
-            id: self.config.service_id.clone(),
+            service_id: self.config.service_id.clone(),
             name: "Mock Service".to_string(),
             version: "1.0.0".to_string(),
             service_type: "mock".to_string(),
-            description: "Mock service for testing".to_string(),
+            description: Some("Mock service for testing".to_string()),
+            health_check_endpoint: Some("/health".to_string()),
             endpoints: vec![],
-            capabilities: vec!["test".to_string()],
-            tags: HashMap::new(),
-            metadata: HashMap::new(),
+            tags: std::collections::HashMap::new(),
+            
+            dependencies: vec![],
+            status: songbird_gaming_bridge::traits::service_id::ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            host: "localhost".to_string(),
+            instance_id: format!("{}-instance", self.config.service_id),
+            port: 8080,
         }
     }
 
-    async fn can_handle_load(&self) -> std::result::Result<bool, Self::Error> {
-        Ok(self.is_running())
-    }
-
-    async fn get_load_factor(&self) -> std::result::Result<f64, Self::Error> {
-        Ok(if self.is_running() { 0.5 } else { 1.0 })
+    fn is_running(&self) -> bool {
+        self.running.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -349,11 +354,9 @@ pub struct TestEnvironment {
 }
 
 pub async fn setup_test_environment() -> Result<TestEnvironment> {
-    let temp_dir = tempfile::tempdir().map_err(|e| {
-        SongbirdError::Configuration {
-            field: "temp_directory".to_string(),
-            message: format!("Failed to create temp dir: {}", e),
-        }
+    let temp_dir = tempfile::tempdir().map_err(|e| SongbirdError::Configuration {
+        field: "temp_directory".to_string(),
+        message: format!("Failed to create temp dir: {}", e),
     })?;
 
     let config = OrchestratorConfig::default();
@@ -362,11 +365,9 @@ pub async fn setup_test_environment() -> Result<TestEnvironment> {
 }
 
 pub async fn create_test_temp_dir() -> Result<tempfile::TempDir> {
-    tempfile::tempdir().map_err(|e| {
-        SongbirdError::Configuration {
-            field: "temp_directory".to_string(), 
-            message: format!("Failed to create temp dir: {}", e),
-        }
+    tempfile::tempdir().map_err(|e| SongbirdError::Configuration {
+        field: "temp_directory".to_string(),
+        message: format!("Failed to create temp dir: {}", e),
     })
 }
 

@@ -1,9 +1,9 @@
-use std::sync::Arc;
-use tokio::time::{timeout, Duration};
 use std::collections::HashMap;
-use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use tokio::time::{timeout, Duration};
 
-use crate::load_balancer::{LoadBalancer, ServiceInstance};
+use crate::traits::load_balancer::{LoadBalancer, ServiceInstance};
 use crate::traits::communication::CommunicationLayer;
 use crate::traits::service::{ServiceRequest, ServiceResponse, ResponseStatus};
 use crate::errors::{Result, SongbirdError};
@@ -69,6 +69,7 @@ impl RequestRouter {
 
         if service_instances.is_empty() {
             return Err(SongbirdError::Service {
+                service_id: "unknown".to_string(),
                 message: "No service instances available".to_string(),
             });
         }
@@ -99,11 +100,13 @@ impl RequestRouter {
                 }
                 Ok(None) => {
                     return Err(SongbirdError::Service {
+                        service_id: "unknown".to_string(),
                         message: "No healthy service instances available".to_string(),
                     });
                 }
                 Err(e) => {
                     return Err(SongbirdError::Service {
+                        service_id: "unknown".to_string(),
                         message: format!("Load balancer error: {}", e),
                     });
                 }
@@ -113,6 +116,7 @@ impl RequestRouter {
         // All retries failed
         Err(last_error.unwrap_or_else(|| {
             SongbirdError::Service {
+                service_id: "unknown".to_string(),
                 message: "All retry attempts failed".to_string(),
             }
         }))
@@ -187,6 +191,7 @@ impl RequestRouter {
                 "Request timeout"
             );
             SongbirdError::Service {
+                service_id: instance.service_info.id.clone(),
                 message: format!("Request timeout after {:?}", timeout_duration),
             }
         })?
@@ -198,6 +203,7 @@ impl RequestRouter {
                 "Communication failed"
             );
             SongbirdError::Service {
+                service_id: instance.service_info.id.clone(),
                 message: format!("Communication failed: {}", e),
             }
         })?;
@@ -249,18 +255,16 @@ impl RequestRouter {
 
 #[derive(Debug, Default)]
 pub struct RequestMetrics {
-    pub total_requests: std::sync::atomic::AtomicU64,
-    pub successful_requests: std::sync::atomic::AtomicU64,
-    pub failed_requests: std::sync::atomic::AtomicU64,
-    pub average_response_time: std::sync::atomic::AtomicU64, // milliseconds
+    pub total_requests: AtomicU64,
+    pub successful_requests: AtomicU64,
+    pub failed_requests: AtomicU64,
+    pub average_response_time: AtomicU64, // milliseconds
     pub requests_by_service: parking_lot::RwLock<HashMap<String, ServiceRequestMetrics>>,
-    pub total_response_time: std::sync::atomic::AtomicU64, // milliseconds
+    pub total_response_time: AtomicU64, // milliseconds
 }
 
 impl Clone for RequestMetrics {
     fn clone(&self) -> Self {
-        use std::sync::atomic::Ordering;
-        
         Self {
             total_requests: AtomicU64::new(self.total_requests.load(Ordering::Relaxed)),
             successful_requests: AtomicU64::new(self.successful_requests.load(Ordering::Relaxed)),
@@ -282,12 +286,11 @@ pub struct ServiceRequestMetrics {
 
 impl RequestMetrics {
     fn record_success(&self, service_id: &str, duration: Duration) {
-        use std::sync::atomic::Ordering;
-        
         self.total_requests.fetch_add(1, Ordering::Relaxed);
         self.successful_requests.fetch_add(1, Ordering::Relaxed);
         
         let duration_ms = duration.as_millis() as u64;
+        
         // Simple moving average approximation
         let current_avg = self.average_response_time.load(Ordering::Relaxed);
         let new_avg = if current_avg == 0 {
@@ -296,7 +299,7 @@ impl RequestMetrics {
             (current_avg * 9 + duration_ms) / 10 // Exponential moving average
         };
         self.average_response_time.store(new_avg, Ordering::Relaxed);
-        
+
         // Update per-service metrics
         let mut service_metrics = self.requests_by_service.write();
         let entry = service_metrics.entry(service_id.to_string())
@@ -308,11 +311,9 @@ impl RequestMetrics {
     }
 
     fn record_failure(&self, service_id: &str) {
-        use std::sync::atomic::Ordering;
-        
         self.total_requests.fetch_add(1, Ordering::Relaxed);
         self.failed_requests.fetch_add(1, Ordering::Relaxed);
-        
+
         // Update per-service metrics
         let mut service_metrics = self.requests_by_service.write();
         let entry = service_metrics.entry(service_id.to_string())

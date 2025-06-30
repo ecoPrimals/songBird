@@ -246,7 +246,7 @@ impl ConnectionProxy {
             headers: HeaderMap::new(),
             body: format!(
                 "Proxied to service: {} ({})",
-                service_instance.name, service_instance.id
+                service_instance.name, service_instance.service_id
             )
             .into_bytes(),
             response_time,
@@ -315,19 +315,20 @@ impl ConnectionProxy {
                     .min_by_key(|instance| {
                         load_balancer
                             .connection_counts
-                            .get(&instance.id)
+                            .get(&instance.service_id)
                             .unwrap_or(&0)
                     })
-                    .ok_or_else(|| SongbirdError::Internal {
+                    .ok_or_else(|| SongbirdError::Config {
                         message: "No service instances available for least connections selection".to_string(),
+                        field: None,
                     })?
+
             }
             _ => &service_instances[0],
         };
-
         *load_balancer
             .connection_counts
-            .entry(selected_instance.id.clone())
+            .entry(selected_instance.service_id.clone())
             .or_insert(0) += 1;
 
         Ok(selected_instance.clone())

@@ -38,16 +38,17 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use songbird_orchestrator::{
-    // Core types
-    prelude::*,
-    
+use songbird_gaming_bridge::{
     // Specific functionality
     discovery::{ServiceQuery, StaticServiceDiscovery},
-    security::{AuthenticationResult},
+    // Core types
+    prelude::*,
+
+    security::AuthenticationResult,
     security_types::{
-        Action, Credentials, Permission, Resource, SecurityProvider, Subject,
-        SubjectType, AuthEvent, AuthEventType, ProductionSecurityProvider, SecurityConfig, UserInfo, AuthToken,
+        Action, AuthEvent, AuthEventType, AuthToken, Credentials, Permission,
+        ProductionSecurityProvider, Resource, SecurityConfig, SecurityProvider, Subject,
+        SubjectType, UserInfo,
     },
     traits::discovery::{ServiceDiscovery, ServiceHealthStatus},
     traits::health::{DefaultHealthMonitor, HealthCheckConfig, HealthMonitor, HttpHealthCheck},
@@ -66,7 +67,7 @@ use tokio::time::sleep;
 fn generate_secure_password() -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    
+
     let mut hasher = DefaultHasher::new();
     std::time::SystemTime::now().hash(&mut hasher);
     format!("SecurePass_{:x}", hasher.finish())
@@ -192,7 +193,7 @@ impl UniversalService for ComprehensiveService {
                 ))
             }
             "/metrics" => {
-                let metrics = self.get_metrics().await?;
+                let metrics = self.get_config().await?;
                 Ok(ServiceResponse::success(
                     request.id,
                     serde_json::to_value(metrics)?,
@@ -224,36 +225,42 @@ impl UniversalService for ComprehensiveService {
 
     fn service_info(&self) -> ServiceInfo {
         ServiceInfo {
-            id: self.id.clone(),
+            service_id: self.id.clone(),
             name: self.config.name.clone(),
             version: "1.0.0".to_string(),
             service_type: "comprehensive".to_string(),
-            description: "Comprehensive demo service showcasing all Songbird capabilities"
+            description: Some("Comprehensive demo service showcasing all Songbird capabilities")
                 .to_string(),
             endpoints: vec![
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/health".to_string(),
                     method: "GET".to_string(),
-                    description: "Health check endpoint".to_string(),
+                    description: Some("Health check endpoint").to_string(),
                     parameters: vec![],
                     response_schema: None,
                 },
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/metrics".to_string(),
                     method: "GET".to_string(),
-                    description: "Metrics endpoint".to_string(),
+                    description: Some("Metrics endpoint").to_string(),
                     parameters: vec![],
                     response_schema: None,
                 },
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/info".to_string(),
                     method: "GET".to_string(),
-                    description: "Service information endpoint".to_string(),
+                    description: Some("Service information endpoint").to_string(),
                     parameters: vec![],
                     response_schema: None,
                 },
             ],
-            capabilities: vec![
+            tags: vec![
                 "discovery".to_string(),
                 "health-monitoring".to_string(),
                 "security".to_string(),
@@ -289,7 +296,10 @@ impl UniversalService for ComprehensiveService {
         Ok((request_count as f64 / 1000.0).min(1.0))
     }
 
-    async fn update_config(&mut self, config: Self::Config) -> std::result::Result<(), Self::Error> {
+    async fn update_config(
+        &mut self,
+        config: Self::Config,
+    ) -> std::result::Result<(), Self::Error> {
         println!("🔄 Hot-reloading configuration for service {}", self.id);
         self.config = config;
         println!("✅ Configuration updated successfully");
@@ -320,22 +330,22 @@ impl SecurityProvider for DemoSecurityProvider {
     ) -> std::result::Result<bool, SongbirdError> {
         // Demo authorization logic (NOT for production!)
         // In a real implementation, this would check permissions, roles, etc.
-        
+
         // Allow admin users to do anything
         if subject.attributes.get("role") == Some(&"admin".to_string()) {
             return Ok(true);
         }
-        
+
         // Allow read access for regular users
         Ok(action.name == "read")
     }
 
-    async fn log_audit(
-        &self,
-        event: AuthEvent,
-    ) -> Result<()> {
+    async fn log_audit(&self, event: AuthEvent) -> Result<()> {
         // Demo audit logging (NOT for production!)
-        println!("🔒 AUDIT: {:?} by {} at {}", event.event_type, event.user_id, event.timestamp);
+        println!(
+            "🔒 AUDIT: {:?} by {} at {}",
+            event.event_type, event.user_id, event.timestamp
+        );
         Ok(())
     }
 }
@@ -357,16 +367,16 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         name: "Web Service Alpha".to_string(),
         version: "1.2.0".to_string(),
         service_type: "web".to_string(),
-        description: "Primary web service".to_string(),
+        description: Some("Primary web service").to_string(),
         endpoints: vec![],
-        capabilities: vec!["http".to_string(), "rest".to_string()],
+        tags: std::collections::HashMap::new(),
         tags: {
             let mut tags = HashMap::new();
             tags.insert("environment".to_string(), "production".to_string());
             tags.insert("region".to_string(), "us-east-1".to_string());
             tags
         },
-        metadata: HashMap::new(),
+        
     };
 
     let service_info_2 = ServiceInfo {
@@ -374,16 +384,16 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         name: "API Service Beta".to_string(),
         version: "2.1.0".to_string(),
         service_type: "api".to_string(),
-        description: "Core API service".to_string(),
+        description: Some("Core API service").to_string(),
         endpoints: vec![],
-        capabilities: vec!["graphql".to_string(), "rest".to_string()],
+        tags: std::collections::HashMap::new(),
         tags: {
             let mut tags = HashMap::new();
             tags.insert("environment".to_string(), "production".to_string());
             tags.insert("region".to_string(), "us-west-2".to_string());
             tags
         },
-        metadata: HashMap::new(),
+        
     };
 
     // Register services
@@ -464,63 +474,63 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         // Use environment variables for test credentials, fallback to secure defaults
         (
             std::env::var("DEMO_ADMIN_USER").unwrap_or_else(|_| "demo_admin".to_string()),
-            std::env::var("DEMO_ADMIN_PASS").unwrap_or_else(|_| generate_secure_password())
+            std::env::var("DEMO_ADMIN_PASS").unwrap_or_else(|_| generate_secure_password()),
         ),
         (
             std::env::var("DEMO_USER_NAME").unwrap_or_else(|_| "demo_user".to_string()),
-            std::env::var("DEMO_USER_PASS").unwrap_or_else(|_| generate_secure_password())
+            std::env::var("DEMO_USER_PASS").unwrap_or_else(|_| generate_secure_password()),
         ),
-        (
-            "guest_visitor".to_string(),
-            generate_secure_password()
-        ),
-        (
-            "invalid_user".to_string(),
-            "wrongpass".to_string()
-        ),
+        ("guest_visitor".to_string(), generate_secure_password()),
+        ("invalid_user".to_string(), "wrongpass".to_string()),
     ];
 
     // Display credentials for demo purposes (in production, never log credentials)
     println!("🔐 Demo Credentials (for testing only):");
     for (i, (username, password)) in auth_scenarios.iter().enumerate() {
-        if i < 2 {  // Only show first two valid accounts
-            println!("   Username: {} | Password: [REDACTED] (set via DEMO_*_USER/DEMO_*_PASS env vars)", username);
+        if i < 2 {
+            // Only show first two valid accounts
+            println!(
+                "   Username: {} | Password: [REDACTED] (set via DEMO_*_USER/DEMO_*_PASS env vars)",
+                username
+            );
         }
     }
 
     // Demo authorization testing (without authentication)
     println!("🔐 Testing Authorization System:");
-    
+
     let subject = Subject {
         id: "user123".to_string(),
         subject_type: SubjectType::User,
-        attributes: HashMap::from([
-            ("role".to_string(), "user".to_string())
-        ]),
+        attributes: HashMap::from([("role".to_string(), "user".to_string())]),
     };
-    
+
     let resource = Resource {
         id: "web-service-1".to_string(),
         resource_type: "service".to_string(),
         attributes: std::collections::HashMap::new(),
     };
-    
+
     let read_action = Action {
-        name: "read".to_string(),
+        action_type: "read".to_string(),
         attributes: std::collections::HashMap::new(),
     };
-    
+
     let write_action = Action {
         name: "write".to_string(),
         attributes: std::collections::HashMap::new(),
     };
-    
+
     // Test authorization
-    let can_read = security_provider.authorize(&subject, &resource, &read_action).await?;
-    let can_write = security_provider.authorize(&subject, &resource, &write_action).await?;
-    
+    let can_read = security_provider
+        .authorize(&subject, &resource, &read_action)
+        .await?;
+    let can_write = security_provider
+        .authorize(&subject, &resource, &write_action)
+        .await?;
+
     println!("   📖 Can read: {} | ✏️ Can write: {}", can_read, can_write);
-    
+
     // Test audit logging
     let audit_event = AuthEvent {
         event_type: AuthEventType::AccessGranted,
@@ -531,7 +541,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         ip_address: Some("127.0.0.1".to_string()),
         user_agent: Some("demo-client/1.0".to_string()),
     };
-    
+
     security_provider.log_audit(audit_event).await?;
     println!("   📋 Audit logging completed successfully");
     println!();
@@ -593,7 +603,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     }
 
     // Get orchestrator metrics
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     println!("\n📊 Orchestrator Metrics:");
     println!("   Total Services: {}", metrics.total_services);
     println!("   Healthy Services: {}", metrics.healthy_services);

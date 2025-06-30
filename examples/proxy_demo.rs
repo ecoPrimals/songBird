@@ -1,7 +1,7 @@
 /*!
  * Proxy Demo - Songbird Orchestrator
  *
- * Demonstrates advanced connection proxy capabilities:
+ * Demonstrates advanced connection proxy tags:
  * - HTTP request routing and forwarding
  * - Load balancing strategies (Round Robin, Random, Least Connections)
  * - Circuit breaker pattern for fault tolerance
@@ -14,7 +14,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 use axum::http::{HeaderMap, Method};
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     prelude::*,
     proxy_types::{ConnectionProxy, LoadBalancingStrategy, ProxyConfig, ProxyRequest},
 };
@@ -375,15 +375,17 @@ fn create_service(id: &str, name: &str, service_type: &str, port: u16) -> Servic
         name: name.to_string(),
         version: "1.0.0".to_string(),
         service_type: service_type.to_string(),
-        description: format!("Test service: {}", name),
+        description: format!("Test service_id: {}", name),
         endpoints: vec![ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
             path: format!("http://localhost:{}", port),
             method: "GET".to_string(),
-            description: "HTTP endpoint".to_string(),
+            description: Some("HTTP endpoint").to_string(),
             parameters: vec![],
             response_schema: None,
         }],
-        capabilities: vec!["http".to_string()],
+        tags: std::collections::HashMap::new(),
         tags: std::collections::HashMap::new(),
         metadata: std::collections::HashMap::new(),
     }

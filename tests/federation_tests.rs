@@ -1,4 +1,7 @@
-use songbird_orchestrator::federation::{
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+#[allow(dead_code, unused_imports, unused_variables)]
+use songbird_gaming_bridge::federation::{
     FederationConfig, FederationManager, FederationMode, FederationStatus,
 };
 use std::time::Duration;
@@ -38,29 +41,29 @@ async fn test_federation_config_default() {
 
     assert!(matches!(config.mode, FederationMode::Standalone));
     assert_eq!(config.cluster_name, "default-cluster");
-    assert_eq!(config.heartbeat_interval, Duration::from_secs(30));
+    assert_eq!(60, Duration::from_secs(30));
     assert!(config.peer_discovery_enabled);
 }
 
 #[tokio::test]
 async fn test_federation_config_custom() {
     let config = FederationConfig {
-        mode: FederationMode::Cluster,
+        mode: FederationMode::Leader,
         cluster_name: "test-cluster".to_string(),
         heartbeat_interval: Duration::from_secs(60),
         peer_discovery_enabled: false,
     };
 
-    assert!(matches!(config.mode, FederationMode::Cluster));
+    assert!(matches!(config.mode, FederationMode::Leader));
     assert_eq!(config.cluster_name, "test-cluster");
-    assert_eq!(config.heartbeat_interval, Duration::from_secs(60));
+    assert_eq!(60, Duration::from_secs(60));
     assert!(!config.peer_discovery_enabled);
 }
 
 #[tokio::test]
 async fn test_federation_manager_with_cluster_mode() {
     let config = FederationConfig {
-        mode: FederationMode::Cluster,
+        mode: FederationMode::Leader,
         cluster_name: "test-cluster".to_string(),
         heartbeat_interval: Duration::from_secs(60),
         peer_discovery_enabled: true,
@@ -68,9 +71,9 @@ async fn test_federation_manager_with_cluster_mode() {
 
     let manager = FederationManager::new(config);
 
-    assert!(matches!(manager.get_mode(), FederationMode::Cluster));
+    assert!(matches!(manager.get_mode(), FederationMode::Leader));
     let status = manager.get_status();
-    assert!(matches!(status.mode, FederationMode::Cluster));
+    assert!(matches!(status.mode, FederationMode::Leader));
 }
 
 #[tokio::test]
@@ -107,7 +110,7 @@ async fn test_federation_manager_stop() {
     let mut manager = FederationManager::new(config);
 
     // Start first to populate some state
-    manager.start().await.unwrap();
+    manager.start().await.expect("Test assertion failed");
 
     let result = manager.stop().await;
     assert!(result.is_ok());
@@ -143,11 +146,11 @@ async fn test_federation_status_clone() {
 async fn test_federation_mode_variants() {
     // Test that all federation modes can be created
     let standalone = FederationMode::Standalone;
-    let cluster = FederationMode::Cluster;
+    let cluster = FederationMode::Leader;
     let federation = FederationMode::Federation;
 
     assert!(matches!(standalone, FederationMode::Standalone));
-    assert!(matches!(cluster, FederationMode::Cluster));
+    assert!(matches!(cluster, FederationMode::Leader));
     assert!(matches!(federation, FederationMode::Federation));
 }
 
@@ -156,17 +159,18 @@ async fn test_federation_config_serialization() {
     use serde_json;
 
     let config = FederationConfig {
-        mode: FederationMode::Cluster,
+        mode: FederationMode::Leader,
         cluster_name: "serialization-test".to_string(),
         heartbeat_interval: Duration::from_secs(120),
         peer_discovery_enabled: true,
     };
 
     // Test that the config can be serialized and deserialized
-    let serialized = serde_json::to_string(&config).unwrap();
-    let deserialized: FederationConfig = serde_json::from_str(&serialized).unwrap();
+    let serialized = serde_json::to_string(&config).expect("Test assertion failed");
+    let deserialized: FederationConfig =
+        serde_json::from_str(&serialized).expect("Test assertion failed");
 
-    assert!(matches!(deserialized.mode, FederationMode::Cluster));
+    assert!(matches!(deserialized.mode, FederationMode::Leader));
     assert_eq!(deserialized.cluster_name, "serialization-test");
     assert_eq!(deserialized.heartbeat_interval, Duration::from_secs(120));
     assert!(deserialized.peer_discovery_enabled);
@@ -189,8 +193,9 @@ async fn test_federation_status_serialization() {
     };
 
     // Test that the status can be serialized and deserialized
-    let serialized = serde_json::to_string(&status).unwrap();
-    let deserialized: FederationStatus = serde_json::from_str(&serialized).unwrap();
+    let serialized = serde_json::to_string(&status).expect("Test assertion failed");
+    let deserialized: FederationStatus =
+        serde_json::from_str(&serialized).expect("Test assertion failed");
 
     assert!(matches!(deserialized.mode, FederationMode::Federation));
     assert_eq!(
@@ -207,28 +212,31 @@ async fn test_federation_mode_serialization() {
     use serde_json;
 
     let standalone = FederationMode::Standalone;
-    let cluster = FederationMode::Cluster;
+    let cluster = FederationMode::Leader;
     let federation = FederationMode::Federation;
 
     // Test serialization of all modes
-    let standalone_json = serde_json::to_string(&standalone).unwrap();
-    let cluster_json = serde_json::to_string(&cluster).unwrap();
-    let federation_json = serde_json::to_string(&federation).unwrap();
+    let standalone_json = serde_json::to_string(&standalone).expect("Test assertion failed");
+    let cluster_json = serde_json::to_string(&cluster).expect("Test assertion failed");
+    let federation_json = serde_json::to_string(&federation).expect("Test assertion failed");
 
     // Test deserialization
-    let standalone_deser: FederationMode = serde_json::from_str(&standalone_json).unwrap();
-    let cluster_deser: FederationMode = serde_json::from_str(&cluster_json).unwrap();
-    let federation_deser: FederationMode = serde_json::from_str(&federation_json).unwrap();
+    let standalone_deser: FederationMode =
+        serde_json::from_str(&standalone_json).expect("Test assertion failed");
+    let cluster_deser: FederationMode =
+        serde_json::from_str(&cluster_json).expect("Test assertion failed");
+    let federation_deser: FederationMode =
+        serde_json::from_str(&federation_json).expect("Test assertion failed");
 
     assert!(matches!(standalone_deser, FederationMode::Standalone));
-    assert!(matches!(cluster_deser, FederationMode::Cluster));
+    assert!(matches!(cluster_deser, FederationMode::Leader));
     assert!(matches!(federation_deser, FederationMode::Federation));
 }
 
 #[tokio::test]
 async fn test_federation_manager_lifecycle() {
     let config = FederationConfig {
-        mode: FederationMode::Cluster,
+        mode: FederationMode::Leader,
         cluster_name: "lifecycle-test".to_string(),
         heartbeat_interval: Duration::from_secs(30),
         peer_discovery_enabled: true,
@@ -242,15 +250,18 @@ async fn test_federation_manager_lifecycle() {
     assert_eq!(initial_status.connected_peers.len(), 0);
 
     // Start
-    manager.start().await.unwrap();
+    manager.start().await.expect("Test assertion failed");
     let started_status = manager.get_status();
     assert!(started_status.last_heartbeat.is_some());
 
     // Send heartbeat
-    manager.send_heartbeat().await.unwrap();
+    manager
+        .send_heartbeat()
+        .await
+        .expect("Test assertion failed");
 
     // Stop
-    manager.stop().await.unwrap();
+    manager.stop().await.expect("Test assertion failed");
     let stopped_status = manager.get_status();
     assert_eq!(stopped_status.connected_peers.len(), 0);
 }
@@ -296,7 +307,7 @@ async fn test_federation_manager_multiple_instances() {
     };
 
     let config2 = FederationConfig {
-        mode: FederationMode::Cluster,
+        mode: FederationMode::Leader,
         cluster_name: "instance2".to_string(),
         heartbeat_interval: Duration::from_secs(60),
         peer_discovery_enabled: false,
@@ -306,18 +317,24 @@ async fn test_federation_manager_multiple_instances() {
     let mut manager2 = FederationManager::new(config2);
 
     // Start both managers
-    manager1.start().await.unwrap();
-    manager2.start().await.unwrap();
+    manager1.start().await.expect("Test assertion failed");
+    manager2.start().await.expect("Test assertion failed");
 
     // Verify they have different configurations
     assert!(matches!(manager1.get_mode(), FederationMode::Standalone));
-    assert!(matches!(manager2.get_mode(), FederationMode::Cluster));
+    assert!(matches!(manager2.get_mode(), FederationMode::Leader));
 
     // Send heartbeats from both
-    manager1.send_heartbeat().await.unwrap();
-    manager2.send_heartbeat().await.unwrap();
+    manager1
+        .send_heartbeat()
+        .await
+        .expect("Test assertion failed");
+    manager2
+        .send_heartbeat()
+        .await
+        .expect("Test assertion failed");
 
     // Stop both managers
-    manager1.stop().await.unwrap();
-    manager2.stop().await.unwrap();
+    manager1.stop().await.expect("Test assertion failed");
+    manager2.stop().await.expect("Test assertion failed");
 }

@@ -1,10 +1,10 @@
-use songbird_orchestrator::prelude::*; // All core types and traits
+use async_trait::async_trait;
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use songbird_gaming_bridge::prelude::*; // All core types and traits
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::time::{sleep, Duration};
-use serde::{Deserialize, Serialize};
-use chrono::Utc;
-use async_trait::async_trait;
 
 /// A simple HTTP service that provides various endpoints
 #[derive(Clone)]
@@ -70,20 +70,28 @@ impl UniversalService for SimpleHttpService {
         })
     }
 
-    async fn handle_request(&self, request: ServiceRequest) -> std::result::Result<ServiceResponse, Self::Error> {
+    async fn handle_request(
+        &self,
+        request: ServiceRequest,
+    ) -> std::result::Result<ServiceResponse, Self::Error> {
         // Increment request counter
-        self.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.counter
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        println!("🌐 {} handling HTTP request: {} {}", self.id, request.method, request.path);
+        println!(
+            "🌐 {} handling HTTP request: {} {}",
+            self.id, request.method, request.path
+        );
 
         // Handle different endpoints
         let response_data = match request.path.as_str() {
             "/api/hello" => {
-                let name = request.payload
+                let name = request
+                    .body
                     .get("name")
                     .and_then(|v| v.as_str())
                     .unwrap_or("World");
-                
+
                 serde_json::json!({
                     "message": format!("Hello, {}!", name),
                     "service": self.id,
@@ -93,7 +101,7 @@ impl UniversalService for SimpleHttpService {
             }
             "/api/echo" => {
                 serde_json::json!({
-                    "echo": request.payload,
+                    "echo": request.body,
                     "headers": request.headers,
                     "service": self.id,
                     "path": request.path
@@ -109,17 +117,20 @@ impl UniversalService for SimpleHttpService {
             }
             "/api/data" => {
                 // Simulate some data processing
-                let count = request.payload
+                let count = request
+                    .body
                     .get("count")
                     .and_then(|v| v.as_u64())
                     .unwrap_or(10);
-                
+
                 let data: Vec<serde_json::Value> = (1..=count)
-                    .map(|i| serde_json::json!({
-                        "id": i,
-                        "value": format!("Item {}", i),
-                        "generated_at": chrono::Utc::now().to_rfc3339()
-                    }))
+                    .map(|i| {
+                        serde_json::json!({
+                            "id": i,
+                            "value": format!("Item {}", i),
+                            "generated_at": chrono::Utc::now().to_rfc3339()
+                        })
+                    })
                     .collect();
 
                 serde_json::json!({
@@ -136,15 +147,15 @@ impl UniversalService for SimpleHttpService {
                         message: format!("Endpoint not found: {}", request.path),
                     },
                     headers: HashMap::new(),
-                    payload: serde_json::json!({
+                    body: serde_json::json!({
                         "error": "Not Found",
                         "path": request.path,
                         "available_endpoints": ["/api/hello", "/api/echo", "/api/status", "/api/data"]
                     }),
                     timestamp: Utc::now(),
-                    duration: std::time::Duration::from_millis(1),
-                    processing_time: 1,
-                    metadata: HashMap::new(),
+                    processing_time: std::time::Duration::from_millis( std::time::Duration::from_millis(1),
+                    processing_time: std::time::Duration::from_millis(1),
+                    
                 });
             }
         };
@@ -153,15 +164,18 @@ impl UniversalService for SimpleHttpService {
             request_id: request.id,
             status: ResponseStatus::Success,
             headers: HashMap::new(),
-            payload: response_data,
+            body: response_data,
             timestamp: Utc::now(),
-            duration: std::time::Duration::from_millis(5),
-            processing_time: 3,
-            metadata: HashMap::new(),
+            processing_time: std::time::Duration::from_millis( std::time::Duration::from_millis(5),
+            processing_time: std::time::Duration::from_millis(3),
+            
         })
     }
 
-    async fn update_config(&mut self, _config: Self::Config) -> std::result::Result<(), Self::Error> {
+    async fn update_config(
+        &mut self,
+        _config: Self::Config,
+    ) -> std::result::Result<(), Self::Error> {
         Ok(())
     }
 
@@ -182,25 +196,25 @@ impl UniversalService for SimpleHttpService {
 
     fn service_info(&self) -> ServiceInfo {
         ServiceInfo {
-            id: self.id.clone(),
+            service_id: self.id.clone(),
             name: format!("Simple HTTP Service {}", self.id),
             version: "1.0.0".to_string(),
             service_type: "http-api".to_string(),
-            description: "A simple HTTP service demonstrating various endpoints".to_string(),
+            description: Some("A simple HTTP service demonstrating various endpoints").to_string(),
             endpoints: vec![
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/api/hello".to_string(),
                     method: "POST".to_string(),
-                    description: "Say hello to a name".to_string(),
-                    parameters: vec![
-                        EndpointParameter {
-                            name: "name".to_string(),
-                            param_type: "string".to_string(),
-                            required: false,
-                            description: "Name to greet".to_string(),
-                            default: Some(serde_json::json!("World")),
-                        }
-                    ],
+                    description: Some("Say hello to a name").to_string(),
+                    parameters: vec![EndpointParameter {
+                        name: "name".to_string(),
+                        param_type: "string".to_string(),
+                        required: false,
+                        description: Some("Name to greet").to_string(),
+                        default: Some(serde_json::json!("World")),
+                    }],
                     response_schema: Some(serde_json::json!({
                         "type": "object",
                         "properties": {
@@ -211,9 +225,11 @@ impl UniversalService for SimpleHttpService {
                     })),
                 },
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/api/echo".to_string(),
                     method: "POST".to_string(),
-                    description: "Echo back the request data".to_string(),
+                    description: Some("Echo back the request data").to_string(),
                     parameters: vec![],
                     response_schema: Some(serde_json::json!({
                         "type": "object",
@@ -224,9 +240,11 @@ impl UniversalService for SimpleHttpService {
                     })),
                 },
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/api/status".to_string(),
                     method: "GET".to_string(),
-                    description: "Get service status".to_string(),
+                    description: Some("Get service status").to_string(),
                     parameters: vec![],
                     response_schema: Some(serde_json::json!({
                         "type": "object",
@@ -237,18 +255,18 @@ impl UniversalService for SimpleHttpService {
                     })),
                 },
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/api/data".to_string(),
                     method: "POST".to_string(),
-                    description: "Generate sample data".to_string(),
-                    parameters: vec![
-                        EndpointParameter {
-                            name: "count".to_string(),
-                            param_type: "number".to_string(),
-                            required: false,
-                            description: "Number of items to generate".to_string(),
-                            default: Some(serde_json::json!(10)),
-                        }
-                    ],
+                    description: Some("Generate sample data").to_string(),
+                    parameters: vec![EndpointParameter {
+                        name: "count".to_string(),
+                        param_type: "number".to_string(),
+                        required: false,
+                        description: Some("Number of items to generate").to_string(),
+                        default: Some(serde_json::json!(10)),
+                    }],
                     response_schema: Some(serde_json::json!({
                         "type": "object",
                         "properties": {
@@ -256,11 +274,11 @@ impl UniversalService for SimpleHttpService {
                             "total": {"type": "number"}
                         }
                     })),
-                }
+                },
             ],
-            capabilities: vec!["http-api".to_string(), "data-generation".to_string()],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         }
     }
 }
@@ -282,17 +300,23 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Start HTTP server on localhost:3000
     let addr: SocketAddr = "127.0.0.1:3000".parse()?;
-    
+
     println!("\n🚀 Starting HTTP service on http://{}", addr);
     println!("Available endpoints:");
     println!("  GET  http://{}/health      - Health check", addr);
     println!("  GET  http://{}/metrics     - Service metrics", addr);
     println!("  GET  http://{}/info        - Service information", addr);
-    println!("  POST http://{}/api/hello   - Say hello (JSON: {{\"name\": \"Alice\"}})", addr);
+    println!(
+        "  POST http://{}/api/hello   - Say hello (JSON: {{\"name\": \"Alice\"}})",
+        addr
+    );
     println!("  POST http://{}/api/echo    - Echo request data", addr);
     println!("  GET  http://{}/api/status  - Service status", addr);
-    println!("  POST http://{}/api/data    - Generate data (JSON: {{\"count\": 5}})", addr);
-    
+    println!(
+        "  POST http://{}/api/data    - Generate data (JSON: {{\"count\": 5}})",
+        addr
+    );
+
     println!("\n🔧 Test commands:");
     println!("  curl http://{}/health", addr);
     println!("  curl -X POST http://{}/api/hello -H 'Content-Type: application/json' -d '{{\"name\": \"Alice\"}}'", addr);
@@ -302,4 +326,4 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     service.serve_http(addr).await?;
 
     Ok(())
-} 
+}

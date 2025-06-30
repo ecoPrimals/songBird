@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::discovery::types::NodeType;
+use serde::{Deserialize, Serialize};
 
 /// Configuration for Songbird Discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,11 +91,13 @@ pub struct NetworkTimingConfig {
 // Default implementations
 impl Default for NetworkConfig {
     fn default() -> Self {
+        let env_config = crate::config::environment::EnvironmentConfig::default();
+        
         Self {
             multicast_address: "224.0.0.251".to_string(),
             federation_port: 8765,
-            service_port: 8080,
-            bind_address: "0.0.0.0".to_string(),
+            service_port: env_config.bind_port,
+            bind_address: env_config.bind_address.clone(),
             announcement_interval_secs: 60,
             response_timeout_secs: 2,
             ping_timeout_secs: 5,
@@ -171,13 +173,15 @@ impl Default for NetworkTimingConfig {
 
 impl Default for SongbirdDiscoveryConfig {
     fn default() -> Self {
+        let env_config = crate::config::environment::EnvironmentConfig::default();
+        
         Self {
             node_id: None,
             node_type: NodeType::Orchestrator,
             institution: None,
             federation_enabled: false,
-            health_check_interval_secs: 30,
-            node_discovery_interval_secs: 60,
+            health_check_interval_secs: env_config.health_check_interval_secs,
+            node_discovery_interval_secs: env_config.health_check_interval_secs,
             trust_verification_enabled: true,
             max_federation_nodes: 1000,
             network: NetworkConfig::default(),
@@ -185,4 +189,4 @@ impl Default for SongbirdDiscoveryConfig {
             trust: TrustConfig::default(),
         }
     }
-} 
+}

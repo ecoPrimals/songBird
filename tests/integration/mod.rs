@@ -1,10 +1,12 @@
 use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+
 use std::time::Duration;
 use chrono::Utc;
-use songbird_orchestrator::prelude::*;
-use songbird_orchestrator::config::OrchestratorConfig;
-use songbird_orchestrator::orchestrator::Orchestrator;
-use songbird_orchestrator::traits::service::{ServiceRequest, ServiceResponse, ResponseStatus, UniversalService, ServiceInfo, ServiceEndpoint, ServiceMetrics};
+use songbird_gaming_bridge::prelude::*;
+use songbird_gaming_bridge::config::OrchestratorConfig;
+use songbird_gaming_bridge::orchestrator::Orchestrator;
+use songbird_gaming_bridge::traits::service_id::{ServiceRequest, ServiceResponse, ResponseStatus, UniversalService, ServiceInfo, ServiceEndpoint, ServiceMetrics};
 use tokio;
 
 // Test service implementations
@@ -42,48 +44,50 @@ impl UniversalService for TestEchoService {
     type Health = String;
     type Error = Box<dyn std::error::Error + Send + Sync>;
 
-    async fn initialize(&mut self, config: Self::Config) -> Result<(), Self::Error> {
+    async fn initialize(&mut self, config: Self::Config) -> Result<()> {
         println!("Initializing test service {} with config: {:?}", self.id, config);
         Ok(())
     }
 
-    async fn start(&mut self) -> Result<(), Self::Error> {
+    async fn start(&mut self) -> Result<()> {
         println!("Starting test service {}", self.id);
         Ok(())
     }
 
-    async fn stop(&mut self) -> Result<(), Self::Error> {
+    async fn stop(&mut self) -> Result<()> {
         println!("Stopping test service {}", self.id);
         Ok(())
     }
 
-    async fn health_check(&self) -> Result<Self::Health, Self::Error> {
+    async fn health_check(&self) -> Result<Self::Health> {
         Ok("healthy".to_string())
     }
 
     fn service_info(&self) -> ServiceInfo {
         ServiceInfo {
-            id: self.id.clone(),
+            service_service_id: self.id.clone(),
             name: self.name.clone(),
             version: "1.0.0".to_string(),
             service_type: "test-echo".to_string(),
-            description: "Test echo service for integration testing".to_string(),
+            description: Some("Test echo service for integration testing").to_string(),
             endpoints: vec![
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/echo".to_string(),
                     method: "POST".to_string(),
-                    description: "Echo endpoint".to_string(),
+                    description: Some("Echo endpoint").to_string(),
                     parameters: Vec::new(),
                     response_schema: None,
                 }
             ],
-            capabilities: vec!["echo".to_string()],
+            tags: std::collections::HashMap::new(),
             tags: HashMap::new(),
-            metadata: HashMap::new(),
+            
         }
     }
 
-    async fn get_metrics(&self) -> Result<ServiceMetrics, Self::Error> {
+    async fn get_metrics(&self) -> Result<ServiceMetrics> {
         Ok(ServiceMetrics::default())
     }
 }
@@ -94,7 +98,7 @@ pub async fn create_test_orchestrator() -> Orchestrator {
     Orchestrator::new(config).await.expect("Failed to create test orchestrator")
 }
 
-pub fn create_test_request(payload: serde_json::Value) -> ServiceRequest {
+pub fn create_test_request(body: serde_json::Value) -> ServiceRequest {
     ServiceRequest {
         id: format!("test-request-{}", uuid::Uuid::new_v4()),
         method: "POST".to_string(),
@@ -104,7 +108,7 @@ pub fn create_test_request(payload: serde_json::Value) -> ServiceRequest {
         timestamp: Utc::now(),
         timeout: Some(Duration::from_secs(30)),
         client_info: None,
-        metadata: HashMap::new(),
+        
     }
 }
 
@@ -112,7 +116,7 @@ pub fn create_test_request(payload: serde_json::Value) -> ServiceRequest {
 #[tokio::test]
 async fn test_orchestrator_creation() {
     let orchestrator = create_test_orchestrator().await;
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     
     assert_eq!(metrics.total_services, 0);
     assert_eq!(metrics.healthy_services, 0);
@@ -136,7 +140,7 @@ async fn test_service_registration() {
     // Verify registration
     assert_eq!(service_id, "test-service-1");
     
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     assert_eq!(metrics.total_services, 1);
     assert_eq!(metrics.healthy_services, 1);
     
@@ -168,7 +172,7 @@ async fn test_service_health_monitoring() {
         .expect("Failed to get service health");
     
     // Should be healthy after registration
-    matches!(health, songbird_orchestrator::orchestrator::ServiceHealth::Healthy);
+    matches!(health, songbird_gaming_bridge::orchestrator::ServiceHealth::Healthy);
     
     println!("✅ Service health monitoring test passed");
 }
@@ -187,7 +191,7 @@ async fn test_service_lifecycle() {
         .expect("Failed to register service");
     
     // Verify service is running
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     assert_eq!(metrics.total_services, 1);
     
     // Stop service
@@ -197,7 +201,7 @@ async fn test_service_lifecycle() {
         .expect("Failed to stop service");
     
     // Verify service is stopped
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     assert_eq!(metrics.total_services, 0);
     
     println!("✅ Service lifecycle test passed");
@@ -262,7 +266,7 @@ async fn test_multiple_service_registration() {
     }
     
     // Verify all services are registered
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     assert_eq!(metrics.total_services, 3);
     assert_eq!(metrics.healthy_services, 3);
     
@@ -283,7 +287,7 @@ async fn test_orchestrator_metrics() {
     let orchestrator = create_test_orchestrator().await;
     
     // Initial metrics
-    let initial_metrics = orchestrator.get_metrics().await;
+    let initial_metrics = orchestrator.get_config().await;
     assert_eq!(initial_metrics.total_services, 0);
     assert_eq!(initial_metrics.successful_requests, 0);
     assert_eq!(initial_metrics.failed_requests, 0);
@@ -298,7 +302,7 @@ async fn test_orchestrator_metrics() {
         .expect("Failed to register service");
     
     // Check updated metrics
-    let updated_metrics = orchestrator.get_metrics().await;
+    let updated_metrics = orchestrator.get_config().await;
     assert_eq!(updated_metrics.total_services, 1);
     assert_eq!(updated_metrics.healthy_services, 1);
     
@@ -319,8 +323,8 @@ async fn test_service_not_found_error() {
     assert!(result.is_err());
     
     // Verify the error message
-    match result.err().unwrap() {
-        songbird_orchestrator::errors::SongbirdError::Service { service, message } => {
+    match result.err().expect("Test assertion failed") {
+        songbird_gaming_bridge::errors::SongbirdError::Service { service, message } => {
             assert_eq!(service, "non-existent-service");
             assert!(message.contains("Service not found") || message.contains("not found"));
         }
@@ -343,8 +347,8 @@ async fn test_load_balancer_integration() {
     let config_1 = TestEchoConfig { message: "Instance 1".to_string() };
     let config_2 = TestEchoConfig { message: "Instance 2".to_string() };
     
-    let service_id_1 = orchestrator.register_service(service_1, config_1).await.unwrap();
-    let service_id_2 = orchestrator.register_service(service_2, config_2).await.unwrap();
+    let service_id_1 = orchestrator.register_service(service_1, config_1).await.expect("Test assertion failed");
+    let service_id_2 = orchestrator.register_service(service_2, config_2).await.expect("Test assertion failed");
     
     // Test that both services can be found
     let health_1 = orchestrator.get_service_health(&service_id_1).await;
@@ -381,7 +385,7 @@ async fn test_orchestrator_events() {
     let service = TestEchoService::new("event-test".to_string());
     let config = TestEchoConfig::default();
     
-    let service_id = orchestrator.register_service(service, config).await.unwrap();
+    let service_id = orchestrator.register_service(service, config).await.expect("Test assertion failed");
     
     // Try to receive the event (with timeout)
     let event_result = tokio::time::timeout(
@@ -391,7 +395,7 @@ async fn test_orchestrator_events() {
     
     if let Ok(Ok(event)) = event_result {
         match event {
-            songbird_orchestrator::orchestrator::OrchestratorEvent::ServiceStarted { service_id: event_service_id } => {
+            songbird_gaming_bridge::orchestrator::OrchestratorEvent::ServiceStarted { service_id: event_service_id } => {
                 assert_eq!(event_service_id, service_id);
                 println!("✅ Service started event received correctly");
             }
@@ -421,18 +425,18 @@ async fn test_system_integration_health() {
             message: format!("Health check service {}", i),
         };
         
-        let service_id = orchestrator.register_service(service, config).await.unwrap();
+        let service_id = orchestrator.register_service(service, config).await.expect("Test assertion failed");
         registered_services.push(service_id);
     }
     
     // Test 2: Verify all services are healthy
     for service_id in &registered_services {
-        let health = orchestrator.get_service_health(service_id).await.unwrap();
-        assert!(matches!(health, songbird_orchestrator::orchestrator::ServiceHealth::Healthy));
+        let health = orchestrator.get_service_health(service_id).await.expect("Test assertion failed");
+        assert!(matches!(health, songbird_gaming_bridge::orchestrator::ServiceHealth::Healthy));
     }
     
     // Test 3: Verify metrics are accurate
-    let metrics = orchestrator.get_metrics().await;
+    let metrics = orchestrator.get_config().await;
     assert_eq!(metrics.total_services, service_count as u64);
     assert_eq!(metrics.healthy_services, service_count as u64);
     
@@ -446,10 +450,10 @@ async fn test_system_integration_health() {
     
     // Test 5: Clean shutdown
     for service_id in &registered_services {
-        orchestrator.stop_service(service_id).await.unwrap();
+        orchestrator.stop_service(service_id).await.expect("Test assertion failed");
     }
     
-    let final_metrics = orchestrator.get_metrics().await;
+    let final_metrics = orchestrator.get_config().await;
     assert_eq!(final_metrics.total_services, 0);
     
     println!("✅ System integration health check passed - Core orchestration is functional!");

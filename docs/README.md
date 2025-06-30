@@ -79,9 +79,9 @@ Internal project documentation including development status, architectural decis
 
 ## 📞 Documentation Support
 
-- **User Documentation Issues**: [Report here](https://github.com/your-org/songbird-orchestrator/issues/new?labels=documentation,user-docs)
+- **User Documentation Issues**: [Report here](https://github.com/songbird-project/songbird-orchestrator/issues/new?labels=documentation,user-docs)
 - **Project Documentation**: Internal team reviews and updates
-- **General Questions**: [Community Discussions](https://github.com/your-org/songbird-orchestrator/discussions)
+- **General Questions**: [Community Discussions](https://github.com/songbird-project/songbird-orchestrator/discussions)
 
 ---
 

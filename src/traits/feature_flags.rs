@@ -2,40 +2,47 @@
 //!
 //! Universal feature toggles and configuration management
 
+use crate::errors::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-use crate::errors::Result;
 
 /// Universal feature flag provider trait
 #[async_trait]
 pub trait FeatureFlagProvider: Send + Sync {
     /// Initialize the feature flag provider
     async fn initialize(&mut self, config: &FeatureFlagConfig) -> Result<()>;
-    
+
     /// Check if a feature is enabled
-    async fn is_enabled(&self, feature_name: &str, context: Option<&EvaluationContext>) -> Result<bool>;
-    
+    async fn is_enabled(
+        &self,
+        feature_name: &str,
+        context: Option<&EvaluationContext>,
+    ) -> Result<bool>;
+
     /// Get feature flag value
-    async fn get_flag_value(&self, feature_name: &str, context: Option<&EvaluationContext>) -> Result<Option<serde_json::Value>>;
-    
+    async fn get_flag_value(
+        &self,
+        feature_name: &str,
+        context: Option<&EvaluationContext>,
+    ) -> Result<Option<serde_json::Value>>;
+
     /// Set feature flag value (if provider supports updates)
     async fn set_flag_value(&self, feature_name: &str, value: serde_json::Value) -> Result<()>;
-    
+
     /// Get all feature flags
     async fn get_all_flags(&self) -> Result<HashMap<String, FeatureFlag>>;
-    
+
     /// Register a new feature flag
     async fn register_flag(&self, flag: &FeatureFlag) -> Result<()>;
-    
+
     /// Remove a feature flag
     async fn remove_flag(&self, feature_name: &str) -> Result<()>;
-    
+
     /// Get flag evaluation history
     async fn get_evaluation_history(&self, feature_name: &str) -> Result<Vec<FlagEvaluation>>;
-    
+
     /// Get provider information
     fn provider_info(&self) -> FeatureFlagProviderInfo;
 }
@@ -45,34 +52,24 @@ pub trait FeatureFlagProvider: Send + Sync {
 pub struct FeatureFlag {
     /// Unique feature name
     pub name: String,
-    
     /// Human-readable description
     pub description: String,
-    
     /// Feature category/group
     pub category: String,
-    
     /// Default value when no rules match
     pub default_value: serde_json::Value,
-    
     /// Flag type
     pub flag_type: FlagType,
-    
     /// Evaluation rules
     pub rules: Vec<EvaluationRule>,
-    
     /// Flag metadata
     pub metadata: HashMap<String, serde_json::Value>,
-    
     /// Creation timestamp
     pub created_at: DateTime<Utc>,
-    
     /// Last modified timestamp
     pub modified_at: DateTime<Utc>,
-    
     /// Whether the flag is enabled
     pub enabled: bool,
-    
     /// Tags for organization
     pub tags: Vec<String>,
 }
@@ -82,19 +79,14 @@ pub struct FeatureFlag {
 pub enum FlagType {
     /// Simple boolean flag
     Boolean,
-    
     /// String value flag
     String,
-    
     /// Numeric value flag
     Number,
-    
     /// JSON object flag
     Json,
-    
     /// Multi-variant flag
     Variant { variants: Vec<String> },
-    
     /// Percentage rollout flag
     Percentage,
 }
@@ -104,22 +96,16 @@ pub enum FlagType {
 pub struct EvaluationRule {
     /// Rule identifier
     pub id: String,
-    
     /// Rule description
     pub description: String,
-    
     /// Rule conditions
     pub conditions: Vec<RuleCondition>,
-    
     /// Value to return if conditions match
     pub value: serde_json::Value,
-    
     /// Rule priority (lower = higher priority)
     pub priority: u32,
-    
     /// Whether the rule is enabled
     pub enabled: bool,
-    
     /// Percentage of traffic this rule applies to (0-100)
     pub traffic_percentage: Option<f64>,
 }
@@ -129,13 +115,10 @@ pub struct EvaluationRule {
 pub struct RuleCondition {
     /// Context attribute to evaluate
     pub attribute: String,
-    
     /// Evaluation operator
     pub operator: RuleOperator,
-    
     /// Value to compare against
     pub value: serde_json::Value,
-    
     /// Whether to negate the condition
     pub negate: bool,
 }
@@ -145,49 +128,37 @@ pub struct RuleCondition {
 pub enum RuleOperator {
     /// Exact equality
     Equals,
-    
     /// Not equal
     NotEquals,
-    
     /// String contains
     Contains,
-    
     /// String starts with
     StartsWith,
-    
     /// String ends with
     EndsWith,
-    
     /// Numeric greater than
     GreaterThan,
-    
     /// Numeric less than
     LessThan,
-    
     /// Numeric greater than or equal
     GreaterThanOrEqual,
-    
     /// Numeric less than or equal
     LessThanOrEqual,
-    
     /// Value in list
     In,
-    
     /// Value not in list
     NotIn,
-    
     /// Regular expression match
     Regex,
-    
     /// Semantic version match
     VersionMatch,
-    
     /// Date/time comparison
     DateBefore,
     DateAfter,
-    
     /// Custom function
-    Custom { function_name: String },
+    Custom {
+        function_name: String,
+    },
 }
 
 /// Evaluation context for feature flag decisions
@@ -195,28 +166,20 @@ pub enum RuleOperator {
 pub struct EvaluationContext {
     /// User/entity identifier
     pub user_id: Option<String>,
-    
     /// Service identifier
     pub service_id: Option<String>,
-    
     /// Request identifier
     pub request_id: Option<String>,
-    
     /// Environment (dev, staging, prod, etc.)
     pub environment: Option<String>,
-    
     /// Application version
     pub version: Option<String>,
-    
     /// Geographic location
     pub geo_location: Option<GeoLocation>,
-    
     /// Device/client information
     pub device_info: Option<DeviceInfo>,
-    
     /// Custom attributes
     pub attributes: HashMap<String, serde_json::Value>,
-    
     /// Evaluation timestamp
     pub timestamp: DateTime<Utc>,
 }
@@ -246,25 +209,18 @@ pub struct DeviceInfo {
 pub struct FlagEvaluation {
     /// Feature flag name
     pub feature_name: String,
-    
     /// Evaluated value
     pub value: serde_json::Value,
-    
     /// Rule that matched (if any)
     pub matched_rule: Option<String>,
-    
     /// Evaluation context used
     pub context: EvaluationContext,
-    
     /// Evaluation timestamp
     pub timestamp: DateTime<Utc>,
-    
     /// Evaluation duration in milliseconds
     pub duration_ms: u64,
-    
     /// Whether default value was used
     pub used_default: bool,
-    
     /// Any errors during evaluation
     pub errors: Vec<String>,
 }
@@ -286,25 +242,18 @@ pub struct FeatureFlagProviderInfo {
 pub struct FlagStats {
     /// Total number of evaluations
     pub total_evaluations: u64,
-    
     /// Number of true evaluations
     pub true_evaluations: u64,
-    
     /// Number of false evaluations
     pub false_evaluations: u64,
-    
     /// Number of default value usages
     pub default_usages: u64,
-    
     /// Average evaluation time
     pub avg_evaluation_time_ms: f64,
-    
     /// Unique users/contexts evaluated
     pub unique_contexts: u64,
-    
     /// Last evaluation timestamp
     pub last_evaluation: Option<DateTime<Utc>>,
-    
     /// Distribution by rule
     pub rule_distribution: HashMap<String, u64>,
 }
@@ -314,25 +263,40 @@ pub struct FlagStats {
 pub trait FeatureFlagManager: Send + Sync {
     /// Initialize the manager
     async fn initialize(&mut self, config: &FeatureFlagConfig) -> Result<()>;
-    
+
     /// Register a feature flag provider
-    async fn register_provider(&mut self, name: &str, provider: Box<dyn FeatureFlagProvider>) -> Result<()>;
-    
+    async fn register_provider(
+        &mut self,
+        name: &str,
+        user: Box<dyn FeatureFlagProvider>,
+    ) -> Result<()>;
+
     /// Evaluate a feature flag
-    async fn evaluate_flag(&self, feature_name: &str, context: Option<&EvaluationContext>) -> Result<FlagEvaluation>;
-    
+    async fn evaluate_flag(
+        &self,
+        feature_name: &str,
+        context: Option<&EvaluationContext>,
+    ) -> Result<FlagEvaluation>;
+
     /// Evaluate multiple flags at once
-    async fn evaluate_flags(&self, feature_names: &[&str], context: Option<&EvaluationContext>) -> Result<HashMap<String, FlagEvaluation>>;
-    
+    async fn evaluate_flags(
+        &self,
+        feature_names: &[&str],
+        context: Option<&EvaluationContext>,
+    ) -> Result<HashMap<String, FlagEvaluation>>;
+
     /// Get all flags and their current states
-    async fn get_all_flags_state(&self, context: Option<&EvaluationContext>) -> Result<HashMap<String, serde_json::Value>>;
-    
+    async fn get_all_flags_state(
+        &self,
+        context: Option<&EvaluationContext>,
+    ) -> Result<HashMap<String, serde_json::Value>>;
+
     /// Get flag statistics
     async fn get_flag_stats(&self, feature_name: &str) -> Result<FlagStats>;
-    
+
     /// Refresh flags from provider
     async fn refresh_flags(&self) -> Result<()>;
-    
+
     /// Get manager status
     async fn get_status(&self) -> Result<ManagerStatus>;
 }
@@ -345,24 +309,20 @@ pub struct ManagerStatus {
     pub evaluations_per_second: f64,
     pub cache_hit_rate: f64,
     pub last_refresh: Option<DateTime<Utc>>,
-    pub errors: Vec<String>,
+    pub healthy: bool,
 }
 
 /// Feature flag configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureFlagConfig {
     /// Default provider configuration
-    pub default_provider: ProviderConfig,
-    
+    pub default_user: ProviderConfig,
     /// Additional providers
     pub providers: HashMap<String, ProviderConfig>,
-    
     /// Cache configuration
     pub cache: CacheConfig,
-    
     /// Evaluation configuration
     pub evaluation: EvaluationConfig,
-    
     /// Monitoring configuration
     pub monitoring: FlagMonitoringConfig,
 }
@@ -383,7 +343,7 @@ pub struct ProviderConfig {
 pub struct CacheConfig {
     pub enabled: bool,
     pub ttl_seconds: u64,
-    pub max_size: u32,
+    pub max_entries: u32,
     pub cache_evaluations: bool,
     pub cache_flags: bool,
 }
@@ -411,19 +371,19 @@ pub struct FlagMonitoringConfig {
 impl Default for FeatureFlagConfig {
     fn default() -> Self {
         Self {
-            default_provider: ProviderConfig {
+            default_user: ProviderConfig {
                 provider_type: "memory".to_string(),
                 endpoint: None,
                 api_key: None,
-                refresh_interval: Some(300), // 5 minutes
-                timeout_ms: 1000,
+                refresh_interval: Some(300),
+                timeout_ms: 5000,
                 settings: HashMap::new(),
             },
             providers: HashMap::new(),
             cache: CacheConfig {
                 enabled: true,
                 ttl_seconds: 300,
-                max_size: 1000,
+                max_entries: 10000,
                 cache_evaluations: true,
                 cache_flags: true,
             },
@@ -443,4 +403,20 @@ impl Default for FeatureFlagConfig {
             },
         }
     }
-} 
+}
+
+impl Default for EvaluationContext {
+    fn default() -> Self {
+        Self {
+            user_id: None,
+            service_id: None,
+            request_id: None,
+            environment: None,
+            version: None,
+            geo_location: None,
+            device_info: None,
+            attributes: HashMap::new(),
+            timestamp: Utc::now(),
+        }
+    }
+}

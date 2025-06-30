@@ -1,17 +1,18 @@
+use chrono::Utc;
 use std::collections::HashMap;
 use tokio::time::{sleep, Duration};
-use chrono::Utc;
 
-use songbird_orchestrator::{
+use songbird_gaming_bridge::{
     discovery::{
-        SongbirdDiscovery, SongbirdDiscoveryConfig, 
-        ResourceQuery, TrustLevel, ResourceUsage,
-        NodeInfo, NodeType, ComputeResources,
-        types::{NetworkLocation, StorageInfo, DatasetInfo, DatasetType,
-               AccessLevel, GpuInfo, StorageDevice, StoragePerformanceTier}
+        types::{
+            AccessLevel, DatasetInfo, DatasetType, GpuInfo, NetworkLocation, StorageDevice,
+            StorageInfo, StoragePerformanceTier,
+        },
+        ComputeResources, NodeInfo, NodeType, ResourceQuery, ResourceUsage, SongbirdDiscovery,
+        SongbirdDiscoveryConfig, TrustLevel,
     },
     traits::discovery::ServiceDiscovery,
-    traits::service::ServiceInfo,
+    traits::service_id::ServiceInfo,
 };
 
 async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -25,20 +26,20 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
     // Create Songbird Discovery with federation enabled
     let config = SongbirdDiscoveryConfig {
         node_id: Some("demo-node".to_string()),
-        node_type: songbird_orchestrator::discovery::NodeType::Orchestrator,
+        node_type: songbird_gaming_bridge::discovery::NodeType::Orchestrator,
         institution: Some("Demo University".to_string()),
         federation_enabled: true,
         health_check_interval_secs: 30,
         node_discovery_interval_secs: 60,
         trust_verification_enabled: true,
         max_federation_nodes: 100,
-        network: songbird_orchestrator::discovery::NetworkConfig::default(),
-        monitoring: songbird_orchestrator::discovery::MonitoringConfig::default(),
-        trust: songbird_orchestrator::discovery::TrustConfig::default(),
+        network: songbird_gaming_bridge::discovery::NetworkConfig::default(),
+        monitoring: songbird_gaming_bridge::discovery::MonitoringConfig::default(),
+        trust: songbird_gaming_bridge::discovery::TrustConfig::default(),
     };
 
     let discovery = SongbirdDiscovery::new(config);
-    
+
     // Start federation services
     discovery.start_federation().await?;
 
@@ -53,7 +54,7 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
 
     // Register sample federation nodes
     println!("🌐 Registering Federation Nodes...");
-    
+
     // High-performance compute node
     let compute_node = NodeInfo {
         id: "hpc-cluster-01".to_string(),
@@ -79,15 +80,13 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
                     utilization_percent: 30.0,
                 },
             ],
-            storage_devices: vec![
-                StorageDevice {
-                    device_type: "NVMe".to_string(),
-                    capacity_gb: 2000,
-                    available_gb: 1500,
-                    mount_point: "/scratch".to_string(),
-                    performance_tier: StoragePerformanceTier::HighPerformance,
-                }
-            ],
+            storage_devices: vec![StorageDevice {
+                device_type: "NVMe".to_string(),
+                capacity_gb: 2000,
+                available_gb: 1500,
+                mount_point: "/scratch".to_string(),
+                performance_tier: StoragePerformanceTier::HighPerformance,
+            }],
             network_bandwidth_mbps: 100_000.0, // 100 Gbps
         },
         current_load: ResourceUsage {
@@ -98,18 +97,16 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
             network_utilization_percent: 15.0,
             active_jobs: 12,
         },
-        available_datasets: vec![
-            DatasetInfo {
-                id: "human-genome-ref".to_string(),
-                name: "Human Reference Genome GRCh38".to_string(),
-                dataset_type: DatasetType::Genomic,
-                size_bytes: 3_200_000_000, // ~3.2 GB
-                format: "FASTA".to_string(),
-                checksum: "sha256:abc123...".to_string(),
-                access_level: AccessLevel::Public,
-                last_updated: Utc::now(),
-            }
-        ],
+        available_datasets: vec![DatasetInfo {
+            id: "human-genome-ref".to_string(),
+            name: "Human Reference Genome GRCh38".to_string(),
+            dataset_type: DatasetType::Genomic,
+            size_bytes: 3_200_000_000, // ~3.2 GB
+            format: "FASTA".to_string(),
+            checksum: "sha256:abc123...".to_string(),
+            access_level: AccessLevel::Public,
+            last_updated: Utc::now(),
+        }],
         storage_capacity: StorageInfo {
             total_capacity_gb: 50_000,
             available_capacity_gb: 35_000,
@@ -133,8 +130,11 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
         bandwidth_measurements: HashMap::new(),
         latency_measurements: HashMap::new(),
         last_seen: Utc::now(),
-        health_status: songbird_orchestrator::traits::discovery::ServiceHealthStatus::Healthy,
-        services: vec!["genomics-pipeline".to_string(), "protein-folding".to_string()],
+        health_status: songbird_gaming_bridge::traits::discovery::ServiceHealthStatus::Healthy,
+        services: vec![
+            "genomics-pipeline".to_string(),
+            "protein-folding".to_string(),
+        ],
     };
 
     discovery.register_node(compute_node).await?;
@@ -151,15 +151,13 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
             memory_total_gb: 128,
             memory_available_gb: 64,
             gpu_info: Vec::new(),
-            storage_devices: vec![
-                StorageDevice {
-                    device_type: "Archive".to_string(),
-                    capacity_gb: 1_000_000, // 1 PB
-                    available_gb: 750_000,
-                    mount_point: "/data".to_string(),
-                    performance_tier: StoragePerformanceTier::Archive,
-                }
-            ],
+            storage_devices: vec![StorageDevice {
+                device_type: "Archive".to_string(),
+                capacity_gb: 1_000_000, // 1 PB
+                available_gb: 750_000,
+                mount_point: "/data".to_string(),
+                performance_tier: StoragePerformanceTier::Archive,
+            }],
             network_bandwidth_mbps: 40_000.0, // 40 Gbps
         },
         current_load: ResourceUsage {
@@ -190,7 +188,7 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
                 checksum: "sha256:ghi789...".to_string(),
                 access_level: AccessLevel::Institutional,
                 last_updated: Utc::now(),
-            }
+            },
         ],
         storage_capacity: StorageInfo {
             total_capacity_gb: 1_000_000,
@@ -213,7 +211,7 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
         bandwidth_measurements: HashMap::new(),
         latency_measurements: HashMap::new(),
         last_seen: Utc::now(),
-        health_status: songbird_orchestrator::traits::discovery::ServiceHealthStatus::Healthy,
+        health_status: songbird_gaming_bridge::traits::discovery::ServiceHealthStatus::Healthy,
         services: vec!["data-repository".to_string(), "backup-service".to_string()],
     };
 
@@ -231,15 +229,13 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
             memory_total_gb: 256,
             memory_available_gb: 128,
             gpu_info: Vec::new(),
-            storage_devices: vec![
-                StorageDevice {
-                    device_type: "SSD".to_string(),
-                    capacity_gb: 5000,
-                    available_gb: 3000,
-                    mount_point: "/cache".to_string(),
-                    performance_tier: StoragePerformanceTier::Standard,
-                }
-            ],
+            storage_devices: vec![StorageDevice {
+                device_type: "SSD".to_string(),
+                capacity_gb: 5000,
+                available_gb: 3000,
+                mount_point: "/cache".to_string(),
+                performance_tier: StoragePerformanceTier::Standard,
+            }],
             network_bandwidth_mbps: 200_000.0, // 200 Gbps
         },
         current_load: ResourceUsage {
@@ -272,20 +268,20 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
         bandwidth_measurements: HashMap::new(),
         latency_measurements: HashMap::new(),
         last_seen: Utc::now(),
-        health_status: songbird_orchestrator::traits::discovery::ServiceHealthStatus::Healthy,
+        health_status: songbird_gaming_bridge::traits::discovery::ServiceHealthStatus::Healthy,
         services: vec!["routing-service".to_string(), "auth-proxy".to_string()],
     };
 
     discovery.register_node(gateway_node).await?;
 
     println!("✅ Registered 3 federation nodes");
-    
+
     // Wait for registration to complete
     sleep(Duration::from_millis(500)).await;
 
     // Test resource-aware discovery
     println!("\n🔍 Testing Resource-Aware Discovery...");
-    
+
     // Query 1: Find high-performance compute nodes
     println!("\n📊 Query 1: High-Performance Compute Nodes");
     let compute_query = ResourceQuery {
@@ -299,9 +295,14 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
     let compute_nodes = discovery.find_optimal_nodes(compute_query).await?;
     println!("   Found {} matching compute nodes:", compute_nodes.len());
     for node in &compute_nodes {
-        println!("   - {} ({:?}) - {} cores, {} GB RAM, {} GPUs", 
-                node.id, node.node_type, node.resources.cpu_cores, 
-                node.resources.memory_total_gb, node.resources.gpu_info.len());
+        println!(
+            "   - {} ({:?}) - {} cores, {} GB RAM, {} GPUs",
+            node.id,
+            node.node_type,
+            node.resources.cpu_cores,
+            node.resources.memory_total_gb,
+            node.resources.gpu_info.len()
+        );
     }
 
     // Query 2: Find storage nodes with specific datasets
@@ -315,13 +316,21 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
     let storage_nodes = discovery.find_optimal_nodes(storage_query).await?;
     println!("   Found {} storage nodes:", storage_nodes.len());
     for node in &storage_nodes {
-        println!("   - {} ({}) - {} datasets, {} GB total storage", 
-                node.id, node.institution.as_deref().unwrap_or("Unknown"),
-                node.available_datasets.len(), node.storage_capacity.total_capacity_gb);
+        println!(
+            "   - {} ({}) - {} datasets, {} GB total storage",
+            node.id,
+            node.institution.as_deref().unwrap_or("Unknown"),
+            node.available_datasets.len(),
+            node.storage_capacity.total_capacity_gb
+        );
         for dataset in &node.available_datasets {
-            println!("     * {} ({:?}) - {} - {:.2} GB", 
-                    dataset.name, dataset.dataset_type, dataset.format,
-                    dataset.size_bytes as f64 / 1_000_000_000.0);
+            println!(
+                "     * {} ({:?}) - {} - {:.2} GB",
+                dataset.name,
+                dataset.dataset_type,
+                dataset.format,
+                dataset.size_bytes as f64 / 1_000_000_000.0
+            );
         }
     }
 
@@ -336,23 +345,26 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
     let gateway_nodes = discovery.find_optimal_nodes(gateway_query).await?;
     println!("   Found {} gateway nodes:", gateway_nodes.len());
     for node in &gateway_nodes {
-        println!("   - {} ({}) - {:.0} Gbps network, {:.1}% utilization", 
-                node.id, node.institution.as_deref().unwrap_or("Unknown"),
-                node.resources.network_bandwidth_mbps / 1000.0,
-                node.current_load.network_utilization_percent);
+        println!(
+            "   - {} ({}) - {:.0} Gbps network, {:.1}% utilization",
+            node.id,
+            node.institution.as_deref().unwrap_or("Unknown"),
+            node.resources.network_bandwidth_mbps / 1000.0,
+            node.current_load.network_utilization_percent
+        );
     }
 
     // Register some scientific services
     println!("\n🧪 Registering Scientific Services...");
-    
+
     let genomics_service = ServiceInfo {
         id: "genomics-pipeline".to_string(),
         name: "Genomics Analysis Pipeline".to_string(),
         version: "2.1.0".to_string(),
         service_type: "scientific-computing".to_string(),
-        description: "High-throughput genomics analysis pipeline".to_string(),
+        description: Some("High-throughput genomics analysis pipeline").to_string(),
         endpoints: vec![],
-        capabilities: vec![
+        tags: vec![
             "variant-calling".to_string(),
             "genome-assembly".to_string(),
             "annotation".to_string(),
@@ -364,7 +376,7 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
             tags.insert("min-memory-gb".to_string(), "64".to_string());
             tags
         },
-        metadata: HashMap::new(),
+        
     };
 
     discovery.register(genomics_service).await?;
@@ -374,9 +386,9 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
         name: "Protein Structure Prediction".to_string(),
         version: "1.5.0".to_string(),
         service_type: "scientific-computing".to_string(),
-        description: "AI-powered protein structure prediction".to_string(),
+        description: Some("AI-powered protein structure prediction").to_string(),
         endpoints: vec![],
-        capabilities: vec![
+        tags: vec![
             "alphafold".to_string(),
             "structure-prediction".to_string(),
             "molecular-dynamics".to_string(),
@@ -388,7 +400,7 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
             tags.insert("min-gpu-memory-gb".to_string(), "40".to_string());
             tags
         },
-        metadata: HashMap::new(),
+        
     };
 
     discovery.register(protein_service).await?;
@@ -412,7 +424,10 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
     let services = discovery.list_all().await?;
     println!("   Found {} local services:", services.len());
     for service in &services {
-        println!("   - {} v{} ({})", service.name, service.version, service.service_type);
+        println!(
+            "   - {} v{} ({})",
+            service.name, service.version, service.service_type
+        );
         println!("     Capabilities: {:?}", service.capabilities);
         if !service.tags.is_empty() {
             println!("     Tags: {:?}", service.tags);
@@ -432,6 +447,6 @@ async fn demonstrate_songbird_discovery() -> std::result::Result<(), Box<dyn std
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
-    
+
     demonstrate_songbird_discovery().await
-} 
+}

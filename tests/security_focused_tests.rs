@@ -1,21 +1,21 @@
-//! Focused Security Module Tests - Phase 3
-//! 
-//! Target: High-impact security testing with working implementations
-//! Focus: Authentication, JWT, Audit, Basic Security Operations
-//! Expected: 30+ focused tests that actually compile and run
-
+use songbird_gaming_bridge::SongbirdOrchestrator;
+use songbird_gaming_bridge::config::NetworkConfig;
+use std::collections::HashMap;
+#[allow(dead_code, unused_imports, unused_variables)]
+// Focused Security Module Tests - Phase 3
+//
+// Target: High-impact security testing with working implementations
+// Focus: Authentication, JWT, Audit, Basic Security Operations
+// Expected: 30+ focused tests that actually compile and run
 use chrono::Utc;
 use serde_json::json;
-use std::collections::HashMap;
+
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use songbird_orchestrator::{
-    security::{
-        AuditConfig, AuditLogger, AuthEvent, AuthEventType,
-        AuthenticationProvider, Credentials, JwtAuthProvider, OAuth2Config,
-        ProductionSecurityProvider, SecurityConfig, SecurityProvider,
-        UserInfo,
-    },
+use songbird_gaming_bridge::security::{
+    AuditConfig, AuditLogger, AuthEvent, AuthEventType, AuthenticationProvider, Credentials,
+    JwtAuthProvider, OAuth2Config, ProductionSecurityProvider, SecurityConfig, SecurityProvider,
+    UserInfo,
 };
 
 /// Security test utilities
@@ -33,7 +33,7 @@ mod security_test_utils {
             encryption_key: [1u8; 32], // Fixed key for testing
             enable_oauth: true,
             oauth_config: Some(OAuth2Config {
-                client_id: "test-client-id".to_string(),
+                client_service_id: "test-client-id".to_string(),
                 client_secret: "test-client-secret".to_string(),
                 auth_endpoint: "https://test-oauth.example.com/auth".to_string(),
                 token_endpoint: "https://test-oauth.example.com/token".to_string(),
@@ -50,7 +50,7 @@ mod security_test_utils {
     pub fn create_test_user(id: &str, roles: Vec<&str>) -> UserInfo {
         UserInfo {
             id: id.to_string(),
-            username: format!("user_{}", id),
+            credentials: format!("user_{}", id),
             email: Some(format!("{}@test.example.com", id)),
             roles: roles.iter().map(|r| r.to_string()).collect(),
             metadata: HashMap::from([
@@ -75,10 +75,10 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_jwt_token_generation_basic() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
         let user = create_test_user("test_user", vec!["user"]);
 
-        let token = provider.generate_jwt(&user).unwrap();
+        let token = provider.generate_jwt(&user).expect("Test assertion failed");
 
         assert_eq!(token.token_type, "Bearer");
         assert_eq!(token.expires_in, 3600);
@@ -89,15 +89,21 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_jwt_token_generation_with_complex_metadata() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
-        
-        let mut user = create_test_user("complex_user", vec!["admin", "developer", "analyst"]);
-        user.metadata.insert("permissions".to_string(), json!(["read", "write", "admin"]));
-        user.metadata.insert("api_quota".to_string(), json!(1000));
-        user.metadata.insert("features".to_string(), json!({"beta": true, "premium": false}));
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
-        let token = provider.generate_jwt(&user).unwrap();
-        let claims = provider.validate_jwt(&token.token).unwrap();
+        let mut user = create_test_user("complex_user", vec!["admin", "developer", "analyst"]);
+        user.metadata
+            .insert("permissions".to_string(), json!(["read", "write", "admin"]));
+        user.metadata.insert("api_quota".to_string(), json!(1000));
+        user.metadata.insert(
+            "features".to_string(),
+            json!({"beta": true, "premium": false}),
+        );
+
+        let token = provider.generate_jwt(&user).expect("Test assertion failed");
+        let claims = provider
+            .validate_jwt(&token.token)
+            .expect("Test assertion failed");
 
         assert_eq!(claims.sub, "complex_user");
         assert_eq!(claims.roles, vec!["admin", "developer", "analyst"]);
@@ -109,11 +115,13 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_jwt_token_validation_success() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
         let user = create_test_user("valid_user", vec!["user", "tester"]);
 
-        let token = provider.generate_jwt(&user).unwrap();
-        let claims = provider.validate_jwt(&token.token).unwrap();
+        let token = provider.generate_jwt(&user).expect("Test assertion failed");
+        let claims = provider
+            .validate_jwt(&token.token)
+            .expect("Test assertion failed");
 
         assert_eq!(claims.sub, "valid_user");
         assert_eq!(claims.iss, "songbird-orchestrator");
@@ -125,7 +133,7 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_jwt_token_validation_invalid_token() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         let invalid_tokens = vec![
             "invalid.token.here",
@@ -136,21 +144,27 @@ mod authentication_tests {
 
         for invalid_token in invalid_tokens {
             let result = provider.validate_jwt(invalid_token);
-            assert!(result.is_err(), "Token '{}' should be invalid", invalid_token);
+            assert!(
+                result.is_err(),
+                "Token '{}' should be invalid",
+                invalid_token
+            );
         }
     }
 
     #[tokio::test]
     async fn test_jwt_token_validation_wrong_secret() {
         let config1 = create_test_security_config();
-        let provider1 = ProductionSecurityProvider::new(config1).unwrap();
-        
+        let provider1 = ProductionSecurityProvider::new(config1).expect("Test assertion failed");
+
         let mut config2 = create_test_security_config();
         config2.jwt_secret = "different-secret-key-for-testing-32".to_string();
-        let provider2 = ProductionSecurityProvider::new(config2).unwrap();
-        
+        let provider2 = ProductionSecurityProvider::new(config2).expect("Test assertion failed");
+
         let user = create_test_user("test_user", vec!["user"]);
-        let token = provider1.generate_jwt(&user).unwrap();
+        let token = provider1
+            .generate_jwt(&user)
+            .expect("Test assertion failed");
 
         // Token generated with provider1 should not validate with provider2
         let result = provider2.validate_jwt(&token.token);
@@ -167,15 +181,21 @@ mod authentication_tests {
         );
 
         let credentials = Credentials::Basic {
-            username: "admin".to_string(),
-            password: "admin123".to_string(),
+            // credentials: "admin".to_string(), // REMOVED DUPLICATE
+            credentials: "admin123".to_string(),
         };
 
-        let result = auth_provider.authenticate(&credentials).await.unwrap();
+        let result = auth_provider
+            .authenticate(&credentials)
+            .await
+            .expect("Test assertion failed");
         assert!(result.success);
         assert!(result.user.is_some());
         assert!(result.token.is_some());
-        assert_eq!(result.user.unwrap().username, "admin");
+        assert_eq!(
+            result.user.expect("Test assertion failed").username,
+            "admin"
+        );
     }
 
     #[tokio::test]
@@ -188,13 +208,25 @@ mod authentication_tests {
         );
 
         let invalid_credentials = vec![
-            Credentials::Basic { username: "admin".to_string(), password: "wrong".to_string() },
-            Credentials::Basic { username: "wrong".to_string(), password: "admin123".to_string() },
-            Credentials::Basic { username: "".to_string(), password: "".to_string() },
+            Credentials::Basic {
+                // credentials: "admin".to_string(), // REMOVED DUPLICATE
+                credentials: "wrong".to_string(),
+            },
+            Credentials::Basic {
+                credentials: "wrong".to_string(),
+                credentials: "admin123".to_string(),
+            },
+            Credentials::Basic {
+                credentials: "".to_string(),
+                credentials: "".to_string(),
+            },
         ];
 
         for credentials in invalid_credentials {
-            let result = auth_provider.authenticate(&credentials).await.unwrap();
+            let result = auth_provider
+                .authenticate(&credentials)
+                .await
+                .expect("Test assertion failed");
             assert!(!result.success);
             assert!(result.user.is_none());
             assert!(result.token.is_none());
@@ -205,9 +237,9 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_jwt_auth_provider_bearer_authentication() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
         let user = create_test_user("bearer_user", vec!["user"]);
-        let token = provider.generate_jwt(&user).unwrap();
+        let token = provider.generate_jwt(&user).expect("Test assertion failed");
 
         let auth_provider = JwtAuthProvider::new(
             TEST_JWT_SECRET.to_string(),
@@ -217,11 +249,17 @@ mod authentication_tests {
         );
 
         let credentials = Credentials::Bearer { token: token.token };
-        let result = auth_provider.authenticate(&credentials).await.unwrap();
+        let result = auth_provider
+            .authenticate(&credentials)
+            .await
+            .expect("Test assertion failed");
 
         assert!(result.success);
         assert!(result.user.is_some());
-        assert_eq!(result.user.unwrap().id, "bearer_user");
+        assert_eq!(
+            result.user.expect("Test assertion failed").id,
+            "bearer_user"
+        );
     }
 
     #[tokio::test]
@@ -234,12 +272,15 @@ mod authentication_tests {
         );
 
         let credentials = Credentials::Basic {
-            username: "admin".to_string(),
-            password: "admin123".to_string(),
+            // credentials: "admin".to_string(), // REMOVED DUPLICATE
+            credentials: "admin123".to_string(),
         };
 
-        let result = auth_provider.authenticate(&credentials).await.unwrap();
-        let session = result.session.unwrap();
+        let result = auth_provider
+            .authenticate(&credentials)
+            .await
+            .expect("Test assertion failed");
+        let session = result.session.expect("Test assertion failed");
 
         assert!(!session.session_id.is_empty());
         assert_eq!(session.user_id, "admin");
@@ -251,27 +292,30 @@ mod authentication_tests {
     async fn test_session_validation_token_lifecycle() {
         // Test that valid tokens work correctly
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
         let user = create_test_user("lifecycle_user", vec!["user"]);
-        let token = provider.generate_jwt(&user).unwrap();
+        let token = provider.generate_jwt(&user).expect("Test assertion failed");
 
         // Valid token should work
         let result = provider.validate_token(&token.token).await;
         assert!(result.is_ok(), "Valid token should pass validation");
-        
-        let session = result.unwrap();
+
+        let session = result.expect("Test assertion failed");
         assert_eq!(session.user_id, "lifecycle_user");
         assert!(session.roles.contains(&"user".to_string()));
-        
+
         // Test that malformed tokens fail
         let invalid_token = "invalid.jwt.token";
         let result = provider.validate_token(invalid_token).await;
         assert!(result.is_err(), "Invalid token should fail validation");
-        
+
         // Test that tokens with wrong signature fail
         let wrong_secret_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0IiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjk5OTk5OTk5OTl9.invalid_signature";
         let result = provider.validate_token(wrong_secret_token).await;
-        assert!(result.is_err(), "Token with wrong signature should fail validation");
+        assert!(
+            result.is_err(),
+            "Token with wrong signature should fail validation"
+        );
     }
 
     #[tokio::test]
@@ -311,15 +355,27 @@ mod authentication_tests {
         );
 
         let unsupported_credentials = vec![
-            Credentials::ApiKey { key: "api-key".to_string(), secret: None },
-            Credentials::Certificate { cert: vec![1, 2, 3], private_key: None },
+            Credentials::ApiKey {
+                key: "api-key".to_string(),
+                secret: None,
+            },
+            Credentials::Certificate {
+                cert: vec![1, 2, 3],
+                private_key: None,
+            },
         ];
 
         for credentials in unsupported_credentials {
-            let result = auth_provider.authenticate(&credentials).await.unwrap();
+            let result = auth_provider
+                .authenticate(&credentials)
+                .await
+                .expect("Test assertion failed");
             assert!(!result.success);
             assert!(result.error.is_some());
-            assert!(result.error.unwrap().contains("Unsupported"));
+            assert!(result
+                .error
+                .expect("Test assertion failed")
+                .contains("Unsupported"));
         }
     }
 
@@ -332,7 +388,11 @@ mod authentication_tests {
         };
 
         match oauth2_creds {
-            Credentials::OAuth2 { code, state, redirect_uri } => {
+            Credentials::OAuth2 {
+                code,
+                state,
+                redirect_uri,
+            } => {
                 assert_eq!(code, "auth-code-123");
                 assert_eq!(state, Some("state-456".to_string()));
                 assert_eq!(redirect_uri, "http://localhost:8080/callback");
@@ -351,11 +411,14 @@ mod authentication_tests {
         );
 
         let credentials = Credentials::Basic {
-            username: "admin".to_string(),
-            password: "admin123".to_string(),
+            // credentials: "admin".to_string(), // REMOVED DUPLICATE
+            credentials: "admin123".to_string(),
         };
 
-        let result = auth_provider.authenticate(&credentials).await.unwrap();
+        let result = auth_provider
+            .authenticate(&credentials)
+            .await
+            .expect("Test assertion failed");
 
         // Verify all fields of AuthenticationResult
         assert!(result.success);
@@ -367,19 +430,19 @@ mod authentication_tests {
         assert!(result.mfa_methods.is_empty());
 
         // Verify user details
-        let user = result.user.unwrap();
+        let user = result.user.expect("Test assertion failed");
         assert_eq!(user.username, "admin");
         assert!(user.email.is_some());
         assert!(!user.roles.is_empty());
 
         // Verify token details
-        let token = result.token.unwrap();
+        let token = result.token.expect("Test assertion failed");
         assert_eq!(token.token_type, "Bearer");
         assert!(token.expires_in > 0);
         assert!(!token.token.is_empty());
 
         // Verify session details
-        let session = result.session.unwrap();
+        let session = result.session.expect("Test assertion failed");
         assert!(!session.session_id.is_empty());
         assert_eq!(session.user_id, "admin");
         assert!(session.expires_at > session.created_at);
@@ -388,10 +451,12 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_claims_structure_validation() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
         let user = create_test_user("claims_user", vec!["admin", "user"]);
-        let token = provider.generate_jwt(&user).unwrap();
-        let claims = provider.validate_jwt(&token.token).unwrap();
+        let token = provider.generate_jwt(&user).expect("Test assertion failed");
+        let claims = provider
+            .validate_jwt(&token.token)
+            .expect("Test assertion failed");
 
         // Verify all required JWT claims
         assert_eq!(claims.sub, "claims_user");
@@ -411,23 +476,29 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_production_security_provider_authentication_integration() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         // Test basic authentication
         let basic_creds = Credentials::Basic {
-            username: "admin".to_string(),
-            password: "admin123".to_string(),
+            // credentials: "admin".to_string(), // REMOVED DUPLICATE
+            credentials: "admin123".to_string(),
         };
 
-        let result = provider.authenticate(&basic_creds).await.unwrap();
+        let result = provider
+            .authenticate(&basic_creds)
+            .await
+            .expect("Test assertion failed");
         assert!(result.success);
         assert!(result.user.is_some());
         assert!(result.token.is_some());
 
         // Test bearer authentication with generated token
-        let token = result.token.unwrap();
+        let token = result.token.expect("Test assertion failed");
         let bearer_creds = Credentials::Bearer { token: token.token };
-        let bearer_result = provider.authenticate(&bearer_creds).await.unwrap();
+        let bearer_result = provider
+            .authenticate(&bearer_creds)
+            .await
+            .expect("Test assertion failed");
         assert!(bearer_result.success);
         assert!(bearer_result.user.is_some());
     }
@@ -435,11 +506,14 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_token_validation_integration() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
         let user = create_test_user("integration_user", vec!["user", "tester"]);
-        let token = provider.generate_jwt(&user).unwrap();
+        let token = provider.generate_jwt(&user).expect("Test assertion failed");
 
-        let session = provider.validate_token(&token.token).await.unwrap();
+        let session = provider
+            .validate_token(&token.token)
+            .await
+            .expect("Test assertion failed");
 
         assert_eq!(session.user_id, "integration_user");
         assert!(session.roles.contains(&"user".to_string()));
@@ -450,10 +524,13 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_refresh_token_placeholder() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         // Test the placeholder implementation
-        let result = provider.refresh_token("dummy-refresh-token").await.unwrap();
+        let result = provider
+            .refresh_token("dummy-refresh-token")
+            .await
+            .expect("Test assertion failed");
         assert_eq!(result.token, "refreshed_token");
         assert_eq!(result.token_type, "Bearer");
         assert_eq!(result.expires_in, 3600);
@@ -463,7 +540,7 @@ mod authentication_tests {
     #[tokio::test]
     async fn test_revoke_token_placeholder() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         // Test the placeholder implementation
         let result = provider.revoke_token("dummy-token").await;
@@ -482,10 +559,10 @@ mod encryption_tests {
     #[tokio::test]
     async fn test_aes_encryption_basic() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         let plaintext = b"Hello, World!";
-        let encrypted = provider.encrypt(plaintext).unwrap();
+        let encrypted = provider.encrypt(plaintext).expect("Test assertion failed");
 
         assert_ne!(encrypted, plaintext);
         assert!(encrypted.len() > plaintext.len()); // Should be longer due to nonce + tag
@@ -494,11 +571,11 @@ mod encryption_tests {
     #[tokio::test]
     async fn test_aes_decryption_basic() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         let plaintext = b"Hello, World!";
-        let encrypted = provider.encrypt(plaintext).unwrap();
-        let decrypted = provider.decrypt(&encrypted).unwrap();
+        let encrypted = provider.encrypt(plaintext).expect("Test assertion failed");
+        let decrypted = provider.decrypt(&encrypted).expect("Test assertion failed");
 
         assert_eq!(decrypted, plaintext);
     }
@@ -506,12 +583,14 @@ mod encryption_tests {
     #[tokio::test]
     async fn test_aes_encryption_decryption_large_data() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         // Test with larger data
         let large_data = vec![42u8; 10000];
-        let encrypted = provider.encrypt(&large_data).unwrap();
-        let decrypted = provider.decrypt(&encrypted).unwrap();
+        let encrypted = provider
+            .encrypt(&large_data)
+            .expect("Test assertion failed");
+        let decrypted = provider.decrypt(&encrypted).expect("Test assertion failed");
 
         assert_eq!(decrypted, large_data);
         assert!(encrypted.len() > large_data.len());
@@ -520,11 +599,11 @@ mod encryption_tests {
     #[tokio::test]
     async fn test_aes_encryption_empty_data() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         let empty_data = b"";
-        let encrypted = provider.encrypt(empty_data).unwrap();
-        let decrypted = provider.decrypt(&encrypted).unwrap();
+        let encrypted = provider.encrypt(empty_data).expect("Test assertion failed");
+        let decrypted = provider.decrypt(&encrypted).expect("Test assertion failed");
 
         assert_eq!(decrypted, empty_data);
         assert!(encrypted.len() > 0); // Should contain nonce + tag even for empty data
@@ -533,20 +612,24 @@ mod encryption_tests {
     #[tokio::test]
     async fn test_aes_encryption_different_plaintexts_different_ciphertexts() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         let plaintext1 = b"Message 1";
         let plaintext2 = b"Message 2";
 
-        let encrypted1 = provider.encrypt(plaintext1).unwrap();
-        let encrypted2 = provider.encrypt(plaintext2).unwrap();
+        let encrypted1 = provider.encrypt(plaintext1).expect("Test assertion failed");
+        let encrypted2 = provider.encrypt(plaintext2).expect("Test assertion failed");
 
         // Different plaintexts should produce different ciphertexts
         assert_ne!(encrypted1, encrypted2);
 
         // But should decrypt correctly
-        let decrypted1 = provider.decrypt(&encrypted1).unwrap();
-        let decrypted2 = provider.decrypt(&encrypted2).unwrap();
+        let decrypted1 = provider
+            .decrypt(&encrypted1)
+            .expect("Test assertion failed");
+        let decrypted2 = provider
+            .decrypt(&encrypted2)
+            .expect("Test assertion failed");
 
         assert_eq!(decrypted1, plaintext1);
         assert_eq!(decrypted2, plaintext2);
@@ -555,19 +638,23 @@ mod encryption_tests {
     #[tokio::test]
     async fn test_aes_encryption_same_plaintext_different_ciphertexts() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         let plaintext = b"Same message";
 
-        let encrypted1 = provider.encrypt(plaintext).unwrap();
-        let encrypted2 = provider.encrypt(plaintext).unwrap();
+        let encrypted1 = provider.encrypt(plaintext).expect("Test assertion failed");
+        let encrypted2 = provider.encrypt(plaintext).expect("Test assertion failed");
 
         // Same plaintext should produce different ciphertexts due to random nonce
         assert_ne!(encrypted1, encrypted2);
 
         // But both should decrypt to the same plaintext
-        let decrypted1 = provider.decrypt(&encrypted1).unwrap();
-        let decrypted2 = provider.decrypt(&encrypted2).unwrap();
+        let decrypted1 = provider
+            .decrypt(&encrypted1)
+            .expect("Test assertion failed");
+        let decrypted2 = provider
+            .decrypt(&encrypted2)
+            .expect("Test assertion failed");
 
         assert_eq!(decrypted1, plaintext);
         assert_eq!(decrypted2, plaintext);
@@ -576,10 +663,10 @@ mod encryption_tests {
     #[tokio::test]
     async fn test_aes_decryption_invalid_ciphertext() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         let invalid_ciphertexts = vec![
-            vec![], // Empty
+            vec![],        // Empty
             vec![1, 2, 3], // Too short
             vec![0u8; 10], // Invalid but correct length
         ];
@@ -593,10 +680,10 @@ mod encryption_tests {
     #[tokio::test]
     async fn test_aes_decryption_tampered_ciphertext() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
 
         let plaintext = b"Important message";
-        let mut encrypted = provider.encrypt(plaintext).unwrap();
+        let mut encrypted = provider.encrypt(plaintext).expect("Test assertion failed");
 
         // Tamper with the ciphertext
         if encrypted.len() > 20 {
@@ -604,7 +691,10 @@ mod encryption_tests {
         }
 
         let result = provider.decrypt(&encrypted);
-        assert!(result.is_err(), "Tampered ciphertext should fail decryption");
+        assert!(
+            result.is_err(),
+            "Tampered ciphertext should fail decryption"
+        );
     }
 
     #[tokio::test]
@@ -613,15 +703,18 @@ mod encryption_tests {
         let mut config2 = create_test_security_config();
         config2.encryption_key = [2u8; 32]; // Different key
 
-        let provider1 = ProductionSecurityProvider::new(config1).unwrap();
-        let provider2 = ProductionSecurityProvider::new(config2).unwrap();
+        let provider1 = ProductionSecurityProvider::new(config1).expect("Test assertion failed");
+        let provider2 = ProductionSecurityProvider::new(config2).expect("Test assertion failed");
 
         let plaintext = b"Secret message";
-        let encrypted = provider1.encrypt(plaintext).unwrap();
+        let encrypted = provider1.encrypt(plaintext).expect("Test assertion failed");
 
         // Decryption with different key should fail
         let result = provider2.decrypt(&encrypted);
-        assert!(result.is_err(), "Different key should not decrypt successfully");
+        assert!(
+            result.is_err(),
+            "Different key should not decrypt successfully"
+        );
     }
 
     #[tokio::test]
@@ -661,10 +754,13 @@ mod audit_tests {
     #[tokio::test]
     async fn test_audit_config_default() {
         let audit_config = AuditConfig::default();
-        
+
         // Verify default audit configuration
-        assert!(audit_config.enabled);
-        assert!(matches!(audit_config.format, songbird_orchestrator::security::AuditFormat::Json));
+        assert!(audit_config.mode == crate::federation::FederationMode::Peer);
+        assert!(matches!(
+            audit_config.format,
+            songbird_gaming_bridge::security::AuditFormat::Json
+        ));
         assert!(!audit_config.include_sensitive);
     }
 
@@ -685,7 +781,10 @@ mod audit_tests {
         };
 
         assert_eq!(auth_event.user_id, "test-user-123");
-        assert!(matches!(auth_event.event_type, AuthEventType::TokenGenerated));
+        assert!(matches!(
+            auth_event.event_type,
+            AuthEventType::TokenGenerated
+        ));
         assert!(auth_event.success);
         assert!(auth_event.ip_address.is_some());
         assert!(auth_event.user_agent.is_some());
@@ -726,22 +825,22 @@ mod audit_tests {
 
             // Verify event can be created with each type (using pattern matching instead of equality)
             match (&auth_event.event_type, &event_type) {
-                (AuthEventType::Login, AuthEventType::Login) => {},
-                (AuthEventType::LoginAttempt, AuthEventType::LoginAttempt) => {},
-                (AuthEventType::LoginFailed, AuthEventType::LoginFailed) => {},
-                (AuthEventType::Logout, AuthEventType::Logout) => {},
-                (AuthEventType::TokenGenerated, AuthEventType::TokenGenerated) => {},
-                (AuthEventType::TokenValidated, AuthEventType::TokenValidated) => {},
-                (AuthEventType::TokenRefreshed, AuthEventType::TokenRefreshed) => {},
-                (AuthEventType::TokenRevoked, AuthEventType::TokenRevoked) => {},
-                (AuthEventType::MfaRequired, AuthEventType::MfaRequired) => {},
-                (AuthEventType::MfaSuccess, AuthEventType::MfaSuccess) => {},
-                (AuthEventType::MfaFailed, AuthEventType::MfaFailed) => {},
-                (AuthEventType::PasswordChanged, AuthEventType::PasswordChanged) => {},
-                (AuthEventType::AccountLocked, AuthEventType::AccountLocked) => {},
-                (AuthEventType::AccountUnlocked, AuthEventType::AccountUnlocked) => {},
-                (AuthEventType::AccessGranted, AuthEventType::AccessGranted) => {},
-                (AuthEventType::AccessDenied, AuthEventType::AccessDenied) => {},
+                (AuthEventType::Login, AuthEventType::Login) => {}
+                (AuthEventType::LoginAttempt, AuthEventType::LoginAttempt) => {}
+                (AuthEventType::LoginFailed, AuthEventType::LoginFailed) => {}
+                (AuthEventType::Logout, AuthEventType::Logout) => {}
+                (AuthEventType::TokenGenerated, AuthEventType::TokenGenerated) => {}
+                (AuthEventType::TokenValidated, AuthEventType::TokenValidated) => {}
+                (AuthEventType::TokenRefreshed, AuthEventType::TokenRefreshed) => {}
+                (AuthEventType::TokenRevoked, AuthEventType::TokenRevoked) => {}
+                (AuthEventType::MfaRequired, AuthEventType::MfaRequired) => {}
+                (AuthEventType::MfaSuccess, AuthEventType::MfaSuccess) => {}
+                (AuthEventType::MfaFailed, AuthEventType::MfaFailed) => {}
+                (AuthEventType::PasswordChanged, AuthEventType::PasswordChanged) => {}
+                (AuthEventType::AccountLocked, AuthEventType::AccountLocked) => {}
+                (AuthEventType::AccountUnlocked, AuthEventType::AccountUnlocked) => {}
+                (AuthEventType::AccessGranted, AuthEventType::AccessGranted) => {}
+                (AuthEventType::AccessDenied, AuthEventType::AccessDenied) => {}
                 _ => panic!("Event type mismatch"),
             }
         }
@@ -751,14 +850,17 @@ mod audit_tests {
     async fn test_audit_logger_creation() {
         let audit_config = AuditConfig::default();
         let audit_logger = AuditLogger::new(audit_config);
-        
-        assert!(audit_logger.is_ok(), "Audit logger should be created successfully");
+
+        assert!(
+            audit_logger.is_ok(),
+            "Audit logger should be created successfully"
+        );
     }
 
     #[tokio::test]
     async fn test_audit_event_logging() {
         let audit_config = AuditConfig::default();
-        let audit_logger = AuditLogger::new(audit_config).unwrap();
+        let audit_logger = AuditLogger::new(audit_config).expect("Test assertion failed");
 
         let auth_event = AuthEvent {
             event_type: AuthEventType::Login,
@@ -780,15 +882,17 @@ mod audit_tests {
     #[tokio::test]
     async fn test_security_provider_audit_integration() {
         let config = create_test_security_config();
-        let provider = ProductionSecurityProvider::new(config).unwrap();
+        let provider = ProductionSecurityProvider::new(config).expect("Test assertion failed");
         let user = create_test_user("audit_integration_user", vec!["user"]);
 
         // Generate token (should trigger audit event)
-        let token = provider.generate_jwt(&user).unwrap();
+        let token = provider.generate_jwt(&user).expect("Test assertion failed");
         assert!(!token.token.is_empty());
 
         // Validate token (should trigger audit event)
-        let claims = provider.validate_jwt(&token.token).unwrap();
+        let claims = provider
+            .validate_jwt(&token.token)
+            .expect("Test assertion failed");
         assert_eq!(claims.sub, "audit_integration_user");
 
         // Audit events should be logged internally (we can't easily verify without file access)
@@ -815,7 +919,7 @@ mod audit_tests {
         let serialized = serde_json::to_string(&auth_event);
         assert!(serialized.is_ok(), "Auth event should be serializable");
 
-        let json_str = serialized.unwrap();
+        let json_str = serialized.expect("Test assertion failed");
         assert!(json_str.contains("AccessDenied"));
         assert!(json_str.contains("serialization-test-user"));
         assert!(json_str.contains("sensitive-document"));
@@ -837,14 +941,14 @@ mod audit_tests {
             "user_agent": "TestClient/2.0"
         }"#;
 
-        let deserialized: std::result::Result<AuthEvent, _> = serde_json::from_str(json_str);
+        let deserialized: std::result::Result<AuthEvent> = serde_json::from_str(json_str);
         assert!(deserialized.is_ok(), "Auth event should be deserializable");
 
-        let auth_event = deserialized.unwrap();
+        let auth_event = deserialized.expect("Test assertion failed");
         assert_eq!(auth_event.user_id, "deserialization-test-user");
         assert!(matches!(auth_event.event_type, AuthEventType::LoginFailed));
         assert!(!auth_event.success);
         assert_eq!(auth_event.ip_address, Some("203.0.113.42".to_string()));
         assert!(auth_event.details.contains_key("failure_reason"));
     }
-} 
+}

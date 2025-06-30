@@ -1,0 +1,181 @@
+.TH SONGBIRD-CONFIG 1 "January 2025" "songbird-orchestrator 0.1.0" "User Commands"
+.SH NAME
+songbird-config \- Configuration management commands for Songbird Orchestrator
+.SH SYNOPSIS
+.B songbird config
+[\fI\,OPTIONS\/\fR] \fI\,COMMAND\/\fR [\fI\,ARGS\/\fR]...
+.SH DESCRIPTION
+The config subcommand provides configuration management for Songbird Orchestrator, including initialization, validation, and modification of configuration files.
+
+.SH COMMANDS
+.TP
+.B init
+Initialize a new configuration file with defaults
+.TP
+.B validate
+Validate the current configuration file
+.TP
+.B show
+Display the current configuration
+.TP
+.B set
+Set a configuration value
+.TP
+.B get
+Get a configuration value
+.TP
+.B reset
+Reset configuration to defaults
+.TP
+.B backup
+Create a backup of the current configuration
+.TP
+.B restore
+Restore configuration from a backup
+
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print help information
+.TP
+.BR \-\-config " " \fI\,FILE\/\fR
+Specify configuration file path
+.TP
+.BR \-\-format " " \fI\,FORMAT\/\fR
+Output format for show command (toml, json, yaml)
+.TP
+.BR \-\-environment " " \fI\,ENV\/\fR
+Specify environment (development, production, testing)
+
+.SH CONFIGURATION SECTIONS
+.TP
+.B [network]
+Network configuration including bind addresses and ports
+.TP
+.B [gaming]
+Gaming-specific configuration for protocol detection
+.TP
+.B [security]
+Security settings including authentication and encryption
+.TP
+.B [logging]
+Logging configuration and output settings
+.TP
+.B [orchestrator]
+Service orchestration settings
+.TP
+.B [discovery]
+Service discovery backend configuration
+
+.SH EXAMPLES
+.TP
+.B songbird config init
+Initialize a new configuration file with defaults
+.TP
+.B songbird config init --environment production
+Initialize production-ready configuration
+.TP
+.B songbird config validate
+Validate the current configuration file
+.TP
+.B songbird config show
+Display the entire current configuration
+.TP
+.B songbird config show --format json
+Display configuration in JSON format
+.TP
+.B songbird config get network.bind_address
+Get the current bind address setting
+.TP
+.B songbird config set network.bind_address 0.0.0.0
+Set the bind address to accept connections from any interface
+.TP
+.B songbird config set gaming.enabled true
+Enable gaming protocol detection
+.TP
+.B songbird config backup
+Create a backup of the current configuration
+.TP
+.B songbird config reset
+Reset all configuration values to defaults
+
+.SH CONFIGURATION FILE FORMAT
+Configuration files use TOML format:
+
+.nf
+[network]
+bind_address = "127.0.0.1"
+port = 8080
+enable_tls = false
+
+[gaming]
+enabled = true
+detection_timeout = 10
+supported_protocols = ["ipx", "directplay", "netbios"]
+
+[security]
+authentication_required = false
+enable_encryption = true
+
+[logging]
+level = "info"
+file_path = "/var/log/songbird/songbird.log"
+.fi
+
+.SH FILES
+.TP
+.I ~/.config/songbird/config.toml
+Main configuration file
+.TP
+.I ~/.config/songbird/networks.toml
+Network-specific configuration
+.TP
+.I ~/.config/songbird/security.toml
+Security configuration
+.TP
+.I ~/.config/songbird/backups/
+Configuration backup directory
+
+.SH ENVIRONMENT
+.TP
+.B SONGBIRD_CONFIG_PATH
+Override default configuration file path
+.TP
+.B SONGBIRD_ENVIRONMENT
+Set environment mode (development, production, testing)
+.TP
+.B SONGBIRD_LOG_LEVEL
+Override logging level from configuration
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+.TP
+.B 1
+Configuration error
+.TP
+.B 2
+File not found
+.TP
+.B 3
+Permission denied
+.TP
+.B 4
+Validation failed
+
+.SH NOTES
+Configuration changes may require a restart of running Songbird services to take effect.
+
+Some configuration options require elevated privileges, particularly those related to network interfaces and packet capture.
+
+.SH SEE ALSO
+.BR songbird (1),
+.BR songbird-gaming (1),
+.BR toml (5)
+
+.SH BUGS
+Report bugs at: https://github.com/songbird-project/songbird-orchestrator/issues
+
+.SH AUTHOR
+NestGate Project Contributors 

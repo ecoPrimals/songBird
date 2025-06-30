@@ -2,35 +2,41 @@
 //!
 //! Implementation of service discovery for various backends
 
+use async_trait::async_trait;
+use futures_util::Stream;
+use parking_lot::RwLock;
+use std::collections::HashMap;
+use std::pin::Pin;
+use std::sync::Arc;
+
+use crate::errors::Result;
+use crate::traits::discovery::*;
+use crate::traits::service::ServiceInfo;
+
 // Core types and data structures
 pub mod types;
-
 // Configuration management
 pub mod config;
-
 // Resource detection and monitoring
-pub mod resources;
 pub mod monitoring;
-
+pub mod resources;
 // Network operations
 pub mod network;
 
 // Federation management (placeholder for future expansion)
 pub mod federation {
-    // Federation-specific logic could go here
-    // For now, it's handled in the main discovery service
+    //! Federation-specific logic could go here
+    //! For now, it's handled in the main discovery service
 }
 
 // Trust verification (placeholder for future expansion)
 pub mod trust {
-    // Trust verification logic could go here
-    // For now, it's handled in the main discovery service
+    //! Trust verification logic could go here
 }
 
 // Certificate validation (placeholder for future expansion)
 pub mod certificate {
-    // Certificate validation logic could go here
-    // For now, it's handled in the main discovery service
+    //! Certificate validation logic could go here
 }
 
 // Main discovery service implementation
@@ -41,33 +47,21 @@ pub use songbird_discovery::SongbirdDiscovery;
 
 // Re-export commonly used types
 pub use types::{
-    NodeId, NodeInfo, LocalNode, NodeType, ComputeResources, ResourceQuery,
-    FederationStats, FederationHealth, NetworkTopology, TrustLevel,
-    ResourceUsage, FederationMessage, NetworkMeasurement, ResourceUpdate,
-    DatasetInfo, StorageInfo, InteractionResult, NetworkPartition,
+    ComputeResources, DatasetInfo, FederationHealth, FederationMessage, FederationStats,
+    InteractionResult, LocalNode, NetworkMeasurement, NetworkPartition, NetworkTopology, NodeId,
+    NodeInfo, NodeType, ResourceQuery, ResourceUpdate, ResourceUsage, StorageInfo, TrustLevel,
 };
 
 // Re-export configuration types
 pub use config::{
-    SongbirdDiscoveryConfig, NetworkConfig, MonitoringConfig, TrustConfig,
-    NetworkTimingConfig, TrustThresholds, InteractionPenalties,
+    InteractionPenalties, MonitoringConfig, NetworkConfig, NetworkTimingConfig,
+    SongbirdDiscoveryConfig, TrustConfig, TrustThresholds,
 };
 
 // Re-export utility structs
-pub use resources::ResourceDetector;
 pub use monitoring::ResourceMonitor;
 pub use network::NetworkManager;
-
-use async_trait::async_trait;
-use parking_lot::RwLock;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::pin::Pin;
-use futures_util::Stream;
-
-use crate::errors::Result;
-pub use crate::traits::discovery::*;
-use crate::traits::service::ServiceInfo;
+pub use resources::ResourceDetector;
 
 /// Static service discovery implementation for development and testing
 pub struct StaticServiceDiscovery {
@@ -91,7 +85,9 @@ impl Default for StaticServiceDiscovery {
 #[async_trait]
 impl ServiceDiscovery for StaticServiceDiscovery {
     async fn register(&self, service: ServiceInfo) -> Result<()> {
-        self.services.write().insert(service.id.clone(), service);
+        self.services
+            .write()
+            .insert(service.service_id.clone(), service);
         Ok(())
     }
 
@@ -121,14 +117,12 @@ impl ServiceDiscovery for StaticServiceDiscovery {
         Ok(Box::pin(futures_util::stream::empty()))
     }
 
-    async fn update_health(
-        &self,
-        service_id: &str,
-        health: ServiceHealthStatus,
-    ) -> Result<()> {
+    async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()> {
         if let Some(service) = self.services.write().get_mut(service_id) {
             // Update health status in metadata
-            service.metadata.insert("health_status".to_string(), format!("{:?}", health).into());
+            service
+                .metadata
+                .insert("health_status".to_string(), format!("{:?}", health).into());
         }
         Ok(())
     }
@@ -142,7 +136,7 @@ impl ServiceDiscovery for StaticServiceDiscovery {
     }
 
     async fn is_registered(&self, service_id: &str) -> Result<bool> {
-        Ok(self.services.read().contains_key(service_id))
+        self.exists(service_id).await
     }
 
     async fn update_metadata(
@@ -169,7 +163,7 @@ impl StaticServiceDiscovery {
     fn service_matches_query(&self, service: &ServiceInfo, query: &ServiceQuery) -> bool {
         // Check service ID filter (exact match)
         if let Some(ref service_id) = query.service_id {
-            if service.id != *service_id {
+            if service.service_id != *service_id {
                 return false;
             }
         }
@@ -183,14 +177,18 @@ impl StaticServiceDiscovery {
 
         // Check name filter (case-insensitive substring match)
         if let Some(ref name_filter) = query.name {
-            if !service.name.to_lowercase().contains(&name_filter.to_lowercase()) {
+            if !service
+                .name
+                .to_lowercase()
+                .contains(&name_filter.to_lowercase())
+            {
                 return false;
             }
         }
 
         // Check tag filters - service must have all required tags
         for required_tag in &query.tags {
-            if !service.tags.contains_key(required_tag) {
+            if !service.tags.contains(required_tag) {
                 return false;
             }
         }
@@ -219,20 +217,15 @@ impl StaticServiceDiscovery {
     /// Check if a service version matches a requirement
     fn version_matches_requirement(&self, service_version: &str, requirement: &str) -> bool {
         // Simplified version matching
-        if requirement.starts_with(">=") {
-            let req_version = &requirement[2..];
+        if let Some(req_version) = requirement.strip_prefix(">=") {
             service_version >= req_version
-        } else if requirement.starts_with("<=") {
-            let req_version = &requirement[2..];
+        } else if let Some(req_version) = requirement.strip_prefix("<=") {
             service_version <= req_version
-        } else if requirement.starts_with(">") {
-            let req_version = &requirement[1..];
+        } else if let Some(req_version) = requirement.strip_prefix(">") {
             service_version > req_version
-        } else if requirement.starts_with("<") {
-            let req_version = &requirement[1..];
+        } else if let Some(req_version) = requirement.strip_prefix("<") {
             service_version < req_version
-        } else if requirement.starts_with("=") {
-            let req_version = &requirement[1..];
+        } else if let Some(req_version) = requirement.strip_prefix("=") {
             service_version == req_version
         } else {
             // Exact match

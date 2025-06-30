@@ -6,7 +6,7 @@
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_orchestrator::prelude::*;
+use songbird_gaming_bridge::prelude::*;
 use std::collections::HashMap;
 
 /// NestGate NAS Service Configuration
@@ -202,24 +202,28 @@ impl UniversalService for NestGateNasService {
             name: "NestGate NAS Service".to_string(),
             version: "1.0.0".to_string(),
             service_type: "storage".to_string(),
-            description: "Network Attached Storage service for NestGate".to_string(),
+            description: Some("Network Attached Storage service for NestGate").to_string(),
             endpoints: vec![
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/health".to_string(),
                     method: "GET".to_string(),
-                    description: "Service health status".to_string(),
+                    description: Some("Service health status").to_string(),
                     parameters: vec![],
                     response_schema: None,
                 },
                 ServiceEndpoint {
+            auth_required: false,
+            rate_limit: None,
                     path: "/storage/info".to_string(),
                     method: "GET".to_string(),
-                    description: "Current storage usage and capacity".to_string(),
+                    description: Some("Current storage usage and capacity").to_string(),
                     parameters: vec![],
                     response_schema: None,
                 },
             ],
-            capabilities: vec![
+            tags: vec![
                 "storage".to_string(),
                 "backup".to_string(),
                 "nas-protocols".to_string(),
@@ -342,7 +346,7 @@ mod tests {
         assert!(response.status_code == 200);
 
         // Test metrics
-        let metrics = service.get_metrics().await.unwrap();
+        let metrics = service.get_config().await.unwrap();
         assert!(metrics.uptime_seconds >= 0);
 
         // Test stopping
