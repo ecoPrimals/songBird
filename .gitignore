@@ -97,6 +97,8 @@ core.*
 # Performance profiling
 perf.data*
 *.prof
+*.profraw
+build_rs_cov.profraw
 
 # Backup files
 backup/
