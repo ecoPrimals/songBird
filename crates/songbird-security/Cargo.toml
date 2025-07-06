@@ -1,0 +1,30 @@
+[package]
+name = "songbird-security"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+songbird-errors = { path = "../songbird-errors" }
+songbird-config = { path = "../songbird-config" }
+songbird-network = { path = "../songbird-network" }
+ring = "0.17"
+colored = "2.0"
+async-trait = "0.1"
+hyper = { version = "1.0", features = ["full"] }
+http-body-util = "0.1"
+
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+bincode = { workspace = true }
+urlencoding = { workspace = true }
+chrono = { workspace = true }
+rand = { workspace = true }
+bytes = { workspace = true }

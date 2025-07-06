@@ -200,11 +200,17 @@ impl NetworkConfig {
             websocket_port: env_config.websocket_port,
 
             // Metrics configuration
-            metrics_bind_address: env_config.bind_address.parse().map_err(|e| SongbirdError::Config { field: Some("metrics_bind_address".to_string()), message: format!("Invalid metrics bind address: {}", e) })?,
+            metrics_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
+                tracing::warn!("Invalid bind address for metrics, using 127.0.0.1: {}", e);
+                "127.0.0.1".parse().expect("127.0.0.1 is a valid IP address")
+            }),
             metrics_port: 8004,
 
             // Federation configuration
-            federation_bind_address: env_config.bind_address.parse().map_err(|e| SongbirdError::Config { field: Some("federation_bind_address".to_string()), message: format!("Invalid federation bind address: {}", e) })?,
+            federation_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
+                tracing::warn!("Invalid bind address for federation, using 127.0.0.1: {}", e);
+                "127.0.0.1".parse().expect("127.0.0.1 is a valid IP address")
+            }),
             federation_port: 8005,
 
             // CORS configuration
@@ -218,7 +224,7 @@ impl NetworkConfig {
         
         Self {
             orchestrator_port: env_config.bind_port,
-            bind_address: "127.0.0.1".parse().unwrap(), // Always secure by default
+            bind_address: "127.0.0.1".parse().map_err(|e| log::error!("Failed to parse bind address: {}", e)).unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))), // Always secure by default
             discovery_ports: env_config.discovery_ports.clone(),
             connection_timeout: env_config.connection_timeout(),
             request_timeout: env_config.request_timeout(),
@@ -239,11 +245,17 @@ impl NetworkConfig {
             websocket_port: env_config.websocket_port,
 
             // Metrics configuration
-            metrics_bind_address: env_config.bind_address.parse().unwrap(),
+            metrics_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
+                tracing::warn!("Invalid bind address, using 127.0.0.1: {}", e);
+                "127.0.0.1".parse().expect("127.0.0.1 is a valid IP address")
+            }),
             metrics_port: 8004,
 
             // Federation configuration
-            federation_bind_address: env_config.bind_address.parse().unwrap(),
+            federation_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
+                tracing::warn!("Invalid bind address, using 127.0.0.1: {}", e);
+                "127.0.0.1".parse().expect("127.0.0.1 is a valid IP address")
+            }),
             federation_port: 8005,
 
             // CORS configuration
@@ -428,7 +440,10 @@ impl Default for NetworkConfig {
         Self {
             // Use environment configuration - NO MORE HARDCODING!
             orchestrator_port: env_config.bind_port,
-            bind_address: env_config.bind_address.parse().unwrap(),
+            bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
+                tracing::warn!("Invalid environment bind address, using 127.0.0.1: {}", e);
+                "127.0.0.1".parse().expect("127.0.0.1 is a valid IP address")
+            }),
             discovery_ports: env_config.discovery_ports.clone(),
             
             discovery_port: 8001,
@@ -442,11 +457,17 @@ impl Default for NetworkConfig {
             websocket_port: env_config.websocket_port,
 
             // Metrics configuration
-            metrics_bind_address: env_config.bind_address.parse().unwrap(),
+            metrics_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
+                tracing::warn!("Invalid bind address, using 127.0.0.1: {}", e);
+                "127.0.0.1".parse().expect("127.0.0.1 is a valid IP address")
+            }),
             metrics_port: 8004,
 
             // Federation configuration
-            federation_bind_address: env_config.bind_address.parse().unwrap(),
+            federation_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
+                tracing::warn!("Invalid bind address, using 127.0.0.1: {}", e);
+                "127.0.0.1".parse().expect("127.0.0.1 is a valid IP address")
+            }),
             federation_port: 8005,
 
             // CORS configuration

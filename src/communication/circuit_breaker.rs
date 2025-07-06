@@ -29,6 +29,7 @@ pub struct CircuitBreakerConfig {
     pub window_size: Duration,
     /// Maximum number of requests allowed in half-open state
     pub half_open_max_requests: u32,
+}
 impl Default for CircuitBreakerConfig {
     fn default() -> Self {
         Self {
@@ -39,6 +40,7 @@ impl Default for CircuitBreakerConfig {
             half_open_max_requests: 3,
         }
     }
+}
 /// Circuit breaker implementation
 pub struct CircuitBreaker {
     config: CircuitBreakerConfig,
@@ -47,14 +49,18 @@ pub struct CircuitBreaker {
     success_count: Arc<AtomicU64>,
     last_failure_time: Arc<ParkingRwLock<Option<Instant>>>,
     half_open_requests: Arc<AtomicU64>,
+}
 impl CircuitBreaker {
     pub fn new(config: CircuitBreakerConfig) -> Self {
+        Self {
             config,
             state: Arc::new(ParkingRwLock::new(CircuitState::Closed)),
             failure_count: Arc::new(AtomicU64::new(0)),
             success_count: Arc::new(AtomicU64::new(0)),
             last_failure_time: Arc::new(ParkingRwLock::new(None)),
             half_open_requests: Arc::new(AtomicU64::new(0)),
+        }
+    }
     /// Check if request should be allowed through the circuit breaker
     pub fn should_allow_request(&self) -> bool {
         let state = *self.state.read();
@@ -84,11 +90,23 @@ impl CircuitBreaker {
                 if current_requests < self.config.half_open_max_requests as u64 {
                     self.half_open_requests.fetch_add(1, Ordering::Relaxed);
                     true
+                } else {
+                    false
+                }
+            }
+        }
+    }
     /// Record a successful request
     pub fn record_success(&self) {
+        let state = *self.state.read();
+        
+        match state {
             CircuitState::Closed => {
                 // Reset failure count on success
                 self.failure_count.store(0, Ordering::Relaxed);
+                self.success_count.fetch_add(1, Ordering::Relaxed);
+            }
+            CircuitState::HalfOpen => {
                 let success_count = self.success_count.fetch_add(1, Ordering::Relaxed) + 1;
                 if success_count >= self.config.success_threshold as u64 {
                     // Close the circuit
@@ -96,24 +114,44 @@ impl CircuitBreaker {
                     self.failure_count.store(0, Ordering::Relaxed);
                     self.success_count.store(0, Ordering::Relaxed);
                     tracing::info!("Circuit breaker moved to CLOSED state");
+                }
+            }
+            CircuitState::Open => {
                 // Shouldn't happen, but handle gracefully
                 tracing::warn!("Received success while circuit is OPEN");
+            }
+        }
+    }
     /// Record a failed request
     pub fn record_failure(&self) {
         *self.last_failure_time.write() = Some(Instant::now());
+        let state = *self.state.read();
+        
+        match state {
+            CircuitState::Closed => {
                 let failure_count = self.failure_count.fetch_add(1, Ordering::Relaxed) + 1;
                 if failure_count >= self.config.failure_threshold as u64 {
                     // Open the circuit
                     *self.state.write() = CircuitState::Open;
                     tracing::warn!("Circuit breaker moved to OPEN state after {} failures", failure_count);
+                }
+            }
+            CircuitState::HalfOpen => {
                 // Failed in half-open, go back to open
                 *self.state.write() = CircuitState::Open;
                 self.failure_count.fetch_add(1, Ordering::Relaxed);
                 tracing::warn!("Circuit breaker moved back to OPEN state from HALF_OPEN");
+            }
+            CircuitState::Open => {
                 // Already open, just record the failure
+                self.failure_count.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+    }
     /// Get current circuit breaker state
     pub fn get_state(&self) -> CircuitState {
         *self.state.read()
+    }
     /// Get circuit breaker statistics
     pub fn get_stats(&self) -> CircuitBreakerStats {
         CircuitBreakerStats {
@@ -123,6 +161,8 @@ impl CircuitBreaker {
             half_open_requests: self.half_open_requests.load(Ordering::Relaxed),
             last_failure_time: self.last_failure_time.read()
                 .map(|instant| chrono::Utc::now() - chrono::Duration::from_std(instant.elapsed()).unwrap_or_default()),
+        }
+    }
     /// Reset circuit breaker state
     pub fn reset(&self) {
         *self.state.write() = CircuitState::Closed;
@@ -131,6 +171,8 @@ impl CircuitBreaker {
         self.half_open_requests.store(0, Ordering::Relaxed);
         *self.last_failure_time.write() = None;
         tracing::info!("Circuit breaker reset to CLOSED state");
+    }
+}
 /// Circuit breaker statistics
 pub struct CircuitBreakerStats {
     pub state: CircuitState,

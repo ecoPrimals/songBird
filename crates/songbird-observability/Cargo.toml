@@ -1,0 +1,22 @@
+[package]
+name = "songbird-observability"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+description = "Monitoring and observability for Songbird"
+
+[dependencies]
+songbird-errors = { path = "../songbird-errors" }
+songbird-config = { path = "../songbird-config" }
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+tracing = "0.1"
+sysinfo = "0.30"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4"] }
+bytes = "1.5"
+hyper = { version = "1.0", features = ["full"] }
+http-body-util = "0.1"
+serde_json = { workspace = true }
+async-trait = { workspace = true }

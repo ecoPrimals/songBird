@@ -6,7 +6,7 @@ use crate::config::SongbirdConfig;
 use crate::errors::Result;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ZeroTouchConfig {
     pub auto_deploy: bool,
     pub environment_detection: bool,

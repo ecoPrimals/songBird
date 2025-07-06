@@ -96,10 +96,16 @@ impl NatTraversalManager {
             stun_servers: vec![
                 format!("{}:19302", bind_address)
                     .parse()
-                    .unwrap(),
+                    .unwrap_or_else(|e| {
+                        tracing::error!("Failed to parse STUN server address {}:19302: {}", bind_address, e);
+                        "127.0.0.1:19302".parse().expect("valid fallback STUN address")
+                    }),
                 format!("{}:19303", bind_address)
                     .parse()
-                    .unwrap(),
+                    .unwrap_or_else(|e| {
+                        tracing::error!("Failed to parse STUN server address {}:19303: {}", bind_address, e);
+                        "127.0.0.1:19303".parse().expect("valid fallback STUN address")
+                    }),
             ],
             local_socket: None,
             external_address: None,

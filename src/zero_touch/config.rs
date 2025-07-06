@@ -510,7 +510,7 @@ mod tests {
         let generator = ConfigGenerator::new();
         let resources = ResourceRequirements::minimal();
         
-        let config = generator.generate_config("development", &resources).unwrap();
+        let config = generator.generate_config("development", \let config = generator.generate_config("development", \let config = generator.generate_config("development", &resources).unwrap();resources).expect("Test config generation should succeed");resources).map_err(|e| { tracing::error!("Zero-touch config generation failed: {}", e); e })?;
         assert_eq!(config.target_environment, "development");
         assert!(config.auto_discovery);
         assert!(config.auto_configure);

@@ -76,8 +76,14 @@ impl Default for ServiceConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            bind_address: env_or_default("SONGBIRD_BIND_ADDRESS", "127.0.0.1").parse().unwrap_or_else(|_| "127.0.0.1".parse().unwrap()),
-            production_bind_address: env_or_default("SONGBIRD_PRODUCTION_BIND_ADDRESS", "0.0.0.0").parse().unwrap_or_else(|_| "0.0.0.0".parse().unwrap()),
+            bind_address: env_or_default("SONGBIRD_BIND_ADDRESS", "127.0.0.1").parse().unwrap_or_else(|e| {
+                tracing::warn!("Invalid SONGBIRD_BIND_ADDRESS, using default 127.0.0.1: {}", e);
+                "127.0.0.1".parse().expect("127.0.0.1 is a valid IP address")
+            }),
+            production_bind_address: env_or_default("SONGBIRD_PRODUCTION_BIND_ADDRESS", "0.0.0.0").parse().unwrap_or_else(|e| {
+                tracing::warn!("Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}", e);
+                "0.0.0.0".parse().expect("0.0.0.0 is a valid IP address")
+            }),
             stun_servers: vec![
                 "stun.l.google.com:19302".to_string(),
                 "stun1.l.google.com:19302".to_string(),

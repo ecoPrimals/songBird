@@ -139,7 +139,7 @@ impl UniversalGameProtocolDetector {
             session_id: format!("starcraft_{}", generate_session_id()),
             protocol_class: GameProtocolClass::IpxBased,
             local_ports: vec![6112, 6113, 6114],
-            remote_endpoints: vec!["192.168.1.100:6112".parse().unwrap()],
+            remote_endpoints: vec!["192.168.1.100:6112".parse().unwrap_or_else(|e| { tracing::warn!("Failed to parse game endpoint, using fallback: {}", e); "127.0.0.1:6112".parse().expect("valid fallback address") })],
             process_id: Some(1234),
             game_name: Some("StarCraft".to_string()),
             detected_at: SystemTime::now(),
@@ -151,7 +151,7 @@ impl UniversalGameProtocolDetector {
             session_id: format!("aoe_{}", generate_session_id()),
             protocol_class: GameProtocolClass::DirectPlay,
             local_ports: vec![2300, 2301],
-            remote_endpoints: vec!["192.168.1.101:2300".parse().unwrap()],
+            remote_endpoints: vec!["192.168.1.101:2300".parse().unwrap_or_else(|e| { tracing::warn!("Failed to parse game endpoint, using fallback: {}", e); "127.0.0.1:2300".parse().expect("valid fallback address") })],
             process_id: Some(5678),
             game_name: Some("Age of Empires II".to_string()),
             detected_at: SystemTime::now(),
@@ -325,7 +325,10 @@ fn generate_session_id() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_else(|e| {
+            tracing::warn!("System time before UNIX epoch, using fallback: {}", e);
+            std::time::Duration::from_secs(0)
+        })
         .as_secs();
     format!("{:x}", timestamp % 0xFFFFFF)
 }

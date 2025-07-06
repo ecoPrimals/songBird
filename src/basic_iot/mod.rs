@@ -238,7 +238,7 @@ impl IoTManager {
             let config = config.clone();
 
             tasks.push(tokio::spawn(async move {
-                let _permit = sem.acquire().await.unwrap();
+                let _permit = sem.acquire().await.map_err(|e| { tracing::error!("IoT semaphore acquisition failed: {}", e); crate::errors::SongbirdError::Network { service: "IoT Discovery".to_string(), message: format!("Semaphore acquisition failed: {}", e), details: None } })?;
                 Self::scan_device_ports(ip, &config).await
             }));
         }

@@ -161,7 +161,7 @@ fn calculate_broadcast_address(base_ip: &IpAddr, mask: u8) -> Result<IpAddr> {
         }
         IpAddr::V6(_) => {
             // For IPv6, use link-local multicast
-            Ok("ff02::1".parse().unwrap())
+            Ok("ff02::1".parse().unwrap_or_else(|e| { tracing::warn!("Failed to parse IPv6 multicast address, using fallback: {}", e); "::1".parse().expect("::1 is a valid IPv6 address") }))
         }
     }
 }

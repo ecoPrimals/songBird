@@ -4,7 +4,7 @@
 //! Make distributed computing as simple as `songbird init`
 
 use clap::Parser;
-use songbird_gaming_bridge::cli::Cli;
+use songbird_lib::cli::Cli;
 use tracing::{error, info};
 #[tokio::main]
 async fn main() {

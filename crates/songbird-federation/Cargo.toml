@@ -1,0 +1,26 @@
+[package]
+name = "songbird-federation"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+description = "MCP federation for Songbird orchestrator"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+async-trait = "0.1"
+anyhow = "1.0"
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# System monitoring dependencies
+sysinfo = "0.30"
+libc = "0.2"
+
+# Internal dependencies
+songbird-errors = { path = "../songbird-errors" }
+songbird-config = { path = "../songbird-config" }

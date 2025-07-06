@@ -250,7 +250,7 @@ mod tests {
         async fn test_default_headers() {
         let client = HyperHttpClient::new()
             .map_err(|e| format!("Failed to create HTTP client: {}", e))
-            .unwrap();
+            .map_err(|e| { tracing::error!("HTTP client setup failed: {}", e); e })?;
         client.add_default_header("x-custom".to_string(), "test-value".to_string()).await;
         let headers = client.default_headers.read().await;
         assert_eq!(headers.get("x-custom"), Some(&"test-value".to_string()));

@@ -200,34 +200,22 @@ impl AutoScaler {
             ScalingDecision::NoAction
         };
 
-        // Record scaling event
-        if !matches!(decision, ScalingDecision::NoAction) {
-            let target_instances = match decision {
-                ScalingDecision::ScaleUp(delta) => current_instances + delta,
-                ScalingDecision::ScaleDown(delta) => current_instances - delta,
+        // Record decision in history for evaluation tracking (stats updated on execution)
+        let event = ScalingEvent {
+            timestamp: Instant::now(),
+            service_id: service_id.to_string(),
+            decision: decision.clone(),
+            reason: self.generate_scaling_reason(&decision, resource_usage),
+            current_instances,
+            target_instances: match decision {
+                ScalingDecision::ScaleUp(instances) => current_instances + instances,
+                ScalingDecision::ScaleDown(instances) => current_instances.saturating_sub(instances),
                 ScalingDecision::NoAction => current_instances,
-            };
-
-            let event = ScalingEvent {
-                timestamp: Instant::now(),
-                service_id: service_id.to_string(),
-                decision: decision.clone(),
-                reason: self.generate_scaling_reason(&decision, resource_usage),
-                current_instances,
-                target_instances,
-            };
-
-            self.scaling_history.push(event);
-            self.last_scaling_time = Some(Instant::now());
-
-            // Update statistics
-            self.stats.total_scale_events += 1;
-            match decision {
-                ScalingDecision::ScaleUp(_) => self.stats.scale_up_events += 1,
-                ScalingDecision::ScaleDown(_) => self.stats.scale_down_events += 1,
-                ScalingDecision::NoAction => {}
-            }
-        }
+            },
+        };
+        // Don't add to history until actually executed
+        // self.scaling_history.push(event);
+        self.last_scaling_time = Some(Instant::now());
 
         // Update current metrics
         self.stats.resource_utilization = resource_usage.clone();
@@ -277,10 +265,42 @@ impl AutoScaler {
             ScalingDecision::ScaleUp(instances) => {
                 info!("Scaling up service {}: adding {} instances", service_id, instances);
                 self.scale_up_service(service_id, *instances).await?;
+                
+                // Update statistics
+                self.stats.scale_up_events += 1;
+                self.stats.total_scale_events += 1;
+                
+                // Record scaling event
+                let event = ScalingEvent {
+                    timestamp: Instant::now(),
+                    service_id: service_id.to_string(),
+                    decision: decision.clone(),
+                    reason: self.generate_scaling_reason(decision, &ResourceUsage::default()),
+                    current_instances: 0, // This would come from service registry in real implementation
+                    target_instances: *instances,
+                };
+                self.scaling_history.push(event);
+                self.last_scaling_time = Some(Instant::now());
             }
             ScalingDecision::ScaleDown(instances) => {
                 info!("Scaling down service {}: removing {} instances", service_id, instances);
                 self.scale_down_service(service_id, *instances).await?;
+                
+                // Update statistics
+                self.stats.scale_down_events += 1;
+                self.stats.total_scale_events += 1;
+                
+                // Record scaling event
+                let event = ScalingEvent {
+                    timestamp: Instant::now(),
+                    service_id: service_id.to_string(),
+                    decision: decision.clone(),
+                    reason: self.generate_scaling_reason(decision, &ResourceUsage::default()),
+                    current_instances: 0, // This would come from service registry in real implementation
+                    target_instances: 0_u32.saturating_sub(*instances),
+                };
+                self.scaling_history.push(event);
+                self.last_scaling_time = Some(Instant::now());
             }
             ScalingDecision::NoAction => {
                 // Do nothing
@@ -297,18 +317,18 @@ impl AutoScaler {
         let required_memory = self.config.min_instances * 512; // Assume 512MB per instance
 
         if (self.resource_pool.available_cpu_cores as f64) < required_cpu {
-            return Err(SongbirdError::ResourceExhausted {
-                resource: "CPU".to_string(),
-                requested: required_cpu,
-                available: self.resource_pool.available_cpu_cores as f64,
+            return Err(SongbirdError::Service {
+                service: service_id.to_string(),
+                message: format!("Insufficient CPU resources: need {:.1} cores, have {}", 
+                    required_cpu, self.resource_pool.available_cpu_cores),
             });
         }
 
         if self.resource_pool.available_memory_mb < required_memory {
-            return Err(SongbirdError::ResourceExhausted {
-                resource: "Memory".to_string(),
-                requested: required_memory as f64,
-                available: self.resource_pool.available_memory_mb as f64,
+            return Err(SongbirdError::Service {
+                service: service_id.to_string(),
+                message: format!("Insufficient memory resources: need {}MB, have {}MB", 
+                    required_memory, self.resource_pool.available_memory_mb),
             });
         }
 
@@ -362,6 +382,11 @@ impl AutoScaler {
     /// Set cooldown period
     pub fn set_cooldown_period(&mut self, duration: Duration) {
         self.cooldown_period = duration;
+    }
+
+    /// Set last scaling time (for testing purposes)
+    pub fn set_last_scaling_time(&mut self, time: Option<Instant>) {
+        self.last_scaling_time = time;
     }
 }
 
@@ -441,7 +466,7 @@ impl PerformanceOptimizer {
 
     /// Optimize connection pool size
     fn optimize_connection_pool(&self, metrics: &PerformanceMetrics) -> Option<OptimizationRecommendation> {
-        if metrics.connection_pool_utilization > 90.0 {
+        if metrics.connection_pool_utilization > 0.9 {  // 90% utilization
             let new_size = (self.performance_config.connection_pool_size as f64 * 1.5) as u32;
             Some(OptimizationRecommendation {
                 optimization_type: OptimizationType::ConnectionPoolSize,
@@ -450,7 +475,7 @@ impl PerformanceOptimizer {
                 expected_improvement: 20.0,
                 reason: "High connection pool utilization detected".to_string(),
             })
-        } else if metrics.connection_pool_utilization < 30.0 {
+        } else if metrics.connection_pool_utilization < 0.3 {  // 30% utilization
             let new_size = (self.performance_config.connection_pool_size as f64 * 0.7) as u32;
             Some(OptimizationRecommendation {
                 optimization_type: OptimizationType::ConnectionPoolSize,
@@ -466,7 +491,7 @@ impl PerformanceOptimizer {
 
     /// Optimize cache size
     fn optimize_cache_size(&self, metrics: &PerformanceMetrics) -> Option<OptimizationRecommendation> {
-        if metrics.cache_hit_rate < 70.0 {
+        if metrics.cache_hit_rate < 0.7 {  // 70% cache hit rate
             let new_size = (self.performance_config.cache_size_mb as f64 * 1.3) as u32;
             Some(OptimizationRecommendation {
                 optimization_type: OptimizationType::CacheSize,
@@ -482,7 +507,7 @@ impl PerformanceOptimizer {
 
     /// Optimize request timeout
     fn optimize_request_timeout(&self, metrics: &PerformanceMetrics) -> Option<OptimizationRecommendation> {
-        if metrics.timeout_rate > 5.0 {
+        if metrics.timeout_rate > 0.05 {  // 5% timeout rate
             let new_timeout = (self.performance_config.request_timeout_ms as f64 * 1.2) as u64;
             Some(OptimizationRecommendation {
                 optimization_type: OptimizationType::RequestTimeout,
@@ -566,10 +591,8 @@ mod tests {
         let high_usage = create_test_resource_usage(85.0, 85.0);
         let decision = scaler.evaluate_scaling("test-service", 2, &high_usage, 100.0).unwrap();
 
-        match decision {
-            ScalingDecision::ScaleUp(_) => (),
-            _ => panic!("Expected scale up decision"),
-        }
+        assert!(matches!(decision, ScalingDecision::ScaleUp(_)), 
+            "Expected scale up decision, got: {:?}", decision);
     }
 
     #[test]
@@ -581,10 +604,8 @@ mod tests {
         let low_usage = create_test_resource_usage(20.0, 25.0);
         let decision = scaler.evaluate_scaling("test-service", 3, &low_usage, 10.0).unwrap();
 
-        match decision {
-            ScalingDecision::ScaleDown(_) => (),
-            _ => panic!("Expected scale down decision"),
-        }
+        assert!(matches!(decision, ScalingDecision::ScaleDown(_)), 
+            "Expected scale down decision, got: {:?}", decision);
     }
 
     #[test]
@@ -596,10 +617,8 @@ mod tests {
         let normal_usage = create_test_resource_usage(50.0, 60.0);
         let decision = scaler.evaluate_scaling("test-service", 2, &normal_usage, 50.0).unwrap();
 
-        match decision {
-            ScalingDecision::NoAction => (),
-            _ => panic!("Expected no action decision"),
-        }
+        assert!(matches!(decision, ScalingDecision::NoAction), 
+            "Expected no action decision, got: {:?}", decision);
     }
 
     #[tokio::test]

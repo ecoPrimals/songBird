@@ -8,6 +8,7 @@
 // Main library entry point with minimal modules for BearDog integration
 
 // Core modules that compile and are needed for BearDog
+pub mod api; // API endpoints and server
 pub mod cli; // CLI module for error handling
 pub mod config; // Configuration management
 pub mod errors; // Error handling
@@ -28,11 +29,21 @@ pub mod firewall; // System-agnostic firewall
 pub mod health; // Health monitoring
 pub mod http_server; // HTTP server for web interface
 pub mod orchestrator; // Main orchestrator
+pub mod robustness; // Circuit breakers, retry mechanisms, rate limiting
+pub mod scalability; // Auto-scaling and performance optimization
 pub mod zero_touch; // Zero touch deployment // Universal accessibility - "Free for All"
 
 // Re-export core types for easier access
 pub use config::SongbirdConfig;
 pub use errors::{Result, SongbirdError};
+
+// Re-export scalability types
+pub use scalability::{
+    AutoScaler, OptimizationEvent, OptimizationRecommendation, OptimizationType, 
+    PerformanceConfig, PerformanceMetrics, PerformanceOptimizer, ResourceConfig, 
+    ResourcePool, ResourceUsage, ScalabilityStats, ScalingDecision, ScalingEvent, 
+    ServiceScalingConfig,
+};
 
 // Re-export BearDog integration types
 pub use security::{

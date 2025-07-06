@@ -479,11 +479,11 @@ mod tests {
         // Should select healthy instances in round robin fashion
         let selected1 = lb.select_instance(&instances).await;
         assert!(selected1.is_some());
-        let instance1 = selected1.unwrap();
+        let instance1 = selected1.expect("Test load balancer should select an instance");
 
         let selected2 = lb.select_instance(&instances).await;
         assert!(selected2.is_some());
-        let instance2 = selected2.unwrap();
+        let instance2 = selected2.expect("Test load balancer should select an instance");
 
         // Should not select the same instance twice in a row (with 2 healthy instances)
         assert_ne!(instance1.id, instance2.id);
@@ -552,7 +552,7 @@ mod tests {
         // Select instance
         let selected = manager.select_instance().await;
         assert!(selected.is_some());
-        assert_eq!(selected.unwrap().id, "test1");
+        assert_eq!(selected.expect("Load balancer should select test instance").id, "test1");
 
         // Update health
         assert!(manager.update_instance_health("test1", false).await.is_ok());
