@@ -478,9 +478,8 @@ pub struct NetworkStats {
 mod tests {
     use super::*;
     use std::net::Ipv4Addr;
-    use tokio::test;
 
-    #[test]
+    #[tokio::test]
     async fn test_ipx_address_creation() {
         let ip = Ipv4Addr::new(192, 168, 1, 100);
         let ipx_addr = IpxAddress::from_ip(IpAddr::V4(ip));
@@ -492,8 +491,8 @@ mod tests {
         assert_eq!(ipx_addr.node[3], 100);
     }
 
-    #[test]
-    async fn test_ipx_packet_translation() {
+    #[tokio::test]
+    async fn test_ipx_packet_translation() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let translator = IPXToUDPTranslator::new(0x01000000);
 
         let ipx_packet = IpxPacket {
@@ -512,14 +511,16 @@ mod tests {
             data: vec![0x01, 0x02, 0x03, 0x04],
         };
 
-        let udp_data = translator.ipx_to_udp(&ipx_packet).await.unwrap();
-        let parsed_packet = translator.udp_to_ipx(&udp_data).await.unwrap();
+        let udp_data = translator.ipx_to_udp(&ipx_packet).await.map_err(|e| { tracing::error!("IPX to UDP translation failed: {}", e); e })?;
+        let parsed_packet = translator.udp_to_ipx(&udp_data).await.map_err(|e| { tracing::error!("UDP to IPX translation failed: {}", e); e })?;
 
         assert_eq!(parsed_packet.header.packet_type, 0x04);
         assert_eq!(parsed_packet.data, vec![0x01, 0x02, 0x03, 0x04]);
+
+        Ok(())
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_real_ipx_bridge_creation() {
         // This test might fail if port 6112 is already in use
         match RealIPXBridge::bind_ipx_network(0x01000000).await {

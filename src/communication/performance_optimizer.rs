@@ -2,7 +2,6 @@
 //! Implements high-performance patterns for network operations
 
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
 
 /// Performance optimization configurations
 #[derive(Debug, Clone)]

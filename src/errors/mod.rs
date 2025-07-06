@@ -70,6 +70,16 @@ pub enum SongbirdError {
     UnsupportedChannelType,
     /// Deployment errors
     Deployment { service: String, message: String },
+    /// Circuit breaker open errors
+    CircuitBreakerOpen { message: String },
+    /// Circuit breaker failure errors
+    CircuitBreakerFailure { message: String },
+    /// Retry exhausted errors
+    RetryExhausted { attempts: u32, last_error: String },
+    /// Rate limit exceeded errors
+    RateLimitExceeded { message: String },
+    /// Execution failed errors
+    ExecutionFailed { message: String },
 }
 impl fmt::Display for SongbirdError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -160,6 +170,21 @@ impl fmt::Display for SongbirdError {
             SongbirdError::UnsupportedChannelType => write!(f, "Unsupported channel type error"),
             SongbirdError::Deployment { service, message } => {
                 write!(f, "Deployment error for service '{}': {}", service, message)
+            }
+            SongbirdError::CircuitBreakerOpen { message } => {
+                write!(f, "Circuit breaker is open: {}", message)
+            }
+            SongbirdError::CircuitBreakerFailure { message } => {
+                write!(f, "Circuit breaker failure: {}", message)
+            }
+            SongbirdError::RetryExhausted { attempts, last_error } => {
+                write!(f, "Retry exhausted after {} attempts, last error: {}", attempts, last_error)
+            }
+            SongbirdError::RateLimitExceeded { message } => {
+                write!(f, "Rate limit exceeded: {}", message)
+            }
+            SongbirdError::ExecutionFailed { message } => {
+                write!(f, "Execution failed: {}", message)
             }
         }
     }

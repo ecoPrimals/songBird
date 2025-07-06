@@ -638,7 +638,9 @@ mod tests {
                 assert_eq!(username, "testuser");
                 assert_eq!(password, "password");
             }
-            _ => panic!("Wrong credential type"),
+            _ => {
+                assert!(false, "Expected UserPassword credential type");
+            }
         }
     }
 
@@ -652,7 +654,9 @@ mod tests {
             Credentials::Bearer { token } => {
                 assert_eq!(token, "abc123");
             }
-            _ => panic!("Wrong credential type"),
+            _ => {
+                assert!(false, "Expected Bearer credential type");
+            }
         }
     }
 
@@ -674,7 +678,9 @@ mod tests {
             Credentials::MFA { mfa_code, .. } => {
                 assert_eq!(mfa_code, "123456");
             }
-            _ => panic!("Wrong credential type"),
+            _ => {
+                assert!(false, "Expected MFA credential type");
+            }
         }
     }
 

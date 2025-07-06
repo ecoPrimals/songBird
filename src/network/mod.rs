@@ -10,6 +10,10 @@ use std::time::Duration;
 use crate::errors::{Result, SongbirdError};
 
 pub mod gaming;
+// FRAGO: BearDog Integration Module
+// FRAGO: Network Discovery Engine Module
+pub mod discovery_engine;
+pub mod beardog_integration;
 
 /// Network configuration for the orchestrator
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,7 +37,7 @@ impl Default for NetworkConfig {
         Self {
             // Use environment configuration - NO MORE HARDCODING!
             bind_port: env_config.bind_port,
-            bind_address: env_config.bind_address.parse().unwrap_or("127.0.0.1".parse().unwrap()),
+            bind_address: env_config.bind_address.parse().unwrap_or_else(|e| { tracing::warn!("Invalid bind address {}, using 127.0.0.1: {}", env_config.bind_address, e); "127.0.0.1".parse().expect("127.0.0.1 is a valid IP") }),
             
             // Configurable timeouts from environment
             health_check_interval: std::time::Duration::from_secs(env_config.health_check_interval_secs),

@@ -85,7 +85,7 @@ pub enum TunnelStatus {
 }
 
 /// Comprehensive tunnel metrics
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TunnelMetrics {
     /// Bytes transferred through tunnel
     pub bytes_transferred: u64,
@@ -338,6 +338,64 @@ impl BSTPTunnelManager {
             now.duration_since(tunnel.created_at) < max_lifetime
         });
     }
+
+    /// Record tunnel performance using optimizer
+    pub fn record_tunnel_performance(&mut self, tunnel_id: &str, response_time: Duration) {
+        if let Some(tunnel) = self.active_tunnels.get_mut(tunnel_id) {
+            self.optimizer.record_request(response_time);
+            tunnel.last_activity = Instant::now();
+            tunnel.update_performance_metrics();
+        }
+    }
+
+    /// Get performance insights from optimizer
+    pub fn get_performance_insights(&self) -> String {
+        let metrics = self.optimizer.get_metrics();
+        format!(
+            "Active Tunnels: {}, Total Requests: {}, Avg Response: {}ms, RPS: {:.2}",
+            self.active_tunnels.len(),
+            metrics.total_requests,
+            metrics.avg_response_time.as_millis(),
+            metrics.requests_per_second
+        )
+    }
+
+    /// Check monitoring alerts using alert thresholds
+    pub fn check_monitoring_alerts(&self) -> Vec<String> {
+        let mut alerts = Vec::new();
+        
+        for (session_id, tunnel) in &self.active_tunnels {
+            if tunnel.metrics.avg_latency_us > self.monitoring.alert_thresholds.max_latency_us {
+                alerts.push(format!("High latency in tunnel {}: {}μs", session_id, tunnel.metrics.avg_latency_us));
+            }
+            
+            if tunnel.metrics.gaming_quality_score < self.monitoring.alert_thresholds.min_quality_score {
+                alerts.push(format!("Low quality in tunnel {}: {:.2}", session_id, tunnel.metrics.gaming_quality_score));
+            }
+            
+            if tunnel.metrics.encryption_overhead > self.monitoring.alert_thresholds.max_encryption_overhead {
+                alerts.push(format!("High overhead in tunnel {}: {:.1}%", session_id, tunnel.metrics.encryption_overhead));
+            }
+        }
+        
+        alerts
+    }
+
+    /// Store metrics in monitoring historical data
+    pub fn store_metrics_history(&mut self) {
+        for tunnel in self.active_tunnels.values() {
+            self.monitoring.historical_metrics.push(tunnel.metrics.clone());
+        }
+        
+        if self.monitoring.historical_metrics.len() > 1000 {
+            self.monitoring.historical_metrics.drain(0..500);
+        }
+    }
+
+    /// Get metrics collection interval from monitoring
+    pub fn get_collection_interval(&self) -> Duration {
+        self.monitoring.collection_interval
+    }
 }
 
 impl TunnelEncryptionConfig {
@@ -402,32 +460,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_bstp_tunnel_creation() {
+    fn test_bstp_tunnel_creation() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let tunnel = BSTPTunnel::new_bstp_tunnel("test_session".to_string());
         assert!(tunnel.is_ok());
         
-        let tunnel = tunnel.unwrap();
+        let tunnel = tunnel.map_err(|e| { tracing::error!("BSTP tunnel creation failed: {}", e); e })?;
         assert_eq!(tunnel.session_id, "test_session");
         assert_eq!(tunnel.status, TunnelStatus::Establishing);
         assert!(tunnel.tunnel_id.starts_with("bstp-test_session"));
+
+        Ok(())
     }
 
     #[test]
-    fn test_gaming_packet_encryption() {
-        let mut tunnel = BSTPTunnel::new_bstp_tunnel("gaming_session".to_string()).unwrap();
+    fn test_gaming_packet_encryption() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut tunnel = BSTPTunnel::new_bstp_tunnel("gaming_session".to_string()).map_err(|e| { tracing::error!("Gaming session tunnel creation failed: {}", e); e })?;
         let test_packet = b"gaming_data_packet";
         
         let encrypted = tunnel.encrypt_gaming_packet_bstp(test_packet);
         assert!(encrypted.is_ok());
         
-        let encrypted_data = encrypted.unwrap();
+        let encrypted_data = encrypted.map_err(|e| { tracing::error!("Gaming packet encryption failed: {}", e); e })?;
         assert!(encrypted_data.len() >= test_packet.len());
         assert!(tunnel.metrics.bytes_transferred > 0);
+
+        Ok(())
     }
 
     #[test]
-    fn test_zero_copy_encryption() {
-        let mut tunnel = BSTPTunnel::new_bstp_tunnel("zero_copy_session".to_string()).unwrap();
+    fn test_zero_copy_encryption() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut tunnel = BSTPTunnel::new_bstp_tunnel("zero_copy_session".to_string()).map_err(|e| { tracing::error!("Zero-copy tunnel creation failed: {}", e); e })?;
         let mut test_data = b"zero_copy_test_data".to_vec();
         let original_len = test_data.len();
         
@@ -435,6 +497,8 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), original_len);
         assert!(tunnel.metrics.bytes_transferred > 0);
+        Ok(())
+
     }
 
     #[test]

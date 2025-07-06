@@ -376,7 +376,7 @@ mod tests {
         let result = discoverer.discover().await;
         assert!(result.is_ok());
         
-        let network_info = result.unwrap();
+        let network_info = result.map_err(|e| { tracing::error!("Network discovery failed: {}", e); e })?;
         assert!(!network_info.interfaces.is_empty());
         assert!(!network_info.routes.is_empty());
         assert!(!network_info.dns_config.nameservers.is_empty());
@@ -385,7 +385,7 @@ mod tests {
     #[tokio::test]
     async fn test_network_interfaces_discovery() {
         let discoverer = NetworkDiscoverer::new();
-        let interfaces = discoverer.discover_network_interfaces().await.unwrap();
+        let interfaces = discoverer.discover_network_interfaces().await.map_err(|e| { tracing::error!("Network interface discovery failed: {}", e); e })?;
         
         assert!(!interfaces.is_empty());
         assert!(interfaces.iter().any(|i| i.is_loopback));
@@ -395,7 +395,7 @@ mod tests {
     #[tokio::test]
     async fn test_routes_discovery() {
         let discoverer = NetworkDiscoverer::new();
-        let routes = discoverer.discover_routes().await.unwrap();
+        let routes = discoverer.discover_routes().await.map_err(|e| { tracing::error!("Route discovery failed: {}", e); e })?;
         
         assert!(!routes.is_empty());
         assert!(routes.iter().any(|r| matches!(r.route_type, RouteType::Default)));
@@ -405,7 +405,7 @@ mod tests {
     #[tokio::test]
     async fn test_dns_configuration_discovery() {
         let discoverer = NetworkDiscoverer::new();
-        let dns_config = discoverer.discover_dns_configuration().await.unwrap();
+        let dns_config = discoverer.discover_dns_configuration().await.map_err(|e| { tracing::error!("DNS discovery failed: {}", e); e })?;
         
         assert!(!dns_config.nameservers.is_empty());
         assert!(dns_config.nameservers.contains(&"8.8.8.8".to_string()));
@@ -414,7 +414,7 @@ mod tests {
     #[tokio::test]
     async fn test_firewall_rules_discovery() {
         let discoverer = NetworkDiscoverer::new();
-        let firewall_rules = discoverer.discover_firewall_rules().await.unwrap();
+        let firewall_rules = discoverer.discover_firewall_rules().await.map_err(|e| { tracing::error!("Firewall discovery failed: {}", e); e })?;
         
         assert!(!firewall_rules.is_empty());
         assert!(firewall_rules.iter().any(|r| r.action == FirewallAction::Allow));
@@ -423,7 +423,7 @@ mod tests {
     #[tokio::test]
     async fn test_port_availability_check() {
         let discoverer = NetworkDiscoverer::new();
-        let port_availability = discoverer.check_port_availability().await.unwrap();
+        let port_availability = discoverer.check_port_availability().await.map_err(|e| { tracing::error!("Port availability check failed: {}", e); e })?;
         
         assert!(!port_availability.is_empty());
         assert!(port_availability.contains_key(&80));
@@ -488,13 +488,13 @@ mod tests {
     #[test]
     fn test_interface_type_serialization() {
         let interface_type = InterfaceType::Ethernet;
-        let serialized = serde_json::to_string(&interface_type).unwrap();
-        let deserialized: InterfaceType = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&interface_type)
+            .expect("Interface type serialization should succeed");
+        let deserialized: InterfaceType = serde_json::from_str(&serialized)
+            .expect("Interface type deserialization should succeed");
         
-        match deserialized {
-            InterfaceType::Ethernet => (),
-            _ => panic!("Serialization/deserialization failed"),
-        }
+        assert!(matches!(deserialized, InterfaceType::Ethernet), 
+            "Serialization/deserialization should preserve interface type");
     }
 
     #[test]

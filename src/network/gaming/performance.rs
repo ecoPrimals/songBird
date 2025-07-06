@@ -424,7 +424,10 @@ impl PerformanceMonitor {
             use std::time::{SystemTime, UNIX_EPOCH};
             let load_indicator = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_else(|e| {
+                    tracing::error!("Gaming performance monitoring failed: {}", e);
+                    Duration::from_millis(0) // Safe fallback for performance metrics
+                })
                 .as_millis()
                 % 100;
             load_indicator as f32 * 0.3 // 0-30% typical gaming load
@@ -469,7 +472,10 @@ impl PerformanceMonitor {
         // Simulate error rate based on system stability
         let stability_factor = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_else(|e| {
+                tracing::error!("Gaming performance monitoring failed: {}", e);
+                Duration::from_millis(0) // Safe fallback for performance metrics
+            })
             .as_millis()
             % 1000;
 
@@ -627,7 +633,10 @@ impl PerformanceMonitor {
             use std::time::{SystemTime, UNIX_EPOCH};
             let timestamp = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_else(|e| {
+                    tracing::error!("Gaming performance monitoring failed: {}", e);
+                    Duration::from_millis(0) // Safe fallback for performance metrics
+                })
                 .as_millis();
             // Simple heuristic: use timestamp variation as CPU activity indicator
             Ok(((timestamp % 100) as f64) * 0.5) // 0-50% range

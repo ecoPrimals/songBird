@@ -224,7 +224,10 @@ impl UniversalGameBridge {
 
         let uptime = SystemTime::now()
             .duration_since(self.start_time)
-            .unwrap_or_default();
+            .unwrap_or_else(|e| {
+                tracing::error!("Gaming bridge system error: {}", e);
+                Duration::from_secs(0)
+            });
 
         BridgeStatus {
             active_sessions,
@@ -358,7 +361,10 @@ impl UniversalGameBridge {
                 total_players: session.players.len() as u32,
                 uptime: SystemTime::now()
                     .duration_since(session.created_at)
-                    .unwrap_or_default(),
+                    .unwrap_or_else(|e| {
+                        tracing::error!("Gaming bridge system error: {}", e);
+                        Duration::from_secs(0)
+                    }),
             };
             statuses.push(status);
         }

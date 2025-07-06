@@ -1,0 +1,16 @@
+[package]
+name = "songbird-errors"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+description = "Shared error types for Songbird components"
+
+[dependencies]
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+url = "2.5.4"
+num_cpus = "1.16"
+sys-info = "0.9.1"

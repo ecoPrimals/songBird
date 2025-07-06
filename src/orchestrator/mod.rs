@@ -4,6 +4,8 @@
 
 use crate::config::SongbirdConfig;
 use crate::errors::Result;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub mod scaling;
 // pub mod request_router; // Temporarily disabled due to trait mismatches
@@ -15,6 +17,62 @@ pub struct HealthStatus {
     pub services_count: usize,
     pub uptime_seconds: u64,
     pub last_check: std::time::SystemTime,
+}
+
+/// Service health information for API
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceHealth {
+    pub service_id: String,
+    pub status: String,
+    pub last_check: chrono::DateTime<chrono::Utc>,
+    pub response_time_ms: u64,
+    pub error_count: u64,
+    pub details: HashMap<String, String>,
+}
+
+/// Orchestrator metrics for API monitoring
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrchestratorMetrics {
+    pub total_services: u64,
+    pub healthy_services: u64,
+    pub total_requests: u64,
+    pub successful_requests: u64,
+    pub failed_requests: u64,
+    pub average_response_time_ms: f64,
+    pub uptime_seconds: u64,
+    pub memory_usage_mb: u64,
+    pub cpu_usage_percent: f64,
+    pub active_connections: u64,
+}
+
+impl Default for ServiceHealth {
+    fn default() -> Self {
+        Self {
+            service_id: "unknown".to_string(),
+            status: "healthy".to_string(),
+            last_check: chrono::Utc::now(),
+            response_time_ms: 0,
+            error_count: 0,
+            details: HashMap::new(),
+        }
+    }
+}
+
+impl Default for OrchestratorMetrics {
+    fn default() -> Self {
+        Self {
+            total_services: 0,
+            healthy_services: 0,
+            total_requests: 0,
+            successful_requests: 0,
+            failed_requests: 0,
+            average_response_time_ms: 0.0,
+            uptime_seconds: 0,
+            memory_usage_mb: 0,
+            cpu_usage_percent: 0.0,
+            active_connections: 0,
+        }
+    }
 }
 
 impl Default for HealthStatus {
@@ -90,6 +148,26 @@ impl Orchestrator {
             services_count: 1, // Basic count for now
             uptime_seconds: uptime,
             last_check: std::time::SystemTime::now(),
+        }
+    }
+
+    /// Get orchestrator metrics
+    pub async fn get_metrics(&self) -> OrchestratorMetrics {
+        let uptime = self.start_time.elapsed()
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+            
+        OrchestratorMetrics {
+            total_services: 1,
+            healthy_services: 1,
+            total_requests: 0,
+            successful_requests: 0,
+            failed_requests: 0,
+            average_response_time_ms: 0.0,
+            uptime_seconds: uptime,
+            memory_usage_mb: 0,
+            cpu_usage_percent: 0.0,
+            active_connections: 0,
         }
     }
 

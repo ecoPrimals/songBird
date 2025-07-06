@@ -134,7 +134,7 @@ impl HttpConnectionPool {
                 metrics.connections_reused + metrics.connections_created,
             );
 
-            return Ok(host_connections.last().unwrap().clone());
+            return host_connections.last().map(|conn| Ok(conn.clone())).unwrap_or_else(|| Err(crate::errors::SongbirdError::Network { message: "Connection pool internal error: no connections available".to_string(), source: None }));
         }
 
         Err(crate::errors::SongbirdError::Network {

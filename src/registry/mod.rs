@@ -442,6 +442,6 @@ impl PluginRegistry for DynamicPluginRegistry {
         
         // Return the composed system (we need to recreate it since we moved it)
         let composed_systems = self.active_compositions.read();
-        Ok(composed_systems.get(&system_id).unwrap().clone())
+        composed_systems.get(&system_id).cloned().ok_or_else(|| SongbirdError::CompositionFailed(format!("System {} not found after creation", system_id)))
     }
 } 

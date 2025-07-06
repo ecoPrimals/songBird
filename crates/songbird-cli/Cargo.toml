@@ -1,0 +1,54 @@
+[package]
+name = "songbird-cli"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+description = "Command line interface for Songbird gaming bridge"
+
+[[bin]]
+name = "songbird-cli"
+path = "src/bin/songbird.rs"
+
+[[bin]]
+name = "gaming-demo"
+path = "src/bin/gaming_demo.rs"
+
+[dependencies]
+songbird-errors = { path = "../songbird-errors" }
+songbird-config = { path = "../songbird-config" }
+songbird-core = { path = "../songbird-core" }
+songbird-discovery = { path = "../songbird-discovery" }
+songbird-federation = { path = "../songbird-federation" }
+songbird-network = { path = "../songbird-network" }
+songbird-observability = { path = "../songbird-observability" }
+songbird-security = { path = "../songbird-security" }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+toml = "0.8"
+dirs = "5.0"
+whoami = "1.4"
+hostname = "0.3"
+rand = "0.8"
+num_cpus = "1.16"
+term_size = "0.3"
+libc = "0.2"
+tokio = { version = "1.0", features = ["full"] }
+clap = { version = "4.0", features = ["derive"] }
+colored = "2.0"
+tracing = "0.1"
+dialoguer = "0.11"
+console = "0.15"
+indicatif = "0.17"
+sysinfo = "0.30"
+uuid = { version = "1.6", features = ["v4"] }
+thiserror = "1.0"
+futures-util = "0.3"
+regex = "1.10"
+tracing-subscriber = "0.3"
+
+[dev-dependencies]
+tempfile = "3.8"
+tokio-test = "0.4"
