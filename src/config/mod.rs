@@ -40,6 +40,9 @@ pub struct SongbirdConfig {
     /// BearDog security integration (optional)
     pub beardog: Option<BearDogConfig>,
 
+    /// Toadstool compute integration (optional)
+    pub toadstool: Option<ToadstoolConfig>,
+
     /// Security configuration
     pub security: SecurityConfig,
 
@@ -140,6 +143,86 @@ pub struct BearDogSecurityConfig {
     pub auto_key_rotation: bool,
 }
 
+/// Toadstool compute integration configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToadstoolConfig {
+    /// Enable Toadstool integration
+    pub enabled: bool,
+
+    /// Toadstool service endpoint configuration
+    pub endpoint: ToadstoolEndpointConfig,
+
+    /// Authentication configuration for Toadstool
+    pub authentication: ToadstoolAuthConfig,
+
+    /// Default compute settings
+    pub compute: ToadstoolComputeConfig,
+}
+
+/// Toadstool service endpoint configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToadstoolEndpointConfig {
+    /// Primary Toadstool service URL
+    pub primary_url: String,
+
+    /// Connection timeout in seconds
+    pub connection_timeout_secs: u64,
+
+    /// Enable TLS verification
+    pub verify_tls: bool,
+}
+
+/// Toadstool authentication configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToadstoolAuthConfig {
+    /// Authentication method
+    pub auth_method: ToadstoolAuthMethod,
+
+    /// API key (if using API key auth)
+    pub api_key: Option<String>,
+}
+
+/// Toadstool authentication methods
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToadstoolAuthMethod {
+    /// API key authentication
+    ApiKey,
+    /// Mutual TLS authentication
+    MutualTls,
+    /// No authentication (for development)
+    None,
+}
+
+/// Toadstool compute configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToadstoolComputeConfig {
+    /// Default container runtime
+    pub default_runtime: String,
+
+    /// Enable GPU support
+    pub enable_gpu: bool,
+
+    /// Default resource limits
+    pub default_resource_limits: ToadstoolResourceLimits,
+}
+
+/// Toadstool resource limits
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToadstoolResourceLimits {
+    /// Max CPU cores per deployment
+    pub max_cpu_cores: f64,
+
+    /// Max memory bytes per deployment
+    pub max_memory_bytes: u64,
+
+    /// Max storage bytes per deployment
+    pub max_storage_bytes: u64,
+
+    /// Max GPU count per deployment
+    pub max_gpu_count: u32,
+}
+
 impl Default for BearDogConfig {
     fn default() -> Self {
         let env_config = crate::config::environment::EnvironmentConfig::default();
@@ -166,6 +249,36 @@ impl Default for BearDogConfig {
     }
 }
 
+impl Default for ToadstoolConfig {
+    fn default() -> Self {
+        let env_config = crate::config::environment::EnvironmentConfig::default();
+        
+        Self {
+            enabled: false,
+            endpoint: ToadstoolEndpointConfig {
+                primary_url: std::env::var("SONGBIRD_TOADSTOOL_ENDPOINT")
+                    .unwrap_or_else(|_| "http://127.0.0.1:8081".to_string()),
+                connection_timeout_secs: env_config.connection_timeout_secs,
+                verify_tls: env_config.require_tls,
+            },
+            authentication: ToadstoolAuthConfig {
+                auth_method: ToadstoolAuthMethod::None,
+                api_key: None,
+            },
+            compute: ToadstoolComputeConfig {
+                default_runtime: "docker".to_string(),
+                enable_gpu: false,
+                default_resource_limits: ToadstoolResourceLimits {
+                    max_cpu_cores: 16.0,
+                    max_memory_bytes: 32 * 1024 * 1024 * 1024, // 32GB
+                    max_storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
+                    max_gpu_count: 4,
+                },
+            },
+        }
+    }
+}
+
 impl SongbirdConfig {
     /// Check if BearDog integration is enabled
     pub fn is_beardog_enabled(&self) -> bool {
@@ -186,6 +299,27 @@ impl SongbirdConfig {
     /// Disable BearDog integration
     pub fn disable_beardog(&mut self) {
         self.beardog = None;
+    }
+
+    /// Check if Toadstool integration is enabled
+    pub fn is_toadstool_enabled(&self) -> bool {
+        self.toadstool.as_ref().map(|t| t.enabled).unwrap_or(false)
+    }
+
+    /// Get Toadstool configuration (returns default if not configured)
+    pub fn get_toadstool_config(&self) -> ToadstoolConfig {
+        self.toadstool.clone().unwrap_or_default()
+    }
+
+    /// Enable Toadstool integration with default configuration
+    pub fn enable_toadstool(&mut self) {
+        let toadstool_config = ToadstoolConfig { enabled: true, ..ToadstoolConfig::default() };
+        self.toadstool = Some(toadstool_config);
+    }
+
+    /// Disable Toadstool integration
+    pub fn disable_toadstool(&mut self) {
+        self.toadstool = None;
     }
 }
 
