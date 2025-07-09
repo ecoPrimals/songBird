@@ -127,8 +127,8 @@ regex = "1.11"
 # Additional crates
 dialoguer = "0.11"
 indicatif = "0.17"
-tempfile = "3.0"
-sysinfo = "0.30"
+  tempfile = "3.0"
+  sysinfo = "0.30"
 
 [workspace.dependencies]
 # Core async runtime

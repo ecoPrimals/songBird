@@ -32,6 +32,7 @@ pub mod orchestrator; // Main orchestrator
 pub mod robustness; // Circuit breakers, retry mechanisms, rate limiting
 pub mod scalability; // Auto-scaling and performance optimization
 pub mod zero_touch; // Zero touch deployment // Universal accessibility - "Free for All"
+pub mod biome;
 
 // Re-export core types for easier access
 pub use config::SongbirdConfig;
@@ -55,10 +56,10 @@ pub use security::{
 
 // Re-export federation types
 pub use federation::{
-    EncryptedSnapshotManager, Federation, FederationConfig, FederationManager, FederationMode,
-    FederationStatus, ProductionSnapshotSecurityAdapter, SnapshotDistributionStats,
-    SnapshotFilters, SnapshotMetadata, SnapshotRequest, SnapshotRequestType,
-    SnapshotSecurityProvider, SnapshotType, StoragePreferences,
+//     EncryptedSnapshotManager, Federation, FederationConfig, FederationManager, FederationMode,
+//     FederationStatus, ProductionSnapshotSecurityAdapter, SnapshotDistributionStats,
+//     SnapshotFilters, SnapshotMetadata, SnapshotRequest, SnapshotRequestType,
+//     SnapshotSecurityProvider, SnapshotType, StoragePreferences,
 };
 
 // Re-export gaming network types

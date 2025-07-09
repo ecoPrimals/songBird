@@ -1,5 +1,6 @@
 // Component modules
 pub mod api;
+pub mod biome;
 pub mod communication;
 pub mod discovery;
 pub mod federation;
@@ -26,4 +27,11 @@ pub use federation::{
 pub use proxy::{
     CircuitBreakerState, CircuitState, ConnectionProxy, LoadBalancerState, LoadBalancingStrategy,
     ProxyConfig, ProxyRequest, ProxyResponse, ProxyStats,
+};
+
+// Re-export biome coordination types (BYOB)
+pub use biome::{
+    ByobCoordinator, ByobDeployment, ByobDeploymentRequest, ByobDeploymentStatus,
+    ByobTeamWorkspace, ServiceHealth, ServiceStatus, SongbirdBiomeManifest,
+    SongbirdOrchestrator, TeamResourceQuota,
 }; 
