@@ -3,7 +3,7 @@
 //! Implements the exact NetworkEvent/SecurityEvent interfaces specified in the BearDog FRAGO
 //! for BSTP network orchestration layer integration
 
-use async_trait::async_trait;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -123,12 +123,14 @@ pub struct ComplianceRule {
     pub category: String,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EnforcementLevel {
-    Advisory,
-    Warning,
-    Enforce,
+    Alert,
+    Notify,
     Block,
+    Strict,
+    Moderate,
+    Lenient,
 }
 
 // ============================================================================
@@ -151,7 +153,7 @@ pub struct NetworkEventPublisher {
 
 /// SecurityEvent Consumer for receiving events from BearDog  
 pub struct SecurityEventConsumer {
-    receiver: mpsc::UnboundedReceiver<SecurityEvent>,
+    _receiver: mpsc::UnboundedReceiver<SecurityEvent>,
     processed_count: Arc<RwLock<u64>>,
 }
 
@@ -186,7 +188,7 @@ impl BearDogIntegration {
     /// Create new BearDog integration instance
     pub fn new(config: BearDogConfig) -> Self {
         let (event_sender, event_receiver) = mpsc::unbounded_channel();
-        let (security_sender, security_receiver) = mpsc::unbounded_channel();
+        let (_security_sender, security_receiver) = mpsc::unbounded_channel();
         
         // Keep receivers alive to prevent channel closure
         // In a real implementation, these would be used by background tasks
@@ -204,7 +206,7 @@ impl BearDogIntegration {
                 published_count: Arc::new(RwLock::new(0)),
             },
             security_event_consumer: SecurityEventConsumer {
-                receiver: security_receiver,
+                _receiver: security_receiver,
                 processed_count: Arc::new(RwLock::new(0)),
             },
             shared_metrics: SharedMetrics::new(),
@@ -256,7 +258,7 @@ impl BearDogIntegration {
                 self.apply_threat_mitigation(&action, &affected_routes).await?;
             }
             SecurityEvent::ComplianceRequirement { requirement, enforcement_level } => {
-                info!("📋 Compliance requirement: {} ({})", requirement.rule_id, enforcement_level.clone() as u8);
+                info!("📋 Compliance requirement: {} ({:?})", requirement.rule_id, enforcement_level);
                 self.apply_compliance_requirement(&requirement, &enforcement_level).await?;
             }
         }
@@ -300,6 +302,35 @@ impl BearDogIntegration {
 
     async fn apply_compliance_requirement(&self, requirement: &ComplianceRule, enforcement_level: &EnforcementLevel) -> Result<()> {
         info!("Applying compliance rule: {} ({})", requirement.rule_id, requirement.description);
+        
+        // Apply the rule based on enforcement level
+        match enforcement_level {
+            EnforcementLevel::Strict => {
+                // Apply strict enforcement
+                warn!("Strict enforcement for rule: {}", requirement.rule_id);
+            }
+            EnforcementLevel::Moderate => {
+                // Apply moderate enforcement
+                info!("Moderate enforcement for rule: {}", requirement.rule_id);
+            }
+            EnforcementLevel::Lenient => {
+                // Apply lenient enforcement
+                debug!("Lenient enforcement for rule: {}", requirement.rule_id);
+            }
+            EnforcementLevel::Alert => {
+                // Apply alert level enforcement
+                warn!("Alert enforcement for rule: {}", requirement.rule_id);
+            }
+            EnforcementLevel::Notify => {
+                // Apply notify level enforcement
+                info!("Notify enforcement for rule: {}", requirement.rule_id);
+            }
+            EnforcementLevel::Block => {
+                // Apply block enforcement
+                error!("Block enforcement for rule: {}", requirement.rule_id);
+            }
+        }
+        
         Ok(())
     }
 
@@ -334,6 +365,12 @@ impl NetworkEventPublisher {
 
     pub async fn get_published_count(&self) -> u64 {
         *self.published_count.read().await
+    }
+}
+
+impl Default for SharedMetrics {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

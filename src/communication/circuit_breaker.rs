@@ -180,4 +180,14 @@ pub struct CircuitBreakerStats {
     pub success_count: u64,
     pub half_open_requests: u64,
     pub last_failure_time: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl std::fmt::Debug for CircuitBreaker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CircuitBreaker")
+            .field("state", &self.get_state())
+            .field("failure_count", &self.failure_count.load(Ordering::Relaxed))
+            .field("success_count", &self.success_count.load(Ordering::Relaxed))
+            .finish()
+    }
 } 

@@ -19,6 +19,8 @@ use chrono::Utc;
 use serde_json;
 use uuid;
 
+use sysinfo::System;
+
 /// High-level federation manager
 #[derive(Debug)]
 pub struct FederationManager {
@@ -332,31 +334,67 @@ impl FederationManager {
             message.message_type
         );
 
-        // TODO: Implement actual message broadcasting
-        // This would involve sending the message to all known federation endpoints
+        // Get all federation endpoints
+        let endpoints = self.get_federation_endpoints().await?;
+        
+        // Broadcast to all known federation endpoints
+        for endpoint in endpoints {
+            match self.send_message_to_endpoint(&endpoint, &message).await {
+                Ok(_) => {
+                    tracing::debug!("Successfully sent message to {}", endpoint);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to send message to {}: {}", endpoint, e);
+                }
+            }
+        }
 
+        // Log message type-specific actions
         match message.message_type {
             FederationMessageType::ServiceStatusUpdate => {
-                tracing::info!("Broadcasting service status update");
+                tracing::info!("Completed service status update broadcast");
             }
             FederationMessageType::NodeStatusUpdate => {
-                tracing::info!("Broadcasting node status update");
+                tracing::info!("Completed node status update broadcast");
             }
             FederationMessageType::ConfigurationChange => {
-                tracing::info!("Broadcasting configuration change");
+                tracing::info!("Completed configuration change broadcast");
             }
             FederationMessageType::EmergencyAlert => {
-                tracing::warn!("Broadcasting emergency alert: {:?}", message.data);
+                tracing::warn!("Completed emergency alert broadcast: {:?}", message.data);
             }
             FederationMessageType::LoadBalancingUpdate => {
-                tracing::info!("Broadcasting load balancing update");
+                tracing::info!("Completed load balancing update broadcast");
             }
             FederationMessageType::Announcement => {
-                tracing::info!("Broadcasting general announcement");
+                tracing::info!("Completed general announcement broadcast");
             }
         }
 
         Ok(())
+    }
+
+    /// Send message to a specific federation endpoint
+    async fn send_message_to_endpoint(&self, endpoint: &str, message: &FederationMessage) -> Result<(), SongbirdError> {
+        let client = reqwest::Client::new();
+        let url = format!("{}/federation/message", endpoint);
+        
+        let response = client
+            .post(&url)
+            .json(message)
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await
+            .map_err(|e| SongbirdError::Communication(format!("Failed to send message to {}: {}", endpoint, e)))?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(SongbirdError::Communication(format!(
+                "Message send failed with status: {}",
+                response.status()
+            )))
+        }
     }
 
     // Private helper methods
@@ -468,18 +506,68 @@ impl FederationManager {
     }
 
     async fn get_current_load(&self) -> Result<f64, SongbirdError> {
-        // TODO: Implement actual load monitoring
-        Ok(0.0)
+        // Implement actual load monitoring using system information
+        let mut system = System::new_all();
+        system.refresh_cpu();
+        
+        // Get CPU usage percentage
+        let cpu_usage = system.global_cpu_info().cpu_usage() as f64;
+        
+        // Convert CPU usage percentage to load factor (0.0 to 1.0+)
+        let load_factor = cpu_usage / 100.0;
+        
+        // Add memory pressure to load calculation
+        let memory_usage = (system.used_memory() as f64) / (system.total_memory() as f64);
+        let memory_pressure = if memory_usage > 0.8 { memory_usage - 0.8 } else { 0.0 };
+        
+        // Combined load factor
+        let total_load = load_factor + memory_pressure;
+        
+        Ok(total_load)
     }
 
     async fn get_available_capacity(&self) -> Result<f64, SongbirdError> {
-        // TODO: Implement actual capacity calculation
-        Ok(1.0)
+        // Implement actual capacity calculation based on system resources
+        let mut system = System::new_all();
+        system.refresh_cpu();
+        
+        // CPU capacity (inverse of usage)
+        let cpu_usage = system.global_cpu_info().cpu_usage() as f64;
+        let cpu_capacity = (100.0 - cpu_usage) / 100.0;
+        
+        // Memory capacity
+        let memory_usage = (system.used_memory() as f64) / (system.total_memory() as f64);
+        let memory_capacity = 1.0 - memory_usage;
+        
+        // Take minimum of CPU and memory capacity (bottleneck)
+        let capacity = cpu_capacity.min(memory_capacity);
+        
+        // Ensure capacity is between 0.0 and 1.0
+        Ok(capacity.clamp(0.0, 1.0))
     }
 
     async fn get_active_connections(&self) -> Result<u32, SongbirdError> {
-        // TODO: Implement actual connection counting
-        Ok(0)
+        // Implement actual connection counting
+        let mut connections = 0;
+        
+        // Count connections from discovered endpoints
+        connections += self.discovered_endpoints.len() as u32;
+        
+        // Add MCP federation connections if available
+        if let Some(mcp) = &self.mcp_federation {
+            if mcp.is_connected().await {
+                connections += 1;
+            }
+        }
+        
+        // Check for environment-configured connections
+        if let Ok(additional_connections) = std::env::var("SONGBIRD_ADDITIONAL_CONNECTIONS") {
+            if let Ok(count) = additional_connections.parse::<u32>() {
+                connections += count;
+            }
+        }
+        
+        Ok(connections)
     }
 
     /// Create a federation service information response
@@ -918,3 +1006,4 @@ mod tests {
         assert!(count >= 0);
     }
 }
+

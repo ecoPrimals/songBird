@@ -504,7 +504,7 @@ mod string_builder_optimizer_tests {
 #[cfg(test)]
 mod performance_scenarios_tests {
     use super::*;
-    use std::thread;
+    
     use std::time::Instant;
 
     #[test]

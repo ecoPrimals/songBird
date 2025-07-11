@@ -1,321 +1,265 @@
+//! Main SongbirdDiscovery service implementation
+//!
+//! This module provides the core discovery service that handles:
+//! - Network scanning for available services
+//! - Service endpoint discovery
+//! - Primal discovery and coordination
+//! - Health monitoring and status updates
+
+use super::*;
+use crate::errors::Result;
+
+use crate::traits::service::ServiceInfo;
 use async_trait::async_trait;
 use futures_util::Stream;
-use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
-use tokio::sync::broadcast;
+use std::time::Duration;
+use tokio::sync::RwLock;
+use tokio::time::timeout;
+use tracing::{debug, info, warn};
 
-use crate::discovery::config::*;
-use crate::discovery::monitoring::ResourceMonitor;
-use crate::discovery::network::NetworkManager;
-use crate::discovery::resources::ResourceDetector;
-use crate::discovery::types::*;
-use crate::errors::Result;
-use crate::traits::discovery::*;
-use crate::traits::service::ServiceInfo;
-
-/// Main Songbird Discovery Service
+/// Main SongbirdDiscovery service implementation
 pub struct SongbirdDiscovery {
     config: SongbirdDiscoveryConfig,
-    local_node: LocalNode,
-    known_nodes: Arc<RwLock<HashMap<NodeId, NodeInfo>>>,
-    registered_services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
-    event_sender: broadcast::Sender<ServiceEvent>,
-    #[allow(dead_code)]
-    shutdown_sender: Option<tokio::sync::mpsc::Sender<()>>,
+    discovered_services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
+    primal_endpoints: Arc<RwLock<HashMap<String, String>>>,
 }
 
 impl SongbirdDiscovery {
-    /// Create a new Songbird Discovery instance
+    /// Create a new SongbirdDiscovery instance
     pub fn new(config: SongbirdDiscoveryConfig) -> Self {
-        let local_resources = ResourceDetector::detect_local_resources();
-        let network_location = NetworkManager::create_network_location();
-
-        let local_node = LocalNode {
-            id: config
-                .node_id
-                .clone()
-                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
-            node_type: config.node_type.clone(),
-            institution: config.institution.clone(),
-            resources: local_resources,
-            network_location,
-            created_at: chrono::Utc::now(),
-        };
-
-        let (event_sender, _) = broadcast::channel(1000);
-
         Self {
             config,
-            local_node,
-            known_nodes: Arc::new(RwLock::new(HashMap::new())),
-            registered_services: Arc::new(RwLock::new(HashMap::new())),
-            event_sender,
-            shutdown_sender: None,
+            discovered_services: Arc::new(RwLock::new(HashMap::new())),
+            primal_endpoints: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
-    /// Get local node information
-    pub fn local_node(&self) -> &LocalNode {
-        &self.local_node
+    /// Get the configuration
+    pub fn config(&self) -> &SongbirdDiscoveryConfig {
+        &self.config
     }
 
-    /// Register a remote node
-    pub async fn register_node(&self, node: NodeInfo) -> Result<()> {
-        let node_id = node.id.clone();
+    /// Start the discovery service
+    pub async fn start(&mut self) -> Result<()> {
+        info!("Starting SongbirdDiscovery service");
+        
+        // Start continuous network scanning
+        self.start_continuous_scanning().await?;
+        
+        // Start Primal discovery
+        self.start_primal_discovery().await?;
+        
+        info!("SongbirdDiscovery service started successfully");
+        Ok(())
+    }
 
-        tracing::info!(
-            node_id = %node_id,
-            node_type = ?node.node_type,
-            institution = ?node.institution,
-            "Registering node in discovery"
-        );
-
-        self.known_nodes.write().insert(node_id.clone(), node);
-
-        // Send node registered event
-        let _ = self.event_sender.send(ServiceEvent::NodeJoined { node_id });
+    /// Start continuous network scanning for services
+    async fn start_continuous_scanning(&self) -> Result<()> {
+        info!("Starting continuous network scanning");
+        
+        let discovered_services = Arc::clone(&self.discovered_services);
+        let scan_interval = Duration::from_secs(60); // 1 minute interval
+        
+        tokio::spawn(async move {
+            loop {
+                debug!("Starting network scan cycle");
+                
+                // Perform network discovery
+                match Self::discover_network_services().await {
+                    Ok(services) => {
+                        let mut discovered = discovered_services.write().await;
+                        for service in services {
+                            discovered.insert(service.service_id.clone(), service);
+                        }
+                        debug!("Network scan completed successfully");
+                    }
+                    Err(e) => {
+                        warn!("Network scan failed: {}", e);
+                    }
+                }
+                
+                tokio::time::sleep(scan_interval).await;
+            }
+        });
 
         Ok(())
     }
 
-    /// Find optimal nodes for a resource query
-    pub async fn find_optimal_nodes(&self, query: ResourceQuery) -> Result<Vec<NodeInfo>> {
-        let nodes = self.known_nodes.read();
-        let mut matching_nodes = Vec::new();
+    /// Start Primal discovery and coordination
+    async fn start_primal_discovery(&self) -> Result<()> {
+        info!("Starting Primal discovery");
+        
+        let primal_endpoints = Arc::clone(&self.primal_endpoints);
+        let primal_discovery_interval = Duration::from_secs(30);
 
-        for node in nodes.values() {
-            if self.node_matches_query(node, &query) {
-                matching_nodes.push(node.clone());
+        tokio::spawn(async move {
+            loop {
+                debug!("Starting Primal discovery cycle");
+                
+                // Discover known Primals
+                let primals = vec!["toadstool", "nestgate", "beardog", "squirrel"];
+                
+                for primal_name in primals {
+                    if let Some(endpoint) = Self::discover_primal_endpoint(primal_name).await {
+                        primal_endpoints.write().await.insert(primal_name.to_string(), endpoint.clone());
+                        info!("Discovered {} at: {}", primal_name, endpoint);
+                    }
+                }
+                
+                tokio::time::sleep(primal_discovery_interval).await;
             }
-        }
-
-        // Sort by trust level and resource availability
-        matching_nodes.sort_by(|a, b| {
-            b.trust_level.cmp(&a.trust_level).then_with(|| {
-                a.current_load
-                    .cpu_utilization_percent
-                    .partial_cmp(&b.current_load.cpu_utilization_percent)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
         });
 
-        Ok(matching_nodes)
+        Ok(())
     }
 
-    /// Check if a node matches the resource query
-    fn node_matches_query(&self, node: &NodeInfo, query: &ResourceQuery) -> bool {
-        // Check minimum CPU cores
-        if let Some(min_cores) = query.min_cpu_cores {
-            if node.resources.cpu_cores < min_cores {
-                return false;
-            }
-        }
-
-        // Check minimum memory
-        if let Some(min_memory) = query.min_memory_gb {
-            if node.resources.memory_available_gb < min_memory {
-                return false;
-            }
-        }
-
-        // Check node type
-        if let Some(ref required_type) = query.required_node_type {
-            if node.node_type != *required_type {
-                return false;
-            }
-        }
-
-        // Check institution filter
-        if let Some(ref institution_filter) = query.institution_filter {
-            if node.institution.as_ref() != Some(institution_filter) {
-                return false;
-            }
-        }
-
-        // Check trust level
-        if node.trust_level < query.min_trust_level {
-            return false;
-        }
-
-        // Check maximum latency (if we have measurement data)
-        if let Some(max_latency) = query.max_latency_ms {
-            if let Some(latency) = node.latency_measurements.get(&self.local_node.id) {
-                if *latency > max_latency {
-                    return false;
+    /// Discover services on the network
+    async fn discover_network_services() -> Result<Vec<ServiceInfo>> {
+        let mut discovered_services = Vec::new();
+        
+        // Scan common service ports
+        let common_ports = vec![8080, 8081, 8082, 8083, 8084, 8085, 3000, 5000, 9000];
+        let local_networks = vec!["127.0.0.1", "localhost"];
+        
+        for host in local_networks {
+            for port in &common_ports {
+                match Self::probe_service_endpoint(host, *port).await {
+                    Ok(Some(service)) => {
+                        discovered_services.push(service);
+                    }
+                    Ok(None) => {
+                        // No service found at this endpoint
+                    }
+                    Err(e) => {
+                        debug!("Failed to probe {}:{}: {}", host, port, e);
+                    }
                 }
             }
         }
+        
+        Ok(discovered_services)
+    }
 
-        // Check required datasets
-        for required_dataset in &query.required_datasets {
-            if !node
-                .available_datasets
-                .iter()
-                .any(|d| &d.id == required_dataset)
-            {
-                return false;
+    /// Probe a specific service endpoint
+    async fn probe_service_endpoint(host: &str, port: u16) -> Result<Option<ServiceInfo>> {
+        let address = format!("{}:{}", host, port);
+        
+        // Try to connect to the service
+        match timeout(Duration::from_millis(500), tokio::net::TcpStream::connect(&address)).await {
+            Ok(Ok(_)) => {
+                // Connection successful, create service info
+                let service_info = ServiceInfo {
+                    service_id: format!("service-{}", port),
+                    name: format!("Service on port {}", port),
+                    version: "unknown".to_string(),
+                    service_type: "unknown".to_string(),
+                    description: Some(format!("Discovered service at {}", address)),
+                    endpoints: vec![],
+                    health_check_endpoint: None,
+                    metadata: {
+                        let mut metadata = HashMap::new();
+                        metadata.insert("discovered_at".to_string(), 
+                                       chrono::Utc::now().to_rfc3339().into());
+                        metadata.insert("address".to_string(), address.clone().into());
+                        metadata
+                    },
+                    tags: vec!["discovered".to_string()],
+                    dependencies: vec![],
+                    status: crate::traits::service::ServiceStatus::Running,
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                    instance_id: format!("discovered-{}", port),
+                    host: host.to_string(),
+                    port,
+                };
+                
+                info!("Discovered service: {} at {}", service_info.name, address);
+                Ok(Some(service_info))
+            }
+            Ok(Err(_)) | Err(_) => {
+                // Connection failed or timeout
+                Ok(None)
             }
         }
-
-        true
     }
 
-    /// Start federation discovery
-    pub async fn start_federation(&self) -> Result<()> {
-        if !self.config.federation_enabled {
-            return Ok(());
-        }
-
-        tracing::info!("Starting federation discovery");
-
-        // Start resource monitoring
-        self.start_resource_monitoring().await?;
-
-        // Start network monitoring
-        self.start_network_monitoring().await?;
-
-        // Start federation heartbeat
-        self.start_federation_heartbeat().await?;
-
-        Ok(())
-    }
-
-    /// Start resource monitoring
-    async fn start_resource_monitoring(&self) -> Result<()> {
-        let node_id = self.local_node.id.clone();
-        let config = self.config.monitoring.clone();
-        let (_shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
-
-        tokio::spawn(async move {
-            ResourceMonitor::start_monitoring(node_id, config, shutdown_rx).await;
-        });
-
-        Ok(())
-    }
-
-    /// Start network monitoring
-    async fn start_network_monitoring(&self) -> Result<()> {
-        let node_id = self.local_node.id.clone();
-        let target_nodes: Vec<(String, String)> = self
-            .known_nodes
-            .read()
-            .iter()
-            .map(|(id, node)| (id.clone(), node.address.clone()))
-            .collect();
-
-        let (_shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
-
-        tokio::spawn(async move {
-            NetworkManager::start_network_monitoring(node_id, target_nodes, shutdown_rx).await;
-        });
-
-        Ok(())
-    }
-
-    /// Start federation heartbeat
-    async fn start_federation_heartbeat(&self) -> Result<()> {
-        let node_id = self.local_node.id.clone();
-        let event_sender = self.event_sender.clone();
-
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
-
-            loop {
-                interval.tick().await;
-
-                // Collect current resource usage
-                let resource_usage = ResourceDetector::get_current_usage();
-
-                // Send heartbeat event
-                let _ = event_sender.send(ServiceEvent::NodeHealthChanged {
-                    node_id: node_id.clone(),
-                    health: ServiceHealthStatus::Healthy,
-                });
-
-                tracing::debug!(
-                    node_id = %node_id,
-                    cpu_percent = resource_usage.cpu_utilization_percent,
-                    memory_used_gb = resource_usage.memory_used_gb,
-                    "Federation heartbeat sent"
-                );
+    /// Discover a specific Primal endpoint
+    async fn discover_primal_endpoint(primal_name: &str) -> Option<String> {
+        let common_ports = vec![8080, 8081, 8082, 8083, 8084, 8085];
+        let hosts = vec!["127.0.0.1", "localhost"];
+        
+        for host in hosts {
+            for port in &common_ports {
+                let endpoint = format!("http://{}:{}", host, port);
+                
+                if Self::test_primal_endpoint(&endpoint, primal_name).await {
+                    return Some(endpoint);
+                }
             }
-        });
-
-        Ok(())
+        }
+        
+        None
     }
 
-    /// Get federation statistics
-    pub fn get_federation_stats(&self) -> FederationStats {
-        let nodes = self.known_nodes.read();
-        let services = self.registered_services.read();
-
-        let mut stats = FederationStats {
-            total_nodes: nodes.len() as u32 + 1, // +1 for local node
-            total_services: services.len() as u32,
-            ..Default::default()
-        };
-
-        // Count node types
-        for node in nodes.values() {
-            match node.node_type {
-                NodeType::Compute => stats.compute_nodes += 1,
-                NodeType::Storage => stats.storage_nodes += 1,
-                NodeType::Gateway => stats.gateway_nodes += 1,
-                NodeType::Hybrid => stats.hybrid_nodes += 1,
-                NodeType::Orchestrator => stats.orchestrator_nodes += 1,
+    /// Test if an endpoint is a specific Primal
+    async fn test_primal_endpoint(endpoint: &str, primal_name: &str) -> bool {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_millis(500))
+            .build()
+            .unwrap();
+        
+        // Test common Primal endpoints
+        let test_endpoints = vec![
+            format!("{}/health", endpoint),
+            format!("{}/info", endpoint),
+            format!("{}/api/v1/health", endpoint),
+            format!("{}/status", endpoint),
+        ];
+        
+        for test_endpoint in test_endpoints {
+            match client.get(&test_endpoint).send().await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        if let Ok(text) = response.text().await {
+                            // Check if response contains Primal name
+                            if text.to_lowercase().contains(primal_name) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                Err(_) => continue,
             }
-
-            stats.total_cpu_cores += node.resources.cpu_cores;
-            stats.total_memory_gb += node.resources.memory_total_gb;
-            stats.total_storage_gb += node.storage_capacity.total_capacity_gb;
         }
+        
+        false
+    }
 
-        // Include local node in counts
-        match self.local_node.node_type {
-            NodeType::Compute => stats.compute_nodes += 1,
-            NodeType::Storage => stats.storage_nodes += 1,
-            NodeType::Gateway => stats.gateway_nodes += 1,
-            NodeType::Hybrid => stats.hybrid_nodes += 1,
-            NodeType::Orchestrator => stats.orchestrator_nodes += 1,
-        }
-
-        stats.total_cpu_cores += self.local_node.resources.cpu_cores;
-        stats.total_memory_gb += self.local_node.resources.memory_total_gb;
-
-        stats
+    /// Get discovered Primal endpoints
+    pub async fn get_primal_endpoints(&self) -> HashMap<String, String> {
+        self.primal_endpoints.read().await.clone()
     }
 }
 
 #[async_trait]
 impl ServiceDiscovery for SongbirdDiscovery {
-    // ServiceDiscovery trait methods
-
     async fn register(&self, service: ServiceInfo) -> Result<()> {
-        let service_id = service.service_id.clone();
-
-        tracing::info!(
-            service_id = %service_id,
-            "Registering service with Songbird discovery"
-        );
-
-        self.registered_services.write().insert(service_id, service);
+        let mut services = self.discovered_services.write().await;
+        services.insert(service.service_id.clone(), service);
         Ok(())
     }
 
     async fn unregister(&self, service_id: &str) -> Result<()> {
-        tracing::info!(
-            service_id = %service_id,
-            "Unregistering service from Songbird discovery"
-        );
-
-        self.registered_services.write().remove(service_id);
+        let mut services = self.discovered_services.write().await;
+        services.remove(service_id);
         Ok(())
     }
 
     async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
-        let services = self.registered_services.read();
+        let services = self.discovered_services.read().await;
         let mut results = Vec::new();
 
         for service in services.values() {
@@ -331,42 +275,26 @@ impl ServiceDiscovery for SongbirdDiscovery {
         &self,
         _query: ServiceQuery,
     ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>> {
-        let receiver = self.event_sender.subscribe();
-
-        // Create a simple stream from the broadcast receiver
-        use futures_util::stream;
-        let stream = stream::unfold(receiver, |mut rx| async move {
-            match rx.recv().await {
-                Ok(event) => Some((event, rx)),
-                Err(_) => None,
-            }
-        });
-
-        Ok(Box::pin(stream))
+        // In a real implementation, this would return a stream of service events
+        Ok(Box::pin(futures_util::stream::empty()))
     }
 
-    async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()> {
-        if let Some(service) = self.registered_services.write().get_mut(service_id) {
-            service
-                .metadata
-                .insert("health_status".to_string(), format!("{:?}", health).into());
+    async fn update_health(&self, service_id: &str, _health: ServiceHealthStatus) -> Result<()> {
+        let mut services = self.discovered_services.write().await;
+        if let Some(service) = services.get_mut(service_id) {
+            service.updated_at = chrono::Utc::now();
         }
-
-        // Send health update event
-        let _ = self.event_sender.send(ServiceEvent::ServiceHealthChanged {
-            service_id: service_id.to_string(),
-            health,
-        });
-
         Ok(())
     }
 
     async fn list_all(&self) -> Result<Vec<ServiceInfo>> {
-        Ok(self.registered_services.read().values().cloned().collect())
+        let services = self.discovered_services.read().await;
+        Ok(services.values().cloned().collect())
     }
 
     async fn exists(&self, service_id: &str) -> Result<bool> {
-        Ok(self.registered_services.read().contains_key(service_id))
+        let services = self.discovered_services.read().await;
+        Ok(services.contains_key(service_id))
     }
 
     async fn is_registered(&self, service_id: &str) -> Result<bool> {
@@ -378,10 +306,12 @@ impl ServiceDiscovery for SongbirdDiscovery {
         service_id: &str,
         metadata: HashMap<String, String>,
     ) -> Result<()> {
-        if let Some(service) = self.registered_services.write().get_mut(service_id) {
+        let mut services = self.discovered_services.write().await;
+        if let Some(service) = services.get_mut(service_id) {
             for (key, value) in metadata {
                 service.metadata.insert(key, value.into());
             }
+            service.updated_at = chrono::Utc::now();
         }
         Ok(())
     }
@@ -410,11 +340,7 @@ impl SongbirdDiscovery {
 
         // Check name filter
         if let Some(ref name_filter) = query.name {
-            if !service
-                .name
-                .to_lowercase()
-                .contains(&name_filter.to_lowercase())
-            {
+            if !service.name.to_lowercase().contains(&name_filter.to_lowercase()) {
                 return false;
             }
         }
@@ -426,81 +352,6 @@ impl SongbirdDiscovery {
             }
         }
 
-        // Check version requirements
-        if let Some(ref version_req) = query.version {
-            if !Self::check_version_requirement(&service.version, version_req) {
-                return false;
-            }
-        }
-
-        // Check metadata filters
-        for (key, expected_value) in &query.metadata {
-            if let Some(service_value) = service.metadata.get(key) {
-                if service_value != expected_value {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        }
-
         true
-    }
-
-    /// Check if a service version matches a requirement
-    fn check_version_requirement(service_version: &str, requirement: &str) -> bool {
-        if let Some(req_version) = requirement.strip_prefix(">=") {
-            service_version >= req_version
-        } else if let Some(req_version) = requirement.strip_prefix("<=") {
-            service_version <= req_version
-        } else if let Some(req_version) = requirement.strip_prefix(">") {
-            service_version > req_version
-        } else if let Some(req_version) = requirement.strip_prefix("<") {
-            service_version < req_version
-        } else if let Some(req_version) = requirement.strip_prefix("=") {
-            service_version == req_version
-        } else {
-            // If no operator, assume exact match
-            service_version == requirement
-        }
-    }
-}
-
-// Additional service management methods (separate from ServiceDiscovery trait)
-impl SongbirdDiscovery {
-    /// Register a service (not part of ServiceDiscovery trait)
-    pub async fn register_service(&self, service: &ServiceInfo) -> Result<()> {
-        let service_id = service.service_id.clone();
-
-        tracing::info!(
-            service_id = %service_id,
-            service_type = %service.service_type,
-            "Registering service in Songbird discovery"
-        );
-
-        self.registered_services
-            .write()
-            .insert(service_id.clone(), service.clone());
-
-        // Send service registered event
-        let _ = self.event_sender.send(ServiceEvent::ServiceRegistered {
-            service: Box::new(service.clone()),
-        });
-
-        Ok(())
-    }
-
-    /// Unregister a service (not part of ServiceDiscovery trait)
-    pub async fn unregister_service(&self, service_id: &str) -> Result<()> {
-        tracing::info!(service_id = %service_id, "Unregistering service from Songbird discovery");
-
-        self.registered_services.write().remove(service_id);
-
-        // Send service unregistered event
-        let _ = self.event_sender.send(ServiceEvent::ServiceUnregistered {
-            service_id: service_id.to_string(),
-        });
-
-        Ok(())
     }
 }

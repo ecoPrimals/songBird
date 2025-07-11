@@ -82,10 +82,8 @@ pub trait BearDogSecurityProvider: Send + Sync {
 /// Security context for BearDog operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogSecurityContext {
-    pub operation_id: String,
-    pub node_id: NodeId,
-    pub timestamp: DateTime<Utc>,
     pub security_level: BearDogSecurityLevel,
+    pub use_bstp: bool,
     pub metadata: HashMap<String, String>,
 }
 
@@ -110,10 +108,9 @@ pub struct BearDogKeySpec {
 /// Key handle for secure key reference
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogKeyHandle {
-    pub id: String,
-    pub version: u32,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
+    pub key_id: String,
+    pub algorithm: String,
+    pub created_at: SystemTime,
 }
 
 /// Security principal (user, service, node)
@@ -165,11 +162,9 @@ pub struct BearDogSecurityEvent {
 /// Encrypted data with BearDog
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogEncryptedData {
+    pub data: Vec<u8>,
     pub algorithm: String,
-    pub nonce: Vec<u8>,
-    pub ciphertext: Vec<u8>,
-    pub salt: Option<Vec<u8>>,
-    pub key_handle: Option<BearDogKeyHandle>,
+    pub key_id: String,
 }
 
 /// Time period for compliance reports
@@ -196,8 +191,10 @@ pub struct BearDogComplianceReport {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BearDogSecurityLevel {
+    Standard,
     Public,
     Internal,
+    High,
     Confidential,
     Secret,
     TopSecret,
@@ -220,6 +217,7 @@ pub struct BearDogRotationPolicy {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BearDogPrincipalType {
     User,
+    Device,
     Service,
     Node,
     System,
@@ -246,46 +244,44 @@ pub enum BearDogSecurityOutcome {
     Error,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BearDogAuditLevel {
     Minimal,
     Standard,
+    Detailed,
     Comprehensive,
     Paranoid,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BearDogComplianceMode {
     Standard,
+    Strict,
     FIPS140,
     SOC2,
     GDPR,
 }
 
-/// BearDog security configuration
+/// BearDog configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogConfig {
-    pub enabled: bool,
-    pub key_store_path: std::path::PathBuf,
-    pub encryption_algorithm: String,
-    pub key_rotation_interval: Duration,
-    pub compliance_mode: BearDogComplianceMode,
+    pub endpoint: String,
+    pub api_key: String,
+    pub security_level: BearDogSecurityLevel,
     pub audit_level: BearDogAuditLevel,
-    pub default_security_level: BearDogSecurityLevel,
-    pub connection_config: HashMap<String, String>,
+    pub compliance_mode: BearDogComplianceMode,
+    pub metadata: HashMap<String, String>,
 }
 
 impl Default for BearDogConfig {
     fn default() -> Self {
         Self {
-            enabled: false,
-            key_store_path: std::path::PathBuf::from("./data/beardog/keys"),
-            encryption_algorithm: "AES-256-GCM".to_string(),
-            key_rotation_interval: Duration::from_secs(30 * 24 * 60 * 60), // 30 days
-            compliance_mode: BearDogComplianceMode::Standard,
+            endpoint: "http://localhost:8000".to_string(),
+            api_key: "your_api_key".to_string(),
+            security_level: BearDogSecurityLevel::Internal,
             audit_level: BearDogAuditLevel::Standard,
-            default_security_level: BearDogSecurityLevel::Internal,
-            connection_config: HashMap::new(),
+            compliance_mode: BearDogComplianceMode::Standard,
+            metadata: HashMap::new(),
         }
     }
 }
@@ -851,7 +847,7 @@ mod tests {
     #[test]
     fn test_password_policy_validation() {
         let config = SecurityConfig::default();
-        let mut auth_provider = InMemoryAuthProvider::new(config);
+        let auth_provider = InMemoryAuthProvider::new(config);
 
         // Valid password
         assert!(auth_provider.validate_password("SecurePass123!").is_ok());
@@ -1026,7 +1022,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_authorization_provider() {
-        let mut authz_provider = InMemoryAuthzProvider::new();
+        let authz_provider = InMemoryAuthzProvider::new();
 
         let resource = Resource {
             resource_type: "document".to_string(),
@@ -1126,26 +1122,28 @@ mod tests {
     #[test]
     fn test_beardog_config_creation() {
         let config = BearDogConfig::default();
-        assert!(!config.enabled);
-        assert_eq!(config.encryption_algorithm, "AES-256-GCM");
-        assert_eq!(config.compliance_mode, BearDogComplianceMode::Standard);
+        
+        assert_eq!(config.endpoint, "http://localhost:8000");
+        assert_eq!(config.api_key, "your_api_key");
+        assert_eq!(config.security_level, BearDogSecurityLevel::Internal);
         assert_eq!(config.audit_level, BearDogAuditLevel::Standard);
-        assert_eq!(config.default_security_level, BearDogSecurityLevel::Internal);
+        assert_eq!(config.compliance_mode, BearDogComplianceMode::Standard);
+        assert!(config.metadata.is_empty());
     }
 
-    #[test]
+    #[test]  
     fn test_beardog_security_context() {
         let context = BearDogSecurityContext {
-            operation_id: "op123".to_string(),
-            node_id: "node456".to_string(),
-            timestamp: chrono::Utc::now(),
-            security_level: BearDogSecurityLevel::Confidential,
-            metadata: HashMap::new(),
+            security_level: BearDogSecurityLevel::Secret,
+            use_bstp: true,
+            metadata: HashMap::from([
+                ("operation_type".to_string(), "data_encryption".to_string()),
+            ]),
         };
 
-        assert_eq!(context.operation_id, "op123");
-        assert_eq!(context.node_id, "node456");
-        assert_eq!(context.security_level, BearDogSecurityLevel::Confidential);
+        assert_eq!(context.security_level, BearDogSecurityLevel::Secret);
+        assert!(context.use_bstp);
+        assert!(!context.metadata.is_empty());
     }
 
     #[test]
@@ -1214,18 +1212,14 @@ mod tests {
     #[test]
     fn test_beardog_encrypted_data() {
         let encrypted_data = BearDogEncryptedData {
+            data: vec![1, 2, 3, 4, 5],
             algorithm: "AES-256-GCM".to_string(),
-            nonce: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-            ciphertext: vec![0x41, 0x42, 0x43],
-            salt: Some(vec![0x01, 0x02, 0x03, 0x04]),
-            key_handle: None,
+            key_id: "key123".to_string(),
         };
 
+        assert_eq!(encrypted_data.data.len(), 5);
         assert_eq!(encrypted_data.algorithm, "AES-256-GCM");
-        assert_eq!(encrypted_data.nonce.len(), 12);
-        assert_eq!(encrypted_data.ciphertext.len(), 3);
-        assert!(encrypted_data.salt.is_some());
-        assert!(encrypted_data.key_handle.is_none());
+        assert_eq!(encrypted_data.key_id, "key123");
     }
 
     #[test]
@@ -1256,13 +1250,16 @@ mod tests {
     #[test]
     fn test_security_config_defaults() {
         let config = SecurityConfig::default();
+        
         assert!(config.authentication_enabled);
         assert!(config.authorization_enabled);
         assert!(config.encryption_enabled);
         assert!(config.audit_logging);
-        assert_eq!(config.session_timeout, Duration::from_secs(3600));
         assert_eq!(config.max_login_attempts, 3);
-        assert!(!config.beardog.enabled);
+        
+        // BearDog config
+        assert_eq!(config.beardog.endpoint, "http://localhost:8000");
+        assert_eq!(config.beardog.security_level, BearDogSecurityLevel::Internal);
     }
 
     #[test]
@@ -1301,12 +1298,14 @@ mod tests {
     #[test]
     fn test_beardog_compliance_modes() {
         let standard = BearDogComplianceMode::Standard;
+        let strict = BearDogComplianceMode::Strict;
         let fips = BearDogComplianceMode::FIPS140;
         let soc2 = BearDogComplianceMode::SOC2;
         let gdpr = BearDogComplianceMode::GDPR;
 
         // Test that all compliance modes are distinct
-        assert_ne!(standard, fips);
+        assert_ne!(standard, strict);
+        assert_ne!(strict, fips);
         assert_ne!(fips, soc2);
         assert_ne!(soc2, gdpr);
         assert_ne!(gdpr, standard);

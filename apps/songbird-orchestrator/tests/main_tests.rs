@@ -9,7 +9,6 @@ use songbird_config::config::validation::ConfigSecurityValidator;
 use songbird_core::orchestrator::Orchestrator;
 use std::env;
 use std::time::Duration;
-use tokio::time::timeout;
 
 #[tokio::test]
 async fn test_main_function_configuration_loading() {

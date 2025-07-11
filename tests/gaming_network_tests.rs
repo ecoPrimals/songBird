@@ -3,7 +3,6 @@
 //! Comprehensive tests for the gaming network functionality
 //! Focuses on protocol detection, packet processing, and bridge management
 
-use songbird_lib::network::gaming::*;
 use songbird_lib::config::SongbirdConfig;
 use songbird_lib::errors::{Result, SongbirdError};
 use std::net::SocketAddr;
@@ -253,7 +252,7 @@ mod gaming_network_tests {
     #[tokio::test]
     async fn test_concurrent_bridge_operations() {
         let config = SongbirdConfig::default();
-        let mut manager = RealBridgeManager::new(config).await.unwrap();
+        let manager = RealBridgeManager::new(config).await.unwrap();
         
         let mut handles = Vec::new();
         

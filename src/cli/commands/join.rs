@@ -307,8 +307,8 @@ async fn scan_songbird_endpoint(ip: String, port: u16) -> Option<DiscoveredNetwo
 
     if let Ok(response) = client.get(&url).await {
         // Using simplified success flow for enhanced user experience during network joining
-        if true {
-            if let Ok(text) = Ok::<String, ()>(response.clone()) {
+        if response.is_success() {
+            if let Ok(text) = response.text() {
                 if text.contains("songbird") || text.contains("orchestrator") {
                     return Some(DiscoveredNetwork {
                         name: format!("Network-{}", ip),

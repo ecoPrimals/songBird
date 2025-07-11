@@ -327,30 +327,56 @@ impl McpFederation {
     }
     
     // Private helper methods
+    /// Test connectivity to federation endpoint
     async fn test_endpoint_connectivity(&self, endpoint: &str) -> Result<(), SongbirdError> {
         tracing::debug!("Testing connectivity to federation endpoint: {}", endpoint);
         
-        // TODO: Implement actual HTTP/gRPC connectivity test
-        // For now, simulate basic connectivity check
-        match reqwest::get(&format!("{}/health", endpoint)).await {
-            Ok(response) if response.status().is_success() => {
-                tracing::debug!("Endpoint {} is reachable", endpoint);
-                Ok(())
+        // Create a health check URL
+        let health_url = if endpoint.ends_with('/') {
+            format!("{}health", endpoint)
+        } else {
+            format!("{}/health", endpoint)
+        };
+        
+        // Test basic HTTP connectivity with timeout
+        let response = self.http_client
+            .get(&health_url)
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await
+            .map_err(|e| SongbirdError::Network {
+                service: "federation".to_string(),
+                message: format!("Failed to connect to endpoint {}: {}", endpoint, e),
+                details: Some(format!("Connection error: {}", e))
+            })?;
+        
+        // Check if response indicates a Songbird/MCP service
+        if response.status().is_success() {
+            // Try to parse response as federation info
+            match response.text().await {
+                Ok(body) => {
+                    // Look for indicators that this is a compatible MCP endpoint
+                    if body.contains("songbird") || body.contains("mcp") || body.contains("federation") {
+                        tracing::debug!("Endpoint {} appears to be compatible MCP service", endpoint);
+                        Ok(())
+                    } else {
+                        tracing::debug!("Endpoint {} responded but doesn't appear to be MCP service", endpoint);
+                        // Still consider it successful - might be a basic HTTP service
+                        Ok(())
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Could not read response from {}: {}", endpoint, e);
+                    // Still consider successful if we got an HTTP response
+                    Ok(())
+                }
             }
-            Ok(response) => {
-                Err(SongbirdError::Federation(format!(
-                    "Endpoint {} returned status: {}", 
-                    endpoint, 
-                    response.status()
-                )))
-            }
-            Err(e) => {
-                Err(SongbirdError::Federation(format!(
-                    "Failed to connect to endpoint {}: {}", 
-                    endpoint, 
-                    e
-                )))
-            }
+        } else {
+            Err(SongbirdError::Network {
+                service: "federation".to_string(),
+                message: format!("Endpoint {} returned error status: {}", endpoint, response.status()),
+                details: Some(format!("HTTP status: {}", response.status()))
+            })
         }
     }
     
@@ -467,23 +493,304 @@ impl McpFederation {
         Ok(())
     }
     
+    /// Get local IP address for federation registration
     async fn get_local_ip(&self) -> Result<String, SongbirdError> {
-        // TODO: Implement local IP detection
-        // Use environment configuration instead of hardcoded localhost
-        let env_config = crate::config::environment::EnvironmentConfig::default();
-        Ok(env_config.bind_address)
+        tracing::debug!("Detecting local IP address for federation");
+        
+        // Try multiple methods to detect the local IP address
+        
+        // Method 1: Connect to a well-known external address and check our source IP
+        if let Ok(ip) = self.detect_ip_via_external_connection().await {
+            tracing::debug!("Detected local IP via external connection: {}", ip);
+            return Ok(ip);
+        }
+        
+        // Method 2: Use network interface enumeration
+        if let Ok(ip) = self.detect_ip_via_interfaces().await {
+            tracing::debug!("Detected local IP via network interfaces: {}", ip);
+            return Ok(ip);
+        }
+        
+        // Method 3: Try UDP socket binding
+        if let Ok(ip) = self.detect_ip_via_udp_socket().await {
+            tracing::debug!("Detected local IP via UDP socket: {}", ip);
+            return Ok(ip);
+        }
+        
+        // Fallback to localhost if all methods fail
+        tracing::warn!("Could not detect local IP, falling back to localhost");
+        Ok("127.0.0.1".to_string())
     }
     
+    /// Detect IP by connecting to external address
+    async fn detect_ip_via_external_connection(&self) -> Result<String, SongbirdError> {
+        use std::net::{SocketAddr, TcpStream};
+        use std::time::Duration;
+        
+        // Try to connect to a well-known address (Google DNS)
+        let timeout = Duration::from_secs(2);
+        let target: SocketAddr = "8.8.8.8:53".parse()
+            .map_err(|e| SongbirdError::Network {
+                service: "federation".to_string(),
+                message: format!("Invalid target address: {}", e),
+                details: None
+            })?;
+        
+        // Use std::net::TcpStream with timeout
+        match std::net::TcpStream::connect_timeout(&target, timeout) {
+            Ok(stream) => {
+                if let Ok(local_addr) = stream.local_addr() {
+                    Ok(local_addr.ip().to_string())
+                } else {
+                    Err(SongbirdError::Network {
+                        service: "federation".to_string(),
+                        message: "Could not get local address from connection".to_string(),
+                        details: None
+                    })
+                }
+            }
+            Err(e) => Err(SongbirdError::Network {
+                service: "federation".to_string(),
+                message: format!("Could not connect to external address: {}", e),
+                details: None
+            })
+        }
+    }
+    
+    /// Detect IP via network interfaces
+    async fn detect_ip_via_interfaces(&self) -> Result<String, SongbirdError> {
+        // Try to use local network interface information
+        // This is a simplified implementation that looks for non-loopback interfaces
+        
+        // Check common environment variables first
+        if let Ok(ip) = std::env::var("SONGBIRD_LOCAL_IP") {
+            if let Ok(_) = ip.parse::<std::net::IpAddr>() {
+                return Ok(ip);
+            }
+        }
+        
+        // For now, return error to fall back to other methods
+        // In a full implementation, we'd enumerate network interfaces using a crate like `pnet`
+        Err(SongbirdError::Network {
+            service: "federation".to_string(),
+            message: "Interface enumeration not implemented".to_string(),
+            details: None
+        })
+    }
+    
+    /// Detect IP via UDP socket
+    async fn detect_ip_via_udp_socket(&self) -> Result<String, SongbirdError> {
+        use std::net::UdpSocket;
+        
+        // Create a UDP socket and "connect" to an external address
+        // This doesn't send packets but sets up the socket routing
+        match UdpSocket::bind("0.0.0.0:0") {
+            Ok(socket) => {
+                match socket.connect("8.8.8.8:80") {
+                    Ok(()) => {
+                        if let Ok(local_addr) = socket.local_addr() {
+                            Ok(local_addr.ip().to_string())
+                        } else {
+                            Err(SongbirdError::Network {
+                                service: "federation".to_string(),
+                                message: "Could not get local UDP socket address".to_string(),
+                                details: None
+                            })
+                        }
+                    }
+                    Err(e) => Err(SongbirdError::Network {
+                        service: "federation".to_string(),
+                        message: format!("Could not connect UDP socket: {}", e),
+                        details: None
+                    })
+                }
+            }
+            Err(e) => Err(SongbirdError::Network {
+                service: "federation".to_string(),
+                message: format!("Could not create UDP socket: {}", e),
+                details: None
+            })
+        }
+    }
+    
+    /// Get local network prefix for federation scanning
     async fn get_local_network_prefix(&self) -> Result<String, SongbirdError> {
-        // TODO: Implement local network prefix detection
-        // For now, return common private network prefix
-        Ok("192.168.1".to_string())
+        tracing::debug!("Detecting local network prefix for federation");
+        
+        // Get the local IP first
+        let local_ip = self.get_local_ip().await?;
+        
+        // Parse the IP and determine network prefix
+        match local_ip.parse::<std::net::IpAddr>() {
+            Ok(std::net::IpAddr::V4(ipv4)) => {
+                let octets = ipv4.octets();
+                
+                // Determine network class and prefix
+                let prefix = if octets[0] == 192 && octets[1] == 168 {
+                    // Class C private network (192.168.x.x)
+                    format!("{}.{}", octets[0], octets[1])
+                } else if octets[0] == 172 && (16..=31).contains(&octets[1]) {
+                    // Class B private network (172.16-31.x.x)
+                    format!("{}.{}", octets[0], octets[1])
+                } else if octets[0] == 10 {
+                    // Class A private network (10.x.x.x)
+                    format!("{}.{}", octets[0], octets[1])
+                } else {
+                    // For other networks, use first three octets as best guess
+                    format!("{}.{}.{}", octets[0], octets[1], octets[2])
+                };
+                
+                tracing::debug!("Detected network prefix: {}", prefix);
+                Ok(prefix)
+            }
+            Ok(std::net::IpAddr::V6(_)) => {
+                // For IPv6, return localhost prefix for now
+                tracing::debug!("IPv6 detected, using localhost prefix");
+                Ok("::1".to_string())
+            }
+            Err(e) => {
+                tracing::warn!("Could not parse local IP {}: {}", local_ip, e);
+                // Fallback to common private network prefix
+                Ok("192.168.1".to_string())
+            }
+        }
+    }
+
+    /// Get actual CPU usage percentage
+    async fn get_cpu_usage(&self) -> Result<f64, SongbirdError> {
+        // Try to get CPU usage from system info
+        match sys_info::loadavg() {
+            Ok(load) => {
+                // Convert load average to percentage (rough approximation)
+                // Load average of 1.0 = 100% on single core
+                let cpu_count = sys_info::cpu_num().unwrap_or(1) as f64;
+                let usage_percent = (load.one / cpu_count) * 100.0;
+                Ok(usage_percent.min(100.0)) // Cap at 100%
+            }
+            Err(_) => {
+                // Fallback: try to estimate from /proc/loadavg on Linux
+                if let Ok(load_str) = std::fs::read_to_string("/proc/loadavg") {
+                    if let Some(first_value) = load_str.split_whitespace().next() {
+                        if let Ok(load) = first_value.parse::<f64>() {
+                            let cpu_count = sys_info::cpu_num().unwrap_or(1) as f64;
+                            let usage_percent = (load / cpu_count) * 100.0;
+                            return Ok(usage_percent.min(100.0));
+                        }
+                    }
+                }
+                // Final fallback
+                Ok(0.0)
+            }
+        }
+    }
+
+    /// Get actual memory usage percentage
+    async fn get_memory_usage(&self) -> Result<f64, SongbirdError> {
+        match sys_info::mem_info() {
+            Ok(mem) => {
+                if mem.total > 0 {
+                    let used = mem.total - mem.avail;
+                    let usage_percent = (used as f64 / mem.total as f64) * 100.0;
+                    Ok(usage_percent)
+                } else {
+                    Ok(0.0)
+                }
+            }
+            Err(_) => Ok(0.0)
+        }
+    }
+
+    /// Get total memory in GB
+    async fn get_total_memory_gb(&self) -> Result<u64, SongbirdError> {
+        match sys_info::mem_info() {
+            Ok(mem) => {
+                // Convert from KB to GB
+                let gb = mem.total / (1024 * 1024);
+                Ok(gb)
+            }
+            Err(_) => Ok(0)
+        }
+    }
+
+    /// Get available storage in GB
+    async fn get_available_storage_gb(&self) -> Result<u64, SongbirdError> {
+        match sys_info::disk_info() {
+            Ok(disk) => {
+                // Convert from bytes to GB
+                let gb = disk.free / (1024 * 1024 * 1024);
+                Ok(gb)
+            }
+            Err(_) => Ok(0)
+        }
+    }
+
+    /// Get active service count from registry
+    async fn get_active_service_count(&self) -> Result<u32, SongbirdError> {
+        // Try to get from local service registry if available
+        let services = self.get_local_services().await?;
+        Ok(services.len() as u32)
+    }
+
+    /// Get system uptime in seconds
+    async fn get_uptime_seconds(&self) -> Result<u64, SongbirdError> {
+        // Try to read uptime from /proc/uptime on Linux
+        if let Ok(uptime_str) = std::fs::read_to_string("/proc/uptime") {
+            if let Some(first_value) = uptime_str.split_whitespace().next() {
+                if let Ok(uptime) = first_value.parse::<f64>() {
+                    return Ok(uptime as u64);
+                }
+            }
+        }
+        
+        // Fallback: use system boot time if available
+        match sys_info::boottime() {
+            Ok(boot_time) => {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                let uptime = now.saturating_sub(boot_time.sec as u64);
+                Ok(uptime)
+            }
+            Err(_) => Ok(0)
+        }
+    }
+
+    /// Get current system load
+    async fn get_current_load(&self) -> Result<f64, SongbirdError> {
+        match sys_info::loadavg() {
+            Ok(load) => Ok(load.one), // 1-minute load average
+            Err(_) => Ok(0.0)
+        }
+    }
+
+    /// Calculate available system capacity
+    async fn get_available_capacity(&self) -> Result<f64, SongbirdError> {
+        // Calculate available capacity based on CPU and memory usage
+        let cpu_usage = self.get_cpu_usage().await.unwrap_or(0.0);
+        let memory_usage = self.get_memory_usage().await.unwrap_or(0.0);
+        
+        // Available capacity is the inverse of average resource usage
+        let avg_usage = (cpu_usage + memory_usage) / 2.0;
+        let available_capacity = (100.0 - avg_usage) / 100.0; // Convert to 0.0-1.0 range
+        
+        Ok(available_capacity.max(0.0).min(1.0))
+    }
+
+    /// Get number of active connections (placeholder - would need connection tracking)
+    async fn get_active_connections(&self) -> Result<u32, SongbirdError> {
+        // This would require integration with connection tracking systems
+        // For now, return a reasonable estimate based on service count
+        let service_count = self.get_active_service_count().await.unwrap_or(0);
+        Ok(service_count * 2) // Estimate 2 connections per service
     }
     
+    /// Send federation request to endpoint
     async fn send_federation_request(&self, endpoint: &str, request: &FederationRequest) -> Result<FederationResponse, SongbirdError> {
         Self::send_federation_request_static(&self.http_client, endpoint, request).await
     }
     
+    /// Send federation request using static client
     async fn send_federation_request_static(
         client: &reqwest::Client,
         endpoint: &str,
@@ -534,13 +841,14 @@ impl McpFederation {
         }
     }
     
+    /// Get local services for federation registration
     async fn get_local_services(&self) -> Result<Vec<serde_json::Value>, SongbirdError> {
         let mut services = Vec::new();
         
         // Add core songbird services
         services.push(serde_json::json!({
             "name": "songbird-orchestrator",
-            "type": "orchestrator",
+            "type": "orchestrator", 
             "status": "running",
             "endpoints": {
                 "http": format!("{}/api", std::env::var("SONGBIRD_HTTP_LISTEN").unwrap_or_else(|_| "http://127.0.0.1:8080".to_string())),
@@ -595,59 +903,6 @@ impl McpFederation {
         
         tracing::debug!("Enumerated {} local services", services.len());
         Ok(services)
-    }
-    
-    // Resource monitoring helper methods
-    async fn get_cpu_usage(&self) -> Result<f64, SongbirdError> {
-        Ok(0.0) // TODO: Implement actual CPU usage monitoring
-    }
-    
-    async fn get_memory_usage(&self) -> Result<f64, SongbirdError> {
-        Ok(0.0) // TODO: Implement actual memory usage monitoring
-    }
-    
-    async fn get_total_memory_gb(&self) -> Result<u64, SongbirdError> {
-        Ok(0) // TODO: Implement actual memory size detection
-    }
-    
-    async fn get_available_storage_gb(&self) -> Result<u64, SongbirdError> {
-        Ok(0) // TODO: Implement actual storage detection
-    }
-    
-    async fn get_active_service_count(&self) -> Result<u32, SongbirdError> {
-        Ok(0) // TODO: Implement actual service count
-    }
-    
-    async fn get_uptime_seconds(&self) -> Result<u64, SongbirdError> {
-        Ok(0) // TODO: Implement actual uptime tracking
-    }
-    
-    async fn get_current_load(&self) -> Result<f64, SongbirdError> {
-        Ok(0.0) // TODO: Implement actual load monitoring
-    }
-    
-    async fn get_available_capacity(&self) -> Result<f64, SongbirdError> {
-        Ok(1.0) // TODO: Implement actual capacity calculation
-    }
-    
-    async fn get_active_connections(&self) -> Result<u32, SongbirdError> {
-        // Use connection pool manager to get actual connection count
-        match std::env::var("SONGBIRD_FEDERATION_CONNECTIONS") {
-            Ok(count_str) => {
-                match count_str.parse::<u32>() {
-                    Ok(count) => Ok(count),
-                    Err(_) => {
-                        tracing::warn!("Invalid SONGBIRD_FEDERATION_CONNECTIONS value, using default");
-                        Ok(0)
-                    }
-                }
-            }
-            Err(_) => {
-                // Count actual connections from cluster endpoints
-                let connected_count = self.config.cluster_endpoints.len() as u32;
-                Ok(if self.is_connected().await { connected_count } else { 0 })
-            }
-        }
     }
     
     // Auto-discovery implementation methods

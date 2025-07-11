@@ -3,10 +3,8 @@
 //! This test suite covers configuration management, validation, serialization,
 //! environment handling, and configuration loading/saving.
 
-use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::IpAddr;
 use std::path::PathBuf;
-use std::time::Duration;
 
 use songbird_lib::config::{
     SongbirdConfig, EnvironmentConfig, NetworkConfig, SecurityConfig, 

@@ -15,6 +15,8 @@ use songbird_discovery::traits::{
 use songbird_errors::{Result, SongbirdError};
 use tokio::sync::broadcast;
 
+type ServiceMap = Arc<RwLock<HashMap<String, Box<dyn UniversalService<Error = SongbirdError>>>>>;
+
 /// Service handle for managing a registered service
 pub struct ServiceHandle<S: UniversalService> {
     pub service: Arc<RwLock<S>>,
@@ -60,7 +62,7 @@ impl<S: UniversalService> ServiceHandle<S> {
 /// Central service registry
 pub struct ServiceRegistry {
     // Type alias to simplify the complex trait bound
-    services: Arc<RwLock<HashMap<String, Box<dyn UniversalService<Error = SongbirdError>>>>>,
+    services: ServiceMap,
     service_info: Arc<RwLock<HashMap<String, ServiceInfo>>>,
 }
 
@@ -222,6 +224,20 @@ impl DynamicPluginRegistry {
         }
     }
 
+    /// Get plugin dependency graph
+    pub async fn get_requirement_graph(&self) -> HashMap<String, Vec<String>> {
+        self.requirement_graph.read().await.clone()
+    }
+
+    /// Add dependency relationship between plugins
+    pub async fn add_dependency(&self, plugin_id: &str, dependency_id: &str) -> Result<()> {
+        let mut graph = self.requirement_graph.write().await;
+        graph.entry(plugin_id.to_string())
+            .or_insert_with(Vec::new)
+            .push(dependency_id.to_string());
+        Ok(())
+    }
+
     /// Auto-discover optimal plugin composition for a task
     pub async fn discover_optimal_composition(
         &self,
@@ -311,12 +327,48 @@ impl DynamicPluginRegistry {
         capabilities: &[PluginCapability],
         requirements: &[PluginCapability],
     ) -> bool {
+        // Check if all requirements can be satisfied by the available capabilities
         for requirement in requirements {
-            if !capabilities.contains(requirement) {
+            let mut satisfied = false;
+            
+            for capability in capabilities {
+                if self.capability_matches_requirement(capability, requirement) {
+                    satisfied = true;
+                    break;
+                }
+            }
+            
+            if !satisfied {
                 return false;
             }
         }
+        
         true
+    }
+
+    fn capability_matches_requirement(&self, capability: &PluginCapability, requirement: &PluginCapability) -> bool {
+        use PluginCapability::*;
+        
+        match (capability, requirement) {
+            // Exact matches
+            (Encryption { algorithms: cap_algs }, Encryption { algorithms: req_algs }) => {
+                req_algs.iter().all(|req_alg| cap_algs.contains(req_alg))
+            }
+            (ServiceDiscovery { protocols: cap_protocols }, ServiceDiscovery { protocols: req_protocols }) => {
+                req_protocols.iter().all(|req_proto| cap_protocols.contains(req_proto))
+            }
+            (Compute { cpu_cores: cap_cpu, memory_gb: cap_mem }, Compute { cpu_cores: req_cpu, memory_gb: req_mem }) => {
+                cap_cpu >= req_cpu && cap_mem >= req_mem
+            }
+            (Network { bandwidth_mbps: cap_bw, latency_ms: cap_lat }, Network { bandwidth_mbps: req_bw, latency_ms: req_lat }) => {
+                cap_bw >= req_bw && cap_lat <= req_lat
+            }
+            (Custom { name: cap_name, attributes: cap_attrs }, Custom { name: req_name, attributes: req_attrs }) => {
+                cap_name == req_name && req_attrs.iter().all(|(k, v)| cap_attrs.get(k) == Some(v))
+            }
+            // Different types don't match
+            _ => false,
+        }
     }
 
     /// Get combined capabilities for a set of plugins
@@ -522,8 +574,8 @@ impl PluginRegistry for DynamicPluginRegistry {
     async fn register_plugin(
         &self,
         plugin_id: String,
-        capabilities: Vec<PluginCapability>,
-        requirements: Vec<PluginRequirement>,
+        _capabilities: Vec<PluginCapability>,
+        _requirements: Vec<PluginRequirement>,
     ) -> Result<String> {
         // In a real implementation, this would register the plugin
         // For now, just return success

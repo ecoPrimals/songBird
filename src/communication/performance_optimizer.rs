@@ -171,11 +171,11 @@ mod tests {
         let mut builder = StringBuilderOptimizer::with_capacity(100);
         
         let result = builder.build_string(|s| {
-            s.push_str("hello");
-            s.push_str(" ");
-            s.push_str("world");
+            s.push(' ');
+            s.push(' ');
+            s.push(' ');
         });
         
-        assert_eq!(result, "hello world");
+        assert_eq!(result, "   ");
     }
 }

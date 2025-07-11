@@ -3,8 +3,17 @@
 //! Basic communication infrastructure for Songbird
 
 use crate::errors::{Result, SongbirdError};
-use std::time::Duration;
+use chrono;
+use futures_util;
+use parking_lot;
+use serde_json;
 use std::collections::HashMap;
+
+
+pub use crate::traits::communication::MessageType;
+
+// Import the proper hyper client and circuit breaker
+use crate::communication::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 
 /// Service address for routing messages
 #[derive(Debug, Clone)]
@@ -14,7 +23,7 @@ pub struct ServiceAddress {
 }
 
 /// Service message for communication
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ServiceMessage {
     pub id: String,
     pub source: String,
@@ -59,89 +68,25 @@ pub trait CommunicationLayer: Send + Sync {
 
 /// HTTP client error type
 #[derive(Debug, thiserror::Error)]
-pub enum HyperClientError {
-    #[error("Connection failed: {0}")]
-    ConnectionFailed(String),
-    #[error("Request timeout")]
-    Timeout,
-    #[error("Invalid response: {0}")]
-    InvalidResponse(String),
-}
-
-/// HTTP response wrapper
-pub struct HttpResponse {
-    status: u16,
-    body: String,
-}
-
-impl HttpResponse {
-    pub fn is_success(&self) -> bool {
-        self.status >= 200 && self.status < 300
-    }
-
-    pub fn json<T: serde::de::DeserializeOwned>(&self) -> Result<T> {
-        serde_json::from_str(&self.body).map_err(|e| SongbirdError::Config {
-            message: format!("Failed to parse JSON: {}", e),
-            field: Some("response".to_string()),
-        })
-    }
-
-    pub fn text(&self) -> Result<String> {
-        Ok(self.body.clone())
-    }
-}
-
-/// Basic HTTP client
-pub struct HyperHttpClient {
-    timeout: Duration,
-}
-
-impl HyperHttpClient {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
-            timeout: Duration::from_secs(30),
-        })
-    }
-
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
-        self
-    }
-
-    pub async fn get(&self, _url: &str) -> Result<String> {
-        // Minimal implementation for compilation
-        Ok("{}".to_string())
-    }
-
-    pub async fn post(&self, _url: &str, _body: &str) -> Result<String> {
-        // Minimal implementation for compilation
-        Ok("{}".to_string())
-    }
-
-    pub async fn request(
-        &self,
-        _method: hyper::http::Method,
-        _url: &str,
-        _body: Option<Vec<u8>>,
-    ) -> Result<HttpResponse> {
-        // Minimal implementation for compilation
-        Ok(HttpResponse {
-            status: 200,
-            body: "{}".to_string(),
-        })
-    }
-}
+// HTTP client implementation is now in hyper_client.rs module
 
 /// HTTP communication layer
 pub struct HttpCommunication {
-    base_url: String,
+    client: self::hyper_client::HyperHttpClient,
+    circuit_breaker: CircuitBreaker,
     stats: parking_lot::RwLock<CommunicationStats>,
 }
 
 impl HttpCommunication {
-    pub fn new(base_url: String) -> Result<Self> {
+    pub fn new(_base_url: String) -> Result<Self> {
+        let client = self::hyper_client::HyperHttpClient::new()
+            .map_err(|e| SongbirdError::Communication(format!("Failed to create HTTP client: {}", e)))?;
+        
+        let circuit_breaker = CircuitBreaker::new(CircuitBreakerConfig::default());
+        
         Ok(Self {
-            base_url,
+            client,
+            circuit_breaker,
             stats: parking_lot::RwLock::new(CommunicationStats {
                 messages_sent: 0,
                 messages_received: 0,
@@ -154,28 +99,76 @@ impl HttpCommunication {
 
 #[async_trait::async_trait]
 impl CommunicationLayer for HttpCommunication {
-    async fn send_message(&self, _target: ServiceAddress, _message: ServiceMessage) -> Result<CommunicationResponse> {
-        Ok(CommunicationResponse {
-            id: "http-response".to_string(),
-            status: 200,
-            body: "{}".to_string(),
-            headers: HashMap::new(),
-        })
+    async fn send_message(&self, target: ServiceAddress, message: ServiceMessage) -> Result<CommunicationResponse> {
+        // Check circuit breaker
+        if !self.circuit_breaker.should_allow_request() {
+            return Err(SongbirdError::Communication("Circuit breaker is open, request rejected".to_string()));
+        }
+
+        // Construct URL from target
+        let url = if let Some(endpoint) = &target.endpoint {
+            format!("{}/{}", endpoint, target.service_id)
+        } else {
+            target.service_id.clone()
+        };
+
+        // Send HTTP request
+        let result = self.client.post_json(&url, &message).await;
+        
+        match result {
+            Ok(response) => {
+                // Update stats
+                {
+                    let mut stats = self.stats.write();
+                    stats.messages_sent += 1;
+                    stats.bytes_sent += response.body().len() as u64;
+                }
+                
+                // Record success
+                self.circuit_breaker.record_success();
+                
+                Ok(CommunicationResponse {
+                    id: message.id,
+                    status: response.status().as_u16(),
+                    body: response.text().unwrap_or_default(),
+                    headers: response.headers().iter()
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect(),
+                })
+            }
+            Err(e) => {
+                // Record failure
+                self.circuit_breaker.record_failure();
+                
+                Err(SongbirdError::Communication(format!("HTTP request failed: {}", e)))
+            }
+        }
     }
 
-    async fn broadcast(&self, _message: ServiceMessage) -> Result<Vec<CommunicationResponse>> {
-        Ok(vec![])
+    async fn broadcast(&self, message: ServiceMessage) -> Result<Vec<CommunicationResponse>> {
+        // For HTTP, broadcast isn't typically supported, but we can simulate it
+        // by sending to a broadcast endpoint
+        let broadcast_target = ServiceAddress {
+            service_id: "broadcast".to_string(),
+            endpoint: None,
+        };
+        
+        let response = self.send_message(broadcast_target, message).await?;
+        Ok(vec![response])
     }
 
     async fn listen(&self) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>> {
+        // HTTP doesn't support streaming/listening, return empty stream
         Ok(Box::new(futures_util::stream::empty()))
     }
 
-    async fn subscribe(&self, _topic: &str) -> Result<()> {
+    async fn subscribe(&self, topic: &str) -> Result<()> {
+        tracing::info!("HTTP subscription to topic: {}", topic);
         Ok(())
     }
 
-    async fn unsubscribe(&self, _topic: &str) -> Result<()> {
+    async fn unsubscribe(&self, topic: &str) -> Result<()> {
+        tracing::info!("HTTP unsubscription from topic: {}", topic);
         Ok(())
     }
 
@@ -184,15 +177,24 @@ impl CommunicationLayer for HttpCommunication {
     }
 
     async fn connect(&self) -> Result<()> {
+        // HTTP doesn't require persistent connections
         Ok(())
     }
 
     async fn disconnect(&self) -> Result<()> {
+        // HTTP doesn't require explicit disconnection
         Ok(())
     }
 
     async fn is_connected(&self) -> bool {
+        // HTTP is always "connected" if client is available
         true
+    }
+}
+
+impl std::fmt::Display for HttpCommunication {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "HttpCommunication")
     }
 }
 
@@ -200,7 +202,9 @@ impl CommunicationLayer for HttpCommunication {
 pub struct WebSocketCommunication {
     host: String,
     port: u16,
+    circuit_breaker: CircuitBreaker,
     stats: parking_lot::RwLock<CommunicationStats>,
+    connected: parking_lot::RwLock<bool>,
 }
 
 impl WebSocketCommunication {
@@ -208,40 +212,80 @@ impl WebSocketCommunication {
         Self {
             host,
             port,
+            circuit_breaker: CircuitBreaker::new(CircuitBreakerConfig::default()),
             stats: parking_lot::RwLock::new(CommunicationStats {
                 messages_sent: 0,
                 messages_received: 0,
                 bytes_sent: 0,
                 bytes_received: 0,
             }),
+            connected: parking_lot::RwLock::new(false),
         }
     }
 }
 
 #[async_trait::async_trait]
 impl CommunicationLayer for WebSocketCommunication {
-    async fn send_message(&self, _target: ServiceAddress, _message: ServiceMessage) -> Result<CommunicationResponse> {
+    async fn send_message(&self, target: ServiceAddress, message: ServiceMessage) -> Result<CommunicationResponse> {
+        // Check circuit breaker
+        if !self.circuit_breaker.should_allow_request() {
+            return Err(SongbirdError::Communication("Circuit breaker is open, request rejected".to_string()));
+        }
+
+        // Check if connected
+        if !self.is_connected().await {
+            return Err(SongbirdError::Communication("WebSocket not connected".to_string()));
+        }
+
+        // Simulate WebSocket message sending
+        let payload = serde_json::to_string(&message)
+            .map_err(|e| SongbirdError::Communication(format!("Failed to serialize message: {}", e)))?;
+
+        // Update stats
+        {
+            let mut stats = self.stats.write();
+            stats.messages_sent += 1;
+            stats.bytes_sent += payload.len() as u64;
+        }
+
+        // Record success
+        self.circuit_breaker.record_success();
+
+        tracing::info!("WebSocket message sent to {}: {}", target.service_id, payload);
+
         Ok(CommunicationResponse {
-            id: "ws-response".to_string(),
+            id: message.id,
             status: 200,
             body: "{}".to_string(),
             headers: HashMap::new(),
         })
     }
 
-    async fn broadcast(&self, _message: ServiceMessage) -> Result<Vec<CommunicationResponse>> {
-        Ok(vec![])
+    async fn broadcast(&self, message: ServiceMessage) -> Result<Vec<CommunicationResponse>> {
+        // WebSocket supports broadcasting
+        let broadcast_target = ServiceAddress {
+            service_id: "broadcast".to_string(),
+            endpoint: Some(format!("ws://{}:{}/broadcast", self.host, self.port)),
+        };
+        
+        let response = self.send_message(broadcast_target, message).await?;
+        Ok(vec![response])
     }
 
     async fn listen(&self) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>> {
+        // WebSocket would normally provide a stream of incoming messages
+        // For now, return empty stream but log the action
+        tracing::info!("WebSocket listening on {}:{}", self.host, self.port);
         Ok(Box::new(futures_util::stream::empty()))
     }
 
-    async fn subscribe(&self, _topic: &str) -> Result<()> {
+    async fn subscribe(&self, topic: &str) -> Result<()> {
+        tracing::info!("WebSocket subscription to topic: {}", topic);
         Ok(())
     }
 
-    async fn unsubscribe(&self, _topic: &str) -> Result<()> {
+    async fn unsubscribe(&self, topic: &str) -> Result<()> {
+        tracing::info!("WebSocket unsubscription from topic: {}", topic);
         Ok(())
     }
 
@@ -250,21 +294,35 @@ impl CommunicationLayer for WebSocketCommunication {
     }
 
     async fn connect(&self) -> Result<()> {
+        // Simulate WebSocket connection
+        *self.connected.write() = true;
+        tracing::info!("WebSocket connected to {}:{}", self.host, self.port);
         Ok(())
     }
 
     async fn disconnect(&self) -> Result<()> {
+        // Simulate WebSocket disconnection
+        *self.connected.write() = false;
+        tracing::info!("WebSocket disconnected from {}:{}", self.host, self.port);
         Ok(())
     }
 
     async fn is_connected(&self) -> bool {
-        false
+        *self.connected.read()
     }
 }
 
-/// In-memory communication layer
+/// In-memory communication layer for testing and local development
 pub struct InMemoryCommunication {
     stats: parking_lot::RwLock<CommunicationStats>,
+    message_queue: parking_lot::RwLock<Vec<(ServiceAddress, ServiceMessage)>>,
+    subscribers: parking_lot::RwLock<HashMap<String, Vec<String>>>, // topic -> subscriber_ids
+}
+
+impl Default for InMemoryCommunication {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl InMemoryCommunication {
@@ -276,46 +334,134 @@ impl InMemoryCommunication {
                 bytes_sent: 0,
                 bytes_received: 0,
             }),
+            message_queue: parking_lot::RwLock::new(Vec::new()),
+            subscribers: parking_lot::RwLock::new(HashMap::new()),
         }
+    }
+
+    /// Get all messages in the queue (for testing)
+    pub fn get_messages(&self) -> Vec<(ServiceAddress, ServiceMessage)> {
+        self.message_queue.read().clone()
+    }
+
+    /// Clear all messages from the queue
+    pub fn clear_messages(&self) {
+        self.message_queue.write().clear();
     }
 }
 
 #[async_trait::async_trait]
 impl CommunicationLayer for InMemoryCommunication {
-    async fn send_message(&self, _target: ServiceAddress, _message: ServiceMessage) -> Result<CommunicationResponse> {
+    async fn send_message(&self, target: ServiceAddress, message: ServiceMessage) -> Result<CommunicationResponse> {
+        // Calculate message size for stats
+        let message_size = serde_json::to_string(&message)
+            .map(|s| s.len())
+            .unwrap_or(0) as u64;
+
+        // Store message in queue
+        self.message_queue.write().push((target.clone(), message.clone()));
+
+        // Update stats
+        {
+            let mut stats = self.stats.write();
+            stats.messages_sent += 1;
+            stats.bytes_sent += message_size;
+        }
+
+        tracing::debug!("In-memory message sent to {}: {}", target.service_id, message.id);
+
+        let message_id = message.id.clone();
         Ok(CommunicationResponse {
-            id: "memory-response".to_string(),
+            id: message_id,
             status: 200,
-            body: "{}".to_string(),
+            body: serde_json::to_string(&message).unwrap_or_default(),
             headers: HashMap::new(),
         })
     }
 
-    async fn broadcast(&self, _message: ServiceMessage) -> Result<Vec<CommunicationResponse>> {
-        Ok(vec![])
+    async fn broadcast(&self, message: ServiceMessage) -> Result<Vec<CommunicationResponse>> {
+        // For in-memory, broadcast to all subscribers
+        let subscribers_snapshot = {
+            let subscribers = self.subscribers.read();
+            subscribers.clone()
+        };
+        
+        let mut responses = Vec::new();
+
+        for (topic, subscriber_ids) in subscribers_snapshot.iter() {
+            for subscriber_id in subscriber_ids {
+                let target = ServiceAddress {
+                    service_id: subscriber_id.clone(),
+                    endpoint: Some(format!("memory://{}", topic)),
+                };
+                
+                let response = self.send_message(target, message.clone()).await?;
+                responses.push(response);
+            }
+        }
+
+        if responses.is_empty() {
+            // No subscribers, but still record the broadcast attempt
+            let broadcast_target = ServiceAddress {
+                service_id: "broadcast".to_string(),
+                endpoint: None,
+            };
+            let response = self.send_message(broadcast_target, message).await?;
+            responses.push(response);
+        }
+
+        Ok(responses)
     }
 
     async fn listen(&self) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>> {
+        // In-memory implementation could provide a stream of queued messages
+        // For now, return empty stream but this could be enhanced
+        tracing::debug!("In-memory listening started");
         Ok(Box::new(futures_util::stream::empty()))
     }
 
-    async fn subscribe(&self, _topic: &str) -> Result<()> {
+    async fn subscribe(&self, topic: &str) -> Result<()> {
+        let subscriber_id = format!("subscriber-{}", uuid::Uuid::new_v4());
+        
+        {
+            let mut subscribers = self.subscribers.write();
+            subscribers.entry(topic.to_string())
+                .or_default()
+                .push(subscriber_id.clone());
+        }
+
+        tracing::info!("In-memory subscription to topic '{}' with id '{}'", topic, subscriber_id);
         Ok(())
     }
 
-    async fn unsubscribe(&self, _topic: &str) -> Result<()> {
+    async fn unsubscribe(&self, topic: &str) -> Result<()> {
+        {
+            let mut subscribers = self.subscribers.write();
+            subscribers.remove(topic);
+        }
+
+        tracing::info!("In-memory unsubscription from topic '{}'", topic);
         Ok(())
     }
 
     async fn get_stats(&self) -> Result<CommunicationStats> {
-        Ok(self.stats.read().clone())
+        let mut stats = self.stats.read().clone();
+        // Add queue size to received messages for completeness
+        stats.messages_received = self.message_queue.read().len() as u64;
+        Ok(stats)
     }
 
     async fn connect(&self) -> Result<()> {
+        // In-memory is always "connected"
+        tracing::debug!("In-memory communication connected");
         Ok(())
     }
 
     async fn disconnect(&self) -> Result<()> {
+        // Clear all state on disconnect
+        self.message_queue.write().clear();
+        self.subscribers.write().clear();
+        tracing::debug!("In-memory communication disconnected");
         Ok(())
     }
 
@@ -327,8 +473,15 @@ impl CommunicationLayer for InMemoryCommunication {
 pub mod performance_optimizer;
 pub mod benchmarks;
 pub mod circuit_breaker;
+pub mod hyper_client;
 
 // Re-export circuit breaker types
-pub use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig, CircuitBreakerStats, CircuitState};
+pub use circuit_breaker::{CircuitBreakerStats, CircuitState};
+
+// Re-export hyper client types
+pub use hyper_client::{HyperResponse};
+
+// Make HyperHttpClient public through module system
+pub use self::hyper_client::{HyperHttpClient, HyperClientError};
 
 // Re-export protocol router types

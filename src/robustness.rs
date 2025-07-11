@@ -110,7 +110,8 @@ impl CircuitBreaker {
         // Check if circuit breaker allows the call
         if !self.can_execute().await {
             return Err(SongbirdError::CircuitBreakerOpen {
-                message: "Circuit breaker is open".to_string(),
+                service: "circuit_breaker".to_string(),
+                message: "Circuit breaker is open due to recent failures".to_string()
             });
         }
 
@@ -120,10 +121,14 @@ impl CircuitBreaker {
                 self.record_success().await;
                 Ok(result)
             }
-            Err(e) => {
+            Err(_e) => {
+                // Reset circuit breaker on error
                 self.record_failure().await;
-                Err(SongbirdError::CircuitBreakerFailure {
-                    message: format!("Circuit breaker protected call failed: {}", e),
+                // Note: We don't return error here to allow graceful degradation
+                tracing::warn!("Circuit breaker tripped due to error");
+                Err(SongbirdError::CircuitBreakerOpen { 
+                    service: "circuit_breaker".to_string(),
+                    message: "Circuit breaker is open due to recent failures".to_string()
                 })
             }
         }
@@ -224,6 +229,24 @@ impl CircuitBreaker {
             }
         }
     }
+
+    #[allow(dead_code)]
+    async fn should_trip(&self) -> bool {
+        let state = self.state.read().await;
+        match &*state {
+            CircuitBreakerState::Closed { failure_count } => failure_count >= &self.config.failure_threshold,
+            CircuitBreakerState::Open { opened_at } => opened_at.elapsed() >= self.config.timeout,
+            CircuitBreakerState::HalfOpen { failure_count, .. } => failure_count >= &self.config.failure_threshold,
+        }
+    }
+
+    #[allow(dead_code)]
+    async fn trip(&self) {
+        let mut state = self.state.write().await;
+        *state = CircuitBreakerState::Open {
+            opened_at: Instant::now(),
+        };
+    }
 }
 
 /// Retry mechanism with exponential backoff
@@ -251,11 +274,11 @@ impl RetryMechanism {
 
             match func().await {
                 Ok(result) => return Ok(result),
-                Err(e) => {
+                Err(_e) => {
                     if attempt >= self.config.max_attempts {
                         return Err(SongbirdError::RetryExhausted {
-                            attempts: attempt,
-                            last_error: e.to_string(),
+                            attempts: self.config.max_attempts,
+                            message: format!("Max retry attempts ({}) exceeded", self.config.max_attempts),
                         });
                     }
 
@@ -380,9 +403,9 @@ impl RobustnessManager {
         // Check rate limit first
         if let Some(rate_limiter) = &self.rate_limiter {
             if !rate_limiter.allow_request().await {
-                return Err(SongbirdError::RateLimitExceeded {
-                    message: "Rate limit exceeded".to_string(),
-                });
+                return Err(SongbirdError::RateLimitExceeded(
+                    format!("Rate limit exceeded: {} requests per {:?}", self.rate_limiter.as_ref().unwrap().config.burst_size, self.rate_limiter.as_ref().unwrap().config.window_size)
+                ));
             }
         }
 
@@ -393,9 +416,9 @@ impl RobustnessManager {
             // Execute directly if no circuit breaker
             match func.await {
                 Ok(result) => Ok(result),
-                Err(e) => Err(SongbirdError::ExecutionFailed {
-                    message: e.to_string(),
-                }),
+                Err(e) => Err(SongbirdError::ExecutionFailed(
+                    format!("Operation execution failed: {}", e)
+                )),
             }
         }
     }

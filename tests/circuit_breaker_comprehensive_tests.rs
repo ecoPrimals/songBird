@@ -4,10 +4,40 @@
 //! including state transitions, failure/success thresholds, timeout behavior,
 //! concurrent access, and edge cases.
 
+use std::time::Duration;
+use tokio::time::sleep;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
-use tokio::time;
-use songbird_lib::communication::{CircuitBreaker, CircuitBreakerConfig, CircuitState};
+
+use songbird_lib::communication::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig, CircuitState};
+use songbird_errors::{Result, SongbirdError};
+
+#[tokio::test]
+async fn test_circuit_breaker_basic_functionality() -> Result<()> {
+    let config = CircuitBreakerConfig {
+        failure_threshold: 3,
+        recovery_timeout: Duration::from_secs(1),
+        half_open_max_calls: 2,
+    };
+    
+    let mut circuit_breaker = CircuitBreaker::new(config);
+    
+    // Initially closed
+    assert!(matches!(circuit_breaker.state(), CircuitState::Closed));
+    
+    // Record failures
+    circuit_breaker.record_failure();
+    circuit_breaker.record_failure();
+    assert!(matches!(circuit_breaker.state(), CircuitState::Closed));
+    
+    // Third failure should open the circuit
+    circuit_breaker.record_failure();
+    assert!(matches!(circuit_breaker.state(), CircuitState::Open));
+    
+    // Should reject calls when open
+    assert!(!circuit_breaker.can_execute());
+    
+    Ok(())
+}
 
 /// Test helper to create a circuit breaker with custom config
 fn create_test_circuit_breaker(config: CircuitBreakerConfig) -> CircuitBreaker {
@@ -287,7 +317,7 @@ mod open_state_tests {
         assert!(!cb.should_allow_request());
         
         // Wait for timeout
-        time::sleep(Duration::from_millis(150)).await;
+        sleep(Duration::from_millis(150)).await;
         
         // Should now transition to half-open and allow request
         assert!(cb.should_allow_request());
@@ -305,7 +335,7 @@ mod open_state_tests {
         assert_eq!(cb.get_state(), CircuitState::Open);
         
         // Should not allow requests before timeout
-        time::sleep(Duration::from_millis(50)).await;
+        sleep(Duration::from_millis(50)).await;
         assert!(!cb.should_allow_request());
         assert_eq!(cb.get_state(), CircuitState::Open);
     }
@@ -323,7 +353,7 @@ mod half_open_state_tests {
         for _ in 0..3 {
             cb.record_failure();
         }
-        time::sleep(Duration::from_millis(150)).await;
+        sleep(Duration::from_millis(150)).await;
         
         // First request should be allowed (this transitions to half-open)
         assert!(cb.should_allow_request());
@@ -350,7 +380,7 @@ mod half_open_state_tests {
         for _ in 0..3 {
             cb.record_failure();
         }
-        time::sleep(Duration::from_millis(150)).await;
+        sleep(Duration::from_millis(150)).await;
         assert!(cb.should_allow_request()); // Transition to half-open
         
         // Record successes to close circuit
@@ -374,7 +404,7 @@ mod half_open_state_tests {
         for _ in 0..3 {
             cb.record_failure();
         }
-        time::sleep(Duration::from_millis(150)).await;
+        sleep(Duration::from_millis(150)).await;
         assert!(cb.should_allow_request()); // Transition to half-open
         
         // Record failure - should go back to open
@@ -453,11 +483,11 @@ mod statistics_tests {
     #[test]
     fn test_last_failure_time_accuracy() {
         let cb = create_default_circuit_breaker();
-        let before = Instant::now();
+        let before = std::time::Instant::now();
         
         cb.record_failure();
         
-        let after = Instant::now();
+        let after = std::time::Instant::now();
         let stats = cb.get_stats();
         
         assert!(stats.last_failure_time.is_some());
@@ -526,7 +556,7 @@ mod reset_functionality_tests {
         for _ in 0..3 {
             cb.record_failure();
         }
-        time::sleep(Duration::from_millis(150)).await;
+        sleep(Duration::from_millis(150)).await;
         assert!(cb.should_allow_request()); // Transition to half-open
         
         cb.reset();
@@ -831,7 +861,7 @@ mod integration_tests {
         assert!(!cb.should_allow_request());
         
         // Phase 4: Wait for timeout and transition to half-open
-        time::sleep(Duration::from_millis(150)).await;
+        sleep(Duration::from_millis(150)).await;
         assert!(cb.should_allow_request()); // Should transition to half-open
         assert_eq!(cb.get_state(), CircuitState::HalfOpen);
         
@@ -858,7 +888,7 @@ mod integration_tests {
         assert_eq!(cb.get_state(), CircuitState::Open);
         
         // Wait and transition to half-open
-        time::sleep(Duration::from_millis(150)).await;
+        sleep(Duration::from_millis(150)).await;
         assert!(cb.should_allow_request());
         assert_eq!(cb.get_state(), CircuitState::HalfOpen);
         
@@ -909,7 +939,7 @@ mod performance_tests {
     fn test_high_volume_requests() {
         let cb = create_default_circuit_breaker();
         
-        let start = Instant::now();
+        let start = std::time::Instant::now();
         for _ in 0..10_000 {
             let _allowed = cb.should_allow_request();
         }
@@ -923,7 +953,7 @@ mod performance_tests {
     fn test_high_volume_success_recording() {
         let cb = create_default_circuit_breaker();
         
-        let start = Instant::now();
+        let start = std::time::Instant::now();
         for _ in 0..10_000 {
             cb.record_success();
         }

@@ -225,7 +225,7 @@ impl WireGuardTunnel {
         
         // Use our existing BSTP implementation from advanced_tunnel_system
         match super::advanced_tunnel_system::BSTPTunnel::new_bstp_tunnel(self.session_id.clone()) {
-            Ok(bstp_tunnel) => {
+            Ok(_bstp_tunnel) => {
                 info!("✅ Successfully upgraded tunnel {} to BSTP", self.session_id);
                 Ok(BSTPTunnel { /* Placeholder - references advanced_tunnel_system implementation */ })
             },

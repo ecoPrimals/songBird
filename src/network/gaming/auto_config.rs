@@ -718,9 +718,7 @@ impl GamingAutoConfig {
 }
 
 /// System capabilities detected during auto-configuration
-
-/// Beardog configuration
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BeardogConfig {
     pub auto_gaming: bool,
     pub security_level: String,

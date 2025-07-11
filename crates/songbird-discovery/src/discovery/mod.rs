@@ -609,7 +609,7 @@ impl ServiceDiscoveryFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::test as tokio_test;
+    
 
     #[tokio::test]
     async fn test_static_service_discovery_registration() {

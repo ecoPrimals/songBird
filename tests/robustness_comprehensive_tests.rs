@@ -4,7 +4,7 @@
 //! retry mechanisms, rate limiting, and fault tolerance patterns.
 
 use songbird_lib::robustness::*;
-use songbird_lib::errors::{Result, SongbirdError};
+use songbird_lib::errors::SongbirdError;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, Instant};

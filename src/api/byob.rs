@@ -4,7 +4,7 @@
 //! BYOB deployments with Songbird orchestration.
 
 use crate::biome::{
-    ByobCoordinator, ByobDeploymentRequest, ByobDeploymentStatus, 
+    ByobCoordinator, ByobDeploymentRequest, 
     TeamResourceQuota, SongbirdBiomeManifest
 };
 use axum::{
@@ -16,7 +16,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tracing::{info, warn, error};
+use tracing::{info, error};
 
 /// BYOB API state
 #[derive(Clone)]
@@ -48,7 +48,7 @@ pub struct RegisterTeamRequest {
 }
 
 /// Generic API response
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ApiResponse {
     pub success: bool,
     pub message: String,
@@ -127,7 +127,7 @@ async fn deploy_biome(
     info!("Deploying biome for team: {}", team_id);
 
     // Use default resource quota if not provided
-    let resource_quota = request.resource_quota.unwrap_or_else(|| TeamResourceQuota {
+    let resource_quota = request.resource_quota.unwrap_or(TeamResourceQuota {
         max_cpu_cores: 16.0,
         max_memory_bytes: 68719476736, // 64GB
         max_storage_bytes: 549755813888, // 512GB
@@ -251,7 +251,7 @@ async fn health_check() -> Json<ApiResponse> {
 mod tests {
     use super::*;
     use axum_test::TestServer;
-    use crate::config::OrchestratorConfig;
+    use crate::biome::OrchestratorConfig;
 
     #[tokio::test]
     async fn test_byob_api_health_check() {
