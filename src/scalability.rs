@@ -2,10 +2,10 @@
 //!
 //! Provides auto-scaling capabilities for services
 
-use std::collections::HashMap;
+
 use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::errors::{Result, SongbirdError};
 
@@ -201,7 +201,7 @@ impl AutoScaler {
         };
 
         // Record decision in history for evaluation tracking (stats updated on execution)
-        let event = ScalingEvent {
+        let _event = ScalingEvent {
             timestamp: Instant::now(),
             service_id: service_id.to_string(),
             decision: decision.clone(),
@@ -214,7 +214,7 @@ impl AutoScaler {
             },
         };
         // Don't add to history until actually executed
-        // self.scaling_history.push(event);
+        // self.scaling_history.push(_event);
         self.last_scaling_time = Some(Instant::now());
 
         // Update current metrics

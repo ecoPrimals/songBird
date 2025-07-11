@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use songbird_lib::{Result, SongbirdError};
+use songbird_errors::{Result, SongbirdError};
 
 #[test]
 fn test_string_utilities_basic() {

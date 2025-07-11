@@ -639,7 +639,7 @@ mod tests {
                 assert_eq!(password, "password");
             }
             _ => {
-                assert!(false, "Expected UserPassword credential type");
+                panic!("Expected UserPassword credential type");
             }
         }
     }
@@ -655,7 +655,7 @@ mod tests {
                 assert_eq!(token, "abc123");
             }
             _ => {
-                assert!(false, "Expected Bearer credential type");
+                panic!("Expected Bearer credential type");
             }
         }
     }
@@ -679,7 +679,7 @@ mod tests {
                 assert_eq!(mfa_code, "123456");
             }
             _ => {
-                assert!(false, "Expected MFA credential type");
+                panic!("Expected MFA credential type");
             }
         }
     }

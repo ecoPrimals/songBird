@@ -6,7 +6,6 @@ use songbird_lib::network::gaming::production_lan::{
     ProductionLanConfig, ProductionLanManager,
 };
 use songbird_lib::errors::{Result};
-use std::net::SocketAddr;
 use std::time::Duration;
 
 #[tokio::test]

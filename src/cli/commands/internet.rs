@@ -3,13 +3,17 @@
 //
 // Provides CLI interface for setting up secure internet connections between Songbird nodes.
 
-use crate::cli::commands::{InternetCommands, InternetConfigAction};
-use crate::cli::CliError;
-use crate::{InternetConnectionConfig, InternetConnectionWizard};
-// Internet connection CLI commands
-use crate::ui;
 use colored::*;
 use std::path::PathBuf;
+
+use anyhow::Result;
+
+use crate::internet_connection::{InternetConnectionConfig, InternetConnectionWizard};
+use crate::cli::{ui, CliError};
+
+// Import command types from parent module
+use super::{InternetCommands, InternetConfigAction};
+
 /// Execute the internet connection command
 pub async fn execute_internet_command(command: &InternetCommands) -> crate::cli::CliResult<()> {
     match command {

@@ -124,7 +124,7 @@ impl ZeroTouchOrchestrator {
         let config = GeneratedConfig {
             name: "songbird-auto-config".to_string(),
             version: "0.1.0".to_string(),
-            deployment_id: format!("auto-deploy-{}-{:?}", chrono::Utc::now().timestamp_nanos(), std::thread::current().id()),
+            deployment_id: format!("auto-deploy-{}-{:?}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0), std::thread::current().id()),
             security: SecurityConfig {
                 encryption_enabled: self.config.generate_security_config,
                 authentication_required: self.config.generate_security_config,

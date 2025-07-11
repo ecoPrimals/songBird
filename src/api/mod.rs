@@ -23,11 +23,11 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 use uuid::Uuid;
-use crate::communication::{CommunicationLayer, WebSocketCommunication};
+use crate::communication::WebSocketCommunication;
 use crate::errors::{Result, SongbirdError};
 use crate::orchestrator::{Orchestrator, OrchestratorMetrics, ServiceHealth};
 use crate::traits::communication::{
-    MessageType, ServiceAddress, ServiceMessage, CommunicationStats,
+    MessageType, ServiceMessage, CommunicationStats,
 };
 use crate::traits::service::{ServiceEndpoint, ServiceInfo, ServiceMetrics};
 /// API server state containing the orchestrator and communication layer
@@ -353,7 +353,7 @@ async fn get_service(
         error(StatusCode::NOT_FOUND, format!("Service {} not found", id))
 }
 async fn update_service(
-    State(state): State<ApiState>,
+    State(_state): State<ApiState>,
     Path(id): Path<String>,
     Json(_request): Json<RegisterServiceRequest>,
 ) -> (StatusCode, Json<ApiResponse<String>>) {
@@ -421,7 +421,7 @@ async fn get_service_health(
 }
 async fn get_service_metrics(
     State(_state): State<ApiState>,
-    Path(id): Path<String>,
+    Path(_id): Path<String>,
 ) -> (StatusCode, Json<ApiResponse<ServiceMetrics>>) {
     // Mock implementation
     let metrics = ServiceMetrics {

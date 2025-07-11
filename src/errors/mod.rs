@@ -80,6 +80,8 @@ pub enum SongbirdError {
     RateLimitExceeded { message: String },
     /// Execution failed errors
     ExecutionFailed { message: String },
+    /// Plugin composition failed errors
+    CompositionFailed(String),
 }
 impl fmt::Display for SongbirdError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -185,6 +187,9 @@ impl fmt::Display for SongbirdError {
             }
             SongbirdError::ExecutionFailed { message } => {
                 write!(f, "Execution failed: {}", message)
+            }
+            SongbirdError::CompositionFailed(message) => {
+                write!(f, "Plugin composition failed: {}", message)
             }
         }
     }

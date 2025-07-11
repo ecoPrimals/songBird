@@ -3,7 +3,7 @@
 //! Support for OAuth2/OIDC authentication providers
 
 use async_trait::async_trait;
-use hyper::http;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 /// OAuth2 errors
@@ -145,9 +145,9 @@ impl OAuth2Provider for GenericOAuth2Provider {
         let response = self
             .client
             .request(
-                http::Method::POST,
+                "POST",
                 &self.config.token_endpoint,
-                Some(serde_json::to_vec(&params)?),
+                Some(&serde_json::to_string(&params)?),
             )
             .await?;
 
@@ -202,9 +202,9 @@ impl OAuth2Provider for GenericOAuth2Provider {
         let response = self
             .client
             .request(
-                http::Method::POST,
+                "POST",
                 &self.config.token_endpoint,
-                Some(serde_json::to_vec(&params)?),
+                Some(&serde_json::to_string(&params)?),
             )
             .await?;
 

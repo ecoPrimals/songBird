@@ -8,10 +8,10 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
-use crate::errors::{Result, SongbirdError};
-use super::beardog_integration::{NetworkEvent, PeerCapabilities, SecurityLevel};
+use crate::errors::Result;
+use super::beardog_integration::{NetworkEvent, PeerCapabilities};
 
 /// NetworkDiscoveryEngine - Exact FRAGO specification for BearDog integration
 pub struct NetworkDiscoveryEngine {
@@ -25,29 +25,29 @@ pub struct NetworkDiscoveryEngine {
 
 /// UPnP client for local network discovery
 pub struct UPnPClient {
-    discovery_port: u16,
+    _discovery_port: u16,
     timeout: Duration,
-    discovered_devices: Arc<RwLock<HashMap<String, UPnPDevice>>>,
+    _discovered_devices: Arc<RwLock<HashMap<String, UPnPDevice>>>,
 }
 
 /// STUN client for NAT traversal
 pub struct STUNClient {
-    stun_servers: Vec<String>,
-    timeout: Duration,
-    external_addresses: Arc<RwLock<HashMap<String, SocketAddr>>>,
+    _stun_servers: Vec<String>,
+    _timeout: Duration,
+    _external_addresses: Arc<RwLock<HashMap<String, SocketAddr>>>,
 }
 
 /// TURN client for relay connectivity
 pub struct TURNClient {
-    turn_servers: Vec<String>,
-    username: Option<String>,
-    password: Option<String>,
-    allocated_relays: Arc<RwLock<HashMap<String, TURNRelay>>>,
+    _turn_servers: Vec<String>,
+    _username: Option<String>,
+    _password: Option<String>,
+    _allocated_relays: Arc<RwLock<HashMap<String, TURNRelay>>>,
 }
 
 /// Peer registry for managing discovered peers
 pub struct PeerRegistry {
-    peers: Arc<RwLock<HashMap<String, DiscoveredPeer>>>,
+    _peers: Arc<RwLock<HashMap<String, DiscoveredPeer>>>,
     peer_capabilities: Arc<RwLock<HashMap<String, PeerCapabilities>>>,
     last_seen: Arc<RwLock<HashMap<String, Instant>>>,
 }
@@ -55,8 +55,8 @@ pub struct PeerRegistry {
 /// Network topology mapper
 pub struct TopologyMapper {
     topology: Arc<RwLock<NetworkTopology>>,
-    measurement_history: Arc<RwLock<Vec<NetworkMeasurement>>>,
-    update_interval: Duration,
+    _measurement_history: Arc<RwLock<Vec<NetworkMeasurement>>>,
+    _update_interval: Duration,
 }
 
 #[derive(Debug, Clone)]
@@ -333,100 +333,16 @@ impl NetworkDiscoveryEngine {
     }
 }
 
-impl UPnPClient {
-    pub fn new(config: DiscoveryConfig) -> Self {
-        Self {
-            discovery_port: 1900, // Standard UPnP port
-            timeout: config.discovery_timeout,
-            discovered_devices: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    pub async fn discover_peers(&self) -> Result<Vec<PeerCapabilities>> {
-        // Simulate UPnP discovery
-        debug!("Discovering peers via UPnP...");
-        
-        let mut peers = Vec::new();
-        
-        // Mock discovery result
-        if self.timeout > Duration::from_millis(5) {
-            peers.push(PeerCapabilities {
-                protocol_support: vec!["UPnP".to_string(), "BSTP".to_string()],
-                bandwidth_mbps: 1000,
-                latency_ms: 2,
-                gaming_optimized: true,
-                security_level: SecurityLevel::Gaming,
-            });
-        }
-
-        Ok(peers)
-    }
-}
-
-impl STUNClient {
-    pub fn new(config: DiscoveryConfig) -> Self {
-        Self {
-            stun_servers: vec![
-                "stun.l.google.com:19302".to_string(),
-                "stun1.l.google.com:19302".to_string(),
-            ],
-            timeout: config.discovery_timeout,
-            external_addresses: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    pub async fn discover_peers(&self) -> Result<Vec<PeerCapabilities>> {
-        debug!("Discovering peers via STUN...");
-        
-        // Mock STUN discovery
-        let peers = vec![
-            PeerCapabilities {
-                protocol_support: vec!["STUN".to_string(), "WebRTC".to_string()],
-                bandwidth_mbps: 500,
-                latency_ms: 5,
-                gaming_optimized: true,
-                security_level: SecurityLevel::Enhanced,
-            }
-        ];
-
-        Ok(peers)
-    }
-}
-
-impl TURNClient {
-    pub fn new(config: DiscoveryConfig) -> Self {
-        Self {
-            turn_servers: vec![
-                "turn.example.com:3478".to_string(),
-            ],
-            username: None,
-            password: None,
-            allocated_relays: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    pub async fn discover_peers(&self) -> Result<Vec<PeerCapabilities>> {
-        debug!("Discovering peers via TURN...");
-        
-        // Mock TURN discovery
-        let peers = vec![
-            PeerCapabilities {
-                protocol_support: vec!["TURN".to_string(), "WebRTC".to_string()],
-                bandwidth_mbps: 250,
-                latency_ms: 10,
-                gaming_optimized: false,
-                security_level: SecurityLevel::Maximum,
-            }
-        ];
-
-        Ok(peers)
+impl Default for PeerRegistry {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl PeerRegistry {
     pub fn new() -> Self {
         Self {
-            peers: Arc::new(RwLock::new(HashMap::new())),
+            _peers: Arc::new(RwLock::new(HashMap::new())),
             peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
             last_seen: Arc::new(RwLock::new(HashMap::new())),
         }
@@ -462,8 +378,8 @@ impl TopologyMapper {
                 measured_at: Instant::now(),
                 quality_score: 0.0,
             })),
-            measurement_history: Arc::new(RwLock::new(Vec::new())),
-            update_interval,
+            _measurement_history: Arc::new(RwLock::new(Vec::new())),
+            _update_interval: update_interval,
         }
     }
 
@@ -484,6 +400,96 @@ impl Default for DiscoveryConfig {
             enable_turn: true,
             gaming_optimized: true,
         }
+    }
+}
+
+impl UPnPClient {
+    pub fn new(config: DiscoveryConfig) -> Self {
+        Self {
+            _discovery_port: 1900, // Standard UPnP port
+            timeout: config.discovery_timeout,
+            _discovered_devices: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub async fn discover_peers(&self) -> Result<Vec<PeerCapabilities>> {
+        // Simulate UPnP discovery
+        debug!("Discovering peers via UPnP...");
+        
+        let mut peers = Vec::new();
+        
+        // Mock discovery result
+        if self.timeout > Duration::from_millis(5) {
+            peers.push(PeerCapabilities {
+                protocol_support: vec!["UPnP".to_string(), "BSTP".to_string()],
+                bandwidth_mbps: 1000,
+                latency_ms: 2,
+                gaming_optimized: true,
+                security_level: crate::network::beardog_integration::SecurityLevel::Gaming,
+            });
+        }
+
+        Ok(peers)
+    }
+}
+
+impl STUNClient {
+    pub fn new(config: DiscoveryConfig) -> Self {
+        Self {
+            _stun_servers: vec![
+                "stun.l.google.com:19302".to_string(),
+                "stun1.l.google.com:19302".to_string(),
+            ],
+            _timeout: config.discovery_timeout,
+            _external_addresses: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub async fn discover_peers(&self) -> Result<Vec<PeerCapabilities>> {
+        debug!("Discovering peers via STUN...");
+        
+        // Mock STUN discovery
+        let peers = vec![
+            PeerCapabilities {
+                protocol_support: vec!["STUN".to_string(), "WebRTC".to_string()],
+                bandwidth_mbps: 500,
+                latency_ms: 5,
+                gaming_optimized: true,
+                security_level: crate::network::beardog_integration::SecurityLevel::Enhanced,
+            }
+        ];
+
+        Ok(peers)
+    }
+}
+
+impl TURNClient {
+    pub fn new(_config: DiscoveryConfig) -> Self {
+        Self {
+            _turn_servers: vec![
+                "turn.example.com:3478".to_string(),
+            ],
+            _username: None,
+            _password: None,
+            _allocated_relays: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub async fn discover_peers(&self) -> Result<Vec<PeerCapabilities>> {
+        debug!("Discovering peers via TURN...");
+        
+        // Mock TURN discovery
+        let peers = vec![
+            PeerCapabilities {
+                protocol_support: vec!["TURN".to_string(), "WebRTC".to_string()],
+                bandwidth_mbps: 250,
+                latency_ms: 10,
+                gaming_optimized: false,
+                security_level: crate::network::beardog_integration::SecurityLevel::Maximum,
+            }
+        ];
+
+        Ok(peers)
     }
 }
 

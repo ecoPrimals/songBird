@@ -2,27 +2,20 @@
 //!
 //! Main entry point for the modular gaming network bridge
 
+use std::sync::Arc;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use songbird_config::config::environment::EnvironmentConfig;
-use songbird_config::config::{validation::ConfigSecurityValidator, SongbirdConfig};
 use songbird_core::registry::ServiceRegistry;
-use songbird_federation::{config::FederationMode, manager::FederationManager};
-use songbird_network::network::gaming::GamingManager;
-use songbird_observability::observability::ObservabilityManager;
-use songbird_security::security::{
-    InMemoryAuthProvider, InMemoryAuthzProvider, SecurityConfig, SecurityManager,
-};
-use std::sync::Arc;
+use songbird_config::SongbirdConfig;
+use songbird_federation::FederationManager;
+use songbird_network::gaming::GamingManager;
+use songbird_observability::ObservabilityManager;
+use songbird_security::SecurityManager;
+use tracing::{info, warn, error};
 use tokio::time::{interval, Duration};
-use tracing::{error, info, warn};
-use tracing_subscriber;
 
 // Import CLI command modules
-use songbird_cli::commands::{
-    compose, quick, discovery, basic_federation, basic_iot, node, service, status, logs, scale,
-    security_audit, firewall, internet, join, share, universal, zero_touch, orchestrator, version
-};
+// These are imported but not used in the main function, they're placeholders for future implementation
 
 /// Main orchestrator application
 pub struct SongbirdOrchestrator {
@@ -49,8 +42,8 @@ impl SongbirdOrchestrator {
 
         // Initialize federation manager with correct FederationMode parameter
         let federation_mode = match config.environment.bind_address.as_str() {
-            "127.0.0.1" => FederationMode::Standalone,
-            _ => FederationMode::Hybrid,
+            "127.0.0.1" => songbird_federation::config::FederationMode::Standalone,
+            _ => songbird_federation::config::FederationMode::Hybrid,
         };
         let federation_manager = Arc::new(FederationManager::new(federation_mode));
 
@@ -58,9 +51,9 @@ impl SongbirdOrchestrator {
         let observability_manager = Arc::new(ObservabilityManager::new());
 
         // Initialize security manager with required providers
-        let security_config = SecurityConfig::default();
-        let auth_provider = Box::new(InMemoryAuthProvider::new(security_config.clone()));
-        let authz_provider = Box::new(InMemoryAuthzProvider::new());
+        let security_config = songbird_security::security::SecurityConfig::default();
+        let auth_provider = Box::new(songbird_security::security::InMemoryAuthProvider::new(security_config.clone()));
+        let authz_provider = Box::new(songbird_security::security::InMemoryAuthzProvider::new());
         let security_manager = Arc::new(SecurityManager::new(
             auth_provider,
             authz_provider,
@@ -240,10 +233,11 @@ pub struct OrchestratorStatus {
 }
 
 /// Simple health check and monitoring
-async fn run_health_check(orchestrator: &SongbirdOrchestrator) -> Result<()> {
+async fn _run_health_check(orchestrator: &SongbirdOrchestrator) -> Result<()> {
     let status = orchestrator.get_status().await?;
+    
     info!(
-        "🔍 Health Check - Gaming: {}, Federation: {}, Sessions: {}, Players: {}",
+        "Health check: Gaming={}, Federation={}, Sessions={}, Players={}",
         status.gaming_active,
         status.federation_connected,
         status.active_sessions,
@@ -253,7 +247,7 @@ async fn run_health_check(orchestrator: &SongbirdOrchestrator) -> Result<()> {
 }
 
 /// Start health monitoring task
-async fn start_orchestrator() -> Result<()> {
+async fn _start_orchestrator() -> Result<()> {
     // Load configuration
     let config = match SongbirdConfig::from_file("config/songbird.toml") {
         Ok(config) => config,
@@ -274,7 +268,7 @@ async fn start_orchestrator() -> Result<()> {
     loop {
         tokio::select! {
             _ = health_interval.tick() => {
-                if let Err(e) = run_health_check(&orchestrator).await {
+                if let Err(e) = _run_health_check(&orchestrator).await {
                     error!("Health check failed: {}", e);
                 }
             }
@@ -430,6 +424,12 @@ pub struct CliConfig {
     config_path: Option<String>,
 }
 
+impl Default for CliConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CliConfig {
     pub fn new() -> Self {
         Self {
@@ -466,12 +466,12 @@ impl CliConfig {
 
 #[derive(Debug, Clone)]
 pub struct Orchestrator {
-    config: SongbirdConfig,
+    _config: SongbirdConfig,
 }
 
 impl Orchestrator {
     pub fn new(config: SongbirdConfig) -> Self {
-        Self { config }
+        Self { _config: config }
     }
 }
 
@@ -731,7 +731,7 @@ mod tests {
     #[tokio::test]
     async fn test_main_function_no_command() {
         // Test that main handles no command gracefully
-        let original_args: Vec<String> = env::args().collect();
+        let _original_args: Vec<String> = env::args().collect();
         
         // Simulate running with just program name
         env::set_var("TEST_MODE", "true");
@@ -903,7 +903,7 @@ mod tests {
     #[test]
     fn test_environment_config_validation() {
         // Test environment configuration
-        let env_config = EnvironmentConfig::default();
+        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
         assert!(env_config.data_dir.len() > 0);
         
         // Test that environment variables can be set
@@ -917,7 +917,7 @@ mod tests {
     fn test_config_security_validation() {
         // Test configuration security validation
         let config = SongbirdConfig::default();
-        let validation_result = ConfigSecurityValidator::validate_security(&config);
+        let validation_result = songbird_config::config::validation::ConfigSecurityValidator::validate_security(&config);
         assert!(validation_result.is_ok());
     }
 
@@ -925,7 +925,7 @@ mod tests {
     fn test_orchestrator_creation() {
         // Test orchestrator creation
         let config = SongbirdConfig::default();
-        let orchestrator = Orchestrator::new(config.clone());
+        let _orchestrator = Orchestrator::new(config.clone());
         // Basic creation test - if this compiles and doesn't panic, the structure is valid
         assert!(true);
     }
@@ -936,7 +936,7 @@ mod tests {
         // We use a timeout to avoid infinite loops in the actual function
         let result = timeout(Duration::from_millis(100), async {
             // This will timeout quickly, but validates the function structure
-            start_orchestrator().await
+            _start_orchestrator().await
         }).await;
         
         // The function should either complete quickly or timeout
@@ -1046,7 +1046,7 @@ mod tests {
     fn test_startup_information_display() {
         // Test that startup information can be displayed
         let config = SongbirdConfig::default();
-        let env_config = EnvironmentConfig::default();
+        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
         
         // Test that all required information is available
         assert!(config.network.bind_address.to_string().len() > 0);
@@ -1064,7 +1064,7 @@ mod tests {
     fn test_comprehensive_validation() {
         // Comprehensive validation test
         let config = SongbirdConfig::default();
-        let env_config = EnvironmentConfig::default();
+        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
         
         // Network validation
         assert!(config.network.bind_address.to_string().len() > 0);
@@ -1073,7 +1073,7 @@ mod tests {
         assert!(config.network.gaming_port_range.end > config.network.gaming_port_range.start);
         
         // Security validation
-        let security_validation = ConfigSecurityValidator::validate_security(&config);
+        let security_validation = songbird_config::config::validation::ConfigSecurityValidator::validate_security(&config);
         assert!(security_validation.is_ok());
         
         // Environment validation
@@ -1206,7 +1206,7 @@ mod tests {
     #[test]
     fn test_data_directory_validation() {
         // Test data directory validation
-        let env_config = EnvironmentConfig::default();
+        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
         assert!(env_config.data_dir.len() > 0);
         assert!(env_config.data_dir.starts_with('/') || env_config.data_dir.contains(':')); // Unix or Windows path
     }
@@ -1278,7 +1278,7 @@ mod tests {
     fn test_orchestrator_initialization() {
         // Test orchestrator initialization
         let config = SongbirdConfig::default();
-        let orchestrator = Orchestrator::new(config.clone());
+        let _orchestrator = Orchestrator::new(config.clone());
         // If this compiles and doesn't panic, initialization is successful
         assert!(true);
     }

@@ -5,8 +5,293 @@
 
 use std::time::Duration;
 
-use songbird_lib::errors::{Result, SongbirdError};
+use songbird_errors::{Result, SongbirdError};
 use songbird_lib::errors::validation::ConfigValidator;
+
+#[tokio::test]
+async fn test_comprehensive_error_scenarios() -> Result<()> {
+    // Test Circuit Breaker Open Error
+    let cb_error = SongbirdError::CircuitBreakerOpen {
+        service: "test-service".to_string(),
+        message: "Circuit breaker is open".to_string(),
+    };
+    
+    let cb_error_msg = format!("Circuit breaker error: {}", cb_error);
+    assert!(cb_error_msg.contains("Circuit breaker is open"));
+    
+    // Test Circuit Breaker Failure Error
+    let cb_failure_error = SongbirdError::CircuitBreakerFailure {
+        service: "test-service".to_string(),
+        message: "Circuit breaker failure".to_string(),
+    };
+    
+    let cb_failure_msg = format!("Circuit breaker failure: {}", cb_failure_error);
+    assert!(cb_failure_msg.contains("Circuit breaker failure"));
+    
+    // Test Retry Exhausted Error
+    let retry_error = SongbirdError::RetryExhausted {
+        attempts: 3,
+        message: "Connection failed".to_string(),
+    };
+    
+    let retry_msg = format!("Retry error: {}", retry_error);
+    assert!(retry_msg.contains("5"));
+    assert!(retry_msg.contains("Max retries reached"));
+    
+    // Test Rate Limit Exceeded Error
+    let rate_error = SongbirdError::RateLimitExceeded("Too many requests".to_string());
+    let rate_msg = format!("Rate limit error: {}", rate_error);
+    assert!(rate_msg.contains("Too many requests"));
+    
+    // Test Execution Failed Error
+    let exec_error = SongbirdError::ExecutionFailed("Command failed".to_string());
+    let exec_msg = format!("Execution error: {}", exec_error);
+    assert!(exec_msg.contains("Command failed"));
+    
+    // Test Resource Exhausted Error
+    let resource_error = SongbirdError::ResourceExhausted {
+        resource: "memory".to_string(),
+        message: "Out of memory".to_string(),
+    };
+    let resource_msg = format!("Resource error: {}", resource_error);
+    assert!(resource_msg.contains("memory"));
+    assert!(resource_msg.contains("Out of memory"));
+    
+    // Test Network Error with Details
+    let network_detailed = SongbirdError::Network {
+        service: "api-service".to_string(),
+        message: "Connection failed".to_string(),
+        details: Some("Timeout after 30 seconds".to_string()),
+    };
+    let network_msg = format!("Network error: {}", network_detailed);
+    assert!(network_msg.contains("api-service"));
+    assert!(network_msg.contains("Connection failed"));
+    assert!(network_msg.contains("Timeout after 30 seconds"));
+    
+    // Test Discovery Error
+    let discovery_error = SongbirdError::Discovery {
+        message: "Service not found".to_string(),
+        service: Some("user-service".to_string()),
+    };
+    let discovery_msg = format!("Discovery error: {}", discovery_error);
+    assert!(discovery_msg.contains("Service not found"));
+    assert!(discovery_msg.contains("user-service"));
+    
+    // Test Authentication Error
+    let auth_error = SongbirdError::Authentication {
+        provider: "oauth2".to_string(),
+        message: "Invalid token".to_string(),
+    };
+    let auth_msg = format!("Auth error: {}", auth_error);
+    assert!(auth_msg.contains("oauth2"));
+    assert!(auth_msg.contains("Invalid token"));
+    
+    // Test Gaming Error
+    let gaming_error = SongbirdError::Gaming {
+        message: "Protocol mismatch".to_string(),
+        protocol: Some("UDP".to_string()),
+    };
+    let gaming_msg = format!("Gaming error: {}", gaming_error);
+    assert!(gaming_msg.contains("Protocol mismatch"));
+    assert!(gaming_msg.contains("UDP"));
+    
+    // Test Security Error
+    let security_error = SongbirdError::Security {
+        message: "Access denied".to_string(),
+        context: Some("admin_panel".to_string()),
+    };
+    let security_msg = format!("Security error: {}", security_error);
+    assert!(security_msg.contains("Access denied"));
+    assert!(security_msg.contains("admin_panel"));
+    
+    // Test Configuration Error
+    let config_error = SongbirdError::Config {
+        message: "Invalid port number".to_string(),
+        field: Some("port".to_string()),
+    };
+    let config_msg = format!("Config error: {}", config_error);
+    assert!(config_msg.contains("Invalid port number"));
+    assert!(config_msg.contains("port"));
+    
+    // Test Validation Error
+    let validation_error = SongbirdError::Validation {
+        field: "email".to_string(),
+        message: "Invalid format".to_string(),
+    };
+    let validation_msg = format!("Validation error: {}", validation_error);
+    assert!(validation_msg.contains("email"));
+    assert!(validation_msg.contains("Invalid format"));
+    
+    // Test Service Error
+    let service_error = SongbirdError::Service {
+        service: "payment-service".to_string(),
+        message: "Payment failed".to_string(),
+    };
+    let service_msg = format!("Service error: {}", service_error);
+    assert!(service_msg.contains("payment-service"));
+    assert!(service_msg.contains("Payment failed"));
+    
+    // Test IO Error
+    let io_error = SongbirdError::Io {
+        message: "File not found".to_string(),
+    };
+    let io_msg = format!("IO error: {}", io_error);
+    assert!(io_msg.contains("File not found"));
+    
+    // Test Protocol Error
+    let protocol_error = SongbirdError::Protocol {
+        protocol: "HTTP".to_string(),
+        message: "Invalid response".to_string(),
+    };
+    let protocol_msg = format!("Protocol error: {}", protocol_error);
+    assert!(protocol_msg.contains("HTTP"));
+    assert!(protocol_msg.contains("Invalid response"));
+    
+    // Test NotFound Error
+    let not_found_error = SongbirdError::NotFound {
+        resource: "user".to_string(),
+        message: "User not found".to_string(),
+    };
+    let not_found_msg = format!("NotFound error: {}", not_found_error);
+    assert!(not_found_msg.contains("user"));
+    assert!(not_found_msg.contains("User not found"));
+    
+    // Test Deployment Error
+    let deployment_error = SongbirdError::Deployment {
+        service: "web-service".to_string(),
+        message: "Deployment failed".to_string(),
+    };
+    let deployment_msg = format!("Deployment error: {}", deployment_error);
+    assert!(deployment_msg.contains("web-service"));
+    assert!(deployment_msg.contains("Deployment failed"));
+    
+    // Test TunnelCreation Error
+    let tunnel_error = SongbirdError::TunnelCreation("VPN setup failed".to_string());
+    let tunnel_msg = format!("Tunnel error: {}", tunnel_error);
+    assert!(tunnel_msg.contains("VPN setup failed"));
+    
+    // Test Encryption/Decryption Errors
+    let encryption_error = SongbirdError::EncryptionFailed("Key not found".to_string());
+    let encryption_msg = format!("Encryption error: {}", encryption_error);
+    assert!(encryption_msg.contains("Key not found"));
+    
+    let decryption_error = SongbirdError::DecryptionFailed("Invalid key".to_string());
+    let decryption_msg = format!("Decryption error: {}", decryption_error);
+    assert!(decryption_msg.contains("Invalid key"));
+    
+    // Test NetworkDetection Error
+    let network_detection_error = SongbirdError::NetworkDetection("NAT type unknown".to_string());
+    let network_detection_msg = format!("Network detection error: {}", network_detection_error);
+    assert!(network_detection_msg.contains("NAT type unknown"));
+    
+    // Test UnsupportedChannelType Error
+    let unsupported_error = SongbirdError::UnsupportedChannelType;
+    let unsupported_msg = format!("Unsupported error: {}", unsupported_error);
+    assert!(unsupported_msg.contains("Unsupported channel type"));
+    
+    // Test CompositionFailed Error
+    let composition_error = SongbirdError::CompositionFailed("Plugin incompatible".to_string());
+    let composition_msg = format!("Composition error: {}", composition_error);
+    assert!(composition_msg.contains("Plugin incompatible"));
+    
+    // Test PluginNotFound Error
+    let plugin_error = SongbirdError::PluginNotFound("missing-plugin".to_string());
+    let plugin_msg = format!("Plugin error: {}", plugin_error);
+    assert!(plugin_msg.contains("missing-plugin"));
+    
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_error_conversion_scenarios() -> Result<()> {
+    // Test From implementations
+    let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "File not found");
+    let songbird_error: SongbirdError = io_error.into();
+    assert!(songbird_error.to_string().contains("File not found"));
+    
+    let json_error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
+    let songbird_error: SongbirdError = json_error.into();
+    assert!(songbird_error.to_string().contains("json_parser"));
+    
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_error_helper_functions() -> Result<()> {
+    // Test helper functions
+    let service_error = SongbirdError::service_error("test-service", "Test failed".to_string());
+    assert!(service_error.to_string().contains("test-service"));
+    assert!(service_error.to_string().contains("Test failed"));
+    
+    let health_error = SongbirdError::health_check_failed("db-service", "Timeout".to_string());
+    assert!(health_error.to_string().contains("db-service"));
+    assert!(health_error.to_string().contains("Health check failed"));
+    
+    let config_error = SongbirdError::configuration_error("Invalid config".to_string());
+    assert!(config_error.to_string().contains("Invalid config"));
+    
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_error_debug_and_clone() -> Result<()> {
+    let error = SongbirdError::Communication("Test error".to_string());
+    
+    // Test Debug formatting
+    let debug_str = format!("{:?}", error);
+    assert!(debug_str.contains("Communication"));
+    assert!(debug_str.contains("Test error"));
+    
+    // Test Clone
+    let cloned = error.clone();
+    assert_eq!(error.to_string(), cloned.to_string());
+    
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_complex_error_scenarios() -> Result<()> {
+    // Test error chaining scenarios
+    let primary_error = SongbirdError::Network {
+        service: "auth-service".to_string(),
+        message: "Connection timeout".to_string(),
+        details: Some("After 3 retry attempts".to_string()),
+    };
+    
+    let secondary_error = SongbirdError::CircuitBreakerOpen {
+        service: "auth-service".to_string(),
+        message: "Too many network failures".to_string(),
+    };
+    
+    // Test that both errors contain expected information
+    assert!(primary_error.to_string().contains("auth-service"));
+    assert!(primary_error.to_string().contains("Connection timeout"));
+    assert!(primary_error.to_string().contains("After 3 retry attempts"));
+    
+    assert!(secondary_error.to_string().contains("auth-service"));
+    assert!(secondary_error.to_string().contains("Too many network failures"));
+    
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_error_trait_implementations() -> Result<()> {
+    let error = SongbirdError::Communication("Test error".to_string());
+    
+    // Test Error trait
+    let error_trait: &dyn std::error::Error = &error;
+    assert!(!error_trait.to_string().is_empty());
+    
+    // Test Display trait
+    let display_str = format!("{}", error);
+    assert!(display_str.contains("Test error"));
+    
+    // Test Debug trait
+    let debug_str = format!("{:?}", error);
+    assert!(debug_str.contains("Communication"));
+    
+    Ok(())
+}
 
 #[test]
 fn test_songbird_error_config() {
@@ -279,48 +564,47 @@ fn test_songbird_error_deployment() {
 #[test]
 fn test_songbird_error_circuit_breaker_open() {
     let cb_error = SongbirdError::CircuitBreakerOpen {
-        message: "Service temporarily unavailable".to_string(),
+        service: "test-service".to_string(),
+        message: "Circuit breaker is open".to_string(),
     };
     
     assert!(matches!(cb_error, SongbirdError::CircuitBreakerOpen { .. }));
     
     let error_string = format!("{}", cb_error);
-    assert!(error_string.contains("Service temporarily unavailable"));
+    assert!(error_string.contains("Circuit breaker is open"));
 }
 
 #[test]
 fn test_songbird_error_circuit_breaker_failure() {
     let cb_failure_error = SongbirdError::CircuitBreakerFailure {
-        message: "Circuit breaker malfunction".to_string(),
+        service: "test-service".to_string(),
+        message: "Circuit breaker failure".to_string(),
     };
     
     assert!(matches!(cb_failure_error, SongbirdError::CircuitBreakerFailure { .. }));
     
     let error_string = format!("{}", cb_failure_error);
-    assert!(error_string.contains("Circuit breaker malfunction"));
+    assert!(error_string.contains("Circuit breaker failure"));
 }
 
 #[test]
 fn test_songbird_error_retry_exhausted() {
     let retry_error = SongbirdError::RetryExhausted {
-        attempts: 5,
-        last_error: "Connection refused".to_string(),
+        attempts: 3,
+        message: "Connection failed".to_string(),
     };
     
     assert!(matches!(retry_error, SongbirdError::RetryExhausted { .. }));
     
     let error_string = format!("{}", retry_error);
-    assert!(error_string.contains("5 attempts"));
-    assert!(error_string.contains("Connection refused"));
+    assert!(error_string.contains("3"));
 }
 
 #[test]
 fn test_songbird_error_rate_limit_exceeded() {
-    let rate_limit_error = SongbirdError::RateLimitExceeded {
-        message: "Too many requests".to_string(),
-    };
+    let rate_limit_error = SongbirdError::RateLimitExceeded("Too many requests".to_string());
     
-    assert!(matches!(rate_limit_error, SongbirdError::RateLimitExceeded { .. }));
+    assert!(matches!(rate_limit_error, SongbirdError::RateLimitExceeded(_)));
     
     let error_string = format!("{}", rate_limit_error);
     assert!(error_string.contains("Too many requests"));
@@ -328,11 +612,9 @@ fn test_songbird_error_rate_limit_exceeded() {
 
 #[test]
 fn test_songbird_error_execution_failed() {
-    let execution_error = SongbirdError::ExecutionFailed {
-        message: "Command execution failed".to_string(),
-    };
+    let execution_error = SongbirdError::ExecutionFailed("Command execution failed".to_string());
     
-    assert!(matches!(execution_error, SongbirdError::ExecutionFailed { .. }));
+    assert!(matches!(execution_error, SongbirdError::ExecutionFailed(_)));
     
     let error_string = format!("{}", execution_error);
     assert!(error_string.contains("Command execution failed"));

@@ -449,6 +449,12 @@ impl TunnelMonitoringSystem {
     }
 }
 
+impl Default for TunnelMonitoringSystem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Default for BSTPTunnelManager {
     fn default() -> Self {
         Self::new()

@@ -4,11 +4,9 @@
 //! Coverage target: 95%+
 
 use songbird_lib::errors::validation::ConfigValidator;
-use songbird_lib::errors::{Result, SongbirdError};
-use std::net::{IpAddr, SocketAddr};
+use songbird_lib::errors::SongbirdError;
 use std::time::Duration;
 use tempfile::TempDir;
-use url::Url;
 
 #[cfg(test)]
 mod port_validation_tests {

@@ -1,0 +1,27 @@
+[package]
+name = "songbird-universal-primals"
+version = "0.1.0"
+edition = "2021"
+description = "Universal primal integration system for Songbird"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+async-trait = "0.1"
+tracing = "0.1"
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+base64 = "0.22"
+thiserror = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4"] }
+rand = "0.8"
+
+# Songbird dependencies
+songbird-errors = { path = "../songbird-errors" }
+songbird-config = { path = "../songbird-config" }
+songbird-discovery = { path = "../songbird-discovery" }
+
+[dev-dependencies]
+tokio-test = "0.4" 

@@ -1,7 +1,6 @@
 use songbird_lib::communication::{
     CommunicationLayer, CommunicationResponse, HttpCommunication,
     InMemoryCommunication, ServiceAddress, ServiceMessage, WebSocketCommunication,
-    CommunicationStats,
 };
 use songbird_lib::errors::Result;
 use std::collections::HashMap;

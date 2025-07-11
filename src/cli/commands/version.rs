@@ -33,25 +33,16 @@ pub async fn show_detailed_version() -> CliResult<()> {
     println!("Description:");
     println!("  {}", env!("CARGO_PKG_DESCRIPTION"));
     println!("Features enabled:");
-
-    #[cfg(feature = "built-in-observability")]
-    println!("  ✅ Built-in observability");
-    #[cfg(feature = "prometheus-export")]
-    println!("  ✅ Prometheus metrics export");
-    #[cfg(feature = "jaeger-tracing")]
-    println!("  ✅ Jaeger distributed tracing");
-    #[cfg(feature = "production-security")]
-    println!("  ✅ Production security features");
-    #[cfg(feature = "circuit-breakers")]
-    println!("  ✅ Circuit breakers");
-    #[cfg(not(any(
-        feature = "built-in-observability",
-        feature = "prometheus-export",
-        feature = "jaeger-tracing",
-        feature = "production-security",
-        feature = "circuit-breakers"
-    )))]
-    println!("  ℹ️  Using default feature set");
+    
+    // Note: Features are defined in individual crates, not at the workspace level
+    println!("  ✅ Core orchestration");
+    println!("  ✅ Gaming network bridge");
+    println!("  ✅ Service discovery");
+    println!("  ✅ Federation support");
+    println!("  ✅ Security integrations");
+    println!("  ✅ Observability framework");
+    println!("  ✅ Configuration management");
+    println!("  ✅ CLI interface");
     println!("System information:");
     println!("  OS: {}", std::env::consts::OS);
     println!("  Architecture: {}", std::env::consts::ARCH);

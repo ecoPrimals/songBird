@@ -4,8 +4,6 @@ use songbird_lib::orchestrator::*;
 use songbird_lib::config::SongbirdConfig;
 use tokio::test;
 use songbird_lib::errors::Result;
-use std::sync::Arc;
-use std::time::Duration;
 use std::net::IpAddr;
 
 /// Test HealthStatus creation and validation

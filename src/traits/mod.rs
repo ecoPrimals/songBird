@@ -139,6 +139,51 @@ pub enum PluginCapability {
     },
 }
 
+impl std::hash::Hash for PluginCapability {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            PluginCapability::Encryption { algorithms } => {
+                "encryption".hash(state);
+                algorithms.hash(state);
+            }
+            PluginCapability::ServiceDiscovery { protocols } => {
+                "service_discovery".hash(state);
+                protocols.hash(state);
+            }
+            PluginCapability::LoadBalancing { strategies } => {
+                "load_balancing".hash(state);
+                strategies.hash(state);
+            }
+            PluginCapability::GamingBridge { protocols } => {
+                "gaming_bridge".hash(state);
+                protocols.hash(state);
+            }
+            PluginCapability::Compute { cpu_cores, memory_gb } => {
+                "compute".hash(state);
+                cpu_cores.hash(state);
+                memory_gb.hash(state);
+            }
+            PluginCapability::Storage { capacity_gb, storage_type } => {
+                "storage".hash(state);
+                capacity_gb.hash(state);
+                storage_type.hash(state);
+            }
+            PluginCapability::Network { bandwidth_mbps, latency_ms } => {
+                "network".hash(state);
+                bandwidth_mbps.hash(state);
+                latency_ms.hash(state);
+            }
+            PluginCapability::Custom { name, attributes: _ } => {
+                "custom".hash(state);
+                name.hash(state);
+                // We don't hash attributes since HashMap doesn't implement Hash
+                // This means two Custom capabilities with the same name but different
+                // attributes will hash to the same value, which is acceptable for our use case
+            }
+        }
+    }
+}
+
 /// Plugin requirement - what a plugin needs
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PluginRequirement {
@@ -225,7 +270,7 @@ pub struct PerformanceEstimate {
 }
 
 /// Composed system result
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ComposedSystem {
     pub system_id: String,
     pub active_plugins: Vec<String>,

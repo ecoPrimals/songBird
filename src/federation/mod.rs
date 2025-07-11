@@ -13,21 +13,20 @@
 //! ```
 
 use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
-use async_trait::async_trait;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, mpsc};
-use tracing::{debug, error, info, warn};
+use tracing::info;
 use uuid::Uuid;
 
-use crate::network::beardog_integration::{BearDogIntegration, NetworkEvent, SecurityEvent, PeerCapabilities};
+use crate::network::beardog_integration::{BearDogIntegration, NetworkEvent, SecurityEvent};
 use crate::errors::{Result, SongbirdError};
-use crate::biome::{ByobCoordinator, ByobDeploymentRequest, DeploymentResult};
-use crate::config::OrchestratorConfig;
+
 
 /// Federation node types based on network topology
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -238,10 +237,7 @@ pub enum RouteStrategy {
     Balanced,
 }
 
-/// Songbird Federation Manager
-/// 
-/// Coordinates self-contained networking using proximity-first discovery
-/// and BearDog security for worldwide mesh capability.
+/// Federation manager for coordinating with other Songbird instances
 pub struct FederationManager {
     /// Local node information
     local_node: Arc<RwLock<FederationNode>>,
@@ -252,13 +248,13 @@ pub struct FederationManager {
     /// BearDog integration for security
     beardog: Arc<BearDogIntegration>,
     /// Discovery engines
-    discovery: DiscoveryEngine,
+    _discovery: DiscoveryEngine,
     /// Route optimizer
     router: RouteOptimizer,
     /// Configuration
     config: FederationConfig,
     /// Event channels
-    event_tx: mpsc::UnboundedSender<FederationEvent>,
+    _event_tx: mpsc::UnboundedSender<FederationEvent>,
 }
 
 /// Network topology representation
@@ -267,21 +263,21 @@ pub struct NetworkTopology {
     /// Network graph (node -> connected nodes)
     graph: HashMap<Uuid, HashSet<Uuid>>,
     /// Proximity matrix (cached for performance)
-    proximity_matrix: HashMap<(Uuid, Uuid), NetworkProximity>,
+    _proximity_matrix: HashMap<(Uuid, Uuid), NetworkProximity>,
     /// Route table (source -> destination -> best path)
-    route_table: HashMap<(Uuid, Uuid), Vec<Uuid>>,
+    _route_table: HashMap<(Uuid, Uuid), Vec<Uuid>>,
     /// Last topology update
-    last_updated: Instant,
+    _last_updated: Instant,
 }
 
 /// Discovery engine for proximity-first networking
 pub struct DiscoveryEngine {
     /// Active discovery protocols
-    protocols: Vec<DiscoveryProtocol>,
+    _protocols: Vec<DiscoveryProtocol>,
     /// Discovery cache
-    discovery_cache: Arc<RwLock<HashMap<String, DiscoveryResult>>>,
+    _discovery_cache: Arc<RwLock<HashMap<String, DiscoveryResult>>>,
     /// Discovery intervals
-    intervals: DiscoveryIntervals,
+    _intervals: DiscoveryIntervals,
 }
 
 /// Discovery timing configuration
@@ -313,11 +309,11 @@ pub struct DiscoveryResult {
 /// Route optimizer for intelligent path selection
 pub struct RouteOptimizer {
     /// Routing strategy
-    strategy: RouteStrategy,
+    _strategy: RouteStrategy,
     /// Route cache
     route_cache: Arc<RwLock<HashMap<(Uuid, Uuid), RouteInfo>>>,
     /// Performance history
-    performance_history: Arc<RwLock<HashMap<Uuid, Vec<PerformanceSnapshot>>>>,
+    _performance_history: Arc<RwLock<HashMap<Uuid, Vec<PerformanceSnapshot>>>>,
 }
 
 /// Route information
@@ -447,13 +443,13 @@ pub struct RateLimits {
 #[derive(Debug, Clone)]
 pub enum FederationEvent {
     /// Node discovered
-    NodeDiscovered { node: FederationNode },
+    NodeDiscovered { node: Box<FederationNode> },
     /// Node lost/disconnected
-    NodeLost { node_id: Uuid, reason: String },
-    /// Route optimized
-    RouteOptimized { route: RouteInfo },
-    /// Topology changed
-    TopologyChanged { change: TopologyChange },
+    NodeLost { node_id: String },
+    /// Data synchronization event
+    DataSync { event: DataSyncEvent },
+    /// Resource usage alert
+    ResourceAlert { alert: ResourceAlert },
     /// Security event
     SecurityEvent { event: SecurityEvent },
     /// Performance alert
@@ -475,17 +471,33 @@ pub enum TopologyChange {
     RouteUpdated { route: RouteInfo },
 }
 
-/// Performance alerts
+/// Event types for federation system
 #[derive(Debug, Clone)]
-pub enum PerformanceAlert {
-    /// High latency detected
-    HighLatency { node_id: Uuid, latency_ms: u32 },
-    /// Low bandwidth detected
-    LowBandwidth { node_id: Uuid, bandwidth_mbps: u32 },
-    /// Packet loss detected
-    PacketLoss { node_id: Uuid, loss_percent: f32 },
-    /// Node overloaded
-    NodeOverloaded { node_id: Uuid, load_score: f32 },
+pub enum DataSyncEvent {
+    /// Data replication started
+    ReplicationStarted { source: String, target: String },
+    /// Data replication completed
+    ReplicationCompleted { source: String, target: String },
+    /// Data conflict detected
+    ConflictDetected { source: String, target: String, conflict_type: String },
+}
+
+/// Resource alert types
+#[derive(Debug, Clone)]
+pub struct ResourceAlert {
+    pub resource_type: String,
+    pub threshold: f64,
+    pub current_value: f64,
+    pub severity: String,
+}
+
+/// Performance alert types
+#[derive(Debug, Clone)]
+pub struct PerformanceAlert {
+    pub metric: String,
+    pub threshold: f64,
+    pub current_value: f64,
+    pub node_id: String,
 }
 
 impl FederationManager {
@@ -513,10 +525,10 @@ impl FederationManager {
             nodes,
             topology,
             beardog,
-            discovery,
+            _discovery: discovery,
             router,
             config,
-            event_tx,
+            _event_tx: event_tx,
         };
         
         Ok(manager)
@@ -588,7 +600,11 @@ impl FederationManager {
         let node = {
             let nodes = self.nodes.read().await;
             nodes.get(&node_id).cloned()
-                .ok_or_else(|| SongbirdError::Network("Node not found".to_string()))?
+                .ok_or_else(|| SongbirdError::Network {
+                    service: "federation".to_string(),
+                    message: "Node not found".to_string(),
+                    details: None,
+                })?
         };
         
         info!("Establishing BearDog secure connection to node: {}", node.name);
@@ -766,12 +782,12 @@ impl FederationManager {
         Ok(Vec::new())
     }
     
-    async fn update_topology(&self, nodes: &[FederationNode]) -> Result<()> {
+    async fn update_topology(&self, _nodes: &[FederationNode]) -> Result<()> {
         // Update network topology with discovered nodes
         Ok(())
     }
     
-    async fn create_beardog_session(&self, node: &FederationNode) -> Result<SecuritySession> {
+    async fn create_beardog_session(&self, _node: &FederationNode) -> Result<SecuritySession> {
         // Create BearDog security session
         Ok(SecuritySession {
             session_id: Uuid::new_v4().to_string(),
@@ -793,7 +809,7 @@ impl FederationManager {
         })
     }
     
-    async fn select_optimal_nodes(&self, requirements: &FederatedDeploymentRequirements) -> Result<Vec<Uuid>> {
+    async fn select_optimal_nodes(&self, _requirements: &FederatedDeploymentRequirements) -> Result<Vec<Uuid>> {
         // Select optimal nodes based on deployment requirements
         Ok(Vec::new())
     }
@@ -801,9 +817,9 @@ impl FederationManager {
     async fn execute_federated_deployment(
         &self,
         team_id: String,
-        requirements: FederatedDeploymentRequirements,
+        _requirements: FederatedDeploymentRequirements,
         nodes: Vec<Uuid>,
-        sessions: HashMap<Uuid, SecuritySession>,
+        _sessions: HashMap<Uuid, SecuritySession>,
     ) -> Result<FederatedDeploymentResult> {
         // Execute deployment across federated nodes
         Ok(FederatedDeploymentResult {
@@ -911,13 +927,19 @@ pub struct FederationStatus {
     pub last_updated: DateTime<Utc>,
 }
 
+impl Default for NetworkTopology {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkTopology {
     pub fn new() -> Self {
         Self {
             graph: HashMap::new(),
-            proximity_matrix: HashMap::new(),
-            route_table: HashMap::new(),
-            last_updated: Instant::now(),
+            _proximity_matrix: HashMap::new(),
+            _route_table: HashMap::new(),
+            _last_updated: Instant::now(),
         }
     }
 }
@@ -925,9 +947,9 @@ impl NetworkTopology {
 impl DiscoveryEngine {
     pub async fn new(config: DiscoveryConfig) -> Result<Self> {
         Ok(Self {
-            protocols: config.enabled_protocols,
-            discovery_cache: Arc::new(RwLock::new(HashMap::new())),
-            intervals: config.intervals,
+            _protocols: config.enabled_protocols,
+            _discovery_cache: Arc::new(RwLock::new(HashMap::new())),
+            _intervals: config.intervals,
         })
     }
 }
@@ -935,9 +957,9 @@ impl DiscoveryEngine {
 impl RouteOptimizer {
     pub fn new(strategy: RouteStrategy) -> Self {
         Self {
-            strategy,
+            _strategy: strategy,
             route_cache: Arc::new(RwLock::new(HashMap::new())),
-            performance_history: Arc::new(RwLock::new(HashMap::new())),
+            _performance_history: Arc::new(RwLock::new(HashMap::new())),
         }
     }
     
