@@ -52,11 +52,11 @@ pub struct ServiceInstance {
     pub port: u16,
     pub weight: u32,
     pub healthy: bool,
-    pub health_score: f64,      // 0.0 to 1.0, 1.0 being healthiest
-    pub avg_response_time: f64, // milliseconds
-    pub cpu_usage: f64,         // percentage 0.0 to 100.0
-    pub memory_usage: f64,      // percentage 0.0 to 100.0
-    pub gpu_usage: Option<f64>, // percentage 0.0 to 100.0, None if no GPU
+    pub health_score: f64,             // 0.0 to 1.0, 1.0 being healthiest
+    pub avg_response_time: f64,        // milliseconds
+    pub cpu_usage: f64,                // percentage 0.0 to 100.0
+    pub memory_usage: f64,             // percentage 0.0 to 100.0
+    pub gpu_usage: Option<f64>,        // percentage 0.0 to 100.0, None if no GPU
     pub gpu_memory_usage: Option<f64>, // percentage 0.0 to 100.0
     pub active_connections: u32,
     pub last_updated: chrono::DateTime<chrono::Utc>,
@@ -401,14 +401,22 @@ impl LoadBalancer for HealthBasedLoadBalancer {
             return instances
                 .iter()
                 .filter(|instance| instance.healthy)
-                .max_by(|a, b| a.health_score.partial_cmp(&b.health_score).unwrap_or(std::cmp::Ordering::Equal))
+                .max_by(|a, b| {
+                    a.health_score
+                        .partial_cmp(&b.health_score)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
                 .cloned();
         }
 
         // Select the instance with the highest health score
         healthy_instances
             .iter()
-            .max_by(|a, b| a.health_score.partial_cmp(&b.health_score).unwrap_or(std::cmp::Ordering::Equal))
+            .max_by(|a, b| {
+                a.health_score
+                    .partial_cmp(&b.health_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .map(|&instance| instance.clone())
     }
 
@@ -487,7 +495,11 @@ impl LoadBalancer for LatencyOptimizedLoadBalancer {
         // Select instance with lowest average response time
         candidates
             .iter()
-            .min_by(|a, b| a.avg_response_time.partial_cmp(&b.avg_response_time).unwrap_or(std::cmp::Ordering::Equal))
+            .min_by(|a, b| {
+                a.avg_response_time
+                    .partial_cmp(&b.avg_response_time)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .map(|&instance| instance.clone())
     }
 
@@ -514,8 +526,8 @@ impl LoadBalancer for LatencyOptimizedLoadBalancer {
 /// Resource-aware load balancer that considers CPU and memory usage
 pub struct ResourceAwareLoadBalancer {
     stats: Arc<RwLock<LoadBalancerStats>>,
-    cpu_weight: f64,    // Weight for CPU usage in scoring (0.0 to 1.0)
-    memory_weight: f64, // Weight for memory usage in scoring (0.0 to 1.0)
+    cpu_weight: f64,           // Weight for CPU usage in scoring (0.0 to 1.0)
+    memory_weight: f64,        // Weight for memory usage in scoring (0.0 to 1.0)
     max_cpu_threshold: f64,    // Maximum acceptable CPU usage percentage
     max_memory_threshold: f64, // Maximum acceptable memory usage percentage
 }
@@ -528,10 +540,23 @@ impl Default for ResourceAwareLoadBalancer {
 
 impl ResourceAwareLoadBalancer {
     /// Create a new resource-aware load balancer
-    pub fn new(cpu_weight: f64, memory_weight: f64, max_cpu_threshold: f64, max_memory_threshold: f64) -> Self {
+    pub fn new(
+        cpu_weight: f64,
+        memory_weight: f64,
+        max_cpu_threshold: f64,
+        max_memory_threshold: f64,
+    ) -> Self {
         let total_weight = cpu_weight + memory_weight;
-        let normalized_cpu_weight = if total_weight > 0.0 { cpu_weight / total_weight } else { 0.5 };
-        let normalized_memory_weight = if total_weight > 0.0 { memory_weight / total_weight } else { 0.5 };
+        let normalized_cpu_weight = if total_weight > 0.0 {
+            cpu_weight / total_weight
+        } else {
+            0.5
+        };
+        let normalized_memory_weight = if total_weight > 0.0 {
+            memory_weight / total_weight
+        } else {
+            0.5
+        };
 
         Self {
             stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
@@ -574,8 +599,8 @@ impl LoadBalancer for ResourceAwareLoadBalancer {
         let low_resource_instances: Vec<&ServiceInstance> = healthy_instances
             .iter()
             .filter(|instance| {
-                instance.cpu_usage <= self.max_cpu_threshold && 
-                instance.memory_usage <= self.max_memory_threshold
+                instance.cpu_usage <= self.max_cpu_threshold
+                    && instance.memory_usage <= self.max_memory_threshold
             })
             .copied()
             .collect();
@@ -592,7 +617,9 @@ impl LoadBalancer for ResourceAwareLoadBalancer {
             .min_by(|a, b| {
                 let score_a = self.calculate_resource_score(a);
                 let score_b = self.calculate_resource_score(b);
-                score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
+                score_a
+                    .partial_cmp(&score_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
             .map(|&instance| instance.clone())
     }
@@ -620,9 +647,9 @@ impl LoadBalancer for ResourceAwareLoadBalancer {
 /// GPU-aware load balancer for AI/ML workloads
 pub struct GpuAwareLoadBalancer {
     stats: Arc<RwLock<LoadBalancerStats>>,
-    max_gpu_usage_threshold: f64,        // Maximum acceptable GPU usage percentage
-    max_gpu_memory_threshold: f64,       // Maximum acceptable GPU memory usage percentage
-    prefer_gpu_instances: bool,          // Whether to prefer instances with GPUs
+    max_gpu_usage_threshold: f64, // Maximum acceptable GPU usage percentage
+    max_gpu_memory_threshold: f64, // Maximum acceptable GPU memory usage percentage
+    prefer_gpu_instances: bool,   // Whether to prefer instances with GPUs
 }
 
 impl Default for GpuAwareLoadBalancer {
@@ -633,7 +660,11 @@ impl Default for GpuAwareLoadBalancer {
 
 impl GpuAwareLoadBalancer {
     /// Create a new GPU-aware load balancer
-    pub fn new(max_gpu_usage_threshold: f64, max_gpu_memory_threshold: f64, prefer_gpu_instances: bool) -> Self {
+    pub fn new(
+        max_gpu_usage_threshold: f64,
+        max_gpu_memory_threshold: f64,
+        prefer_gpu_instances: bool,
+    ) -> Self {
         Self {
             stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
             max_gpu_usage_threshold: max_gpu_usage_threshold.clamp(0.0, 100.0),
@@ -653,7 +684,11 @@ impl GpuAwareLoadBalancer {
             (None, Some(gpu_memory)) => gpu_memory / 100.0,
             (None, None) => {
                 // No GPU - return high score if we prefer GPU instances
-                if self.prefer_gpu_instances { 1.0 } else { 0.0 }
+                if self.prefer_gpu_instances {
+                    1.0
+                } else {
+                    0.0
+                }
             }
         }
     }
@@ -680,7 +715,9 @@ impl LoadBalancer for GpuAwareLoadBalancer {
         let candidates = if self.prefer_gpu_instances {
             let gpu_instances: Vec<&ServiceInstance> = healthy_instances
                 .iter()
-                .filter(|instance| instance.gpu_usage.is_some() || instance.gpu_memory_usage.is_some())
+                .filter(|instance| {
+                    instance.gpu_usage.is_some() || instance.gpu_memory_usage.is_some()
+                })
                 .copied()
                 .collect();
 
@@ -689,8 +726,12 @@ impl LoadBalancer for GpuAwareLoadBalancer {
                 let low_gpu_usage: Vec<&ServiceInstance> = gpu_instances
                     .iter()
                     .filter(|instance| {
-                        let gpu_usage_ok = instance.gpu_usage.is_none_or(|usage| usage <= self.max_gpu_usage_threshold);
-                        let gpu_memory_ok = instance.gpu_memory_usage.is_none_or(|usage| usage <= self.max_gpu_memory_threshold);
+                        let gpu_usage_ok = instance
+                            .gpu_usage
+                            .is_none_or(|usage| usage <= self.max_gpu_usage_threshold);
+                        let gpu_memory_ok = instance
+                            .gpu_memory_usage
+                            .is_none_or(|usage| usage <= self.max_gpu_memory_threshold);
                         gpu_usage_ok && gpu_memory_ok
                     })
                     .copied()
@@ -714,7 +755,9 @@ impl LoadBalancer for GpuAwareLoadBalancer {
             .min_by(|a, b| {
                 let score_a = self.calculate_gpu_score(a);
                 let score_b = self.calculate_gpu_score(b);
-                score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
+                score_a
+                    .partial_cmp(&score_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
             .map(|&instance| instance.clone())
     }
@@ -758,8 +801,12 @@ impl LoadBalancerManager {
             LoadBalancerStrategy::Random => Box::new(RoundRobinLoadBalancer::new()), // Fallback
             LoadBalancerStrategy::IpHash => Box::new(RoundRobinLoadBalancer::new()), // Fallback
             LoadBalancerStrategy::HealthBased => Box::new(HealthBasedLoadBalancer::new(0.5)), // Default health threshold
-            LoadBalancerStrategy::LatencyOptimized => Box::new(LatencyOptimizedLoadBalancer::new(1000.0)), // Default max latency
-            LoadBalancerStrategy::ResourceAware => Box::new(ResourceAwareLoadBalancer::new(0.6, 0.4, 80.0, 85.0)), // Default weights and thresholds
+            LoadBalancerStrategy::LatencyOptimized => {
+                Box::new(LatencyOptimizedLoadBalancer::new(1000.0))
+            } // Default max latency
+            LoadBalancerStrategy::ResourceAware => {
+                Box::new(ResourceAwareLoadBalancer::new(0.6, 0.4, 80.0, 85.0))
+            } // Default weights and thresholds
             LoadBalancerStrategy::GpuAware => Box::new(GpuAwareLoadBalancer::new(80.0, 85.0, true)), // Default weights and thresholds
         };
 
@@ -779,6 +826,10 @@ impl LoadBalancerManager {
             return Err(SongbirdError::Config {
                 field: Some("instance_id".to_string()),
                 message: format!("Instance with ID {} already exists", instance.id),
+                context: Some("load_balancer_add_instance".to_string()),
+                suggestion: Some(
+                    "Use a unique instance ID or update the existing instance".to_string(),
+                ),
             });
         }
 
@@ -795,7 +846,9 @@ impl LoadBalancerManager {
         if instances.len() == initial_len {
             return Err(SongbirdError::Config {
                 field: Some("instance_id".to_string()),
-                message: format!("Instance with ID {} not found", instance_id),
+                message: format!("Instance with ID {instance_id} not found"),
+                context: Some("load_balancer_remove_instance".to_string()),
+                suggestion: Some("Verify the instance ID exists in the load balancer".to_string()),
             });
         }
 
@@ -812,7 +865,12 @@ impl LoadBalancerManager {
         } else {
             Err(SongbirdError::Config {
                 field: Some("instance_id".to_string()),
-                message: format!("Instance with ID {} not found", instance_id),
+                message: format!("Instance with ID {instance_id} not found"),
+                context: Some("load_balancer_update_health".to_string()),
+                suggestion: Some(
+                    "Check if the instance ID is correct and exists in the load balancer"
+                        .to_string(),
+                ),
             })
         }
     }
@@ -1080,4 +1138,3 @@ pub struct BackendServer {
 }
 
 use songbird_observability::observability::HealthStatus;
-

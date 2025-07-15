@@ -181,6 +181,8 @@ impl NetworkManager {
             return Err(SongbirdError::Config {
                 field: Some("proxy_route.path".to_string()),
                 message: "Proxy route path cannot be empty".to_string(),
+                context: Some("network_configuration".to_string()),
+                suggestion: Some("Check configuration values and network settings".to_string()),
             });
         }
 
@@ -188,6 +190,8 @@ impl NetworkManager {
             return Err(SongbirdError::Config {
                 field: Some("proxy_route.target".to_string()),
                 message: "Proxy route target cannot be empty".to_string(),
+                context: Some("network_configuration".to_string()),
+                suggestion: Some("Check configuration values and network settings".to_string()),
             });
         }
 
@@ -196,6 +200,10 @@ impl NetworkManager {
             return Err(SongbirdError::Config {
                 field: Some("proxy_route.target".to_string()),
                 message: format!("Invalid proxy target URL: {}", route.target),
+                context: Some("proxy_route_validation".to_string()),
+                suggestion: Some(
+                    "Ensure proxy target URL starts with http:// or https://".to_string(),
+                ),
             });
         }
 
@@ -284,19 +292,28 @@ pub mod utils {
     pub fn get_local_ip() -> Result<IpAddr> {
         // Try to connect to a remote address to determine local IP
         let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| {
-            SongbirdError::NetworkDetection(format!("Failed to create socket: {}", e))
+            SongbirdError::NetworkDetection {
+                message: format!("Failed to create socket: {}", e),
+                interface: None,
+                suggestion: Some("Check network permissions and socket availability".to_string()),
+            }
         })?;
 
-        socket.connect("8.8.8.8:80").map_err(|e| {
-            SongbirdError::NetworkDetection(format!(
-                "Failed to connect to determine local IP: {}",
-                e
-            ))
-        })?;
+        socket
+            .connect("8.8.8.8:80")
+            .map_err(|e| SongbirdError::NetworkDetection {
+                message: format!("Failed to connect to determine local IP: {}", e),
+                interface: None,
+                suggestion: Some("Check network connectivity and DNS resolution".to_string()),
+            })?;
 
-        let local_addr = socket.local_addr().map_err(|e| {
-            SongbirdError::NetworkDetection(format!("Failed to get local address: {}", e))
-        })?;
+        let local_addr = socket
+            .local_addr()
+            .map_err(|e| SongbirdError::NetworkDetection {
+                message: format!("Failed to get local address: {}", e),
+                interface: None,
+                suggestion: Some("Check socket binding and network interface status".to_string()),
+            })?;
 
         Ok(local_addr.ip())
     }
@@ -306,6 +323,8 @@ pub mod utils {
         ip_str.parse().map_err(|e| SongbirdError::Config {
             field: Some("ip_address".to_string()),
             message: format!("Invalid IP address '{}': {}", ip_str, e),
+            context: Some("ip_address_validation".to_string()),
+            suggestion: Some("Ensure IP address format is valid (e.g., 192.168.1.1)".to_string()),
         })
     }
 
@@ -315,6 +334,8 @@ pub mod utils {
             return Err(SongbirdError::Config {
                 field: Some("port".to_string()),
                 message: "Port cannot be 0".to_string(),
+                context: Some("network_configuration".to_string()),
+                suggestion: Some("Check configuration values and network settings".to_string()),
             });
         }
         if port < 1024 {

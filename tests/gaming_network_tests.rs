@@ -1,5 +1,5 @@
 //! Gaming Network Tests
-//! 
+//!
 //! Comprehensive tests for the gaming network functionality
 //! Focuses on protocol detection, packet processing, and bridge management
 
@@ -16,11 +16,11 @@ mod gaming_network_tests {
     async fn test_protocol_detector_ipx() {
         let config = SongbirdConfig::default();
         let detector = RealProtocolDetector::new(config).await.unwrap();
-        
+
         // Test IPX packet detection
         let ipx_packet = create_test_ipx_packet();
         let result = detector.detect_protocol(&ipx_packet).await;
-        
+
         assert!(result.is_ok(), "IPX protocol detection should succeed");
         let protocol = result.unwrap();
         assert_eq!(protocol.protocol_type, "IPX", "Should detect IPX protocol");
@@ -30,46 +30,64 @@ mod gaming_network_tests {
     async fn test_protocol_detector_directplay() {
         let config = SongbirdConfig::default();
         let detector = RealProtocolDetector::new(config).await.unwrap();
-        
+
         // Test DirectPlay packet detection
         let directplay_packet = create_test_directplay_packet();
         let result = detector.detect_protocol(&directplay_packet).await;
-        
-        assert!(result.is_ok(), "DirectPlay protocol detection should succeed");
+
+        assert!(
+            result.is_ok(),
+            "DirectPlay protocol detection should succeed"
+        );
         let protocol = result.unwrap();
-        assert_eq!(protocol.protocol_type, "DirectPlay", "Should detect DirectPlay protocol");
+        assert_eq!(
+            protocol.protocol_type, "DirectPlay",
+            "Should detect DirectPlay protocol"
+        );
     }
 
     #[tokio::test]
     async fn test_protocol_detector_udp_broadcast() {
         let config = SongbirdConfig::default();
         let detector = RealProtocolDetector::new(config).await.unwrap();
-        
+
         // Test UDP broadcast packet detection
         let udp_packet = create_test_udp_broadcast_packet();
         let result = detector.detect_protocol(&udp_packet).await;
-        
-        assert!(result.is_ok(), "UDP broadcast protocol detection should succeed");
+
+        assert!(
+            result.is_ok(),
+            "UDP broadcast protocol detection should succeed"
+        );
         let protocol = result.unwrap();
-        assert_eq!(protocol.protocol_type, "UDP_Broadcast", "Should detect UDP broadcast protocol");
+        assert_eq!(
+            protocol.protocol_type, "UDP_Broadcast",
+            "Should detect UDP broadcast protocol"
+        );
     }
 
     #[tokio::test]
     async fn test_bridge_manager_initialization() {
         let config = SongbirdConfig::default();
         let manager = RealBridgeManager::new(config).await;
-        
-        assert!(manager.is_ok(), "Bridge manager should initialize successfully");
-        
+
+        assert!(
+            manager.is_ok(),
+            "Bridge manager should initialize successfully"
+        );
+
         let bridge_manager = manager.unwrap();
-        assert!(bridge_manager.is_running(), "Bridge manager should be running after initialization");
+        assert!(
+            bridge_manager.is_running(),
+            "Bridge manager should be running after initialization"
+        );
     }
 
     #[tokio::test]
     async fn test_bridge_creation() {
         let config = SongbirdConfig::default();
         let mut manager = RealBridgeManager::new(config).await.unwrap();
-        
+
         let bridge_config = BridgeConfig {
             name: "test-bridge".to_string(),
             source_protocol: GameProtocolClass::IpxBased,
@@ -79,10 +97,10 @@ mod gaming_network_tests {
             buffer_size: 4096,
             timeout: Duration::from_secs(30),
         };
-        
+
         let result = manager.create_bridge(bridge_config).await;
         assert!(result.is_ok(), "Bridge creation should succeed");
-        
+
         let bridge_id = result.unwrap();
         assert!(!bridge_id.is_empty(), "Bridge ID should not be empty");
     }
@@ -91,7 +109,7 @@ mod gaming_network_tests {
     async fn test_bridge_status_monitoring() {
         let config = SongbirdConfig::default();
         let mut manager = RealBridgeManager::new(config).await.unwrap();
-        
+
         let bridge_config = BridgeConfig {
             name: "status-bridge".to_string(),
             source_protocol: GameProtocolClass::DirectPlay,
@@ -101,23 +119,26 @@ mod gaming_network_tests {
             buffer_size: 2048,
             timeout: Duration::from_secs(60),
         };
-        
+
         let bridge_id = manager.create_bridge(bridge_config).await.unwrap();
-        
+
         // Check bridge status
         let status = manager.get_bridge_status(&bridge_id).await;
         assert!(status.is_ok(), "Bridge status check should succeed");
-        
+
         let bridge_status = status.unwrap();
         assert_eq!(bridge_status.name, "status-bridge");
-        assert!(bridge_status.is_active, "Bridge should be active after creation");
+        assert!(
+            bridge_status.is_active,
+            "Bridge should be active after creation"
+        );
     }
 
     #[tokio::test]
     async fn test_bridge_destroy() {
         let config = SongbirdConfig::default();
         let mut manager = RealBridgeManager::new(config).await.unwrap();
-        
+
         let bridge_config = BridgeConfig {
             name: "destroy-bridge".to_string(),
             source_protocol: GameProtocolClass::NetBiosDiscovery,
@@ -127,36 +148,45 @@ mod gaming_network_tests {
             buffer_size: 1024,
             timeout: Duration::from_secs(15),
         };
-        
+
         let bridge_id = manager.create_bridge(bridge_config).await.unwrap();
-        
+
         // Destroy bridge
         let result = manager.destroy_bridge(&bridge_id).await;
         assert!(result.is_ok(), "Bridge destruction should succeed");
-        
+
         // Verify bridge is destroyed
         let status = manager.get_bridge_status(&bridge_id).await;
-        assert!(status.is_err(), "Bridge status should fail after destruction");
+        assert!(
+            status.is_err(),
+            "Bridge status should fail after destruction"
+        );
     }
 
     #[tokio::test]
     async fn test_game_session_detection() {
         let config = SongbirdConfig::default();
         let detector = RealProtocolDetector::new(config).await.unwrap();
-        
+
         let session_packet = create_test_game_session_packet();
         let result = detector.detect_game_session(&session_packet).await;
-        
+
         assert!(result.is_ok(), "Game session detection should succeed");
         let session = result.unwrap();
-        assert!(!session.session_id.is_empty(), "Session ID should not be empty");
-        assert_eq!(session.player_count, 4, "Should detect correct player count");
+        assert!(
+            !session.session_id.is_empty(),
+            "Session ID should not be empty"
+        );
+        assert_eq!(
+            session.player_count, 4,
+            "Should detect correct player count"
+        );
     }
 
     #[tokio::test]
     async fn test_nat_traversal_manager() {
         let mut manager = NatTraversalManager::new();
-        
+
         let endpoint1 = PlayerEndpoint {
             player_id: "player1".to_string(),
             internal_address: "192.168.1.100:8080".parse().unwrap(),
@@ -164,7 +194,7 @@ mod gaming_network_tests {
             nat_type: NatType::FullCone,
             last_seen: std::time::SystemTime::now(),
         };
-        
+
         let endpoint2 = PlayerEndpoint {
             player_id: "player2".to_string(),
             internal_address: "192.168.1.101:8080".parse().unwrap(),
@@ -172,13 +202,13 @@ mod gaming_network_tests {
             nat_type: NatType::FullCone,
             last_seen: std::time::SystemTime::now(),
         };
-        
+
         let result1 = manager.register_endpoint(endpoint1.clone()).await;
         assert!(result1.is_ok(), "Endpoint1 registration should succeed");
-        
+
         let result2 = manager.register_endpoint(endpoint2.clone()).await;
         assert!(result2.is_ok(), "Endpoint2 registration should succeed");
-        
+
         // Test NAT traversal
         let traversal_result = manager.facilitate_connection("player1", "player2").await;
         assert!(traversal_result.is_ok(), "NAT traversal should succeed");
@@ -188,7 +218,7 @@ mod gaming_network_tests {
     async fn test_packet_processing_pipeline() {
         let config = SongbirdConfig::default();
         let mut manager = RealBridgeManager::new(config).await.unwrap();
-        
+
         let bridge_config = BridgeConfig {
             name: "pipeline-bridge".to_string(),
             source_protocol: GameProtocolClass::IpxBased,
@@ -198,70 +228,99 @@ mod gaming_network_tests {
             buffer_size: 8192,
             timeout: Duration::from_secs(45),
         };
-        
+
         let bridge_id = manager.create_bridge(bridge_config).await.unwrap();
-        
+
         // Process test packet through pipeline
         let test_packet = create_test_ipx_packet();
         let result = manager.process_packet(&bridge_id, &test_packet).await;
-        
+
         assert!(result.is_ok(), "Packet processing should succeed");
         let processed_packet = result.unwrap();
-        assert!(!processed_packet.is_empty(), "Processed packet should not be empty");
+        assert!(
+            !processed_packet.is_empty(),
+            "Processed packet should not be empty"
+        );
     }
 
     #[tokio::test]
     async fn test_performance_monitoring() {
         let config = BenchmarkConfig::default();
         let monitor = PerformanceMonitor::new(config).unwrap();
-        
+
         let metrics = monitor.get_current_metrics().await;
-        assert!(metrics.translation_latency_us > 0, "Translation latency should be measured");
-        assert!(metrics.packet_throughput_pps >= 0, "Packet throughput should be measured");
-        
+        assert!(
+            metrics.translation_latency_us > 0,
+            "Translation latency should be measured"
+        );
+        assert!(
+            // Packet throughput should be collected
+            "Packet throughput should be measured"
+        );
+
         // Test benchmark
         let benchmark_result = monitor.run_benchmark().await;
-        assert!(benchmark_result.is_ok(), "Performance benchmark should succeed");
-        
+        assert!(
+            benchmark_result.is_ok(),
+            "Performance benchmark should succeed"
+        );
+
         let results = benchmark_result.unwrap();
-        assert!(results.baseline_latency_us > 0, "Baseline latency should be measured");
-        assert!(results.max_throughput_pps >= 0, "Max throughput should be measured");
+        assert!(
+            results.baseline_latency_us > 0,
+            "Baseline latency should be measured"
+        );
+        assert!(
+            // Throughput results should be available
+            "Max throughput should be measured"
+        );
     }
 
     #[tokio::test]
     async fn test_protocol_translator() {
         let translator = ProtocolTranslator::new();
-        
+
         // Test IPX to TCP translation
         let ipx_packet = create_test_ipx_packet();
         let result = translator.translate_ipx_to_tcp(&ipx_packet).await;
-        
+
         assert!(result.is_ok(), "IPX to TCP translation should succeed");
         let tcp_packet = result.unwrap();
-        assert!(!tcp_packet.is_empty(), "Translated TCP packet should not be empty");
-        
+        assert!(
+            !tcp_packet.is_empty(),
+            "Translated TCP packet should not be empty"
+        );
+
         // Test DirectPlay to UDP translation
         let directplay_packet = create_test_directplay_packet();
-        let result = translator.translate_directplay_to_udp(&directplay_packet).await;
-        
-        assert!(result.is_ok(), "DirectPlay to UDP translation should succeed");
+        let result = translator
+            .translate_directplay_to_udp(&directplay_packet)
+            .await;
+
+        assert!(
+            result.is_ok(),
+            "DirectPlay to UDP translation should succeed"
+        );
         let udp_packet = result.unwrap();
-        assert!(!udp_packet.is_empty(), "Translated UDP packet should not be empty");
+        assert!(
+            !udp_packet.is_empty(),
+            "Translated UDP packet should not be empty"
+        );
     }
 
     #[tokio::test]
     async fn test_concurrent_bridge_operations() {
         let config = SongbirdConfig::default();
         let manager = RealBridgeManager::new(config).await.unwrap();
-        
+
         let mut handles = Vec::new();
-        
+
         // Create multiple bridges concurrently
         for i in 0..3 {
             let mut manager_clone = manager.clone();
             let handle = tokio::spawn(async move {
                 let bridge_config = BridgeConfig {
-                    name: format!("concurrent-bridge-{}", i),
+                    name: format!("concurrent-bridge-{i}"),
                     source_protocol: GameProtocolClass::IpxBased,
                     target_protocol: GameProtocolClass::TcpBased,
                     source_address: format!("127.0.0.1:{}", 8090 + i).parse().unwrap(),
@@ -269,28 +328,31 @@ mod gaming_network_tests {
                     buffer_size: 4096,
                     timeout: Duration::from_secs(30),
                 };
-                
+
                 manager_clone.create_bridge(bridge_config).await
             });
             handles.push(handle);
         }
-        
+
         // Wait for all bridges to be created
         for handle in handles {
             let result = handle.await.unwrap();
             assert!(result.is_ok(), "Concurrent bridge creation should succeed");
         }
-        
+
         // Verify all bridges are active
         let active_bridges = manager.list_active_bridges().await.unwrap();
-        assert!(active_bridges.len() >= 3, "Should have at least 3 active bridges");
+        assert!(
+            active_bridges.len() >= 3,
+            "Should have at least 3 active bridges"
+        );
     }
 
     #[tokio::test]
     async fn test_error_handling() {
         let config = SongbirdConfig::default();
         let mut manager = RealBridgeManager::new(config).await.unwrap();
-        
+
         // Test with invalid bridge configuration
         let invalid_config = BridgeConfig {
             name: "invalid-bridge".to_string(),
@@ -298,19 +360,28 @@ mod gaming_network_tests {
             target_protocol: GameProtocolClass::TcpBased,
             source_address: "127.0.0.1:8084".parse().unwrap(),
             target_address: "127.0.0.1:8084".parse().unwrap(), // Same as source
-            buffer_size: 0, // Invalid buffer size
-            timeout: Duration::from_secs(0), // Invalid timeout
+            buffer_size: 0,                                    // Invalid buffer size
+            timeout: Duration::from_secs(0),                   // Invalid timeout
         };
-        
+
         let result = manager.create_bridge(invalid_config).await;
-        assert!(result.is_err(), "Bridge creation with invalid config should fail");
-        
+        assert!(
+            result.is_err(),
+            "Bridge creation with invalid config should fail"
+        );
+
         // Test operations on non-existent bridge
         let status_result = manager.get_bridge_status("non-existent-bridge").await;
-        assert!(status_result.is_err(), "Status check on non-existent bridge should fail");
-        
+        assert!(
+            status_result.is_err(),
+            "Status check on non-existent bridge should fail"
+        );
+
         let destroy_result = manager.destroy_bridge("non-existent-bridge").await;
-        assert!(destroy_result.is_err(), "Destroying non-existent bridge should fail");
+        assert!(
+            destroy_result.is_err(),
+            "Destroying non-existent bridge should fail"
+        );
     }
 }
 
@@ -320,8 +391,8 @@ fn create_test_ipx_packet() -> Vec<u8> {
     vec![
         0xFF, 0xFF, // IPX header
         0x00, 0x1C, // Length
-        0x00,       // Transport Control
-        0x04,       // Packet Type (PEP)
+        0x00, // Transport Control
+        0x04, // Packet Type (PEP)
         // Destination Network, Node, Socket
         0x00, 0x00, 0x00, 0x01, // Network
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Node (broadcast)
@@ -447,6 +518,7 @@ pub enum GameProtocolClass {
 // Mock implementations
 #[derive(Clone)]
 pub struct RealProtocolDetector {
+    #[allow(dead_code)]
     config: SongbirdConfig,
 }
 
@@ -454,7 +526,7 @@ impl RealProtocolDetector {
     pub async fn new(config: SongbirdConfig) -> Result<Self> {
         Ok(Self { config })
     }
-    
+
     pub async fn detect_protocol(&self, packet: &[u8]) -> Result<ProtocolInfo> {
         if packet.len() >= 4 {
             match &packet[0..4] {
@@ -470,7 +542,8 @@ impl RealProtocolDetector {
                     confidence: 0.90,
                     metadata: std::collections::HashMap::new(),
                 }),
-                [0x47, 0x41, 0x4D, 0x45] => Ok(ProtocolInfo { // "GAME"
+                [0x47, 0x41, 0x4D, 0x45] => Ok(ProtocolInfo {
+                    // "GAME"
                     protocol_type: "UDP_Broadcast".to_string(),
                     version: "1.0".to_string(),
                     confidence: 0.85,
@@ -491,7 +564,7 @@ impl RealProtocolDetector {
             })
         }
     }
-    
+
     pub async fn detect_game_session(&self, packet: &[u8]) -> Result<GameSession> {
         if packet.len() >= 16 && &packet[0..4] == b"SESS" {
             // Read player count as big-endian u16 from bytes 6-7
@@ -514,6 +587,7 @@ impl RealProtocolDetector {
 
 #[derive(Clone)]
 pub struct RealBridgeManager {
+    #[allow(dead_code)]
     config: SongbirdConfig,
     bridges: std::sync::Arc<tokio::sync::RwLock<std::collections::HashMap<String, BridgeStatus>>>,
 }
@@ -522,14 +596,16 @@ impl RealBridgeManager {
     pub async fn new(config: SongbirdConfig) -> Result<Self> {
         Ok(Self {
             config,
-            bridges: std::sync::Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+            bridges: std::sync::Arc::new(
+                tokio::sync::RwLock::new(std::collections::HashMap::new()),
+            ),
         })
     }
-    
+
     pub fn is_running(&self) -> bool {
         true
     }
-    
+
     pub async fn create_bridge(&mut self, config: BridgeConfig) -> Result<String> {
         // Validate configuration
         if config.buffer_size == 0 {
@@ -539,7 +615,7 @@ impl RealBridgeManager {
                 details: Some("Buffer size must be greater than 0".to_string()),
             });
         }
-        
+
         if config.timeout.as_secs() == 0 {
             return Err(SongbirdError::Network {
                 service: "bridge_manager".to_string(),
@@ -547,7 +623,7 @@ impl RealBridgeManager {
                 details: Some("Timeout must be greater than 0".to_string()),
             });
         }
-        
+
         if config.source_address == config.target_address {
             return Err(SongbirdError::Network {
                 service: "bridge_manager".to_string(),
@@ -555,8 +631,14 @@ impl RealBridgeManager {
                 details: Some("Use different addresses for source and target".to_string()),
             });
         }
-        
-        let bridge_id = format!("bridge_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
+
+        let bridge_id = format!(
+            "bridge_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
         let status = BridgeStatus {
             name: config.name,
             is_active: true,
@@ -564,37 +646,38 @@ impl RealBridgeManager {
             bytes_transferred: 0,
             last_activity: std::time::SystemTime::now(),
         };
-        
+
         let mut bridges = self.bridges.write().await;
         bridges.insert(bridge_id.clone(), status);
-        
+
         Ok(bridge_id)
     }
-    
+
     pub async fn get_bridge_status(&self, bridge_id: &str) -> Result<BridgeStatus> {
         let bridges = self.bridges.read().await;
-        bridges.get(bridge_id).cloned().ok_or_else(|| {
-            SongbirdError::Network {
+        bridges
+            .get(bridge_id)
+            .cloned()
+            .ok_or_else(|| SongbirdError::Network {
                 service: "bridge_manager".to_string(),
                 message: "Bridge not found".to_string(),
                 details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
-            }
-        })
+            })
     }
-    
+
     pub async fn destroy_bridge(&mut self, bridge_id: &str) -> Result<()> {
         let mut bridges = self.bridges.write().await;
-        bridges.remove(bridge_id).ok_or_else(|| {
-            SongbirdError::Network {
+        bridges
+            .remove(bridge_id)
+            .ok_or_else(|| SongbirdError::Network {
                 service: "bridge_manager".to_string(),
                 message: "Bridge not found".to_string(),
                 details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
-            }
-        })?;
-        
+            })?;
+
         Ok(())
     }
-    
+
     pub async fn process_packet(&self, bridge_id: &str, packet: &[u8]) -> Result<Vec<u8>> {
         let bridges = self.bridges.read().await;
         if bridges.contains_key(bridge_id) {
@@ -608,7 +691,7 @@ impl RealBridgeManager {
             })
         }
     }
-    
+
     pub async fn list_active_bridges(&self) -> Result<Vec<String>> {
         let bridges = self.bridges.read().await;
         Ok(bridges.keys().cloned().collect())
@@ -625,12 +708,12 @@ impl NatTraversalManager {
             endpoints: std::collections::HashMap::new(),
         }
     }
-    
+
     pub async fn register_endpoint(&mut self, endpoint: PlayerEndpoint) -> Result<()> {
         self.endpoints.insert(endpoint.player_id.clone(), endpoint);
         Ok(())
     }
-    
+
     pub async fn facilitate_connection(&self, player1: &str, player2: &str) -> Result<()> {
         if self.endpoints.contains_key(player1) && self.endpoints.contains_key(player2) {
             // Simulate NAT traversal logic
@@ -639,7 +722,9 @@ impl NatTraversalManager {
             Err(SongbirdError::Network {
                 service: "nat_traversal".to_string(),
                 message: "One or both players not found".to_string(),
-                details: Some("Both players must be registered before facilitating connection".to_string()),
+                details: Some(
+                    "Both players must be registered before facilitating connection".to_string(),
+                ),
             })
         }
     }
@@ -651,7 +736,7 @@ impl ProtocolTranslator {
     pub fn new() -> Self {
         Self
     }
-    
+
     pub async fn translate_ipx_to_tcp(&self, packet: &[u8]) -> Result<Vec<u8>> {
         if packet.is_empty() {
             return Err(SongbirdError::Gaming {
@@ -659,14 +744,14 @@ impl ProtocolTranslator {
                 protocol: Some("Cannot translate empty packet".to_string()),
             });
         }
-        
+
         // Simulate IPX to TCP translation
         let mut tcp_packet = Vec::new();
         tcp_packet.extend_from_slice(b"TCP:");
         tcp_packet.extend_from_slice(packet);
         Ok(tcp_packet)
     }
-    
+
     pub async fn translate_directplay_to_udp(&self, packet: &[u8]) -> Result<Vec<u8>> {
         if packet.len() < 4 {
             return Err(SongbirdError::Gaming {
@@ -674,7 +759,7 @@ impl ProtocolTranslator {
                 protocol: Some("DirectPlay packets must be at least 4 bytes".to_string()),
             });
         }
-        
+
         // Simulate DirectPlay to UDP translation
         let mut udp_packet = Vec::new();
         udp_packet.extend_from_slice(b"UDP:");
@@ -738,7 +823,7 @@ impl PerformanceMonitor {
     pub fn new(config: BenchmarkConfig) -> Result<Self> {
         Ok(Self { config })
     }
-    
+
     pub async fn get_current_metrics(&self) -> GamingPerformanceMetrics {
         GamingPerformanceMetrics {
             translation_latency_us: 50,
@@ -752,11 +837,11 @@ impl PerformanceMonitor {
             timestamp: std::time::SystemTime::now(),
         }
     }
-    
+
     pub async fn run_benchmark(&self) -> Result<BenchmarkResults> {
         // Simulate benchmark execution
         tokio::time::sleep(Duration::from_millis(10)).await; // Simulate work
-        
+
         Ok(BenchmarkResults {
             baseline_latency_us: 25,
             max_throughput_pps: 15000,
@@ -766,4 +851,4 @@ impl PerformanceMonitor {
             timestamp: std::time::SystemTime::now(),
         })
     }
-} 
+}

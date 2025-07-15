@@ -28,10 +28,11 @@ pub async fn execute_share(resource: ResourceType, percent: u8) -> CliResult<()>
     println!();
     // Validate percentage range
     if percent > 100 {
-        return Err(crate::cli::CliError::Command(format!(
-            "Invalid percentage: {}%. Must be between 0-100%",
-            percent
-        )));
+        return Err(crate::cli::CliError::Command {
+            message: format!("Invalid percentage: {percent}%. Must be between 0-100%"),
+            command: Some("share".to_string()),
+            suggestion: Some("Specify a valid percentage between 0 and 100".to_string()),
+        });
     }
     // Validate percentage
     if percent > 80 {
@@ -231,12 +232,9 @@ async fn apply_cpu_limits(cores_to_share: usize) -> CliResult<()> {
             if output.status.success() {
                 // Set CPU quota for the shared cores
                 let quota = format!("{}", cores_to_share * 100000); // 100ms per core
-                let _ = tokio::fs::write(format!("{}/cpu.cfs_quota_us", cgroup_path), quota).await;
+                let _ = tokio::fs::write(format!("{cgroup_path}/cpu.cfs_quota_us"), quota).await;
 
-                println!(
-                    "   📊 Applied CPU limit: {} cores via cgroups",
-                    cores_to_share
-                );
+                println!("   📊 Applied CPU limit: {cores_to_share} cores via cgroups");
             } else {
                 println!("   ⚠️  CPU limits require root access (cgroups), using process affinity");
                 apply_process_affinity(cores_to_share).await?;
@@ -272,8 +270,7 @@ async fn apply_process_affinity(cores_to_share: usize) -> CliResult<()> {
             if let Ok(output) = output {
                 if output.status.success() {
                     println!(
-                        "   📊 Applied CPU affinity: reserved {} cores, sharing {}",
-                        cores_to_reserve, cores_to_share
+                        "   📊 Applied CPU affinity: reserved {cores_to_reserve} cores, sharing {cores_to_share}"
                     );
                 } else {
                     println!("   ⚠️  CPU affinity failed: taskset not available");
@@ -325,15 +322,12 @@ async fn apply_memory_limits(gb_to_share: f64) -> CliResult<()> {
         let kb_limit = bytes_to_share / 1024;
         let output = std::process::Command::new("sh")
             .arg("-c")
-            .arg(format!("ulimit -v {}", kb_limit))
+            .arg(format!("ulimit -v {kb_limit}"))
             .output();
 
         if let Ok(output) = output {
             if output.status.success() {
-                println!(
-                    "   📊 Applied memory limit: {:.1} GB via ulimit",
-                    gb_to_share
-                );
+                println!("   📊 Applied memory limit: {gb_to_share:.1} GB via ulimit");
             } else {
                 println!("   ⚠️  Memory limits require system support, tracking manually");
             }
@@ -492,11 +486,11 @@ fn show_impact_estimate(config: &SharingConfig) {
         ),
     };
 
-    println!("{} Impact Assessment:", impact_icon);
-    println!("   {}", impact_desc);
+    println!("{impact_icon} Impact Assessment:");
+    println!("   {impact_desc}");
 
     for rec in recommendations {
-        println!("   • {}", rec);
+        println!("   • {rec}");
     }
 
     println!("💡 Pro Tips:");
@@ -528,10 +522,11 @@ async fn estimate_available_storage() -> CliResult<f64> {
 
     // Real storage detection using system APIs
     detect_available_storage().ok_or_else(|| {
-        crate::cli::CliError::Command(
-            "Failed to detect available storage. Set SONGBIRD_STORAGE_GB environment variable."
-                .to_string(),
-        )
+        crate::cli::CliError::Command {
+            message: "Failed to detect available storage. Set SONGBIRD_STORAGE_GB environment variable.".to_string(),
+            command: Some("share".to_string()),
+            suggestion: Some("Set the SONGBIRD_STORAGE_GB environment variable with your available storage".to_string()),
+        }
     })
 }
 async fn detect_gpu() -> bool {
@@ -563,14 +558,15 @@ fn detect_available_storage() -> Option<f64> {
     #[cfg(unix)]
     {
         use std::ffi::CString;
-        use std::mem;
+        use std::mem::MaybeUninit;
 
         let path_cstr = CString::new(path.to_string_lossy().as_bytes()).ok()?;
-        let mut statfs: libc::statvfs = unsafe { mem::zeroed() };
-        let result = unsafe { libc::statvfs(path_cstr.as_ptr(), &mut statfs) };
+        let mut statfs = MaybeUninit::<libc::statvfs>::uninit();
+        let result = unsafe { libc::statvfs(path_cstr.as_ptr(), statfs.as_mut_ptr()) };
 
         if result == 0 {
-            let available_bytes = statfs.f_bavail * statfs.f_frsize;
+            let statfs = unsafe { statfs.assume_init() };
+            let available_bytes = statfs.f_bavail.saturating_mul(statfs.f_frsize);
             return Some(available_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
         }
     }
@@ -688,7 +684,7 @@ async fn detect_network_interface_speed() -> Option<f64> {
 #[cfg(unix)]
 async fn get_interface_speed(interface: &str) -> Option<f64> {
     // Try sysfs first (most reliable)
-    let speed_path = format!("/sys/class/net/{}/speed", interface);
+    let speed_path = format!("/sys/class/net/{interface}/speed");
     if let Ok(speed_str) = tokio::fs::read_to_string(&speed_path).await {
         if let Ok(speed_mbps) = speed_str.trim().parse::<f64>() {
             if speed_mbps > 0.0 {

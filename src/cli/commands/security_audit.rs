@@ -1,7 +1,7 @@
 /// Security Audit CLI Command
 ///
 /// This command performs a comprehensive audit of the SongBird system to identify
-/// and report ALL hardcoding security vulnerabilities. This implements our 
+/// and report ALL hardcoding security vulnerabilities. This implements our
 /// "zero hardcoding" principle for the entire ecosystem.
 use crate::cli::CliResult;
 use colored::Colorize;
@@ -13,15 +13,15 @@ pub struct SecurityAuditArgs {
     /// Show only critical security issues
     #[arg(long)]
     critical_only: bool,
-    
+
     /// Generate detailed report
     #[arg(long)]
     detailed: bool,
-    
+
     /// Output format (console, json, markdown)
     #[arg(long, default_value = "console")]
     format: String,
-    
+
     /// Fix automatically detected issues
     #[arg(long)]
     auto_fix: bool,
@@ -34,7 +34,8 @@ enum VulnerabilityType {
     Ip,
     Path,
     Url,
-    #[allow(dead_code)] Credential,
+    #[allow(dead_code)]
+    Credential,
 }
 
 impl VulnerabilityType {
@@ -68,16 +69,25 @@ struct SecurityVulnerability {
 
 /// Main security audit command handler
 pub async fn handle_security_audit(args: SecurityAuditArgs) -> CliResult<()> {
-    println!("{}", "🔒 SongBird Security Hardcoding Audit".bright_blue().bold());
+    println!(
+        "{}",
+        "🔒 SongBird Security Hardcoding Audit".bright_blue().bold()
+    );
     println!("{}", "=====================================".bright_blue());
     println!();
 
     let vulnerabilities = scan_for_hardcoding_vulnerabilities().await?;
-    
+
     // Filter by severity if critical_only is set
     let filtered_vulnerabilities: Vec<_> = if args.critical_only {
-        vulnerabilities.into_iter()
-            .filter(|v| matches!(v.vulnerability_type.severity(), SecuritySeverity::Critical | SecuritySeverity::High))
+        vulnerabilities
+            .into_iter()
+            .filter(|v| {
+                matches!(
+                    v.vulnerability_type.severity(),
+                    SecuritySeverity::Critical | SecuritySeverity::High
+                )
+            })
             .collect()
     } else {
         vulnerabilities
@@ -99,37 +109,56 @@ pub async fn handle_security_audit(args: SecurityAuditArgs) -> CliResult<()> {
 /// Scan the entire codebase for hardcoding vulnerabilities
 async fn scan_for_hardcoding_vulnerabilities() -> CliResult<Vec<SecurityVulnerability>> {
     let mut vulnerabilities = Vec::new();
-    
-    println!("{}", "🔍 Scanning for hardcoding vulnerabilities...".yellow());
-    
+
+    println!(
+        "{}",
+        "🔍 Scanning for hardcoding vulnerabilities...".yellow()
+    );
+
     // Scan source files
-    vulnerabilities.extend(scan_directory("src", &[
-        // Port number patterns
-        (r":\s*\d{4,5}", VulnerabilityType::Port),
-        // IP address patterns  
-        (r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", VulnerabilityType::Ip),
-        // Hardcoded paths (simplified)
-        (r"/(?:tmp|var|etc|home|usr)/\S+", VulnerabilityType::Path),
-        // Endpoint patterns (simplified)
-        (r"https?://\S+", VulnerabilityType::Url),
-    ]).await?);
-    
-    println!("{}", format!("✅ Found {} potential vulnerabilities", vulnerabilities.len()).yellow());
-    
+    vulnerabilities.extend(
+        scan_directory(
+            "src",
+            &[
+                // Port number patterns
+                (r":\s*\d{4,5}", VulnerabilityType::Port),
+                // IP address patterns
+                (
+                    r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",
+                    VulnerabilityType::Ip,
+                ),
+                // Hardcoded paths (simplified)
+                (r"/(?:tmp|var|etc|home|usr)/\S+", VulnerabilityType::Path),
+                // Endpoint patterns (simplified)
+                (r"https?://\S+", VulnerabilityType::Url),
+            ],
+        )
+        .await?,
+    );
+
+    println!(
+        "{}",
+        format!(
+            "✅ Found {} potential vulnerabilities",
+            vulnerabilities.len()
+        )
+        .yellow()
+    );
+
     Ok(vulnerabilities)
 }
 
 /// Scan a directory for vulnerabilities using regex patterns
 async fn scan_directory(
-    dir_path: &str, 
-    patterns: &[(&str, VulnerabilityType)]
+    dir_path: &str,
+    patterns: &[(&str, VulnerabilityType)],
 ) -> CliResult<Vec<SecurityVulnerability>> {
     let mut vulnerabilities = Vec::new();
-    
+
     if let Ok(entries) = std::fs::read_dir(dir_path) {
         for entry in entries.flatten() {
             let path = entry.path();
-            
+
             if path.is_dir() {
                 // Recursively scan subdirectories with boxing for indirection
                 if let Some(subdir) = path.to_str() {
@@ -144,7 +173,7 @@ async fn scan_directory(
             }
         }
     }
-    
+
     Ok(vulnerabilities)
 }
 
@@ -152,35 +181,39 @@ async fn scan_directory(
 fn scan_file_content(
     file_path: &Path,
     content: &str,
-    patterns: &[(&str, VulnerabilityType)]
+    patterns: &[(&str, VulnerabilityType)],
 ) -> Vec<SecurityVulnerability> {
     let mut vulnerabilities = Vec::new();
-    
+
     for (pattern, vuln_type) in patterns {
         if let Ok(regex) = regex::Regex::new(pattern) {
             for (line_num, line) in content.lines().enumerate() {
                 if let Some(match_) = regex.find(line) {
                     // Skip examples and test files (they're allowed to have hardcoded values)
-                    if file_path.to_string_lossy().contains("examples/") || 
-                       file_path.to_string_lossy().contains("tests/") {
+                    if file_path.to_string_lossy().contains("examples/")
+                        || file_path.to_string_lossy().contains("tests/")
+                    {
                         continue;
                     }
-                    
+
                     let vulnerability = SecurityVulnerability {
                         vulnerability_type: vuln_type.clone(),
                         file_path: file_path.to_string_lossy().to_string(),
                         line_number: line_num + 1,
                         content: line.trim().to_string(),
                         recommendation: generate_recommendation(vuln_type, match_.as_str()),
-                        environment_variable: suggest_environment_variable(vuln_type, match_.as_str()),
+                        environment_variable: suggest_environment_variable(
+                            vuln_type,
+                            match_.as_str(),
+                        ),
                     };
-                    
+
                     vulnerabilities.push(vulnerability);
                 }
             }
         }
     }
-    
+
     vulnerabilities
 }
 
@@ -188,25 +221,40 @@ fn scan_file_content(
 fn generate_recommendation(vuln_type: &VulnerabilityType, matched_content: &str) -> String {
     match vuln_type {
         VulnerabilityType::Port => {
-            format!("Replace hardcoded port {} with configurable environment variable", matched_content)
-        },
+            format!(
+                "Replace hardcoded port {} with configurable environment variable",
+                matched_content
+            )
+        }
         VulnerabilityType::Ip => {
-            format!("Replace hardcoded IP {} with configurable binding address", matched_content)
-        },
+            format!(
+                "Replace hardcoded IP {} with configurable binding address",
+                matched_content
+            )
+        }
         VulnerabilityType::Path => {
-            format!("Replace hardcoded path {} with environment-configurable directory", matched_content)
-        },
+            format!(
+                "Replace hardcoded path {} with environment-configurable directory",
+                matched_content
+            )
+        }
         VulnerabilityType::Url => {
-            format!("Replace hardcoded endpoint {} with configurable service URL", matched_content)
-        },
+            format!(
+                "Replace hardcoded endpoint {} with configurable service URL",
+                matched_content
+            )
+        }
         VulnerabilityType::Credential => {
             "CRITICAL: Replace hardcoded credential with secure environment variable".to_string()
-        },
+        }
     }
 }
 
 /// Suggest appropriate environment variable names
-fn suggest_environment_variable(vuln_type: &VulnerabilityType, _matched_content: &str) -> Option<String> {
+fn suggest_environment_variable(
+    vuln_type: &VulnerabilityType,
+    _matched_content: &str,
+) -> Option<String> {
     match vuln_type {
         VulnerabilityType::Port => Some("SONGBIRD_BIND_PORT".to_string()),
         VulnerabilityType::Ip => Some("SONGBIRD_BIND_ADDRESS".to_string()),
@@ -217,66 +265,87 @@ fn suggest_environment_variable(vuln_type: &VulnerabilityType, _matched_content:
 }
 
 /// Output comprehensive console report
-fn output_console_report(vulnerabilities: &[SecurityVulnerability], detailed: bool) -> CliResult<()> {
+fn output_console_report(
+    vulnerabilities: &[SecurityVulnerability],
+    detailed: bool,
+) -> CliResult<()> {
     let mut severity_counts = HashMap::new();
-    
+
     for vuln in vulnerabilities {
-        *severity_counts.entry(vuln.vulnerability_type.severity()).or_insert(0) += 1;
+        *severity_counts
+            .entry(vuln.vulnerability_type.severity())
+            .or_insert(0) += 1;
     }
-    
+
     println!("{}", "📊 Hardcoding Security Summary".bright_white().bold());
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    
+
     for (severity, count) in &severity_counts {
         let color = match severity {
             SecuritySeverity::Critical => "red",
-            SecuritySeverity::High => "yellow", 
+            SecuritySeverity::High => "yellow",
             SecuritySeverity::Medium => "blue",
         };
-        
-        println!("  {:>8}: {}", 
-                 format!("{:?}", severity).color(color).bold(), 
-                 count.to_string().bright_white());
+
+        println!(
+            "  {:>8}: {}",
+            format!("{:?}", severity).color(color).bold(),
+            count.to_string().bright_white()
+        );
     }
-    
+
     println!();
-    println!("{}", format!("Total Issues: {}", vulnerabilities.len()).bright_cyan().bold());
-    
+    println!(
+        "{}",
+        format!("Total Issues: {}", vulnerabilities.len())
+            .bright_cyan()
+            .bold()
+    );
+
     if detailed {
         println!();
-        println!("{}", "🔍 Detailed Vulnerability Report".bright_white().bold());
+        println!(
+            "{}",
+            "🔍 Detailed Vulnerability Report".bright_white().bold()
+        );
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
+
         for vuln in vulnerabilities {
             let severity_color = match vuln.vulnerability_type.severity() {
                 SecuritySeverity::Critical => "red",
                 SecuritySeverity::High => "yellow",
-                SecuritySeverity::Medium => "blue", 
+                SecuritySeverity::Medium => "blue",
             };
-            
+
             println!();
-            println!("📍 {}:{}",
-                     vuln.file_path.bright_cyan(),
-                     vuln.line_number.to_string().bright_white());
-            println!("   Severity: {}", 
-                     format!("{:?}", vuln.vulnerability_type.severity()).color(severity_color).bold());
+            println!(
+                "📍 {}:{}",
+                vuln.file_path.bright_cyan(),
+                vuln.line_number.to_string().bright_white()
+            );
+            println!(
+                "   Severity: {}",
+                format!("{:?}", vuln.vulnerability_type.severity())
+                    .color(severity_color)
+                    .bold()
+            );
             println!("   Type: {:?}", vuln.vulnerability_type);
             println!("   Content: {}", vuln.content.bright_white());
             println!("   💡 {}", vuln.recommendation.yellow());
-            
+
             if let Some(env_var) = &vuln.environment_variable {
                 println!("   🔧 Suggested env var: {}", env_var.bright_green());
             }
         }
     }
-    
+
     println!();
     println!("{}", "🎯 Next Steps".bright_blue().bold());
     println!("   1. Review each hardcoded value");
     println!("   2. Replace with environment configuration");
     println!("   3. Update deployment documentation");
     println!("   4. Run audit again to verify fixes");
-    
+
     Ok(())
 }
 
@@ -298,8 +367,14 @@ fn output_json_report(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()
             })
         }).collect::<Vec<_>>()
     });
-    
-    println!("{}", serde_json::to_string_pretty(&report).unwrap());
+
+            match serde_json::to_string_pretty(&report) {
+            Ok(json) => println!("{json}"),
+            Err(e) => {
+                eprintln!("Error formatting security audit report: {e}");
+                println!("Security audit completed but output formatting failed");
+            }
+        }
     Ok(())
 }
 
@@ -307,36 +382,41 @@ fn output_json_report(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()
 fn output_markdown_report(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()> {
     println!("# SongBird Hardcoding Security Audit Report");
     println!();
-    println!("**Generated:** {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"));
+    println!(
+        "**Generated:** {}",
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+    );
     println!("**Total Vulnerabilities:** {}", vulnerabilities.len());
     println!();
-    
+
     for vuln in vulnerabilities {
-        println!("## {:?} - {}:{}",
-                 vuln.vulnerability_type.severity(),
-                 vuln.file_path,
-                 vuln.line_number);
+        println!(
+            "## {:?} - {}:{}",
+            vuln.vulnerability_type.severity(),
+            vuln.file_path,
+            vuln.line_number
+        );
         println!();
         println!("**Type:** {:?}", vuln.vulnerability_type);
         println!("**Content:** `{}`", vuln.content);
         println!("**Recommendation:** {}", vuln.recommendation);
-        
+
         if let Some(env_var) = &vuln.environment_variable {
             println!("**Suggested Environment Variable:** `{}`", env_var);
         }
-        
+
         println!();
     }
-    
+
     Ok(())
 }
 
 /// Apply automatic fixes for simple hardcoding issues
 async fn apply_automatic_fixes(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()> {
     println!("{}", "🔧 Applying automatic fixes...".bright_green());
-    
+
     let mut fixes_applied = 0;
-    
+
     for vuln in vulnerabilities {
         // Only auto-fix low-risk timeouts for now
         if matches!(vuln.vulnerability_type, VulnerabilityType::Port) {
@@ -345,12 +425,18 @@ async fn apply_automatic_fixes(vulnerabilities: &[SecurityVulnerability]) -> Cli
             fixes_applied += 1;
         }
     }
-    
-    println!("{}", format!("Applied {} automatic fixes", fixes_applied).bright_green());
-    
+
+    println!(
+        "{}",
+        format!("Applied {} automatic fixes", fixes_applied).bright_green()
+    );
+
     if fixes_applied > 0 {
-        println!("{}", "⚠️  Please review changes and test thoroughly".yellow());
+        println!(
+            "{}",
+            "⚠️  Please review changes and test thoroughly".yellow()
+        );
     }
-    
+
     Ok(())
-} 
+}

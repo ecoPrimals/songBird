@@ -107,13 +107,13 @@ impl RequestRouter {
                 Err(e) => {
                     return Err(SongbirdError::Service {
                         service_id: "unknown".to_string(),
-                        message: format!("Load balancer error: {}", e),
+                        message: format!("Load balancer error: {e}"),
                     });
                 }
             }
         }
 
-        // All retries failed
+        // All retries failed - return most recent error or default
         Err(last_error.unwrap_or_else(|| {
             SongbirdError::Service {
                 service_id: "unknown".to_string(),
@@ -136,13 +136,22 @@ impl RequestRouter {
                 .map(|e| e.path.clone()),
         };
 
-        // Prepare headers with HTTP routing information
-        let mut headers = request.headers.clone();
+        // Prepare headers with HTTP routing information - optimize by selective cloning
+        let mut headers = std::collections::HashMap::new();
+        
+        // Copy only essential headers from original request
+        for (key, value) in &request.headers {
+            if key.starts_with("x-") || key == "authorization" || key == "content-type" {
+                headers.insert(key.clone(), value.clone());
+            }
+        }
+        
+        // Add routing headers
         headers.insert("x-request-path".to_string(), request.path.clone());
         headers.insert("x-request-method".to_string(), request.method.clone());
         headers.insert("x-target-service".to_string(), instance.service_info.id.clone());
 
-        // Convert ServiceRequest to ServiceMessage for communication layer
+        // Convert ServiceRequest to ServiceMessage for communication layer - optimize cloning
         let mut message = ServiceMessage {
             id: request.id.clone(),
             message_type: MessageType::Request,
@@ -192,7 +201,7 @@ impl RequestRouter {
             );
             SongbirdError::Service {
                 service_id: instance.service_info.id.clone(),
-                message: format!("Request timeout after {:?}", timeout_duration),
+                message: format!("Request timeout after {timeout_duration:?}"),
             }
         })?
         .map_err(|e| {
@@ -204,7 +213,7 @@ impl RequestRouter {
             );
             SongbirdError::Service {
                 service_id: instance.service_info.id.clone(),
-                message: format!("Communication failed: {}", e),
+                message: format!("Communication failed: {e}"),
             }
         })?;
 

@@ -191,7 +191,7 @@ impl ProtocolTranslator for IPXTranslator {
                 players: 1,
                 max_players: 8,
                 host_address: crate::config::constants::external_address()
-                    .unwrap_or_else(|| "0.0.0.0:6112".to_string()),
+                    .unwrap_or_else(|| format!("{}:6112", crate::config::constants::network::production_bind_address())),
             }],
         })
     }
@@ -276,7 +276,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
         // Parse DirectPlay session enumeration request
         if discovery_packet.windows(5).any(|w| w == b"DPLAY") {
             let external_addr = crate::config::constants::external_address()
-                .unwrap_or_else(|| "0.0.0.0:2300".to_string());
+                .unwrap_or_else(|| format!("{}:2300", crate::config::constants::network::production_bind_address()));
 
             let sessions = vec![DirectPlaySession {
                 session_name: "Game Session".to_string(),
@@ -284,7 +284,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
                 host_address: external_addr.parse().unwrap_or_else(|_| {
                     format!("{}:2300", crate::config::constants::default_bind_address())
                         .parse()
-                        .unwrap()
+                        .expect("Default bind address should be valid")
                 }),
                 current_players: 1,
                 max_players: 8,
@@ -368,14 +368,14 @@ impl ProtocolTranslator for NetBIOSTranslator {
 
     async fn handle_game_discovery(&self, _discovery_packet: &[u8]) -> Result<DiscoveryResponse> {
         let external_addr = crate::config::constants::external_address()
-            .unwrap_or_else(|| "0.0.0.0:137".to_string());
+            .unwrap_or_else(|| format!("{}:137", crate::config::constants::network::production_bind_address()));
 
         let game_sessions = vec![NetBIOSGameSession {
             name: "NetBIOS Game".to_string(),
             address: external_addr.parse().unwrap_or_else(|_| {
                 format!("{}:137", crate::config::constants::default_bind_address())
                     .parse()
-                    .unwrap()
+                    .expect("Default bind address should be valid")
             }),
             players: 1,
             max_players: 8,
@@ -513,7 +513,7 @@ impl ProtocolTranslator for TCPTranslator {
         }
 
         let bind_address = crate::config::constants::default_bind_address();
-        let server_address = format!("{}:0", bind_address)
+        let server_address = format!("{bind_address}:0")
             .parse()
             .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], 0)));
 

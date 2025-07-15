@@ -91,7 +91,7 @@ pub async fn show_version(detailed: bool) -> CliResult<()> {
     if detailed {
         println!();
         println!("Build Information:");
-        println!("  Version: {}", version);
+        println!("  Version: {version}");
         println!("  Target: {}", std::env::consts::ARCH);
         println!("  OS: {}", std::env::consts::OS);
 

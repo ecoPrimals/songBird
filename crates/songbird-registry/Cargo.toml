@@ -1,0 +1,28 @@
+[package]
+name = "songbird-registry"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core dependencies
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+
+# Async dependencies
+async-trait = "0.1"
+futures-util = "0.3"
+
+# Collection types
+dashmap = "5.0"
+
+# Internal dependencies
+songbird-errors = { path = "../songbird-errors" }
+songbird-discovery = { path = "../songbird-discovery" }
+songbird-config = { path = "../songbird-config" }
+
+[dev-dependencies]
+tokio-test = "0.4" 

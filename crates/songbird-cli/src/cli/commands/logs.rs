@@ -35,11 +35,7 @@ pub async fn show_logs(
     );
     println!(
         "{}",
-        format!(
-            "Filter: {:?} | Lines: {} | Follow: {}",
-            level, lines, follow
-        )
-        .dimmed()
+        format!("Filter: {level:?} | Lines: {lines} | Follow: {follow}").dimmed()
     );
     println!();
 
@@ -57,7 +53,7 @@ async fn show_recent_logs(service: Option<&str>, lines: usize, _level: LogLevel)
     // Simulate recent logs
     let sample_logs = generate_sample_logs(service, lines);
     for log_entry in sample_logs {
-        println!("{}", log_entry);
+        println!("{log_entry}");
     }
     Ok(())
 }
@@ -75,9 +71,11 @@ async fn read_recent_logs(
             return read_last_lines(&log_path, lines, level).await;
         }
     }
-    Err(crate::cli::CliError::Command(
-        "No log files found".to_string(),
-    ))
+    Err(crate::cli::CliError::Command {
+        message: "No log files found".to_string(),
+        command: Some("logs".to_string()),
+        suggestion: Some("Check if Songbird services are running and generating logs".to_string()),
+    })
 }
 /// Read last N lines from a log file
 #[allow(dead_code)]
@@ -188,9 +186,11 @@ async fn follow_real_logs(service_name: &str, level: &LogLevel) -> CliResult<()>
             return tail_log_file(&log_path, level.clone()).await;
         }
     }
-    Err(crate::cli::CliError::Command(
-        "No log files found. Use SONGBIRD_LOG_SIMULATION=true for demo mode.".to_string(),
-    ))
+    Err(crate::cli::CliError::Command {
+        message: "No log files found. Use SONGBIRD_LOG_SIMULATION=true for demo mode.".to_string(),
+        command: Some("logs".to_string()),
+        suggestion: Some("Enable simulation mode or check if services are running".to_string()),
+    })
 }
 /// Get potential log file paths for the service
 #[allow(dead_code)]
@@ -202,7 +202,7 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
             config_dir
                 .join("songbird")
                 .join("logs")
-                .join(format!("{}.log", service_name)),
+                .join(format!("{service_name}.log")),
         );
         paths.push(config_dir.join("songbird").join("songbird.log"));
     }
@@ -213,7 +213,7 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
 
     // Current directory
     paths.push(std::path::PathBuf::from("songbird.log"));
-    paths.push(std::path::PathBuf::from(format!("{}.log", service_name)));
+    paths.push(std::path::PathBuf::from(format!("{service_name}.log")));
 
     paths
 }
@@ -229,7 +229,7 @@ async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> CliResult
 
     while let Some(line) = lines.next_line().await.map_err(crate::cli::CliError::Io)? {
         if should_show_log(&line, &level) {
-            println!("{}", line);
+            println!("{line}");
         }
     }
     Ok(())

@@ -338,6 +338,8 @@ impl RealBridgeManager {
             return Err(SongbirdError::Protocol {
                 protocol: game_name.clone(),
                 message: "No gaming protocol detected on specified port".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             });
         }
 
@@ -378,9 +380,11 @@ impl RealBridgeManager {
                 )
                 .parse()
                 .map_err(|_| SongbirdError::Network {
-                    service: "Real Bridge Manager".to_string(),
+                    service: Some("Real Bridge Manager".to_string()),
                     message: "Failed to parse local IP address".to_string(),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 })?,
                 external_address: nat_info.external_address,
                 game_executable: Some(game_name.clone()),
@@ -427,9 +431,11 @@ impl RealBridgeManager {
         let session = sessions
             .get_mut(&session_code)
             .ok_or_else(|| SongbirdError::Network {
-                service: "Real Bridge Manager".to_string(),
+                service: Some("Real Bridge Manager".to_string()),
                 message: format!("Session not found: {}", session_code),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?;
 
         // Generate player info
@@ -438,9 +444,11 @@ impl RealBridgeManager {
             player_id: player_id.clone(),
             display_name: player_name,
             local_address: "0.0.0.0:0".parse().map_err(|_| SongbirdError::Network {
-                service: "Real Bridge Manager".to_string(),
+                service: Some("Real Bridge Manager".to_string()),
                 message: "Failed to parse local IP address".to_string(),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?,
             external_address: self.nat_manager.get_external_address(),
             nat_type: self.nat_manager.get_nat_type(),
@@ -488,6 +496,8 @@ impl RealBridgeManager {
             .ok_or_else(|| SongbirdError::Protocol {
                 protocol: session.protocol_class.to_string(),
                 message: "No translator available for protocol".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             })?;
 
         // Setup socket listeners based on protocol
@@ -725,6 +735,8 @@ impl SocketPool {
                     field: Some("gaming_bind_address".to_string()),
                     message: "Gaming bridge binding to 0.0.0.0 requires explicit approval"
                         .to_string(),
+                    context: Some("network_configuration".to_string()),
+                    suggestion: Some("Check configuration values and network settings".to_string()),
                 });
             }
             format!("0.0.0.0:{}", self.next_port)
@@ -743,9 +755,11 @@ impl SocketPool {
                 Ok(self.next_port - 1)
             }
             Err(_) => Err(SongbirdError::Network {
-                service: "Real Bridge Manager".to_string(),
+                service: Some("Real Bridge Manager".to_string()),
                 message: "Failed to bind to UDP port".to_string(),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             }),
         }
     }
@@ -771,6 +785,10 @@ impl SocketPool {
                         field: Some("tcp_bind_address".to_string()),
                         message: "TCP bridge binding to 0.0.0.0 requires explicit approval"
                             .to_string(),
+                        context: Some("network_configuration".to_string()),
+                        suggestion: Some(
+                            "Check configuration values and network settings".to_string(),
+                        ),
                     });
                 }
                 format!("0.0.0.0:{}", port)
@@ -789,9 +807,11 @@ impl SocketPool {
         }
 
         Err(SongbirdError::Network {
-            service: "Real Bridge Manager".to_string(),
+            service: Some("Real Bridge Manager".to_string()),
             message: "No available TCP ports".to_string(),
             details: None,
+            endpoint: None,
+            suggestion: Some("Check network connectivity and configuration".to_string()),
         })
     }
 

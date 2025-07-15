@@ -160,6 +160,9 @@ pub enum FederationMessageType {
     /// Load balancing update
     LoadBalancingUpdate,
 
+    /// Monitoring data update
+    Monitoring,
+
     /// General announcement
     Announcement,
 }

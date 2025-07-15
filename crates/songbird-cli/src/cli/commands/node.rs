@@ -16,12 +16,12 @@ pub async fn add_node(
 
     println!(
         "{}",
-        format!("🔗 Adding node '{}' at '{}'", name, address)
+        format!("🔗 Adding node '{name}' at '{address}'")
             .bright_blue()
             .bold()
     );
-    ui::info(&format!("Node name: {}", name));
-    ui::info(&format!("Node address: {}", address));
+    ui::info(&format!("Node name: {name}"));
+    ui::info(&format!("Node address: {address}"));
     if !tags.is_empty() {
         ui::info(&format!("Tags: {}", tags.join(", ")));
     }
@@ -35,7 +35,7 @@ pub async fn add_node(
     // Add node logic would go here
     println!(
         "{}",
-        format!("✅ Node '{}' added successfully", name).bright_green()
+        format!("✅ Node '{name}' added successfully").bright_green()
     );
     Ok(())
 }
@@ -45,9 +45,9 @@ pub async fn remove_node(node: String, force: bool) -> Result<()> {
     info!("Removing node: {}", node);
     println!(
         "{}",
-        format!("🗑️  Removing node '{}'", node).bright_red().bold()
+        format!("🗑️  Removing node '{node}'").bright_red().bold()
     );
-    ui::info(&format!("Node: {}", node));
+    ui::info(&format!("Node: {node}"));
 
     if !force {
         println!("⚠️  This will remove the node from the cluster");
@@ -57,7 +57,7 @@ pub async fn remove_node(node: String, force: bool) -> Result<()> {
     // Remove node logic would go here
     println!(
         "{}",
-        format!("✅ Node '{}' removed successfully", node).bright_green()
+        format!("✅ Node '{node}' removed successfully").bright_green()
     );
     Ok(())
 }

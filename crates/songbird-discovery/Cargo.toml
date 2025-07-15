@@ -2,6 +2,13 @@
 name = "songbird-discovery"
 version = "0.1.0"
 edition = "2021"
+license = "AGPL-3.0"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+description = "Network discovery and service registry for Songbird"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "../../README.md"
+keywords = ["discovery", "networking", "service-registry", "distributed", "gaming"]
+categories = ["network-programming", "game-engines", "web-programming"]
 
 [dependencies]
 # Internal dependencies

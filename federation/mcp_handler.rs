@@ -232,6 +232,11 @@ impl McpFederation {
         &self.mode
     }
     
+    /// Get cluster endpoints
+    pub async fn get_cluster_endpoints(&self) -> Result<Vec<String>, SongbirdError> {
+        Ok(self.config.cluster_endpoints.clone())
+    }
+    
     /// Register a service provider with the federation
     pub async fn register_service_provider(&self, provider_info: ServiceProviderInfo) -> Result<(), SongbirdError> {
         if !self.is_connected().await {
@@ -494,7 +499,7 @@ impl McpFederation {
     }
     
     /// Get local IP address for federation registration
-    async fn get_local_ip(&self) -> Result<String, SongbirdError> {
+    async fn get_local_ip_internal(&self) -> Result<String, SongbirdError> {
         tracing::debug!("Detecting local IP address for federation");
         
         // Try multiple methods to detect the local IP address
@@ -517,9 +522,30 @@ impl McpFederation {
             return Ok(ip);
         }
         
+        // Method 4: Check environment variable
+        if let Ok(ip) = std::env::var("SONGBIRD_LOCAL_IP") {
+            if let Ok(_) = ip.parse::<std::net::IpAddr>() {
+                tracing::debug!("Using IP from environment variable: {}", ip);
+                return Ok(ip);
+            }
+        }
+        
+        // Method 5: Use hostname resolution
+        if let Ok(hostname) = std::env::var("HOSTNAME") {
+            if let Ok(addrs) = tokio::net::lookup_host(format!("{}:80", hostname)).await {
+                for addr in addrs {
+                    let ip = addr.ip();
+                    if !ip.is_loopback() {
+                        tracing::debug!("Detected local IP via hostname resolution: {}", ip);
+                        return Ok(ip.to_string());
+                    }
+                }
+            }
+        }
+        
         // Fallback to localhost if all methods fail
         tracing::warn!("Could not detect local IP, falling back to localhost");
-        Ok("127.0.0.1".to_string())
+        Ok(crate::config::constants::default_bind_address().to_string())
     }
     
     /// Detect IP by connecting to external address
@@ -566,6 +592,48 @@ impl McpFederation {
         if let Ok(ip) = std::env::var("SONGBIRD_LOCAL_IP") {
             if let Ok(_) = ip.parse::<std::net::IpAddr>() {
                 return Ok(ip);
+            }
+        }
+        
+        // Try to read from /proc/net/route on Linux to find the default route interface
+        if let Ok(route_content) = tokio::fs::read_to_string("/proc/net/route").await {
+            for line in route_content.lines().skip(1) {
+                let fields: Vec<&str> = line.split_whitespace().collect();
+                if fields.len() >= 8 && fields[1] == "00000000" {
+                    // This is the default route
+                    let interface = fields[0];
+                    
+                    // Try to get the IP address for this interface
+                    if let Ok(addr_content) = tokio::fs::read_to_string(format!("/proc/net/if_inet6")).await {
+                        for addr_line in addr_content.lines() {
+                            let addr_fields: Vec<&str> = addr_line.split_whitespace().collect();
+                            if addr_fields.len() >= 6 && addr_fields[5] == interface {
+                                // Parse the IPv6 address (hex format)
+                                if addr_fields[0].len() == 32 {
+                                    // Simple hex parsing without additional dependencies
+                                    let hex_str = &addr_fields[0];
+                                    if let Ok(addr_int) = u128::from_str_radix(hex_str, 16) {
+                                        let ip = std::net::Ipv6Addr::from(addr_int);
+                                        if !ip.is_loopback() && !ip.is_multicast() {
+                                            return Ok(ip.to_string());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // Fallback: try to read IP from common network interface files
+        let interface_names = vec!["eth0", "wlan0", "en0", "ens160", "ens192"];
+        for interface in interface_names {
+            if let Ok(ip) = std::env::var(&format!("SONGBIRD_IP_{}", interface.to_uppercase())) {
+                if let Ok(_) = ip.parse::<std::net::IpAddr>() {
+                    return Ok(ip);
+                }
             }
         }
         
@@ -786,7 +854,7 @@ impl McpFederation {
     }
     
     /// Send federation request to endpoint
-    async fn send_federation_request(&self, endpoint: &str, request: &FederationRequest) -> Result<FederationResponse, SongbirdError> {
+    pub async fn send_federation_request(&self, endpoint: &str, request: &FederationRequest) -> Result<FederationResponse, SongbirdError> {
         Self::send_federation_request_static(&self.http_client, endpoint, request).await
     }
     
@@ -851,8 +919,8 @@ impl McpFederation {
             "type": "orchestrator", 
             "status": "running",
             "endpoints": {
-                "http": format!("{}/api", std::env::var("SONGBIRD_HTTP_LISTEN").unwrap_or_else(|_| "http://127.0.0.1:8080".to_string())),
-                "websocket": format!("{}/ws", std::env::var("SONGBIRD_WEBSOCKET_LISTEN").unwrap_or_else(|_| "ws://127.0.0.1:8080".to_string()))
+                "http": format!("{}/api", std::env::var("SONGBIRD_HTTP_LISTEN").unwrap_or_else(|_| format!("http://{}:8080", crate::config::constants::default_bind_address()))),
+                "websocket": format!("{}/ws", std::env::var("SONGBIRD_WEBSOCKET_LISTEN").unwrap_or_else(|_| format!("ws://{}:8080", crate::config::constants::default_bind_address())))
             },
             "capabilities": ["service_discovery", "load_balancing", "gaming_bridge"],
             "version": env!("CARGO_PKG_VERSION")
@@ -894,7 +962,7 @@ impl McpFederation {
                 "type": "storage",
                 "status": "running",
                 "endpoints": {
-                    "api": format!("{}/storage", std::env::var("SONGBIRD_HTTP_LISTEN").unwrap_or_else(|_| "http://127.0.0.1:8080".to_string()))
+                    "api": format!("{}/storage", std::env::var("SONGBIRD_HTTP_LISTEN").unwrap_or_else(|_| format!("http://{}:8080", crate::config::constants::default_bind_address())))
                 },
                 "capabilities": ["object_storage", "file_sharing", "backup"],
                 "protocols": ["http", "s3"]

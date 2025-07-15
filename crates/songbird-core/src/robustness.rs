@@ -114,6 +114,10 @@ impl CircuitBreaker {
             return Err(SongbirdError::CircuitBreakerOpen {
                 service: "unknown".to_string(),
                 message: "Circuit breaker is open".to_string(),
+                failure_count: Some(self.get_failure_count().await),
+                suggestion: Some(
+                    "Wait for the circuit breaker to reset or check service health".to_string(),
+                ),
             });
         }
 
@@ -127,7 +131,11 @@ impl CircuitBreaker {
                 self.record_failure().await;
                 Err(SongbirdError::CircuitBreakerFailure {
                     service: "unknown".to_string(),
-                    message: format!("Circuit breaker protected call failed: {}", e),
+                    message: format!("Circuit breaker protected call failed: {e}"),
+                    suggestion: Some(
+                        "Check service health and consider adjusting circuit breaker thresholds"
+                            .to_string(),
+                    ),
                 })
             }
         }
@@ -143,6 +151,16 @@ impl CircuitBreaker {
                 opened_at.elapsed() >= self.config.timeout
             }
             CircuitBreakerState::HalfOpen { .. } => true,
+        }
+    }
+
+    /// Get the current failure count
+    async fn get_failure_count(&self) -> u32 {
+        let state = self.state.read().await;
+        match &*state {
+            CircuitBreakerState::Closed { failure_count } => *failure_count,
+            CircuitBreakerState::Open { .. } => self.config.failure_threshold,
+            CircuitBreakerState::HalfOpen { failure_count, .. } => *failure_count,
         }
     }
 
@@ -218,7 +236,7 @@ impl CircuitBreaker {
         let state = self.state.read().await;
         match &*state {
             CircuitBreakerState::Closed { failure_count } => {
-                format!("Closed (failures: {})", failure_count)
+                format!("Closed (failures: {failure_count})")
             }
             CircuitBreakerState::Open { opened_at } => {
                 format!(
@@ -230,10 +248,7 @@ impl CircuitBreaker {
                 success_count,
                 failure_count,
             } => {
-                format!(
-                    "Half-Open (successes: {}, failures: {})",
-                    success_count, failure_count
-                )
+                format!("Half-Open (successes: {success_count}, failures: {failure_count})")
             }
         }
     }
@@ -246,11 +261,17 @@ pub struct RetryMechanism {
 
 impl RetryMechanism {
     /// Create a new retry mechanism
+    #[must_use]
     pub fn new(config: RetryConfig) -> Self {
         Self { config }
     }
 
     /// Execute a function with retry logic
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the retry operation fails after all attempts or
+    /// if the provided function consistently returns errors.
     pub async fn retry<F, T, E>(&self, mut func: F) -> Result<T>
     where
         F: FnMut() -> std::pin::Pin<
@@ -271,28 +292,39 @@ impl RetryMechanism {
                         return Err(SongbirdError::RetryExhausted {
                             attempts: attempt,
                             message: e.to_string(),
+                            duration: Some(format!("{}ms", self.config.initial_delay.as_millis())),
+                            suggestion: Some(
+                                "Increase retry attempts or check service availability".to_string(),
+                            ),
                         });
                     }
 
                     // Calculate next delay with exponential backoff
                     if attempt > 1 {
-                        let mut next_delay = Duration::from_millis(
-                            (delay.as_millis() as f64 * self.config.backoff_multiplier) as u64,
+                        let next_delay = Duration::from_millis(
+                            (delay
+                                .as_millis()
+                                .saturating_mul((self.config.backoff_multiplier * 1000.0) as u128)
+                                / 1000)
+                                .min(u128::from(u64::MAX)) as u64,
                         );
 
-                        // Apply jitter if enabled
-                        if self.config.jitter {
-                            let jitter_ms = fastrand::u64(0..=next_delay.as_millis() as u64 / 4);
-                            next_delay =
-                                Duration::from_millis(next_delay.as_millis() as u64 + jitter_ms);
-                        }
+                        // Add jitter (up to 25% of the delay)
+                        let jitter_ms = fastrand::u64(
+                            0..=u64::try_from(next_delay.as_millis()).unwrap_or(u64::MAX) / 4,
+                        );
+                        let delay_with_jitter = Duration::from_millis(
+                            u64::try_from(next_delay.as_millis())
+                                .unwrap_or(u64::MAX)
+                                .saturating_add(jitter_ms),
+                        );
 
                         // Cap at max delay
-                        if next_delay > self.config.max_delay {
-                            next_delay = self.config.max_delay;
+                        if delay_with_jitter > self.config.max_delay {
+                            delay = self.config.max_delay;
+                        } else {
+                            delay = delay_with_jitter;
                         }
-
-                        delay = next_delay;
                         tokio::time::sleep(delay).await;
                     }
                 }
@@ -310,10 +342,11 @@ pub struct RateLimiter {
 
 impl RateLimiter {
     /// Create a new rate limiter
+    #[must_use]
     pub fn new(config: RateLimitConfig) -> Self {
         Self {
-            tokens: Arc::new(RwLock::new(config.burst_size as f64)),
-            last_refill: Arc::new(RwLock::new(Instant::now())),
+            tokens: Arc::new(RwLock::new(f64::from(config.burst_size))),
+            last_refill: Arc::new(RwLock::new(std::time::Instant::now())),
             config,
         }
     }
@@ -331,6 +364,11 @@ impl RateLimiter {
         }
     }
 
+    /// Get the rate limit value
+    pub fn get_rate_limit(&self) -> u64 {
+        self.config.requests_per_second as u64
+    }
+
     /// Refill tokens based on time elapsed
     async fn refill_tokens(&self) {
         let now = Instant::now();
@@ -338,9 +376,9 @@ impl RateLimiter {
         let elapsed = now.duration_since(*last_refill);
 
         if elapsed >= Duration::from_millis(10) {
-            let tokens_to_add = elapsed.as_secs_f64() * self.config.requests_per_second as f64;
+            let tokens_to_add = elapsed.as_secs_f64() * f64::from(self.config.requests_per_second);
             let mut tokens = self.tokens.write().await;
-            *tokens = (*tokens + tokens_to_add).min(self.config.burst_size as f64);
+            *tokens = (*tokens + tokens_to_add).min(f64::from(self.config.burst_size));
             *last_refill = now;
         }
     }
@@ -361,6 +399,7 @@ pub struct RobustnessManager {
 
 impl RobustnessManager {
     /// Create a new robustness manager
+    #[must_use]
     pub fn new() -> Self {
         Self {
             circuit_breaker: None,
@@ -370,24 +409,32 @@ impl RobustnessManager {
     }
 
     /// Add circuit breaker protection
+    #[must_use]
     pub fn with_circuit_breaker(mut self, config: CircuitBreakerConfig) -> Self {
         self.circuit_breaker = Some(CircuitBreaker::new(config));
         self
     }
 
     /// Add retry mechanism
+    #[must_use]
     pub fn with_retry(mut self, config: RetryConfig) -> Self {
         self.retry_mechanism = Some(RetryMechanism::new(config));
         self
     }
 
     /// Add rate limiting
+    #[must_use]
     pub fn with_rate_limiting(mut self, config: RateLimitConfig) -> Self {
         self.rate_limiter = Some(RateLimiter::new(config));
         self
     }
 
-    /// Execute a function with all configured protections
+    /// Execute a function with robustness mechanisms applied
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the execution fails after applying all configured
+    /// robustness mechanisms (circuit breaker, retry, rate limiting).
     pub async fn execute<F, T, E>(&self, func: F) -> Result<T>
     where
         F: std::future::Future<Output = std::result::Result<T, E>> + Send,
@@ -396,9 +443,12 @@ impl RobustnessManager {
         // Check rate limit first
         if let Some(rate_limiter) = &self.rate_limiter {
             if !rate_limiter.allow_request().await {
-                return Err(SongbirdError::RateLimitExceeded(
-                    "Rate limit exceeded".to_string(),
-                ));
+                return Err(SongbirdError::RateLimitExceeded {
+                    message: "Rate limit exceeded".to_string(),
+                    service: Some("robustness_manager".to_string()),
+                    limit: Some(rate_limiter.get_rate_limit()),
+                    suggestion: Some("Wait before retrying or increase rate limit".to_string()),
+                });
             }
         }
 
@@ -409,7 +459,12 @@ impl RobustnessManager {
             // Execute directly if no circuit breaker
             match func.await {
                 Ok(result) => Ok(result),
-                Err(e) => Err(SongbirdError::ExecutionFailed(e.to_string())),
+                Err(e) => Err(SongbirdError::ExecutionFailed {
+                    message: e.to_string(),
+                    command: Some("robustness_protected_call".to_string()),
+                    exit_code: None,
+                    suggestion: Some("Check the underlying service or operation".to_string()),
+                }),
             }
         }
     }

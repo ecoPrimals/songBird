@@ -1,5 +1,5 @@
 //! Error handling for the universal primal system
-//! 
+//!
 //! This module provides comprehensive error types and utilities for handling
 //! errors across all primal integrations.
 
@@ -14,91 +14,91 @@ pub enum PrimalError {
     /// Network or connection error
     #[error("Network error: {0}")]
     Network(String),
-    
+
     /// Authentication error
     #[error("Authentication error: {0}")]
     Authentication(String),
-    
+
     /// Authorization error
     #[error("Authorization error: {0}")]
     Authorization(String),
-    
+
     /// Configuration error
     #[error("Configuration error: {0}")]
     Configuration(String),
-    
+
     /// Validation error
     #[error("Validation error: {0}")]
     Validation(String),
-    
+
     /// Request timeout error
     #[error("Request timeout: {0}")]
     Timeout(String),
-    
+
     /// Primal service unavailable
     #[error("Service unavailable: {0}")]
     ServiceUnavailable(String),
-    
+
     /// Invalid request format
     #[error("Invalid request: {0}")]
     InvalidRequest(String),
-    
+
     /// Internal server error
     #[error("Internal error: {0}")]
     Internal(String),
-    
+
     /// Rate limit exceeded
     #[error("Rate limit exceeded: {0}")]
     RateLimit(String),
-    
+
     /// Resource not found
     #[error("Resource not found: {0}")]
     NotFound(String),
-    
+
     /// Resource already exists
     #[error("Resource already exists: {0}")]
     AlreadyExists(String),
-    
+
     /// Insufficient permissions
     #[error("Insufficient permissions: {0}")]
     InsufficientPermissions(String),
-    
+
     /// Data corruption or integrity error
     #[error("Data integrity error: {0}")]
     DataIntegrity(String),
-    
+
     /// Serialization/deserialization error
     #[error("Serialization error: {0}")]
     Serialization(String),
-    
+
     /// Encryption/decryption error
     #[error("Encryption error: {0}")]
     Encryption(String),
-    
+
     /// Protocol error
     #[error("Protocol error: {0}")]
     Protocol(String),
-    
+
     /// Discovery error
     #[error("Discovery error: {0}")]
     Discovery(String),
-    
+
     /// Registry error
     #[error("Registry error: {0}")]
     Registry(String),
-    
+
     /// Multi-instance error
     #[error("Multi-instance error: {0}")]
     MultiInstance(String),
-    
+
     /// Port management error
     #[error("Port management error: {0}")]
     PortManagement(String),
-    
+
     /// Context error
     #[error("Context error: {0}")]
     Context(String),
-    
+
     /// Custom error for specific use cases
     #[error("Custom error: {0}")]
     Custom(String),
@@ -107,9 +107,16 @@ pub enum PrimalError {
 impl PrimalError {
     /// Check if error is retryable
     pub fn is_retryable(&self) -> bool {
-        matches!(self, PrimalError::Network(_) | PrimalError::Timeout(_) | PrimalError::ServiceUnavailable(_) | PrimalError::Internal(_) | PrimalError::RateLimit(_))
+        matches!(
+            self,
+            PrimalError::Network(_)
+                | PrimalError::Timeout(_)
+                | PrimalError::ServiceUnavailable(_)
+                | PrimalError::Internal(_)
+                | PrimalError::RateLimit(_)
+        )
     }
-    
+
     /// Get error category for logging and monitoring
     pub fn category(&self) -> &'static str {
         match self {
@@ -138,7 +145,7 @@ impl PrimalError {
             PrimalError::Custom(_) => "custom",
         }
     }
-    
+
     /// Get HTTP status code for this error
     pub fn http_status(&self) -> u16 {
         match self {
@@ -186,4 +193,51 @@ impl From<serde_json::Error> for PrimalError {
     fn from(error: serde_json::Error) -> Self {
         PrimalError::Serialization(error.to_string())
     }
-} 
+}
+
+impl From<songbird_errors::SongbirdError> for PrimalError {
+    fn from(error: songbird_errors::SongbirdError) -> Self {
+        match error {
+            songbird_errors::SongbirdError::Network { message, .. } => {
+                PrimalError::Network(message)
+            }
+            songbird_errors::SongbirdError::Authentication { message, .. } => {
+                PrimalError::Authentication(message)
+            }
+            songbird_errors::SongbirdError::Auth { message, .. } => {
+                PrimalError::Authentication(message)
+            }
+            songbird_errors::SongbirdError::Configuration { message, .. } => {
+                PrimalError::Configuration(message)
+            }
+            songbird_errors::SongbirdError::Config { message, .. } => {
+                PrimalError::Configuration(message)
+            }
+            songbird_errors::SongbirdError::ConfigField { message, .. } => {
+                PrimalError::Configuration(message)
+            }
+            songbird_errors::SongbirdError::Validation { message, .. } => {
+                PrimalError::Validation(message)
+            }
+            songbird_errors::SongbirdError::NotFound { message, .. } => {
+                PrimalError::NotFound(message)
+            }
+            songbird_errors::SongbirdError::Discovery { message, .. } => {
+                PrimalError::Discovery(message)
+            }
+            songbird_errors::SongbirdError::Service { message, .. } => {
+                PrimalError::ServiceUnavailable(message)
+            }
+            songbird_errors::SongbirdError::Security { message, .. } => {
+                PrimalError::Authorization(message)
+            }
+            songbird_errors::SongbirdError::Protocol { message, .. } => {
+                PrimalError::Protocol(message)
+            }
+            songbird_errors::SongbirdError::RateLimitExceeded { message, .. } => {
+                PrimalError::RateLimit(message)
+            }
+            _ => PrimalError::Custom(error.to_string()),
+        }
+    }
+}

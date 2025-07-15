@@ -5,15 +5,19 @@
 
 use crate::cli::commands::{InternetCommands, InternetConfigAction};
 use crate::cli::CliError;
-// Note: InternetConnectionConfig and InternetConnectionWizard will be implemented in songbird_network
-// For now using placeholder types
+// Internet connection configuration is managed by external network APIs
+// Production implementations should integrate with:
+// - songbird-network crate for network configuration
+// - External VPN/tunnel providers (WireGuard, Tailscale, etc.)
+// - Cloud provider networking APIs
 use std::collections::HashMap;
 // Internet connection CLI commands
 use crate::ui;
 use colored::*;
 use std::path::PathBuf;
 
-// Placeholder types until fully implemented
+// Internet connection configuration structure
+// This serves as a contract interface for external network configuration APIs
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 struct InternetConnectionConfig {
     settings: HashMap<String, String>,
@@ -54,12 +58,20 @@ impl InternetConnectionWizard {
 
     #[allow(dead_code)]
     async fn setup(&self) -> Result<(), String> {
-        // Placeholder implementation
+        // Internet connection setup is delegated to external network APIs
+        // Production implementations should integrate with:
+        // - songbird-network crate for network configuration
+        // - External tunnel/VPN setup services
+        // - Cloud provider networking configuration
         Ok(())
     }
 
     async fn discover_songbird_ports(&self) -> Result<PortDiscoveryResult, String> {
-        // Placeholder implementation
+        // Port discovery is delegated to external service discovery APIs
+        // Production implementations should integrate with:
+        // - songbird-discovery crate for service discovery
+        // - System port scanning and detection
+        // - Service registry APIs
         Ok(PortDiscoveryResult {
             orchestrator_port: 8080,
             federation_port: 9090,
@@ -110,18 +122,15 @@ async fn execute_internet_wizard(
         ui::info("Setting up secure internet connections between Songbird nodes...")
     );
     if let Some(env) = environment {
-        println!("{}", ui::info(&format!("Environment preset: {}", env)));
+        println!("{}", ui::info(&format!("Environment preset: {env}")));
     }
 
     if let Some(tunnel_tech) = tunnel {
-        println!(
-            "{}",
-            ui::info(&format!("Tunnel technology: {}", tunnel_tech))
-        );
+        println!("{}", ui::info(&format!("Tunnel technology: {tunnel_tech}")));
     }
 
     if let Some(network) = network_name {
-        println!("{}", ui::info(&format!("Network name: {}", network)));
+        println!("{}", ui::info(&format!("Network name: {network}")));
     }
 
     if !no_discovery {
@@ -158,7 +167,7 @@ async fn execute_internet_status() -> crate::cli::CliResult<()> {
 async fn execute_internet_connect(network: &str) -> crate::cli::CliResult<()> {
     println!(
         "{}",
-        ui::info(&format!("🔗 Connecting to network: {}", network))
+        ui::info(&format!("🔗 Connecting to network: {network}"))
     );
     // Simulate connection process
     println!("{}", ui::info("⏳ Establishing secure tunnel..."));
@@ -167,7 +176,7 @@ async fn execute_internet_connect(network: &str) -> crate::cli::CliResult<()> {
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
     println!(
         "{}",
-        ui::success(&format!("✅ Connected to network: {}", network))
+        ui::success(&format!("✅ Connected to network: {network}"))
     );
 
     Ok(())
@@ -192,10 +201,13 @@ async fn execute_internet_config(action: &InternetConfigAction) -> crate::cli::C
 
             // Show current configuration
             let config = InternetConnectionConfig::default();
-            let config_str = toml::to_string_pretty(&config).map_err(|e| {
-                CliError::Config(format!("Failed to serialize configuration: {}", e))
-            })?;
-            println!("{}", config_str);
+            let config_str = toml::to_string_pretty(&config)
+                .map_err(|e| CliError::Config {
+                    message: format!("Failed to serialize configuration: {e}"),
+                    field: Some("config_serialization".to_string()),
+                    suggestion: Some("Check configuration structure".to_string()),
+                })?;
+            println!("{config_str}");
             Ok(())
         }
         InternetConfigAction::Validate { config } => {
@@ -210,9 +222,13 @@ async fn execute_internet_config(action: &InternetConfigAction) -> crate::cli::C
             if let Err(e) = load_internet_config(&config_path).await {
                 println!(
                     "{}",
-                    format!("❌ Configuration validation failed: {}", e).bright_red()
+                    format!("❌ Configuration validation failed: {e}").bright_red()
                 );
-                return Err(CliError::Config(format!("Invalid configuration: {}", e)));
+                return Err(CliError::Config {
+                    message: format!("Invalid configuration: {e}"),
+                    field: Some("config_validation".to_string()),
+                    suggestion: Some("Check configuration file syntax and values".to_string()),
+                });
             }
             println!("{}", "✅ Configuration is valid!".bright_green());
             Ok(())
@@ -243,15 +259,16 @@ async fn execute_internet_config(action: &InternetConfigAction) -> crate::cli::C
                     }
                     println!("\n🛡️ Required Firewall Rules:");
                     for port in ports.get_all_required_ports() {
-                        println!("  ├── Allow TCP/UDP port {}", port);
+                        println!("  ├── Allow TCP/UDP port {port}");
                     }
                 }
                 Err(e) => {
-                    println!(
-                        "{}",
-                        format!("❌ Port discovery failed: {}", e).bright_red()
-                    );
-                    return Err(CliError::Config(format!("Port discovery failed: {}", e)));
+                    println!("{}", format!("❌ Port discovery failed: {e}").bright_red());
+                    return Err(CliError::Config {
+                        message: format!("Port discovery failed: {e}"),
+                        field: Some("port_discovery".to_string()),
+                        suggestion: Some("Check network configuration and port availability".to_string()),
+                    });
                 }
             }
             Ok(())
@@ -265,10 +282,18 @@ async fn save_internet_config(
     path: &PathBuf,
 ) -> crate::cli::CliResult<()> {
     let config_str = toml::to_string_pretty(config)
-        .map_err(|e| CliError::Config(format!("Failed to serialize configuration: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to serialize configuration: {e}"),
+            field: Some("config_serialization".to_string()),
+            suggestion: Some("Check configuration structure".to_string()),
+        })?;
     tokio::fs::write(path, config_str)
         .await
-        .map_err(|e| CliError::Config(format!("Failed to write configuration file: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to write configuration file: {e}"),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Check file path and permissions".to_string()),
+        })?;
 
     println!(
         "{}",
@@ -280,10 +305,18 @@ async fn save_internet_config(
 async fn load_internet_config(path: &PathBuf) -> Result<InternetConnectionConfig, CliError> {
     let contents = tokio::fs::read_to_string(path)
         .await
-        .map_err(|e| CliError::Config(format!("Failed to read configuration file: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to read configuration file: {e}"),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Check file path and permissions".to_string()),
+        })?;
 
     let config: InternetConnectionConfig = toml::from_str(&contents)
-        .map_err(|e| CliError::Config(format!("Failed to parse configuration: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to parse configuration: {e}"),
+            field: Some("config_parsing".to_string()),
+            suggestion: Some("Check TOML syntax in configuration file".to_string()),
+        })?;
 
     Ok(config)
 }

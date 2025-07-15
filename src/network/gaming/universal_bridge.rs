@@ -89,7 +89,7 @@ impl UniversalGameBridge {
             self.translators
                 .get(&protocol_class)
                 .ok_or_else(|| SongbirdError::Protocol {
-                    message: format!("No translator available for protocol: {:?}", protocol_class),
+                    message: format!("No translator available for protocol: {protocol_class:?}"),
                     protocol: "universal_bridge".to_string(),
                 })?;
 
@@ -168,7 +168,7 @@ impl UniversalGameBridge {
         let session = sessions
             .get(session_id)
             .ok_or_else(|| SongbirdError::Protocol {
-                message: format!("Session not found: {}", session_id),
+                message: format!("Session not found: {session_id}"),
                 protocol: "universal_bridge".to_string(),
             })?;
 
@@ -193,7 +193,7 @@ impl UniversalGameBridge {
         let session = sessions
             .get(session_id)
             .ok_or_else(|| SongbirdError::Protocol {
-                message: format!("Session not found: {}", session_id),
+                message: format!("Session not found: {session_id}"),
                 protocol: "universal_bridge".to_string(),
             })?;
 
@@ -325,7 +325,7 @@ impl UniversalGameBridge {
             .values()
             .find(|s| s.id == bridge_id)
             .ok_or_else(|| SongbirdError::Protocol {
-                message: format!("Bridge not found: {}", bridge_id),
+                message: format!("Bridge not found: {bridge_id}"),
                 protocol: "universal_bridge".to_string(),
             })?;
 
@@ -387,7 +387,7 @@ impl UniversalGameBridge {
             tracing::info!("✅ Bridge stopped: {}", bridge_id);
         } else {
             return Err(SongbirdError::Protocol {
-                message: format!("Bridge not found: {}", bridge_id),
+                message: format!("Bridge not found: {bridge_id}"),
                 protocol: "universal_bridge".to_string(),
             });
         }
@@ -447,7 +447,7 @@ fn generate_bridge_id() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .expect("System time should be after UNIX epoch")
         .as_secs();
     format!("{:x}", timestamp % 0xFFFFFF)
 }

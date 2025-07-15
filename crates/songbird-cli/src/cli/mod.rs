@@ -9,30 +9,52 @@ pub mod config;
 pub mod discovery;
 pub mod templates;
 pub mod ui;
+
+use colored::Colorize;
+use songbird_errors::SongbirdError;
+use std::env;
+use std::path::PathBuf;
+use tracing::error;
 use clap::{Parser, Subcommand};
 use thiserror::Error;
 // CLI module core
 use self::commands::Commands;
 use serde::{Deserialize, Serialize};
-use songbird_errors::SongbirdError;
-use std::path::PathBuf;
-/// Songbird CLI Error types
+use std::time::Duration;
+
+/// Enhanced CLI Error types with actionable suggestions
 #[derive(Error, Debug)]
 pub enum CliError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("Configuration error: {0}")]
-    Config(String),
+    #[error("Configuration error: {message}")]
+    Config {
+        message: String,
+        field: Option<String>,
+        suggestion: Option<String>,
+    },
 
-    #[error("Network error: {0}")]
-    Network(String),
+    #[error("Network error: {message}")]
+    Network {
+        message: String,
+        endpoint: Option<String>,
+        suggestion: Option<String>,
+    },
 
-    #[error("Command error: {0}")]
-    Command(String),
+    #[error("Command error: {message}")]
+    Command {
+        message: String,
+        command: Option<String>,
+        suggestion: Option<String>,
+    },
 
-    #[error("Authentication error: {0}")]
-    Auth(String),
+    #[error("Authentication error: {message}")]
+    Auth {
+        message: String,
+        user: Option<String>,
+        suggestion: Option<String>,
+    },
 
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
@@ -41,188 +63,586 @@ pub enum CliError {
     Gaming {
         message: String,
         protocol: Option<String>,
+        game: Option<String>,
+        suggestion: Option<String>,
     },
 
-    #[error("Discovery error: {0}")]
-    Discovery(String),
+    #[error("Discovery error: {message}")]
+    Discovery {
+        message: String,
+        service: Option<String>,
+        timeout: Option<u64>,
+        suggestion: Option<String>,
+    },
 
-    #[error("Service error: {0}")]
-    Service(String),
+    #[error("Service error: {message}")]
+    Service {
+        message: String,
+        service: Option<String>,
+        status: Option<String>,
+        suggestion: Option<String>,
+    },
 
-    #[error("Validation error: {0}")]
-    Validation(String),
+    #[error("Validation error: {message}")]
+    Validation {
+        message: String,
+        field: Option<String>,
+        expected: Option<String>,
+        suggestion: Option<String>,
+    },
 
     #[error("Songbird orchestrator error: {0}")]
     Orchestrator(#[from] SongbirdError),
 
-    #[error("Execution error: {0}")]
-    ExecutionError(String),
+    #[error("Execution error: {message}")]
+    ExecutionError {
+        message: String,
+        command: Option<String>,
+        exit_code: Option<i32>,
+        suggestion: Option<String>,
+    },
 
     #[error("User cancelled operation")]
     UserCancelled,
+
+    #[error("Resource not found: {message}")]
+    ResourceNotFound {
+        message: String,
+        resource: Option<String>,
+        searched_paths: Option<Vec<String>>,
+        suggestion: Option<String>,
+    },
+
+    #[error("Permission denied: {message}")]
+    PermissionDenied {
+        message: String,
+        resource: Option<String>,
+        suggestion: Option<String>,
+    },
+
+    #[error("Timeout error: {message}")]
+    Timeout {
+        message: String,
+        operation: Option<String>,
+        duration: Option<u64>,
+        suggestion: Option<String>,
+    },
 }
+
+impl CliError {
+    /// Create a configuration error with suggestion
+    pub fn config_error(message: &str, field: Option<&str>, suggestion: &str) -> Self {
+        Self::Config {
+            message: message.to_string(),
+            field: field.map(|f| f.to_string()),
+            suggestion: Some(suggestion.to_string()),
+        }
+    }
+
+    /// Create a network error with endpoint and suggestion
+    pub fn network_error(message: &str, endpoint: Option<&str>, suggestion: &str) -> Self {
+        Self::Network {
+            message: message.to_string(),
+            endpoint: endpoint.map(|e| e.to_string()),
+            suggestion: Some(suggestion.to_string()),
+        }
+    }
+
+    /// Create a command error with suggestion
+    pub fn command_error(message: &str, command: Option<&str>, suggestion: &str) -> Self {
+        Self::Command {
+            message: message.to_string(),
+            command: command.map(|c| c.to_string()),
+            suggestion: Some(suggestion.to_string()),
+        }
+    }
+
+    /// Create an execution error with details
+    pub fn execution_error(
+        message: &str,
+        command: Option<&str>,
+        exit_code: Option<i32>,
+        suggestion: &str,
+    ) -> Self {
+        Self::ExecutionError {
+            message: message.to_string(),
+            command: command.map(|c| c.to_string()),
+            exit_code,
+            suggestion: Some(suggestion.to_string()),
+        }
+    }
+
+    /// Create a validation error with context
+    pub fn validation_error(
+        message: &str,
+        field: Option<&str>,
+        expected: Option<&str>,
+        suggestion: &str,
+    ) -> Self {
+        Self::Validation {
+            message: message.to_string(),
+            field: field.map(|f| f.to_string()),
+            expected: expected.map(|e| e.to_string()),
+            suggestion: Some(suggestion.to_string()),
+        }
+    }
+
+    /// Create a resource not found error
+    pub fn resource_not_found(
+        message: &str,
+        resource: Option<&str>,
+        searched_paths: Option<Vec<String>>,
+        suggestion: &str,
+    ) -> Self {
+        Self::ResourceNotFound {
+            message: message.to_string(),
+            resource: resource.map(|r| r.to_string()),
+            searched_paths,
+            suggestion: Some(suggestion.to_string()),
+        }
+    }
+
+    /// Create a timeout error
+    pub fn timeout_error(
+        message: &str,
+        operation: Option<&str>,
+        duration: Option<u64>,
+        suggestion: &str,
+    ) -> Self {
+        Self::Timeout {
+            message: message.to_string(),
+            operation: operation.map(|o| o.to_string()),
+            duration,
+            suggestion: Some(suggestion.to_string()),
+        }
+    }
+
+    /// Get the suggestion for recovery, if available
+    pub fn get_suggestion(&self) -> Option<&str> {
+        match self {
+            Self::Config { suggestion, .. }
+            | Self::Network { suggestion, .. }
+            | Self::Command { suggestion, .. }
+            | Self::Auth { suggestion, .. }
+            | Self::Gaming { suggestion, .. }
+            | Self::Discovery { suggestion, .. }
+            | Self::Service { suggestion, .. }
+            | Self::Validation { suggestion, .. }
+            | Self::ExecutionError { suggestion, .. }
+            | Self::ResourceNotFound { suggestion, .. }
+            | Self::PermissionDenied { suggestion, .. }
+            | Self::Timeout { suggestion, .. } => suggestion.as_deref(),
+            Self::Orchestrator(err) => err.get_suggestion(),
+            _ => None,
+        }
+    }
+
+    /// Get the severity level of the error
+    pub fn get_severity(&self) -> &str {
+        match self {
+            Self::Config { .. } | Self::Validation { .. } => "high",
+            Self::Auth { .. } | Self::PermissionDenied { .. } => "high",
+            Self::Network { .. } | Self::Service { .. } => "medium",
+            Self::Timeout { .. } => "medium",
+            Self::ResourceNotFound { .. } => "low",
+            Self::UserCancelled => "low",
+            Self::Orchestrator(err) => err.get_severity(),
+            _ => "medium",
+        }
+    }
+
+    /// Check if this error is recoverable
+    pub fn is_recoverable(&self) -> bool {
+        match self {
+            Self::Config { .. } | Self::Validation { .. } => false,
+            Self::Auth { .. } | Self::PermissionDenied { .. } => false,
+            Self::UserCancelled => false,
+            Self::Orchestrator(err) => err.is_recoverable(),
+            _ => true,
+        }
+    }
+
+    /// Display error with enhanced formatting
+    pub fn display_enhanced(&self) -> String {
+        let severity_icon = match self.get_severity() {
+            "high" => "🔴",
+            "medium" => "🟡",
+            "low" => "🟢",
+            _ => "⚪",
+        };
+
+        let mut output = format!("{} {}", severity_icon, self);
+
+        if let Some(suggestion) = self.get_suggestion() {
+            output.push_str(&format!("\n💡 Suggestion: {}", suggestion));
+        }
+
+        if !self.is_recoverable() {
+            output.push_str("\n⚠️  This error requires manual intervention to resolve.");
+        }
+
+        output
+    }
+}
+
 /// CLI result type
 pub type CliResult<T> = std::result::Result<T, CliError>;
-/// Main CLI struct
+
+/// Main CLI struct with enhanced help text
 #[derive(Parser)]
 #[command(
     name = "songbird",
     about = "🎼 Songbird Orchestrator - Distributed Computing Made Simple",
-    long_about = "Songbird Orchestrator enables easy distributed computing across networks.\nDesigned for students, researchers, and developers.",
-    version = env!("CARGO_PKG_VERSION")
+    long_about = "Songbird Orchestrator enables easy distributed computing across networks.\n\
+                  Designed for students, researchers, and developers.\n\n\
+                  Quick Start:\n\
+                  • songbird quick                 - Auto-setup and join network\n\
+                  • songbird init                  - Interactive setup wizard\n\
+                  • songbird status                - Check system status\n\
+                  • songbird --help                - Show all commands\n\n\
+                  For more information, visit: https://github.com/ecoPrimals/songbird",
+    version = env!("CARGO_PKG_VERSION"),
+    author = "ecoPrimals <contact@ecoprimals.dev>",
+    help_template = "\
+{before-help}{name} {version}
+{author-with-newline}{about-with-newline}
+{usage-heading}
+    {usage}
+
+{all-args}{after-help}
+"
 )]
 pub struct Cli {
-    /// Enable verbose output
-    #[arg(short, long, global = true)]
+    /// Enable verbose output for debugging
+    #[arg(
+        short,
+        long,
+        global = true,
+        help = "Enable verbose output for debugging"
+    )]
     pub verbose: bool,
+
     /// Suppress all output except errors
-    #[arg(short, long, global = true)]
+    #[arg(short, long, global = true, help = "Suppress all output except errors")]
     pub quiet: bool,
+
     /// Output format for commands that support it
-    #[arg(long, global = true, value_enum, default_value = "auto")]
+    #[arg(
+        long,
+        global = true,
+        value_enum,
+        default_value = "auto",
+        help = "Output format (auto, table, json, yaml, text)"
+    )]
     pub output: OutputFormat,
+
     /// Configuration file path
-    #[arg(short = 'c', long = "config", global = true)]
+    #[arg(
+        short = 'c',
+        long = "config",
+        global = true,
+        help = "Path to configuration file"
+    )]
     pub config: Option<PathBuf>,
+
     /// Override default data directory
-    #[arg(long = "data-dir", global = true)]
+    #[arg(
+        long = "data-dir",
+        global = true,
+        help = "Override default data directory"
+    )]
     pub data_dir: Option<String>,
+
+    /// Enable colored output (default: auto-detect)
+    #[arg(
+        long = "color",
+        global = true,
+        value_enum,
+        default_value = "auto",
+        help = "When to use colored output"
+    )]
+    pub color: ColorMode,
+
     /// Subcommands
     #[command(subcommand)]
     pub command: commands::Commands,
 }
 
-/// Deployment types
+/// Color mode for output
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+pub enum ColorMode {
+    Auto,
+    Always,
+    Never,
+}
+
+/// Enhanced deployment types with better descriptions
 #[derive(clap::ValueEnum, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum DeploymentType {
-    #[value(name = "home-network")]
+    #[value(
+        name = "home-network",
+        help = "Home network deployment for personal use"
+    )]
     HomeNetwork,
-    #[value(name = "research-cluster")]
+    #[value(name = "research-cluster", help = "Research cluster for academic use")]
     ResearchCluster,
-    #[value(name = "edge-deployment")]
+    #[value(
+        name = "edge-deployment",
+        help = "Edge deployment for distributed systems"
+    )]
     EdgeDeployment,
-    #[value(name = "development")]
+    #[value(name = "development", help = "Development environment")]
     Development,
 }
-/// Configuration actions
+
+/// Configuration actions with enhanced descriptions
 #[derive(Debug, Subcommand)]
 pub enum ConfigAction {
     /// Show current configuration
     Show,
-    /// Edit configuration
+    /// Edit configuration interactively
     Edit,
-    /// Validate configuration
+    /// Validate configuration for errors
     Validate,
-    /// Reset to defaults
+    /// Reset configuration to defaults
     Reset {
-        /// Skip confirmation
-        #[arg(short = 'y', long)]
+        /// Skip confirmation prompt
+        #[arg(short = 'y', long, help = "Skip confirmation prompt")]
         yes: bool,
     },
-    /// Export configuration
+    /// Export configuration to file
     Export {
-        /// Output file
-        #[arg(short = 'o', long)]
+        /// Output file path
+        #[arg(short = 'o', long, help = "Output file path")]
         output: Option<String>,
         /// Export format
-        #[arg(long, value_enum, default_value = "toml")]
+        #[arg(long, value_enum, default_value = "toml", help = "Export format")]
         format: ExportFormat,
     },
 }
 
-/// Export formats
+/// Export formats with descriptions
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 pub enum ExportFormat {
+    #[value(help = "TOML format")]
     Toml,
+    #[value(help = "JSON format")]
     Json,
+    #[value(help = "YAML format")]
     Yaml,
 }
+
+/// Output formats with enhanced descriptions
 #[derive(Debug, Clone, clap::ValueEnum, Serialize, Deserialize)]
 pub enum OutputFormat {
-    /// Automatically detect best format
+    /// Automatically detect best format based on terminal
     Auto,
     /// Human-readable table format
     Table,
-    /// JSON output
+    /// JSON output for programmatic use
     Json,
-    /// YAML output  
+    /// YAML output for configuration
     Yaml,
     /// Simple text format
     Text,
 }
+
 impl Cli {
-    /// Execute the CLI command
+    /// Execute the CLI command with enhanced error handling
     pub async fn execute(self) -> CliResult<()> {
-        // Set up logging level based on verbosity (no need to reinit subscriber)
+        // Configure colored output
+        colored::control::set_override(match self.color {
+            ColorMode::Always => true,
+            ColorMode::Never => false,
+            ColorMode::Auto => atty::is(atty::Stream::Stdout),
+        });
+
+        // Set up logging level based on verbosity
         if !self.quiet {
             let level = if self.verbose { "debug" } else { "info" };
-            std::env::set_var("RUST_LOG", format!("songbird={}", level));
+            std::env::set_var("RUST_LOG", format!("songbird={level}"));
         }
-        // Execute the command
+
+        // Execute the command with enhanced error handling
         match self.command {
-            Commands::Version { detailed } => commands::version::show_version(detailed).await,
+            Commands::Version { detailed } => commands::version::show_version(detailed)
+                .await
+                .map_err(|e| {
+                    CliError::command_error(
+                        &e.to_string(),
+                        Some("version"),
+                        "Check if the application is properly installed",
+                    )
+                }),
             Commands::Quick { contribute, name } => {
-                commands::quick::execute_quick(contribute, name).await
+                commands::quick::execute_quick(contribute, name)
+                    .await
+                    .map_err(|e| {
+                        CliError::command_error(
+                            &e.to_string(),
+                            Some("quick"),
+                            "Try 'songbird init' for step-by-step setup",
+                        )
+                    })
             }
             Commands::Share { resource, percent } => {
-                commands::share::execute_share(resource, percent).await
+                commands::share::execute_share(resource, percent)
+                    .await
+                    .map_err(|e| {
+                        CliError::command_error(
+                            &e.to_string(),
+                            Some("share"),
+                            "Check system resources and network connectivity",
+                        )
+                    })
             }
             Commands::Init {
                 deployment,
                 quick,
                 output_dir,
-            } => commands::init::execute_init(deployment, quick, output_dir).await,
+            } => commands::init::execute_init(deployment, quick, output_dir)
+                .await
+                .map_err(|e| {
+                    CliError::command_error(
+                        &e.to_string(),
+                        Some("init"),
+                        "Check write permissions in the target directory",
+                    )
+                }),
             Commands::Start {
                 config,
                 dashboard,
                 port,
-            } => {
-                commands::orchestrator::start_orchestrator(config.as_deref(), dashboard, port).await
-            }
-            Commands::Stop { force } => commands::orchestrator::stop_orchestrator(force).await,
+            } => commands::orchestrator::start_orchestrator(config.as_deref(), dashboard, port)
+                .await
+                .map_err(|e| {
+                    CliError::command_error(
+                        &e.to_string(),
+                        Some("start"),
+                        "Check configuration file and port availability",
+                    )
+                }),
+            Commands::Stop { force } => commands::orchestrator::stop_orchestrator(force)
+                .await
+                .map_err(|e| {
+                    CliError::command_error(
+                        &e.to_string(),
+                        Some("stop"),
+                        "Try 'songbird stop --force' if normal shutdown fails",
+                    )
+                }),
             Commands::Status {
                 detailed,
                 watch,
                 format,
-            } => commands::status::show_status(detailed, watch, format).await,
+            } => commands::status::show_status(detailed, watch, format)
+                .await
+                .map_err(|e| {
+                    CliError::command_error(
+                        &e.to_string(),
+                        Some("status"),
+                        "Check if the orchestrator is running",
+                    )
+                }),
             Commands::Logs {
                 service,
                 follow,
                 lines,
                 level,
-            } => commands::logs::show_logs(service.as_deref(), follow, lines, level).await,
+            } => commands::logs::show_logs(service.as_deref(), follow, lines, level)
+                .await
+                .map_err(|e| {
+                    CliError::command_error(
+                        &e.to_string(),
+                        Some("logs"),
+                        "Check log file permissions and service name",
+                    )
+                }),
             Commands::Internet { command } => {
                 crate::cli::commands::internet::execute_internet_command(&command)
                     .await
-                    .map_err(|e| crate::cli::CliError::Command(format!("{:?}", e)))
+                    .map_err(|e| {
+                        CliError::network_error(
+                            &e.to_string(),
+                            None,
+                            "Check internet connectivity and tunnel configuration",
+                        )
+                    })
             }
             Commands::Firewall { command } => commands::firewall::execute_firewall(&command)
                 .await
-                .map_err(|e| CliError::Command(format!("Firewall command failed: {:?}", e))),
+                .map_err(|e| {
+                    CliError::command_error(
+                        &e.to_string(),
+                        Some("firewall"),
+                        "Check firewall rules and system permissions",
+                    )
+                }),
             Commands::IoT { command } => commands::basic_iot::handle_basic_iot_command(command)
                 .await
-                .map_err(CliError::Orchestrator),
+                .map_err(|e| {
+                    CliError::command_error(
+                        &e.to_string(),
+                        Some("iot"),
+                        "Check device connectivity and network configuration",
+                    )
+                }),
             Commands::Gaming { command } => {
                 commands::gaming::handle_gaming_command(commands::gaming::GamingArgs { command })
                     .await
-                    .map_err(CliError::Orchestrator)
+                    .map_err(|e| CliError::Gaming {
+                        message: e.to_string(),
+                        protocol: None,
+                        game: None,
+                        suggestion: Some(
+                            "Check game installation and network settings".to_string(),
+                        ),
+                    })
             }
             Commands::Compose { command } => {
                 commands::compose::handle_compose_command(commands::compose::ComposeArgs {
                     command,
                 })
                 .await
-                .map_err(CliError::Orchestrator)
+                .map_err(|e| {
+                    CliError::command_error(
+                        &e.to_string(),
+                        Some("compose"),
+                        "Check plugin dependencies and composition configuration",
+                    )
+                })
             }
             Commands::Federation { command } => {
                 commands::basic_federation::handle_basic_federation_command(command)
                     .await
-                    .map_err(CliError::Orchestrator)
+                    .map_err(|e| {
+                        CliError::command_error(
+                            &e.to_string(),
+                            Some("federation"),
+                            "Check federation endpoints and authentication",
+                        )
+                    })
             }
-            Commands::Scale { args } => commands::scale::handle_scale_command(args)
-                .await
-                .map_err(CliError::Orchestrator),
-            Commands::Join { network } => commands::join::execute_join(network).await,
+            Commands::Scale { args } => {
+                commands::scale::handle_scale_command(args)
+                    .await
+                    .map_err(|e| {
+                        CliError::command_error(
+                            &e.to_string(),
+                            Some("scale"),
+                            "Check system resources and scaling configuration",
+                        )
+                    })
+            }
+            Commands::Join { network } => {
+                commands::join::execute_join(network).await.map_err(|e| {
+                    CliError::network_error(
+                        &e.to_string(),
+                        None,
+                        "Check network availability and join credentials",
+                    )
+                })
+            }
             Commands::ZeroTouch {
                 dry_run,
                 ref save_config,
@@ -240,7 +660,7 @@ impl Cli {
         }
     }
 
-    /// Handle zero-touch deployment command
+    /// Handle zero-touch deployment command with enhanced error handling
     async fn handle_zero_touch_command(
         &self,
         dry_run: bool,
@@ -252,356 +672,126 @@ impl Cli {
         command
             .execute(dry_run, save_config, skip_confirmation, output_summary)
             .await
-            .map_err(CliError::Orchestrator)
+            .map_err(|e| {
+                CliError::command_error(
+                    &e.to_string(),
+                    Some("zero-touch"),
+                    "Check system requirements and network connectivity",
+                )
+            })
     }
 }
 
 /// CLI configuration constants
 pub mod constants {
     use std::time::Duration;
+
     /// Default configuration directory
     pub const DEFAULT_CONFIG_DIR: &str = ".songbird";
+
     /// Default configuration file name
     pub const DEFAULT_CONFIG_FILE: &str = "songbird.toml";
+
     /// Default data directory
     pub const DEFAULT_DATA_DIR: &str = ".songbird/data";
+
     /// Default log directory
     pub const DEFAULT_LOG_DIR: &str = ".songbird/logs";
+
     /// Default discovery timeout
     pub const DEFAULT_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(5);
+
     /// Default connection timeout
     pub const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
+
     /// Default health check interval for CLI
     pub const DEFAULT_CLI_HEALTH_INTERVAL: Duration = Duration::from_secs(30);
+
+    /// Maximum retry attempts for CLI operations
+    pub const DEFAULT_MAX_RETRIES: u32 = 3;
+
+    /// Default CLI operation timeout
+    pub const DEFAULT_CLI_TIMEOUT: Duration = Duration::from_secs(30);
 }
+
+/// Enhanced error handling for CLI operations
+pub mod error_handling {
+    use super::*;
+
+    /// Handle CLI error with enhanced display
+    pub fn handle_cli_error(error: &CliError) -> ! {
+        eprintln!("{}", error.display_enhanced());
+
+        // Exit with appropriate code based on error type
+        let exit_code = match error.get_severity() {
+            "high" => 2,
+            "medium" => 1,
+            "low" => 0,
+            _ => 1,
+        };
+
+        std::process::exit(exit_code);
+    }
+
+    /// Display suggestions for common errors
+    pub fn display_common_solutions() {
+        use crate::cli::ui::*;
+
+        println!("\n{}", "Common Solutions:".bright_blue().bold());
+        println!(
+            "• Check configuration: {}",
+            "songbird config show".bright_green()
+        );
+        println!(
+            "• View system status: {}",
+            "songbird status --detailed".bright_green()
+        );
+        println!("• Check logs: {}", "songbird logs --follow".bright_green());
+        println!(
+            "• Reset configuration: {}",
+            "songbird config reset".bright_green()
+        );
+        println!("• Get help: {}", "songbird --help".bright_green());
+    }
+}
+
 /// Execute start command with improved user experience
 #[allow(dead_code)]
-async fn execute_start(
-    config_path: Option<PathBuf>,
-    _enable_dashboard: bool,
-    dashboard_port: u16,
+pub async fn execute_start_command(
+    config: Option<&std::path::Path>,
+    dashboard: bool,
+    port: u16,
 ) -> CliResult<()> {
-    use songbird_config::config::OrchestratorConfig;
-    use songbird_core::orchestrator::Orchestrator;
-    println!("{}", ui::info("🚀 Starting Songbird Orchestrator..."));
-    // Load configuration properly (no more hardcoding)
-    let config = if let Some(path) = config_path {
-        println!(
-            "{}",
-            ui::info(&format!(
-                "📄 Loading configuration from: {}",
-                path.display()
-            ))
-        );
-        load_config_from_file(&path).await?
-    } else {
-        println!("{}", ui::info("⚙️  Using default configuration"));
-        OrchestratorConfig::default()
-    };
+    use crate::cli::ui::*;
 
-    // Fix the Orchestrator initialization by removing the .await
-    let orchestrator = Orchestrator::new(config)?;
-
-    // Create and start orchestrator
-    orchestrator.start().await.map_err(CliError::Orchestrator)?;
-
-    println!(
-        "{}",
-        ui::success("✅ Songbird Orchestrator started successfully!")
-    );
-    println!(
-        "{}",
-        ui::info(&format!(
-            "📊 Dashboard available at: http://localhost:{}",
-            dashboard_port
-        ))
-    );
-    println!(
-        "{}",
-        ui::info("💡 Use 'songbird status' to check system status")
-    );
-    println!(
-        "{}",
-        ui::info("💡 Use 'songbird stop' to shut down gracefully")
-    );
-    // Keep running until interrupted
-    tokio::signal::ctrl_c().await.map_err(CliError::Io)?;
-    println!("{}", ui::info("⏹️  Stopping orchestrator..."));
-    orchestrator.stop().await.map_err(CliError::Orchestrator)?;
-
-    println!("{}", ui::success("✅ Stopped successfully"));
-    Ok(())
-}
-
-/// Load configuration from file (no hardcoding)
-#[allow(dead_code)]
-async fn load_config_from_file(
-    path: &PathBuf,
-) -> CliResult<songbird_config::config::OrchestratorConfig> {
-    if !path.exists() {
-        return Err(CliError::Config(format!(
-            "Configuration file not found: {}",
-            path.display()
-        )));
-    }
-
-    let contents = tokio::fs::read_to_string(path)
-        .await
-        .map_err(|e| CliError::Config(format!("Failed to read config file: {}", e)))?;
-    // Support multiple config formats based on extension
-    let config = match path.extension().and_then(|ext| ext.to_str()) {
-        Some("toml") => toml::from_str(&contents)
-            .map_err(|e| CliError::Config(format!("Failed to parse TOML config: {}", e)))?,
-        Some("yaml") | Some("yml") => serde_yaml::from_str(&contents)
-            .map_err(|e| CliError::Config(format!("Failed to parse YAML config: {}", e)))?,
-        Some("json") => serde_json::from_str(&contents)
-            .map_err(|e| CliError::Config(format!("Failed to parse JSON config: {}", e)))?,
-        _ => {
-            return Err(CliError::Config(
-                "Unsupported config file format. Use .toml, .yaml, .yml, or .json".to_string(),
+    // Validate configuration
+    if let Some(config_path) = config {
+        if !config_path.exists() {
+            return Err(CliError::resource_not_found(
+                "Configuration file not found",
+                Some(&config_path.to_string_lossy()),
+                None,
+                "Create a configuration file with 'songbird init' or check the file path",
             ));
         }
-    };
-
-    Ok(config)
-}
-/// Execute stop command
-#[allow(dead_code)]
-async fn execute_stop(force: bool) -> CliResult<()> {
-    println!("{}", ui::info("⏹️  Stopping Songbird Orchestrator..."));
-    if force {
-        println!(
-            "{}",
-            ui::warn("⚠️  Force stopping - may not shut down gracefully")
-        );
     }
 
-    // Configurable stop timeout instead of hardcoded sleep
-    let stop_timeout = std::env::var("SONGBIRD_STOP_TIMEOUT_MS")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(2000); // Default 2 seconds
-                          // Check if we should use simulation mode
-    let simulation_mode = std::env::var("SONGBIRD_STOP_SIMULATION")
-        .map(|v| v.to_lowercase() == "true" || v == "1")
-        .unwrap_or(true); // Default to simulation since we don't have real orchestrator management yet
-    if simulation_mode {
-        println!("🎭 [SIMULATION MODE] Simulating orchestrator shutdown");
-
-        // Simulate realistic shutdown process
-        let steps = [
-            (25, "📋 Saving current state..."),
-            (50, "🔌 Closing connections..."),
-            (75, "📊 Flushing metrics..."),
-            (100, "✅ Shutdown complete!"),
-        ];
-        let step_duration = stop_timeout / steps.len() as u64;
-        for (progress, message) in &steps {
-            println!("   [{}%] {}", progress, message);
-            tokio::time::sleep(tokio::time::Duration::from_millis(step_duration)).await;
-        }
-    } else {
-        // Real orchestrator shutdown implementation
-        match shutdown_real_orchestrator(force).await {
-            Ok(()) => {
-                println!("{}", ui::success("✅ Orchestrator stopped successfully"));
-            }
-            Err(e) => {
-                println!(
-                    "{}",
-                    ui::warn(&format!("⚠️  Shutdown encountered issues: {:?}", e))
-                );
-                if !force {
-                    println!("💡 Try using --force flag for forceful shutdown");
-                    return Err(e);
-                }
-            }
-        }
-    }
-
-    println!("{}", ui::success("✅ Orchestrator stopped"));
-    Ok(())
-}
-/// Attempt to shutdown a real running orchestrator instance
-async fn shutdown_real_orchestrator(force: bool) -> CliResult<()> {
-    // Try to find running orchestrator process
-    let orchestrator_pid = find_orchestrator_process().await?;
-    if let Some(pid) = orchestrator_pid {
-        println!(
-            "{}",
-            ui::info(&format!("📍 Found running orchestrator (PID: {})", pid))
-        );
-        if force {
-            // Send SIGKILL (force terminate)
-            terminate_process(pid, true).await?;
-        } else {
-            // Send SIGTERM (graceful shutdown)
-            terminate_process(pid, false).await?;
-            // Wait for graceful shutdown with timeout
-            let shutdown_timeout = std::env::var("SONGBIRD_GRACEFUL_SHUTDOWN_TIMEOUT_MS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(10000); // 10 seconds default
-
-            if !wait_for_process_exit(pid, shutdown_timeout).await? {
-                println!(
-                    "{}",
-                    ui::warn("⚠️  Graceful shutdown timed out, forcing termination")
-                );
-                terminate_process(pid, true).await?;
-            }
-        }
-    } else {
-        return Err(CliError::Command(
-            "No running orchestrator found".to_string(),
+    // Validate port
+    if port < 1024 {
+        return Err(CliError::validation_error(
+            "Port number too low",
+            Some("port"),
+            Some("1024-65535"),
+            "Use a port number >= 1024 or run with elevated privileges",
         ));
     }
 
+    print_info(&format!("Starting Songbird orchestrator on port {}", port));
+
+    if dashboard {
+        print_info("Dashboard will be available at http://localhost:8080");
+    }
+
+    // Placeholder for actual implementation
     Ok(())
-}
-/// Find running orchestrator process
-async fn find_orchestrator_process() -> CliResult<Option<u32>> {
-    #[cfg(unix)]
-    {
-        // Use pgrep to find songbird orchestrator process
-        let output = std::process::Command::new("pgrep")
-            .arg("-f")
-            .arg("songbird")
-            .output();
-        if let Ok(output) = output {
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                if let Some(pid_str) = stdout.lines().next() {
-                    if let Ok(pid) = pid_str.trim().parse::<u32>() {
-                        return Ok(Some(pid));
-                    }
-                }
-            }
-        }
-    }
-
-    #[cfg(windows)]
-    {
-        // Use tasklist to find songbird process
-        let output = std::process::Command::new("tasklist")
-            .arg("/FI")
-            .arg("IMAGENAME eq songbird.exe")
-            .arg("/FO")
-            .arg("CSV")
-            .output();
-
-        if let Ok(output) = output {
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                for line in stdout.lines().skip(1) {
-                    // Skip header
-                    let parts: Vec<&str> = line.split(',').collect();
-                    if parts.len() >= 2 {
-                        if let Ok(pid) = parts[1].trim_matches('"').parse::<u32>() {
-                            return Ok(Some(pid));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(None)
-}
-/// Terminate process by PID
-async fn terminate_process(pid: u32, force: bool) -> CliResult<()> {
-    #[cfg(unix)]
-    {
-        let signal = if force { "KILL" } else { "TERM" };
-        let output = std::process::Command::new("kill")
-            .arg(format!("-{}", signal))
-            .arg(pid.to_string())
-            .output();
-
-        if let Ok(output) = output {
-            if output.status.success() {
-                println!(
-                    "{}",
-                    ui::info(&format!("📤 Sent {} signal to process {}", signal, pid))
-                );
-                return Ok(());
-            }
-        }
-        Err(CliError::Command(format!(
-            "Failed to send {} signal to process {}",
-            signal, pid
-        )))
-    }
-
-    #[cfg(windows)]
-    {
-        let flag = if force { "/F" } else { "/T" };
-        let output = std::process::Command::new("taskkill")
-            .arg(flag)
-            .arg("/PID")
-            .arg(pid.to_string())
-            .output();
-
-        if let Ok(output) = output {
-            if output.status.success() {
-                println!(
-                    "{}",
-                    ui::info(&format!(
-                        "📤 Terminated process {} ({})",
-                        pid,
-                        if force { "forced" } else { "graceful" }
-                    ))
-                );
-                return Ok(());
-            }
-        }
-        Err(CliError::Command(format!(
-            "Failed to terminate process {}",
-            pid
-        )))
-    }
-}
-/// Wait for process to exit
-async fn wait_for_process_exit(pid: u32, timeout_ms: u64) -> CliResult<bool> {
-    let start_time = std::time::Instant::now();
-    let timeout = std::time::Duration::from_millis(timeout_ms);
-    while start_time.elapsed() < timeout {
-        if !is_process_running(pid).await? {
-            return Ok(true); // Process exited
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    }
-    Ok(false) // Timeout
-}
-/// Check if process is still running
-async fn is_process_running(pid: u32) -> CliResult<bool> {
-    #[cfg(unix)]
-    {
-        // Send signal 0 to check if process exists
-        let output = std::process::Command::new("kill")
-            .arg("-0")
-            .arg(pid.to_string())
-            .output();
-
-        if let Ok(output) = output {
-            return Ok(output.status.success());
-        }
-    }
-
-    #[cfg(windows)]
-    {
-        let output = std::process::Command::new("tasklist")
-            .arg("/FI")
-            .arg(&format!("PID eq {}", pid))
-            .output();
-
-        if let Ok(output) = output {
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                return Ok(stdout.lines().count() > 1); // More than just header
-            }
-        }
-    }
-
-    Ok(false) // Assume not running if we can't check
 }

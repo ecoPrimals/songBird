@@ -138,7 +138,13 @@ async fn share_folder(folder: &std::path::Path, friends: &str, permission: &str)
     println!("🔗 Share URL generated for friends:");
     println!(
         "   songbird://share/{}/{}",
-        folder.file_name().map(|name| name.to_string_lossy().to_string()).unwrap_or_else(|| { tracing::warn!("Invalid folder name in federation"); "unknown".to_string() }),
+        folder
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_else(|| {
+                tracing::warn!("Invalid folder name in federation");
+                "unknown".to_string()
+            }),
         uuid::Uuid::new_v4().to_string()[..8].to_uppercase()
     );
 

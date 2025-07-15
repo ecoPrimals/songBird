@@ -35,8 +35,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (name, protocol, addr) in &games {
-        println!("   🎯 Found: {} ({})", name, protocol);
-        println!("      Address: {}", addr);
+        println!("   🎯 Found: {name} ({protocol})");
+        println!("      Address: {addr}");
     }
 
     println!("\n🌉 Creating universal bridge...");

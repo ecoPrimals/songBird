@@ -70,7 +70,8 @@ pub async fn start_orchestrator(
         println!(
             "{}",
             ui::info(&format!(
-                "📊 Dashboard will be available at: http://{}:{}", crate::config::environment::EnvironmentConfig::default().bind_address,
+                "📊 Dashboard will be available at: http://{}:{}",
+                crate::config::environment::EnvironmentConfig::default().bind_address,
                 dashboard_port
             ))
         );
@@ -93,7 +94,8 @@ pub async fn start_orchestrator(
         println!(
             "{}",
             ui::info(&format!(
-                "📊 Dashboard: http://{}:{}", crate::config::environment::EnvironmentConfig::default().bind_address,
+                "📊 Dashboard: http://{}:{}",
+                crate::config::environment::EnvironmentConfig::default().bind_address,
                 dashboard_port
             ))
         );

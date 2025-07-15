@@ -40,7 +40,11 @@ pub async fn execute_init(
     if !quick {
         config = interactive_configuration(config).map_err(|e| match e {
             CliError::UserCancelled => CliError::UserCancelled,
-            _ => CliError::Config(format!("Interactive configuration failed: {:?}", e)),
+            _ => CliError::Config {
+                message: format!("Interactive configuration failed: {e}"),
+                field: Some("interactive_config".to_string()),
+                suggestion: Some("Try running with --force to skip interactive mode".to_string()),
+            },
         })?;
     }
     // Validate configuration
@@ -161,9 +165,17 @@ fn save_configuration(
     // Save main orchestrator configuration
     let config_file = init_config.config_dir.join("songbird.toml");
     let config_content = toml::to_string_pretty(orchestrator_config)
-        .map_err(|e| CliError::Config(format!("Failed to serialize config: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to serialize config: {e}"),
+            field: Some("config_serialization".to_string()),
+            suggestion: Some("Check your configuration values and try again".to_string()),
+        })?;
     std::fs::write(&config_file, config_content)
-        .map_err(|e| CliError::Config(format!("Failed to write config file: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to write config file: {e}"),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Check file permissions and disk space".to_string()),
+        })?;
     // Save CLI configuration
     let cli_config = crate::cli::config::CliConfig {
         config_dir: init_config.config_dir.clone(),
@@ -175,9 +187,17 @@ fn save_configuration(
     };
     let cli_config_file = init_config.config_dir.join("cli.toml");
     let cli_config_content = toml::to_string_pretty(&cli_config)
-        .map_err(|e| CliError::Config(format!("Failed to serialize CLI config: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to serialize CLI config: {e}"),
+            field: Some("cli_config_serialization".to_string()),
+            suggestion: Some("Check your CLI configuration values".to_string()),
+        })?;
     std::fs::write(&cli_config_file, cli_config_content)
-        .map_err(|e| CliError::Config(format!("Failed to write CLI config file: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to write CLI config file: {e}"),
+            field: Some("cli_config_file".to_string()),
+            suggestion: Some("Check file permissions and disk space".to_string()),
+        })?;
     println!("{}", "⚙️  Configuration saved successfully".green());
     println!("   📄 Main config: {}", config_file.display());
     println!("   📄 CLI config: {}", cli_config_file.display());
@@ -188,7 +208,11 @@ fn save_configuration(
 fn generate_templates(config: &InitConfig) -> crate::cli::CliResult<()> {
     let templates_dir = config.config_dir.join("templates");
     std::fs::create_dir_all(&templates_dir)
-        .map_err(|e| CliError::Config(format!("Failed to create templates directory: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to create templates directory: {e}"),
+            field: Some("templates_directory".to_string()),
+            suggestion: Some("Check file permissions and disk space".to_string()),
+        })?;
     // Generate service template
     let service_template = r#"# Example Service Configuration
 # Copy this file and modify for your service
@@ -220,7 +244,11 @@ max_instances = 10
 target_cpu_percent = 70
 "#;
     std::fs::write(templates_dir.join("service.toml"), service_template)
-        .map_err(|e| CliError::Config(format!("Failed to write service template: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to write service template: {e}"),
+            field: Some("service_template".to_string()),
+            suggestion: Some("Check file permissions and disk space".to_string()),
+        })?;
     // Generate docker-compose template
     let docker_compose_template = r#"version: '3.8'
 services:
@@ -251,7 +279,11 @@ networks:
         templates_dir.join("docker-compose.yml"),
         docker_compose_template,
     )
-    .map_err(|e| CliError::Config(format!("Failed to write docker-compose template: {}", e)))?;
+    .map_err(|e| CliError::Config {
+        message: format!("Failed to write docker-compose template: {e}"),
+        field: Some("docker_compose_template".to_string()),
+        suggestion: Some("Check file permissions and disk space".to_string()),
+    })?;
     // Generate systemd service template
     let systemd_template = r#"[Unit]
 Description=Songbird Orchestrator
@@ -272,7 +304,11 @@ Environment=RUST_LOG=info
 WantedBy=multi-user.target
 "#;
     std::fs::write(templates_dir.join("songbird.service"), systemd_template)
-        .map_err(|e| CliError::Config(format!("Failed to write systemd template: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to write systemd template: {e}"),
+            field: Some("systemd_template".to_string()),
+            suggestion: Some("Check file permissions and disk space".to_string()),
+        })?;
     // Generate example Python client
     let python_client_template = r#"#!/usr/bin/env python3
 """
@@ -343,7 +379,11 @@ if __name__ == "__main__":
         templates_dir.join("client_example.py"),
         python_client_template,
     )
-    .map_err(|e| CliError::Config(format!("Failed to write Python client template: {}", e)))?;
+    .map_err(|e| CliError::Config {
+        message: format!("Failed to write Python client template: {e}"),
+        field: Some("python_client_template".to_string()),
+        suggestion: Some("Check file permissions and disk space".to_string()),
+    })?;
     // Generate README for templates
     let readme_template = r#"# Songbird Templates
 
@@ -370,7 +410,11 @@ This directory contains templates and examples to help you get started with Song
 - Join the community at https://github.com/songbird-orchestrator
 "#;
     std::fs::write(templates_dir.join("README.md"), readme_template)
-        .map_err(|e| CliError::Config(format!("Failed to write templates README: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to write templates README: {e}"),
+            field: Some("templates_readme".to_string()),
+            suggestion: Some("Check file permissions and disk space".to_string()),
+        })?;
 
     println!("{}", "📋 Templates generated successfully".green());
     println!("   📁 Templates directory: {}", templates_dir.display());

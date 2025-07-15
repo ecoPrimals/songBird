@@ -18,7 +18,7 @@ pub async fn start(daemon: bool, port: Option<u16>, services: Vec<String>) -> Re
         println!("🔧 Running in daemon mode");
     }
     if let Some(port) = port {
-        println!("🌐 Binding to port: {}", port);
+        println!("🌐 Binding to port: {port}");
     }
 
     if !services.is_empty() {

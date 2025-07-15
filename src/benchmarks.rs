@@ -2,10 +2,10 @@
 //!
 //! Provides performance benchmarking utilities for Songbird components
 
-use std::time::{Duration, Instant};
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-use tracing::{info, debug};
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
+use tracing::{debug, info};
 
 /// Performance benchmark results
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,12 +32,17 @@ impl BenchmarkRunner {
     }
 
     /// Run a benchmark function
-    pub fn run_benchmark<F>(&mut self, name: String, iterations: usize, mut func: F) -> BenchmarkResult
+    pub fn run_benchmark<F>(
+        &mut self,
+        name: String,
+        iterations: usize,
+        mut func: F,
+    ) -> BenchmarkResult
     where
         F: FnMut(),
     {
         debug!("Running benchmark: {} ({} iterations)", name, iterations);
-        
+
         let start = Instant::now();
         for _ in 0..iterations {
             func();
@@ -58,13 +63,21 @@ impl BenchmarkRunner {
     }
 
     /// Benchmark async function
-    pub async fn benchmark_async<F, Fut>(&mut self, name: &str, iterations: u64, mut func: F) -> BenchmarkResult
+    pub async fn benchmark_async<F, Fut>(
+        &mut self,
+        name: &str,
+        iterations: u64,
+        mut func: F,
+    ) -> BenchmarkResult
     where
         F: FnMut() -> Fut,
         Fut: std::future::Future<Output = ()>,
     {
-        debug!("Running async benchmark: {} ({} iterations)", name, iterations);
-        
+        debug!(
+            "Running async benchmark: {} ({} iterations)",
+            name, iterations
+        );
+
         let start = Instant::now();
         for _ in 0..iterations {
             func().await;
@@ -196,7 +209,7 @@ mod tests {
     #[test]
     fn test_benchmark_runner() {
         let mut runner = BenchmarkRunner::new();
-        
+
         let result = runner.run_benchmark("test_benchmark".to_string(), 10, || {
             std::thread::sleep(Duration::from_millis(1));
         });
@@ -210,10 +223,12 @@ mod tests {
     #[tokio::test]
     async fn test_async_benchmark() {
         let mut runner = BenchmarkRunner::new();
-        
-        let result = runner.benchmark_async("test_async_benchmark", 5, || async {
-            tokio::time::sleep(Duration::from_millis(1)).await;
-        }).await;
+
+        let result = runner
+            .benchmark_async("test_async_benchmark", 5, || async {
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            })
+            .await;
 
         assert_eq!(result.name, "test_async_benchmark");
         assert_eq!(result.iterations, 5);
@@ -223,11 +238,11 @@ mod tests {
     #[test]
     fn test_benchmark_summary() {
         let mut runner = BenchmarkRunner::new();
-        
+
         runner.run_benchmark("fast".to_string(), 100, || {
             std::thread::sleep(Duration::from_micros(1));
         });
-        
+
         runner.run_benchmark("slow".to_string(), 10, || {
             std::thread::sleep(Duration::from_millis(1));
         });
@@ -241,7 +256,7 @@ mod tests {
     #[tokio::test]
     async fn test_benchmark_suites() {
         let mut runner = BenchmarkRunner::new();
-        
+
         suites::network_benchmarks(&mut runner).await;
         suites::security_benchmarks(&mut runner).await;
         suites::gaming_benchmarks(&mut runner).await;
@@ -249,4 +264,4 @@ mod tests {
         let summary = runner.get_summary();
         assert!(summary.total_benchmarks > 0);
     }
-} 
+}

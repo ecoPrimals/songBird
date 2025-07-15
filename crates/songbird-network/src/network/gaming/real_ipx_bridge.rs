@@ -111,18 +111,22 @@ impl IPXToUDPTranslator {
         if udp_data.len() < 34 {
             // 4 bytes magic + 30 bytes IPX header minimum
             return Err(SongbirdError::Network {
-                service: "Real IPX Bridge".to_string(),
+                service: Some("Real IPX Bridge".to_string()),
                 message: "UDP data too short for IPX packet".to_string(),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             });
         }
 
         // Check magic header
         if &udp_data[0..4] != b"IPX\x00" {
             return Err(SongbirdError::Network {
-                service: "Real IPX Bridge".to_string(),
+                service: Some("Real IPX Bridge".to_string()),
                 message: "Invalid IPX magic header".to_string(),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             });
         }
 
@@ -208,9 +212,11 @@ impl RealIPXBridge {
         let socket = UdpSocket::bind(format!("0.0.0.0:{}", base_port))
             .await
             .map_err(|e| SongbirdError::Network {
-                service: "Real IPX Bridge".to_string(),
+                service: Some("Real IPX Bridge".to_string()),
                 message: format!("Failed to bind IPX bridge socket: {}", e),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?;
 
         info!("IPX Bridge bound to port {}", base_port);
@@ -238,9 +244,11 @@ impl RealIPXBridge {
         let mut receiver = {
             let mut recv_lock = self.packet_receiver.write().await;
             recv_lock.take().ok_or_else(|| SongbirdError::Network {
-                service: "Real IPX Bridge".to_string(),
+                service: Some("Real IPX Bridge".to_string()),
                 message: "Packet receiver already taken".to_string(),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?
         };
 

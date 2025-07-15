@@ -7,6 +7,7 @@ members = [
     "crates/songbird-discovery",
     "crates/songbird-observability", 
     "crates/songbird-federation",
+    "crates/songbird-registry",
     "crates/songbird-config",
     "crates/songbird-cli",
     "crates/songbird-errors",
@@ -22,6 +23,10 @@ license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 repository = "https://github.com/ecoPrimals/SongBird"
 homepage = "https://songbird-gaming.ecoprimals.dev"
+description = "Universal gaming bridge orchestrator and distributed networking platform"
+readme = "README.md"
+keywords = ["gaming", "orchestration", "networking", "distributed", "bridge"]
+categories = ["game-engines", "network-programming", "web-programming"]
 
 [workspace.package]
 version = "0.1.0"
@@ -43,6 +48,7 @@ songbird-security = { path = "./crates/songbird-security" }
 songbird-observability = { path = "./crates/songbird-observability" }
 songbird-discovery = { path = "./crates/songbird-discovery" }
 songbird-federation = { path = "./crates/songbird-federation" }
+songbird-registry = { path = "./crates/songbird-registry" }
 songbird-cli = { path = "./crates/songbird-cli" }
 songbird-universal-primals = { path = "./crates/songbird-universal-primals" }
 
@@ -144,6 +150,10 @@ tempfile = "3.0"
 sysinfo = "0.30"
 tarpc = { version = "0.36.0", features = ["full"] }
 tokio-serde = { version = "0.9.0", features = ["json"] }
+
+# Missing dependencies
+local-ip-address = "0.5"
+log = "0.4"
 
 [workspace.dependencies]
 # Core async runtime

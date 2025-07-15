@@ -443,9 +443,11 @@ impl RealProtocolDetector {
         }
 
         Err(SongbirdError::Network {
-            service: "Protocol Detector".to_string(),
+            service: Some("Protocol Detector".to_string()),
             details: Some("No suitable network interface found".to_string()),
             message: "No suitable network interface found".to_string(),
+            endpoint: None,
+            suggestion: Some("Check network connectivity and configuration".to_string()),
         })
     }
 
@@ -460,9 +462,11 @@ impl RealProtocolDetector {
         }
 
         Err(SongbirdError::Network {
-            service: "Protocol Detector".to_string(),
+            service: Some("Protocol Detector".to_string()),
             details: Some("No suitable network interface found".to_string()),
             message: "No suitable network interface found".to_string(),
+            endpoint: None,
+            suggestion: Some("Check network connectivity and configuration".to_string()),
         })
     }
 
@@ -575,9 +579,11 @@ impl RealProtocolDetectorCapture {
                 .into_iter()
                 .find(|iface| iface.is_up() && !iface.is_loopback())
                 .ok_or_else(|| SongbirdError::Network {
-                    service: "Protocol Detector".to_string(),
+                    service: Some("Protocol Detector".to_string()),
                     details: Some("No suitable network interface found".to_string()),
                     message: "No suitable network interface found".to_string(),
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 })?;
 
             // Create a channel to receive on

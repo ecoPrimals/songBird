@@ -197,7 +197,7 @@ impl RealProtocolDetector {
     /// Initialize built-in protocol matchers
     fn initialize_protocol_matchers(&mut self) {
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         // StarCraft IPX matcher
         self.protocol_matchers.push(ProtocolMatcher {
             name: "StarCraft".to_string(),
@@ -392,10 +392,20 @@ impl RealProtocolDetector {
             protocol_class: GameProtocolClass::GenericRetro,
             port_patterns: vec![
                 // Common retro game ports
-                1024, 1025, 1026, 1027, 1028, 1029, 1030, 
-                8000, 8001, 8002, 8003, 
+                1024,
+                1025,
+                1026,
+                1027,
+                1028,
+                1029,
+                1030,
+                8000,
+                8001,
+                8002,
+                8003,
                 env_config.bind_port, // Dynamic port from environment
-                9000, 9001,
+                9000,
+                9001,
             ],
             packet_patterns: vec![], // No specific patterns - rely on port detection
             confidence_threshold: 0.4,
@@ -564,12 +574,10 @@ impl RealProtocolDetectorCapture {
             let interface = datalink::interfaces()
                 .into_iter()
                 .find(|iface| iface.is_up() && !iface.is_loopback())
-                .ok_or_else(|| {
-                    SongbirdError::Network {
-                        service: "Protocol Detector".to_string(),
-                        details: Some("No suitable network interface found".to_string()),
-                        message: "No suitable network interface found".to_string(),
-                    }
+                .ok_or_else(|| SongbirdError::Network {
+                    service: "Protocol Detector".to_string(),
+                    details: Some("No suitable network interface found".to_string()),
+                    message: "No suitable network interface found".to_string(),
                 })?;
 
             // Create a channel to receive on

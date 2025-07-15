@@ -205,11 +205,11 @@ impl RealIPXBridge {
     pub async fn bind_ipx_network(network_id: u32) -> Result<Self> {
         // Bind to IPX port range (typically 6112 for StarCraft)
         let base_port = 6112;
-        let socket = UdpSocket::bind(format!("0.0.0.0:{}", base_port))
+        let socket = UdpSocket::bind(format!("0.0.0.0:{base_port}"))
             .await
             .map_err(|e| SongbirdError::Network {
                 service: "Real IPX Bridge".to_string(),
-                message: format!("Failed to bind IPX bridge socket: {}", e),
+                message: format!("Failed to bind IPX bridge socket: {e}"),
                 details: None,
             })?;
 
@@ -511,8 +511,14 @@ mod tests {
             data: vec![0x01, 0x02, 0x03, 0x04],
         };
 
-        let udp_data = translator.ipx_to_udp(&ipx_packet).await.map_err(|e| { tracing::error!("IPX to UDP translation failed: {}", e); e })?;
-        let parsed_packet = translator.udp_to_ipx(&udp_data).await.map_err(|e| { tracing::error!("UDP to IPX translation failed: {}", e); e })?;
+        let udp_data = translator.ipx_to_udp(&ipx_packet).await.map_err(|e| {
+            tracing::error!("IPX to UDP translation failed: {}", e);
+            e
+        })?;
+        let parsed_packet = translator.udp_to_ipx(&udp_data).await.map_err(|e| {
+            tracing::error!("UDP to IPX translation failed: {}", e);
+            e
+        })?;
 
         assert_eq!(parsed_packet.header.packet_type, 0x04);
         assert_eq!(parsed_packet.data, vec![0x01, 0x02, 0x03, 0x04]);

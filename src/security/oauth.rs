@@ -40,14 +40,17 @@ pub struct OAuth2Config {
 impl Default for OAuth2Config {
     fn default() -> Self {
         // Get configuration from environment variables with secure defaults
-        let host = std::env::var("SONGBIRD_OAUTH_BIND_ADDRESS")
-            .unwrap_or_else(|_| {
-                // Default to secure localhost binding instead of 0.0.0.0
-                std::env::var("SONGBIRD_BIND_ADDRESS")
-                    .unwrap_or_else(|_| crate::config::environment::EnvironmentConfig::default().bind_address.to_string())
-            });
+        let host = std::env::var("SONGBIRD_OAUTH_BIND_ADDRESS").unwrap_or_else(|_| {
+            // Default to secure localhost binding instead of 0.0.0.0
+            std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
+                crate::config::environment::EnvironmentConfig::default()
+                    .bind_address
+                    .to_string()
+            })
+        });
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        let port = std::env::var("SONGBIRD_PORT").unwrap_or_else(|_| env_config.bind_port.to_string());
+        let port =
+            std::env::var("SONGBIRD_PORT").unwrap_or_else(|_| env_config.bind_port.to_string());
 
         Self {
             client_id: std::env::var("SONGBIRD_OAUTH_CLIENT_ID")
@@ -64,7 +67,7 @@ impl Default for OAuth2Config {
             _userinfo_endpoint: std::env::var("SONGBIRD_OAUTH_USERINFO_ENDPOINT").ok()
                 .or_else(|| Some("https://oauth.example.com/userinfo".to_string())),
             redirect_uri: std::env::var("SONGBIRD_OAUTH_REDIRECT_URI")
-                .unwrap_or_else(|_| format!("http://{}:{}/auth/callback", host, port)),
+                .unwrap_or_else(|_| format!("http://{host}:{port}/auth/callback")),
             scopes: std::env::var("SONGBIRD_OAUTH_SCOPES")
                 .map(|s| s.split(',').map(|scope| scope.trim().to_string()).collect())
                 .unwrap_or_else(|_| vec!["openid".to_string(), "profile".to_string(), "email".to_string()]),
@@ -111,9 +114,8 @@ impl GenericOAuth2Provider {
     pub fn new(config: OAuth2Config) -> Result<Self, OAuth2Error> {
         Ok(Self {
             config,
-            client: crate::communication::HyperHttpClient::new().map_err(|e| {
-                OAuth2Error::Network(format!("Failed to create HTTP client: {}", e))
-            })?,
+            client: crate::communication::HyperHttpClient::new()
+                .map_err(|e| OAuth2Error::Network(format!("Failed to create HTTP client: {e}")))?,
         })
     }
 }
@@ -156,7 +158,7 @@ impl OAuth2Provider for GenericOAuth2Provider {
             Ok(token_response)
         } else {
             let error_text = response.text()?;
-            Err(format!("Token exchange failed: {}", error_text).into())
+            Err(format!("Token exchange failed: {error_text}").into())
         }
     }
     async fn get_user_info(
@@ -213,7 +215,7 @@ impl OAuth2Provider for GenericOAuth2Provider {
             Ok(token_response)
         } else {
             let error_text = response.text()?;
-            Err(format!("Token refresh failed: {}", error_text).into())
+            Err(format!("Token refresh failed: {error_text}").into())
         }
     }
 }

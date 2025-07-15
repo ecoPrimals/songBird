@@ -43,12 +43,39 @@ pub struct ProxyConfig {
 
 impl Default for ProxyConfig {
     fn default() -> Self {
+        // Use NetworkConfig for safe defaults instead of hardcoded values
+        let network_config = crate::config::network::NetworkConfig::default();
+
         Self {
-            bind_address: "0.0.0.0".to_string(),
-            port: 8080,
+            bind_address: network_config.bind_address.to_string(),
+            port: network_config.orchestrator_port,
             enable_logging: true,
             request_timeout: 30,
             connection_timeout: 10,
+            max_retries: 3,
+            enable_circuit_breaker: true,
+            circuit_breaker_threshold: 5,
+            circuit_breaker_timeout: 60,
+            enable_load_balancing: true,
+            load_balancing_strategy: LoadBalancingStrategy::RoundRobin,
+            enable_ssl: false,
+            ssl_cert_path: None,
+            ssl_key_path: None,
+            enable_compression: true,
+            max_body_size: 1024 * 1024,
+        }
+    }
+}
+
+impl ProxyConfig {
+    /// Create a new ProxyConfig from NetworkConfig (recommended for production)
+    pub fn from_network_config(network_config: &crate::config::network::NetworkConfig) -> Self {
+        Self {
+            bind_address: network_config.bind_address.to_string(),
+            port: network_config.orchestrator_port,
+            enable_logging: true,
+            request_timeout: network_config.request_timeout.as_secs(),
+            connection_timeout: network_config.connection_timeout.as_secs(),
             max_retries: 3,
             enable_circuit_breaker: true,
             circuit_breaker_threshold: 5,
@@ -279,20 +306,18 @@ impl ConnectionProxy {
         service_name: &str,
     ) -> Result<ServiceInfo, SongbirdError> {
         let services = self.services.read().await;
-        let service_instances = services.get(service_name).ok_or_else(|| {
-            SongbirdError::Configuration {
-                field: "service_name".to_string(),
-                message: format!("Service not found: {}", service_name),
-            }
-        })?;
+        let service_instances =
+            services
+                .get(service_name)
+                .ok_or_else(|| SongbirdError::Configuration {
+                    field: "service_name".to_string(),
+                    message: format!("Service not found: {service_name}"),
+                })?;
 
         if service_instances.is_empty() {
             return Err(SongbirdError::Configuration {
                 field: "service_instances".to_string(),
-                message: format!(
-                    "No instances available for service: {}",
-                    service_name
-                ),
+                message: format!("No instances available for service: {service_name}"),
             });
         }
 
@@ -309,21 +334,19 @@ impl ConnectionProxy {
                 let index = rand::thread_rng().gen_range(0..service_instances.len());
                 &service_instances[index]
             }
-            LoadBalancingStrategy::LeastConnections => {
-                service_instances
-                    .iter()
-                    .min_by_key(|instance| {
-                        load_balancer
-                            .connection_counts
-                            .get(&instance.service_id)
-                            .unwrap_or(&0)
-                    })
-                    .ok_or_else(|| SongbirdError::Config {
-                        message: "No service instances available for least connections selection".to_string(),
-                        field: None,
-                    })?
-
-            }
+            LoadBalancingStrategy::LeastConnections => service_instances
+                .iter()
+                .min_by_key(|instance| {
+                    load_balancer
+                        .connection_counts
+                        .get(&instance.service_id)
+                        .unwrap_or(&0)
+                })
+                .ok_or_else(|| SongbirdError::Config {
+                    message: "No service instances available for least connections selection"
+                        .to_string(),
+                    field: None,
+                })?,
             _ => &service_instances[0],
         };
         *load_balancer

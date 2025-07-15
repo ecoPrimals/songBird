@@ -9,7 +9,6 @@ use parking_lot;
 use serde_json;
 use std::collections::HashMap;
 
-
 pub use crate::traits::communication::MessageType;
 
 // Import the proper hyper client and circuit breaker
@@ -44,7 +43,7 @@ pub struct CommunicationResponse {
 }
 
 /// Communication statistics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CommunicationStats {
     pub messages_sent: u64,
     pub messages_received: u64,
@@ -55,9 +54,15 @@ pub struct CommunicationStats {
 /// Communication layer trait
 #[async_trait::async_trait]
 pub trait CommunicationLayer: Send + Sync {
-    async fn send_message(&self, target: ServiceAddress, message: ServiceMessage) -> Result<CommunicationResponse>;
+    async fn send_message(
+        &self,
+        target: ServiceAddress,
+        message: ServiceMessage,
+    ) -> Result<CommunicationResponse>;
     async fn broadcast(&self, message: ServiceMessage) -> Result<Vec<CommunicationResponse>>;
-    async fn listen(&self) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>>;
+    async fn listen(
+        &self,
+    ) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>>;
     async fn subscribe(&self, topic: &str) -> Result<()>;
     async fn unsubscribe(&self, topic: &str) -> Result<()>;
     async fn get_stats(&self) -> Result<CommunicationStats>;
@@ -79,11 +84,12 @@ pub struct HttpCommunication {
 
 impl HttpCommunication {
     pub fn new(_base_url: String) -> Result<Self> {
-        let client = self::hyper_client::HyperHttpClient::new()
-            .map_err(|e| SongbirdError::Communication(format!("Failed to create HTTP client: {}", e)))?;
-        
+        let client = self::hyper_client::HyperHttpClient::new().map_err(|e| {
+            SongbirdError::Communication(format!("Failed to create HTTP client: {e}"))
+        })?;
+
         let circuit_breaker = CircuitBreaker::new(CircuitBreakerConfig::default());
-        
+
         Ok(Self {
             client,
             circuit_breaker,
@@ -99,10 +105,16 @@ impl HttpCommunication {
 
 #[async_trait::async_trait]
 impl CommunicationLayer for HttpCommunication {
-    async fn send_message(&self, target: ServiceAddress, message: ServiceMessage) -> Result<CommunicationResponse> {
+    async fn send_message(
+        &self,
+        target: ServiceAddress,
+        message: ServiceMessage,
+    ) -> Result<CommunicationResponse> {
         // Check circuit breaker
         if !self.circuit_breaker.should_allow_request() {
-            return Err(SongbirdError::Communication("Circuit breaker is open, request rejected".to_string()));
+            return Err(SongbirdError::Communication(
+                "Circuit breaker is open, request rejected".to_string(),
+            ));
         }
 
         // Construct URL from target
@@ -114,7 +126,7 @@ impl CommunicationLayer for HttpCommunication {
 
         // Send HTTP request
         let result = self.client.post_json(&url, &message).await;
-        
+
         match result {
             Ok(response) => {
                 // Update stats
@@ -123,15 +135,17 @@ impl CommunicationLayer for HttpCommunication {
                     stats.messages_sent += 1;
                     stats.bytes_sent += response.body().len() as u64;
                 }
-                
+
                 // Record success
                 self.circuit_breaker.record_success();
-                
+
                 Ok(CommunicationResponse {
                     id: message.id,
                     status: response.status().as_u16(),
                     body: response.text().unwrap_or_default(),
-                    headers: response.headers().iter()
+                    headers: response
+                        .headers()
+                        .iter()
                         .map(|(k, v)| (k.clone(), v.clone()))
                         .collect(),
                 })
@@ -139,8 +153,10 @@ impl CommunicationLayer for HttpCommunication {
             Err(e) => {
                 // Record failure
                 self.circuit_breaker.record_failure();
-                
-                Err(SongbirdError::Communication(format!("HTTP request failed: {}", e)))
+
+                Err(SongbirdError::Communication(format!(
+                    "HTTP request failed: {e}"
+                )))
             }
         }
     }
@@ -152,12 +168,15 @@ impl CommunicationLayer for HttpCommunication {
             service_id: "broadcast".to_string(),
             endpoint: None,
         };
-        
+
         let response = self.send_message(broadcast_target, message).await?;
         Ok(vec![response])
     }
 
-    async fn listen(&self) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>> {
+    async fn listen(
+        &self,
+    ) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>>
+    {
         // HTTP doesn't support streaming/listening, return empty stream
         Ok(Box::new(futures_util::stream::empty()))
     }
@@ -226,20 +245,29 @@ impl WebSocketCommunication {
 
 #[async_trait::async_trait]
 impl CommunicationLayer for WebSocketCommunication {
-    async fn send_message(&self, target: ServiceAddress, message: ServiceMessage) -> Result<CommunicationResponse> {
+    async fn send_message(
+        &self,
+        target: ServiceAddress,
+        message: ServiceMessage,
+    ) -> Result<CommunicationResponse> {
         // Check circuit breaker
         if !self.circuit_breaker.should_allow_request() {
-            return Err(SongbirdError::Communication("Circuit breaker is open, request rejected".to_string()));
+            return Err(SongbirdError::Communication(
+                "Circuit breaker is open, request rejected".to_string(),
+            ));
         }
 
         // Check if connected
         if !self.is_connected().await {
-            return Err(SongbirdError::Communication("WebSocket not connected".to_string()));
+            return Err(SongbirdError::Communication(
+                "WebSocket not connected".to_string(),
+            ));
         }
 
         // Simulate WebSocket message sending
-        let payload = serde_json::to_string(&message)
-            .map_err(|e| SongbirdError::Communication(format!("Failed to serialize message: {}", e)))?;
+        let payload = serde_json::to_string(&message).map_err(|e| {
+            SongbirdError::Communication(format!("Failed to serialize message: {e}"))
+        })?;
 
         // Update stats
         {
@@ -251,7 +279,11 @@ impl CommunicationLayer for WebSocketCommunication {
         // Record success
         self.circuit_breaker.record_success();
 
-        tracing::info!("WebSocket message sent to {}: {}", target.service_id, payload);
+        tracing::info!(
+            "WebSocket message sent to {}: {}",
+            target.service_id,
+            payload
+        );
 
         Ok(CommunicationResponse {
             id: message.id,
@@ -267,12 +299,15 @@ impl CommunicationLayer for WebSocketCommunication {
             service_id: "broadcast".to_string(),
             endpoint: Some(format!("ws://{}:{}/broadcast", self.host, self.port)),
         };
-        
+
         let response = self.send_message(broadcast_target, message).await?;
         Ok(vec![response])
     }
 
-    async fn listen(&self) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>> {
+    async fn listen(
+        &self,
+    ) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>>
+    {
         // WebSocket would normally provide a stream of incoming messages
         // For now, return empty stream but log the action
         tracing::info!("WebSocket listening on {}:{}", self.host, self.port);
@@ -352,14 +387,20 @@ impl InMemoryCommunication {
 
 #[async_trait::async_trait]
 impl CommunicationLayer for InMemoryCommunication {
-    async fn send_message(&self, target: ServiceAddress, message: ServiceMessage) -> Result<CommunicationResponse> {
+    async fn send_message(
+        &self,
+        target: ServiceAddress,
+        message: ServiceMessage,
+    ) -> Result<CommunicationResponse> {
         // Calculate message size for stats
         let message_size = serde_json::to_string(&message)
             .map(|s| s.len())
             .unwrap_or(0) as u64;
 
         // Store message in queue
-        self.message_queue.write().push((target.clone(), message.clone()));
+        self.message_queue
+            .write()
+            .push((target.clone(), message.clone()));
 
         // Update stats
         {
@@ -368,7 +409,11 @@ impl CommunicationLayer for InMemoryCommunication {
             stats.bytes_sent += message_size;
         }
 
-        tracing::debug!("In-memory message sent to {}: {}", target.service_id, message.id);
+        tracing::debug!(
+            "In-memory message sent to {}: {}",
+            target.service_id,
+            message.id
+        );
 
         let message_id = message.id.clone();
         Ok(CommunicationResponse {
@@ -385,16 +430,16 @@ impl CommunicationLayer for InMemoryCommunication {
             let subscribers = self.subscribers.read();
             subscribers.clone()
         };
-        
+
         let mut responses = Vec::new();
 
         for (topic, subscriber_ids) in subscribers_snapshot.iter() {
             for subscriber_id in subscriber_ids {
                 let target = ServiceAddress {
                     service_id: subscriber_id.clone(),
-                    endpoint: Some(format!("memory://{}", topic)),
+                    endpoint: Some(format!("memory://{topic}")),
                 };
-                
+
                 let response = self.send_message(target, message.clone()).await?;
                 responses.push(response);
             }
@@ -413,7 +458,10 @@ impl CommunicationLayer for InMemoryCommunication {
         Ok(responses)
     }
 
-    async fn listen(&self) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>> {
+    async fn listen(
+        &self,
+    ) -> Result<Box<dyn futures_util::Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>>
+    {
         // In-memory implementation could provide a stream of queued messages
         // For now, return empty stream but this could be enhanced
         tracing::debug!("In-memory listening started");
@@ -422,15 +470,20 @@ impl CommunicationLayer for InMemoryCommunication {
 
     async fn subscribe(&self, topic: &str) -> Result<()> {
         let subscriber_id = format!("subscriber-{}", uuid::Uuid::new_v4());
-        
+
         {
             let mut subscribers = self.subscribers.write();
-            subscribers.entry(topic.to_string())
+            subscribers
+                .entry(topic.to_string())
                 .or_default()
                 .push(subscriber_id.clone());
         }
 
-        tracing::info!("In-memory subscription to topic '{}' with id '{}'", topic, subscriber_id);
+        tracing::info!(
+            "In-memory subscription to topic '{}' with id '{}'",
+            topic,
+            subscriber_id
+        );
         Ok(())
     }
 
@@ -470,18 +523,18 @@ impl CommunicationLayer for InMemoryCommunication {
     }
 }
 
-pub mod performance_optimizer;
 pub mod benchmarks;
 pub mod circuit_breaker;
 pub mod hyper_client;
+pub mod performance_optimizer;
 
 // Re-export circuit breaker types
 pub use circuit_breaker::{CircuitBreakerStats, CircuitState};
 
 // Re-export hyper client types
-pub use hyper_client::{HyperResponse};
+pub use hyper_client::HyperResponse;
 
 // Make HyperHttpClient public through module system
-pub use self::hyper_client::{HyperHttpClient, HyperClientError};
+pub use self::hyper_client::{HyperClientError, HyperHttpClient};
 
 // Re-export protocol router types

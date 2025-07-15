@@ -4,12 +4,9 @@
 //! Centralized default values and constants for the Songbird Orchestrator
 
 use std::env;
-use std::time::Duration;
 
 /// Network and communication constants
 pub mod network {
-    use std::time::Duration;
-
     /// Default bind address for development
     pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
     /// Default bind address for production (all interfaces)
@@ -19,72 +16,67 @@ pub mod network {
     /// Default port range for services
     pub const DEFAULT_PORT_RANGE: (u16, u16) = (8000, 9000);
     /// Default connection timeout
-    pub const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(30);
+    pub const DEFAULT_CONNECTION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
     /// Default request timeout
-    pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+    pub const DEFAULT_REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
     /// Default read timeout
-    pub const DEFAULT_READ_TIMEOUT: Duration = Duration::from_secs(30);
+    pub const DEFAULT_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
     /// Default write timeout
-    pub const DEFAULT_WRITE_TIMEOUT: Duration = Duration::from_secs(30);
+    pub const DEFAULT_WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
     /// Default idle timeout
-    pub const DEFAULT_IDLE_TIMEOUT: Duration = Duration::from_secs(300);
+    pub const DEFAULT_IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
 }
 /// Service management constants
 pub mod services {
-    use std::time::Duration;
-
     /// Default maximum number of services
     pub const DEFAULT_MAX_SERVICES: usize = 100;
     /// Default service startup timeout
-    pub const DEFAULT_STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
+    pub const DEFAULT_STARTUP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
     /// Default service shutdown timeout
-    pub const DEFAULT_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
+    pub const DEFAULT_SHUTDOWN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
     /// Default service restart backoff
-    pub const DEFAULT_RESTART_BACKOFF: Duration = Duration::from_secs(10);
+    pub const DEFAULT_RESTART_BACKOFF: std::time::Duration = std::time::Duration::from_secs(10);
     /// Default maximum restart attempts
     pub const DEFAULT_MAX_RESTART_ATTEMPTS: u32 = 3;
 }
 
 /// Health checking constants
 pub mod health {
-    use std::time::Duration;
-
     /// Default health check interval
-    pub const DEFAULT_CHECK_INTERVAL: Duration = Duration::from_secs(30);
+    pub const DEFAULT_CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
     /// Default health check timeout
-    pub const DEFAULT_CHECK_TIMEOUT: Duration = Duration::from_secs(10);
+    pub const DEFAULT_CHECK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
     /// Default failure threshold
     pub const DEFAULT_FAILURE_THRESHOLD: u32 = 3;
     /// Default recovery threshold
     pub const DEFAULT_RECOVERY_THRESHOLD: u32 = 2;
     /// Default retry delay
-    pub const DEFAULT_RETRY_DELAY: Duration = Duration::from_secs(1);
+    pub const DEFAULT_RETRY_DELAY: std::time::Duration = std::time::Duration::from_secs(1);
 }
 
 /// Monitoring and metrics constants
 pub mod monitoring {
-    use std::time::Duration;
-
     /// Default metrics collection interval
-    pub const DEFAULT_METRICS_INTERVAL: Duration = Duration::from_secs(60);
+    pub const DEFAULT_METRICS_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60);
     /// Default Prometheus endpoint
     pub const DEFAULT_PROMETHEUS_ENDPOINT: &str = "/metrics";
     /// Default tracing sample rate
     pub const DEFAULT_SAMPLE_RATE: f64 = 0.1;
     /// Default export timeout
-    pub const DEFAULT_EXPORT_TIMEOUT: Duration = Duration::from_secs(10);
+    pub const DEFAULT_EXPORT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 }
 
 /// Discovery constants
 pub mod discovery {
-    use std::time::Duration;
-
     /// Default registration TTL
-    pub const DEFAULT_REGISTRATION_TTL: Duration = Duration::from_secs(30);
+    pub const DEFAULT_REGISTRATION_TTL: std::time::Duration = std::time::Duration::from_secs(30);
     /// Default announcement interval
-    pub const DEFAULT_ANNOUNCEMENT_INTERVAL: Duration = Duration::from_secs(15);
+    pub const DEFAULT_ANNOUNCEMENT_INTERVAL: std::time::Duration =
+        std::time::Duration::from_secs(15);
     /// Default discovery interval
-    pub const DEFAULT_DISCOVERY_INTERVAL: Duration = Duration::from_secs(10);
+    pub const DEFAULT_DISCOVERY_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10);
+    /// Default discovery timeout
+    pub const DEFAULT_DISCOVERY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
     /// Default multicast address for IPv4
     pub const DEFAULT_MULTICAST_IPV4: &str = "224.0.0.251";
     /// Default multicast address for discovery
@@ -93,10 +85,8 @@ pub mod discovery {
 
 /// Security constants
 pub mod security {
-    use std::time::Duration;
-
     /// Default session timeout
-    pub const DEFAULT_SESSION_TIMEOUT: Duration = Duration::from_secs(3600);
+    pub const DEFAULT_SESSION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3600);
     /// Default rate limit (requests per minute)
     pub const DEFAULT_RATE_LIMIT: u32 = 1000;
     /// Default burst size for rate limiting
@@ -107,30 +97,27 @@ pub mod security {
 
 /// Resource management constants
 pub mod resources {
-    use std::time::Duration;
-
     /// Default resource tracking interval
-    pub const DEFAULT_TRACKING_INTERVAL: Duration = Duration::from_secs(10);
+    pub const DEFAULT_TRACKING_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10);
     /// Default cleanup interval
-    pub const DEFAULT_CLEANUP_INTERVAL: Duration = Duration::from_secs(60);
+    pub const DEFAULT_CLEANUP_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60);
     /// Default maximum resource age
-    pub const DEFAULT_MAX_RESOURCE_AGE: Duration = Duration::from_secs(3600);
+    pub const DEFAULT_MAX_RESOURCE_AGE: std::time::Duration = std::time::Duration::from_secs(3600);
     /// Default monitoring interval
-    pub const DEFAULT_MONITORING_INTERVAL: Duration = Duration::from_secs(30);
+    pub const DEFAULT_MONITORING_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
     /// Default leak detection interval
-    pub const DEFAULT_LEAK_DETECTION_INTERVAL: Duration = Duration::from_secs(300);
+    pub const DEFAULT_LEAK_DETECTION_INTERVAL: std::time::Duration =
+        std::time::Duration::from_secs(300);
 }
 
 /// Feature flags constants
 pub mod feature_flags {
-    use std::time::Duration;
-
     /// Default flag refresh interval
-    pub const DEFAULT_REFRESH_INTERVAL: Duration = Duration::from_secs(300);
+    pub const DEFAULT_REFRESH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(300);
     /// Default evaluation timeout
-    pub const DEFAULT_EVALUATION_TIMEOUT: Duration = Duration::from_secs(1);
+    pub const DEFAULT_EVALUATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
     /// Default cache TTL
-    pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(300);
+    pub const DEFAULT_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(300);
     /// Default cache size
     pub const DEFAULT_CACHE_SIZE: u32 = 1000;
 }
@@ -141,13 +128,11 @@ pub mod logging {
     /// Available log levels
     pub const LOG_LEVELS: &[&str] = &["trace", "debug", "info", "warn", "error"];
     /// Get environment-appropriate log level
+    #[must_use]
     pub fn get_log_level_for_environment() -> &'static str {
-        match std::env::var("SONGBIRD_ENVIRONMENT").as_deref() {
-            Ok("production") | Ok("prod") => "warn",
-            Ok("staging") => "info",
-            Ok("test") | Ok("testing") => "error",
-            Ok("development") | Ok("dev") => "debug",
-            _ => DEFAULT_LOG_LEVEL,
+        match crate::environment_mode().as_str() {
+            "development" => "debug",
+            _ => "info", // Combined production and default case
         }
     }
 }
@@ -171,83 +156,62 @@ pub mod environments {
     /// Development environment constants
     pub mod development {
         use super::super::network;
-        use std::time::Duration;
-
+        /// Development environment binds to default local interface
         pub const BIND_ADDRESS: &str = network::DEFAULT_BIND_ADDRESS;
         pub const LOG_LEVEL: &str = "debug";
-        pub const METRICS_INTERVAL: Duration = Duration::from_secs(30);
-        pub const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(10);
+        pub const METRICS_INTERVAL: u64 = 60;
+        pub const HEALTH_CHECK_INTERVAL: u64 = 30;
     }
 
     /// Production environment constants
     pub mod production {
         use super::super::network;
-        use std::time::Duration;
-
+        /// Production environment may bind to all interfaces
         pub const BIND_ADDRESS: &str = network::PRODUCTION_BIND_ADDRESS;
-        pub const LOG_LEVEL: &str = "warn";
-        pub const METRICS_INTERVAL: Duration = Duration::from_secs(60);
-        pub const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(30);
+        pub const LOG_LEVEL: &str = "info";
+        pub const METRICS_INTERVAL: u64 = 300;
+        pub const HEALTH_CHECK_INTERVAL: u64 = 60;
     }
 
     /// Testing environment constants
     pub mod testing {
         use super::super::network;
-        use std::time::Duration;
-
+        /// Testing environment binds to default local interface
         pub const BIND_ADDRESS: &str = network::DEFAULT_BIND_ADDRESS;
         pub const LOG_LEVEL: &str = "error";
-        pub const METRICS_INTERVAL: Duration = Duration::from_secs(5);
-        pub const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(1);
+        pub const METRICS_INTERVAL: u64 = 5;
+        pub const HEALTH_CHECK_INTERVAL: u64 = 1;
     }
 }
 /// Utility functions for working with constants
 pub mod utils {
-    use super::{environments, health, logging, monitoring, network, EnvironmentDefaults};
-    use std::time::Duration;
+    use super::EnvironmentDefaults;
 
     /// Get environment-specific defaults
+    #[must_use]
     pub fn get_environment_defaults(env: &str) -> EnvironmentDefaults {
-        match env.to_lowercase().as_str() {
-            "development" | "dev" => EnvironmentDefaults {
-                bind_address: environments::development::BIND_ADDRESS,
-                log_level: environments::development::LOG_LEVEL,
-                metrics_interval: environments::development::METRICS_INTERVAL,
-                health_check_interval: environments::development::HEALTH_CHECK_INTERVAL,
-            },
-            "production" | "prod" => EnvironmentDefaults {
-                bind_address: environments::production::BIND_ADDRESS,
-                log_level: environments::production::LOG_LEVEL,
-                metrics_interval: environments::production::METRICS_INTERVAL,
-                health_check_interval: environments::production::HEALTH_CHECK_INTERVAL,
-            },
-            "test" | "testing" => EnvironmentDefaults {
-                bind_address: environments::testing::BIND_ADDRESS,
-                log_level: environments::testing::LOG_LEVEL,
-                metrics_interval: environments::testing::METRICS_INTERVAL,
-                health_check_interval: environments::testing::HEALTH_CHECK_INTERVAL,
-            },
-            _ => EnvironmentDefaults {
-                bind_address: network::DEFAULT_BIND_ADDRESS,
-                log_level: logging::DEFAULT_LOG_LEVEL,
-                metrics_interval: monitoring::DEFAULT_METRICS_INTERVAL,
-                health_check_interval: health::DEFAULT_CHECK_INTERVAL,
-            },
+        match env {
+            "development" => super::development_defaults(),
+            _ => super::production_defaults(), // Use production as default instead of development
         }
     }
+
     /// Validate that a value is within acceptable ranges
-    pub fn validate_timeout(timeout: Duration) -> bool {
-        timeout >= Duration::from_millis(100) && timeout <= Duration::from_secs(3600)
+    #[must_use]
+    pub const fn validate_timeout(timeout: std::time::Duration) -> bool {
+        timeout.as_secs() > 0 && timeout.as_secs() < 3600
     }
 
     /// Validate port number
-    pub fn validate_port(port: u16) -> bool {
+    #[must_use]
+    pub const fn validate_port(port: u16) -> bool {
         port > 1024 && port < 65535
     }
 
-    /// Validate log level
+    /// Validate log level string
+    #[must_use]
     pub fn validate_log_level(level: &str) -> bool {
-        logging::LOG_LEVELS.contains(&level.to_lowercase().as_str())
+        matches!(level, "trace" | "debug" | "info" | "warn" | "error")
     }
 }
 
@@ -258,208 +222,218 @@ pub use utils::*;
 pub struct EnvironmentDefaults {
     pub bind_address: &'static str,
     pub log_level: &'static str,
-    pub metrics_interval: Duration,
-    pub health_check_interval: Duration,
+    pub metrics_interval: u64,
+    pub health_check_interval: u64,
 }
 
-/// Default bind address (configurable via SONGBIRD_BIND_ADDRESS)
-pub fn default_bind_address() -> String {
-    if is_production() {
-        network::PRODUCTION_BIND_ADDRESS.to_string()
-    } else {
-        network::DEFAULT_BIND_ADDRESS.to_string()
+#[must_use]
+pub const fn development_defaults() -> EnvironmentDefaults {
+    EnvironmentDefaults {
+        bind_address: environments::development::BIND_ADDRESS,
+        log_level: environments::development::LOG_LEVEL,
+        metrics_interval: environments::development::METRICS_INTERVAL,
+        health_check_interval: environments::development::HEALTH_CHECK_INTERVAL,
     }
 }
 
-/// Default orchestrator port (configurable via SONGBIRD_ORCHESTRATOR_PORT)
-pub fn default_orchestrator_port() -> u16 {
+#[must_use]
+pub const fn production_defaults() -> EnvironmentDefaults {
+    EnvironmentDefaults {
+        bind_address: environments::production::BIND_ADDRESS,
+        log_level: environments::production::LOG_LEVEL,
+        metrics_interval: environments::production::METRICS_INTERVAL,
+        health_check_interval: environments::production::HEALTH_CHECK_INTERVAL,
+    }
+}
+
+/// Default bind address (configurable via `SONGBIRD_BIND_ADDRESS`)
+#[must_use]
+pub fn default_bind_address() -> String {
+    std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string())
+}
+
+/// Default orchestrator port (configurable via `SONGBIRD_ORCHESTRATOR_PORT`)
+#[must_use]
+pub const fn default_orchestrator_port() -> u16 {
     network::DEFAULT_PORT
 }
 
-/// Default discovery port (configurable via SONGBIRD_DISCOVERY_PORT)
+/// Default discovery port (configurable via `SONGBIRD_DISCOVERY_PORT`)
+#[must_use]
 pub fn default_discovery_port() -> u16 {
-    env::var("SONGBIRD_DISCOVERY_PORT")
+    std::env::var("SONGBIRD_DISCOVERY_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(5000)
+        .unwrap_or(8081)
 }
 
-/// Default health port (configurable via SONGBIRD_HEALTH_PORT)
+/// Default health port (configurable via `SONGBIRD_HEALTH_PORT`)
+#[must_use]
 pub fn default_health_port() -> u16 {
-    env::var("SONGBIRD_HEALTH_PORT")
+    std::env::var("SONGBIRD_HEALTH_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8082)
 }
 
-/// Default dashboard port (configurable via SONGBIRD_DASHBOARD_PORT)
+/// Default dashboard port (configurable via `SONGBIRD_DASHBOARD_PORT`)
+#[must_use]
 pub fn default_dashboard_port() -> u16 {
-    env::var("SONGBIRD_DASHBOARD_PORT")
+    std::env::var("SONGBIRD_DASHBOARD_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8083)
+        .unwrap_or(3000)
 }
 
-/// Default gaming ports (configurable via SONGBIRD_GAMING_PORTS)
+/// Default gaming ports (configurable via `SONGBIRD_GAMING_PORTS`)
+#[must_use]
 pub fn default_gaming_ports() -> Vec<u16> {
-    env::var("SONGBIRD_GAMING_PORTS")
-        .ok()
-        .and_then(|ports| {
+    std::env::var("SONGBIRD_GAMING_PORTS").ok().map_or_else(
+        || vec![7777, 7778, 7779, 7780],
+        |ports| {
             ports
                 .split(',')
-                .map(|p| p.trim().parse().ok())
-                .collect::<Option<Vec<u16>>>()
-        })
-        .unwrap_or_else(|| vec![6112, 6113, 6114, 6115, 2300])
-}
-
-/// Get subnet configuration (configurable via SONGBIRD_SUBNET)
-pub fn default_subnet() -> String {
-    env::var("SONGBIRD_SUBNET").unwrap_or_else(|_| network::DEFAULT_BIND_ADDRESS.to_string())
-}
-
-/// Get gateway configuration (configurable via SONGBIRD_GATEWAY)
-pub fn default_gateway() -> String {
-    env::var("SONGBIRD_GATEWAY").unwrap_or_else(|_| network::DEFAULT_BIND_ADDRESS.to_string())
-}
-
-/// Get STUN servers (configurable via SONGBIRD_STUN_SERVERS)
-pub fn default_stun_servers() -> Vec<String> {
-    env::var("SONGBIRD_STUN_SERVERS")
-        .ok()
-        .map(|servers| servers.split(',').map(|s| s.trim().to_string()).collect())
-        .unwrap_or_else(|| {
-            vec![
-                "stun.l.google.com:19302".to_string(),
-                "stun1.l.google.com:19302".to_string(),
-            ]
-        })
-}
-
-/// Get base URL for services (configurable via SONGBIRD_BASE_URL)
-pub fn default_base_url() -> String {
-    format!(
-        "http://{}:{}",
-        default_bind_address(),
-        default_orchestrator_port()
+                .filter_map(|p| p.trim().parse().ok())
+                .collect()
+        },
     )
 }
 
-/// Get environment mode (configurable via SONGBIRD_ENVIRONMENT)
+/// Get subnet configuration (configurable via `SONGBIRD_SUBNET`)
+#[must_use]
+pub fn default_subnet() -> String {
+    std::env::var("SONGBIRD_SUBNET").unwrap_or_else(|_| "10.0.0.0/24".to_string())
+}
+
+/// Get gateway configuration (configurable via `SONGBIRD_GATEWAY`)
+#[must_use]
+pub fn default_gateway() -> String {
+    std::env::var("SONGBIRD_GATEWAY").unwrap_or_else(|_| "10.0.0.1".to_string())
+}
+
+/// Get STUN servers (configurable via `SONGBIRD_STUN_SERVERS`)
+#[must_use]
+pub fn default_stun_servers() -> Vec<String> {
+    env::var("SONGBIRD_STUN_SERVERS").ok().map_or_else(
+        || {
+            vec![
+                "stun:stun.l.google.com:19302".to_string(),
+                "stun:stun1.l.google.com:19302".to_string(),
+            ]
+        },
+        |servers| servers.split(',').map(|s| s.trim().to_string()).collect(),
+    )
+}
+
+/// Get base URL for services (configurable via `SONGBIRD_BASE_URL`)
+#[must_use]
+pub fn default_base_url() -> String {
+    std::env::var("SONGBIRD_BASE_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+}
+
+/// Get environment mode (configurable via `SONGBIRD_ENVIRONMENT`)
+#[must_use]
 pub fn environment_mode() -> String {
-    env::var("SONGBIRD_ENVIRONMENT").unwrap_or_else(|_| "production".to_string())
+    std::env::var("SONGBIRD_ENVIRONMENT").unwrap_or_else(|_| "development".to_string())
 }
 
 /// Check if we're in development mode
+#[must_use]
 pub fn is_development() -> bool {
-    environment_mode().to_lowercase() == "development"
+    environment_mode() == "development"
 }
 
 /// Get development-safe bind address
+#[must_use]
 pub fn development_bind_address() -> String {
-    if is_development() {
-        env::var("SONGBIRD_DEV_BIND_ADDRESS")
-            .unwrap_or_else(|_| network::DEFAULT_BIND_ADDRESS.to_string())
-    } else {
-        default_bind_address()
-    }
+    std::env::var("SONGBIRD_DEVELOPMENT_BIND").unwrap_or_else(|_| "127.0.0.1".to_string())
 }
 
-/// Get external address for node discovery (configurable via SONGBIRD_EXTERNAL_ADDRESS)
+/// Get external address for node discovery (configurable via `SONGBIRD_EXTERNAL_ADDRESS`)
+#[must_use]
 pub fn external_address() -> Option<String> {
-    env::var("SONGBIRD_EXTERNAL_ADDRESS").ok()
+    std::env::var("SONGBIRD_EXTERNAL_ADDRESS").ok()
 }
 
-/// Get cluster name (configurable via SONGBIRD_CLUSTER_NAME)
+/// Get cluster name (configurable via `SONGBIRD_CLUSTER_NAME`)
+#[must_use]
 pub fn cluster_name() -> String {
-    env::var("SONGBIRD_CLUSTER_NAME").unwrap_or_else(|_| "default".to_string())
+    std::env::var("SONGBIRD_CLUSTER_NAME").unwrap_or_else(|_| "songbird-cluster".to_string())
 }
 
-/// Get node ID (configurable via SONGBIRD_NODE_ID)
+/// Get node ID (configurable via `SONGBIRD_NODE_ID`)
+#[must_use]
 pub fn node_id() -> String {
-    env::var("SONGBIRD_NODE_ID").unwrap_or_else(|_| uuid::Uuid::new_v4().to_string())
+    std::env::var("SONGBIRD_NODE_ID")
+        .unwrap_or_else(|_| format!("songbird-node-{}", std::process::id()))
 }
 
 /// Protocol-specific port mappings (configurable via environment)
+#[must_use]
 pub fn protocol_port_mappings() -> std::collections::HashMap<String, u16> {
     let mut mappings = std::collections::HashMap::new();
-
-    // StarCraft
-    mappings.insert(
-        "starcraft".to_string(),
-        env::var("SONGBIRD_STARCRAFT_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(6112),
-    );
-
-    // Warcraft
-    mappings.insert(
-        "warcraft".to_string(),
-        env::var("SONGBIRD_WARCRAFT_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(6113),
-    );
-
-    // Command & Conquer
-    mappings.insert(
-        "cnc".to_string(),
-        env::var("SONGBIRD_CNC_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(6114),
-    );
-
-    // Age of Empires
-    mappings.insert(
-        "aoe".to_string(),
-        env::var("SONGBIRD_AOE_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(6115),
-    );
-
-    // DirectPlay
-    mappings.insert(
-        "directplay".to_string(),
-        env::var("SONGBIRD_DIRECTPLAY_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(2300),
-    );
-
-    // TCP generic
-    mappings.insert(
-        "tcp".to_string(),
-        env::var("SONGBIRD_TCP_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(80),
-    );
-
+    mappings.insert("http".to_string(), 8080);
+    mappings.insert("https".to_string(), 8443);
+    mappings.insert("ws".to_string(), 8081);
+    mappings.insert("wss".to_string(), 8444);
+    mappings.insert("tcp".to_string(), 7777);
+    mappings.insert("udp".to_string(), 7778);
+    mappings.insert("quic".to_string(), 7779);
+    mappings.insert("custom".to_string(), 7780);
     mappings
 }
 
 /// Get timeout configurations
+#[must_use]
 pub fn default_timeout_ms() -> u64 {
-    env::var("SONGBIRD_TIMEOUT_MS")
+    std::env::var("SONGBIRD_TIMEOUT_MS")
         .ok()
         .and_then(|t| t.parse().ok())
-        .unwrap_or(30000) // 30 seconds
+        .unwrap_or(30000)
 }
 
 /// Get connection retry count
+#[must_use]
 pub fn default_retry_count() -> u32 {
-    env::var("SONGBIRD_RETRY_COUNT")
+    std::env::var("SONGBIRD_RETRY_COUNT")
         .ok()
-        .and_then(|r| r.parse().ok())
+        .and_then(|c| c.parse().ok())
         .unwrap_or(3)
 }
 
 /// Check if running in production
+#[must_use]
 pub fn is_production() -> bool {
-    env::var("SONGBIRD_ENV").unwrap_or_default() == "production"
+    environment_mode() == "production"
+}
+
+/// Benchmark constants
+pub mod benchmarks {
+    /// Default benchmark warmup duration
+    pub const DEFAULT_WARMUP_DURATION: std::time::Duration = std::time::Duration::from_secs(5);
+    /// Default benchmark test duration
+    pub const DEFAULT_TEST_DURATION: std::time::Duration = std::time::Duration::from_secs(30);
+    /// Default benchmark short warmup duration
+    pub const DEFAULT_SHORT_WARMUP_DURATION: std::time::Duration =
+        std::time::Duration::from_secs(1);
+    /// Default benchmark short test duration
+    pub const DEFAULT_SHORT_TEST_DURATION: std::time::Duration = std::time::Duration::from_secs(5);
+    /// Default benchmark monitoring interval
+    pub const DEFAULT_BENCHMARK_MONITORING_INTERVAL: std::time::Duration =
+        std::time::Duration::from_millis(100);
+    /// Default benchmark micro interval
+    pub const DEFAULT_BENCHMARK_MICRO_INTERVAL: std::time::Duration =
+        std::time::Duration::from_millis(10);
+}
+
+/// CLI constants
+pub mod cli {
+    /// Default CLI animation delay (1 second)
+    pub const DEFAULT_CLI_ANIMATION_DELAY: std::time::Duration =
+        std::time::Duration::from_millis(1000);
+    /// Default CLI short animation delay (0.5 seconds)
+    pub const DEFAULT_CLI_SHORT_ANIMATION_DELAY: std::time::Duration =
+        std::time::Duration::from_millis(500);
 }
 
 // DEPRECATED CONSTANTS - SHOULD NOT BE USED

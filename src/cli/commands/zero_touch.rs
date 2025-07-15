@@ -49,7 +49,10 @@ impl ZeroTouchCommand {
             print_info("Continue? (y/N)");
 
             let mut input = String::new();
-            std::io::stdin().read_line(&mut input).unwrap();
+            if let Err(e) = std::io::stdin().read_line(&mut input) {
+                print_error(&format!("Failed to read input: {e}"));
+                return Err(SongbirdError::Io { message: format!("Failed to read user input: {e}") });
+            }
             if !input.trim().to_lowercase().starts_with('y') {
                 print_info("Deployment cancelled.");
                 return Ok(());
@@ -87,8 +90,8 @@ impl ZeroTouchCommand {
             })?;
 
         tokio::fs::write(path, config_yaml).await.map_err(|e| {
-            crate::errors::SongbirdError::Io { 
-                message: format!("Failed to write config file {}: {}", path.display(), e)
+            crate::errors::SongbirdError::Io {
+                message: format!("Failed to write config file {}: {}", path.display(), e),
             }
         })?;
 
@@ -110,8 +113,8 @@ impl ZeroTouchCommand {
             })?;
 
         tokio::fs::write(path, summary_json).await.map_err(|e| {
-            crate::errors::SongbirdError::Io { 
-                message: format!("Failed to write summary file: {}", e)
+            crate::errors::SongbirdError::Io {
+                message: format!("Failed to write summary file: {}", e),
             }
         })?;
 
@@ -125,7 +128,11 @@ impl ZeroTouchCommand {
         );
 
         match error {
-            crate::errors::SongbirdError::Network { service: _service, message, details: _details } => {
+            crate::errors::SongbirdError::Network {
+                service: _service,
+                message,
+                details: _details,
+            } => {
                 print_error(&format!("Network error: {}", message));
                 print_info("Troubleshooting:");
                 print_info("  • Check network connectivity");
@@ -151,7 +158,10 @@ impl ZeroTouchCommand {
                 print_info("    • Verify file permissions");
             }
             crate::errors::SongbirdError::Deployment { service, message } => {
-                print_error(&format!("Deployment error for service {}: {}", service, message));
+                print_error(&format!(
+                    "Deployment error for service {}: {}",
+                    service, message
+                ));
                 print_info("  • Check system resources");
                 print_info("  • Verify deployment environment");
                 print_info("  • Review service logs");
@@ -282,11 +292,11 @@ async fn save_songbird_configuration(
             field: Some("config_file".to_string()),
         })?;
 
-    tokio::fs::write(path, config_yaml).await.map_err(|e| {
-        crate::errors::SongbirdError::Io { 
-            message: format!("Failed to write config file {}: {}", path.display(), e)
-        }
-    })?;
+    tokio::fs::write(path, config_yaml)
+        .await
+        .map_err(|e| crate::errors::SongbirdError::Io {
+            message: format!("Failed to write config file {}: {}", path.display(), e),
+        })?;
 
     Ok(())
 }
@@ -306,11 +316,11 @@ async fn save_deployment_summary(_result: &DeploymentResult, path: &std::path::P
             field: Some("summary_file".to_string()),
         })?;
 
-    tokio::fs::write(path, summary_json).await.map_err(|e| {
-        crate::errors::SongbirdError::Io { 
-            message: format!("Failed to write summary file {}: {}", path.display(), e)
-        }
-    })?;
+    tokio::fs::write(path, summary_json)
+        .await
+        .map_err(|e| crate::errors::SongbirdError::Io {
+            message: format!("Failed to write summary file {}: {}", path.display(), e),
+        })?;
 
     Ok(())
 }
@@ -344,7 +354,11 @@ async fn suggest_troubleshooting_steps(error: &crate::errors::SongbirdError) {
     );
 
     match error {
-        crate::errors::SongbirdError::Network { service: _service, message, details: _details } => {
+        crate::errors::SongbirdError::Network {
+            service: _service,
+            message,
+            details: _details,
+        } => {
             print_error(&format!("Network error: {}", message));
             print_info("Troubleshooting:");
             print_info("  • Check network connectivity");
@@ -356,7 +370,10 @@ async fn suggest_troubleshooting_steps(error: &crate::errors::SongbirdError) {
             print_info("Check service dependencies and requirements");
         }
         crate::errors::SongbirdError::Deployment { service, message } => {
-            print_error(&format!("Deployment error for service {}: {}", service, message));
+            print_error(&format!(
+                "Deployment error for service {}: {}",
+                service, message
+            ));
             print_info("  • Check system resources");
             print_info("  • Verify deployment environment");
             print_info("  • Review service logs");

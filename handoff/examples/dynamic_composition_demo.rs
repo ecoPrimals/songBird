@@ -9,11 +9,14 @@
 //! - 8-project composition discovery
 //! - Real-time reconfiguration
 
-use songbird_orchestrator::prelude::*;
-use songbird_orchestrator::registry::{DynamicPluginRegistry, CompositionConstraints, PerformanceRequirements};
-use songbird_orchestrator::traits::{
+use songbird_lib::network::gaming::primal::GamingPrimal;
+use songbird_lib::primals::{beardog::BearDogPrimal, nestgate::NestGatePrimal, toadstool::ToadstoolPrimal};
+use songbird_registry::plugin::{DynamicPluginRegistry, CompositionConstraints, PerformanceRequirements, PluginRegistry};
+use songbird_discovery::traits::{
     ComposablePlugin, PluginCapability, PluginRequirement, PluginHealth, IntegrationResult
 };
+use serde_json::json;
+use tracing::info;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tokio::time::{sleep, Duration};

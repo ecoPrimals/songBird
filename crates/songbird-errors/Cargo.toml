@@ -4,7 +4,11 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
-description = "Shared error types for Songbird components"
+description = "Error handling and validation for Songbird components"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "../../README.md"
+keywords = ["errors", "validation", "gaming", "networking", "rust"]
+categories = ["data-structures", "network-programming", "game-engines"]
 
 [dependencies]
 thiserror = "1.0"

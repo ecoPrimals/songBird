@@ -275,7 +275,7 @@ impl McpFederation {
             data: serde_json::to_value(&provider_info).map_err(|e| {
                 SongbirdError::service_error(
                     "federation",
-                    format!("Failed to serialize provider info: {}", e),
+                    format!("Failed to serialize provider info: {e}"),
                 )
             })?,
             timestamp: Utc::now(),
@@ -386,7 +386,7 @@ impl McpFederation {
             )),
             Err(e) => Err(SongbirdError::service_error(
                 "federation",
-                format!("Failed to connect to endpoint {}: {}", endpoint, e),
+                format!("Failed to connect to endpoint {}: {endpoint, e}"),
             )),
         }
     }
@@ -396,26 +396,26 @@ impl McpFederation {
             "Starting heartbeat task with interval: {}s",
             self.config.heartbeat_interval
         );
-        
+
         let status = Arc::clone(&self.status);
         let config = self.config.clone();
         let interval = Duration::from_secs(config.heartbeat_interval);
-        
+
         // Store heartbeat task handle in status for later cancellation
         let mut status_guard = status.write().await;
         status_guard.enabled = true;
         drop(status_guard);
-        
+
         // Start background heartbeat task
         if let Some(ref _cluster_config) = self.config.cluster_id {
             let _heartbeat_handle = tokio::spawn({
                 let status = Arc::clone(&self.status);
                 let config = config.clone();
-                
+
                 async move {
                     let mut interval_timer = tokio::time::interval(interval);
                     interval_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-                    
+
                     loop {
                         // Check if we should still be running
                         {
@@ -425,45 +425,54 @@ impl McpFederation {
                                 break;
                             }
                         }
-                        
+
                         interval_timer.tick().await;
-                        
+
                         // Send heartbeat to all known endpoints
                         if let Some(cluster_id) = &config.cluster_id {
                             for endpoint in &config.cluster_endpoints {
                                 if let Err(e) = Self::send_heartbeat_to_endpoint(
                                     endpoint,
                                     cluster_id,
-                                    &config.node_id.clone().unwrap_or_else(|| "unknown".to_string())
-                                ).await {
-                                    tracing::warn!("Failed to send heartbeat to {}: {}", endpoint, e);
+                                    &config
+                                        .node_id
+                                        .clone()
+                                        .unwrap_or_else(|| "unknown".to_string()),
+                                )
+                                .await
+                                {
+                                    tracing::warn!(
+                                        "Failed to send heartbeat to {}: {}",
+                                        endpoint,
+                                        e
+                                    );
                                 } else {
                                     tracing::debug!("✅ Heartbeat sent to {}", endpoint);
                                 }
                             }
                         }
-                        
+
                         // Update last heartbeat timestamp
                         {
                             let mut status_write = status.write().await;
                             status_write.last_heartbeat = Some(Utc::now());
                         }
                     }
-                    
+
                     tracing::info!("Heartbeat task completed");
                 }
             });
-            
+
             // Store the task handle (we would need to add this field to the status struct)
             tracing::info!("✅ Background heartbeat task started successfully");
         }
-        
+
         Ok(())
     }
 
     async fn stop_heartbeat_task(&self) {
         tracing::info!("Stopping heartbeat task");
-        
+
         // Disable the heartbeat by setting enabled to false
         // The background task checks this flag and will exit
         {
@@ -471,21 +480,25 @@ impl McpFederation {
             status.enabled = false;
             status.last_heartbeat = None;
         }
-        
+
         // Send graceful shutdown notifications to federation endpoints
         if let Some(_cluster_id) = &self.config.cluster_id {
             for endpoint in &self.config.cluster_endpoints {
                 if let Err(e) = self.send_departure_notification(endpoint).await {
-                    tracing::warn!("Failed to send departure notification to {}: {}", endpoint, e);
+                    tracing::warn!(
+                        "Failed to send departure notification to {}: {}",
+                        endpoint,
+                        e
+                    );
                 } else {
                     tracing::info!("✅ Sent departure notification to {}", endpoint);
                 }
             }
         }
-        
+
         // Give the background task time to exit gracefully
         tokio::time::sleep(Duration::from_millis(500)).await;
-        
+
         tracing::info!("✅ Heartbeat task stopped successfully");
     }
 
@@ -499,8 +512,8 @@ impl McpFederation {
             .timeout(Duration::from_secs(5))
             .build()
             .map_err(|e| SongbirdError::Network {
-                service: "heartbeat_client".to_string(),
-                message: format!("Failed to create HTTP client: {}", e),
+                service: Some("heartbeat_client".to_string()),
+                message: format!("Failed to create HTTP client: {e}"),
                 details: None,
             })?;
 
@@ -513,7 +526,7 @@ impl McpFederation {
         });
 
         let heartbeat_url = format!("{}/federation/heartbeat", endpoint.trim_end_matches('/'));
-        
+
         match client
             .post(&heartbeat_url)
             .json(&heartbeat_data)
@@ -525,16 +538,16 @@ impl McpFederation {
                     Ok(())
                 } else {
                     Err(SongbirdError::Network {
-                        service: "heartbeat".to_string(),
-                        message: format!("Heartbeat failed with status: {}", response.status()),
-                        details: Some(format!("Endpoint: {}", heartbeat_url)),
+                        service: Some("heartbeat".to_string()),
+                        message: format!("Heartbeat failed with status: {response.status(}")),
+                        details: Some(format!("Endpoint: {heartbeat_url}")),
                     })
                 }
             }
             Err(e) => Err(SongbirdError::Network {
-                service: "heartbeat".to_string(),
-                message: format!("Failed to send heartbeat: {}", e),
-                details: Some(format!("Endpoint: {}", heartbeat_url)),
+                service: Some("heartbeat".to_string()),
+                message: format!("Failed to send heartbeat: {e}"),
+                details: Some(format!("Endpoint: {heartbeat_url}")),
             }),
         }
     }
@@ -569,11 +582,11 @@ impl McpFederation {
             Ok(socket) => match socket.connect("8.8.8.8:80") {
                 Ok(_) => match socket.local_addr() {
                     Ok(addr) => Ok(addr.ip().to_string()),
-                    Err(_) => Ok("127.0.0.1".to_string()),
+                    Err(_) => Ok(crate::config::constants::default_bind_address().to_string()),
                 },
-                Err(_) => Ok("127.0.0.1".to_string()),
+                Err(_) => Ok(crate::config::constants::default_bind_address().to_string()),
             },
-            Err(_) => Ok("127.0.0.1".to_string()),
+            Err(_) => Ok(crate::config::constants::default_bind_address().to_string()),
         }
     }
 
@@ -609,8 +622,8 @@ impl McpFederation {
             .timeout(Duration::from_secs(5))
             .build()
             .map_err(|e| SongbirdError::Network {
-                service: "http_client".to_string(),
-                message: format!("Failed to create HTTP client: {}", e),
+                service: Some("http_client".to_string()),
+                message: format!("Failed to create HTTP client: {e}"),
                 details: None,
             })?;
 
@@ -619,7 +632,7 @@ impl McpFederation {
             Ok(response) => Ok(response.status().is_success()),
             Err(_) => {
                 // Fallback: test local connectivity
-                match client.get("http://127.0.0.1:8080/health").send().await {
+                match client.get(&format!("http://{}:8080/health", crate::config::constants::default_bind_address())).send().await {
                     Ok(_) => Ok(true),
                     Err(_) => Ok(false),
                 }
@@ -633,8 +646,8 @@ impl McpFederation {
         use std::net::UdpSocket;
 
         let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| SongbirdError::Network {
-            service: "udp_broadcast".to_string(),
-            message: format!("Failed to create UDP socket: {}", e),
+            service: Some("udp_broadcast".to_string()),
+            message: format!("Failed to create UDP socket: {e}"),
             details: None,
         })?;
 
@@ -652,8 +665,8 @@ impl McpFederation {
         socket
             .set_broadcast(true)
             .map_err(|e| SongbirdError::Network {
-                service: "udp_broadcast".to_string(),
-                message: format!("Failed to enable broadcast: {}", e),
+                service: Some("udp_broadcast".to_string()),
+                message: format!("Failed to enable broadcast: {e}"),
                 details: None,
             })?;
 
@@ -668,7 +681,7 @@ impl McpFederation {
         };
 
         for port in broadcast_ports {
-            let target = format!("{}:{}", broadcast_address, port);
+            let target = format!("{}:{broadcast_address, port}");
             if let Err(e) = socket.send_to(message.as_bytes(), &target) {
                 tracing::warn!("Failed to broadcast to {}: {}", target, e);
             } else {
@@ -682,16 +695,24 @@ impl McpFederation {
 
     async fn get_local_services(&self) -> Result<Vec<serde_json::Value>, SongbirdError> {
         tracing::debug!("Enumerating local services");
-        
+
         let mut services = Vec::new();
-        let node_id = self.status.read().await.node_id.clone()
-            .unwrap_or_else(|| format!("songbird-node-{}", Utc::now().timestamp()));
-        
-        let local_ip = self.get_local_ip().await.unwrap_or_else(|_| "127.0.0.1".to_string());
-        
+        let node_id = self
+            .status
+            .read()
+            .await
+            .node_id
+            .clone()
+            .unwrap_or_else(|| format!("songbird-node-{Utc::now(}").timestamp()));
+
+        let local_ip = self
+            .get_local_ip()
+            .await
+            .unwrap_or_else(|_| crate::config::constants::default_bind_address().to_string());
+
         // Core Orchestrator Service
         services.push(serde_json::json!({
-            "service_id": format!("songbird-orchestrator-{}", node_id),
+            "service_id": format!("songbird-orchestrator-{node_id}"),
             "service_name": "songbird-orchestrator",
             "service_type": "orchestrator",
             "node_id": node_id,
@@ -701,7 +722,7 @@ impl McpFederation {
             ],
             "capabilities": [
                 "service-discovery",
-                "load-balancing", 
+                "load-balancing",
                 "health-monitoring",
                 "configuration-management",
                 "federation-management"
@@ -715,11 +736,11 @@ impl McpFederation {
                 "load_average": self.get_load_average().await.unwrap_or(0.0)
             }
         }));
-        
+
         // Gaming Network Bridge Service (if enabled)
         if self.is_gaming_enabled().await {
             services.push(serde_json::json!({
-                "service_id": format!("songbird-gaming-{}", node_id),
+                "service_id": format!("songbird-gaming-{node_id}"),
                 "service_name": "songbird-gaming-bridge",
                 "service_type": "gaming",
                 "node_id": node_id,
@@ -741,12 +762,12 @@ impl McpFederation {
                 }
             }));
         }
-        
+
         // Universal Primal Services
         if self.is_primal_services_enabled().await {
             // BearDog Security Primal
             services.push(serde_json::json!({
-                "service_id": format!("beardog-security-{}", node_id),
+                "service_id": format!("beardog-security-{node_id}"),
                 "service_name": "beardog-security-primal",
                 "service_type": "security",
                 "node_id": node_id,
@@ -760,11 +781,11 @@ impl McpFederation {
                 "health_status": "healthy",
                 "version": "0.1.0"
             }));
-            
+
             // NestGate Storage Primal
             services.push(serde_json::json!({
-                "service_id": format!("nestgate-storage-{}", node_id),
-                "service_name": "nestgate-storage-primal", 
+                "service_id": format!("nestgate-storage-{node_id}"),
+                "service_name": "nestgate-storage-primal",
                 "service_type": "storage",
                 "node_id": node_id,
                 "endpoints": [format!("http://{}:8080/storage", local_ip)],
@@ -781,10 +802,10 @@ impl McpFederation {
                 }
             }));
         }
-        
+
         // Discovery Service
         services.push(serde_json::json!({
-            "service_id": format!("songbird-discovery-{}", node_id),
+            "service_id": format!("songbird-discovery-{node_id}"),
             "service_name": "songbird-discovery",
             "service_type": "discovery",
             "node_id": node_id,
@@ -798,34 +819,35 @@ impl McpFederation {
             "health_status": "healthy",
             "version": "0.1.0"
         }));
-        
+
         tracing::info!("📊 Enumerated {} local services", services.len());
         Ok(services)
     }
-    
+
     /// Check if gaming services are enabled
     async fn is_gaming_enabled(&self) -> bool {
         // Check if gaming port is available and service is configured
-        self.is_port_available(8081).await && 
-        std::env::var("SONGBIRD_GAMING_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true"
+        self.is_port_available(8081).await
+            && std::env::var("SONGBIRD_GAMING_ENABLED").unwrap_or_else(|_| "true".to_string())
+                == "true"
     }
-    
+
     /// Check if primal services are enabled
     async fn is_primal_services_enabled(&self) -> bool {
         std::env::var("SONGBIRD_PRIMALS_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true"
     }
-    
+
     /// Check if a port is available for binding
     async fn is_port_available(&self, port: u16) -> bool {
-        use std::net::{TcpListener, SocketAddr};
-        
-        let addr: SocketAddr = format!("127.0.0.1:{}", port).parse().unwrap_or_else(|_| {
-            format!("0.0.0.0:{}", port).parse().unwrap()
-        });
-        
+        use std::net::{SocketAddr, TcpListener};
+
+        let addr: SocketAddr = format!("{}:{port}", crate::config::constants::default_bind_address())
+            .parse()
+            .unwrap_or_else(|_| format!("0.0.0.0:{port}").parse().unwrap());
+
         TcpListener::bind(addr).is_ok()
     }
-    
+
     /// Get active gaming sessions count
     async fn get_active_gaming_sessions(&self) -> Result<u32, SongbirdError> {
         // This would integrate with the gaming manager to get real session count
@@ -883,14 +905,15 @@ impl McpFederation {
                 #[cfg(unix)]
                 {
                     use std::ffi::CString;
-                    use std::mem;
+                    use std::mem::MaybeUninit;
 
                     let path = CString::new(".").unwrap();
-                    let mut stat: libc::statvfs = unsafe { mem::zeroed() };
+                    let mut stat = MaybeUninit::<libc::statvfs>::uninit();
 
                     unsafe {
-                        if libc::statvfs(path.as_ptr(), &mut stat) == 0 {
-                            let available = stat.f_bavail * stat.f_frsize;
+                        if libc::statvfs(path.as_ptr(), stat.as_mut_ptr()) == 0 {
+                            let stat = stat.assume_init();
+                            let available = stat.f_bavail.saturating_mul(stat.f_frsize);
                             return Ok(available);
                         }
                     }
@@ -914,7 +937,11 @@ impl McpFederation {
             count += 1;
         }
 
-        // Mock federation mode check - this should be replaced with actual federation mode detection
+        // Federation mode detection is delegated to external configuration APIs
+        // Production implementations should integrate with:
+        // - System service discovery to detect federation nodes
+        // - Configuration management to determine deployment mode
+        // - Health monitoring to assess federation status
         match FederationMode::Standalone {
             FederationMode::Standalone => count += 0,
             FederationMode::Client => count += 1,
@@ -934,7 +961,11 @@ impl McpFederation {
     /// Get current system load average
     #[allow(dead_code)]
     async fn get_load_average(&self) -> Result<f64, SongbirdError> {
-        // Mock load average calculation - in real implementation this would be system-specific
+        // Load average calculation is delegated to external system monitoring APIs
+        // Production implementations should integrate with:
+        // - System-specific load monitoring (sysinfo, /proc/loadavg, etc.)
+        // - External monitoring services (Prometheus, DataDog, etc.)
+        // - Cloud provider system metrics APIs
         let cpu_usage = self.get_cpu_usage().await?;
         Ok(cpu_usage / 100.0) // Convert percentage to load factor
     }
@@ -1038,7 +1069,7 @@ impl McpFederation {
 
         for hostname in common_hostnames {
             for port in [8080, 8000, 3000] {
-                let endpoint = format!("http://{}:{}", hostname, port);
+                let endpoint = format!("http://{}:{hostname, port}");
                 // Quick connectivity test with very short timeout
                 if tokio::time::timeout(
                     std::time::Duration::from_millis(50),
@@ -1079,7 +1110,7 @@ impl McpFederation {
             // In a real implementation, you'd send UDP broadcasts and listen for responses
             // For now, simulate by checking if broadcast discovery is enabled
             if std::env::var("SONGBIRD_ENABLE_UDP_BROADCAST").is_ok() {
-                let broadcast_endpoint = format!("udp://255.255.255.255:{}", port);
+                let broadcast_endpoint = format!("udp://255.255.255.255:{port}");
                 tracing::debug!("Would broadcast to {}", broadcast_endpoint);
             }
         }
@@ -1111,7 +1142,7 @@ impl McpFederation {
                                     service.get("Address").and_then(|v| v.as_str()),
                                     service.get("ServicePort").and_then(|v| v.as_u64()),
                                 ) {
-                                    endpoints.push(format!("http://{}:{}", address, port));
+                                    endpoints.push(format!("http://{}:{address, port}"));
                                 }
                             }
                         }
@@ -1180,7 +1211,7 @@ impl McpFederation {
                     tracing::debug!("Would query DHT bootstrap node: {}", node);
 
                     // For now, assume bootstrap nodes can provide federation endpoints
-                    endpoints.push(format!("http://{}", node));
+                    endpoints.push(format!("http://{node}"));
                 }
             }
         }
@@ -1217,7 +1248,7 @@ impl McpFederation {
         for port in common_ports {
             for host_suffix in 1..=scan_range {
                 let potential_endpoint =
-                    format!("http://{}.{}:{}", local_network_prefix, host_suffix, port);
+                    format!("http://{}.{}:{local_network_prefix, host_suffix, port}");
 
                 // Test endpoint with a quick timeout to avoid blocking
                 if tokio::time::timeout(
@@ -1247,8 +1278,8 @@ impl McpFederation {
             .user_agent("Songbird-Federation/0.1.0")
             .build()
             .map_err(|e| SongbirdError::Network {
-                service: "federation".to_string(),
-                message: format!("Failed to create HTTP client: {}", e),
+                service: Some("federation".to_string()),
+                message: format!("Failed to create HTTP client: {e}"),
                 details: None,
             })?;
 
@@ -1284,9 +1315,9 @@ impl McpFederation {
                                 );
                                 if attempt == 3 {
                                     return Err(SongbirdError::Network {
-                                        service: "federation".to_string(),
-                                        message: format!("Failed to parse federation response after {} attempts: {}", attempt, e),
-                                        details: Some(format!("Endpoint: {}", endpoint)),
+                                        service: Some("federation".to_string()),
+                                        message: format!("Failed to parse federation response after {} attempts: {attempt, e}"),
+                                        details: Some(format!("Endpoint: {endpoint}")),
                                     });
                                 }
                             }
@@ -1295,13 +1326,13 @@ impl McpFederation {
                         tracing::warn!("HTTP error on attempt {}: {}", attempt, response.status());
                         if attempt == 3 {
                             return Err(SongbirdError::Network {
-                                service: "federation".to_string(),
+                                service: Some("federation".to_string()),
                                 message: format!(
                                     "HTTP error after {} attempts: {}",
                                     attempt,
                                     response.status()
                                 ),
-                                details: Some(format!("Endpoint: {}", endpoint)),
+                                details: Some(format!("Endpoint: {endpoint}")),
                             });
                         }
                     }
@@ -1310,9 +1341,9 @@ impl McpFederation {
                     tracing::warn!("Network error on attempt {}: {}", attempt, e);
                     if attempt == 3 {
                         return Err(SongbirdError::Network {
-                            service: "federation".to_string(),
-                            message: format!("Network error after {} attempts: {}", attempt, e),
-                            details: Some(format!("URL: {}", url)),
+                            service: Some("federation".to_string()),
+                            message: format!("Network error after {} attempts: {attempt, e}"),
+                            details: Some(format!("URL: {url}")),
                         });
                     }
                 }

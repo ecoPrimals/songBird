@@ -4,8 +4,7 @@
 //! BYOB deployments with Songbird orchestration.
 
 use crate::biome::{
-    ByobCoordinator, ByobDeploymentRequest, 
-    TeamResourceQuota, SongbirdBiomeManifest
+    ByobCoordinator, ByobDeploymentRequest, SongbirdBiomeManifest, TeamResourceQuota,
 };
 use axum::{
     extract::{Path, State},
@@ -16,7 +15,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tracing::{info, error};
+use tracing::{error, info};
 
 /// BYOB API state
 #[derive(Clone)]
@@ -88,9 +87,18 @@ pub fn create_byob_api_router(coordinator: Arc<ByobCoordinator>) -> Router {
     Router::new()
         .route("/byob/teams/:team_id/register", post(register_team))
         .route("/byob/teams/:team_id/deploy", post(deploy_biome))
-        .route("/byob/teams/:team_id/deployments", get(list_team_deployments))
-        .route("/byob/deployments/:deployment_id/status", get(get_deployment_status))
-        .route("/byob/deployments/:deployment_id/stop", post(stop_deployment))
+        .route(
+            "/byob/teams/:team_id/deployments",
+            get(list_team_deployments),
+        )
+        .route(
+            "/byob/deployments/:deployment_id/status",
+            get(get_deployment_status),
+        )
+        .route(
+            "/byob/deployments/:deployment_id/stop",
+            post(stop_deployment),
+        )
         .route("/byob/health", get(health_check))
         .with_state(state)
 }
@@ -103,12 +111,16 @@ async fn register_team(
 ) -> Result<Json<ApiResponse>, StatusCode> {
     info!("Registering team workspace: {}", team_id);
 
-    match state.coordinator.register_team_workspace(team_id.clone(), request.resource_quota).await {
+    match state
+        .coordinator
+        .register_team_workspace(team_id.clone(), request.resource_quota)
+        .await
+    {
         Ok(_) => {
             info!("Successfully registered team: {}", team_id);
             Ok(Json(ApiResponse {
                 success: true,
-                message: format!("Team {} registered successfully", team_id),
+                message: format!("Team {team_id} registered successfully"),
             }))
         }
         Err(e) => {
@@ -129,7 +141,7 @@ async fn deploy_biome(
     // Use default resource quota if not provided
     let resource_quota = request.resource_quota.unwrap_or(TeamResourceQuota {
         max_cpu_cores: 16.0,
-        max_memory_bytes: 68719476736, // 64GB
+        max_memory_bytes: 68719476736,   // 64GB
         max_storage_bytes: 549755813888, // 512GB
         max_network_bandwidth_mbps: 1000,
         max_deployments: 5,
@@ -144,7 +156,10 @@ async fn deploy_biome(
 
     match state.coordinator.deploy_biome(deployment_request).await {
         Ok(deployment_id) => {
-            info!("Successfully started deployment {} for team {}", deployment_id, team_id);
+            info!(
+                "Successfully started deployment {} for team {}",
+                deployment_id, team_id
+            );
             Ok(Json(DeployBiomeResponse {
                 deployment_id,
                 status: "pending".to_string(),
@@ -173,17 +188,25 @@ async fn list_team_deployments(
                     deployment_id: deployment.deployment_id,
                     team_id: deployment.team_id,
                     status: format!("{:?}", deployment.status),
-                    services: deployment.services.into_iter().map(|(name, service)| ServiceInfo {
-                        name,
-                        endpoint: service.endpoint,
-                        health: format!("{:?}", service.health),
-                        primal_assignment: service.primal_assignment,
-                    }).collect(),
-                    primal_coordination: deployment.primal_coordination.into_iter().map(|(name, coord)| PrimalInfo {
-                        name,
-                        status: format!("{:?}", coord.status),
-                        capabilities: coord.capabilities,
-                    }).collect(),
+                    services: deployment
+                        .services
+                        .into_iter()
+                        .map(|(name, service)| ServiceInfo {
+                            name,
+                            endpoint: service.endpoint,
+                            health: format!("{:?}", service.health),
+                            primal_assignment: service.primal_assignment,
+                        })
+                        .collect(),
+                    primal_coordination: deployment
+                        .primal_coordination
+                        .into_iter()
+                        .map(|(name, coord)| PrimalInfo {
+                            name,
+                            status: format!("{:?}", coord.status),
+                            capabilities: coord.capabilities,
+                        })
+                        .collect(),
                 })
                 .collect();
 
@@ -203,13 +226,15 @@ async fn get_deployment_status(
 ) -> Result<Json<ApiResponse>, StatusCode> {
     info!("Getting status for deployment: {}", deployment_id);
 
-    match state.coordinator.get_deployment_status(&deployment_id).await {
-        Ok(status) => {
-            Ok(Json(ApiResponse {
-                success: true,
-                message: format!("Status: {:?}", status),
-            }))
-        }
+    match state
+        .coordinator
+        .get_deployment_status(&deployment_id)
+        .await
+    {
+        Ok(status) => Ok(Json(ApiResponse {
+            success: true,
+            message: format!("Status: {status:?}"),
+        })),
         Err(e) => {
             error!("Failed to get deployment status {}: {}", deployment_id, e);
             Err(StatusCode::NOT_FOUND)
@@ -250,20 +275,20 @@ async fn health_check() -> Json<ApiResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum_test::TestServer;
     use crate::biome::OrchestratorConfig;
+    use axum_test::TestServer;
 
     #[tokio::test]
     async fn test_byob_api_health_check() {
         let coordinator = Arc::new(ByobCoordinator::new(OrchestratorConfig::default()));
         let app = create_byob_api_router(coordinator);
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app).expect("Failed to create test server");
 
         let response = server.get("/byob/health").await;
         response.assert_status_ok();
-        
+
         let body: ApiResponse = response.json();
         assert!(body.success);
         assert_eq!(body.message, "Songbird BYOB API is healthy");
     }
-} 
+}

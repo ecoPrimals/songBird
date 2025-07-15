@@ -4,7 +4,11 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
-description = "Monitoring and observability for Songbird"
+description = "Observability and monitoring for Songbird components"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "../../README.md"
+keywords = ["observability", "monitoring", "metrics", "tracing", "gaming"]
+categories = ["development-tools", "network-programming", "game-engines"]
 
 [dependencies]
 songbird-errors = { path = "../songbird-errors" }

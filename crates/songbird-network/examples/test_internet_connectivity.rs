@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let test_domains = vec!["google.com", "github.com", "cloudflare.com"];
 
     for domain in test_domains {
-        let lookup_target = format!("{}:80", domain);
+        let lookup_target = format!("{domain}:80");
         match timeout(
             Duration::from_secs(5),
             tokio::net::lookup_host(lookup_target),
@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tcp_targets = vec![("google.com", 80), ("github.com", 443)];
 
     for (host, port) in tcp_targets {
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         match timeout(Duration::from_secs(10), TcpStream::connect(&addr)).await {
             Ok(Ok(_stream)) => {
                 info!("✅ TCP connection to {} successful", addr);

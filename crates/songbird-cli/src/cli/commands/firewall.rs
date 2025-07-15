@@ -48,15 +48,15 @@ async fn execute_firewall_wizard(
         ui::info("Configuring system-agnostic firewall protection for Songbird...")
     );
     if let Some(env) = environment {
-        println!("{}", ui::info(&format!("Environment: {}", env)));
+        println!("{}", ui::info(&format!("Environment: {env}")));
     }
 
     if let Some(fw_backend) = backend {
-        println!("{}", ui::info(&format!("Firewall backend: {}", fw_backend)));
+        println!("{}", ui::info(&format!("Firewall backend: {fw_backend}")));
     }
 
     if let Some(level) = security_level {
-        println!("{}", ui::info(&format!("Security level: {}", level)));
+        println!("{}", ui::info(&format!("Security level: {level}")));
     }
 
     if !no_validation {
@@ -247,19 +247,25 @@ async fn validate_firewall_config() -> Result<(), CliError> {
         .join("firewall.toml");
 
     if !config_path.exists() {
-        println!("❌ No configuration file found.");
-        return Err(CliError::Config(
-            "No configuration file to validate".to_string(),
-        ));
+        return Err(CliError::Config {
+            message: "No configuration file to validate".to_string(),
+            field: Some("config_path".to_string()),
+            suggestion: Some("Run 'songbird config init' to create a configuration file".to_string()),
+        });
     }
 
+    // Load and validate firewall configuration
     let config = load_firewall_config(&config_path).await?;
-
-    // Validate configuration
+    
+    // Validate configuration by attempting to generate rules
     let wizard = FirewallWizard::new(config.clone());
     let _rules = wizard
         .generate_songbird_rules()
-        .map_err(|e| CliError::Config(format!("Failed to generate rules: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to generate rules: {e}"),
+            field: Some("firewall_rules".to_string()),
+            suggestion: Some("Check your configuration file format".to_string()),
+        })?;
 
     println!("✅ Configuration is valid!");
     Ok(())
@@ -275,16 +281,21 @@ async fn export_firewall_config(export_path: &PathBuf) -> Result<(), CliError> {
         .join("firewall.toml");
 
     if !config_path.exists() {
-        println!("❌ No configuration file found.");
-        return Err(CliError::Config(
-            "No configuration file to export".to_string(),
-        ));
+        return Err(CliError::Config {
+            message: "No configuration file to export".to_string(),
+            field: Some("config_path".to_string()),
+            suggestion: Some("Run 'songbird config init' to create a configuration file".to_string()),
+        });
     }
 
-    // Copy configuration file
+    // Copy configuration file to export location
     tokio::fs::copy(&config_path, export_path)
         .await
-        .map_err(|e| CliError::Config(format!("Failed to export configuration: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to export configuration: {e}"),
+            field: Some("firewall_config".to_string()),
+            suggestion: Some("Check your configuration file format".to_string()),
+        })?;
 
     println!("✅ Configuration exported successfully!");
     println!("From: {}", config_path.display());
@@ -298,10 +309,11 @@ async fn import_firewall_config(import_path: &PathBuf) -> Result<(), CliError> {
     println!("{}", "=================================".blue());
 
     if !import_path.exists() {
-        return Err(CliError::Config(format!(
-            "Import file does not exist: {}",
-            import_path.display()
-        )));
+        return Err(CliError::Config {
+            message: format!("Import file does not exist: {}", import_path.display()),
+            field: Some("import_path".to_string()),
+            suggestion: Some("Check the file path and ensure it exists".to_string()),
+        });
     }
 
     // Validate the imported configuration
@@ -311,7 +323,11 @@ async fn import_firewall_config(import_path: &PathBuf) -> Result<(), CliError> {
     let wizard = FirewallWizard::new(config.clone());
     let rules = wizard
         .generate_songbird_rules()
-        .map_err(|e| CliError::Config(format!("Invalid configuration: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Invalid configuration: {e}"),
+            field: Some("firewall_rules".to_string()),
+            suggestion: Some("Check your firewall configuration".to_string()),
+        })?;
 
     let validator = SecurityValidator::new();
     let validation_result = validator.validate_rules(&rules);
@@ -323,16 +339,22 @@ async fn import_firewall_config(import_path: &PathBuf) -> Result<(), CliError> {
                 // Simulate potential validation scenarios for demonstration
                 let critical_issues = vec!["Example validation issue".to_string()];
                 for issue in &critical_issues {
-                    println!("  └── {}", issue);
+                    println!("  └── {issue}");
                 }
-                return Err(CliError::Config(
-                    "Imported configuration is invalid".to_string(),
-                ));
+                return Err(CliError::Config {
+                    message: "Imported configuration is invalid".to_string(),
+                    field: Some("configuration".to_string()),
+                    suggestion: Some("Review and fix the configuration issues listed above".to_string()),
+                });
             }
         }
         Err(e) => {
-            println!("❌ Validation error: {}", e);
-            return Err(CliError::Config(format!("Validation failed: {}", e)));
+            println!("❌ Validation error: {e}");
+            return Err(CliError::Config {
+                message: format!("Validation failed: {e}"),
+                field: Some("validation".to_string()),
+                suggestion: Some("Check the validation error details above".to_string()),
+            });
         }
     }
 
@@ -348,12 +370,20 @@ async fn import_firewall_config(import_path: &PathBuf) -> Result<(), CliError> {
     if let Some(parent) = config_path.parent() {
         tokio::fs::create_dir_all(parent)
             .await
-            .map_err(|e| CliError::Config(format!("Failed to create config directory: {}", e)))?;
+            .map_err(|e| CliError::Config {
+                message: format!("Failed to create config directory: {e}"),
+                field: Some("config_directory".to_string()),
+                suggestion: Some("Check directory permissions and disk space".to_string()),
+            })?;
     }
 
     tokio::fs::copy(import_path, &config_path)
         .await
-        .map_err(|e| CliError::Config(format!("Failed to import configuration: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to import configuration: {e}"),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Check file permissions and paths".to_string()),
+        })?;
 
     println!("✅ Configuration imported successfully!");
     println!("From: {}", import_path.display());
@@ -366,10 +396,18 @@ async fn import_firewall_config(import_path: &PathBuf) -> Result<(), CliError> {
 async fn load_firewall_config(path: &PathBuf) -> Result<FirewallConfig, CliError> {
     let contents = tokio::fs::read_to_string(path)
         .await
-        .map_err(|e| CliError::Config(format!("Failed to read configuration file: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to read configuration file: {e}"),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Check file path and permissions".to_string()),
+        })?;
 
     toml::from_str(&contents)
-        .map_err(|e| CliError::Config(format!("Failed to parse configuration file: {}", e)))
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to parse configuration file: {e}"),
+            field: Some("config_parsing".to_string()),
+            suggestion: Some("Check TOML syntax in configuration file".to_string()),
+        })
 }
 /// Save firewall configuration to file
 #[allow(dead_code)]
@@ -377,15 +415,27 @@ async fn save_firewall_config(config: &FirewallConfig, path: &PathBuf) -> Result
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent)
             .await
-            .map_err(|e| CliError::Config(format!("Failed to create config directory: {}", e)))?;
+            .map_err(|e| CliError::Config {
+                message: format!("Failed to create config directory: {e}"),
+                field: Some("config_directory".to_string()),
+                suggestion: Some("Check directory permissions and disk space".to_string()),
+            })?;
     }
 
     let contents = toml::to_string_pretty(config)
-        .map_err(|e| CliError::Config(format!("Failed to serialize configuration: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to serialize configuration: {e}"),
+            field: Some("config_serialization".to_string()),
+            suggestion: Some("Check configuration structure".to_string()),
+        })?;
 
     tokio::fs::write(path, contents)
         .await
-        .map_err(|e| CliError::Config(format!("Failed to write configuration file: {}", e)))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to write configuration file: {e}"),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Check file path and permissions".to_string()),
+        })?;
 
     Ok(())
 }

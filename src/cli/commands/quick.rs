@@ -297,7 +297,8 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
     use std::net::UdpSocket;
     use std::time::Duration;
 
-    let socket = UdpSocket::bind("0.0.0.0:0")
+            let bind_addr = format!("{}:0", crate::config::constants::network::production_bind_address());
+        let socket = UdpSocket::bind(&bind_addr)
         .map_err(|e| crate::cli::CliError::Network(format!("Failed to create socket: {}", e)))?;
 
     socket
@@ -405,8 +406,9 @@ async fn auto_join_network(
         format_latency(network.latency_ms)
     );
 
-    // Auto-negotiate join (simplified)
-    sleep(Duration::from_millis(2000)).await;
+    // Auto-negotiate join (configurable timing)
+    let config = crate::config::hardcoded_elimination::HardcodedEliminationConfig::new();
+    sleep(config.connection_timeout() / 10).await; // Use a fraction of connection timeout for join animation
     println!(
         "{}",
         crate::cli::ui::success(&format!("✅ Joined '{}'!", network.name))
@@ -473,23 +475,26 @@ fn create_auto_config(
 async fn start_orchestrator(_config: OrchestratorConfig) -> CliResult<()> {
     // In a real implementation, this would start the orchestrator in the background
     // For now, just simulate the startup process
+    let config = crate::config::hardcoded_elimination::HardcodedEliminationConfig::new();
+    let base_timeout = config.deployment_timeout() / 20; // Use a fraction of deployment timeout for UI feedback
+    
     println!("{}", crate::cli::ui::info("🎼 Configuring orchestrator..."));
-    sleep(Duration::from_millis(1000)).await;
+    sleep(base_timeout).await;
     println!(
         "{}",
         crate::cli::ui::info("🌐 Setting up secure networking...")
     );
-    sleep(Duration::from_millis(800)).await;
+    sleep(base_timeout * 4 / 5).await;
     println!(
         "{}",
         crate::cli::ui::info("🔐 Generating security certificates...")
     );
-    sleep(Duration::from_millis(600)).await;
+    sleep(base_timeout * 3 / 5).await;
     println!(
         "{}",
         crate::cli::ui::info("📊 Starting monitoring dashboard...")
     );
-    sleep(Duration::from_millis(400)).await;
+    sleep(base_timeout * 2 / 5).await;
 
     Ok(())
 }
@@ -517,12 +522,11 @@ async fn show_quick_status(node_name: &str, contribute: &ContributeType) -> CliR
     println!("   🏷️  Node: {}", node_name);
     println!("   🤝 Contributing: {:?}", contribute);
     println!("   🌐 Network: Connected");
-    println!("   📊 Dashboard: http://{}:{}", 
-             std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| crate::config::environment::EnvironmentConfig::default().bind_address.as_str().to_string()),
-             std::env::var("SONGBIRD_BIND_PORT").unwrap_or_else(|_| {
-                let env_config = crate::config::environment::EnvironmentConfig::default();
-                env_config.bind_port.to_string()
-            }));
+    let env_config = crate::config::environment::EnvironmentConfig::default();
+    println!(
+        "   📊 Dashboard: http://{}:{}",
+        env_config.bind_address, env_config.dashboard_port
+    );
 
     println!("{}", crate::cli::ui::info("💡 Next steps:"));
     println!("   • Run 'songbird status' to see network details");
@@ -884,14 +888,14 @@ fn show_beardog_troubleshooting() {
 #[allow(dead_code)]
 fn get_disk_space() -> CliResult<(u64, u64)> {
     use std::fs;
-    
+
     match fs::metadata(".") {
         Ok(_) => {
             // Use a simple approximation for disk space
             // In a real implementation, you'd use a safe system info crate
             Ok((100_000_000_000, 50_000_000_000)) // 100GB total, 50GB available
         }
-        Err(e) => Err(CliError::Io(e))
+        Err(e) => Err(CliError::Io(e)),
     }
 }
 

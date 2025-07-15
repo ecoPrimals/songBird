@@ -104,32 +104,43 @@ impl ResourceMonitor {
         }
     }
 
-    /// Collect GPU usage information
-    pub async fn collect_gpu_usage() -> Vec<GpuUsage> {
-        // Simplified GPU monitoring
-        Vec::new()
+    #[must_use]
+    pub fn collect_gpu_usage() -> Vec<GpuUsage> {
+        // GPU monitoring is delegated to external system monitoring APIs
+        // Production implementations should integrate with:
+        // - NVIDIA Management Library (nvidia-ml-py) for NVIDIA GPUs
+        // - ROCm tools for AMD GPUs
+        // - Intel GPU tools for Intel GPUs
+        // For now, return empty vector (no GPU detected)
+        vec![]
     }
 
-    /// Collect network usage information
-    pub async fn collect_network_usage() -> NetworkUsage {
+    #[must_use]
+    pub fn collect_network_usage() -> NetworkUsage {
+        // Network monitoring is delegated to external system monitoring APIs
+        // Production implementations should integrate with:
+        // - System network interfaces (/proc/net/dev on Linux)
+        // - Platform-specific network APIs
+        // - SNMP for network equipment monitoring
+        // For now, return zero values (no network activity detected)
         NetworkUsage {
-            bytes_sent_per_sec: 1000000,     // 1 MB/s
-            bytes_received_per_sec: 2000000, // 2 MB/s
-            packets_sent_per_sec: 1000,
-            packets_received_per_sec: 1500,
+            bytes_sent_per_sec: 0,
+            bytes_received_per_sec: 0,
+            packets_sent_per_sec: 0,
+            packets_received_per_sec: 0,
             errors_per_sec: 0,
             drops_per_sec: 0,
         }
     }
 
-    /// Collect storage usage information
-    pub async fn collect_storage_usage() -> Vec<StorageUsage> {
+    #[must_use]
+    pub fn collect_storage_usage() -> Vec<StorageUsage> {
         vec![StorageUsage {
             device_name: "sda".to_string(),
             reads_per_sec: 100,
             writes_per_sec: 50,
-            read_bytes_per_sec: 1024000, // 1 MB/s
-            write_bytes_per_sec: 512000, // 512 KB/s
+            read_bytes_per_sec: 1_024_000, // 1 MB/s
+            write_bytes_per_sec: 512_000,  // 512 KB/s
             queue_depth: 2.0,
         }]
     }
@@ -144,12 +155,12 @@ impl ResourceMonitor {
             cpu_usage: Self::collect_cpu_usage().await,
             memory_usage: Self::collect_memory_usage().await,
             gpu_usage: if config.gpu_monitoring_enabled {
-                Self::collect_gpu_usage().await
+                Self::collect_gpu_usage()
             } else {
                 Vec::new()
             },
-            network_usage: Self::collect_network_usage().await,
-            storage_usage: Self::collect_storage_usage().await,
+            network_usage: Self::collect_network_usage(),
+            storage_usage: Self::collect_storage_usage(),
             timestamp: chrono::Utc::now(),
         }
     }

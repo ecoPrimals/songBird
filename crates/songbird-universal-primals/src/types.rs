@@ -1,12 +1,12 @@
 //! Type definitions for universal primal communication
-//! 
+//!
 //! This module defines the core data structures used for communication between
 //! Songbird orchestrator and primal services.
 
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use uuid::Uuid;
 
 /// Universal request structure for primal services
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -185,7 +185,10 @@ impl PrimalResponseType {
 
 impl PrimalRequest {
     /// Create a new primal request
-    pub fn new(request_type: PrimalRequestType, payload: HashMap<String, serde_json::Value>) -> Self {
+    pub fn new(
+        request_type: PrimalRequestType,
+        payload: HashMap<String, serde_json::Value>,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             request_type,
@@ -249,4 +252,4 @@ impl PrimalResponse {
             metadata: None,
         }
     }
-} 
+}

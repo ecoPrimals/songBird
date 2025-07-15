@@ -110,16 +110,24 @@ impl WebSocketCommunication {
     ) -> Result<()> {
         // Upgrade to WebSocket
         let websocket = accept_async(stream)
+            .await
+            .map_err(|e| SongbirdError::Communication {
+                service: "websocket".to_string(),
+                message: format!("Failed to upgrade to WebSocket: {}", e),
+                details: None,
+            })?;
+            
         let connection_id = Uuid::new_v4().to_string();
         let (outgoing_tx, mut outgoing_rx) = mpsc::unbounded_channel();
         // Split websocket for concurrent read/write immediately
         let (mut ws_sink, mut ws_stream) = websocket.split();
         // Create connection object without storing the websocket
+        let connection_id_arc: Arc<str> = connection_id.clone().into();
         let connection = Arc::new(WebSocketConnection {
-            id: connection_id.clone(), // TODO: Optimize - consider Arc<str>
+            id: connection_id_arc.clone(),
             address: ServiceAddress {
-                service_id: format!("websocket-{}", connection_id),
-                instance_id: Some(connection_id.clone()),
+                service_id: format!("websocket-{}", connection_id_arc),
+                instance_id: Some(connection_id_arc.as_ref().to_string()),
                 endpoint: Some(format!("{}:{}", addr.ip(), addr.port())),
             },
             connected_at: Instant::now(),
@@ -127,6 +135,8 @@ impl WebSocketCommunication {
             message_count: std::sync::atomic::AtomicU64::new(0),
             is_healthy: std::sync::atomic::AtomicBool::new(true),
             outgoing_tx,
+        });
+        
         connections.insert(connection_id.clone(), Arc::clone(&connection));
         metrics.active_connections.fetch_add(1, Ordering::Relaxed);
         info!("New WebSocket connection: {} from {}", connection_id, addr);
@@ -139,6 +149,7 @@ impl WebSocketCommunication {
                     warn!("Failed to send message: {}", e);
                     connection_clone.is_healthy.store(false, Ordering::Relaxed);
                     break;
+                }
                 metrics_clone.messages_sent.fetch_add(1, Ordering::Relaxed);
         // Handle incoming messages
         while let Some(message) = ws_stream.next().await {
@@ -239,9 +250,9 @@ impl CommunicationLayer for WebSocketCommunication {
             let conn = connection.value();
             match conn.outgoing_tx.send(ws_message.clone()) {
                     responses.push(CommunicationResponse {
-                        message_id: format!("{}_{}", message.id, conn.id),
+                        message_id: format!("{}_{}", message.id, conn.id.as_ref()),
                         success: true,
-                        payload: Some(serde_json::json!({"status": "sent", "connection": conn.id})),
+                        payload: Some(serde_json::json!({"status": "sent", "connection": conn.id.as_ref()})),
                         error: None,
                         timestamp: Utc::now(),
                     });

@@ -285,11 +285,11 @@ impl AuditLogger {
                     .append(true)
                     .open(path)
                 {
-                    let _ = writeln!(file, "{}", log_entry);
+                    let _ = writeln!(file, "{log_entry}");
                 }
             }
             AuditDestination::Console => {
-                println!("[AUDIT] {}", log_entry);
+                println!("[AUDIT] {log_entry}");
             }
             AuditDestination::Syslog { .. } => {
                 // COMPLETED: Implement syslog integration

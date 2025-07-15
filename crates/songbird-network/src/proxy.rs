@@ -283,12 +283,14 @@ impl ConnectionProxy {
             services
                 .get(service_name)
                 .ok_or_else(|| SongbirdError::Configuration {
+                    suggestion: Some("Check configuration values and syntax".to_string()),
                     field: "service_name".to_string(),
                     message: format!("Service not found: {}", service_name),
                 })?;
 
         if service_instances.is_empty() {
             return Err(SongbirdError::Configuration {
+                suggestion: Some("Check configuration values and syntax".to_string()),
                 field: "service_instances".to_string(),
                 message: format!("No instances available for service: {}", service_name),
             });
@@ -316,6 +318,8 @@ impl ConnectionProxy {
                         .unwrap_or(&0)
                 })
                 .ok_or_else(|| SongbirdError::Config {
+                    context: Some("proxy_configuration".to_string()),
+                    suggestion: Some("Check proxy configuration settings".to_string()),
                     message: "No service instances available for least connections selection"
                         .to_string(),
                     field: None,

@@ -130,6 +130,14 @@ pub enum ScalingDecision {
     NoAction,
 }
 
+/// Direction of scaling operation
+#[derive(Debug, Clone, PartialEq)]
+pub enum ScaleDirection {
+    Up,
+    Down,
+    None,
+}
+
 /// Scaling event for history tracking
 #[derive(Debug, Clone)]
 pub struct ScalingEvent {
@@ -142,7 +150,7 @@ pub struct ScalingEvent {
 }
 
 impl AutoScaler {
-    /// Create a new auto-scaler
+    #[must_use]
     pub fn new(config: ServiceScalingConfig, resource_pool: ResourcePool) -> Self {
         Self {
             config,
@@ -162,6 +170,11 @@ impl AutoScaler {
     }
 
     /// Evaluate scaling decision based on current metrics
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the scaling evaluation fails due to resource
+    /// constraints or invalid service configuration.
     pub fn evaluate_scaling(
         &mut self,
         service_id: &str,
@@ -181,9 +194,9 @@ impl AutoScaler {
             || resource_usage.memory_percent > self.config.scale_up_threshold
         {
             if current_instances < self.config.max_instances {
-                let scale_factor = self.calculate_scale_factor(resource_usage, request_rate);
+                let scale_factor = Self::calculate_scale_factor(resource_usage, request_rate);
                 let target_instances =
-                    (current_instances + scale_factor).min(self.config.max_instances);
+                    (current_instances + scale_factor as u32).min(self.config.max_instances);
                 ScalingDecision::ScaleUp(target_instances - current_instances)
             } else {
                 ScalingDecision::NoAction
@@ -212,7 +225,12 @@ impl AutoScaler {
                 timestamp: Instant::now(),
                 service_id: service_id.to_string(),
                 decision: decision.clone(),
-                reason: self.generate_scaling_reason(&decision, resource_usage),
+                reason: Self::generate_scaling_reason(
+                    current_instances,
+                    resource_usage,
+                    request_rate,
+                    &decision,
+                ),
                 current_instances,
                 target_instances,
             };
@@ -236,29 +254,53 @@ impl AutoScaler {
         Ok(decision)
     }
 
-    /// Calculate scale factor based on resource usage
-    fn calculate_scale_factor(&self, resource_usage: &ResourceUsage, request_rate: f64) -> u32 {
+    /// Calculate a scale factor based on resource usage and request rate
+    fn calculate_scale_factor(resource_usage: &ResourceUsage, request_rate: f64) -> f64 {
         // Simple scaling algorithm - can be made more sophisticated
-        let cpu_factor = if resource_usage.cpu_percent > 90.0 {
-            2
+        let cpu_factor: f64 = if resource_usage.cpu_percent > 90.0 {
+            2.0
         } else {
-            1
+            1.0
         };
-        let memory_factor = if resource_usage.memory_percent > 90.0 {
-            2
+        let memory_factor: f64 = if resource_usage.memory_percent > 90.0 {
+            2.0
         } else {
-            1
+            1.0
         };
-        let load_factor = if request_rate > 1000.0 { 2 } else { 1 };
+        let load_factor: f64 = if request_rate > 1000.0 { 2.0 } else { 1.0 };
 
         cpu_factor.max(memory_factor).max(load_factor)
     }
 
+    /// Determine scaling direction based on current state
+    #[allow(dead_code)]
+    fn determine_scale_direction(
+        current_instances: u32,
+        resource_usage: &ResourceUsage,
+        request_rate: f64,
+    ) -> ScaleDirection {
+        if resource_usage.cpu_percent > 80.0
+            || resource_usage.memory_percent > 80.0
+            || request_rate > 500.0
+        {
+            ScaleDirection::Up
+        } else if resource_usage.cpu_percent < 20.0
+            && resource_usage.memory_percent < 20.0
+            && request_rate < 100.0
+            && current_instances > 1
+        {
+            ScaleDirection::Down
+        } else {
+            ScaleDirection::None
+        }
+    }
+
     /// Generate reason for scaling decision
     fn generate_scaling_reason(
-        &self,
-        decision: &ScalingDecision,
+        _current_instances: u32,
         resource_usage: &ResourceUsage,
+        _request_rate: f64,
+        decision: &ScalingDecision,
     ) -> String {
         match decision {
             ScalingDecision::ScaleUp(_) => {
@@ -278,6 +320,11 @@ impl AutoScaler {
     }
 
     /// Execute scaling action
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the scaling operation fails due to resource
+    /// constraints or infrastructure issues.
     pub async fn execute_scaling(
         &mut self,
         service_id: &str,
@@ -309,32 +356,40 @@ impl AutoScaler {
     /// Scale up service instances
     async fn scale_up_service(&mut self, service_id: &str, instances: u32) -> Result<()> {
         // Check if we have enough resources
-        let required_cpu = self.config.min_instances as f64 * 0.5; // Assume 0.5 CPU per instance
+        let required_cpu = f64::from(self.config.min_instances) * 0.5; // Assume 0.5 CPU per instance
         let required_memory = self.config.min_instances * 512; // Assume 512MB per instance
 
-        if (self.resource_pool.available_cpu_cores as f64) < required_cpu {
-            return Err(SongbirdError::ResourceExhausted {
-                resource: "CPU".to_string(),
+        if f64::from(self.resource_pool.available_cpu_cores) < required_cpu {
+            return Err(SongbirdError::Config {
+                field: Some("CPU".to_string()),
                 message: format!(
-                    "Insufficient CPU resources: requested {}, available {}",
-                    required_cpu, self.resource_pool.available_cpu_cores
+                    "Insufficient CPU cores: need {required_cpu}, have {}",
+                    self.resource_pool.available_cpu_cores
+                ),
+                context: Some("resource_validation".to_string()),
+                suggestion: Some(
+                    "Add more CPU cores or reduce the minimum instance count".to_string(),
                 ),
             });
         }
 
         if self.resource_pool.available_memory_mb < required_memory {
-            return Err(SongbirdError::ResourceExhausted {
-                resource: "Memory".to_string(),
+            return Err(SongbirdError::Config {
+                field: Some("Memory".to_string()),
                 message: format!(
-                    "Insufficient memory resources: requested {} MB, available {} MB",
-                    required_memory, self.resource_pool.available_memory_mb
+                    "Insufficient memory: need {required_memory}MB, have {}MB",
+                    self.resource_pool.available_memory_mb
+                ),
+                context: Some("resource_validation".to_string()),
+                suggestion: Some(
+                    "Add more memory or reduce the minimum instance count".to_string(),
                 ),
             });
         }
 
-        // Reserve resources
+        // Allocate resources
         self.resource_pool.available_cpu_cores -=
-            (required_cpu as u32).min(self.resource_pool.available_cpu_cores);
+            u32::try_from(required_cpu as u64).unwrap_or(self.resource_pool.available_cpu_cores);
         self.resource_pool.available_memory_mb -=
             required_memory.min(self.resource_pool.available_memory_mb);
 
@@ -348,10 +403,10 @@ impl AutoScaler {
     /// Scale down service instances
     async fn scale_down_service(&mut self, service_id: &str, instances: u32) -> Result<()> {
         // Free up resources
-        let freed_cpu = instances as f64 * 0.5; // Assume 0.5 CPU per instance
+        let freed_cpu = f64::from(instances) * 0.5; // Assume 0.5 CPU per instance
         let freed_memory = instances * 512; // Assume 512MB per instance
 
-        self.resource_pool.available_cpu_cores += freed_cpu as u32;
+        self.resource_pool.available_cpu_cores += u32::try_from(freed_cpu as u64).unwrap_or(0);
         self.resource_pool.available_memory_mb += freed_memory;
 
         // Ensure we don't exceed total resources
@@ -372,16 +427,19 @@ impl AutoScaler {
     }
 
     /// Get scaling statistics
+    #[must_use]
     pub fn get_stats(&self) -> &ScalabilityStats {
         &self.stats
     }
 
     /// Get scaling history
+    #[must_use]
     pub fn get_scaling_history(&self) -> &[ScalingEvent] {
         &self.scaling_history
     }
 
     /// Get resource pool status
+    #[must_use]
     pub fn get_resource_pool(&self) -> &ResourcePool {
         &self.resource_pool
     }
@@ -424,7 +482,7 @@ pub enum OptimizationType {
 }
 
 impl PerformanceOptimizer {
-    /// Create a new performance optimizer
+    #[must_use]
     pub fn new(performance_config: PerformanceConfig) -> Self {
         Self {
             performance_config,
@@ -432,7 +490,12 @@ impl PerformanceOptimizer {
         }
     }
 
-    /// Optimize performance based on metrics
+    /// Optimize performance based on current metrics
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the performance optimization fails due to
+    /// configuration issues or resource constraints.
     pub fn optimize_performance(
         &mut self,
         service_id: &str,
@@ -476,22 +539,30 @@ impl PerformanceOptimizer {
         &self,
         metrics: &PerformanceMetrics,
     ) -> Option<OptimizationRecommendation> {
-        if metrics.connection_pool_utilization > 90.0 {
-            let new_size = (self.performance_config.connection_pool_size as f64 * 1.5) as u32;
+        if metrics.connection_pool_utilization > 0.8 {
+            let new_size = u32::try_from(
+                (f64::from(self.performance_config.connection_pool_size) * 1.5) as u64,
+            )
+            .unwrap_or(self.performance_config.connection_pool_size);
+
             Some(OptimizationRecommendation {
                 optimization_type: OptimizationType::ConnectionPoolSize,
-                current_value: self.performance_config.connection_pool_size as f64,
-                recommended_value: new_size as f64,
-                expected_improvement: 20.0,
+                current_value: f64::from(self.performance_config.connection_pool_size),
+                recommended_value: f64::from(new_size),
+                expected_improvement: 0.2,
                 reason: "High connection pool utilization detected".to_string(),
             })
-        } else if metrics.connection_pool_utilization < 30.0 {
-            let new_size = (self.performance_config.connection_pool_size as f64 * 0.7) as u32;
+        } else if metrics.connection_pool_utilization < 0.3 {
+            let new_size = u32::try_from(
+                (f64::from(self.performance_config.connection_pool_size) * 0.7) as u64,
+            )
+            .unwrap_or(self.performance_config.connection_pool_size);
+
             Some(OptimizationRecommendation {
                 optimization_type: OptimizationType::ConnectionPoolSize,
-                current_value: self.performance_config.connection_pool_size as f64,
-                recommended_value: new_size as f64,
-                expected_improvement: 10.0,
+                current_value: f64::from(self.performance_config.connection_pool_size),
+                recommended_value: f64::from(new_size),
+                expected_improvement: 0.1,
                 reason: "Low connection pool utilization detected".to_string(),
             })
         } else {
@@ -504,13 +575,16 @@ impl PerformanceOptimizer {
         &self,
         metrics: &PerformanceMetrics,
     ) -> Option<OptimizationRecommendation> {
-        if metrics.cache_hit_rate < 70.0 {
-            let new_size = (self.performance_config.cache_size_mb as f64 * 1.3) as u32;
+        if metrics.cache_hit_rate < 0.7 {
+            let new_size =
+                u32::try_from((f64::from(self.performance_config.cache_size_mb) * 1.3) as u64)
+                    .unwrap_or(self.performance_config.cache_size_mb);
+
             Some(OptimizationRecommendation {
                 optimization_type: OptimizationType::CacheSize,
-                current_value: self.performance_config.cache_size_mb as f64,
-                recommended_value: new_size as f64,
-                expected_improvement: 15.0,
+                current_value: f64::from(self.performance_config.cache_size_mb),
+                recommended_value: f64::from(new_size),
+                expected_improvement: 0.25,
                 reason: "Low cache hit rate detected".to_string(),
             })
         } else {
@@ -525,11 +599,12 @@ impl PerformanceOptimizer {
     ) -> Option<OptimizationRecommendation> {
         if metrics.timeout_rate > 5.0 {
             let new_timeout = (self.performance_config.request_timeout_ms as f64 * 1.2) as u64;
+
             Some(OptimizationRecommendation {
                 optimization_type: OptimizationType::RequestTimeout,
                 current_value: self.performance_config.request_timeout_ms as f64,
                 recommended_value: new_timeout as f64,
-                expected_improvement: 8.0,
+                expected_improvement: 0.1,
                 reason: "High timeout rate detected".to_string(),
             })
         } else {
@@ -538,6 +613,7 @@ impl PerformanceOptimizer {
     }
 
     /// Get optimization history
+    #[must_use]
     pub fn get_optimization_history(&self) -> &[OptimizationEvent] {
         &self.optimization_history
     }
@@ -611,8 +687,7 @@ mod tests {
 
         assert!(
             matches!(decision, ScalingDecision::ScaleUp(_)),
-            "Expected scale up decision, got: {:?}",
-            decision
+            "Expected scale up decision, got: {decision:?}"
         );
     }
 
@@ -629,8 +704,7 @@ mod tests {
 
         assert!(
             matches!(decision, ScalingDecision::ScaleDown(_)),
-            "Expected scale down decision, got: {:?}",
-            decision
+            "Expected scale down decision, got: {decision:?}"
         );
     }
 
@@ -647,8 +721,7 @@ mod tests {
 
         assert!(
             matches!(decision, ScalingDecision::NoAction),
-            "Expected no action decision, got: {:?}",
-            decision
+            "Expected no action decision, got: {decision:?}"
         );
     }
 
@@ -684,10 +757,10 @@ mod tests {
             request_rate: 100.0,
             error_rate: 1.0,
             timeout_rate: 2.0,
-            connection_pool_utilization: 95.0,
-            cache_hit_rate: 60.0,
-            memory_usage_percent: 70.0,
-            cpu_usage_percent: 80.0,
+            connection_pool_utilization: 0.95,
+            cache_hit_rate: 0.60,
+            memory_usage_percent: 0.70,
+            cpu_usage_percent: 0.80,
         };
 
         let recommendations = optimizer

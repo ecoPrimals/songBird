@@ -102,6 +102,8 @@ impl ZeroTrustMiddleware {
             let auth_str = auth_header.to_str().map_err(|_| SongbirdError::Security {
                 message: "Invalid authorization header".to_string(),
                 context: Some("bearer_token".to_string()),
+                severity: Some("warning".to_string()),
+                suggestion: Some("Provide a valid authorization header".to_string()),
             })?;
 
             if auth_str.starts_with("Bearer ") {
@@ -111,6 +113,8 @@ impl ZeroTrustMiddleware {
                         .ok_or_else(|| SongbirdError::Security {
                             message: "Malformed Bearer token".to_string(),
                             context: Some("authentication".to_string()),
+                            severity: Some("warning".to_string()),
+                            suggestion: Some("Provide a valid Bearer token format".to_string()),
                         })?;
                 return Ok(Credentials::Token(token.to_string()));
             }
@@ -122,6 +126,8 @@ impl ZeroTrustMiddleware {
                         .ok_or_else(|| SongbirdError::Security {
                             message: "Malformed Basic auth".to_string(),
                             context: Some("authentication".to_string()),
+                            severity: Some("warning".to_string()),
+                            suggestion: Some("Provide a valid Basic auth format".to_string()),
                         })?;
                 // Simplified basic auth parsing
                 return Ok(Credentials::Token(encoded.to_string()));
@@ -131,6 +137,8 @@ impl ZeroTrustMiddleware {
         Err(SongbirdError::Security {
             message: "No valid credentials found".to_string(),
             context: Some("authentication".to_string()),
+            severity: Some("warning".to_string()),
+            suggestion: Some("Provide valid authentication credentials".to_string()),
         })
     }
 

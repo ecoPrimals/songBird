@@ -226,7 +226,7 @@ pub struct ToadstoolResourceLimits {
 impl Default for BearDogConfig {
     fn default() -> Self {
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         Self {
             enabled: false,
             endpoint: BearDogEndpointConfig {
@@ -252,12 +252,16 @@ impl Default for BearDogConfig {
 impl Default for ToadstoolConfig {
     fn default() -> Self {
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         Self {
             enabled: false,
             endpoint: ToadstoolEndpointConfig {
-                primary_url: std::env::var("SONGBIRD_TOADSTOOL_ENDPOINT")
-                    .unwrap_or_else(|_| "http://127.0.0.1:8081".to_string()),
+                primary_url: std::env::var("SONGBIRD_TOADSTOOL_ENDPOINT").unwrap_or_else(|_| {
+                    format!(
+                        "http://{}:8081",
+                        crate::config::environment::get_default_bind_address()
+                    )
+                }),
                 connection_timeout_secs: env_config.connection_timeout_secs,
                 verify_tls: env_config.require_tls,
             },
@@ -292,7 +296,10 @@ impl SongbirdConfig {
 
     /// Enable BearDog integration with default configuration
     pub fn enable_beardog(&mut self) {
-        let beardog_config = BearDogConfig { enabled: true, ..BearDogConfig::default() };
+        let beardog_config = BearDogConfig {
+            enabled: true,
+            ..BearDogConfig::default()
+        };
         self.beardog = Some(beardog_config);
     }
 
@@ -313,7 +320,10 @@ impl SongbirdConfig {
 
     /// Enable Toadstool integration with default configuration
     pub fn enable_toadstool(&mut self) {
-        let toadstool_config = ToadstoolConfig { enabled: true, ..ToadstoolConfig::default() };
+        let toadstool_config = ToadstoolConfig {
+            enabled: true,
+            ..ToadstoolConfig::default()
+        };
         self.toadstool = Some(toadstool_config);
     }
 
@@ -378,12 +388,12 @@ impl SongbirdConfig {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let content = std::fs::read_to_string(path).map_err(|e| SongbirdError::Config {
             field: Some("config_file".to_string()),
-            message: format!("Failed to read config file: {}", e),
+            message: format!("Failed to read config file: {e}"),
         })?;
 
         toml::from_str(&content).map_err(|e| SongbirdError::Config {
             field: None,
-            message: format!("Failed to parse config: {}", e),
+            message: format!("Failed to parse config: {e}"),
         })
     }
 
@@ -391,12 +401,12 @@ impl SongbirdConfig {
     pub fn to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let content = toml::to_string_pretty(self).map_err(|e| SongbirdError::Config {
             field: None,
-            message: format!("Failed to serialize config: {}", e),
+            message: format!("Failed to serialize config: {e}"),
         })?;
 
         std::fs::write(path, content).map_err(|e| SongbirdError::Config {
             field: Some("config_file".to_string()),
-            message: format!("Failed to write config file: {}", e),
+            message: format!("Failed to write config file: {e}"),
         })
     }
 

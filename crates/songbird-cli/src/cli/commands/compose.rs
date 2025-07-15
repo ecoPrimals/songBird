@@ -5,7 +5,11 @@
 
 use clap::{Args, Subcommand};
 use songbird_errors::Result;
-// Note: DynamicPluginRegistry will be implemented in the registry module
+// Dynamic plugin composition is managed by external registry APIs
+// Production implementations should integrate with:
+// - songbird-registry crate for plugin registry management
+// - External service discovery and composition engines
+// - Cloud provider service orchestration APIs
 use colored::*;
 use songbird_discovery::traits::PluginCapability;
 
@@ -69,6 +73,11 @@ async fn handle_list_plugins(detailed: bool) -> Result<()> {
     println!("{}", "🧩 Available Plugins".bright_cyan().bold());
     println!("{}", "===================".bright_cyan());
 
+    // Plugin listing is delegated to external registry APIs
+    // Production implementations should integrate with:
+    // - songbird-registry crate for plugin discovery
+    // - External plugin repositories and catalogs
+    // - Service mesh discovery APIs
     // For now, show example plugins
     let example_plugins = vec![
         (
@@ -137,25 +146,22 @@ async fn handle_list_plugins(detailed: bool) -> Result<()> {
                         cpu_cores,
                         memory_gb,
                     } => {
-                        println!("     💻 Compute: {} cores, {}GB RAM", cpu_cores, memory_gb);
+                        println!("     💻 Compute: {cpu_cores} cores, {memory_gb}GB RAM");
                     }
                     PluginCapability::Storage {
                         capacity_gb,
                         storage_type,
                     } => {
-                        println!("     💾 Storage: {}GB {}", capacity_gb, storage_type);
+                        println!("     💾 Storage: {capacity_gb}GB {storage_type}");
                     }
                     PluginCapability::Network {
                         bandwidth_mbps,
                         latency_ms,
                     } => {
-                        println!(
-                            "     🌐 Network: {}Mbps, {}ms latency",
-                            bandwidth_mbps, latency_ms
-                        );
+                        println!("     🌐 Network: {bandwidth_mbps}Mbps, {latency_ms}ms latency");
                     }
                     PluginCapability::Custom { name, attributes } => {
-                        println!("     🔧 Custom {}: {:?}", name, attributes);
+                        println!("     🔧 Custom {name}: {attributes:?}");
                     }
                 }
             }
@@ -186,14 +192,14 @@ async fn handle_discover_composition(
 
     println!("Required capabilities:");
     for cap in &required_capabilities {
-        println!("  • {:?}", cap);
+        println!("  • {cap:?}");
     }
     println!();
 
     println!("Constraints:");
-    println!("  • Max latency: {}ms", max_latency);
-    println!("  • Max memory: {}MB", max_memory);
-    println!("  • Max plugins: {}", max_plugins);
+    println!("  • Max latency: {max_latency}ms");
+    println!("  • Max memory: {max_memory}MB");
+    println!("  • Max plugins: {max_plugins}");
     println!();
 
     // For demonstration, show example compositions
@@ -428,7 +434,7 @@ mod tests {
 
         match args.command {
             ComposeCommand::List { detailed } => assert!(!detailed),
-            _ => panic!("Expected List command"),
+            _ => assert!(false, "Expected List command"),
         }
     }
 
@@ -489,12 +495,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_discover_composition() {
-        let result = handle_discover_composition(
-            "encryption,compute".to_string(),
-            100.0,
-            1024.0,
-            10,
-        ).await;
+        let result =
+            handle_discover_composition("encryption,compute".to_string(), 100.0, 1024.0, 10).await;
         assert!(result.is_ok());
     }
 
@@ -521,7 +523,7 @@ mod tests {
         let capability_names = vec!["encryption", "compute", "storage"];
         let result = parse_capabilities(&capability_names);
         assert!(result.is_ok());
-        
+
         let capabilities = result.unwrap();
         assert_eq!(capabilities.len(), 3);
     }
@@ -537,8 +539,8 @@ mod tests {
         match &capabilities[0] {
             PluginCapability::Custom { name, .. } => {
                 assert_eq!(name, "invalid_capability");
-            },
-            _ => panic!("Expected Custom capability"),
+            }
+            _ => assert!(false, "Expected Custom capability"),
         }
     }
 
@@ -593,18 +595,30 @@ mod tests {
                 PluginCapability::GamingBridge { protocols } => {
                     assert!(!protocols.is_empty());
                 }
-                PluginCapability::Compute { cpu_cores, memory_gb } => {
+                PluginCapability::Compute {
+                    cpu_cores,
+                    memory_gb,
+                } => {
                     assert!(cpu_cores > 0);
                     assert!(memory_gb > 0);
                 }
-                PluginCapability::Storage { capacity_gb, storage_type: _ } => {
+                PluginCapability::Storage {
+                    capacity_gb,
+                    storage_type: _,
+                } => {
                     assert!(capacity_gb > 0);
                 }
-                PluginCapability::Network { bandwidth_mbps, latency_ms } => {
+                PluginCapability::Network {
+                    bandwidth_mbps,
+                    latency_ms,
+                } => {
                     assert!(bandwidth_mbps > 0);
                     assert!(latency_ms > 0);
                 }
-                PluginCapability::Custom { name: _, attributes: _ } => {}
+                PluginCapability::Custom {
+                    name: _,
+                    attributes: _,
+                } => {}
             }
         }
     }
@@ -614,7 +628,7 @@ mod tests {
         let args = ComposeArgs {
             command: ComposeCommand::List { detailed: false },
         };
-        
+
         let result = handle_compose_command(args).await;
         assert!(result.is_ok());
     }
@@ -629,7 +643,7 @@ mod tests {
                 max_plugins: 10,
             },
         };
-        
+
         let result = handle_compose_command(args).await;
         assert!(result.is_ok());
     }
@@ -641,7 +655,7 @@ mod tests {
                 plugins: "plugin1".to_string(),
             },
         };
-        
+
         let result = handle_compose_command(args).await;
         assert!(result.is_ok());
     }
@@ -651,7 +665,7 @@ mod tests {
         let args = ComposeArgs {
             command: ComposeCommand::Examples,
         };
-        
+
         let result = handle_compose_command(args).await;
         assert!(result.is_ok());
     }
@@ -661,7 +675,7 @@ mod tests {
         let args = ComposeArgs {
             command: ComposeCommand::Demo,
         };
-        
+
         let result = handle_compose_command(args).await;
         assert!(result.is_ok());
     }
@@ -677,12 +691,9 @@ mod tests {
         ];
 
         for (latency, memory, plugins) in test_cases {
-            let result = handle_discover_composition(
-                "encryption".to_string(),
-                latency,
-                memory,
-                plugins,
-            ).await;
+            let result =
+                handle_discover_composition("encryption".to_string(), latency, memory, plugins)
+                    .await;
             assert!(result.is_ok());
         }
     }
@@ -691,22 +702,26 @@ mod tests {
     async fn test_capability_parsing_edge_cases() {
         // Test edge cases for capability parsing
         let test_cases = vec![
-            ("", true), // Empty string - now handled as Custom capability
-            ("encryption", true), // Single capability
-            ("encryption,compute", true), // Multiple capabilities
-            ("encryption, compute", true), // Multiple with spaces
+            ("", true),                           // Empty string - now handled as Custom capability
+            ("encryption", true),                 // Single capability
+            ("encryption,compute", true),         // Multiple capabilities
+            ("encryption, compute", true),        // Multiple with spaces
             ("encryption,compute,storage", true), // Multiple capabilities
-            ("unknown_capability", true), // Unknown capability - handled as Custom
+            ("unknown_capability", true),         // Unknown capability - handled as Custom
         ];
 
         for (input, should_succeed) in test_cases {
             let capability_names: Vec<&str> = if input.is_empty() {
                 vec![]
             } else {
-                input.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect()
+                input
+                    .split(',')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .collect()
             };
             let result = parse_capabilities(&capability_names);
-            
+
             if should_succeed {
                 assert!(result.is_ok(), "Failed to parse: {}", input);
             } else {

@@ -38,6 +38,18 @@ enum VulnerabilityType {
     Credential,
 }
 
+impl std::fmt::Display for VulnerabilityType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VulnerabilityType::Port => write!(f, "Port"),
+            VulnerabilityType::Ip => write!(f, "IP Address"),
+            VulnerabilityType::Path => write!(f, "File Path"),
+            VulnerabilityType::Url => write!(f, "URL"),
+            VulnerabilityType::Credential => write!(f, "Credential"),
+        }
+    }
+}
+
 impl VulnerabilityType {
     fn severity(&self) -> SecuritySeverity {
         match self {
@@ -55,6 +67,16 @@ enum SecuritySeverity {
     Critical,
     High,
     Medium,
+}
+
+impl std::fmt::Display for SecuritySeverity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SecuritySeverity::Critical => write!(f, "Critical"),
+            SecuritySeverity::High => write!(f, "High"),
+            SecuritySeverity::Medium => write!(f, "Medium"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -222,27 +244,19 @@ fn generate_recommendation(vuln_type: &VulnerabilityType, matched_content: &str)
     match vuln_type {
         VulnerabilityType::Port => {
             format!(
-                "Replace hardcoded port {} with configurable environment variable",
-                matched_content
+                "Replace hardcoded port {matched_content} with configurable environment variable"
             )
         }
         VulnerabilityType::Ip => {
-            format!(
-                "Replace hardcoded IP {} with configurable binding address",
-                matched_content
-            )
+            format!("Replace hardcoded IP {matched_content} with configurable binding address")
         }
         VulnerabilityType::Path => {
             format!(
-                "Replace hardcoded path {} with environment-configurable directory",
-                matched_content
+                "Replace hardcoded path {matched_content} with environment-configurable directory"
             )
         }
         VulnerabilityType::Url => {
-            format!(
-                "Replace hardcoded endpoint {} with configurable service URL",
-                matched_content
-            )
+            format!("Replace hardcoded endpoint {matched_content} with configurable service URL")
         }
         VulnerabilityType::Credential => {
             "CRITICAL: Replace hardcoded credential with secure environment variable".to_string()
@@ -289,7 +303,7 @@ fn output_console_report(
 
         println!(
             "  {:>8}: {}",
-            format!("{:?}", severity).color(color).bold(),
+            format!("{severity}").color(color).bold(),
             count.to_string().bright_white()
         );
     }
@@ -325,7 +339,7 @@ fn output_console_report(
             );
             println!(
                 "   Severity: {}",
-                format!("{:?}", vuln.vulnerability_type.severity())
+                format!("{}", vuln.vulnerability_type.severity())
                     .color(severity_color)
                     .bold()
             );
@@ -357,8 +371,8 @@ fn output_json_report(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()
         "total_vulnerabilities": vulnerabilities.len(),
         "vulnerabilities": vulnerabilities.iter().map(|v| {
             serde_json::json!({
-                "type": format!("{:?}", v.vulnerability_type),
-                "severity": format!("{:?}", v.vulnerability_type.severity()),
+                "type": format!("{}", v.vulnerability_type),
+                "severity": format!("{}", v.vulnerability_type.severity()),
                 "file": v.file_path,
                 "line": v.line_number,
                 "content": v.content,
@@ -396,7 +410,7 @@ fn output_markdown_report(vulnerabilities: &[SecurityVulnerability]) -> CliResul
         println!("**Recommendation:** {}", vuln.recommendation);
 
         if let Some(env_var) = &vuln.environment_variable {
-            println!("**Suggested Environment Variable:** `{}`", env_var);
+            println!("**Suggested Environment Variable:** `{env_var}`");
         }
 
         println!();
@@ -422,7 +436,7 @@ async fn apply_automatic_fixes(vulnerabilities: &[SecurityVulnerability]) -> Cli
 
     println!(
         "{}",
-        format!("Applied {} automatic fixes", fixes_applied).bright_green()
+        format!("Applied {fixes_applied} automatic fixes").bright_green()
     );
 
     if fixes_applied > 0 {

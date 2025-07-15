@@ -15,7 +15,7 @@ pub async fn host_gaming_session(
     let session_name = name.unwrap_or_else(|| "Songbird Gaming Session".to_string());
     println!(
         "{}",
-        format!("🎮 Hosting gaming session: {}", session_name).bright_green()
+        format!("🎮 Hosting gaming session: {session_name}").bright_green()
     );
 
     let session_code = generate_session_code();
@@ -27,7 +27,7 @@ pub async fn host_gaming_session(
 pub async fn join_gaming_session(code: Option<String>) -> Result<()> {
     println!("🎮 Joining gaming session...");
     if let Some(code) = code {
-        println!("🔗 Session code: {}", code);
+        println!("🔗 Session code: {code}");
     }
     Ok(())
 }
@@ -42,19 +42,34 @@ pub async fn show_gaming_status() -> Result<()> {
 pub async fn execute_host(_auto: bool) -> CliResult<()> {
     host_gaming_session(false, None, false, false)
         .await
-        .map_err(|e| crate::cli::CliError::ExecutionError(e.to_string()))
+        .map_err(|e| crate::cli::CliError::ExecutionError {
+            message: format!("Failed to start gaming session: {}", e),
+            command: Some("gaming host".to_string()),
+            exit_code: Some(1),
+            suggestion: Some("Check your gaming configuration and network settings".to_string()),
+        })
 }
 
 pub async fn execute_join(code: String) -> CliResult<()> {
     join_gaming_session(Some(code))
         .await
-        .map_err(|e| crate::cli::CliError::ExecutionError(e.to_string()))
+        .map_err(|e| crate::cli::CliError::ExecutionError {
+            message: format!("Failed to join gaming session: {}", e),
+            command: Some("gaming join".to_string()),
+            exit_code: Some(1),
+            suggestion: Some("Check the session ID and network connectivity".to_string()),
+        })
 }
 
 pub async fn execute_status() -> CliResult<()> {
     show_gaming_status()
         .await
-        .map_err(|e| crate::cli::CliError::ExecutionError(e.to_string()))
+        .map_err(|e| crate::cli::CliError::ExecutionError {
+            message: format!("Failed to get gaming session status: {}", e),
+            command: Some("gaming status".to_string()),
+            exit_code: Some(1),
+            suggestion: Some("Check if a gaming session is active".to_string()),
+        })
 }
 
 pub async fn execute_browse() -> CliResult<()> {

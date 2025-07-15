@@ -1,10 +1,44 @@
-//! Provides information about the running orchestrator
+//! Enhanced status command with improved UI and error handling
 
+use crate::cli::ui::*;
 use crate::cli::{CliError, CliResult, OutputFormat};
 use colored::*;
+use serde_json::json;
 use std::time::Duration;
-// Status command tracing
-/// Execute the status command
+
+/// System status information
+#[derive(Debug, Clone)]
+pub struct SystemStatus {
+    pub orchestrator_status: ServiceStatus,
+    pub discovery_status: ServiceStatus,
+    pub load_balancer_status: ServiceStatus,
+    pub monitoring_status: ServiceStatus,
+    pub uptime: Duration,
+    pub version: String,
+    pub cpu_usage: f64,
+    pub memory_usage: u64,
+    pub memory_total: u64,
+    pub network_throughput: u64,
+    pub connected_nodes: u32,
+    pub active_services: u32,
+    pub network_health: String,
+    pub last_updated: chrono::DateTime<chrono::Utc>,
+}
+
+/// Service status information
+#[derive(Debug, Clone)]
+pub struct ServiceStatus {
+    pub name: String,
+    pub status: String,
+    pub health: String,
+    pub port: Option<u16>,
+    pub uptime: Option<Duration>,
+    pub last_health_check: Option<chrono::DateTime<chrono::Utc>>,
+    pub error_count: u32,
+    pub restart_count: u32,
+}
+
+/// Execute the status command with enhanced error handling
 pub async fn execute_status(
     detailed: bool,
     watch: Option<u64>,
@@ -16,16 +50,18 @@ pub async fn execute_status(
         show_status(detailed, watch, format).await
     }
 }
-/// Show system status
+
+/// Show system status with enhanced formatting
 pub async fn show_status(
     detailed: bool,
     watch: Option<u64>,
     format: OutputFormat,
-) -> Result<(), CliError> {
+) -> CliResult<()> {
     if let Some(interval) = watch {
         // Watch mode - continuously update status
         loop {
             clear_screen();
+            display_timestamp();
             display_status(detailed, &format).await?;
             tokio::time::sleep(Duration::from_secs(interval)).await;
         }
@@ -37,151 +73,395 @@ pub async fn show_status(
     Ok(())
 }
 
-async fn display_status(detailed: bool, format: &OutputFormat) -> Result<(), CliError> {
+/// Display current timestamp for watch mode
+fn display_timestamp() {
+    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    println!(
+        "{} {}",
+        "Last Updated:".bright_blue().bold(),
+        timestamp.to_string().bright_white()
+    );
+    separator();
+}
+
+/// Display status based on output format
+async fn display_status(detailed: bool, format: &OutputFormat) -> CliResult<()> {
+    let status = get_system_status().await?;
+
     match format {
-        OutputFormat::Auto | OutputFormat::Table => display_table_status(detailed).await,
-        OutputFormat::Json => display_json_status(detailed).await,
-        OutputFormat::Yaml => display_yaml_status(detailed).await,
-        OutputFormat::Text => display_text_status(detailed).await,
+        OutputFormat::Auto | OutputFormat::Table => display_table_status(&status, detailed).await,
+        OutputFormat::Json => display_json_status(&status, detailed).await,
+        OutputFormat::Yaml => display_yaml_status(&status, detailed).await,
+        OutputFormat::Text => display_text_status(&status, detailed).await,
     }
 }
-/// Show status in table format
-async fn display_table_status(detailed: bool) -> Result<(), CliError> {
-    println!("{}", "📊 SONGBIRD ORCHESTRATOR STATUS".bright_blue().bold());
-    println!();
-    // System Status
-    println!("{}", "System".bright_green().bold());
-    println!("  Status: {}", "Running".bright_green());
-    println!("  Uptime: {}", "2h 34m 12s".bright_yellow());
-    println!("  Version: {}", env!("CARGO_PKG_VERSION").bright_cyan());
-    // Services Status
-    println!("{}", "Services".bright_green().bold());
-    println!("  Orchestrator: {}", "Running".bright_green());
-    println!("  Discovery: {}", "Running".bright_green());
-    println!("  Load Balancer: {}", "Running".bright_green());
-    println!("  Monitoring: {}", "Running".bright_green());
-    if detailed {
-        // Resource Usage
-        println!("{}", "Resources".bright_green().bold());
-        println!("  CPU Usage: {}%", "12".bright_yellow());
-        println!("  Memory Usage: {} MB", "256".bright_yellow());
-        println!("  Network: {} KB/s", "45".bright_yellow());
-        println!();
 
-        // Connected Nodes
-        println!("{}", "Network".bright_green().bold());
-        println!("  Connected Nodes: {}", "3".bright_yellow());
-        println!("  Active Services: {}", "12".bright_yellow());
-        println!("  Network Health: {}", "Good".bright_green());
+/// Get current system status
+async fn get_system_status() -> CliResult<SystemStatus> {
+    // This would normally query actual system components
+    // For now, we'll return simulated status
+    Ok(SystemStatus {
+        orchestrator_status: ServiceStatus {
+            name: "Orchestrator".to_string(),
+            status: "Running".to_string(),
+            health: "Healthy".to_string(),
+            port: Some(8080),
+            uptime: Some(Duration::from_secs(9492)), // 2h 38m 12s
+            last_health_check: Some(chrono::Utc::now() - chrono::Duration::seconds(5)),
+            error_count: 0,
+            restart_count: 0,
+        },
+        discovery_status: ServiceStatus {
+            name: "Discovery".to_string(),
+            status: "Running".to_string(),
+            health: "Healthy".to_string(),
+            port: Some(8081),
+            uptime: Some(Duration::from_secs(9480)),
+            last_health_check: Some(chrono::Utc::now() - chrono::Duration::seconds(3)),
+            error_count: 2,
+            restart_count: 0,
+        },
+        load_balancer_status: ServiceStatus {
+            name: "Load Balancer".to_string(),
+            status: "Running".to_string(),
+            health: "Healthy".to_string(),
+            port: Some(8082),
+            uptime: Some(Duration::from_secs(9475)),
+            last_health_check: Some(chrono::Utc::now() - chrono::Duration::seconds(2)),
+            error_count: 0,
+            restart_count: 0,
+        },
+        monitoring_status: ServiceStatus {
+            name: "Monitoring".to_string(),
+            status: "Running".to_string(),
+            health: "Healthy".to_string(),
+            port: Some(8083),
+            uptime: Some(Duration::from_secs(9470)),
+            last_health_check: Some(chrono::Utc::now() - chrono::Duration::seconds(1)),
+            error_count: 1,
+            restart_count: 0,
+        },
+        uptime: Duration::from_secs(9492),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        cpu_usage: 12.5,
+        memory_usage: 268435456,   // 256 MB
+        memory_total: 8589934592,  // 8 GB
+        network_throughput: 46080, // 45 KB/s
+        connected_nodes: 3,
+        active_services: 12,
+        network_health: "Good".to_string(),
+        last_updated: chrono::Utc::now(),
+    })
+}
+
+/// Display status in enhanced table format
+async fn display_table_status(status: &SystemStatus, detailed: bool) -> CliResult<()> {
+    banner("Songbird Orchestrator Status", Some("System Overview"));
+
+    // Overall system status
+    let overall_status = if status.orchestrator_status.health == "Healthy" {
+        "🟢 Running"
+    } else {
+        "🔴 Issues Detected"
+    };
+
+    system_info(&[
+        ("Overall Status", overall_status),
+        ("Version", &status.version),
+        ("Uptime", &format_duration(status.uptime)),
+        (
+            "Last Updated",
+            &status.last_updated.format("%H:%M:%S UTC").to_string(),
+        ),
+    ]);
+
+    // Service status table
+    subheader("Service Status");
+    let mut table = Table::new().headers(vec![
+        "Service".to_string(),
+        "Status".to_string(),
+        "Health".to_string(),
+        "Port".to_string(),
+        "Uptime".to_string(),
+    ]);
+
+    let services = [
+        &status.orchestrator_status,
+        &status.discovery_status,
+        &status.load_balancer_status,
+        &status.monitoring_status,
+    ];
+
+    for service in services {
+        table = table.row(vec![
+            service.name.clone(),
+            format_health_status(&service.status),
+            format_health_status(&service.health),
+            service.port.map_or("N/A".to_string(), |p| p.to_string()),
+            service
+                .uptime
+                .map_or("N/A".to_string(), |u| format_duration(u)),
+        ]);
     }
+
+    table.print();
+
+    if detailed {
+        // Detailed system metrics
+        subheader("System Metrics");
+        system_info(&[
+            ("CPU Usage", &format_percentage(status.cpu_usage / 100.0)),
+            (
+                "Memory Usage",
+                &format!(
+                    "{} / {} ({})",
+                    format_bytes(status.memory_usage),
+                    format_bytes(status.memory_total),
+                    format_percentage(status.memory_usage as f64 / status.memory_total as f64)
+                ),
+            ),
+            (
+                "Network Throughput",
+                &format!("{}/s", format_bytes(status.network_throughput)),
+            ),
+            ("Connected Nodes", &status.connected_nodes.to_string()),
+            ("Active Services", &status.active_services.to_string()),
+            (
+                "Network Health",
+                &format_health_status(&status.network_health),
+            ),
+        ]);
+
+        // Service details
+        subheader("Service Details");
+        for service in services {
+            display_service_details(service);
+        }
+    }
+
+    // Quick actions
+    subheader("Quick Actions");
+    println!("• View logs: {}", "songbird logs --follow".bright_green());
+    println!(
+        "• Check configuration: {}",
+        "songbird config show".bright_green()
+    );
+    println!(
+        "• Restart services: {}",
+        "songbird stop && songbird start".bright_green()
+    );
+    println!(
+        "• Watch status: {}",
+        "songbird status --watch 5".bright_green()
+    );
 
     Ok(())
 }
-/// Show status in JSON format
-async fn display_json_status(detailed: bool) -> Result<(), CliError> {
-    let status = serde_json::json!({
-        "status": "running",
-        "uptime": "2h 34m 12s",
-        "version": env!("CARGO_PKG_VERSION"),
+
+/// Display detailed service information
+fn display_service_details(service: &ServiceStatus) {
+    println!("\n{}", service.name.bright_cyan().bold());
+    println!("  Status: {}", format_health_status(&service.status));
+    println!("  Health: {}", format_health_status(&service.health));
+
+    if let Some(port) = service.port {
+        println!("  Port: {}", port.to_string().bright_white());
+    }
+
+    if let Some(uptime) = service.uptime {
+        println!("  Uptime: {}", format_duration(uptime).bright_white());
+    }
+
+    if let Some(last_check) = service.last_health_check {
+        println!(
+            "  Last Health Check: {}",
+            last_check.format("%H:%M:%S UTC").to_string().bright_white()
+        );
+    }
+
+    if service.error_count > 0 {
+        println!("  Errors: {}", service.error_count.to_string().bright_red());
+    }
+
+    if service.restart_count > 0 {
+        println!(
+            "  Restarts: {}",
+            service.restart_count.to_string().bright_yellow()
+        );
+    }
+}
+
+/// Display status in JSON format
+async fn display_json_status(status: &SystemStatus, detailed: bool) -> CliResult<()> {
+    let mut json_status = json!({
+        "overall_status": status.orchestrator_status.health,
+        "version": status.version,
+        "uptime_seconds": status.uptime.as_secs(),
+        "last_updated": status.last_updated.to_rfc3339(),
         "services": {
-            "orchestrator": "running",
-            "discovery": "running",
-            "load_balancer": "running",
-            "monitoring": "running"
-        },
-        "detailed": if detailed {
-            Some(serde_json::json!({
-                "resources": {
-                    "cpu_usage": 12,
-                    "memory_usage": 256,
-                    "network_throughput": 45
-                },
-                "network": {
-                    "connected_nodes": 3,
-                    "active_services": 12,
-                    "health": "good"
-                }
-            }))
-        } else {
-            None
+            "orchestrator": service_to_json(&status.orchestrator_status),
+            "discovery": service_to_json(&status.discovery_status),
+            "load_balancer": service_to_json(&status.load_balancer_status),
+            "monitoring": service_to_json(&status.monitoring_status),
         }
     });
-    match serde_json::to_string_pretty(&status) {
-        Ok(json) => println!("{}", json),
-        Err(e) => {
-            eprintln!("Error serializing status to JSON: {}", e);
-            return Err(CliError::Command(format!(
-                "JSON serialization failed: {}",
-                e
-            )));
-        }
-    }
-
-    Ok(())
-}
-/// Show status in YAML format
-async fn display_yaml_status(detailed: bool) -> Result<(), CliError> {
-    println!("status: running");
-    println!("uptime: 2h 34m 12s");
-    println!("version: {}", env!("CARGO_PKG_VERSION"));
-    println!("services:");
-    println!("  orchestrator: running");
-    println!("  discovery: running");
-    println!("  load_balancer: running");
-    println!("  monitoring: running");
 
     if detailed {
-        println!("resources:");
-        println!("  cpu_usage: 12");
-        println!("  memory_usage: 256");
-        println!("  network_throughput: 45");
-        println!("network:");
-        println!("  connected_nodes: 3");
-        println!("  active_services: 12");
-        println!("  health: good");
+        json_status["system_metrics"] = json!({
+            "cpu_usage_percent": status.cpu_usage,
+            "memory_usage_bytes": status.memory_usage,
+            "memory_total_bytes": status.memory_total,
+            "network_throughput_bytes_per_sec": status.network_throughput,
+            "connected_nodes": status.connected_nodes,
+            "active_services": status.active_services,
+            "network_health": status.network_health,
+        });
     }
+
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&json_status).map_err(|e| CliError::command_error(
+            &format!("Failed to serialize JSON: {}", e),
+            Some("status"),
+            "Check system status and try again"
+        ))?
+    );
 
     Ok(())
 }
-/// Show status in text format
-async fn display_text_status(detailed: bool) -> Result<(), CliError> {
-    println!("Songbird Orchestrator Status: Running");
-    println!("Uptime: 2h 34m 12s");
-    println!("Version: {}", env!("CARGO_PKG_VERSION"));
+
+/// Convert service status to JSON
+fn service_to_json(service: &ServiceStatus) -> serde_json::Value {
+    json!({
+        "name": service.name,
+        "status": service.status,
+        "health": service.health,
+        "port": service.port,
+        "uptime_seconds": service.uptime.map(|u| u.as_secs()),
+        "last_health_check": service.last_health_check.map(|t| t.to_rfc3339()),
+        "error_count": service.error_count,
+        "restart_count": service.restart_count,
+    })
+}
+
+/// Display status in YAML format
+async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> CliResult<()> {
+    let mut yaml_status = serde_yaml::to_string(&json!({
+        "overall_status": status.orchestrator_status.health,
+        "version": status.version,
+        "uptime_seconds": status.uptime.as_secs(),
+        "last_updated": status.last_updated.to_rfc3339(),
+        "services": {
+            "orchestrator": service_to_json(&status.orchestrator_status),
+            "discovery": service_to_json(&status.discovery_status),
+            "load_balancer": service_to_json(&status.load_balancer_status),
+            "monitoring": service_to_json(&status.monitoring_status),
+        }
+    }))
+    .map_err(|e| {
+        CliError::command_error(
+            &format!("Failed to serialize YAML: {}", e),
+            Some("status"),
+            "Check system status and try again",
+        )
+    })?;
+
+    if detailed {
+        let detailed_yaml = serde_yaml::to_string(&json!({
+            "system_metrics": {
+                "cpu_usage_percent": status.cpu_usage,
+                "memory_usage_bytes": status.memory_usage,
+                "memory_total_bytes": status.memory_total,
+                "network_throughput_bytes_per_sec": status.network_throughput,
+                "connected_nodes": status.connected_nodes,
+                "active_services": status.active_services,
+                "network_health": status.network_health,
+            }
+        }))
+        .map_err(|e| {
+            CliError::command_error(
+                &format!("Failed to serialize detailed YAML: {}", e),
+                Some("status"),
+                "Check system status and try again",
+            )
+        })?;
+
+        yaml_status.push_str(&detailed_yaml);
+    }
+
+    println!("{}", yaml_status);
+    Ok(())
+}
+
+/// Display status in simple text format
+async fn display_text_status(status: &SystemStatus, detailed: bool) -> CliResult<()> {
+    println!(
+        "Songbird Orchestrator Status: {}",
+        format_health_status(&status.orchestrator_status.health)
+    );
+    println!("Uptime: {}", format_duration(status.uptime));
+    println!("Version: {}", status.version);
     println!("Services: Orchestrator, Discovery, Load Balancer, Monitoring - All Running");
 
     if detailed {
-        println!("CPU Usage: 12%");
-        println!("Memory Usage: 256 MB");
-        println!("Network Throughput: 45 KB/s");
-        println!("Connected Nodes: 3");
-        println!("Active Services: 12");
-        println!("Network Health: Good");
+        println!("CPU Usage: {}", format_percentage(status.cpu_usage / 100.0));
+        println!(
+            "Memory Usage: {} / {} ({})",
+            format_bytes(status.memory_usage),
+            format_bytes(status.memory_total),
+            format_percentage(status.memory_usage as f64 / status.memory_total as f64)
+        );
+        println!(
+            "Network Throughput: {}/s",
+            format_bytes(status.network_throughput)
+        );
+        println!("Connected Nodes: {}", status.connected_nodes);
+        println!("Active Services: {}", status.active_services);
+        println!(
+            "Network Health: {}",
+            format_health_status(&status.network_health)
+        );
     }
 
     Ok(())
 }
-fn clear_screen() {
-    print!("\x1B[2J\x1B[1;1H");
-}
 
-/// Watch status with live updates
-async fn watch_status(detailed: bool, interval: u64, format: OutputFormat) -> Result<(), CliError> {
-    println!("👁️  Watching status (press Ctrl+C to stop)...");
+/// Watch status with live updates and enhanced display
+async fn watch_status(detailed: bool, interval: u64, format: OutputFormat) -> CliResult<()> {
+    banner("Songbird Status Monitor", Some("Live Updates"));
+    print_info(&format!(
+        "Updating every {} seconds (press Ctrl+C to stop)",
+        interval
+    ));
+
     loop {
-        // Clear screen
         clear_screen();
-        // Show current timestamp
+        display_timestamp();
+
+        match display_status(detailed, &format).await {
+            Ok(()) => {}
+            Err(e) => {
+                error_with_suggestions(
+                    &format!("Failed to get status: {}", e),
+                    &[
+                        "Check if the orchestrator is running",
+                        "Verify network connectivity",
+                        "Try reducing the update interval",
+                    ],
+                );
+                tokio::time::sleep(Duration::from_secs(interval)).await;
+                continue;
+            }
+        }
+
+        // Show next update time
+        let next_update = chrono::Utc::now() + chrono::Duration::seconds(interval as i64);
         println!(
-            "{}",
-            chrono::Utc::now()
-                .format("%Y-%m-%d %H:%M:%S UTC")
-                .to_string()
-                .bright_blue()
+            "\n{} {}",
+            "Next update:".dimmed(),
+            next_update.format("%H:%M:%S UTC").to_string().dimmed()
         );
-        // Show status
-        display_status(detailed, &format).await?;
-        // Wait for next update
-        tokio::time::sleep(tokio::time::Duration::from_secs(interval)).await;
+
+        tokio::time::sleep(Duration::from_secs(interval)).await;
     }
 }

@@ -41,8 +41,10 @@ impl SecurityManager {
         });
 
         let now = Instant::now();
-        limiter.requests.retain(|&time| now.duration_since(time) < limiter.window_duration);
-        
+        limiter
+            .requests
+            .retain(|&time| now.duration_since(time) < limiter.window_duration);
+
         if limiter.requests.len() < max_requests as usize {
             limiter.requests.push(now);
             true
@@ -54,10 +56,10 @@ impl SecurityManager {
     pub async fn generate_session_key(&self, session_id: &str) -> Vec<u8> {
         use rand::Rng;
         let key: Vec<u8> = (0..32).map(|_| rand::thread_rng().gen()).collect();
-        
+
         let mut keys = self.session_keys.write().await;
         keys.insert(session_id.to_string(), key.clone());
-        
+
         key
     }
 
@@ -65,4 +67,4 @@ impl SecurityManager {
         let keys = self.session_keys.read().await;
         keys.get(session_id).cloned()
     }
-} 
+}

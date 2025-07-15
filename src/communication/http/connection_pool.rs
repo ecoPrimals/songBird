@@ -256,10 +256,10 @@ mod tests {
         let pool = HttpConnectionPool::new(config);
         
         // First connection
-        let _conn1 = pool.acquire_connection("example.com").await.unwrap();
+        let _conn1 = pool.acquire_connection("example.com").await.expect("Failed to acquire connection in test");
         
         // Second connection to same host (should trigger reuse logic)
-        let _conn2 = pool.acquire_connection("example.com").await.unwrap();
+        let _conn2 = pool.acquire_connection("example.com").await.expect("Failed to acquire second connection in test");
         
         let metrics = pool.get_metrics().await;
         assert!(metrics.connections_created >= 1);

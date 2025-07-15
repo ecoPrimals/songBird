@@ -1,5 +1,5 @@
 //! Unit tests for validation module
-//! 
+//!
 //! Tests all validation functions in src/errors/validation.rs
 //! Coverage target: 95%+
 
@@ -35,7 +35,10 @@ mod port_validation_tests {
     fn test_validate_port_invalid() {
         // Test port 0 (invalid)
         match ConfigValidator::validate_port(0, "invalid_port") {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "invalid_port");
                 assert!(message.contains("Port cannot be 0"));
             }
@@ -48,7 +51,7 @@ mod port_validation_tests {
         // Test exact boundaries
         assert!(ConfigValidator::validate_port(1, "min_port").is_ok());
         assert!(ConfigValidator::validate_port(65535, "max_port").is_ok());
-        
+
         // Port 0 should fail
         assert!(ConfigValidator::validate_port(0, "zero_port").is_err());
     }
@@ -65,7 +68,10 @@ mod port_validation_tests {
     fn test_validate_port_range_invalid() {
         // Test invalid port range (start > end)
         match ConfigValidator::validate_port_range(8100, 8000) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "port_range");
                 assert!(message.contains("Start port"));
                 assert!(message.contains("cannot be greater than end port"));
@@ -103,9 +109,9 @@ mod url_validation_tests {
             match ConfigValidator::validate_url(url_str, name) {
                 Ok(url) => {
                     // URL parser may normalize URLs (add trailing slash for domains)
-                    assert!(url.as_str() == url_str || url.as_str() == format!("{}/", url_str));
+                    assert!(url.as_str() == url_str || url.as_str() == format!("{url_str}/"));
                 }
-                Err(e) => panic!("Expected valid URL for {}: {:?}", url_str, e),
+                Err(e) => panic!("Expected valid URL for {url_str}: {e:?}"),
             }
         }
     }
@@ -121,11 +127,14 @@ mod url_validation_tests {
 
         for (url_str, name) in invalid_urls {
             match ConfigValidator::validate_url(url_str, name) {
-                Err(SongbirdError::Config { field: Some(field), message }) => {
+                Err(SongbirdError::Config {
+                    field: Some(field),
+                    message,
+                }) => {
                     assert_eq!(field, name);
                     assert!(message.contains("Unsupported URL scheme"));
                 }
-                _ => panic!("Expected Config error for unsupported scheme: {}", url_str),
+                _ => panic!("Expected Config error for unsupported scheme: {url_str}"),
             }
         }
     }
@@ -141,11 +150,14 @@ mod url_validation_tests {
 
         for (url_str, name) in malformed_urls {
             match ConfigValidator::validate_url(url_str, name) {
-                Err(SongbirdError::Config { field: Some(field), message }) => {
+                Err(SongbirdError::Config {
+                    field: Some(field),
+                    message,
+                }) => {
                     assert_eq!(field, name);
                     assert!(message.contains("Invalid URL format"));
                 }
-                _ => panic!("Expected Config error for malformed URL: {}", url_str),
+                _ => panic!("Expected Config error for malformed URL: {url_str}"),
             }
         }
     }
@@ -158,7 +170,10 @@ mod url_validation_tests {
 
         // Invalid (non-HTTP) URLs
         match ConfigValidator::validate_http_url("ws://example.com", "websocket") {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "websocket");
                 assert!(message.contains("Expected HTTP/HTTPS URL"));
             }
@@ -174,7 +189,10 @@ mod url_validation_tests {
 
         // Invalid (non-WebSocket) URLs
         match ConfigValidator::validate_websocket_url("http://example.com", "http") {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "http");
                 assert!(message.contains("Expected WebSocket URL"));
             }
@@ -217,7 +235,7 @@ mod ip_validation_tests {
         for ip_str in &valid_ipv4 {
             match ConfigValidator::validate_ip_address(ip_str, "test_ip") {
                 Ok(ip) => assert!(ip.is_ipv4()),
-                Err(e) => panic!("Expected valid IPv4 for {}: {:?}", ip_str, e),
+                Err(e) => panic!("Expected valid IPv4 for {ip_str}: {e:?}"),
             }
         }
     }
@@ -235,7 +253,7 @@ mod ip_validation_tests {
         for ip_str in &valid_ipv6 {
             match ConfigValidator::validate_ip_address(ip_str, "test_ip") {
                 Ok(ip) => assert!(ip.is_ipv6()),
-                Err(e) => panic!("Expected valid IPv6 for {}: {:?}", ip_str, e),
+                Err(e) => panic!("Expected valid IPv6 for {ip_str}: {e:?}"),
             }
         }
     }
@@ -254,11 +272,14 @@ mod ip_validation_tests {
 
         for ip_str in &invalid_ips {
             match ConfigValidator::validate_ip_address(ip_str, "invalid_ip") {
-                Err(SongbirdError::Config { field: Some(field), message }) => {
+                Err(SongbirdError::Config {
+                    field: Some(field),
+                    message,
+                }) => {
                     assert_eq!(field, "invalid_ip");
                     assert!(message.contains("Invalid IP address format"));
                 }
-                _ => panic!("Expected Config error for invalid IP: {}", ip_str),
+                _ => panic!("Expected Config error for invalid IP: {ip_str}"),
             }
         }
     }
@@ -278,7 +299,7 @@ mod ip_validation_tests {
                 Ok(addr) => {
                     assert!(addr.port() > 0);
                 }
-                Err(e) => panic!("Expected valid socket address for {}: {:?}", addr_str, e),
+                Err(e) => panic!("Expected valid socket address for {addr_str}: {e:?}"),
             }
         }
     }
@@ -296,14 +317,14 @@ mod ip_validation_tests {
 
         for addr_str in &invalid_addrs {
             match ConfigValidator::validate_socket_address(addr_str, "invalid_addr") {
-                Err(SongbirdError::Config { field: Some(field), message }) => {
+                Err(SongbirdError::Config {
+                    field: Some(field),
+                    message,
+                }) => {
                     assert_eq!(field, "invalid_addr");
                     assert!(message.contains("Invalid socket address format"));
                 }
-                _ => panic!(
-                    "Expected Config error for invalid socket address: {}",
-                    addr_str
-                ),
+                _ => panic!("Expected Config error for invalid socket address: {addr_str}"),
             }
         }
     }
@@ -327,7 +348,10 @@ mod timeout_validation_tests {
     #[test]
     fn test_validate_timeout_below_minimum() {
         match ConfigValidator::validate_timeout(500, "low_timeout", 1000, 10000) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "low_timeout");
                 assert!(message.contains("below minimum"));
             }
@@ -338,7 +362,10 @@ mod timeout_validation_tests {
     #[test]
     fn test_validate_timeout_above_maximum() {
         match ConfigValidator::validate_timeout(15000, "high_timeout", 1000, 10000) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "high_timeout");
                 assert!(message.contains("exceeds maximum"));
             }
@@ -403,7 +430,10 @@ mod retry_validation_tests {
     #[test]
     fn test_validate_retry_config_too_many_retries() {
         match ConfigValidator::validate_retry_config(15, 1000) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "max_retries");
                 assert!(message.contains("exceeds reasonable limit"));
             }
@@ -436,7 +466,10 @@ mod thread_pool_validation_tests {
     #[test]
     fn test_validate_thread_pool_size_zero() {
         match ConfigValidator::validate_thread_pool_size(0, "empty_pool") {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "empty_pool");
                 assert!(message.contains("Thread pool size cannot be 0"));
             }
@@ -469,7 +502,10 @@ mod memory_validation_tests {
     #[test]
     fn test_validate_memory_limit_too_low() {
         match ConfigValidator::validate_memory_limit(32) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "memory_limit");
                 assert!(message.contains("Memory limit cannot be less than 64 MB"));
             }
@@ -494,7 +530,10 @@ mod memory_validation_tests {
         // Result depends on system memory, but should be either Ok (with warning) or Error
         match result {
             Ok(_) => {} // OK if system has enough memory
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "memory_limit");
                 assert!(message.contains("exceeds system memory"));
             }
@@ -517,7 +556,10 @@ mod buffer_validation_tests {
     #[test]
     fn test_validate_buffer_size_too_small() {
         match ConfigValidator::validate_buffer_size(512, "small_buffer", 1024, 65536) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "small_buffer");
                 assert!(message.contains("below minimum"));
             }
@@ -528,7 +570,10 @@ mod buffer_validation_tests {
     #[test]
     fn test_validate_buffer_size_too_large() {
         match ConfigValidator::validate_buffer_size(131072, "large_buffer", 1024, 65536) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "large_buffer");
                 assert!(message.contains("exceeds maximum"));
             }
@@ -566,7 +611,10 @@ mod percentage_validation_tests {
     fn test_validate_percentage_invalid() {
         // Below 0
         match ConfigValidator::validate_percentage(-5.0, "negative") {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "negative");
                 assert!(message.contains("must be between 0.0 and 100.0"));
             }
@@ -575,7 +623,10 @@ mod percentage_validation_tests {
 
         // Above 100
         match ConfigValidator::validate_percentage(105.0, "over_hundred") {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "over_hundred");
                 assert!(message.contains("must be between 0.0 and 100.0"));
             }
@@ -600,7 +651,10 @@ mod rate_limit_validation_tests {
     fn test_validate_rate_limit_invalid() {
         // Zero rate
         match ConfigValidator::validate_rate_limit(0.0, "zero_rate") {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "zero_rate");
                 assert!(message.contains("Rate limit must be positive"));
             }
@@ -609,7 +663,10 @@ mod rate_limit_validation_tests {
 
         // Negative rate
         match ConfigValidator::validate_rate_limit(-5.0, "negative_rate") {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "negative_rate");
                 assert!(message.contains("Rate limit must be positive"));
             }
@@ -649,7 +706,10 @@ mod file_path_validation_tests {
     fn test_validate_file_path_non_existing_must_exist() {
         // Test non-existing file with must_exist = true
         match ConfigValidator::validate_file_path("/non/existing/file.txt", "missing_file", true) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "missing_file");
                 assert!(message.contains("does not exist"));
             }
@@ -663,7 +723,10 @@ mod file_path_validation_tests {
         // This should fail because parent directory doesn't exist
         match ConfigValidator::validate_file_path("/non/existing/file.txt", "optional_file", false)
         {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "optional_file");
                 assert!(message.contains("Parent directory") && message.contains("does not exist"));
             }
@@ -707,7 +770,10 @@ mod file_path_validation_tests {
             "missing_dir",
             false,
         ) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "missing_dir");
                 assert!(message.contains("does not exist"));
             }
@@ -727,7 +793,10 @@ mod file_path_validation_tests {
             "not_dir",
             false,
         ) {
-            Err(SongbirdError::Config { field: Some(field), message }) => {
+            Err(SongbirdError::Config {
+                field: Some(field),
+                message,
+            }) => {
                 assert_eq!(field, "not_dir");
                 assert!(message.contains("is not a directory"));
             }
@@ -744,7 +813,7 @@ mod integration_tests {
     #[test]
     fn test_validate_all_default_config() {
         // Test validation of default configuration
-        let config = SongbirdConfig::default();
+        let _config = SongbirdConfig::default();
         let result = ConfigValidator::validate_basic_config();
 
         // Default config should be valid
@@ -753,7 +822,7 @@ mod integration_tests {
                 // Success expected
             }
             Err(e) => {
-                panic!("Default configuration should be valid: {:?}", e);
+                panic!("Default configuration should be valid: {e:?}");
             }
         }
     }

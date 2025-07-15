@@ -219,9 +219,11 @@ impl GamingManager {
 
         let session = sessions.get_mut(session_code).ok_or_else(|| {
             songbird_errors::SongbirdError::Network {
-                service: "Gaming Manager".to_string(),
+                service: Some("Gaming Manager".to_string()),
                 message: format!("Session not found: {}", session_code),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             }
         })?;
 
@@ -244,9 +246,11 @@ impl GamingManager {
             .find(|(code, _)| *code == session_code)
             .map(|(_, session)| session.clone())
             .ok_or_else(|| songbird_errors::SongbirdError::Network {
-                service: "Gaming Manager".to_string(),
+                service: Some("Gaming Manager".to_string()),
                 message: format!("Session not found: {}", session_code),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })
             .map(Some)
     }
@@ -267,9 +271,11 @@ impl GamingManager {
             sessions
                 .get(session_code)
                 .ok_or_else(|| songbird_errors::SongbirdError::Network {
-                    service: "Gaming Manager".to_string(),
+                    service: Some("Gaming Manager".to_string()),
                     message: format!("Session not found: {}", session_code),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 })?;
 
         // Use configurable binding address - NO MORE HARDCODING 0.0.0.0!
@@ -279,6 +285,8 @@ impl GamingManager {
                 return Err(songbird_errors::SongbirdError::Config {
                     field: Some("gaming_bind_address".to_string()),
                     message: "Gaming services binding to 0.0.0.0 requires explicit approval via SONGBIRD_GAMING_BIND_ALL_APPROVED=true".to_string(),
+                context: Some("network_configuration".to_string()),
+                suggestion: Some("Check configuration values and network settings".to_string()),
                 });
             }
             "0.0.0.0"

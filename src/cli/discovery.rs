@@ -49,7 +49,13 @@ impl NetworkScanner {
 
         // Real subnet scanning implementation
         let mut discovered_nodes = Vec::new();
-        let common_ports = [8080, 9090, 3000, 4000, 5000, 8000];
+        let env_config = crate::config::environment::EnvironmentConfig::default();
+        let common_ports = [
+            env_config.bind_port,
+            env_config.dashboard_port,
+            env_config.metrics_port,
+            4000, 5000, 8000  // Keep some common fallback ports
+        ];
 
         // Parse subnet (e.g., "192.168.1" -> scan 192.168.1.1-254)
         let subnet_parts: Vec<&str> = subnet.split('.').collect();
@@ -167,35 +173,175 @@ impl NetworkScanner {
         address: IpAddr,
         port: u16,
     ) -> Result<Option<(String, Option<String>, NodeType)>, CliError> {
-        // Try common Songbird endpoints
+        // Use the real HTTP implementation for comprehensive service identification
+        match self.check_songbird_endpoint(address, port).await? {
+            Some((name, version, node_type)) => {
+                Ok(Some((name, Some(version), node_type)))
+            }
+            None => {
+                // Fallback: Try basic HTTP endpoints
+                let endpoints = [
+                    "/health",
+                    "/api/v1/health", 
+                    "/status",
+                    "/api/status",
+                    "/songbird/health",
+                ];
+
+                for endpoint in &endpoints {
+                    let url = format!("http://{}:{}{}", address, port, endpoint);
+
+                    if let Ok(_) = self.simulate_http_check(&url).await {
+                        // Found a responsive HTTP service - assume it's a Songbird node
+                        let node_type = if endpoint.contains("orchestrator") || port == 8080 {
+                            NodeType::Orchestrator
+                        } else {
+                            NodeType::ServiceNode
+                        };
+                        
+                        return Ok(Some((
+                            format!("songbird-{}", address), 
+                            Some("unknown".to_string()),
+                            node_type
+                        )));
+                    }
+                }
+
+                Ok(None)
+            }
+        }
+    }
+
+    /// Real HTTP check implementation
+    async fn simulate_http_check(&self, url: &str) -> Result<(), CliError> {
+        // Real HTTP client implementation using hyper
+        use hyper::{Client, Uri, Body, Request};
+        use hyper_tls::HttpsConnector;
+        use std::time::Instant;
+
+        let start = Instant::now();
+        
+        // Create HTTPS client
+        let https = HttpsConnector::new();
+        let client = Client::builder().build::<_, Body>(https);
+
+        // Parse URL
+        let uri: Uri = url.parse()
+            .map_err(|e| CliError::Network(format!("Invalid URL {}: {}", url, e)))?;
+
+        // Create GET request
+        let req = Request::builder()
+            .method("GET")
+            .uri(&uri)
+            .header("User-Agent", "Songbird-Discovery/1.0")
+            .header("Accept", "application/json, text/plain")
+            .body(Body::empty())
+            .map_err(|e| CliError::Network(format!("Failed to build request: {}", e)))?;
+
+        // Execute request with timeout
+        let response_future = client.request(req);
+        let response = tokio::time::timeout(self.timeout, response_future).await
+            .map_err(|_| CliError::Network("HTTP request timeout".to_string()))?
+            .map_err(|e| CliError::Network(format!("HTTP request failed: {}", e)))?;
+
+        let elapsed = start.elapsed();
+        tracing::debug!("HTTP check for {} completed in {:?}", url, elapsed);
+
+        // Check response status
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(CliError::Network(format!("HTTP check failed with status: {}", response.status())))
+        }
+    }
+
+    /// Real HTTP client implementation for service identification
+    async fn check_songbird_endpoint(&self, address: IpAddr, port: u16) -> Result<Option<(String, String, NodeType)>, CliError> {
         let endpoints = [
-            "/health",
-            "/api/v1/health",
-            "/status",
-            "/api/status",
-            "/songbird/health",
+            format!("http://{}:{}/health", address, port),
+            format!("http://{}:{}/api/v1/info", address, port),
+            format!("http://{}:{}/status", address, port),
+            format!("https://{}:{}/health", address, port),
         ];
 
         for endpoint in &endpoints {
-            let url = format!("http://{}:{}{}", address, port, endpoint);
-
-            // For now, we'll simulate the HTTP check since we don't have the HTTP client implemented
-            // In a real implementation, you would use an HTTP client here
-            if let Ok(_response) = self.simulate_http_check(&url).await {
-                let node_type = NodeType::ServiceNode;
-                let version = Some("1.0.0".to_string());
-
-                return Ok(Some((format!("Songbird-{}", address), version, node_type)));
+            match self.try_songbird_endpoint(endpoint).await {
+                Ok(Some(info)) => return Ok(Some(info)),
+                Ok(None) => continue,
+                Err(_) => continue, // Try next endpoint
             }
         }
 
         Ok(None)
     }
 
-    /// Simulate HTTP check for now
-    async fn simulate_http_check(&self, _url: &str) -> Result<(), CliError> {
-        // This is a placeholder - in real implementation would use HTTP client
-        Err(CliError::Network("HTTP client not implemented".to_string()))
+    /// Try a specific Songbird endpoint
+    async fn try_songbird_endpoint(&self, url: &str) -> Result<Option<(String, String, NodeType)>, CliError> {
+        use hyper::{Client, Uri, Body, Request};
+        use hyper_tls::HttpsConnector;
+
+        let https = HttpsConnector::new();
+        let client = Client::builder().build::<_, Body>(https);
+
+        let uri: Uri = url.parse()
+            .map_err(|e| CliError::Network(format!("Invalid URL {}: {}", url, e)))?;
+
+        let req = Request::builder()
+            .method("GET")
+            .uri(&uri)
+            .header("User-Agent", "Songbird-Discovery/1.0")
+            .header("Accept", "application/json")
+            .body(Body::empty())
+            .map_err(|e| CliError::Network(format!("Failed to build request: {}", e)))?;
+
+        let response = tokio::time::timeout(
+            Duration::from_secs(2), // Shorter timeout for discovery
+            client.request(req)
+        ).await
+            .map_err(|_| CliError::Network("Request timeout".to_string()))?
+            .map_err(|e| CliError::Network(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Ok(None);
+        }
+
+        // Read response body
+        let body_bytes = hyper::body::to_bytes(response.into_body()).await
+            .map_err(|e| CliError::Network(format!("Failed to read response: {}", e)))?;
+
+        let body_str = String::from_utf8_lossy(&body_bytes);
+
+        // Try to parse as JSON
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body_str) {
+            let name = json.get("service")
+                .or_else(|| json.get("name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("songbird-node")
+                .to_string();
+
+            let version = self.extract_version_from_response(&body_str)
+                .unwrap_or_else(|| "unknown".to_string());
+
+            let node_type = if json.get("orchestrator").is_some() || 
+                             json.get("type").and_then(|v| v.as_str()) == Some("orchestrator") {
+                NodeType::Orchestrator
+            } else {
+                NodeType::ServiceNode
+            };
+
+            return Ok(Some((name, version, node_type)));
+        }
+
+        // Fallback: Check for Songbird signatures in plain text
+        if body_str.to_lowercase().contains("songbird") {
+            let name = "songbird-node".to_string();
+            let version = self.extract_version_from_response(&body_str)
+                .unwrap_or_else(|| "unknown".to_string());
+            
+            return Ok(Some((name, version, NodeType::Unknown)));
+        }
+
+        Ok(None)
     }
 
     /// Extract version from API response

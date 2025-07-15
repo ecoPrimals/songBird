@@ -33,7 +33,7 @@ pub async fn show_detailed_version() -> CliResult<()> {
     println!("Description:");
     println!("  {}", env!("CARGO_PKG_DESCRIPTION"));
     println!("Features enabled:");
-    
+
     // Note: Features are defined in individual crates, not at the workspace level
     println!("  ✅ Core orchestration");
     println!("  ✅ Gaming network bridge");

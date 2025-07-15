@@ -1,30 +1,49 @@
 //! # 🚀 **Zero-Touch Implementation Module**
-//! 
+//!
 //! **Phase 5: Zero-Touch Implementation Testing**
-//! 
+//!
 //! This module provides comprehensive zero-touch deployment capabilities,
 //! including environment detection, auto-discovery, configuration generation, and deployment automation.
 
-use std::time::Duration;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
-/// Zero-touch deployment configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ZeroTouchConfig {
-    pub auto_deploy: bool,
-    pub environment_detection: bool,
-    pub auto_discovery: bool,
-    pub generate_security_config: bool,
+/// Configuration capabilities using enum-based approach instead of excessive booleans
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ZeroTouchCapability {
+    AutoDeploy,
+    EnvironmentDetection,
+    AutoDiscovery,
+    GenerateSecurityConfig,
 }
 
-impl Default for ZeroTouchConfig {
-    fn default() -> Self {
-        Self {
-            auto_deploy: true,
-            environment_detection: true,
-            auto_discovery: true,
-            generate_security_config: true,
-        }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ZeroTouchConfig {
+    pub capabilities: Vec<ZeroTouchCapability>,
+}
+
+impl ZeroTouchConfig {
+    pub fn new(capabilities: Vec<ZeroTouchCapability>) -> Self {
+        Self { capabilities }
+    }
+
+    pub fn auto_deploy(&self) -> bool {
+        self.capabilities.contains(&ZeroTouchCapability::AutoDeploy)
+    }
+
+    pub fn environment_detection(&self) -> bool {
+        self.capabilities
+            .contains(&ZeroTouchCapability::EnvironmentDetection)
+    }
+
+    pub fn auto_discovery(&self) -> bool {
+        self.capabilities
+            .contains(&ZeroTouchCapability::AutoDiscovery)
+    }
+
+    pub fn generate_security_config(&self) -> bool {
+        self.capabilities
+            .contains(&ZeroTouchCapability::GenerateSecurityConfig)
     }
 }
 
@@ -86,37 +105,56 @@ pub struct ZeroTouchOrchestrator {
 }
 
 impl ZeroTouchOrchestrator {
+    #[must_use]
     pub fn new(config: ZeroTouchConfig) -> Self {
         Self { config }
     }
 
-    /// Detect the deployment environment
-    pub async fn detect_environment(&self) -> Result<EnvironmentInfo, Box<dyn std::error::Error + Send + Sync>> {
+    /// Detect the current environment and its capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if environment detection fails due to system access
+    /// issues or unsupported platforms.
+    pub fn detect_environment(
+        &self,
+    ) -> Result<EnvironmentInfo, Box<dyn std::error::Error + Send + Sync>> {
         let env_info = EnvironmentInfo {
             os: std::env::consts::OS.to_string(),
-            memory_mb: 8192, // Simulated
-            cpu_cores: std::thread::available_parallelism()?.get() as u32,
+            memory_mb: 8192, // Simplified detection
+            cpu_cores: u32::try_from(std::thread::available_parallelism()?.get())
+                .unwrap_or(u32::MAX),
             network_interfaces: vec!["lo".to_string(), "eth0".to_string()],
             deployment_type: "standalone".to_string(),
         };
-        
+
         Ok(env_info)
     }
 
-    /// Perform auto-discovery of existing services and infrastructure
-    pub async fn auto_discover(&self) -> Result<DiscoveryInfo, Box<dyn std::error::Error + Send + Sync>> {
+    /// Automatically discover available services and configurations
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if service discovery fails due to network issues
+    /// or configuration problems.
+    pub fn auto_discover(&self) -> Result<DiscoveryInfo, Box<dyn std::error::Error + Send + Sync>> {
         let discovery_info = DiscoveryInfo {
-            existing_services: vec!["sshd".to_string(), "networkd".to_string()],
-            network_topology: "star".to_string(),
-            available_ports: vec![8080, 8081, 8082, 9090, 9091],
+            existing_services: vec!["orchestrator".to_string()],
+            network_topology: "local".to_string(),
+            available_ports: vec![8080, 8081, 8082],
             federations: vec![],
         };
-        
+
         Ok(discovery_info)
     }
 
-    /// Generate configuration based on environment and discovery
-    pub async fn generate_configuration(
+    /// Generate configuration based on detected environment and discovered services
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if configuration generation fails due to invalid
+    /// environment info or unsupported service combinations.
+    pub fn generate_configuration(
         &self,
         _env_info: &EnvironmentInfo,
         discovery_info: &DiscoveryInfo,
@@ -124,24 +162,39 @@ impl ZeroTouchOrchestrator {
         let config = GeneratedConfig {
             name: "songbird-auto-config".to_string(),
             version: "0.1.0".to_string(),
-            deployment_id: format!("auto-deploy-{}-{:?}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0), std::thread::current().id()),
+            deployment_id: format!(
+                "auto-deploy-{}-{:?}",
+                chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0),
+                std::thread::current().id()
+            ),
+            network: NetworkConfig {
+                port: discovery_info
+                    .available_ports
+                    .first()
+                    .copied()
+                    .unwrap_or(8080),
+                bind_address: "0.0.0.0".to_string(),
+                enable_discovery: self.config.auto_discovery(),
+            },
             security: SecurityConfig {
-                encryption_enabled: self.config.generate_security_config,
-                authentication_required: self.config.generate_security_config,
+                encryption_enabled: self.config.generate_security_config(),
+                authentication_required: self.config.generate_security_config(),
                 audit_logging: true,
             },
-            network: NetworkConfig {
-                port: discovery_info.available_ports.first().copied().unwrap_or(8080),
-                bind_address: "0.0.0.0".to_string(),
-                enable_discovery: self.config.auto_discovery,
-            },
         };
-        
+
         Ok(config)
     }
 
-    /// Create deployment plan
-    pub async fn create_deployment_plan(&self) -> Result<DeploymentPlan, Box<dyn std::error::Error + Send + Sync>> {
+    /// Create a deployment plan for the generated configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deployment plan creation fails due to resource
+    /// constraints or configuration validation issues.
+    pub fn create_deployment_plan(
+        &self,
+    ) -> Result<DeploymentPlan, Box<dyn std::error::Error + Send + Sync>> {
         let plan = DeploymentPlan {
             steps: vec![
                 "Initialize environment".to_string(),
@@ -151,27 +204,32 @@ impl ZeroTouchOrchestrator {
             ],
             estimated_duration: Duration::from_secs(30),
         };
-        
+
         Ok(plan)
     }
 
-    /// Execute zero-touch deployment
-    pub async fn deploy(&self) -> Result<GeneratedConfig, Box<dyn std::error::Error + Send + Sync>> {
+    /// Deploy the configuration and services
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deployment fails due to infrastructure issues,
+    /// permission problems, or configuration errors.
+    pub fn deploy(&self) -> Result<GeneratedConfig, Box<dyn std::error::Error + Send + Sync>> {
         // Step 1: Environment detection
-        let env_info = self.detect_environment().await?;
-        
+        let env_info = self.detect_environment()?;
+
         // Step 2: Auto-discovery
-        let discovery_info = self.auto_discover().await?;
-        
+        let discovery_info = self.auto_discover()?;
+
         // Step 3: Configuration generation
-        let config = self.generate_configuration(&env_info, &discovery_info).await?;
-        
+        let config = self.generate_configuration(&env_info, &discovery_info)?;
+
         // Step 4: Deployment plan creation
-        let _plan = self.create_deployment_plan().await?;
-        
+        let _plan = self.create_deployment_plan()?;
+
         // Step 5: Deployment execution (simulated)
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        
+        tracing::info!("🚀 Deploying Songbird with zero-touch configuration");
+
         Ok(config)
     }
 }
@@ -184,19 +242,30 @@ mod tests {
     #[tokio::test]
     async fn test_zero_touch_basic_deployment() {
         println!("🚀 Testing basic zero-touch deployment functionality");
-        
-        let config = ZeroTouchConfig::default();
+
+        let config = ZeroTouchConfig::new(vec![
+            ZeroTouchCapability::AutoDeploy,
+            ZeroTouchCapability::EnvironmentDetection,
+            ZeroTouchCapability::AutoDiscovery,
+            ZeroTouchCapability::GenerateSecurityConfig,
+        ]);
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        
+
         // Test full deployment process
-        let result = orchestrator.deploy().await;
+        let result = orchestrator.deploy();
         assert!(result.is_ok(), "Should complete zero-touch deployment");
-        
+
         let deployed_config = result.unwrap();
-        assert!(!deployed_config.name.is_empty(), "Should have generated configuration name");
-        assert!(deployed_config.security.encryption_enabled, "Should enable encryption by default");
+        assert!(
+            !deployed_config.name.is_empty(),
+            "Should have generated configuration name"
+        );
+        assert!(
+            deployed_config.security.encryption_enabled,
+            "Should enable encryption by default"
+        );
         assert!(deployed_config.network.port > 0, "Should assign valid port");
-        
+
         println!("✅ Basic zero-touch deployment test completed");
         println!("   Generated config: {}", deployed_config.name);
         println!("   Deployment ID: {}", deployed_config.deployment_id);
@@ -207,20 +276,23 @@ mod tests {
     #[tokio::test]
     async fn test_environment_detection() {
         println!("🌍 Testing environment detection capabilities");
-        
-        let config = ZeroTouchConfig::default();
+
+        let config = ZeroTouchConfig::new(vec![ZeroTouchCapability::EnvironmentDetection]);
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        
+
         // Test environment detection
-        let env_result = orchestrator.detect_environment().await;
+        let env_result = orchestrator.detect_environment();
         assert!(env_result.is_ok(), "Should detect deployment environment");
-        
+
         let env_info = env_result.unwrap();
         assert!(!env_info.os.is_empty(), "Should detect operating system");
         assert!(env_info.memory_mb > 0, "Should detect available memory");
         assert!(env_info.cpu_cores > 0, "Should detect CPU cores");
-        assert!(!env_info.network_interfaces.is_empty(), "Should find network interfaces");
-        
+        assert!(
+            !env_info.network_interfaces.is_empty(),
+            "Should find network interfaces"
+        );
+
         println!("✅ Environment detection test completed");
         println!("   OS: {}", env_info.os);
         println!("   Memory: {} MB", env_info.memory_mb);
@@ -232,19 +304,28 @@ mod tests {
     #[tokio::test]
     async fn test_auto_discovery_capabilities() {
         println!("🔍 Testing auto-discovery capabilities");
-        
-        let config = ZeroTouchConfig::default();
+
+        let config = ZeroTouchConfig::new(vec![ZeroTouchCapability::AutoDiscovery]);
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        
+
         // Test auto-discovery
-        let discovery_result = orchestrator.auto_discover().await;
+        let discovery_result = orchestrator.auto_discover();
         assert!(discovery_result.is_ok(), "Should complete auto-discovery");
-        
+
         let discovery_info = discovery_result.unwrap();
-        assert!(!discovery_info.existing_services.is_empty(), "Should discover existing services");
-        assert!(!discovery_info.network_topology.is_empty(), "Should detect network topology");
-        assert!(!discovery_info.available_ports.is_empty(), "Should find available ports");
-        
+        assert!(
+            !discovery_info.existing_services.is_empty(),
+            "Should discover existing services"
+        );
+        assert!(
+            !discovery_info.network_topology.is_empty(),
+            "Should detect network topology"
+        );
+        assert!(
+            !discovery_info.available_ports.is_empty(),
+            "Should find available ports"
+        );
+
         println!("✅ Auto-discovery test completed");
         println!("   Services found: {:?}", discovery_info.existing_services);
         println!("   Network topology: {}", discovery_info.network_topology);
@@ -256,48 +337,67 @@ mod tests {
     #[tokio::test]
     async fn test_configuration_generation() {
         println!("⚙️ Testing configuration generation capabilities");
-        
-        let config = ZeroTouchConfig::default();
+
+        let config = ZeroTouchConfig::new(vec![ZeroTouchCapability::GenerateSecurityConfig]);
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        
+
         // Get environment and discovery info
-        let env_info = orchestrator.detect_environment().await.unwrap();
-        let discovery_info = orchestrator.auto_discover().await.unwrap();
-        
+        let env_info = orchestrator.detect_environment().unwrap();
+        let discovery_info = orchestrator.auto_discover().unwrap();
+
         // Test configuration generation
-        let config_result = orchestrator.generate_configuration(&env_info, &discovery_info).await;
-        assert!(config_result.is_ok(), "Should generate configuration");
-        
-        let generated_config = config_result.unwrap();
-        assert!(!generated_config.name.is_empty(), "Should have configuration name");
-        assert!(!generated_config.deployment_id.is_empty(), "Should have deployment ID");
-        assert!(generated_config.security.encryption_enabled, "Should enable encryption");
-        assert!(generated_config.security.authentication_required, "Should require authentication");
-        assert!(generated_config.network.port > 0, "Should assign valid port");
-        
+        let config_result = orchestrator
+            .generate_configuration(&env_info, &discovery_info)
+            .unwrap();
+
+        // The config_result is already a GeneratedConfig, not a Result
+        assert!(
+            !config_result.name.is_empty(),
+            "Should have configuration name"
+        );
+        assert!(
+            !config_result.deployment_id.is_empty(),
+            "Should have deployment ID"
+        );
+        assert!(
+            config_result.security.encryption_enabled,
+            "Should enable encryption"
+        );
+        assert!(
+            config_result.security.authentication_required,
+            "Should require authentication"
+        );
+        assert!(config_result.network.port > 0, "Should assign valid port");
+
         println!("✅ Configuration generation test completed");
-        println!("   Config name: {}", generated_config.name);
-        println!("   Version: {}", generated_config.version);
-        println!("   Security enabled: {}", generated_config.security.encryption_enabled);
-        println!("   Network port: {}", generated_config.network.port);
+        println!("   Config name: {}", config_result.name);
+        println!("   Version: {}", config_result.version);
+        println!(
+            "   Security enabled: {}",
+            config_result.security.encryption_enabled
+        );
+        println!("   Network port: {}", config_result.network.port);
     }
 
     /// Test deployment planning
     #[tokio::test]
     async fn test_deployment_planning() {
         println!("📋 Testing deployment planning capabilities");
-        
-        let config = ZeroTouchConfig::default();
+
+        let config = ZeroTouchConfig::new(vec![ZeroTouchCapability::AutoDeploy]);
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        
+
         // Test deployment plan creation
-        let plan_result = orchestrator.create_deployment_plan().await;
+        let plan_result = orchestrator.create_deployment_plan();
         assert!(plan_result.is_ok(), "Should create deployment plan");
-        
+
         let plan = plan_result.unwrap();
         assert!(!plan.steps.is_empty(), "Should have deployment steps");
-        assert!(plan.estimated_duration > Duration::from_secs(0), "Should have estimated duration");
-        
+        assert!(
+            plan.estimated_duration > Duration::from_secs(0),
+            "Should have estimated duration"
+        );
+
         println!("✅ Deployment planning test completed");
         println!("   Steps: {:?}", plan.steps);
         println!("   Estimated duration: {:?}", plan.estimated_duration);
@@ -307,20 +407,32 @@ mod tests {
     #[tokio::test]
     async fn test_zero_touch_error_handling() {
         println!("🛡️ Testing zero-touch error handling and recovery");
-        
+
         // Test with different configurations
-        let mut config = ZeroTouchConfig::default();
-        config.auto_deploy = false; // This should still work
-        
+        let mut config = ZeroTouchConfig::new(vec![ZeroTouchCapability::AutoDeploy]);
+        config.capabilities.remove(
+            config
+                .capabilities
+                .iter()
+                .position(|c| c == &ZeroTouchCapability::AutoDeploy)
+                .unwrap(),
+        ); // This should still work
+
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        
+
         // Even with auto_deploy disabled, detection should work
-        let env_result = orchestrator.detect_environment().await;
-        assert!(env_result.is_ok(), "Environment detection should work regardless of auto_deploy setting");
-        
-        let discovery_result = orchestrator.auto_discover().await;
-        assert!(discovery_result.is_ok(), "Auto-discovery should work regardless of auto_deploy setting");
-        
+        let env_result = orchestrator.detect_environment();
+        assert!(
+            env_result.is_ok(),
+            "Environment detection should work regardless of auto_deploy setting"
+        );
+
+        let discovery_result = orchestrator.auto_discover();
+        assert!(
+            discovery_result.is_ok(),
+            "Auto-discovery should work regardless of auto_deploy setting"
+        );
+
         println!("✅ Error handling test completed");
     }
 
@@ -328,22 +440,39 @@ mod tests {
     #[tokio::test]
     async fn test_security_configuration_variations() {
         println!("🔐 Testing security configuration variations");
-        
+
         // Test with security generation disabled
-        let mut config = ZeroTouchConfig::default();
-        config.generate_security_config = false;
-        
+        let mut config = ZeroTouchConfig::new(vec![ZeroTouchCapability::AutoDeploy]);
+        if let Some(pos) = config
+            .capabilities
+            .iter()
+            .position(|c| c == &ZeroTouchCapability::GenerateSecurityConfig)
+        {
+            config.capabilities.remove(pos);
+        }
+
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        let env_info = orchestrator.detect_environment().await.unwrap();
-        let discovery_info = orchestrator.auto_discover().await.unwrap();
-        
-        let generated_config = orchestrator.generate_configuration(&env_info, &discovery_info).await.unwrap();
-        
+        let env_info = orchestrator.detect_environment().unwrap();
+        let discovery_info = orchestrator.auto_discover().unwrap();
+
+        let generated_config = orchestrator
+            .generate_configuration(&env_info, &discovery_info)
+            .unwrap();
+
         // Security should be disabled when generate_security_config is false
-        assert!(!generated_config.security.encryption_enabled, "Should disable encryption when security config generation is disabled");
-        assert!(!generated_config.security.authentication_required, "Should disable authentication when security config generation is disabled");
-        assert!(generated_config.security.audit_logging, "Audit logging should always be enabled");
-        
+        assert!(
+            !generated_config.security.encryption_enabled,
+            "Should disable encryption when security config generation is disabled"
+        );
+        assert!(
+            !generated_config.security.authentication_required,
+            "Should disable authentication when security config generation is disabled"
+        );
+        assert!(
+            generated_config.security.audit_logging,
+            "Audit logging should always be enabled"
+        );
+
         println!("✅ Security configuration variations test completed");
     }
 
@@ -351,20 +480,31 @@ mod tests {
     #[tokio::test]
     async fn test_auto_discovery_variations() {
         println!("🔍 Testing auto-discovery variations");
-        
+
         // Test with auto-discovery disabled
-        let mut config = ZeroTouchConfig::default();
-        config.auto_discovery = false;
-        
+        let mut config = ZeroTouchConfig::new(vec![ZeroTouchCapability::AutoDeploy]);
+        if let Some(pos) = config
+            .capabilities
+            .iter()
+            .position(|c| c == &ZeroTouchCapability::AutoDiscovery)
+        {
+            config.capabilities.remove(pos);
+        }
+
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        let env_info = orchestrator.detect_environment().await.unwrap();
-        let discovery_info = orchestrator.auto_discover().await.unwrap();
-        
-        let generated_config = orchestrator.generate_configuration(&env_info, &discovery_info).await.unwrap();
-        
+        let env_info = orchestrator.detect_environment().unwrap();
+        let discovery_info = orchestrator.auto_discover().unwrap();
+
+        let generated_config = orchestrator
+            .generate_configuration(&env_info, &discovery_info)
+            .unwrap();
+
         // Network discovery should be disabled when auto_discovery is false
-        assert!(!generated_config.network.enable_discovery, "Should disable network discovery when auto_discovery is disabled");
-        
+        assert!(
+            !generated_config.network.enable_discovery,
+            "Should disable network discovery when auto_discovery is disabled"
+        );
+
         println!("✅ Auto-discovery variations test completed");
     }
 
@@ -372,55 +512,68 @@ mod tests {
     #[tokio::test]
     async fn test_zero_touch_performance() {
         println!("⚡ Testing zero-touch deployment performance");
-        
-        let config = ZeroTouchConfig::default();
+
+        let config = ZeroTouchConfig::new(vec![ZeroTouchCapability::AutoDeploy]);
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        
+
         // Test deployment speed
         let start_time = std::time::Instant::now();
-        let deployment_result = orchestrator.deploy().await;
+        let deployment_result = orchestrator.deploy();
         let deployment_time = start_time.elapsed();
-        
-        assert!(deployment_result.is_ok(), "Should complete deployment successfully");
-        assert!(deployment_time < Duration::from_secs(5), "Should deploy within 5 seconds");
-        
+
+        assert!(
+            deployment_result.is_ok(),
+            "Should complete deployment successfully"
+        );
+        assert!(
+            deployment_time < Duration::from_secs(5),
+            "Should deploy within 5 seconds"
+        );
+
         println!("✅ Performance test completed");
-        println!("   Deployment time: {:?}", deployment_time);
+        println!("   Deployment time: {deployment_time:?}");
     }
 
     /// Test concurrent deployments
     #[tokio::test]
     async fn test_concurrent_deployments() {
         println!("🔄 Testing concurrent zero-touch deployments");
-        
-        let config = ZeroTouchConfig::default();
+
+        let config = ZeroTouchConfig::new(vec![ZeroTouchCapability::AutoDeploy]);
         let mut handles = vec![];
-        
+
         // Start multiple concurrent deployments
         for i in 0..3 {
             let config_clone = config.clone();
             let handle = tokio::spawn(async move {
                 let orchestrator = ZeroTouchOrchestrator::new(config_clone);
-                let result = orchestrator.deploy().await;
+                let result = orchestrator.deploy();
                 (i, result)
             });
             handles.push(handle);
         }
-        
+
         // Wait for all deployments to complete
         let mut results = vec![];
         for handle in handles {
             let (id, result) = handle.await.unwrap();
-            assert!(result.is_ok(), "Concurrent deployment {} should succeed", id);
+            assert!(result.is_ok(), "Concurrent deployment {id} should succeed");
             results.push((id, result.unwrap()));
         }
-        
+
         // Verify all deployments have unique deployment IDs
-        let mut deployment_ids: Vec<String> = results.iter().map(|(_, config)| config.deployment_id.clone()).collect();
+        let mut deployment_ids: Vec<String> = results
+            .iter()
+            .map(|(_, config)| config.deployment_id.clone())
+            .collect();
         deployment_ids.sort();
         deployment_ids.dedup();
-        assert_eq!(deployment_ids.len(), 3, "All concurrent deployments should have unique IDs");
-        
+        assert_eq!(
+            deployment_ids.len(),
+            3,
+            "All concurrent deployments should have unique IDs"
+        );
+
         println!("✅ Concurrent deployment test completed");
         println!("   Successful deployments: {}", results.len());
     }
@@ -429,27 +582,43 @@ mod tests {
     #[tokio::test]
     async fn test_configuration_integration() {
         println!("🔗 Testing configuration system integration");
-        
-        let config = ZeroTouchConfig::default();
+
+        let config = ZeroTouchConfig::new(vec![ZeroTouchCapability::AutoDeploy]);
         let orchestrator = ZeroTouchOrchestrator::new(config);
-        
+
         // Generate configuration
-        let env_info = orchestrator.detect_environment().await.unwrap();
-        let discovery_info = orchestrator.auto_discover().await.unwrap();
-        let generated_config = orchestrator.generate_configuration(&env_info, &discovery_info).await.unwrap();
-        
+        let env_info = orchestrator.detect_environment().unwrap();
+        let discovery_info = orchestrator.auto_discover().unwrap();
+        let generated_config = orchestrator
+            .generate_configuration(&env_info, &discovery_info)
+            .unwrap();
+
         // Verify configuration structure is compatible
-        assert!(generated_config.name.starts_with("songbird"), "Configuration name should follow naming convention");
-        assert!(generated_config.version.contains('.'), "Version should be in semantic version format");
-        assert!(generated_config.deployment_id.starts_with("auto-deploy"), "Deployment ID should follow naming convention");
-        
+        assert!(
+            generated_config.name.starts_with("songbird"),
+            "Configuration name should follow naming convention"
+        );
+        assert!(
+            generated_config.version.contains('.'),
+            "Version should be in semantic version format"
+        );
+        assert!(
+            generated_config.deployment_id.starts_with("auto-deploy"),
+            "Deployment ID should follow naming convention"
+        );
+
         // Verify network configuration compatibility
-        assert!(generated_config.network.port >= 1024, "Port should be in user range");
-        assert!(generated_config.network.port <= 65535, "Port should be valid");
-        assert!(!generated_config.network.bind_address.is_empty(), "Bind address should be specified");
-        
+        assert!(
+            generated_config.network.port >= 1024,
+            "Port should be in user range"
+        );
+        // Note: u16 port is always <= 65535, so no need to check upper bound
+        assert!(
+            !generated_config.network.bind_address.is_empty(),
+            "Bind address should be specified"
+        );
+
         println!("✅ Configuration integration test completed");
         println!("   Generated config is compatible with existing systems");
     }
 }
- 

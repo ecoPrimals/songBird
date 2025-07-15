@@ -158,22 +158,34 @@ impl std::hash::Hash for PluginCapability {
                 "gaming_bridge".hash(state);
                 protocols.hash(state);
             }
-            PluginCapability::Compute { cpu_cores, memory_gb } => {
+            PluginCapability::Compute {
+                cpu_cores,
+                memory_gb,
+            } => {
                 "compute".hash(state);
                 cpu_cores.hash(state);
                 memory_gb.hash(state);
             }
-            PluginCapability::Storage { capacity_gb, storage_type } => {
+            PluginCapability::Storage {
+                capacity_gb,
+                storage_type,
+            } => {
                 "storage".hash(state);
                 capacity_gb.hash(state);
                 storage_type.hash(state);
             }
-            PluginCapability::Network { bandwidth_mbps, latency_ms } => {
+            PluginCapability::Network {
+                bandwidth_mbps,
+                latency_ms,
+            } => {
                 "network".hash(state);
                 bandwidth_mbps.hash(state);
                 latency_ms.hash(state);
             }
-            PluginCapability::Custom { name, attributes: _ } => {
+            PluginCapability::Custom {
+                name,
+                attributes: _,
+            } => {
                 "custom".hash(state);
                 name.hash(state);
                 // We don't hash attributes since HashMap doesn't implement Hash

@@ -58,7 +58,7 @@ pub async fn handle_host(
     _private: bool,
 ) -> Result<()> {
     let session_name = name.unwrap_or_else(|| "Songbird Gaming Session".to_string());
-    println!("{}", format!("🎮 Starting gaming session: {}", session_name).bright_green());
+    println!("{}", format!("🎮 Starting gaming session: {session_name}").bright_green());
 
     let mut gaming_manager = GamingManager::new().await?;
     
@@ -69,7 +69,7 @@ pub async fn handle_host(
 
     // Generate session code
     let session_code = generate_session_code();
-    println!("{}", format!("🎯 Session Code: {}", session_code).bright_yellow());
+    println!("{}", format!("🎯 Session Code: {session_code}").bright_yellow());
     println!("📋 Share this code with friends to join your session");
 
     Ok(())
@@ -77,7 +77,7 @@ pub async fn handle_host(
 
 /// Handle gaming join command - simple and effective
 pub async fn handle_join(code: String) -> Result<()> {
-    println!("{}", format!("🚀 Joining gaming session: {}", code).bright_cyan());
+    println!("{}", format!("🚀 Joining gaming session: {code}").bright_cyan());
 
     let gaming_manager = GamingManager::new().await?;
     let sessions = gaming_manager.scan_lan_sessions().await?;
@@ -89,7 +89,7 @@ pub async fn handle_join(code: String) -> Result<()> {
         println!("👥 Players: {}/{}", session.current_players.len(), session.max_players);
     } else {
         return Err(SongbirdError::Gaming {
-            message: format!("Session not found: {}", code),
+            message: format!("Session not found: {code}"),
             protocol: None,
         });
     }
@@ -131,7 +131,7 @@ pub async fn handle_status() -> Result<()> {
 fn display_detected_sessions(sessions: &[crate::network::gaming::DetectedGameSession]) {
     println!();
     for session in sessions {
-        println!("🎮 {}", format!("Game Session: {}", session.session_id).bright_white());
+        println!("🎮 {}", format!("Game Session: {session.session_id}").bright_white());
         println!("   Protocol: {:?}", session.protocol_class);
         println!("   Ports: {:?}", session.local_ports);
         if let Some(game_name) = &session.game_name {

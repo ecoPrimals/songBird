@@ -88,13 +88,13 @@ impl fmt::Display for SongbirdError {
         match self {
             SongbirdError::Config { message, field } => {
                 if let Some(field) = field {
-                    write!(f, "Configuration error in field '{}': {}", field, message)
+                    write!(f, "Configuration error in field '{field}': {message}")
                 } else {
-                    write!(f, "Configuration error: {}", message)
+                    write!(f, "Configuration error: {message}")
                 }
             }
             SongbirdError::Configuration { field, message } => {
-                write!(f, "Configuration error in field '{}': {}", field, message)
+                write!(f, "Configuration error in field '{field}': {message}")
             }
             SongbirdError::Network {
                 service,
@@ -104,92 +104,98 @@ impl fmt::Display for SongbirdError {
                 if let Some(details) = details {
                     write!(
                         f,
-                        "Network error in service '{}': {}: {}",
-                        service, message, details
+                        "Network error in service '{service}': {message}: {details}"
                     )
                 } else {
-                    write!(f, "Network error in service '{}': {}", service, message)
+                    write!(f, "Network error in service '{service}': {message}")
                 }
             }
-            SongbirdError::Communication(message) => write!(f, "Communication error: {}", message),
+            SongbirdError::Communication(message) => write!(f, "Communication error: {message}"),
             SongbirdError::Discovery { message, service } => {
                 if let Some(service) = service {
-                    write!(f, "Discovery error for service '{}': {}", service, message)
+                    write!(f, "Discovery error for service '{service}': {message}")
                 } else {
-                    write!(f, "Discovery error: {}", message)
+                    write!(f, "Discovery error: {message}")
                 }
             }
             SongbirdError::Auth { message, user } => {
                 if let Some(user) = user {
-                    write!(f, "Authentication error for user '{}': {}", user, message)
+                    write!(f, "Authentication error for user '{user}': {message}")
                 } else {
-                    write!(f, "Authentication error: {}", message)
+                    write!(f, "Authentication error: {message}")
                 }
             }
             SongbirdError::Authentication { provider, message } => {
                 write!(
                     f,
-                    "Authentication error from provider '{}': {}",
-                    provider, message
+                    "Authentication error from provider '{provider}': {message}"
                 )
             }
             SongbirdError::Gaming { message, protocol } => {
                 if let Some(protocol) = protocol {
-                    write!(f, "Gaming error for protocol '{}': {}", protocol, message)
+                    write!(f, "Gaming error for protocol '{protocol}': {message}")
                 } else {
-                    write!(f, "Gaming error: {}", message)
+                    write!(f, "Gaming error: {message}")
                 }
             }
             SongbirdError::Security { message, context } => {
                 if let Some(context) = context {
-                    write!(f, "Security error in context '{}': {}", context, message)
+                    write!(f, "Security error in context '{context}': {message}")
                 } else {
-                    write!(f, "Security error: {}", message)
+                    write!(f, "Security error: {message}")
                 }
             }
             SongbirdError::Protocol { protocol, message } => {
-                write!(f, "Protocol error [{}]: {}", protocol, message)
+                write!(f, "Protocol error [{protocol}]: {message}")
             }
             SongbirdError::Service { service, message } => {
-                write!(f, "Service error [{}]: {}", service, message)
+                write!(f, "Service error [{service}]: {message}")
             }
             SongbirdError::Validation { field, message } => {
-                write!(f, "Validation error for field '{}': {}", field, message)
+                write!(f, "Validation error for field '{field}': {message}")
             }
             SongbirdError::NotFound { resource, message } => {
-                write!(f, "Resource '{}' not found: {}", resource, message)
+                write!(f, "Resource '{resource}' not found: {message}")
             }
-            SongbirdError::Io { message } => write!(f, "IO error: {}", message),
+            SongbirdError::Io { message } => write!(f, "IO error: {message}"),
             SongbirdError::LoadBalancer { message } => {
-                write!(f, "Load balancer error: {}", message)
+                write!(f, "Load balancer error: {message}")
             }
             SongbirdError::TunnelCreation(message) => {
-                write!(f, "Tunnel creation error: {}", message)
+                write!(f, "Tunnel creation error: {message}")
             }
-            SongbirdError::EncryptionFailed(message) => write!(f, "Encryption failed: {}", message),
-            SongbirdError::DecryptionFailed(message) => write!(f, "Decryption failed: {}", message),
-            SongbirdError::NetworkDetection(message) => write!(f, "Network detection error: {}", message),
+            SongbirdError::EncryptionFailed(message) => write!(f, "Encryption failed: {message}"),
+            SongbirdError::DecryptionFailed(message) => write!(f, "Decryption failed: {message}"),
+            SongbirdError::NetworkDetection(message) => {
+                write!(f, "Network detection error: {message}")
+            }
             SongbirdError::UnsupportedChannelType => write!(f, "Unsupported channel type error"),
             SongbirdError::Deployment { service, message } => {
-                write!(f, "Deployment error for service '{}': {}", service, message)
+                write!(f, "Deployment error for service '{service}': {message}")
             }
             SongbirdError::CircuitBreakerOpen { message } => {
-                write!(f, "Circuit breaker is open: {}", message)
+                write!(f, "Circuit breaker is open: {message}")
             }
             SongbirdError::CircuitBreakerFailure { message } => {
-                write!(f, "Circuit breaker failure: {}", message)
+                write!(f, "Circuit breaker failure: {message}")
             }
-            SongbirdError::RetryExhausted { attempts, last_error } => {
-                write!(f, "Retry exhausted after {} attempts, last error: {}", attempts, last_error)
+            SongbirdError::RetryExhausted {
+                attempts,
+                last_error,
+            } => {
+                write!(
+                    f,
+                    "Retry exhausted after {attempts} attempts, last error: {last_error}"
+                )
             }
             SongbirdError::RateLimitExceeded { message } => {
-                write!(f, "Rate limit exceeded: {}", message)
+                write!(f, "Rate limit exceeded: {message}")
             }
             SongbirdError::ExecutionFailed { message } => {
-                write!(f, "Execution failed: {}", message)
+                write!(f, "Execution failed: {message}")
             }
             SongbirdError::CompositionFailed(message) => {
-                write!(f, "Plugin composition failed: {}", message)
+                write!(f, "Plugin composition failed: {message}")
             }
         }
     }
@@ -209,7 +215,7 @@ impl SongbirdError {
     pub fn health_check_failed(service_id: &str, message: String) -> Self {
         SongbirdError::Service {
             service: service_id.to_string(),
-            message: format!("Health check failed: {}", message),
+            message: format!("Health check failed: {message}"),
         }
     }
 
@@ -249,7 +255,7 @@ impl From<std::net::AddrParseError> for SongbirdError {
     fn from(err: std::net::AddrParseError) -> Self {
         SongbirdError::Network {
             service: "unknown".to_string(),
-            message: format!("Invalid address format: {}", err),
+            message: format!("Invalid address format: {err}"),
             details: None,
         }
     }
@@ -257,7 +263,7 @@ impl From<std::net::AddrParseError> for SongbirdError {
 impl From<std::time::SystemTimeError> for SongbirdError {
     fn from(err: std::time::SystemTimeError) -> Self {
         SongbirdError::Config {
-            message: format!("System time error: {}", err),
+            message: format!("System time error: {err}"),
             field: Some("system_time".to_string()),
         }
     }
@@ -265,7 +271,7 @@ impl From<std::time::SystemTimeError> for SongbirdError {
 impl From<serde_json::Error> for SongbirdError {
     fn from(err: serde_json::Error) -> Self {
         SongbirdError::Config {
-            message: format!("JSON serialization error: {}", err),
+            message: format!("JSON serialization error: {err}"),
             field: Some("json".to_string()),
         }
     }

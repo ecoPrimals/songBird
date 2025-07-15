@@ -1,5 +1,6 @@
 use crate::discovery::types::*;
 use crate::errors::Result;
+use local_ip_address;
 use std::process::Command;
 use std::str;
 
@@ -60,7 +61,7 @@ impl NetworkManager {
                             continue;
                         }
 
-                        let speed_path = format!("/sys/class/net/{}/speed", name_str);
+                        let speed_path = format!("/sys/class/net/{name_str}/speed");
                         if let Ok(speed_str) = std::fs::read_to_string(speed_path) {
                             if let Ok(speed_mbps) = speed_str.trim().parse::<f64>() {
                                 if speed_mbps > 0.0 {

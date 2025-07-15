@@ -4,7 +4,7 @@
 //! internet gaming sessions with real socket-based networking.
 
 use super::{
-    nat_traversal::NatTraversalManager,
+    nat_traversal::{AdvancedNatType, NatTraversalManager},
     production_lan_manager::DetectedProtocol,
     protocol_translators::{DirectPlayTranslator, IPXTranslator, ProtocolTranslator},
     real_ipx_bridge::RealIPXBridge,
@@ -282,7 +282,7 @@ impl RealBridgeManager {
         protocol_detector.initialize().await?;
 
         // Initialize NAT traversal
-        let mut nat_manager = NatTraversalManager::new();
+        let nat_manager = NatTraversalManager::new();
         nat_manager.initialize(None).await?;
 
         // Initialize socket pool
@@ -359,7 +359,7 @@ impl RealBridgeManager {
 
         // Get NAT information
         let nat_info = NatTraversalInfo {
-            local_nat_type: self.nat_manager.get_nat_type(),
+            local_nat_type: self.convert_nat_type(self.nat_manager.get_nat_type()),
             external_address: self.nat_manager.get_external_address(),
             hole_punch_status: HashMap::new(),
             stun_server_used: None,
@@ -373,8 +373,7 @@ impl RealBridgeManager {
             host_info: RealHostInfo {
                 host_id: Uuid::new_v4().to_string(),
                 local_address: format!(
-                    "crate::config::constants::default_bind_address():{}",
-                    host_port
+                    "crate::config::constants::default_bind_address():{host_port}"
                 )
                 .parse()
                 .map_err(|_| SongbirdError::Network {
@@ -428,7 +427,7 @@ impl RealBridgeManager {
             .get_mut(&session_code)
             .ok_or_else(|| SongbirdError::Network {
                 service: "Real Bridge Manager".to_string(),
-                message: format!("Session not found: {}", session_code),
+                message: format!("Session not found: {session_code}"),
                 details: None,
             })?;
 
@@ -437,14 +436,13 @@ impl RealBridgeManager {
         let player_info = RealPlayerInfo {
             player_id: player_id.clone(),
             display_name: player_name,
-            local_address: "0.0.0.0:0".parse()
-                .map_err(|_| SongbirdError::Network {
-                    service: "Real Bridge Manager".to_string(),
-                    message: "Failed to parse local IP address".to_string(),
-                    details: None,
-                })?,
+            local_address: format!("{}:0", crate::config::constants::network::production_bind_address()).parse().map_err(|_| SongbirdError::Network {
+                service: "Real Bridge Manager".to_string(),
+                message: "Failed to parse local IP address".to_string(),
+                details: None,
+            })?,
             external_address: self.nat_manager.get_external_address(),
-            nat_type: self.nat_manager.get_nat_type(),
+            nat_type: self.convert_nat_type(self.nat_manager.get_nat_type()),
             connection_established: false,
             last_packet: SystemTime::now(),
             packet_stats: PacketStats {
@@ -460,7 +458,7 @@ impl RealBridgeManager {
         // Setup NAT traversal for the player
         if let Some(host_external) = session.host_info.external_address {
             self.nat_manager
-                .establish_connection(player_id.clone(), host_external)
+                .establish_connection(player_id.clone(), host_external, player_info.local_address)
                 .await?;
         }
 
@@ -703,6 +701,19 @@ impl RealBridgeManager {
         // Implementation for TCP connection forwarding
         Ok(())
     }
+
+    fn convert_nat_type(&self, advanced_nat_type: AdvancedNatType) -> NatType {
+        match advanced_nat_type {
+            AdvancedNatType::Open => NatType::Open,
+            AdvancedNatType::FullCone => NatType::FullCone,
+            AdvancedNatType::RestrictedCone => NatType::RestrictedCone,
+            AdvancedNatType::PortRestrictedCone => NatType::PortRestrictedCone,
+            AdvancedNatType::Symmetric => NatType::Symmetric,
+            AdvancedNatType::CarrierGrade => NatType::Symmetric, // Map to closest equivalent
+            AdvancedNatType::Blocked => NatType::Unknown,
+            AdvancedNatType::Unknown => NatType::Unknown,
+        }
+    }
 }
 
 impl SocketPool {
@@ -718,20 +729,21 @@ impl SocketPool {
     /// Attempt to bind to a specific port with configurable address
     async fn allocate_udp_port(&mut self) -> Result<u16> {
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         // Use configurable binding instead of hardcoded 0.0.0.0
-        let bind_addr = if env_config.bind_address == "0.0.0.0" {
+        let bind_addr = if env_config.bind_address == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS {
             if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
                 return Err(SongbirdError::Config {
                     field: Some("gaming_bind_address".to_string()),
-                    message: "Gaming bridge binding to 0.0.0.0 requires explicit approval".to_string(),
+                    message: "Gaming bridge binding to 0.0.0.0 requires explicit approval"
+                        .to_string(),
                 });
             }
-            format!("0.0.0.0:{}", self.next_port)
+                            format!("{}:{}", crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS, self.next_port)
         } else {
             format!("{}:{}", env_config.bind_address, self.next_port)
         };
-        
+
         match TokioUdpSocket::bind(&bind_addr).await {
             Ok(socket) => {
                 self.udp_sockets.insert(self.next_port, Arc::new(socket));
@@ -742,13 +754,11 @@ impl SocketPool {
                 }
                 Ok(self.next_port - 1)
             }
-            Err(_) => {
-                Err(SongbirdError::Network {
-                    service: "Real Bridge Manager".to_string(),
-                    message: "Failed to bind to UDP port".to_string(),
-                    details: None,
-                })
-            }
+            Err(_) => Err(SongbirdError::Network {
+                service: "Real Bridge Manager".to_string(),
+                message: "Failed to bind to UDP port".to_string(),
+                details: None,
+            }),
         }
     }
 
@@ -766,20 +776,21 @@ impl SocketPool {
             }
 
             // Use configurable binding instead of hardcoded 0.0.0.0
-        let env_config = crate::config::environment::EnvironmentConfig::default();
-        let bind_addr = if env_config.bind_address == "0.0.0.0" {
-            if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
-                return Err(SongbirdError::Config {
-                    field: Some("tcp_bind_address".to_string()),
-                    message: "TCP bridge binding to 0.0.0.0 requires explicit approval".to_string(),
-                });
-            }
-            format!("0.0.0.0:{}", port)
-        } else {
-            format!("{}:{}", env_config.bind_address, port)
-        };
-        
-        match TcpListener::bind(&bind_addr) {
+            let env_config = crate::config::environment::EnvironmentConfig::default();
+            let bind_addr = if env_config.bind_address == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS {
+                if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
+                    return Err(SongbirdError::Config {
+                        field: Some("tcp_bind_address".to_string()),
+                        message: "TCP bridge binding to 0.0.0.0 requires explicit approval"
+                            .to_string(),
+                    });
+                }
+                format!("{}:{port}", crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS)
+            } else {
+                format!("{}:{}", env_config.bind_address, port)
+            };
+
+            match TcpListener::bind(&bind_addr) {
                 Ok(listener) => {
                     self.tcp_listeners.insert(port, Arc::new(listener));
                     self.allocated_ports.push(port);

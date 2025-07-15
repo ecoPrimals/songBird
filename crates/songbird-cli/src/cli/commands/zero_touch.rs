@@ -49,7 +49,13 @@ impl ZeroTouchCommand {
             print_info("Continue? (y/N)");
 
             let mut input = String::new();
-            std::io::stdin().read_line(&mut input).unwrap();
+            std::io::stdin().read_line(&mut input).map_err(|e| {
+                crate::cli::CliError::Config {
+                    message: format!("Failed to read user input: {}", e),
+                    field: Some("user_input".to_string()),
+                    suggestion: Some("Try running the command again or use --force to skip confirmation".to_string()),
+                }
+            })?;
             if !input.trim().to_lowercase().starts_with('y') {
                 print_info("Deployment cancelled.");
                 return Ok(());
@@ -57,7 +63,7 @@ impl ZeroTouchCommand {
         }
 
         // Perform deployment
-        match self.deployment.deploy().await {
+        match self.deployment.deploy() {
             Ok(()) => {
                 print_success("Zero-touch deployment completed successfully!");
 
@@ -70,7 +76,7 @@ impl ZeroTouchCommand {
                 }
             }
             Err(e) => {
-                print_error(&format!("Deployment failed: {}", e));
+                print_error(&format!("Deployment failed: {e}"));
                 self.display_error_with_troubleshooting(&e).await;
                 return Err(e);
             }
@@ -82,13 +88,18 @@ impl ZeroTouchCommand {
         let config = ZeroTouchConfig::default();
         let config_yaml =
             serde_yaml::to_string(&config).map_err(|e| songbird_errors::SongbirdError::Config {
-                message: format!("Failed to serialize configuration: {}", e),
+                message: format!("Failed to serialize configuration: {e}"),
                 field: Some("config_file".to_string()),
+                context: Some("Zero-touch configuration serialization".to_string()),
+                suggestion: Some("Check your configuration values and try again".to_string()),
             })?;
 
         tokio::fs::write(path, config_yaml).await.map_err(|e| {
             songbird_errors::SongbirdError::Io {
                 message: format!("Failed to write config file {}: {}", path.display(), e),
+                operation: Some("write_config_file".to_string()),
+                path: Some(path.to_string_lossy().to_string()),
+                suggestion: Some("Check file permissions and disk space".to_string()),
             }
         })?;
 
@@ -105,14 +116,19 @@ impl ZeroTouchCommand {
 
         let summary_json = serde_json::to_string(&summary).map_err(|e| {
             songbird_errors::SongbirdError::Config {
-                message: format!("Failed to serialize summary: {}", e),
+                message: format!("Failed to serialize summary: {e}"),
                 field: Some("summary_file".to_string()),
+                context: Some("Deployment summary serialization".to_string()),
+                suggestion: Some("Check your summary data and try again".to_string()),
             }
         })?;
 
         tokio::fs::write(path, summary_json).await.map_err(|e| {
             songbird_errors::SongbirdError::Io {
-                message: format!("Failed to write summary file: {}", e),
+                message: format!("Failed to write summary file: {e}"),
+                operation: Some("write_summary_file".to_string()),
+                path: Some(path.to_string_lossy().to_string()),
+                suggestion: Some("Check file permissions and disk space".to_string()),
             }
         })?;
 
@@ -130,35 +146,35 @@ impl ZeroTouchCommand {
                 service: _service,
                 message,
                 details: _details,
+                ..
             } => {
-                print_error(&format!("Network error: {}", message));
+                print_error(&format!("Network error: {message}"));
                 print_info("Troubleshooting:");
                 print_info("  • Check network connectivity");
                 print_info("  • Verify firewall settings");
                 print_info("  • Try running: songbird firewall configure");
             }
-            songbird_errors::SongbirdError::Service { service, message } => {
+            songbird_errors::SongbirdError::Service { service, message, .. } => {
                 print_info("🔧 Service issue detected");
-                print_info(&format!("  Service: {}", service));
-                print_info(&format!("  Error: {}", message));
+                print_info(&format!("  Service: {service}"));
+                print_info(&format!("  Error: {message}"));
                 print_info("  Troubleshooting:");
                 print_info("    • Check service configuration");
                 print_info("    • Verify service permissions");
             }
-            songbird_errors::SongbirdError::Config { message, field } => {
+            songbird_errors::SongbirdError::Config { message, field, .. } => {
                 print_info("🔧 Configuration issue detected");
-                print_info(&format!("  Error: {}", message));
+                print_info(&format!("  Error: {message}"));
                 if let Some(field) = field {
-                    print_info(&format!("  Field: {}", field));
+                    print_info(&format!("  Field: {field}"));
                 }
                 print_info("  Troubleshooting:");
                 print_info("    • Check configuration file syntax");
                 print_info("    • Verify file permissions");
             }
-            songbird_errors::SongbirdError::Deployment { service, message } => {
+            songbird_errors::SongbirdError::Deployment { service, message, .. } => {
                 print_error(&format!(
-                    "Deployment error for service {}: {}",
-                    service, message
+                    "Deployment error for service {service}: {message}"
                 ));
                 print_info("  • Check system resources");
                 print_info("  • Verify deployment environment");
@@ -208,7 +224,7 @@ pub async fn execute_zero_touch(
     }
 
     // Execute deployment
-    match orchestrator.deploy().await {
+    match orchestrator.deploy() {
         Ok(result) => {
             print_success("🎉 Zero-touch deployment completed successfully!");
             println!();
@@ -242,7 +258,7 @@ pub async fn execute_zero_touch(
         }
         Err(e) => {
             error!("Zero-touch deployment failed: {}", e);
-            print_error(&format!("❌ Zero-touch deployment failed: {}", e));
+            print_error(&format!("❌ Zero-touch deployment failed: {e}"));
             // Try to provide helpful suggestions
             suggest_troubleshooting_steps(&e).await;
             Err(e)
@@ -286,15 +302,20 @@ async fn save_songbird_configuration(
 ) -> Result<()> {
     let config_yaml =
         serde_yaml::to_string(config).map_err(|e| songbird_errors::SongbirdError::Config {
-            message: format!("Failed to serialize configuration: {}", e),
+            message: format!("Failed to serialize configuration: {e}"),
             field: Some("config_file".to_string()),
+            context: Some("Songbird configuration serialization".to_string()),
+            suggestion: Some("Check your configuration values and try again".to_string()),
         })?;
 
     tokio::fs::write(path, config_yaml)
         .await
-        .map_err(|e| songbird_errors::SongbirdError::Io {
-            message: format!("Failed to write config file {}: {}", path.display(), e),
-        })?;
+        .map_err(|e|             songbird_errors::SongbirdError::Io {
+                message: format!("Failed to write config file {}: {}", path.display(), e),
+                operation: Some("write_config_file".to_string()),
+                path: Some(path.to_string_lossy().to_string()),
+                suggestion: Some("Check file permissions and disk space".to_string()),
+            })?;
 
     Ok(())
 }
@@ -310,14 +331,19 @@ async fn save_deployment_summary(_result: &DeploymentResult, path: &std::path::P
 
     let summary_json =
         serde_json::to_string(&summary).map_err(|e| songbird_errors::SongbirdError::Config {
-            message: format!("Failed to serialize summary: {}", e),
+            message: format!("Failed to serialize summary: {e}"),
             field: Some("summary_file".to_string()),
+            context: Some("Deployment summary serialization".to_string()),
+            suggestion: Some("Check your summary data and try again".to_string()),
         })?;
 
     tokio::fs::write(path, summary_json)
         .await
         .map_err(|e| songbird_errors::SongbirdError::Io {
             message: format!("Failed to write summary file {}: {}", path.display(), e),
+            operation: Some("write_summary_file".to_string()),
+            path: Some(path.to_string_lossy().to_string()),
+            suggestion: Some("Check file permissions and disk space".to_string()),
         })?;
 
     Ok(())
@@ -356,28 +382,28 @@ async fn suggest_troubleshooting_steps(error: &songbird_errors::SongbirdError) {
             service: _service,
             message,
             details: _details,
+            ..
         } => {
-            print_error(&format!("Network error: {}", message));
+            print_error(&format!("Network error: {message}"));
             print_info("Troubleshooting:");
             print_info("  • Check network connectivity");
             print_info("  • Verify firewall settings");
             print_info("  • Try running: songbird firewall configure");
         }
-        songbird_errors::SongbirdError::Service { service, message } => {
-            print_error(&format!("Service error for {}: {}", service, message));
+        songbird_errors::SongbirdError::Service { service, message, .. } => {
+            print_error(&format!("Service error for {service}: {message}"));
             print_info("Check service dependencies and requirements");
         }
-        songbird_errors::SongbirdError::Deployment { service, message } => {
+        songbird_errors::SongbirdError::Deployment { service, message, .. } => {
             print_error(&format!(
-                "Deployment error for service {}: {}",
-                service, message
+                "Deployment error for service {service}: {message}"
             ));
             print_info("  • Check system resources");
             print_info("  • Verify deployment environment");
             print_info("  • Review service logs");
         }
         _ => {
-            print_error(&format!("Deployment failed: {}", error));
+            print_error(&format!("Deployment failed: {error}"));
             print_info("Run with increased verbosity for more details");
         }
     }

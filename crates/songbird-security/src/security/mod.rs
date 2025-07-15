@@ -539,6 +539,8 @@ impl InMemoryAuthProvider {
             return Err(SongbirdError::Auth {
                 message: format!("User {} already exists", username),
                 user: Some("InMemoryAuthProvider".to_string()),
+                provider: Some("InMemoryAuthProvider".to_string()),
+                suggestion: Some("Use a different username".to_string()),
             });
         }
 
@@ -565,6 +567,8 @@ impl InMemoryAuthProvider {
             return Err(SongbirdError::Auth {
                 message: format!("Password must be at least {} characters", policy.min_length),
                 user: Some("InMemoryAuthProvider".to_string()),
+                provider: Some("InMemoryAuthProvider".to_string()),
+                suggestion: Some("Use a longer password".to_string()),
             });
         }
 
@@ -572,6 +576,8 @@ impl InMemoryAuthProvider {
             return Err(SongbirdError::Auth {
                 message: "Password must contain at least one uppercase letter".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
+                provider: Some("InMemoryAuthProvider".to_string()),
+                suggestion: Some("Add an uppercase letter to your password".to_string()),
             });
         }
 
@@ -579,6 +585,8 @@ impl InMemoryAuthProvider {
             return Err(SongbirdError::Auth {
                 message: "Password must contain at least one lowercase letter".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
+                provider: Some("InMemoryAuthProvider".to_string()),
+                suggestion: Some("Add a lowercase letter to your password".to_string()),
             });
         }
 
@@ -586,6 +594,8 @@ impl InMemoryAuthProvider {
             return Err(SongbirdError::Auth {
                 message: "Password must contain at least one number".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
+                provider: Some("InMemoryAuthProvider".to_string()),
+                suggestion: Some("Add a number to your password".to_string()),
             });
         }
 
@@ -593,6 +603,8 @@ impl InMemoryAuthProvider {
             return Err(SongbirdError::Auth {
                 message: "Password must contain at least one special character".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
+                provider: Some("InMemoryAuthProvider".to_string()),
+                suggestion: Some("Add a special character to your password".to_string()),
             });
         }
 
@@ -628,12 +640,16 @@ impl AuthenticationProvider for InMemoryAuthProvider {
                 Err(SongbirdError::Auth {
                     message: "Invalid credentials".to_string(),
                     user: Some("InMemoryAuthProvider".to_string()),
+                    provider: Some("InMemoryAuthProvider".to_string()),
+                    suggestion: Some("Check your username and password".to_string()),
                 })
             }
         } else {
             Err(SongbirdError::Auth {
                 message: "User not found".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
+                provider: Some("InMemoryAuthProvider".to_string()),
+                suggestion: Some("Check your username or register a new account".to_string()),
             })
         }
     }
@@ -644,6 +660,8 @@ impl AuthenticationProvider for InMemoryAuthProvider {
                 Err(SongbirdError::Auth {
                     message: "Token expired".to_string(),
                     user: Some("InMemoryAuthProvider".to_string()),
+                    provider: Some("InMemoryAuthProvider".to_string()),
+                    suggestion: Some("Please re-authenticate to get a new token".to_string()),
                 })
             } else {
                 Ok(auth_token.clone())
@@ -652,6 +670,8 @@ impl AuthenticationProvider for InMemoryAuthProvider {
             Err(SongbirdError::Auth {
                 message: "Invalid token".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
+                provider: Some("InMemoryAuthProvider".to_string()),
+                suggestion: Some("Please provide a valid authentication token".to_string()),
             })
         }
     }
@@ -771,6 +791,8 @@ impl SecurityManager {
             return Err(SongbirdError::Auth {
                 message: "Authentication is disabled".to_string(),
                 user: Some("SecurityManager".to_string()),
+                provider: Some("SecurityManager".to_string()),
+                suggestion: Some("Enable authentication in configuration".to_string()),
             });
         }
 
@@ -789,9 +811,11 @@ impl SecurityManager {
             tracing::error!("SECURITY CRITICAL: Authorization disabled - this should only be used in development!");
             if std::env::var("SONGBIRD_ENV").unwrap_or_default() != "development" {
                 return Err(SongbirdError::Network {
-                    service: "security".to_string(),
+                    service: Some("security".to_string()),
                     message: "Authorization cannot be disabled in production".to_string(),
                     details: None,
+                    endpoint: Some("security/authorize".to_string()),
+                    suggestion: Some("Enable authorization in production configuration".to_string()),
                 });
             }
             return Ok(false); // Explicit deny in production
@@ -882,7 +906,9 @@ mod tests {
         assert!(result.is_ok());
 
         // Test authentication with correct credentials
-        let token_result = auth_provider.authenticate("testuser", "SecurePass123!").await;
+        let token_result = auth_provider
+            .authenticate("testuser", "SecurePass123!")
+            .await;
         assert!(token_result.is_ok());
         let token = token_result.unwrap();
         assert_eq!(token.subject, "testuser");
@@ -890,7 +916,9 @@ mod tests {
         assert!(token.has_permission("write"));
 
         // Test authentication with wrong password
-        let wrong_password_result = auth_provider.authenticate("testuser", "WrongPassword").await;
+        let wrong_password_result = auth_provider
+            .authenticate("testuser", "WrongPassword")
+            .await;
         assert!(wrong_password_result.is_err());
 
         // Test authentication with non-existent user
@@ -958,26 +986,36 @@ mod tests {
         let mut auth_provider = InMemoryAuthProvider::new(config);
 
         // Add multiple users with different permissions
-        assert!(auth_provider.add_user(
-            "admin".to_string(),
-            "AdminPass123!".to_string(),
-            vec!["read".to_string(), "write".to_string(), "admin".to_string()],
-        ).is_ok());
+        assert!(auth_provider
+            .add_user(
+                "admin".to_string(),
+                "AdminPass123!".to_string(),
+                vec!["read".to_string(), "write".to_string(), "admin".to_string()],
+            )
+            .is_ok());
 
-        assert!(auth_provider.add_user(
-            "user".to_string(),
-            "UserPass123!".to_string(),
-            vec!["read".to_string()],
-        ).is_ok());
+        assert!(auth_provider
+            .add_user(
+                "user".to_string(),
+                "UserPass123!".to_string(),
+                vec!["read".to_string()],
+            )
+            .is_ok());
 
         // Test admin authentication
-        let admin_token = auth_provider.authenticate("admin", "AdminPass123!").await.unwrap();
+        let admin_token = auth_provider
+            .authenticate("admin", "AdminPass123!")
+            .await
+            .unwrap();
         assert!(admin_token.has_permission("admin"));
         assert!(admin_token.has_permission("read"));
         assert!(admin_token.has_permission("write"));
 
         // Test user authentication
-        let user_token = auth_provider.authenticate("user", "UserPass123!").await.unwrap();
+        let user_token = auth_provider
+            .authenticate("user", "UserPass123!")
+            .await
+            .unwrap();
         assert!(user_token.has_permission("read"));
         assert!(!user_token.has_permission("write"));
         assert!(!user_token.has_permission("admin"));
@@ -997,15 +1035,20 @@ mod tests {
         let mut auth_provider = InMemoryAuthProvider::new(config);
 
         // Add test user
-        auth_provider.add_user(
-            "testuser".to_string(),
-            "SecurePass123!".to_string(),
-            vec!["read".to_string()],
-        ).unwrap();
+        auth_provider
+            .add_user(
+                "testuser".to_string(),
+                "SecurePass123!".to_string(),
+                vec!["read".to_string()],
+            )
+            .unwrap();
 
         // Authenticate and get token
-        let token = auth_provider.authenticate("testuser", "SecurePass123!").await.unwrap();
-        
+        let token = auth_provider
+            .authenticate("testuser", "SecurePass123!")
+            .await
+            .unwrap();
+
         // Create a fake token string for validation test
         let fake_token = "invalid_token_123";
         let validation_result = auth_provider.validate_token(fake_token).await;
@@ -1036,18 +1079,23 @@ mod tests {
         };
 
         // Test authorization without any permissions (should deny)
-        let auth_result = authz_provider.authorize(
-            "user1",
-            SubjectType::User,
-            &action,
-            &resource,
-            &HashMap::new(),
-        ).await;
+        let auth_result = authz_provider
+            .authorize(
+                "user1",
+                SubjectType::User,
+                &action,
+                &resource,
+                &HashMap::new(),
+            )
+            .await;
         assert!(auth_result.is_ok());
         assert!(!auth_result.unwrap());
 
         // Test getting permissions for user (should be empty)
-        let permissions = authz_provider.get_permissions("user1", SubjectType::User).await.unwrap();
+        let permissions = authz_provider
+            .get_permissions("user1", SubjectType::User)
+            .await
+            .unwrap();
         assert!(permissions.is_empty());
 
         // Test adding permission
@@ -1106,12 +1154,9 @@ mod tests {
         };
 
         // Authorization should return false when disabled in development
-        let auth_result = security_manager.authorize(
-            "fake_token",
-            &action,
-            &resource,
-            &HashMap::new(),
-        ).await;
+        let auth_result = security_manager
+            .authorize("fake_token", &action, &resource, &HashMap::new())
+            .await;
         assert!(auth_result.is_ok());
         assert!(!auth_result.unwrap());
 
@@ -1122,7 +1167,7 @@ mod tests {
     #[test]
     fn test_beardog_config_creation() {
         let config = BearDogConfig::default();
-        
+
         assert_eq!(config.endpoint, "http://localhost:8000");
         assert_eq!(config.api_key, "your_api_key");
         assert_eq!(config.security_level, BearDogSecurityLevel::Internal);
@@ -1131,14 +1176,15 @@ mod tests {
         assert!(config.metadata.is_empty());
     }
 
-    #[test]  
+    #[test]
     fn test_beardog_security_context() {
         let context = BearDogSecurityContext {
             security_level: BearDogSecurityLevel::Secret,
             use_bstp: true,
-            metadata: HashMap::from([
-                ("operation_type".to_string(), "data_encryption".to_string()),
-            ]),
+            metadata: HashMap::from([(
+                "operation_type".to_string(),
+                "data_encryption".to_string(),
+            )]),
         };
 
         assert_eq!(context.security_level, BearDogSecurityLevel::Secret);
@@ -1250,16 +1296,19 @@ mod tests {
     #[test]
     fn test_security_config_defaults() {
         let config = SecurityConfig::default();
-        
+
         assert!(config.authentication_enabled);
         assert!(config.authorization_enabled);
         assert!(config.encryption_enabled);
         assert!(config.audit_logging);
         assert_eq!(config.max_login_attempts, 3);
-        
+
         // BearDog config
         assert_eq!(config.beardog.endpoint, "http://localhost:8000");
-        assert_eq!(config.beardog.security_level, BearDogSecurityLevel::Internal);
+        assert_eq!(
+            config.beardog.security_level,
+            BearDogSecurityLevel::Internal
+        );
     }
 
     #[test]
@@ -1337,7 +1386,7 @@ mod tests {
 
         // Token should not be expired immediately
         assert!(!token.is_expired());
-        
+
         // Wait for token to expire
         std::thread::sleep(Duration::from_secs(2));
         assert!(token.is_expired());

@@ -1,8 +1,7 @@
 //! BearDog Integration Module - FRAGO Implementation
-//! 
+//!
 //! Implements the exact NetworkEvent/SecurityEvent interfaces specified in the BearDog FRAGO
 //! for BSTP network orchestration layer integration
-
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -20,46 +19,46 @@ use crate::errors::{Result, SongbirdError};
 /// NetworkEvent - Exact FRAGO specification for BearDog integration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NetworkEvent {
-    PeerDiscovered { 
-        peer_id: String, 
-        capabilities: PeerCapabilities 
+    PeerDiscovered {
+        peer_id: String,
+        capabilities: PeerCapabilities,
     },
-    PeerDisconnected { 
-        peer_id: String, 
-        reason: DisconnectReason 
+    PeerDisconnected {
+        peer_id: String,
+        reason: DisconnectReason,
     },
-    RouteOptimized { 
-        old_latency: u64, 
-        new_latency: u64 
+    RouteOptimized {
+        old_latency: u64,
+        new_latency: u64,
     },
-    NetworkCongestion { 
-        severity: CongestionLevel, 
-        affected_peers: Vec<String> 
+    NetworkCongestion {
+        severity: CongestionLevel,
+        affected_peers: Vec<String>,
     },
-    ThreatIndicator { 
-        suspicious_activity: ThreatIndicator, 
-        source_peer: String 
+    ThreatIndicator {
+        suspicious_activity: ThreatIndicator,
+        source_peer: String,
     },
 }
 
 /// SecurityEvent - Exact FRAGO specification for BearDog integration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SecurityEvent {
-    SessionEstablished { 
-        session_id: String, 
-        peer_id: String 
+    SessionEstablished {
+        session_id: String,
+        peer_id: String,
     },
-    SecurityUpgrade { 
-        session_id: String, 
-        new_security_level: SecurityLevel 
+    SecurityUpgrade {
+        session_id: String,
+        new_security_level: SecurityLevel,
     },
-    ThreatMitigation { 
-        action: SecurityAction, 
-        affected_routes: Vec<String> 
+    ThreatMitigation {
+        action: SecurityAction,
+        affected_routes: Vec<String>,
     },
-    ComplianceRequirement { 
-        requirement: ComplianceRule, 
-        enforcement_level: EnforcementLevel 
+    ComplianceRequirement {
+        requirement: ComplianceRule,
+        enforcement_level: EnforcementLevel,
     },
 }
 
@@ -179,9 +178,9 @@ pub struct BearDogConfig {
 
 #[derive(Debug, Clone)]
 pub enum PerformanceMode {
-    Gaming,    // <1ms target
-    Standard,  // <10ms target  
-    Bulk,      // Best effort
+    Gaming,   // <1ms target
+    Standard, // <10ms target
+    Bulk,     // Best effort
 }
 
 impl BearDogIntegration {
@@ -189,7 +188,7 @@ impl BearDogIntegration {
     pub fn new(config: BearDogConfig) -> Self {
         let (event_sender, event_receiver) = mpsc::unbounded_channel();
         let (_security_sender, security_receiver) = mpsc::unbounded_channel();
-        
+
         // Keep receivers alive to prevent channel closure
         // In a real implementation, these would be used by background tasks
         tokio::spawn(async move {
@@ -199,7 +198,7 @@ impl BearDogIntegration {
                 // For testing, just consume events
             }
         });
-        
+
         Self {
             network_event_publisher: NetworkEventPublisher {
                 sender: event_sender,
@@ -217,23 +216,29 @@ impl BearDogIntegration {
     /// FRAGO: Exact interface implementation - Publish NetworkEvent to BearDog
     pub async fn publish_network_event(&self, event: NetworkEvent) -> Result<()> {
         let start = Instant::now();
-        
+
         match self.network_event_publisher.publish(event.clone()).await {
             Ok(_) => {
                 let latency = start.elapsed();
-                
-                if matches!(self.config.performance_mode, PerformanceMode::Gaming) && latency > Duration::from_micros(500) {
+
+                if matches!(self.config.performance_mode, PerformanceMode::Gaming)
+                    && latency > Duration::from_micros(500)
+                {
                     warn!("Gaming mode latency exceeded: {}μs", latency.as_micros());
                 }
-                
-                debug!("Published NetworkEvent: {:?} in {}μs", event, latency.as_micros());
+
+                debug!(
+                    "Published NetworkEvent: {:?} in {}μs",
+                    event,
+                    latency.as_micros()
+                );
                 Ok(())
             }
             Err(e) => {
                 error!("Failed to publish NetworkEvent: {}", e);
                 Err(SongbirdError::Network {
                     service: "BearDog".to_string(),
-                    message: format!("Event publish failed: {}", e),
+                    message: format!("Event publish failed: {e}"),
                     details: None,
                 })
             }
@@ -243,31 +248,58 @@ impl BearDogIntegration {
     /// FRAGO: Exact interface implementation - Consume SecurityEvent from BearDog
     pub async fn consume_security_event(&self, event: SecurityEvent) -> Result<()> {
         let start = Instant::now();
-        
+
         match event {
-            SecurityEvent::SessionEstablished { session_id, peer_id } => {
+            SecurityEvent::SessionEstablished {
+                session_id,
+                peer_id,
+            } => {
                 info!("🔐 New secure session: {} for peer {}", session_id, peer_id);
                 self.configure_secure_routes(&session_id, &peer_id).await?;
             }
-            SecurityEvent::SecurityUpgrade { session_id, new_security_level } => {
-                info!("🔐 Security upgrade: {} to {:?}", session_id, new_security_level);
-                self.apply_security_upgrade(&session_id, &new_security_level).await?;
+            SecurityEvent::SecurityUpgrade {
+                session_id,
+                new_security_level,
+            } => {
+                info!(
+                    "🔐 Security upgrade: {} to {:?}",
+                    session_id, new_security_level
+                );
+                self.apply_security_upgrade(&session_id, &new_security_level)
+                    .await?;
             }
-            SecurityEvent::ThreatMitigation { action, affected_routes } => {
-                warn!("🚨 Threat mitigation: {:?} on routes {:?}", action, affected_routes);
-                self.apply_threat_mitigation(&action, &affected_routes).await?;
+            SecurityEvent::ThreatMitigation {
+                action,
+                affected_routes,
+            } => {
+                warn!(
+                    "🚨 Threat mitigation: {:?} on routes {:?}",
+                    action, affected_routes
+                );
+                self.apply_threat_mitigation(&action, &affected_routes)
+                    .await?;
             }
-            SecurityEvent::ComplianceRequirement { requirement, enforcement_level } => {
-                info!("📋 Compliance requirement: {} ({:?})", requirement.rule_id, enforcement_level);
-                self.apply_compliance_requirement(&requirement, &enforcement_level).await?;
+            SecurityEvent::ComplianceRequirement {
+                requirement,
+                enforcement_level,
+            } => {
+                info!(
+                    "📋 Compliance requirement: {} ({:?})",
+                    requirement.rule_id, enforcement_level
+                );
+                self.apply_compliance_requirement(&requirement, &enforcement_level)
+                    .await?;
             }
         }
 
         let processing_time = start.elapsed();
-        debug!("Processed SecurityEvent in {}μs", processing_time.as_micros());
-        
+        debug!(
+            "Processed SecurityEvent in {}μs",
+            processing_time.as_micros()
+        );
+
         *self.security_event_consumer.processed_count.write().await += 1;
-        
+
         Ok(())
     }
 
@@ -280,29 +312,53 @@ impl BearDogIntegration {
             threat_level: *self.shared_metrics.threat_level.read().await,
             uptime_seconds: self.get_uptime_seconds(),
         };
-        
+
         debug!("Synced performance metrics: {:?}", metrics);
         Ok(metrics)
     }
 
     async fn configure_secure_routes(&self, session_id: &str, peer_id: &str) -> Result<()> {
-        info!("Configuring secure routes for session {} peer {}", session_id, peer_id);
+        info!(
+            "Configuring secure routes for session {} peer {}",
+            session_id, peer_id
+        );
         Ok(())
     }
 
-    async fn apply_security_upgrade(&self, session_id: &str, security_level: &SecurityLevel) -> Result<()> {
-        info!("Applying security upgrade for session {} to {:?}", session_id, security_level);
+    async fn apply_security_upgrade(
+        &self,
+        session_id: &str,
+        security_level: &SecurityLevel,
+    ) -> Result<()> {
+        info!(
+            "Applying security upgrade for session {} to {:?}",
+            session_id, security_level
+        );
         Ok(())
     }
 
-    async fn apply_threat_mitigation(&self, action: &SecurityAction, affected_routes: &[String]) -> Result<()> {
-        warn!("Applying threat mitigation {:?} to routes: {:?}", action, affected_routes);
+    async fn apply_threat_mitigation(
+        &self,
+        action: &SecurityAction,
+        affected_routes: &[String],
+    ) -> Result<()> {
+        warn!(
+            "Applying threat mitigation {:?} to routes: {:?}",
+            action, affected_routes
+        );
         Ok(())
     }
 
-    async fn apply_compliance_requirement(&self, requirement: &ComplianceRule, enforcement_level: &EnforcementLevel) -> Result<()> {
-        info!("Applying compliance rule: {} ({})", requirement.rule_id, requirement.description);
-        
+    async fn apply_compliance_requirement(
+        &self,
+        requirement: &ComplianceRule,
+        enforcement_level: &EnforcementLevel,
+    ) -> Result<()> {
+        info!(
+            "Applying compliance rule: {} ({})",
+            requirement.rule_id, requirement.description
+        );
+
         // Apply the rule based on enforcement level
         match enforcement_level {
             EnforcementLevel::Strict => {
@@ -330,7 +386,7 @@ impl BearDogIntegration {
                 error!("Block enforcement for rule: {}", requirement.rule_id);
             }
         }
-        
+
         Ok(())
     }
 
@@ -339,7 +395,7 @@ impl BearDogIntegration {
         if latencies.is_empty() {
             return 0.0;
         }
-        
+
         let sum: u64 = latencies.values().sum();
         sum as f64 / latencies.len() as f64
     }
@@ -351,14 +407,14 @@ impl BearDogIntegration {
 
 impl NetworkEventPublisher {
     pub async fn publish(&self, event: NetworkEvent) -> Result<()> {
-        self.sender.send(event).map_err(|e| {
-            SongbirdError::Network {
+        self.sender
+            .send(event)
+            .map_err(|e| SongbirdError::Network {
                 service: "BearDog".to_string(),
-                message: format!("Failed to send event: {}", e),
+                message: format!("Failed to send event: {e}"),
                 details: None,
-            }
-        })?;
-        
+            })?;
+
         *self.published_count.write().await += 1;
         Ok(())
     }
@@ -385,7 +441,10 @@ impl SharedMetrics {
     }
 
     pub async fn update_latency(&self, peer_id: String, latency_ms: u64) {
-        self.network_latency.write().await.insert(peer_id, latency_ms);
+        self.network_latency
+            .write()
+            .await
+            .insert(peer_id, latency_ms);
     }
 
     pub async fn set_threat_level(&self, level: u8) {
@@ -424,15 +483,21 @@ mod tests {
     async fn test_beardog_integration_creation() {
         let config = BearDogConfig::default();
         let integration = BearDogIntegration::new(config);
-        
-        assert_eq!(integration.network_event_publisher.get_published_count().await, 0);
+
+        assert_eq!(
+            integration
+                .network_event_publisher
+                .get_published_count()
+                .await,
+            0
+        );
     }
 
     #[tokio::test]
     async fn test_network_event_publishing() {
         let config = BearDogConfig::default();
         let integration = BearDogIntegration::new(config);
-        
+
         let event = NetworkEvent::PeerDiscovered {
             peer_id: "test-peer".to_string(),
             capabilities: PeerCapabilities {
@@ -443,7 +508,7 @@ mod tests {
                 security_level: SecurityLevel::Gaming,
             },
         };
-        
+
         let result = integration.publish_network_event(event).await;
         assert!(result.is_ok());
     }
@@ -452,11 +517,11 @@ mod tests {
     async fn test_performance_metrics_sync() {
         let config = BearDogConfig::default();
         let integration = BearDogIntegration::new(config);
-        
+
         let metrics = integration.sync_performance_metrics().await;
         assert!(metrics.is_ok());
-        
-        let metrics = metrics.unwrap();
+
+        let metrics = metrics.expect("Failed to get performance metrics in test");
         assert_eq!(metrics.avg_latency_ms, 0.0);
     }
 }

@@ -136,10 +136,20 @@ impl UniversalGameProtocolDetector {
 
         // Simulate StarCraft detection
         sessions.push(DetectedGameSession {
-            session_id: format!("starcraft_{}", generate_session_id()),
+            session_id: format!("sc_{}", generate_session_id()),
             protocol_class: GameProtocolClass::IpxBased,
             local_ports: vec![6112, 6113, 6114],
-            remote_endpoints: vec!["192.168.1.100:6112".parse().unwrap_or_else(|e| { tracing::warn!("Failed to parse game endpoint, using fallback: {}", e); "127.0.0.1:6112".parse().expect("valid fallback address") })],
+            remote_endpoints: vec![format!(
+                "{}:6112",
+                crate::config::constants::default_bind_address()
+            )
+            .parse()
+            .unwrap_or_else(|e| {
+                tracing::warn!("Failed to parse game endpoint, using fallback: {}", e);
+                "127.0.0.1:6112"
+                    .parse()
+                    .unwrap_or_else(|_| std::net::SocketAddr::from(([127, 0, 0, 1], 6112)))
+            })],
             process_id: Some(1234),
             game_name: Some("StarCraft".to_string()),
             detected_at: SystemTime::now(),
@@ -151,7 +161,17 @@ impl UniversalGameProtocolDetector {
             session_id: format!("aoe_{}", generate_session_id()),
             protocol_class: GameProtocolClass::DirectPlay,
             local_ports: vec![2300, 2301],
-            remote_endpoints: vec!["192.168.1.101:2300".parse().unwrap_or_else(|e| { tracing::warn!("Failed to parse game endpoint, using fallback: {}", e); "127.0.0.1:2300".parse().expect("valid fallback address") })],
+            remote_endpoints: vec![format!(
+                "{}:2300",
+                crate::config::constants::default_bind_address()
+            )
+            .parse()
+            .unwrap_or_else(|e| {
+                tracing::warn!("Failed to parse game endpoint, using fallback: {}", e);
+                "127.0.0.1:2300"
+                    .parse()
+                    .unwrap_or_else(|_| std::net::SocketAddr::from(([127, 0, 0, 1], 2300)))
+            })],
             process_id: Some(5678),
             game_name: Some("Age of Empires II".to_string()),
             detected_at: SystemTime::now(),

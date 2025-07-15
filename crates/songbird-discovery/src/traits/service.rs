@@ -7,6 +7,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::time::Duration;
 
 /// Universal service trait for all service types
 #[async_trait]
@@ -226,6 +227,7 @@ pub struct ServiceMetrics {
 
 impl ServiceRequest {
     /// Create a new service request
+    #[must_use]
     pub fn new(method: String, path: String) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
@@ -237,37 +239,42 @@ impl ServiceRequest {
             client_info: None,
             auth_info: None,
             timestamp: Utc::now(),
-            timeout: None,
+            timeout: Some(Duration::from_secs(30)),
             correlation_id: None,
             trace_id: None,
         }
     }
 
     /// Add a header to the request
+    #[must_use]
     pub fn with_header(mut self, key: String, value: String) -> Self {
         self.headers.insert(key, value);
         self
     }
 
     /// Set the request body
+    #[must_use]
     pub fn with_body(mut self, body: serde_json::Value) -> Self {
         self.body = Some(body);
         self
     }
 
     /// Add a query parameter
+    #[must_use]
     pub fn with_query_param(mut self, key: String, value: String) -> Self {
         self.query_params.insert(key, value);
         self
     }
 
     /// Set client information
+    #[must_use]
     pub fn with_client_info(mut self, client_info: ClientInfo) -> Self {
         self.client_info = Some(client_info);
         self
     }
 
     /// Set authentication information
+    #[must_use]
     pub fn with_auth_info(mut self, auth_info: AuthInfo) -> Self {
         self.auth_info = Some(auth_info);
         self
@@ -276,6 +283,7 @@ impl ServiceRequest {
 
 impl ServiceResponse {
     /// Create a successful response
+    #[must_use]
     pub fn success(request_id: String) -> Self {
         Self {
             request_id,
@@ -290,6 +298,7 @@ impl ServiceResponse {
     }
 
     /// Create an error response
+    #[must_use]
     pub fn error(request_id: String, message: String) -> Self {
         Self {
             request_id,
@@ -304,19 +313,22 @@ impl ServiceResponse {
     }
 
     /// Add a response header
+    #[must_use]
     pub fn with_header(mut self, key: String, value: String) -> Self {
         self.headers.insert(key, value);
         self
     }
 
     /// Set the response body
+    #[must_use]
     pub fn with_body(mut self, body: serde_json::Value) -> Self {
         self.body = Some(body);
         self
     }
 
     /// Set processing time
-    pub fn with_processing_time(mut self, duration: std::time::Duration) -> Self {
+    #[must_use]
+    pub const fn with_processing_time(mut self, duration: std::time::Duration) -> Self {
         self.processing_time = duration;
         self
     }

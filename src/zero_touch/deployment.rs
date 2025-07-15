@@ -193,7 +193,7 @@ impl DeploymentEngine {
         }
 
         // Add image
-        args.push(service.image.clone());
+        args.push(service.image.clone()); // This clone is necessary as we're moving into the args vector
 
         // Execute docker run
         let output = Command::new("docker")

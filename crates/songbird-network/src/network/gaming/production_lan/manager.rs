@@ -58,6 +58,8 @@ impl ProductionLanManager {
             return Err(SongbirdError::Config {
                 field: Some("discovery_ports".to_string()),
                 message: "At least one discovery port must be specified".to_string(),
+                context: Some("network_configuration".to_string()),
+                suggestion: Some("Check configuration values and network settings".to_string()),
             });
         }
 
@@ -65,6 +67,8 @@ impl ProductionLanManager {
             return Err(SongbirdError::Config {
                 field: Some("max_players_per_session".to_string()),
                 message: "Maximum players per session must be greater than 0".to_string(),
+                context: Some("network_configuration".to_string()),
+                suggestion: Some("Check configuration values and network settings".to_string()),
             });
         }
 
@@ -73,6 +77,8 @@ impl ProductionLanManager {
             return Err(SongbirdError::Config {
                 field: Some("game_port_range".to_string()),
                 message: "Invalid game port range".to_string(),
+                context: Some("network_configuration".to_string()),
+                suggestion: Some("Check configuration values and network settings".to_string()),
             });
         }
 
@@ -156,6 +162,10 @@ impl ProductionLanManager {
             .map_err(|e| SongbirdError::Config {
                 field: Some("host_address".to_string()),
                 message: format!("Invalid host address configuration: {}", e),
+                context: Some("production_lan_manager".to_string()),
+                suggestion: Some(
+                    "Check the bind address and port configuration format".to_string(),
+                ),
             })?;
 
         let session = ProductionGameSession {
@@ -245,9 +255,11 @@ impl ProductionLanManager {
             .get(session_code)
             .cloned()
             .ok_or_else(|| SongbirdError::Network {
-                service: "Production LAN Manager".to_string(),
+                service: Some("Production LAN Manager".to_string()),
                 message: format!("Session not found: {}", session_code),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })
     }
 
@@ -259,9 +271,11 @@ impl ProductionLanManager {
             Ok(())
         } else {
             Err(SongbirdError::Network {
-                service: "Production LAN Manager".to_string(),
+                service: Some("Production LAN Manager".to_string()),
                 message: format!("Session not found: {}", session_code),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })
         }
     }

@@ -80,51 +80,74 @@ pub struct ServiceQuery {
 }
 
 impl ServiceQuery {
+    /// Create a new service query
+    #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            service_id: None,
+            service_type: None,
+            version: None,
+            tags: Vec::new(),
+            metadata: HashMap::new(),
+            health_status: None,
+            limit: None,
+            sort_by: None,
+            name: None,
+        }
     }
 
-    pub fn with_name(mut self, name: impl Into<String>) -> Self {
-        self.name = Some(name.into());
-        self
-    }
-
+    /// Add service ID filter
+    #[must_use]
     pub fn with_service_id(mut self, service_id: impl Into<String>) -> Self {
         self.service_id = Some(service_id.into());
         self
     }
 
+    /// Add service type filter
+    #[must_use]
     pub fn with_service_type(mut self, service_type: impl Into<String>) -> Self {
         self.service_type = Some(service_type.into());
         self
     }
 
+    /// Add version filter
+    #[must_use]
     pub fn with_version(mut self, version: impl Into<String>) -> Self {
         self.version = Some(version.into());
         self
     }
 
+    /// Add tag filter
+    #[must_use]
     pub fn with_tag(mut self, tag: impl Into<String>) -> Self {
         self.tags.push(tag.into());
         self
     }
 
+    /// Add metadata filter
+    #[must_use]
     pub fn with_metadata(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
         self.metadata.insert(key.into(), value);
         self
     }
 
-    pub fn with_health_status(mut self, status: HealthStatus) -> Self {
+    /// Add health status filter
+    #[must_use]
+    pub const fn with_health_status(mut self, status: HealthStatus) -> Self {
         self.health_status = Some(status);
         self
     }
 
-    pub fn with_limit(mut self, limit: usize) -> Self {
+    /// Set result limit
+    #[must_use]
+    pub const fn with_limit(mut self, limit: usize) -> Self {
         self.limit = Some(limit);
         self
     }
 
-    pub fn sort_by(mut self, sort_by: SortBy) -> Self {
+    /// Set sort order
+    #[must_use]
+    pub const fn sort_by(mut self, sort_by: SortBy) -> Self {
         self.sort_by = Some(sort_by);
         self
     }
@@ -173,15 +196,13 @@ pub enum HealthStatus {
     Unknown,
 }
 
-/// Sort options for service queries
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Sort order for discovery results
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SortBy {
     Name,
-    ServiceType,
-    Version,
     CreatedAt,
-    UpdatedAt,
-    HealthStatus,
+    LastSeen,
+    Health,
 }
 
 /// Service registration information
@@ -195,6 +216,8 @@ pub struct ServiceRegistration {
 }
 
 impl ServiceRegistration {
+    /// Create a new service registration
+    #[must_use]
     pub fn new(service_info: ServiceInfo) -> Self {
         Self {
             service_info,
@@ -205,12 +228,16 @@ impl ServiceRegistration {
         }
     }
 
-    pub fn with_ttl(mut self, ttl: std::time::Duration) -> Self {
+    /// Set TTL for the registration
+    #[must_use]
+    pub const fn with_ttl(mut self, ttl: std::time::Duration) -> Self {
         self.ttl = Some(ttl);
         self
     }
 
-    pub fn with_health_check_interval(mut self, interval: std::time::Duration) -> Self {
+    /// Set health check interval
+    #[must_use]
+    pub const fn with_health_check_interval(mut self, interval: std::time::Duration) -> Self {
         self.health_check_interval = Some(interval);
         self
     }

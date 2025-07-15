@@ -2,10 +2,10 @@
 //!
 //! Provides circuit breakers, retry mechanisms, and fault tolerance
 
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
 
 use crate::errors::{Result, SongbirdError};
 
@@ -97,7 +97,9 @@ impl CircuitBreaker {
     pub fn new(config: CircuitBreakerConfig) -> Self {
         Self {
             config,
-            state: Arc::new(RwLock::new(CircuitBreakerState::Closed { failure_count: 0 })),
+            state: Arc::new(RwLock::new(CircuitBreakerState::Closed {
+                failure_count: 0,
+            })),
         }
     }
 
@@ -110,8 +112,7 @@ impl CircuitBreaker {
         // Check if circuit breaker allows the call
         if !self.can_execute().await {
             return Err(SongbirdError::CircuitBreakerOpen {
-                service: "circuit_breaker".to_string(),
-                message: "Circuit breaker is open due to recent failures".to_string()
+                message: "Circuit breaker is open due to recent failures".to_string(),
             });
         }
 
@@ -126,9 +127,8 @@ impl CircuitBreaker {
                 self.record_failure().await;
                 // Note: We don't return error here to allow graceful degradation
                 tracing::warn!("Circuit breaker tripped due to error");
-                Err(SongbirdError::CircuitBreakerOpen { 
-                    service: "circuit_breaker".to_string(),
-                    message: "Circuit breaker is open due to recent failures".to_string()
+                Err(SongbirdError::CircuitBreakerOpen {
+                    message: "Circuit breaker is open due to recent failures".to_string(),
                 })
             }
         }
@@ -219,13 +219,19 @@ impl CircuitBreaker {
         let state = self.state.read().await;
         match &*state {
             CircuitBreakerState::Closed { failure_count } => {
-                format!("Closed (failures: {})", failure_count)
+                format!("Closed (failures: {failure_count})")
             }
             CircuitBreakerState::Open { opened_at } => {
-                format!("Open (opened {} seconds ago)", opened_at.elapsed().as_secs())
+                format!(
+                    "Open (opened {} seconds ago)",
+                    opened_at.elapsed().as_secs()
+                )
             }
-            CircuitBreakerState::HalfOpen { success_count, failure_count } => {
-                format!("Half-Open (successes: {}, failures: {})", success_count, failure_count)
+            CircuitBreakerState::HalfOpen {
+                success_count,
+                failure_count,
+            } => {
+                format!("Half-Open (successes: {success_count}, failures: {failure_count})")
             }
         }
     }
@@ -234,9 +240,13 @@ impl CircuitBreaker {
     async fn should_trip(&self) -> bool {
         let state = self.state.read().await;
         match &*state {
-            CircuitBreakerState::Closed { failure_count } => failure_count >= &self.config.failure_threshold,
+            CircuitBreakerState::Closed { failure_count } => {
+                failure_count >= &self.config.failure_threshold
+            }
             CircuitBreakerState::Open { opened_at } => opened_at.elapsed() >= self.config.timeout,
-            CircuitBreakerState::HalfOpen { failure_count, .. } => failure_count >= &self.config.failure_threshold,
+            CircuitBreakerState::HalfOpen { failure_count, .. } => {
+                failure_count >= &self.config.failure_threshold
+            }
         }
     }
 
@@ -263,7 +273,9 @@ impl RetryMechanism {
     /// Execute a function with retry logic
     pub async fn retry<F, T, E>(&self, mut func: F) -> Result<T>
     where
-        F: FnMut() -> std::pin::Pin<Box<dyn std::future::Future<Output = std::result::Result<T, E>> + Send>>,
+        F: FnMut() -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = std::result::Result<T, E>> + Send>,
+        >,
         E: std::fmt::Display,
     {
         let mut attempt = 0;
@@ -278,20 +290,24 @@ impl RetryMechanism {
                     if attempt >= self.config.max_attempts {
                         return Err(SongbirdError::RetryExhausted {
                             attempts: self.config.max_attempts,
-                            message: format!("Max retry attempts ({}) exceeded", self.config.max_attempts),
+                            last_error: format!(
+                                "Max retry attempts ({}) exceeded",
+                                self.config.max_attempts
+                            ),
                         });
                     }
 
                     // Calculate next delay with exponential backoff
                     if attempt > 1 {
                         let mut next_delay = Duration::from_millis(
-                            (delay.as_millis() as f64 * self.config.backoff_multiplier) as u64
+                            (delay.as_millis() as f64 * self.config.backoff_multiplier) as u64,
                         );
 
                         // Apply jitter if enabled
                         if self.config.jitter {
                             let jitter_ms = fastrand::u64(0..=next_delay.as_millis() as u64 / 4);
-                            next_delay = Duration::from_millis(next_delay.as_millis() as u64 + jitter_ms);
+                            next_delay =
+                                Duration::from_millis(next_delay.as_millis() as u64 + jitter_ms);
                         }
 
                         // Cap at max delay
@@ -394,7 +410,7 @@ impl RobustnessManager {
         self
     }
 
-    /// Execute a function with all configured protections
+    /// Execute a function with all configured robustness patterns
     pub async fn execute<F, T, E>(&self, func: F) -> Result<T>
     where
         F: std::future::Future<Output = std::result::Result<T, E>> + Send,
@@ -403,9 +419,12 @@ impl RobustnessManager {
         // Check rate limit first
         if let Some(rate_limiter) = &self.rate_limiter {
             if !rate_limiter.allow_request().await {
-                return Err(SongbirdError::RateLimitExceeded(
-                    format!("Rate limit exceeded: {} requests per {:?}", self.rate_limiter.as_ref().unwrap().config.burst_size, self.rate_limiter.as_ref().unwrap().config.window_size)
-                ));
+                return Err(SongbirdError::RateLimitExceeded {
+                    message: format!(
+                        "Rate limit exceeded: {} requests per {:?}",
+                        rate_limiter.config.burst_size, rate_limiter.config.window_size
+                    ),
+                });
             }
         }
 
@@ -416,9 +435,9 @@ impl RobustnessManager {
             // Execute directly if no circuit breaker
             match func.await {
                 Ok(result) => Ok(result),
-                Err(e) => Err(SongbirdError::ExecutionFailed(
-                    format!("Operation execution failed: {}", e)
-                )),
+                Err(e) => Err(SongbirdError::ExecutionFailed {
+                    message: format!("Operation execution failed: {e}"),
+                }),
             }
         }
     }
@@ -479,7 +498,7 @@ mod tests {
 
         let result = cb.call(async { Ok::<i32, String>(42) }).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
+        assert_eq!(result.expect("Failed to get circuit breaker result in test"), 42);
     }
 
     #[tokio::test]
@@ -491,11 +510,15 @@ mod tests {
         let cb = CircuitBreaker::new(config);
 
         // First failure
-        let result = cb.call(async { Err::<i32, String>("error".to_string()) }).await;
+        let result = cb
+            .call(async { Err::<i32, String>("error".to_string()) })
+            .await;
         assert!(result.is_err());
 
         // Second failure should open the circuit
-        let result = cb.call(async { Err::<i32, String>("error".to_string()) }).await;
+        let result = cb
+            .call(async { Err::<i32, String>("error".to_string()) })
+            .await;
         assert!(result.is_err());
 
         // Third call should be rejected by open circuit
@@ -515,20 +538,22 @@ mod tests {
         let counter = Arc::new(AtomicU32::new(0));
         let counter_clone = Arc::clone(&counter);
 
-        let result = retry.retry(move || {
-            let counter = Arc::clone(&counter_clone);
-            Box::pin(async move {
-                let count = counter.fetch_add(1, Ordering::SeqCst);
-                if count < 2 {
-                    Err("not yet")
-                } else {
-                    Ok(42)
-                }
+        let result = retry
+            .retry(move || {
+                let counter = Arc::clone(&counter_clone);
+                Box::pin(async move {
+                    let count = counter.fetch_add(1, Ordering::SeqCst);
+                    if count < 2 {
+                        Err("not yet")
+                    } else {
+                        Ok(42)
+                    }
+                })
             })
-        }).await;
+            .await;
 
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
+        assert_eq!(result.expect("Failed to get retry result in test"), 42);
         assert_eq!(counter.load(Ordering::SeqCst), 3);
     }
 
@@ -558,7 +583,7 @@ mod tests {
 
         let result = manager.execute(async { Ok::<i32, String>(42) }).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
+        assert_eq!(result.expect("Failed to execute robustness manager in test"), 42);
     }
 
     #[tokio::test]
@@ -587,4 +612,4 @@ mod tests {
         assert_eq!(rate_limit_config.requests_per_second, 100);
         assert_eq!(rate_limit_config.burst_size, 10);
     }
-} 
+}

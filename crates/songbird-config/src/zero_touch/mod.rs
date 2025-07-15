@@ -28,11 +28,17 @@ pub struct ZeroTouchDeployment {
 }
 
 impl ZeroTouchDeployment {
-    pub fn new(config: ZeroTouchConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: ZeroTouchConfig) -> Self {
         Self { config }
     }
 
-    pub async fn deploy(&self) -> Result<()> {
+    /// Deploy zero-touch configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deployment fails due to system constraints or configuration issues
+    pub const fn deploy(&self) -> Result<()> {
         // Minimal implementation
         Ok(())
     }
@@ -53,11 +59,17 @@ impl Default for ZeroTouchOrchestrator {
 }
 
 impl ZeroTouchOrchestrator {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 
-    pub async fn deploy(&mut self) -> Result<DeploymentResult> {
+    /// Deploy the orchestrator
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deployment configuration fails
+    pub fn deploy(&mut self) -> Result<DeploymentResult> {
         // Basic deployment logic
         let config = SongbirdConfig::default();
 

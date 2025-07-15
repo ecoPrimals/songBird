@@ -230,11 +230,50 @@ pub struct FlagEvaluation {
 pub struct FeatureFlagProviderInfo {
     pub name: String,
     pub version: String,
-    pub supports_updates: bool,
-    pub supports_history: bool,
-    pub supports_targeting: bool,
-    pub supports_percentage_rollout: bool,
+    pub capabilities: ProviderCapabilities,
     pub backend_type: String,
+}
+
+/// Provider capabilities using enum-based approach instead of excessive booleans
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ProviderCapability {
+    Updates,
+    History,
+    Targeting,
+    PercentageRollout,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ProviderCapabilities {
+    pub capabilities: Vec<ProviderCapability>,
+}
+
+impl ProviderCapabilities {
+    #[must_use]
+    pub fn new(capabilities: Vec<ProviderCapability>) -> Self {
+        Self { capabilities }
+    }
+
+    #[must_use]
+    pub fn supports_updates(&self) -> bool {
+        self.capabilities.contains(&ProviderCapability::Updates)
+    }
+
+    #[must_use]
+    pub fn supports_history(&self) -> bool {
+        self.capabilities.contains(&ProviderCapability::History)
+    }
+
+    #[must_use]
+    pub fn supports_targeting(&self) -> bool {
+        self.capabilities.contains(&ProviderCapability::Targeting)
+    }
+
+    #[must_use]
+    pub fn supports_percentage_rollout(&self) -> bool {
+        self.capabilities
+            .contains(&ProviderCapability::PercentageRollout)
+    }
 }
 
 /// Feature flag statistics
@@ -358,11 +397,17 @@ pub struct EvaluationConfig {
     pub enable_context_enrichment: bool,
 }
 
-/// Monitoring configuration for feature flags
+/// Flag monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlagMonitoringConfig {
     pub enabled: bool,
     pub metrics_interval: u64,
+    pub monitoring_options: MonitoringOptions,
+}
+
+/// Monitoring options using bitflags pattern
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonitoringOptions {
     pub alert_on_errors: bool,
     pub track_performance: bool,
     pub export_evaluations: bool,
@@ -397,9 +442,11 @@ impl Default for FeatureFlagConfig {
             monitoring: FlagMonitoringConfig {
                 enabled: true,
                 metrics_interval: 60,
-                alert_on_errors: true,
-                track_performance: true,
-                export_evaluations: false,
+                monitoring_options: MonitoringOptions {
+                    alert_on_errors: true,
+                    track_performance: true,
+                    export_evaluations: false,
+                },
             },
         }
     }

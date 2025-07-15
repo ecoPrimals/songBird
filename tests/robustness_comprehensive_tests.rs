@@ -3,13 +3,13 @@
 //! This test suite covers the robustness module that provides circuit breakers,
 //! retry mechanisms, rate limiting, and fault tolerance patterns.
 
-use songbird_lib::robustness::*;
+use futures_util::future;
 use songbird_lib::errors::SongbirdError;
-use std::sync::Arc;
+use songbird_lib::robustness::*;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
-use futures_util::future;
 
 #[cfg(test)]
 mod circuit_breaker_tests {
@@ -54,9 +54,7 @@ mod circuit_breaker_tests {
 
         // Test multiple successful calls
         for i in 0..10 {
-            let result = circuit_breaker
-                .call(async { Ok::<i32, String>(i) })
-                .await;
+            let result = circuit_breaker.call(async { Ok::<i32, String>(i) }).await;
             assert!(result.is_ok());
             assert_eq!(result.unwrap(), i);
         }
@@ -76,7 +74,7 @@ mod circuit_breaker_tests {
         // Test failures leading to open state
         for i in 0..3 {
             let result = circuit_breaker
-                .call(async { Err::<i32, String>(format!("Error {}", i)) })
+                .call(async { Err::<i32, String>(format!("Error {i}")) })
                 .await;
             assert!(result.is_err());
         }
@@ -113,15 +111,11 @@ mod circuit_breaker_tests {
         sleep(Duration::from_millis(150)).await;
 
         // Next call should transition to half-open
-        let result = circuit_breaker
-            .call(async { Ok::<i32, String>(42) })
-            .await;
+        let result = circuit_breaker.call(async { Ok::<i32, String>(42) }).await;
         assert!(result.is_ok());
 
         // Add more successful calls to close the circuit
-        let _ = circuit_breaker
-            .call(async { Ok::<i32, String>(43) })
-            .await;
+        let _ = circuit_breaker.call(async { Ok::<i32, String>(43) }).await;
 
         state_info = circuit_breaker.get_state_info().await;
         assert!(state_info.contains("Closed"));
@@ -142,11 +136,12 @@ mod circuit_breaker_tests {
             .await;
 
         // Subsequent call should be rejected
-        let result = circuit_breaker
-            .call(async { Ok::<i32, String>(42) })
-            .await;
+        let result = circuit_breaker.call(async { Ok::<i32, String>(42) }).await;
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), SongbirdError::CircuitBreakerOpen { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            SongbirdError::CircuitBreakerOpen { .. }
+        ));
     }
 
     #[tokio::test]
@@ -192,9 +187,7 @@ mod circuit_breaker_tests {
 
         let start = Instant::now();
         for i in 0..1000 {
-            let _ = circuit_breaker
-                .call(async { Ok::<i32, String>(i) })
-                .await;
+            let _ = circuit_breaker.call(async { Ok::<i32, String>(i) }).await;
         }
         let elapsed = start.elapsed();
 
@@ -211,7 +204,7 @@ mod retry_mechanism_tests {
     async fn test_retry_mechanism_creation() {
         let config = RetryConfig::default();
         let retry_mechanism = RetryMechanism::new(config);
-        
+
         // Basic creation test - if this compiles and doesn't panic, it's valid
         let result = retry_mechanism
             .retry(|| Box::pin(async { Ok::<i32, String>(42) }))
@@ -358,7 +351,7 @@ mod rate_limiter_tests {
     async fn test_rate_limiter_creation() {
         let config = RateLimitConfig::default();
         let rate_limiter = RateLimiter::new(config);
-        
+
         // Should allow requests initially
         assert!(rate_limiter.allow_request().await);
     }
@@ -406,22 +399,23 @@ mod rate_limiter_tests {
     #[tokio::test]
     async fn test_rate_limiter_token_refill() {
         let config = RateLimitConfig {
-            requests_per_second: 100,
-            burst_size: 1,
-            window_size: Duration::from_millis(100),
+            requests_per_second: 2,
+            burst_size: 2,
+            window_size: Duration::from_secs(1),
         };
         let rate_limiter = RateLimiter::new(config);
 
-        // Use the initial token
+        // Use up the initial tokens
+        assert!(rate_limiter.allow_request().await);
         assert!(rate_limiter.allow_request().await);
 
-        // Should be rejected immediately
+        // Should be rate limited now
         assert!(!rate_limiter.allow_request().await);
 
-        // Wait for token refill
-        sleep(Duration::from_millis(150)).await;
+        // Wait for tokens to refill (need more than 500ms for 2 requests/sec)
+        sleep(Duration::from_millis(600)).await;
 
-        // Should allow request again
+        // Should have tokens again
         assert!(rate_limiter.allow_request().await);
     }
 
@@ -459,9 +453,7 @@ mod rate_limiter_tests {
         let mut handles = vec![];
         for _ in 0..20 {
             let rl = rate_limiter.clone();
-            let handle = tokio::spawn(async move {
-                rl.allow_request().await
-            });
+            let handle = tokio::spawn(async move { rl.allow_request().await });
             handles.push(handle);
         }
 
@@ -489,7 +481,7 @@ mod robustness_manager_tests {
     async fn test_robustness_manager_creation() {
         let manager = RobustnessManager::new();
         let status = manager.get_status().await;
-        
+
         assert!(status.circuit_breaker_status.is_none());
         assert!(!status.retry_enabled);
         assert!(status.rate_limiter_tokens.is_none());
@@ -499,7 +491,7 @@ mod robustness_manager_tests {
     async fn test_robustness_manager_default() {
         let manager = RobustnessManager::default();
         let status = manager.get_status().await;
-        
+
         assert!(status.circuit_breaker_status.is_none());
         assert!(!status.retry_enabled);
         assert!(status.rate_limiter_tokens.is_none());
@@ -508,9 +500,8 @@ mod robustness_manager_tests {
     #[tokio::test]
     async fn test_robustness_manager_with_circuit_breaker() {
         let config = CircuitBreakerConfig::default();
-        let manager = RobustnessManager::new()
-            .with_circuit_breaker(config);
-        
+        let manager = RobustnessManager::new().with_circuit_breaker(config);
+
         let status = manager.get_status().await;
         assert!(status.circuit_breaker_status.is_some());
     }
@@ -518,9 +509,8 @@ mod robustness_manager_tests {
     #[tokio::test]
     async fn test_robustness_manager_with_retry() {
         let config = RetryConfig::default();
-        let manager = RobustnessManager::new()
-            .with_retry(config);
-        
+        let manager = RobustnessManager::new().with_retry(config);
+
         let status = manager.get_status().await;
         assert!(status.retry_enabled);
     }
@@ -528,9 +518,8 @@ mod robustness_manager_tests {
     #[tokio::test]
     async fn test_robustness_manager_with_rate_limiting() {
         let config = RateLimitConfig::default();
-        let manager = RobustnessManager::new()
-            .with_rate_limiting(config);
-        
+        let manager = RobustnessManager::new().with_rate_limiting(config);
+
         let status = manager.get_status().await;
         assert!(status.rate_limiter_tokens.is_some());
     }
@@ -540,12 +529,12 @@ mod robustness_manager_tests {
         let cb_config = CircuitBreakerConfig::default();
         let retry_config = RetryConfig::default();
         let rl_config = RateLimitConfig::default();
-        
+
         let manager = RobustnessManager::new()
             .with_circuit_breaker(cb_config)
             .with_retry(retry_config)
             .with_rate_limiting(rl_config);
-        
+
         let status = manager.get_status().await;
         assert!(status.circuit_breaker_status.is_some());
         assert!(status.retry_enabled);
@@ -555,11 +544,9 @@ mod robustness_manager_tests {
     #[tokio::test]
     async fn test_robustness_manager_execute_success() {
         let manager = RobustnessManager::new();
-        
-        let result = manager
-            .execute(async { Ok::<i32, String>(42) })
-            .await;
-        
+
+        let result = manager.execute(async { Ok::<i32, String>(42) }).await;
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 42);
     }
@@ -567,13 +554,10 @@ mod robustness_manager_tests {
     #[tokio::test]
     async fn test_robustness_manager_execute_with_circuit_breaker() {
         let cb_config = CircuitBreakerConfig::default();
-        let manager = RobustnessManager::new()
-            .with_circuit_breaker(cb_config);
-        
-        let result = manager
-            .execute(async { Ok::<i32, String>(100) })
-            .await;
-        
+        let manager = RobustnessManager::new().with_circuit_breaker(cb_config);
+
+        let result = manager.execute(async { Ok::<i32, String>(100) }).await;
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 100);
     }
@@ -582,18 +566,17 @@ mod robustness_manager_tests {
     #[ignore] // Flaky test - timing dependent on retry mechanisms
     async fn test_robustness_manager_execute_with_retry() {
         let retry_config = RetryConfig {
-            max_attempts: 3, // Increase attempts for more reliability
+            max_attempts: 3,                         // Increase attempts for more reliability
             initial_delay: Duration::from_millis(5), // Shorter delay
             max_delay: Duration::from_millis(100),
             backoff_multiplier: 1.5,
             jitter: false, // Disable jitter for predictable behavior
         };
-        let manager = RobustnessManager::new()
-            .with_retry(retry_config);
-        
+        let manager = RobustnessManager::new().with_retry(retry_config);
+
         let counter = Arc::new(AtomicU32::new(0));
         let c = counter.clone();
-        
+
         let result = manager
             .execute(async move {
                 let count = c.fetch_add(1, Ordering::SeqCst);
@@ -604,7 +587,7 @@ mod robustness_manager_tests {
                 }
             })
             .await;
-        
+
         // Allow for either success on retry or eventual failure
         if result.is_ok() {
             assert_eq!(result.unwrap(), 42);
@@ -622,19 +605,14 @@ mod robustness_manager_tests {
             burst_size: 1,
             window_size: Duration::from_secs(1),
         };
-        let manager = RobustnessManager::new()
-            .with_rate_limiting(rl_config);
-        
+        let manager = RobustnessManager::new().with_rate_limiting(rl_config);
+
         // First execution should succeed
-        let result1 = manager
-            .execute(async { Ok::<i32, String>(1) })
-            .await;
+        let result1 = manager.execute(async { Ok::<i32, String>(1) }).await;
         assert!(result1.is_ok());
-        
+
         // Second execution should be rate limited
-        let result2 = manager
-            .execute(async { Ok::<i32, String>(2) })
-            .await;
+        let result2 = manager.execute(async { Ok::<i32, String>(2) }).await;
         assert!(result2.is_err());
     }
 
@@ -654,20 +632,20 @@ mod robustness_manager_tests {
             burst_size: 10,
             window_size: Duration::from_secs(1),
         };
-        
+
         let manager = RobustnessManager::new()
             .with_circuit_breaker(cb_config)
             .with_retry(retry_config)
             .with_rate_limiting(rl_config);
-        
+
         // Test successful execution with all features enabled
         let result = manager
             .execute(async { Ok::<String, String>("Success".to_string()) })
             .await;
-        
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Success");
-        
+
         // Verify status shows all features are active
         let status = manager.get_status().await;
         assert!(status.circuit_breaker_status.is_some());
@@ -678,15 +656,13 @@ mod robustness_manager_tests {
     #[tokio::test]
     async fn test_robustness_manager_performance() {
         let manager = RobustnessManager::new();
-        
+
         let start = Instant::now();
         for i in 0..100 {
-            let _ = manager
-                .execute(async move { Ok::<i32, String>(i) })
-                .await;
+            let _ = manager.execute(async move { Ok::<i32, String>(i) }).await;
         }
         let elapsed = start.elapsed();
-        
+
         // Should complete quickly (less than 1 second for 100 executions)
         assert!(elapsed < Duration::from_secs(1));
     }
@@ -712,20 +688,20 @@ mod integration_tests {
             burst_size: 10,
             window_size: Duration::from_secs(1),
         };
-        
+
         let manager = RobustnessManager::new()
             .with_circuit_breaker(cb_config)
             .with_retry(retry_config)
             .with_rate_limiting(rl_config);
-        
+
         // Test successful execution with all features enabled
         let result = manager
             .execute(async { Ok::<String, String>("Success".to_string()) })
             .await;
-        
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Success");
-        
+
         // Verify status shows all features are active
         let status = manager.get_status().await;
         assert!(status.circuit_breaker_status.is_some());
@@ -739,7 +715,7 @@ mod integration_tests {
             .with_circuit_breaker(CircuitBreakerConfig::default())
             .with_retry(RetryConfig::default())
             .with_rate_limiting(RateLimitConfig::default());
-        
+
         // Test error scenario
         let error_result = manager
             .execute(async { Err::<i32, String>("Test error".to_string()) })
@@ -757,27 +733,26 @@ mod integration_tests {
                     requests_per_second: 50,
                     burst_size: 20,
                     window_size: Duration::from_secs(1),
-                })
+                }),
         );
-        
+
         // Spawn multiple concurrent operations
         let mut handles = vec![];
         for i in 0..10 {
             let mgr = manager.clone();
-            let handle = tokio::spawn(async move {
-                mgr.execute(async move { Ok::<i32, String>(i) }).await
-            });
+            let handle =
+                tokio::spawn(async move { mgr.execute(async move { Ok::<i32, String>(i) }).await });
             handles.push(handle);
         }
-        
+
         let results: Vec<_> = future::join_all(handles).await;
-        
+
         // Some operations should succeed
         let successful_count = results
             .iter()
             .filter(|r| r.as_ref().unwrap().is_ok())
             .count();
-        
+
         assert!(successful_count > 0);
     }
-} 
+}

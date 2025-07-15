@@ -29,37 +29,37 @@ pub struct EnvironmentConfig {
     pub metrics_port: u16,
     pub dashboard_port: u16,
     pub websocket_port: u16,
-    
+
     // Service Endpoints (no hardcoding!)
     pub beardog_endpoint: String,
     pub federation_endpoints: Vec<String>,
     pub stun_servers: Vec<String>,
-    
+
     // Timeout Configuration (all configurable)
     pub connection_timeout_secs: u64,
     pub request_timeout_secs: u64,
     pub health_check_timeout_secs: u64,
     pub discovery_timeout_secs: u64,
     pub session_timeout_secs: u64,
-    
+
     // File System Configuration (security critical)
     pub data_dir: String,
     pub config_dir: String,
     pub log_dir: String,
     pub cache_dir: String,
     pub runtime_dir: String,
-    
+
     // Security Configuration
     pub enable_encryption: bool,
     pub require_tls: bool,
     pub allowed_networks: Vec<String>,
     pub max_connections: u32,
-    
+
     // Performance Configuration
     pub max_memory_mb: u64,
     pub max_bandwidth_mbps: u64,
     pub worker_threads: usize,
-    
+
     // Monitoring Configuration
     pub metrics_interval_secs: u64,
     pub health_check_interval_secs: u64,
@@ -75,43 +75,60 @@ impl Default for EnvironmentConfig {
             // Secure network defaults (localhost-only by default)
             bind_address: env_or_default("SONGBIRD_BIND_ADDRESS", "127.0.0.1"),
             bind_port: env_or_parse("SONGBIRD_BIND_PORT", 8080),
-            discovery_ports: parse_port_list(&env_or_default("SONGBIRD_DISCOVERY_PORTS", "6112,6113,6114")),
-            gaming_port_range: parse_port_range(&env_or_default("SONGBIRD_GAMING_PORT_RANGE", "7000-8000")),
+            discovery_ports: parse_port_list(&env_or_default(
+                "SONGBIRD_DISCOVERY_PORTS",
+                "6112,6113,6114",
+            )),
+            gaming_port_range: parse_port_range(&env_or_default(
+                "SONGBIRD_GAMING_PORT_RANGE",
+                "7000-8000",
+            )),
             metrics_port: env_or_parse("SONGBIRD_METRICS_PORT", 9090),
             dashboard_port: env_or_parse("SONGBIRD_DASHBOARD_PORT", 3000),
             websocket_port: env_or_parse("SONGBIRD_WEBSOCKET_PORT", 8081),
-            
+
             // Service endpoints (all configurable)
-            beardog_endpoint: env_or_default("SONGBIRD_BEARDOG_ENDPOINT", "https://beardog.internal:8443"),
-            federation_endpoints: parse_endpoint_list(&env_or_default("SONGBIRD_FEDERATION_ENDPOINTS", "")),
-            stun_servers: parse_endpoint_list(&env_or_default("SONGBIRD_STUN_SERVERS", 
-                "stun.l.google.com:19302,stun1.l.google.com:19302,stun.stunprotocol.org:3478")),
-            
+            beardog_endpoint: env_or_default(
+                "SONGBIRD_BEARDOG_ENDPOINT",
+                "https://beardog.internal:8443",
+            ),
+            federation_endpoints: parse_endpoint_list(&env_or_default(
+                "SONGBIRD_FEDERATION_ENDPOINTS",
+                "",
+            )),
+            stun_servers: parse_endpoint_list(&env_or_default(
+                "SONGBIRD_STUN_SERVERS",
+                "stun.l.google.com:19302,stun1.l.google.com:19302,stun.stunprotocol.org:3478",
+            )),
+
             // Configurable timeouts (network conditions vary)
             connection_timeout_secs: env_or_parse("SONGBIRD_CONNECTION_TIMEOUT", 30),
             request_timeout_secs: env_or_parse("SONGBIRD_REQUEST_TIMEOUT", 60),
             health_check_timeout_secs: env_or_parse("SONGBIRD_HEALTH_CHECK_TIMEOUT", 10),
             discovery_timeout_secs: env_or_parse("SONGBIRD_DISCOVERY_TIMEOUT", 5),
             session_timeout_secs: env_or_parse("SONGBIRD_SESSION_TIMEOUT", 3600),
-            
+
             // File system paths (platform/deployment specific)
             data_dir: env_or_default("SONGBIRD_DATA_DIR", &default_data_dir()),
             config_dir: env_or_default("SONGBIRD_CONFIG_DIR", &default_config_dir()),
             log_dir: env_or_default("SONGBIRD_LOG_DIR", &default_log_dir()),
             cache_dir: env_or_default("SONGBIRD_CACHE_DIR", &default_cache_dir()),
             runtime_dir: env_or_default("SONGBIRD_RUNTIME_DIR", &default_runtime_dir()),
-            
+
             // Security configuration
             enable_encryption: env_or_parse("SONGBIRD_ENABLE_ENCRYPTION", true),
             require_tls: env_or_parse("SONGBIRD_REQUIRE_TLS", false),
-            allowed_networks: parse_network_list(&env_or_default("SONGBIRD_ALLOWED_NETWORKS", "127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16")),
+            allowed_networks: parse_network_list(&env_or_default(
+                "SONGBIRD_ALLOWED_NETWORKS",
+                "127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+            )),
             max_connections: env_or_parse("SONGBIRD_MAX_CONNECTIONS", 1000),
-            
+
             // Performance configuration (hardware specific)
             max_memory_mb: env_or_parse("SONGBIRD_MAX_MEMORY_MB", 2048),
             max_bandwidth_mbps: env_or_parse("SONGBIRD_MAX_BANDWIDTH_MBPS", 1000),
             worker_threads: env_or_parse("SONGBIRD_WORKER_THREADS", num_cpus::get()),
-            
+
             // Monitoring configuration
             metrics_interval_secs: env_or_parse("SONGBIRD_METRICS_INTERVAL", 60),
             health_check_interval_secs: env_or_parse("SONGBIRD_HEALTH_CHECK_INTERVAL", 30),
@@ -174,23 +191,25 @@ impl EnvironmentConfig {
     /// Create configuration with complete environment variable support
     pub fn from_env() -> Result<Self> {
         let config = Self::default();
-        
+
         // Validate critical security settings
         config.validate_security_settings()?;
-        
+
         Ok(config)
     }
-    
+
     /// Validate security-critical configuration
     fn validate_security_settings(&self) -> Result<()> {
         // Validate bind address is not dangerous in production
-        if std::env::var("SONGBIRD_ENV").unwrap_or_default() == "production" && self.bind_address == "0.0.0.0" {
+        if std::env::var("SONGBIRD_ENV").unwrap_or_default() == "production"
+            && self.bind_address == "0.0.0.0"
+        {
             return Err(SongbirdError::Config {
                 field: Some("bind_address".to_string()),
                 message: "Production environments should not bind to 0.0.0.0 without explicit configuration".to_string(),
             });
         }
-        
+
         // Validate port ranges
         if self.gaming_port_range.0 >= self.gaming_port_range.1 {
             return Err(SongbirdError::Config {
@@ -198,7 +217,7 @@ impl EnvironmentConfig {
                 message: "Invalid gaming port range".to_string(),
             });
         }
-        
+
         // Validate directories exist or can be created
         for (name, path) in [
             ("data_dir", &self.data_dir),
@@ -208,29 +227,29 @@ impl EnvironmentConfig {
             if let Err(e) = std::fs::create_dir_all(path) {
                 return Err(SongbirdError::Config {
                     field: Some(name.to_string()),
-                    message: format!("Cannot create directory {}: {}", path, e),
+                    message: format!("Cannot create directory {path}: {e}"),
                 });
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Get full socket address for binding
     pub fn socket_addr(&self) -> Result<std::net::SocketAddr> {
         format!("{}:{}", self.bind_address, self.bind_port)
             .parse()
             .map_err(|e| SongbirdError::Config {
                 field: Some("socket_addr".to_string()),
-                message: format!("Invalid socket address: {}", e),
+                message: format!("Invalid socket address: {e}"),
             })
     }
-    
+
     /// Get connection timeout as Duration
     pub fn connection_timeout(&self) -> std::time::Duration {
         std::time::Duration::from_secs(self.connection_timeout_secs)
     }
-    
+
     /// Get request timeout as Duration  
     pub fn request_timeout(&self) -> std::time::Duration {
         std::time::Duration::from_secs(self.request_timeout_secs)
@@ -251,10 +270,10 @@ fn env_or_parse<T: std::str::FromStr>(key: &str, default: T) -> T {
 }
 
 fn parse_port_list(s: &str) -> Vec<u16> {
-    if s.is_empty() { return vec![]; }
-    s.split(',')
-        .filter_map(|p| p.trim().parse().ok())
-        .collect()
+    if s.is_empty() {
+        return vec![];
+    }
+    s.split(',').filter_map(|p| p.trim().parse().ok()).collect()
 }
 
 fn parse_port_range(s: &str) -> (u16, u16) {
@@ -269,7 +288,9 @@ fn parse_port_range(s: &str) -> (u16, u16) {
 }
 
 fn parse_endpoint_list(s: &str) -> Vec<String> {
-    if s.is_empty() { return vec![]; }
+    if s.is_empty() {
+        return vec![];
+    }
     s.split(',')
         .map(|e| e.trim().to_string())
         .filter(|e| !e.is_empty())
@@ -277,7 +298,9 @@ fn parse_endpoint_list(s: &str) -> Vec<String> {
 }
 
 fn parse_network_list(s: &str) -> Vec<String> {
-    if s.is_empty() { return vec![]; }
+    if s.is_empty() {
+        return vec![];
+    }
     s.split(',')
         .map(|n| n.trim().to_string())
         .filter(|n| !n.is_empty())
@@ -287,7 +310,7 @@ fn parse_network_list(s: &str) -> Vec<String> {
 // Platform-specific default paths (no hardcoding!)
 fn default_data_dir() -> String {
     if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.local/share/songbird", home)
+        format!("{home}/.local/share/songbird")
     } else {
         "/var/lib/songbird".to_string()
     }
@@ -295,7 +318,7 @@ fn default_data_dir() -> String {
 
 fn default_config_dir() -> String {
     if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.config/songbird", home)
+        format!("{home}/.config/songbird")
     } else {
         "/etc/songbird".to_string()
     }
@@ -303,7 +326,7 @@ fn default_config_dir() -> String {
 
 fn default_log_dir() -> String {
     if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.local/share/songbird/logs", home)
+        format!("{home}/.local/share/songbird/logs")
     } else {
         "/var/log/songbird".to_string()
     }
@@ -311,7 +334,7 @@ fn default_log_dir() -> String {
 
 fn default_cache_dir() -> String {
     if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.cache/songbird", home)
+        format!("{home}/.cache/songbird")
     } else {
         "/var/cache/songbird".to_string()
     }
@@ -319,9 +342,9 @@ fn default_cache_dir() -> String {
 
 fn default_runtime_dir() -> String {
     if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-        format!("{}/songbird", runtime_dir)
+        format!("{runtime_dir}/songbird")
     } else if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.local/run/songbird", home)
+        format!("{home}/.local/run/songbird")
     } else {
         "/tmp/songbird".to_string()
     }
@@ -495,7 +518,7 @@ impl EnvValidator {
                     if !value.starts_with("http://") && !value.starts_with("https://") {
                         return Err(SongbirdError::Config {
                             field: Some(var_name.to_string()),
-                            message: format!("{} must be a valid URL", var_name),
+                            message: format!("{var_name} must be a valid URL"),
                         });
                     }
                 }
@@ -503,7 +526,7 @@ impl EnvValidator {
                     if value.parse::<u16>().is_err() {
                         return Err(SongbirdError::Config {
                             field: Some(var_name.to_string()),
-                            message: format!("{} must be a valid port number", var_name),
+                            message: format!("{var_name} must be a valid port number"),
                         });
                     }
                 }
@@ -511,7 +534,7 @@ impl EnvValidator {
                     if value.parse::<std::net::IpAddr>().is_err() {
                         return Err(SongbirdError::Config {
                             field: Some(var_name.to_string()),
-                            message: format!("{} must be a valid IP address", var_name),
+                            message: format!("{var_name} must be a valid IP address"),
                         });
                     }
                 }
@@ -597,9 +620,9 @@ pub fn get_default_bind_address() -> String {
         _ => {
             tracing::debug!("Unknown or unset environment, using default localhost binding");
             constants::network::DEFAULT_BIND_ADDRESS.to_string()
+        }
     }
 }
-        }
 
 /// Check if we're running in a container environment
 pub fn is_container_environment() -> bool {

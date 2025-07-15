@@ -51,7 +51,7 @@ pub async fn handle_config(action: ConfigAction) -> Result<()> {
         ConfigAction::Export { output, format } => {
             println!("{}", "📤 Export Configuration".bright_cyan().bold());
             let output_file = output.unwrap_or_else(|| "songbird-config.toml".to_string());
-            println!("Exporting to: {} (format: {:?})", output_file, format);
+            println!("Exporting to: {output_file} (format: {format:?})");
             // Export logic would go here
         }
     }

@@ -47,17 +47,17 @@ impl<T> FileConfigProvider<T> {
                 .await
                 .map_err(|e| SongbirdError::Config {
                     field: Some("config_file_read".to_string()),
-                    message: format!("Failed to read configuration file: {}", e),
+                    message: format!("Failed to read configuration file: {e}"),
                 })?;
         let config: T = if self.format == ConfigFormat::Toml {
             toml::from_str(&contents).map_err(|e| SongbirdError::Config {
                 field: Some("toml_parsing".to_string()),
-                message: format!("Failed to parse TOML configuration: {}", e),
+                message: format!("Failed to parse TOML configuration: {e}"),
             })?
         } else {
             serde_json::from_str(&contents).map_err(|e| SongbirdError::Config {
                 field: Some("json_parsing".to_string()),
-                message: format!("Failed to parse JSON configuration: {}", e),
+                message: format!("Failed to parse JSON configuration: {e}"),
             })?
         };
         Ok(config)
@@ -85,17 +85,17 @@ where
         let config = match self.path.extension().and_then(|ext| ext.to_str()) {
             Some("toml") => toml::from_str(&contents).map_err(|e| SongbirdError::Config {
                 field: Some("toml_parsing".to_string()),
-                message: format!("Failed to parse TOML config: {}", e),
+                message: format!("Failed to parse TOML config: {e}"),
             })?,
             Some("yaml") | Some("yml") => {
                 serde_yaml::from_str(&contents).map_err(|e| SongbirdError::Config {
                     field: Some("yaml_parsing".to_string()),
-                    message: format!("Failed to parse YAML config: {}", e),
+                    message: format!("Failed to parse YAML config: {e}"),
                 })?
             }
             Some("json") => serde_json::from_str(&contents).map_err(|e| SongbirdError::Config {
                 field: Some("json_parsing".to_string()),
-                message: format!("Failed to parse JSON config: {}", e),
+                message: format!("Failed to parse JSON config: {e}"),
             })?,
             _ => {
                 return Err(SongbirdError::Config {

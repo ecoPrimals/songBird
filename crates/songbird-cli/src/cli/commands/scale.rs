@@ -50,12 +50,11 @@ fn parse_gaming_scale(s: &str) -> Result<GamingScale> {
         "lan-party" | "lan" => Ok(GamingScale::LanParty),
         "auto" => Ok(GamingScale::Auto),
         _ => Err(songbird_errors::SongbirdError::Config {
+            message: format!("Invalid gaming scale '{}'. Valid options: home-gaming, lan-party, auto", s),
             field: Some("gaming_scale".to_string()),
-            message: format!(
-                "Invalid gaming scale '{}'. Valid options: home-gaming, lan-party, auto",
-                s
-            ),
-        }),
+            context: Some("Gaming scale validation".to_string()),
+            suggestion: Some("Use 'home-gaming', 'lan-party', or 'auto' for gaming scale".to_string()),
+        })
     }
 }
 
@@ -70,7 +69,7 @@ async fn show_current_scale() -> Result<()> {
 
     println!(
         "Current Gaming Scale: {}",
-        format!("{:?}", current_scale).bright_green()
+        format!("{current_scale}").bright_green()
     );
     println!("Description: {}", current_scale.description());
 
@@ -86,7 +85,7 @@ async fn show_current_scale() -> Result<()> {
 }
 
 async fn handle_set_scale(scale: GamingScale, _force: bool) -> Result<()> {
-    println!("🎮 Setting gaming scale to: {:?}", scale);
+    println!("🎮 Setting gaming scale to: {scale:?}");
     println!("Description: {}", scale.description());
 
     // Show what this scale supports

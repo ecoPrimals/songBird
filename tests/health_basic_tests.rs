@@ -11,12 +11,12 @@ async fn test_health_status_enum() {
         HealthStatus::Degraded,
         HealthStatus::Unhealthy,
     ];
-    
+
     for status in statuses {
         match status {
-            HealthStatus::Healthy => assert_eq!(format!("{:?}", status), "Healthy"),
-            HealthStatus::Degraded => assert_eq!(format!("{:?}", status), "Degraded"),
-            HealthStatus::Unhealthy => assert_eq!(format!("{:?}", status), "Unhealthy"),
+            HealthStatus::Healthy => assert_eq!(format!("{status:?}"), "Healthy"),
+            HealthStatus::Degraded => assert_eq!(format!("{status:?}"), "Degraded"),
+            HealthStatus::Unhealthy => assert_eq!(format!("{status:?}"), "Unhealthy"),
         }
     }
 }
@@ -30,7 +30,7 @@ async fn test_health_check_result_creation() {
         message: "Service is running".to_string(),
         response_time_ms: 150,
     };
-    
+
     assert_eq!(result.name, "test-service");
     assert_eq!(result.status, HealthStatus::Healthy);
     assert_eq!(result.message, "Service is running");
@@ -48,15 +48,15 @@ async fn test_health_state_enum() {
         HealthState::Unknown,
         HealthState::Maintenance,
     ];
-    
+
     for state in states {
         match state {
-            HealthState::Healthy => assert_eq!(format!("{:?}", state), "Healthy"),
-            HealthState::Degraded => assert_eq!(format!("{:?}", state), "Degraded"),
-            HealthState::Unhealthy => assert_eq!(format!("{:?}", state), "Unhealthy"),
-            HealthState::Critical => assert_eq!(format!("{:?}", state), "Critical"),
-            HealthState::Unknown => assert_eq!(format!("{:?}", state), "Unknown"),
-            HealthState::Maintenance => assert_eq!(format!("{:?}", state), "Maintenance"),
+            HealthState::Healthy => assert_eq!(format!("{state:?}"), "Healthy"),
+            HealthState::Degraded => assert_eq!(format!("{state:?}"), "Degraded"),
+            HealthState::Unhealthy => assert_eq!(format!("{state:?}"), "Unhealthy"),
+            HealthState::Critical => assert_eq!(format!("{state:?}"), "Critical"),
+            HealthState::Unknown => assert_eq!(format!("{state:?}"), "Unknown"),
+            HealthState::Maintenance => assert_eq!(format!("{state:?}"), "Maintenance"),
         }
     }
 }
@@ -64,15 +64,15 @@ async fn test_health_state_enum() {
 /// Test HealthChecker creation
 #[test]
 async fn test_health_checker_creation() {
-    let checker = HealthChecker::new();
-    assert!(true); // Checker created successfully
+    let _checker = HealthChecker::new();
+    // Checker created successfully - no assertion needed
 }
 
 /// Test HealthChecker default
 #[test]
 async fn test_health_checker_default() {
-    let checker = HealthChecker::default();
-    assert!(true); // Default checker created successfully
+    let _checker = HealthChecker::default();
+    // Default checker created successfully - no assertion needed
 }
 
 /// Test HealthChecker check_all with no checks
@@ -92,7 +92,7 @@ async fn test_health_check_result_cloning() {
         message: "OK".to_string(),
         response_time_ms: 100,
     };
-    
+
     let cloned = result.clone();
     assert_eq!(cloned.name, result.name);
     assert_eq!(cloned.status, result.status);
@@ -106,7 +106,7 @@ async fn test_health_status_equality() {
     let status1 = HealthStatus::Healthy;
     let status2 = HealthStatus::Healthy;
     let status3 = HealthStatus::Degraded;
-    
+
     assert_eq!(status1, status2);
     assert_ne!(status1, status3);
     assert_ne!(status2, status3);
@@ -116,7 +116,7 @@ async fn test_health_status_equality() {
 #[test]
 async fn test_health_check_result_response_times() {
     let response_times = vec![0, 50, 100, 500, 1000, 5000];
-    
+
     for time in response_times {
         let result = HealthCheckResult {
             name: "test-service".to_string(),
@@ -124,7 +124,7 @@ async fn test_health_check_result_response_times() {
             message: "OK".to_string(),
             response_time_ms: time,
         };
-        
+
         assert_eq!(result.response_time_ms, time);
     }
 }
@@ -152,10 +152,10 @@ async fn test_health_check_result_statuses() {
             response_time_ms: 0,
         },
     ];
-    
+
     for result in results {
-        assert!(result.name.len() > 0);
-        assert!(result.message.len() > 0);
-        assert!(result.response_time_ms >= 0);
+        assert!(!result.name.is_empty());
+        assert!(!result.message.is_empty());
+        assert!(result.response_time_ms < 10000); // Should be under 10 seconds
     }
-} 
+}

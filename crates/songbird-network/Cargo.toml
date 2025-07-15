@@ -4,7 +4,11 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
-description = "Gaming network bridge for Songbird"
+description = "Network protocols and communication for Songbird"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "../../README.md"
+keywords = ["networking", "protocols", "gaming", "p2p", "distributed"]
+categories = ["network-programming", "game-engines", "web-programming"]
 
 [dependencies]
 songbird-errors = { path = "../songbird-errors" }
