@@ -23,21 +23,17 @@ pub mod resources;
 // Network operations
 pub mod network;
 
-// Federation management (placeholder for future expansion)
-pub mod federation {
-    //! Federation-specific logic could go here
-    //! For now, it's handled in the main discovery service
-}
-
-// Trust verification (placeholder for future expansion)
-pub mod trust {
-    //! Trust verification logic could go here
-}
-
-// Certificate validation (placeholder for future expansion)
-pub mod certificate {
-    //! Certificate validation logic could go here
-}
+// DISCOVERY ARCHITECTURE NOTE:
+// =========================
+// Discovery services are now handled through external API integrations:
+// - Federation discovery: Managed by crates/songbird-federation
+// - Trust verification: Handled by crates/songbird-security via BearDog integration
+// - Certificate validation: Managed by crates/songbird-security
+// - Service discovery: Supported via songbird-discovery crate with multiple backends
+//
+// Local discovery modules focus on resource detection and network topology mapping.
+// All security-related discovery operations are delegated to the appropriate
+// security and federation modules with proper API boundaries.
 
 // Main discovery service implementation
 pub mod songbird_discovery;
@@ -122,7 +118,7 @@ impl ServiceDiscovery for StaticServiceDiscovery {
             // Update health status in metadata
             service
                 .metadata
-                .insert("health_status".to_string(), format!("{:?}", health).into());
+                .insert("health_status".to_string(), format!("{health:?}").into());
         }
         Ok(())
     }

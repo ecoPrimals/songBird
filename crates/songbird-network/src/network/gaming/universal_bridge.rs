@@ -89,6 +89,8 @@ impl UniversalGameBridge {
             self.translators
                 .get(&protocol_class)
                 .ok_or_else(|| SongbirdError::Protocol {
+                    version: None,
+                    suggestion: Some("Check protocol compatibility and version".to_string()),
                     message: format!("No translator available for protocol: {:?}", protocol_class),
                     protocol: "universal_bridge".to_string(),
                 })?;
@@ -168,6 +170,8 @@ impl UniversalGameBridge {
         let session = sessions
             .get(session_id)
             .ok_or_else(|| SongbirdError::Protocol {
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
                 message: format!("Session not found: {}", session_id),
                 protocol: "universal_bridge".to_string(),
             })?;
@@ -176,6 +180,8 @@ impl UniversalGameBridge {
             .translators
             .get(&session.protocol_class)
             .ok_or_else(|| SongbirdError::Protocol {
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
                 message: format!("No translator for protocol: {:?}", session.protocol_class),
                 protocol: "universal_bridge".to_string(),
             })?;
@@ -193,6 +199,8 @@ impl UniversalGameBridge {
         let session = sessions
             .get(session_id)
             .ok_or_else(|| SongbirdError::Protocol {
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
                 message: format!("Session not found: {}", session_id),
                 protocol: "universal_bridge".to_string(),
             })?;
@@ -201,6 +209,8 @@ impl UniversalGameBridge {
             .translators
             .get(&session.protocol_class)
             .ok_or_else(|| SongbirdError::Protocol {
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
                 message: format!("No translator for protocol: {:?}", session.protocol_class),
                 protocol: "universal_bridge".to_string(),
             })?;
@@ -325,6 +335,8 @@ impl UniversalGameBridge {
             .values()
             .find(|s| s.id == bridge_id)
             .ok_or_else(|| SongbirdError::Protocol {
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
                 message: format!("Bridge not found: {}", bridge_id),
                 protocol: "universal_bridge".to_string(),
             })?;
@@ -387,6 +399,8 @@ impl UniversalGameBridge {
             tracing::info!("✅ Bridge stopped: {}", bridge_id);
         } else {
             return Err(SongbirdError::Protocol {
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
                 message: format!("Bridge not found: {}", bridge_id),
                 protocol: "universal_bridge".to_string(),
             });

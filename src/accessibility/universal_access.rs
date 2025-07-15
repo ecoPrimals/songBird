@@ -239,27 +239,19 @@ impl UniversalAccessManager {
                     task, task.to_uppercase())
             }
             InterfaceMode::FamilyMode => {
-                format!(
-                    "👨‍👩‍👧‍👦 To {}, click the {} button. It's safe and family-friendly.",
-                    task, task
-                )
+                format!("👨‍👩‍👧‍👦 To {task}, click the {task} button. It's safe and family-friendly.")
             }
             InterfaceMode::StandardMode => {
-                format!(
-                    "To {}, use the {} command or click the {} button.",
-                    task, task, task
-                )
+                format!("To {task}, use the {task} command or click the {task} button.")
             }
             InterfaceMode::PowerUserMode => {
                 format!(
-                    "Execute {}: Use CLI command `songbird {}` or API endpoint /api/{}",
-                    task, task, task
+                    "Execute {task}: Use CLI command `songbird {task}` or API endpoint /api/{task}"
                 )
             }
             InterfaceMode::ExpertMode => {
                 format!(
-                    "Advanced {}: Multiple options available - CLI, API, direct configuration",
-                    task
+                    "Advanced {task}: Multiple options available - CLI, API, direct configuration"
                 )
             }
         }
@@ -327,7 +319,7 @@ impl UniversalAccessManager {
                     _ => Ok("Setup complete! Everything is working and secure.".to_string()),
                 }
             }
-            _ => Ok(format!("Quick setup completed for {}", setup_type)),
+            _ => Ok(format!("Quick setup completed for {setup_type}")),
         }
     }
 
@@ -348,8 +340,7 @@ impl UniversalAccessManager {
             }
             _ => {
                 format!(
-                    "Issue detected: {}. Check the troubleshooting guide for solutions.",
-                    error_context
+                    "Issue detected: {error_context}. Check the troubleshooting guide for solutions."
                 )
             }
         };
@@ -436,7 +427,7 @@ impl UniversalHelpSystem {
             .map(|s| s.as_str())
             .unwrap_or("Use the interface or check documentation.");
 
-        format!("{}\n\nHow to use: {}", context_info, skill_guide)
+        format!("{context_info}\n\nHow to use: {skill_guide}")
     }
 }
 
@@ -461,15 +452,12 @@ pub mod convenience {
         let mut access_manager = UniversalAccessManager::new();
         access_manager.interface_mode = InterfaceMode::FamilyMode;
 
-        println!(
-            "👨‍👩‍👧‍👦 Welcome, {}! SongBird is now family-friendly and secure.",
-            family_name
-        );
+        println!("👨‍👩‍👧‍👦 Welcome, {family_name}! SongBird is now family-friendly and secure.");
         println!("✅ All connections are encrypted and safe");
         println!("✅ Scammer protection is active");
         println!("✅ Only trusted family devices can connect");
 
-        Ok(format!("Family mode ready for {}!", family_name))
+        Ok(format!("Family mode ready for {family_name}!"))
     }
 
     /// Emergency "everything is broken" recovery

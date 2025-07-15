@@ -23,6 +23,8 @@ pub struct RequestContext {
 }
 
 impl RequestContext {
+    /// Create a new distributed trace context
+    #[must_use]
     pub fn new(service_name: String, operation_name: String) -> Self {
         Self {
             trace_id: uuid::Uuid::new_v4().to_string(),
@@ -37,6 +39,8 @@ impl RequestContext {
         }
     }
 
+    /// Create a child span from this context
+    #[must_use]
     pub fn child_span(&self, operation: &str) -> Self {
         Self {
             trace_id: self.trace_id.clone(),
@@ -51,6 +55,8 @@ impl RequestContext {
         }
     }
 
+    /// Add baggage (cross-cutting concern data)
+    #[must_use]
     pub fn with_baggage(mut self, key: &str, value: &str) -> Self {
         self.baggage.insert(key.to_string(), value.to_string());
         self
@@ -198,6 +204,8 @@ pub struct DefaultObservability {
 }
 
 impl DefaultObservability {
+    /// Create a new metric collector
+    #[must_use]
     pub fn new(service_name: String) -> Self {
         Self {
             service_name,

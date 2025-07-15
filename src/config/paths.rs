@@ -1,14 +1,15 @@
 //! Platform-Agnostic Paths Module
 //!
-//! Provides OS-appropriate default paths without hardcoding platform-specific directories
-//! Supports configuration override via environment variables
+//! Provides OS-appropriate paths through toadstool and biomeOS substrate
+//! instead of direct platform-specific operations
 
 use crate::errors::{Result, SongbirdError};
+use crate::substrate::{OSSubstrate, PathRequest, PathRequirements, PathType};
 use serde::{Deserialize, Serialize};
-use std::env;
 use std::path::PathBuf;
+use tracing::{debug, warn};
 
-/// Platform-agnostic path configuration
+/// Platform-agnostic path configuration using OS substrate
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathConfig {
     /// Data directory for persistent storage
@@ -42,18 +43,64 @@ pub struct ServiceDataDirs {
 
 impl Default for PathConfig {
     fn default() -> Self {
-        Self::new()
+        Self::new_fallback()
     }
 }
 
 impl PathConfig {
-    /// Create new path configuration with OS-appropriate defaults
-    pub fn new() -> Self {
-        let base_data_dir = Self::get_default_data_dir();
-        let base_config_dir = Self::get_default_config_dir();
-        let base_log_dir = Self::get_default_log_dir();
-        let base_cache_dir = Self::get_default_cache_dir();
-        let base_runtime_dir = Self::get_default_runtime_dir();
+    /// Create new path configuration using OS substrate
+    pub async fn new() -> Result<Self> {
+        let substrate = crate::substrate::get_substrate().await;
+
+        debug!("🌍 Requesting paths from OS substrate (toadstool/biomeOS)");
+
+        // Request paths from substrate
+        let data_dir = substrate.get_data_dir("songbird").await?;
+        let config_dir = substrate.get_config_dir("songbird").await?;
+        let log_dir = substrate.get_log_dir("songbird").await?;
+        let cache_dir = substrate
+            .get_path(PathRequest {
+                path_type: PathType::Cache,
+                service_name: "songbird".to_string(),
+                requirements: PathRequirements::default(),
+            })
+            .await?;
+        let runtime_dir = substrate
+            .get_path(PathRequest {
+                path_type: PathType::Runtime,
+                service_name: "songbird".to_string(),
+                requirements: PathRequirements::default(),
+            })
+            .await?;
+
+        // Request service-specific directories
+        let service_data_dirs = ServiceDataDirs {
+            orchestrator: substrate.get_data_dir("orchestrator").await?,
+            federation: substrate.get_data_dir("federation").await?,
+            metrics: substrate.get_data_dir("metrics").await?,
+            discovery: substrate.get_data_dir("discovery").await?,
+            registry: substrate.get_data_dir("registry").await?,
+        };
+
+        Ok(Self {
+            data_dir,
+            config_dir,
+            log_dir,
+            cache_dir,
+            runtime_dir,
+            service_data_dirs,
+        })
+    }
+
+    /// Create fallback path configuration when substrate is unavailable
+    pub fn new_fallback() -> Self {
+        warn!("🔄 Using fallback path configuration (substrate unavailable)");
+
+        let base_data_dir = Self::get_fallback_data_dir();
+        let base_config_dir = Self::get_fallback_config_dir();
+        let base_log_dir = Self::get_fallback_log_dir();
+        let base_cache_dir = Self::get_fallback_cache_dir();
+        let base_runtime_dir = Self::get_fallback_runtime_dir();
 
         Self {
             data_dir: base_data_dir.clone(),
@@ -73,7 +120,7 @@ impl PathConfig {
 
     /// Create development configuration (uses local directories)
     pub fn development() -> Self {
-        let current_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         let dev_dir = current_dir.join(".songbird");
 
         Self {
@@ -92,238 +139,138 @@ impl PathConfig {
         }
     }
 
-    /// Create production configuration (uses system directories)
-    pub fn production() -> Self {
-        Self::new()
+    /// Create production configuration using substrate
+    pub async fn production() -> Result<Self> {
+        Self::new().await
     }
 
-    /// Get OS-appropriate default data directory
-    fn get_default_data_dir() -> PathBuf {
+    /// Get fallback data directory when substrate is unavailable
+    fn get_fallback_data_dir() -> PathBuf {
         // Check environment variable first
-        if let Ok(data_dir) = env::var("SONGBIRD_DATA_DIR") {
+        if let Ok(data_dir) = std::env::var("SONGBIRD_DATA_DIR") {
             return PathBuf::from(data_dir);
         }
 
-        match std::env::consts::OS {
-            "windows" => dirs::data_local_dir()
-                .or_else(dirs::data_dir)
-                .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-                .join("Songbird"),
-            "macos" => {
-                if Self::is_system_install() {
-                    PathBuf::from("/usr/local/var/songbird")
-                } else {
-                    dirs::data_dir()
-                        .unwrap_or_else(|| PathBuf::from("/usr/local/var"))
-                        .join("Songbird")
-                }
-            }
-            _ => {
-                if Self::is_system_install() {
-                    PathBuf::from("/var/lib/songbird")
-                } else {
-                    dirs::data_local_dir()
-                        .unwrap_or_else(|| PathBuf::from("~/.local/share"))
-                        .join("songbird")
-                }
-            }
-        }
+        // Use constants instead of direct platform detection
+        PathBuf::from(crate::config::constants::paths::DEFAULT_DATA_DIR)
     }
 
-    /// Get OS-appropriate default configuration directory
-    fn get_default_config_dir() -> PathBuf {
-        if let Ok(config_dir) = env::var("SONGBIRD_CONFIG_DIR") {
+    /// Get fallback config directory when substrate is unavailable
+    fn get_fallback_config_dir() -> PathBuf {
+        if let Ok(config_dir) = std::env::var("SONGBIRD_CONFIG_DIR") {
             return PathBuf::from(config_dir);
         }
 
-        match std::env::consts::OS {
-            "windows" => dirs::config_dir()
-                .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-                .join("Songbird"),
-            "macos" => {
-                if Self::is_system_install() {
-                    PathBuf::from("/usr/local/etc/songbird")
-                } else {
-                    dirs::config_dir()
-                        .unwrap_or_else(|| PathBuf::from("/usr/local/etc"))
-                        .join("Songbird")
-                }
-            }
-            _ => {
-                if Self::is_system_install() {
-                    PathBuf::from("/etc/songbird")
-                } else {
-                    dirs::config_dir()
-                        .unwrap_or_else(|| PathBuf::from("~/.config"))
-                        .join("songbird")
-                }
-            }
-        }
+        PathBuf::from(crate::config::constants::paths::DEFAULT_CONFIG_DIR)
     }
 
-    /// Get OS-appropriate default log directory
-    fn get_default_log_dir() -> PathBuf {
-        if let Ok(log_dir) = env::var("SONGBIRD_LOG_DIR") {
+    /// Get fallback log directory when substrate is unavailable
+    fn get_fallback_log_dir() -> PathBuf {
+        if let Ok(log_dir) = std::env::var("SONGBIRD_LOG_DIR") {
             return PathBuf::from(log_dir);
         }
 
-        match std::env::consts::OS {
-            "windows" => dirs::data_local_dir()
-                .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-                .join("Songbird")
-                .join("Logs"),
-            "macos" => {
-                if Self::is_system_install() {
-                    PathBuf::from("/usr/local/var/log/songbird")
-                } else {
-                    dirs::data_dir()
-                        .unwrap_or_else(|| PathBuf::from("/usr/local/var"))
-                        .join("Songbird")
-                        .join("Logs")
-                }
-            }
-            _ => {
-                if Self::is_system_install() {
-                    PathBuf::from("/var/log/songbird")
-                } else {
-                    dirs::data_local_dir()
-                        .unwrap_or_else(|| PathBuf::from("~/.local/share"))
-                        .join("songbird")
-                        .join("logs")
-                }
-            }
-        }
+        PathBuf::from(crate::config::constants::paths::DEFAULT_LOG_DIR)
     }
 
-    /// Get OS-appropriate default cache directory
-    fn get_default_cache_dir() -> PathBuf {
-        if let Ok(cache_dir) = env::var("SONGBIRD_CACHE_DIR") {
+    /// Get fallback cache directory when substrate is unavailable
+    fn get_fallback_cache_dir() -> PathBuf {
+        if let Ok(cache_dir) = std::env::var("SONGBIRD_CACHE_DIR") {
             return PathBuf::from(cache_dir);
         }
 
-        match std::env::consts::OS {
-            "windows" => dirs::cache_dir()
-                .unwrap_or_else(|| PathBuf::from(r"C:\Users\Public\AppData\Local"))
-                .join("Songbird"),
-            "macos" => dirs::cache_dir()
-                .unwrap_or_else(|| PathBuf::from("/var/cache"))
-                .join("Songbird"),
-            _ => dirs::cache_dir()
-                .unwrap_or_else(|| PathBuf::from("/tmp"))
-                .join("songbird"),
-        }
+        PathBuf::from(crate::config::constants::paths::DEFAULT_CACHE_DIR)
     }
 
-    /// Get OS-appropriate default runtime directory
-    fn get_default_runtime_dir() -> PathBuf {
-        if let Ok(runtime_dir) = env::var("SONGBIRD_RUNTIME_DIR") {
+    /// Get fallback runtime directory when substrate is unavailable
+    fn get_fallback_runtime_dir() -> PathBuf {
+        if let Ok(runtime_dir) = std::env::var("SONGBIRD_RUNTIME_DIR") {
             return PathBuf::from(runtime_dir);
         }
 
-        match std::env::consts::OS {
-            "windows" => dirs::data_local_dir()
-                .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-                .join("Songbird")
-                .join("Runtime"),
-            "macos" => {
-                if Self::is_system_install() {
-                    PathBuf::from("/usr/local/var/run/songbird")
-                } else {
-                    dirs::runtime_dir()
-                        .unwrap_or_else(|| PathBuf::from("/tmp"))
-                        .join("songbird")
-                }
-            }
-            _ => {
-                if Self::is_system_install() {
-                    PathBuf::from("/run/songbird")
-                } else {
-                    dirs::runtime_dir()
-                        .unwrap_or_else(|| PathBuf::from("/tmp"))
-                        .join("songbird")
-                }
-            }
-        }
+        PathBuf::from(crate::config::constants::paths::DEFAULT_TEMP_DIR)
     }
 
-    /// Check if this is a system-wide installation
-    fn is_system_install() -> bool {
-        env::var("SONGBIRD_SYSTEM_INSTALL").is_ok() || Self::is_running_as_privileged_user()
-    }
-
-    /// Check if running as privileged user (root on Unix, admin on Windows)
-    fn is_running_as_privileged_user() -> bool {
-        #[cfg(unix)]
-        {
-            unsafe { libc::getuid() == 0 }
-        }
-        #[cfg(windows)]
-        {
-            false
-        }
-        #[cfg(not(any(unix, windows)))]
-        {
-            false
-        }
-    }
-
-    /// Ensure all directories exist
+    /// Create all necessary directories through substrate
     pub async fn ensure_directories_exist(&self) -> Result<()> {
+        let substrate = crate::substrate::get_substrate().await;
+
+        // Request directory creation through substrate
         let directories = vec![
-            &self.data_dir,
-            &self.config_dir,
-            &self.log_dir,
-            &self.cache_dir,
-            &self.runtime_dir,
-            &self.service_data_dirs.orchestrator,
-            &self.service_data_dirs.federation,
-            &self.service_data_dirs.metrics,
-            &self.service_data_dirs.discovery,
-            &self.service_data_dirs.registry,
+            ("data", &self.data_dir),
+            ("config", &self.config_dir),
+            ("log", &self.log_dir),
+            ("cache", &self.cache_dir),
+            ("runtime", &self.runtime_dir),
         ];
 
-        for dir in directories {
-            if let Err(e) = tokio::fs::create_dir_all(dir).await {
-                return Err(SongbirdError::Io { message: format!(
-                    "Failed to create directory {}: {}",
-                    dir.display(),
+        for (dir_type, path) in directories {
+            if let Err(e) = substrate
+                .container_operation(
+                    "ensure_directory",
+                    serde_json::json!({
+                        "path": path,
+                        "type": dir_type,
+                        "recursive": true
+                    }),
+                )
+                .await
+            {
+                warn!(
+                    "Failed to create directory {} through substrate: {}",
+                    path.display(),
                     e
-                ) });
+                );
+                // Fallback to direct creation
+                if let Err(create_err) = std::fs::create_dir_all(path) {
+                    return Err(SongbirdError::Config {
+                        field: Some(format!("{}_dir", dir_type)),
+                        message: format!(
+                            "Failed to create directory {}: {}",
+                            path.display(),
+                            create_err
+                        ),
+                    });
+                }
             }
         }
 
-        Ok(())
-    }
+        // Create service-specific directories
+        let service_directories = vec![
+            ("orchestrator", &self.service_data_dirs.orchestrator),
+            ("federation", &self.service_data_dirs.federation),
+            ("metrics", &self.service_data_dirs.metrics),
+            ("discovery", &self.service_data_dirs.discovery),
+            ("registry", &self.service_data_dirs.registry),
+        ];
 
-    /// Get configuration file path
-    pub fn config_file_path(&self, filename: &str) -> PathBuf {
-        self.config_dir.join(filename)
-    }
-
-    /// Get log file path
-    pub fn log_file_path(&self, service: &str) -> PathBuf {
-        self.log_dir.join(format!("{}.log", service))
-    }
-
-    /// Get PID file path
-    pub fn pid_file_path(&self, service: &str) -> PathBuf {
-        self.runtime_dir.join(format!("{}.pid", service))
-    }
-
-    /// Get socket file path (Unix only)
-    #[cfg(unix)]
-    pub fn socket_file_path(&self, service: &str) -> PathBuf {
-        self.runtime_dir.join(format!("{}.sock", service))
-    }
-
-    /// Validate that all paths are accessible
-    pub async fn validate(&self) -> Result<()> {
-        for dir in [&self.data_dir, &self.config_dir, &self.log_dir].iter() {
-            if let Some(parent) = dir.parent() {
-                if !parent.exists() {
+        for (service, path) in service_directories {
+            if let Err(e) = substrate
+                .container_operation(
+                    "ensure_directory",
+                    serde_json::json!({
+                        "path": path,
+                        "type": "service_data",
+                        "service": service,
+                        "recursive": true
+                    }),
+                )
+                .await
+            {
+                warn!(
+                    "Failed to create service directory {} through substrate: {}",
+                    path.display(),
+                    e
+                );
+                // Fallback to direct creation
+                if let Err(create_err) = std::fs::create_dir_all(path) {
                     return Err(SongbirdError::Config {
-                        field: Some("paths".to_string()),
-                        message: format!("Parent directory {} does not exist", parent.display()),
+                        field: Some(format!("{}_data_dir", service)),
+                        message: format!(
+                            "Failed to create service directory {}: {}",
+                            path.display(),
+                            create_err
+                        ),
                     });
                 }
             }
@@ -332,37 +279,168 @@ impl PathConfig {
         Ok(())
     }
 
-    /// Get a summary of all configured paths
-    pub fn summary(&self) -> String {
-        format!(
-            "Data: {}, Config: {}, Logs: {}, Cache: {}, Runtime: {}",
-            self.data_dir.display(),
-            self.config_dir.display(),
-            self.log_dir.display(),
-            self.cache_dir.display(),
-            self.runtime_dir.display()
-        )
+    /// Get path for a specific service through substrate
+    pub async fn get_service_path(
+        &self,
+        service_name: &str,
+        path_type: PathType,
+    ) -> Result<PathBuf> {
+        let substrate = crate::substrate::get_substrate().await;
+
+        substrate
+            .get_path(PathRequest {
+                path_type,
+                service_name: service_name.to_string(),
+                requirements: PathRequirements::default(),
+            })
+            .await
+    }
+
+    /// Validate that all paths are accessible through substrate
+    pub async fn validate_paths(&self) -> Result<()> {
+        let substrate = crate::substrate::get_substrate().await;
+
+        let paths_to_check = vec![
+            ("data", &self.data_dir),
+            ("config", &self.config_dir),
+            ("log", &self.log_dir),
+            ("cache", &self.cache_dir),
+            ("runtime", &self.runtime_dir),
+        ];
+
+        for (path_type, path) in paths_to_check {
+            match substrate
+                .container_operation(
+                    "validate_path",
+                    serde_json::json!({
+                        "path": path,
+                        "type": path_type,
+                        "check_writable": true
+                    }),
+                )
+                .await
+            {
+                Ok(_) => debug!("✅ Path {} validated through substrate", path.display()),
+                Err(e) => {
+                    warn!(
+                        "❌ Path {} validation failed through substrate: {}",
+                        path.display(),
+                        e
+                    );
+                    // Fallback to direct validation
+                    if !path.exists() {
+                        return Err(SongbirdError::Config {
+                            field: Some(format!("{}_path", path_type)),
+                            message: format!("Path does not exist: {}", path.display()),
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get temporary directory for a specific operation
+    pub async fn get_temp_dir(&self, operation: &str) -> Result<PathBuf> {
+        let substrate = crate::substrate::get_substrate().await;
+
+        substrate
+            .get_path(PathRequest {
+                path_type: PathType::Temp,
+                service_name: format!("songbird_{}", operation),
+                requirements: PathRequirements {
+                    min_size_bytes: Some(1024 * 1024), // 1MB minimum
+                    permissions: Some("rw".to_string()),
+                    persistent: false,
+                    shared: false,
+                },
+            })
+            .await
+    }
+
+    /// Clean up temporary directories through substrate
+    pub async fn cleanup_temp_dirs(&self) -> Result<()> {
+        let substrate = crate::substrate::get_substrate().await;
+
+        match substrate
+            .container_operation(
+                "cleanup_temp",
+                serde_json::json!({
+                    "service": "songbird",
+                    "max_age_hours": 24
+                }),
+            )
+            .await
+        {
+            Ok(_) => debug!("✅ Temporary directories cleaned through substrate"),
+            Err(e) => warn!(
+                "❌ Failed to clean temporary directories through substrate: {}",
+                e
+            ),
+        }
+
+        Ok(())
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_development_paths() {
-        let config = PathConfig::development();
-        assert!(config.data_dir.to_string_lossy().contains(".songbird"));
-        assert!(config.config_dir.to_string_lossy().contains(".songbird"));
+/// Get the best available path configuration
+pub async fn get_path_config() -> Result<PathConfig> {
+    // Try to use substrate first
+    match PathConfig::new().await {
+        Ok(config) => {
+            debug!("✅ Using substrate-based path configuration");
+            Ok(config)
+        }
+        Err(e) => {
+            warn!(
+                "⚠️ Substrate path configuration failed: {}, using fallback",
+                e
+            );
+            Ok(PathConfig::new_fallback())
+        }
     }
+}
 
-    #[test]
-    fn test_path_utilities() {
-        let config = PathConfig::development();
-        let config_path = config.config_file_path("test.yaml");
-        assert!(config_path.to_string_lossy().ends_with("test.yaml"));
+/// Initialize paths for a service through substrate
+pub async fn initialize_service_paths(service_name: &str) -> Result<ServiceDataDirs> {
+    let substrate = crate::substrate::get_substrate().await;
 
-        let log_path = config.log_file_path("orchestrator");
-        assert!(log_path.to_string_lossy().ends_with("orchestrator.log"));
+    Ok(ServiceDataDirs {
+        orchestrator: substrate
+            .get_data_dir(&format!("{}_orchestrator", service_name))
+            .await?,
+        federation: substrate
+            .get_data_dir(&format!("{}_federation", service_name))
+            .await?,
+        metrics: substrate
+            .get_data_dir(&format!("{}_metrics", service_name))
+            .await?,
+        discovery: substrate
+            .get_data_dir(&format!("{}_discovery", service_name))
+            .await?,
+        registry: substrate
+            .get_data_dir(&format!("{}_registry", service_name))
+            .await?,
+    })
+}
+
+/// Create a path configuration for testing
+pub fn testing_config() -> PathConfig {
+    let test_dir = std::env::temp_dir().join("songbird_test");
+
+    PathConfig {
+        data_dir: test_dir.join("data"),
+        config_dir: test_dir.join("config"),
+        log_dir: test_dir.join("logs"),
+        cache_dir: test_dir.join("cache"),
+        runtime_dir: test_dir.join("runtime"),
+        service_data_dirs: ServiceDataDirs {
+            orchestrator: test_dir.join("data").join("orchestrator"),
+            federation: test_dir.join("data").join("federation"),
+            metrics: test_dir.join("data").join("metrics"),
+            discovery: test_dir.join("data").join("discovery"),
+            registry: test_dir.join("data").join("registry"),
+        },
     }
 }

@@ -41,8 +41,8 @@ async fn connect_friend(address: &str, name: &str, trust: &str) -> Result<()> {
     println!("{}", "=============================".bright_cyan());
     println!();
 
-    println!("🔗 Connecting to friend: {}", name);
-    println!("📍 Address: {}", address);
+    println!("🔗 Connecting to friend: {name}");
+    println!("📍 Address: {address}");
     println!(
         "🛡️ Trust Level: {}",
         match trust {
@@ -63,26 +63,20 @@ async fn connect_friend(address: &str, name: &str, trust: &str) -> Result<()> {
     println!("🤝 Establishing trust relationship...");
 
     tokio::time::sleep(std::time::Duration::from_millis(400)).await;
-    println!("✅ Connected to {}!", name);
+    println!("✅ Connected to {name}!");
 
     println!();
     println!("📊 {}", "Connection Details:".bright_white().bold());
-    println!("   Friend: {}", name);
-    println!("   Address: {}", address);
-    println!("   Trust: {}", trust);
+    println!("   Friend: {name}");
+    println!("   Address: {address}");
+    println!("   Trust: {trust}");
     println!("   Status: Connected");
     println!("   Encryption: Enabled");
 
     println!();
     println!("🎯 What you can do now:");
-    println!(
-        "   • Share folders: songbird federation share <folder> {}",
-        name
-    );
-    println!(
-        "   • Backup data: songbird federation backup <path> {}",
-        name
-    );
+    println!("   • Share folders: songbird federation share <folder> {name}");
+    println!("   • Backup data: songbird federation backup <path> {name}");
     println!("   • List friends: songbird federation list");
 
     Ok(())
@@ -96,7 +90,7 @@ async fn share_folder(folder: &std::path::Path, friends: &str, permission: &str)
     let friend_list: Vec<&str> = friends.split(',').map(|s| s.trim()).collect();
 
     println!("📁 Sharing folder: {}", folder.display());
-    println!("👥 With friends: {}", friends);
+    println!("👥 With friends: {friends}");
     println!(
         "🔐 Permission: {}",
         match permission {
@@ -112,10 +106,10 @@ async fn share_folder(folder: &std::path::Path, friends: &str, permission: &str)
 
     for friend in &friend_list {
         tokio::time::sleep(std::time::Duration::from_millis(400)).await;
-        println!("🔗 Connecting to {}...", friend);
+        println!("🔗 Connecting to {friend}...");
 
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-        println!("✅ {} can now access the folder", friend);
+        println!("✅ {friend} can now access the folder");
     }
 
     println!();
@@ -183,8 +177,8 @@ async fn list_friends() -> Result<()> {
             trust_icon,
             name.bright_white().bold()
         );
-        println!("   Address: {}", address);
-        println!("   Trust: {}", trust);
+        println!("   Address: {address}");
+        println!("   Trust: {trust}");
         println!(
             "   Status: {}",
             match status {
@@ -193,7 +187,7 @@ async fn list_friends() -> Result<()> {
                 _ => status.yellow(),
             }
         );
-        println!("   Activity: {}", activity);
+        println!("   Activity: {activity}");
         println!();
     }
 
@@ -213,7 +207,7 @@ async fn backup_to_friends(path: &std::path::Path, friends: &str, encrypt: bool)
     let friend_list: Vec<&str> = friends.split(',').map(|s| s.trim()).collect();
 
     println!("📁 Backing up: {}", path.display());
-    println!("👥 To friends: {}", friends);
+    println!("👥 To friends: {friends}");
     println!(
         "🔐 Encryption: {}",
         if encrypt {
@@ -246,11 +240,11 @@ async fn backup_to_friends(path: &std::path::Path, friends: &str, encrypt: bool)
 
         if encrypt {
             tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-            println!("🔐 Encrypting data for {}...", friend);
+            println!("🔐 Encrypting data for {friend}...");
         }
 
         tokio::time::sleep(std::time::Duration::from_millis(800)).await;
-        println!("✅ Backup to {} completed", friend);
+        println!("✅ Backup to {friend} completed");
     }
 
     println!();
@@ -320,13 +314,16 @@ async fn show_federation_status() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
+    #[allow(dead_code)] // Helper function for future tests
     fn setup_test_config() -> (TempDir, std::path::PathBuf) {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("test_config.toml");
-        fs::write(&config_path, r#"
+        fs::write(
+            &config_path,
+            r#"
 [federation]
 mode = "leader"
 nodes = ["192.168.1.100", "192.168.1.101"]
@@ -335,7 +332,9 @@ timeout = 30
 [network]
 bind_address = "0.0.0.0:8080"
 discovery_port = 8081
-"#).unwrap();
+"#,
+        )
+        .unwrap();
         (temp_dir, config_path)
     }
 
@@ -348,7 +347,7 @@ discovery_port = 8081
     #[tokio::test]
     async fn test_connect_friend_with_different_trust_levels() {
         let trust_levels = vec!["family", "friend", "acquaintance"];
-        
+
         for trust in trust_levels {
             let result = connect_friend("192.168.1.100", "TestFriend", trust).await;
             assert!(result.is_ok());
@@ -360,7 +359,7 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let folder_path = temp_dir.path().join("test_folder");
         fs::create_dir(&folder_path).unwrap();
-        
+
         let result = share_folder(&folder_path, "Alice,Bob", "read").await;
         assert!(result.is_ok());
     }
@@ -370,9 +369,9 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let folder_path = temp_dir.path().join("test_folder");
         fs::create_dir(&folder_path).unwrap();
-        
+
         let permissions = vec!["read", "backup", "sync"];
-        
+
         for permission in permissions {
             let result = share_folder(&folder_path, "Alice", permission).await;
             assert!(result.is_ok());
@@ -384,7 +383,7 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let folder_path = temp_dir.path().join("test_folder");
         fs::create_dir(&folder_path).unwrap();
-        
+
         let result = share_folder(&folder_path, "Alice,Bob,Charlie,Diana", "read").await;
         assert!(result.is_ok());
     }
@@ -400,7 +399,7 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let backup_path = temp_dir.path().join("backup_data");
         fs::create_dir(&backup_path).unwrap();
-        
+
         let result = backup_to_friends(&backup_path, "Alice,Bob", true).await;
         assert!(result.is_ok());
     }
@@ -410,7 +409,7 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let backup_path = temp_dir.path().join("backup_data");
         fs::create_dir(&backup_path).unwrap();
-        
+
         let result = backup_to_friends(&backup_path, "Alice", false).await;
         assert!(result.is_ok());
     }
@@ -420,7 +419,7 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let backup_path = temp_dir.path().join("backup_data");
         fs::create_dir(&backup_path).unwrap();
-        
+
         let result = backup_to_friends(&backup_path, "Alice", true).await;
         assert!(result.is_ok());
     }
@@ -438,7 +437,7 @@ discovery_port = 8081
             name: "Alice".to_string(),
             trust: "family".to_string(),
         };
-        
+
         let result = handle_basic_federation_command(command).await;
         assert!(result.is_ok());
     }
@@ -448,13 +447,13 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let folder_path = temp_dir.path().join("test_folder");
         fs::create_dir(&folder_path).unwrap();
-        
+
         let command = BasicFederationCommands::Share {
             folder: folder_path,
             friends: "Alice,Bob".to_string(),
             permission: "read".to_string(),
         };
-        
+
         let result = handle_basic_federation_command(command).await;
         assert!(result.is_ok());
     }
@@ -462,7 +461,7 @@ discovery_port = 8081
     #[tokio::test]
     async fn test_handle_basic_federation_command_list() {
         let command = BasicFederationCommands::List;
-        
+
         let result = handle_basic_federation_command(command).await;
         assert!(result.is_ok());
     }
@@ -472,13 +471,13 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let backup_path = temp_dir.path().join("backup_data");
         fs::create_dir(&backup_path).unwrap();
-        
+
         let command = BasicFederationCommands::Backup {
             path: backup_path,
             friends: "Alice".to_string(),
             encrypt: true,
         };
-        
+
         let result = handle_basic_federation_command(command).await;
         assert!(result.is_ok());
     }
@@ -486,7 +485,7 @@ discovery_port = 8081
     #[tokio::test]
     async fn test_handle_basic_federation_command_status() {
         let command = BasicFederationCommands::Status;
-        
+
         let result = handle_basic_federation_command(command).await;
         assert!(result.is_ok());
     }
@@ -494,7 +493,7 @@ discovery_port = 8081
     #[tokio::test]
     async fn test_edge_case_invalid_folder_path() {
         let invalid_path = std::path::Path::new("/nonexistent/path");
-        
+
         let result = share_folder(invalid_path, "Alice", "read").await;
         assert!(result.is_ok()); // Should handle gracefully
     }
@@ -504,7 +503,7 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let folder_path = temp_dir.path().join("test_folder");
         fs::create_dir(&folder_path).unwrap();
-        
+
         let result = share_folder(&folder_path, "", "read").await;
         assert!(result.is_ok()); // Should handle gracefully
     }
@@ -520,7 +519,7 @@ discovery_port = 8081
         let temp_dir = TempDir::new().unwrap();
         let folder_path = temp_dir.path().join("test_folder");
         fs::create_dir(&folder_path).unwrap();
-        
+
         let result = share_folder(&folder_path, "Alice", "invalid_permission").await;
         assert!(result.is_ok()); // Should handle gracefully
     }

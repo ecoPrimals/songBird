@@ -196,7 +196,7 @@ impl NetworkDiscoverer {
         // Check for available ports
         let available_ports: Vec<u16> = network_info.port_availability
             .iter()
-            .filter_map(|(port, available)| if *available { Some(*port) } else { None })
+                            .filter_map(|(port, available)| available.then_some(*port))
             .collect();
 
         if available_ports.is_empty() {

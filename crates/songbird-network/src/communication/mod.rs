@@ -29,6 +29,8 @@ impl HttpResponse {
 
     pub fn json<T: serde::de::DeserializeOwned>(&self) -> Result<T> {
         serde_json::from_str(&self.body).map_err(|e| SongbirdError::Config {
+            context: Some("communication_parsing".to_string()),
+            suggestion: Some("Check JSON format and content".to_string()),
             message: format!("Failed to parse JSON: {}", e),
             field: Some("response".to_string()),
         })

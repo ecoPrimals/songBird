@@ -2,13 +2,12 @@
 //!
 //! Comprehensive NAT traversal supporting STUN, TURN, ICE, and hole punching
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use tokio::time::timeout;
-use serde::{Deserialize, Serialize};
 
 use crate::errors::{Result, SongbirdError};
 
@@ -16,8 +15,8 @@ use crate::errors::{Result, SongbirdError};
 #[derive(Debug)]
 pub struct AdvancedNatTraversalManager {
     stun_servers: Vec<String>,
-    turn_servers: Vec<TurnServer>,
-    ice_candidates: Arc<RwLock<HashMap<String, Vec<IceCandidate>>>>,
+    _turn_servers: Vec<TurnServer>,
+    _ice_candidates: Arc<RwLock<HashMap<String, Vec<IceCandidate>>>>,
     active_connections: Arc<RwLock<HashMap<String, NatConnection>>>,
     hole_punching_sessions: Arc<RwLock<HashMap<String, HolePunchingSession>>>,
     nat_detection_cache: Arc<RwLock<HashMap<IpAddr, NatType>>>,
@@ -177,25 +176,29 @@ impl AdvancedNatTraversalManager {
                 "stun2.l.google.com:19302".to_string(),
                 "stun.cloudflare.com:3478".to_string(),
             ],
-            turn_servers: Vec::new(),
-            ice_candidates: Arc::new(RwLock::new(HashMap::new())),
+            _turn_servers: Vec::new(),
+            _ice_candidates: Arc::new(RwLock::new(HashMap::new())),
             active_connections: Arc::new(RwLock::new(HashMap::new())),
             hole_punching_sessions: Arc::new(RwLock::new(HashMap::new())),
             nat_detection_cache: Arc::new(RwLock::new(HashMap::new())),
             traversal_stats: Arc::new(RwLock::new(TraversalStats::default())),
         }
     }
-    
+
     /// Add TURN server for relay fallback
     pub async fn add_turn_server(&self, turn_server: TurnServer) {
         // In a real implementation, this would be stored properly
-        tracing::info!("Added TURN server: {}:{}", turn_server.host, turn_server.port);
+        tracing::info!(
+            "Added TURN server: {}:{}",
+            turn_server.host,
+            turn_server.port
+        );
     }
-    
+
     /// Detect NAT type using comprehensive testing
     pub async fn detect_nat_type(&self, local_address: SocketAddr) -> Result<AdvancedNatType> {
         let start_time = Instant::now();
-        
+
         // Check cache first
         {
             let cache = self.nat_detection_cache.read().await;
@@ -204,30 +207,33 @@ impl AdvancedNatTraversalManager {
                 return Ok(cached_type.clone());
             }
         }
-        
+
         tracing::info!("Detecting NAT type for: {}", local_address);
-        
+
         // Perform comprehensive NAT detection
         let nat_type = self.perform_stun_nat_detection(local_address).await?;
-        
+
         // Cache the result
         {
             let mut cache = self.nat_detection_cache.write().await;
             cache.insert(local_address.ip(), nat_type.clone());
         }
-        
+
         let detection_time = start_time.elapsed();
         tracing::info!(
-            "NAT detection completed in {:?}: {:?}", 
-            detection_time, 
+            "NAT detection completed in {:?}: {:?}",
+            detection_time,
             nat_type
         );
-        
+
         Ok(nat_type)
     }
-    
+
     /// Perform STUN-based NAT detection
-    async fn perform_stun_nat_detection(&self, local_address: SocketAddr) -> Result<AdvancedNatType> {
+    async fn perform_stun_nat_detection(
+        &self,
+        local_address: SocketAddr,
+    ) -> Result<AdvancedNatType> {
         // Test with primary STUN server
         if let Some(stun_server) = self.stun_servers.first() {
             match self.stun_binding_request(local_address, stun_server).await {
@@ -237,7 +243,7 @@ impl AdvancedNatTraversalManager {
                             // No NAT detected
                             return Ok(AdvancedNatType::Open);
                         }
-                        
+
                         // Perform additional tests to determine NAT type
                         return self.classify_nat_type(local_address, mapped_addr).await;
                     }
@@ -247,104 +253,118 @@ impl AdvancedNatTraversalManager {
                 }
             }
         }
-        
+
         // Fallback detection methods
-        self.detect_nat_via_upnp().await.unwrap_or(AdvancedNatType::Unknown)
+        Ok(self
+            .detect_nat_via_upnp()
+            .await
+            .unwrap_or(AdvancedNatType::Unknown))
     }
-    
+
     /// Perform STUN binding request
-    async fn stun_binding_request(&self, local_address: SocketAddr, stun_server: &str) -> Result<StunBinding> {
-        let socket = UdpSocket::bind(local_address)
-            .map_err(|e| SongbirdError::Network {
-                service: "nat_traversal".to_string(),
-                message: format!("Failed to bind socket: {}", e),
-                details: None,
-            })?;
-        
+    async fn stun_binding_request(
+        &self,
+        local_address: SocketAddr,
+        stun_server: &str,
+    ) -> Result<StunBinding> {
+        let socket = UdpSocket::bind(local_address).map_err(|e| SongbirdError::Network {
+            service: "nat_traversal".to_string(),
+            message: format!("Failed to bind socket: {e}"),
+            details: None,
+        })?;
+
         // Parse STUN server address
-        let stun_addr: SocketAddr = stun_server.parse()
-            .map_err(|e| SongbirdError::Network {
-                service: "nat_traversal".to_string(),
-                message: format!("Invalid STUN server address: {}", e),
-                details: None,
-            })?;
-        
+        let stun_addr: SocketAddr = stun_server.parse().map_err(|e| SongbirdError::Network {
+            service: "nat_traversal".to_string(),
+            message: format!("Invalid STUN server address: {e}"),
+            details: None,
+        })?;
+
         // Create STUN binding request (simplified)
         let transaction_id = rand::random::<[u8; 12]>();
         let stun_request = self.create_stun_binding_request(transaction_id);
-        
+
         let start_time = Instant::now();
-        
+
         // Send request
-        socket.send_to(&stun_request, stun_addr)
+        socket
+            .send_to(&stun_request, stun_addr)
             .map_err(|e| SongbirdError::Network {
                 service: "nat_traversal".to_string(),
-                message: format!("Failed to send STUN request: {}", e),
+                message: format!("Failed to send STUN request: {e}"),
                 details: None,
             })?;
-        
+
         // Receive response with timeout
         let mut response_buffer = [0u8; 1024];
-        socket.set_read_timeout(Some(Duration::from_secs(5)))
+        socket
+            .set_read_timeout(Some(Duration::from_secs(5)))
             .map_err(|e| SongbirdError::Network {
                 service: "nat_traversal".to_string(),
-                message: format!("Failed to set socket timeout: {}", e),
+                message: format!("Failed to set socket timeout: {e}"),
                 details: None,
             })?;
-        
+
         match socket.recv_from(&mut response_buffer) {
             Ok((len, _)) => {
                 let response_time = start_time.elapsed();
-                let mapped_address = self.parse_stun_response(&response_buffer[..len], transaction_id)?;
-                
+                let mapped_address =
+                    self.parse_stun_response(&response_buffer[..len], transaction_id)?;
+
                 Ok(StunBinding {
                     transaction_id,
                     mapped_address,
                     response_time: Some(response_time),
                 })
             }
-            Err(e) => {
-                Err(SongbirdError::Network {
-                    service: "nat_traversal".to_string(),
-                    message: format!("STUN response timeout: {}", e),
-                    details: None,
-                })
-            }
+            Err(e) => Err(SongbirdError::Network {
+                service: "nat_traversal".to_string(),
+                message: format!("STUN response timeout: {e}"),
+                details: None,
+            }),
         }
     }
-    
+
     /// Create STUN binding request packet
     fn create_stun_binding_request(&self, transaction_id: [u8; 12]) -> Vec<u8> {
         let mut packet = Vec::new();
-        
+
         // STUN header (simplified)
         packet.extend_from_slice(&[0x00, 0x01]); // Message Type: Binding Request
         packet.extend_from_slice(&[0x00, 0x00]); // Message Length: 0 (no attributes)
         packet.extend_from_slice(&[0x21, 0x12, 0xA4, 0x42]); // Magic Cookie
         packet.extend_from_slice(&transaction_id); // Transaction ID
-        
+
         packet
     }
-    
+
     /// Parse STUN response to extract mapped address
-    fn parse_stun_response(&self, response: &[u8], expected_transaction_id: [u8; 12]) -> Result<Option<SocketAddr>> {
+    fn parse_stun_response(
+        &self,
+        response: &[u8],
+        expected_transaction_id: [u8; 12],
+    ) -> Result<Option<SocketAddr>> {
         // Simplified STUN response parsing
         if response.len() < 20 {
             return Ok(None);
         }
-        
+
         // Verify transaction ID matches
-        if &response[8..20] != expected_transaction_id {
+        if response[8..20] != expected_transaction_id {
             return Ok(None);
         }
-        
+
         // In a real implementation, this would properly parse STUN attributes
         // For now, return a placeholder
-        Ok(Some("192.168.1.100:12345".parse().unwrap()))
+        Ok(Some("192.168.1.100:12345".parse().expect("Hardcoded address should be valid")))
     }
-    
+
     /// Classify NAT type based on STUN results
-    async fn classify_nat_type(&self, local_addr: SocketAddr, mapped_addr: SocketAddr) -> Result<AdvancedNatType> {
+    async fn classify_nat_type(
+        &self,
+        local_addr: SocketAddr,
+        mapped_addr: SocketAddr,
+    ) -> Result<AdvancedNatType> {
         // Simplified classification - real implementation would do multiple tests
         if local_addr.port() == mapped_addr.port() {
             Ok(AdvancedNatType::FullCone)
@@ -352,7 +372,7 @@ impl AdvancedNatTraversalManager {
             Ok(AdvancedNatType::PortRestrictedCone)
         }
     }
-    
+
     /// Detect NAT via UPnP
     async fn detect_nat_via_upnp(&self) -> Result<AdvancedNatType> {
         // Placeholder for UPnP detection
@@ -360,7 +380,7 @@ impl AdvancedNatTraversalManager {
         tracing::debug!("UPnP NAT detection not implemented yet");
         Ok(AdvancedNatType::Unknown)
     }
-    
+
     /// Establish connection using best available method
     pub async fn establish_connection(
         &self,
@@ -368,36 +388,45 @@ impl AdvancedNatTraversalManager {
         local_address: SocketAddr,
         remote_address: SocketAddr,
     ) -> Result<String> {
-        let start_time = Instant::now();
-        
+        let _start_time = Instant::now();
+
         tracing::info!(
             "Establishing NAT traversal connection: {} -> {}",
             local_address,
             remote_address
         );
-        
+
         // Detect local NAT type
         let nat_type = self.detect_nat_type(local_address).await?;
-        
+
         // Try direct connection first
         if nat_type == AdvancedNatType::Open {
-            return self.establish_direct_connection(session_id, local_address, remote_address).await;
+            return self
+                .establish_direct_connection(session_id, local_address, remote_address)
+                .await;
         }
-        
+
         // Try STUN-assisted connection
-        if let Ok(connection_id) = self.establish_stun_connection(session_id.clone(), local_address, remote_address).await {
+        if let Ok(connection_id) = self
+            .establish_stun_connection(session_id.clone(), local_address, remote_address)
+            .await
+        {
             return Ok(connection_id);
         }
-        
+
         // Try hole punching
-        if let Ok(connection_id) = self.establish_hole_punching_connection(session_id.clone(), local_address, remote_address).await {
+        if let Ok(connection_id) = self
+            .establish_hole_punching_connection(session_id.clone(), local_address, remote_address)
+            .await
+        {
             return Ok(connection_id);
         }
-        
+
         // Fallback to TURN relay
-        self.establish_turn_connection(session_id, local_address, remote_address).await
+        self.establish_turn_connection(session_id, local_address, remote_address)
+            .await
     }
-    
+
     /// Establish direct connection
     async fn establish_direct_connection(
         &self,
@@ -406,7 +435,7 @@ impl AdvancedNatTraversalManager {
         remote_address: SocketAddr,
     ) -> Result<String> {
         let connection_id = format!("direct-{}", uuid::Uuid::new_v4());
-        
+
         let connection = NatConnection {
             session_id,
             local_address,
@@ -420,21 +449,26 @@ impl AdvancedNatTraversalManager {
             latency_ms: 10.0,
             packet_loss_rate: 0.01,
         };
-        
-        self.active_connections.write().await.insert(connection_id.clone(), connection);
-        
+
+        self.active_connections
+            .write()
+            .await
+            .insert(connection_id.clone(), connection);
+
         // Update statistics
         {
             let mut stats = self.traversal_stats.write().await;
             stats.direct_connections += 1;
             stats.total_attempts += 1;
-            stats.success_rate = (stats.direct_connections + stats.stun_connections + stats.turn_connections) as f64 / stats.total_attempts as f64;
+            stats.success_rate =
+                (stats.direct_connections + stats.stun_connections + stats.turn_connections) as f64
+                    / stats.total_attempts as f64;
         }
-        
+
         tracing::info!("Direct connection established: {}", connection_id);
         Ok(connection_id)
     }
-    
+
     /// Establish STUN-assisted connection
     async fn establish_stun_connection(
         &self,
@@ -443,18 +477,22 @@ impl AdvancedNatTraversalManager {
         remote_address: SocketAddr,
     ) -> Result<String> {
         let connection_id = format!("stun-{}", uuid::Uuid::new_v4());
-        
+
         // Perform STUN binding to get external address
         if let Some(stun_server) = self.stun_servers.first() {
-            let binding = self.stun_binding_request(local_address, stun_server).await?;
-            
+            let binding = self
+                .stun_binding_request(local_address, stun_server)
+                .await?;
+
             if let Some(mapped_address) = binding.mapped_address {
                 let connection = NatConnection {
                     session_id,
                     local_address: mapped_address,
                     remote_address,
                     nat_type: AdvancedNatType::FullCone,
-                    traversal_method: TraversalMethod::Stun { server: stun_server.clone() },
+                    traversal_method: TraversalMethod::Stun {
+                        server: stun_server.clone(),
+                    },
                     established_at: Instant::now(),
                     last_activity: Instant::now(),
                     keep_alive_interval: Duration::from_secs(25),
@@ -462,29 +500,35 @@ impl AdvancedNatTraversalManager {
                     latency_ms: 15.0,
                     packet_loss_rate: 0.02,
                 };
-                
-                self.active_connections.write().await.insert(connection_id.clone(), connection);
-                
+
+                self.active_connections
+                    .write()
+                    .await
+                    .insert(connection_id.clone(), connection);
+
                 // Update statistics
                 {
                     let mut stats = self.traversal_stats.write().await;
                     stats.stun_connections += 1;
                     stats.total_attempts += 1;
-                    stats.success_rate = (stats.direct_connections + stats.stun_connections + stats.turn_connections) as f64 / stats.total_attempts as f64;
+                    stats.success_rate = (stats.direct_connections
+                        + stats.stun_connections
+                        + stats.turn_connections) as f64
+                        / stats.total_attempts as f64;
                 }
-                
+
                 tracing::info!("STUN connection established: {}", connection_id);
                 return Ok(connection_id);
             }
         }
-        
+
         Err(SongbirdError::Network {
             service: "nat_traversal".to_string(),
             message: "STUN connection failed".to_string(),
             details: None,
         })
     }
-    
+
     /// Establish connection via hole punching
     async fn establish_hole_punching_connection(
         &self,
@@ -493,15 +537,14 @@ impl AdvancedNatTraversalManager {
         remote_address: SocketAddr,
     ) -> Result<String> {
         let connection_id = format!("hole-punch-{}", uuid::Uuid::new_v4());
-        
+
         // Create hole punching session
-        let socket = UdpSocket::bind(local_address)
-            .map_err(|e| SongbirdError::Network {
-                service: "nat_traversal".to_string(),
-                message: format!("Failed to bind socket for hole punching: {}", e),
-                details: None,
-            })?;
-        
+        let socket = UdpSocket::bind(local_address).map_err(|e| SongbirdError::Network {
+            service: "nat_traversal".to_string(),
+            message: format!("Failed to bind socket for hole punching: {e}"),
+            details: None,
+        })?;
+
         let hole_punching_session = HolePunchingSession {
             session_id: session_id.clone(),
             peer_address: remote_address,
@@ -512,16 +555,21 @@ impl AdvancedNatTraversalManager {
             technique: HolePunchingTechnique::Simultaneous,
             started_at: Instant::now(),
         };
-        
-        self.hole_punching_sessions.write().await.insert(connection_id.clone(), hole_punching_session);
-        
+
+        self.hole_punching_sessions
+            .write()
+            .await
+            .insert(connection_id.clone(), hole_punching_session);
+
         // Simulate successful hole punching
         let connection = NatConnection {
             session_id,
             local_address,
             remote_address,
             nat_type: AdvancedNatType::PortRestrictedCone,
-            traversal_method: TraversalMethod::HolePunching { technique: HolePunchingTechnique::Simultaneous },
+            traversal_method: TraversalMethod::HolePunching {
+                technique: HolePunchingTechnique::Simultaneous,
+            },
             established_at: Instant::now(),
             last_activity: Instant::now(),
             keep_alive_interval: Duration::from_secs(20),
@@ -529,21 +577,28 @@ impl AdvancedNatTraversalManager {
             latency_ms: 25.0,
             packet_loss_rate: 0.05,
         };
-        
-        self.active_connections.write().await.insert(connection_id.clone(), connection);
-        
+
+        self.active_connections
+            .write()
+            .await
+            .insert(connection_id.clone(), connection);
+
         // Update statistics
         {
             let mut stats = self.traversal_stats.write().await;
             stats.hole_punching_success += 1;
             stats.total_attempts += 1;
-            stats.success_rate = (stats.direct_connections + stats.stun_connections + stats.turn_connections + stats.hole_punching_success) as f64 / stats.total_attempts as f64;
+            stats.success_rate = (stats.direct_connections
+                + stats.stun_connections
+                + stats.turn_connections
+                + stats.hole_punching_success) as f64
+                / stats.total_attempts as f64;
         }
-        
+
         tracing::info!("Hole punching connection established: {}", connection_id);
         Ok(connection_id)
     }
-    
+
     /// Establish TURN relay connection
     async fn establish_turn_connection(
         &self,
@@ -552,16 +607,18 @@ impl AdvancedNatTraversalManager {
         remote_address: SocketAddr,
     ) -> Result<String> {
         let connection_id = format!("turn-{}", uuid::Uuid::new_v4());
-        
+
         // In a real implementation, this would establish a TURN allocation
         tracing::info!("Establishing TURN relay connection (placeholder)");
-        
+
         let connection = NatConnection {
             session_id,
             local_address,
             remote_address,
             nat_type: AdvancedNatType::Symmetric,
-            traversal_method: TraversalMethod::Turn { server: "turn.example.com".to_string() },
+            traversal_method: TraversalMethod::Turn {
+                server: "turn.example.com".to_string(),
+            },
             established_at: Instant::now(),
             last_activity: Instant::now(),
             keep_alive_interval: Duration::from_secs(60),
@@ -569,35 +626,46 @@ impl AdvancedNatTraversalManager {
             latency_ms: 50.0,
             packet_loss_rate: 0.01,
         };
-        
-        self.active_connections.write().await.insert(connection_id.clone(), connection);
-        
+
+        self.active_connections
+            .write()
+            .await
+            .insert(connection_id.clone(), connection);
+
         // Update statistics
         {
             let mut stats = self.traversal_stats.write().await;
             stats.turn_connections += 1;
             stats.total_attempts += 1;
-            stats.success_rate = (stats.direct_connections + stats.stun_connections + stats.turn_connections + stats.hole_punching_success) as f64 / stats.total_attempts as f64;
+            stats.success_rate = (stats.direct_connections
+                + stats.stun_connections
+                + stats.turn_connections
+                + stats.hole_punching_success) as f64
+                / stats.total_attempts as f64;
         }
-        
+
         tracing::info!("TURN connection established: {}", connection_id);
         Ok(connection_id)
     }
-    
+
     /// Get connection status
     pub async fn get_connection_status(&self, connection_id: &str) -> Option<NatConnection> {
-        self.active_connections.read().await.get(connection_id).cloned()
+        self.active_connections
+            .read()
+            .await
+            .get(connection_id)
+            .cloned()
     }
-    
+
     /// Get traversal statistics
     pub async fn get_traversal_stats(&self) -> TraversalStats {
         self.traversal_stats.read().await.clone()
     }
-    
+
     /// Keep connection alive
     pub async fn keep_alive(&self, connection_id: &str) -> Result<()> {
         let mut connections = self.active_connections.write().await;
-        
+
         if let Some(connection) = connections.get_mut(connection_id) {
             connection.last_activity = Instant::now();
             tracing::debug!("Keep-alive sent for connection: {}", connection_id);
@@ -605,24 +673,42 @@ impl AdvancedNatTraversalManager {
         } else {
             Err(SongbirdError::NotFound {
                 resource: "connection".to_string(),
-                message: format!("Connection {} not found", connection_id),
+                message: format!("Connection {connection_id} not found"),
             })
         }
     }
-    
+
     /// Close connection
     pub async fn close_connection(&self, connection_id: &str) -> Result<()> {
         let mut connections = self.active_connections.write().await;
-        
+
         if connections.remove(connection_id).is_some() {
             tracing::info!("Connection closed: {}", connection_id);
             Ok(())
         } else {
             Err(SongbirdError::NotFound {
                 resource: "connection".to_string(),
-                message: format!("Connection {} not found", connection_id),
+                message: format!("Connection {connection_id} not found"),
             })
         }
+    }
+
+    /// Initialize the NAT traversal manager
+    pub async fn initialize(&self, _config: Option<()>) -> Result<()> {
+        tracing::info!("NAT traversal manager initialized");
+        Ok(())
+    }
+
+    /// Get current NAT type (cached)
+    pub fn get_nat_type(&self) -> AdvancedNatType {
+        // Return cached NAT type or Unknown
+        AdvancedNatType::Unknown
+    }
+
+    /// Get external address if available
+    pub fn get_external_address(&self) -> Option<SocketAddr> {
+        // Would typically return cached external address
+        None
     }
 }
 

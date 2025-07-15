@@ -78,6 +78,8 @@ impl IPXTranslator {
             return Err(SongbirdError::Protocol {
                 protocol: "IPX".to_string(),
                 message: "IPX packet too short".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             });
         }
 
@@ -160,6 +162,8 @@ impl ProtocolTranslator for IPXTranslator {
             _ => Err(SongbirdError::Protocol {
                 protocol: "IPX".to_string(),
                 message: "IPX only supports UDP translation".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             }),
         }
     }
@@ -239,6 +243,8 @@ impl ProtocolTranslator for DirectPlayTranslator {
             _ => Err(SongbirdError::Protocol {
                 protocol: "DirectPlay".to_string(),
                 message: "Unsupported packet type for DirectPlay".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             }),
         }
     }
@@ -250,6 +256,8 @@ impl ProtocolTranslator for DirectPlayTranslator {
             .ok_or_else(|| SongbirdError::Protocol {
                 protocol: "DirectPlay".to_string(),
                 message: "No players specified".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             })?
             .player_id
             .clone();
@@ -299,6 +307,8 @@ impl ProtocolTranslator for DirectPlayTranslator {
             Err(SongbirdError::Protocol {
                 protocol: "DirectPlay".to_string(),
                 message: "Invalid DirectPlay discovery packet".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             })
         }
     }
@@ -344,6 +354,8 @@ impl ProtocolTranslator for NetBIOSTranslator {
             _ => Err(SongbirdError::Protocol {
                 protocol: "NetBIOS".to_string(),
                 message: "NetBIOS only supports UDP".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             }),
         }
     }
@@ -427,6 +439,8 @@ impl ProtocolTranslator for UDPBroadcastTranslator {
             _ => Err(SongbirdError::Protocol {
                 protocol: "UDP".to_string(),
                 message: "UDP translator only supports UDP packets".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             }),
         }
     }
@@ -512,6 +526,8 @@ impl ProtocolTranslator for TCPTranslator {
             _ => Err(SongbirdError::Protocol {
                 protocol: "TCP".to_string(),
                 message: "TCP translator only supports TCP packets".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
             }),
         }
     }

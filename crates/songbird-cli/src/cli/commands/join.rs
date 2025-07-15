@@ -58,7 +58,11 @@ pub async fn execute_join(network_name: Option<String>) -> CliResult<()> {
                     .to_lowercase()
                     .contains(&requested_name.to_lowercase())
             })
-            .ok_or_else(|| CliError::Command(format!("Network '{}' not found", requested_name)))?
+            .ok_or_else(|| CliError::Command {
+                message: format!("Network '{requested_name}' not found"),
+                command: Some("join".to_string()),
+                suggestion: Some("Check available networks with 'songbird discover'".to_string()),
+            })?
     } else {
         // Auto-select the best network
         select_best_network(&networks)
@@ -83,7 +87,7 @@ pub async fn execute_join(network_name: Option<String>) -> CliResult<()> {
     ];
     let step_duration = join_timeout / steps.len() as u64;
     for (progress, message) in &steps {
-        println!("   [{}%] {}", progress, message);
+        println!("   [{progress}%] {message}");
         tokio::time::sleep(tokio::time::Duration::from_millis(step_duration)).await;
     }
     println!(
@@ -203,7 +207,7 @@ async fn discover_via_subnet_scan() -> CliResult<Vec<DiscoveredNetwork>> {
         let mut scan_tasks = Vec::new();
         for host in 1..=254 {
             for &port in &songbird_ports {
-                let target_ip = format!("{}.{}", subnet, host);
+                let target_ip = format!("{subnet}.{host}");
                 let task =
                     tokio::spawn(async move { scan_songbird_endpoint(target_ip, port).await });
                 scan_tasks.push(task);
@@ -282,7 +286,7 @@ fn parse_mdns_response(data: &[u8], source_ip: std::net::IpAddr) -> Option<Disco
         if let Ok(response_str) = std::str::from_utf8(data) {
             if response_str.contains("songbird") || response_str.contains("SONGBIRD") {
                 return Some(DiscoveredNetwork {
-                    name: format!("Network-{}", source_ip),
+                    name: format!("Network-{source_ip}"),
                     network_id: uuid::Uuid::new_v4().to_string(),
                     node_count: 1,
                     network_type: "Discovered".to_string(),
@@ -297,7 +301,7 @@ fn parse_mdns_response(data: &[u8], source_ip: std::net::IpAddr) -> Option<Disco
 }
 /// Scan specific endpoint for Songbird
 async fn scan_songbird_endpoint(ip: String, port: u16) -> Option<DiscoveredNetwork> {
-    let url = format!("http://{}:{}/health", ip, port);
+    let url = format!("http://{ip}:{port}/health");
 
     // Quick HTTP health check with short timeout using hyper client
     let client = match songbird_network::communication::HyperHttpClient::new() {
@@ -311,8 +315,8 @@ async fn scan_songbird_endpoint(ip: String, port: u16) -> Option<DiscoveredNetwo
             if let Ok(text) = Ok::<String, ()>(response.clone()) {
                 if text.contains("songbird") || text.contains("orchestrator") {
                     return Some(DiscoveredNetwork {
-                        name: format!("Network-{}", ip),
-                        network_id: format!("{}:{}", ip, port),
+                        name: format!("Network-{ip}"),
+                        network_id: format!("{ip}:{port}"),
                         node_count: 1,
                         network_type: "HTTP".to_string(),
                         latency_ms: 25.0,
@@ -343,7 +347,7 @@ fn parse_broadcast_response(data: &[u8], source_ip: std::net::IpAddr) -> Option<
                 return Some(DiscoveredNetwork {
                     name: json["network_name"]
                         .as_str()
-                        .unwrap_or(&format!("Network-{}", source_ip))
+                        .unwrap_or(&format!("Network-{source_ip}"))
                         .to_string(),
                     network_id: json["network_id"]
                         .as_str()
@@ -423,12 +427,12 @@ async fn show_join_status(network: &DiscoveredNetwork) -> CliResult<()> {
 /// Format latency for display
 fn format_latency(ms: f64) -> String {
     if ms < 10.0 {
-        format!("{:.1}ms (excellent)", ms)
+        format!("{ms:.1}ms (excellent)")
     } else if ms < 25.0 {
-        format!("{:.1}ms (good)", ms)
+        format!("{ms:.1}ms (good)")
     } else if ms < 50.0 {
-        format!("{:.1}ms (okay)", ms)
+        format!("{ms:.1}ms (okay)")
     } else {
-        format!("{:.1}ms (slow)", ms)
+        format!("{ms:.1}ms (slow)")
     }
 }

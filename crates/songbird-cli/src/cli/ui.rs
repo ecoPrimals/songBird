@@ -8,7 +8,7 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::fmt::Display;
 use std::time::Duration;
 
-/// Create a styled progress bar
+/// Create a styled progress bar with enhanced formatting
 pub fn progress_bar(len: u64) -> ProgressBar {
     let pb = ProgressBar::new(len);
     pb.set_style(
@@ -17,24 +17,25 @@ pub fn progress_bar(len: u64) -> ProgressBar {
                 "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg}",
             )
             .unwrap_or_else(|_| ProgressStyle::default_bar())
-            .progress_chars("#>-"),
+            .progress_chars("█▇▆▅▄▃▂▁  "),
     );
     pb
 }
 
-/// Create a spinner for indefinite progress
+/// Create a modern spinner for indefinite progress
 pub fn spinner(message: &str) -> ProgressBar {
     let pb = ProgressBar::new_spinner();
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner())
+            .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"),
     );
     pb.set_message(message.to_string());
     pb
 }
 
-/// Show a confirmation prompt
+/// Show a confirmation prompt with enhanced styling
 pub fn confirm(message: &str, default: bool) -> Result<bool, CliError> {
     let theme = ColorfulTheme::default();
     Confirm::with_theme(&theme)
@@ -44,7 +45,7 @@ pub fn confirm(message: &str, default: bool) -> Result<bool, CliError> {
         .map_err(|_| CliError::UserCancelled)
 }
 
-/// Show a selection prompt
+/// Show a selection prompt with enhanced options
 pub fn select<T: Display>(
     message: &str,
     items: &[T],
@@ -59,7 +60,7 @@ pub fn select<T: Display>(
     select.interact().map_err(|_| CliError::UserCancelled)
 }
 
-/// Show a text input prompt
+/// Show a text input prompt with validation
 pub fn input_text(message: &str, default: Option<&str>) -> Result<String, CliError> {
     let theme = ColorfulTheme::default();
     let mut input = Input::with_theme(&theme).with_prompt(message);
@@ -69,7 +70,7 @@ pub fn input_text(message: &str, default: Option<&str>) -> Result<String, CliErr
     input.interact_text().map_err(|_| CliError::UserCancelled)
 }
 
-/// Show a password input prompt
+/// Show a password input prompt with security considerations
 pub fn input_password(message: &str) -> Result<String, CliError> {
     let theme = ColorfulTheme::default();
     dialoguer::Password::with_theme(&theme)
@@ -78,66 +79,94 @@ pub fn input_password(message: &str) -> Result<String, CliError> {
         .map_err(|_| CliError::UserCancelled)
 }
 
-/// Print colored success message
+/// Print colored success message with icon
 pub fn success(message: &str) -> String {
-    message.green().bold().to_string()
+    format!("✅ {}", message.green().bold())
 }
 
-/// Print colored info message
+/// Print colored info message with icon
 pub fn info(message: &str) -> String {
-    message.blue().to_string()
+    format!("ℹ️  {}", message.blue())
 }
 
-/// Print colored warning message
+/// Print colored warning message with icon
 pub fn warn(message: &str) -> String {
-    message.yellow().to_string()
+    format!("⚠️  {}", message.yellow().bold())
 }
 
-/// Print colored error message
+/// Print colored error message with icon
 pub fn error(message: &str) -> String {
-    message.red().bold().to_string()
+    format!("❌ {}", message.red().bold())
 }
 
-/// Print colored success message to stdout
-pub fn print_success(message: &str) {
-    println!("{}", success(message));
+/// Print debugging message with icon
+pub fn debug(message: &str) -> String {
+    format!("🔍 {}", message.magenta().dimmed())
 }
 
-/// Print colored info message to stdout
-pub fn print_info(message: &str) {
-    println!("{}", info(message));
-}
-
-/// Print colored warning message to stdout
-pub fn print_warning(message: &str) {
-    println!("{}", warn(message));
-}
-
-/// Print colored error message to stdout
-pub fn print_error(message: &str) {
-    eprintln!("{}", error(message));
-}
-
-/// Print progress bar or spinner
+/// Print progress message with icon
 pub fn progress(message: &str) -> String {
     format!("⏳ {}", message.cyan())
 }
 
-/// Print a header with formatting
-pub fn header(title: &str) {
-    println!("\n{}", title.bright_blue().bold());
-    println!("{}", "=".repeat(title.len()).bright_blue());
+/// Print success message to stdout
+pub fn print_success(message: &str) {
+    println!("{}", success(message));
 }
 
-/// Print a subheader
+/// Print info message to stdout
+pub fn print_info(message: &str) {
+    println!("{}", info(message));
+}
+
+/// Print warning message to stdout
+pub fn print_warning(message: &str) {
+    println!("{}", warn(message));
+}
+
+/// Print error message to stderr
+pub fn print_error(message: &str) {
+    eprintln!("{}", error(message));
+}
+
+/// Print debug message to stdout
+pub fn print_debug(message: &str) {
+    println!("{}", debug(message));
+}
+
+/// Print a formatted header with consistent styling
+pub fn header(title: &str) {
+    println!("\n{}", title.bright_blue().bold());
+    println!("{}", "━".repeat(title.len()).bright_blue());
+}
+
+/// Print a formatted subheader
 pub fn subheader(title: &str) {
     println!("\n{}", title.bright_cyan().bold());
-    println!("{}", "-".repeat(title.len()).bright_cyan());
+    println!("{}", "─".repeat(title.len()).bright_cyan());
+}
+
+/// Print a section separator
+pub fn separator() {
+    println!("{}", "─".repeat(50).dimmed());
+}
+
+/// Print a prominent banner
+pub fn banner(title: &str, subtitle: Option<&str>) {
+    let width = title.len().max(subtitle.map_or(0, |s| s.len()));
+    let border = "═".repeat(width + 4);
+
+    println!("\n{}", border.bright_blue().bold());
+    println!("  {}", title.bright_blue().bold());
+    if let Some(sub) = subtitle {
+        println!("  {}", sub.bright_cyan());
+    }
+    println!("{}", border.bright_blue().bold());
 }
 
 /// Format bytes in human-readable format
 pub fn format_bytes(bytes: u64) -> String {
-    const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
+    const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB", "PB"];
     let mut size = bytes as f64;
     let mut unit_index = 0;
 
@@ -162,19 +191,37 @@ pub fn format_duration(duration: Duration) -> String {
     let seconds = total_seconds % 60;
 
     if days > 0 {
-        format!("{}d {}h {}m", days, hours, minutes)
+        format!("{days}d {hours}h {minutes}m")
     } else if hours > 0 {
-        format!("{}h {}m", hours, minutes)
+        format!("{hours}h {minutes}m")
     } else if minutes > 0 {
-        format!("{}m {}s", minutes, seconds)
+        format!("{minutes}m {seconds}s")
     } else {
-        format!("{}s", seconds)
+        format!("{seconds}s")
     }
 }
 
-/// Format percentage
+/// Format percentage with styling
 pub fn format_percentage(value: f64) -> String {
-    format!("{:.1}%", value * 100.0)
+    let percentage = value * 100.0;
+    let color = if percentage >= 90.0 {
+        "green"
+    } else if percentage >= 70.0 {
+        "yellow"
+    } else {
+        "red"
+    };
+    format!("{:.1}%", percentage).color(color).to_string()
+}
+
+/// Format health status with color coding
+pub fn format_health_status(status: &str) -> String {
+    match status.to_lowercase().as_str() {
+        "healthy" | "ok" | "running" => format!("🟢 {}", status.green().bold()),
+        "warning" | "degraded" => format!("🟡 {}", status.yellow().bold()),
+        "error" | "failed" | "stopped" => format!("🔴 {}", status.red().bold()),
+        _ => format!("⚪ {}", status.dimmed()),
+    }
 }
 
 /// CLI UI helper functions for beautiful output
@@ -184,15 +231,15 @@ pub fn title(message: &str) -> ColoredString {
 
 /// Get terminal width safely
 pub fn terminal_width() -> usize {
-    term_size::dimensions().map(|(w, _)| w).unwrap_or(80) // Safe fallback to 80 columns
+    term_size::dimensions().map(|(w, _)| w).unwrap_or(80)
 }
 
 /// Get terminal height safely
 pub fn terminal_height() -> usize {
-    term_size::dimensions().map(|(_, h)| h).unwrap_or(24) // Safe fallback to 24 rows
+    term_size::dimensions().map(|(_, h)| h).unwrap_or(24)
 }
 
-/// Create a table-like output
+/// Create a table-like output with enhanced formatting
 pub struct Table {
     headers: Vec<String>,
     rows: Vec<Vec<String>>,
@@ -200,132 +247,157 @@ pub struct Table {
 }
 
 impl Table {
-    pub fn new(headers: Vec<String>) -> Self {
-        let widths = headers.iter().map(|h| h.len()).collect();
+    /// Create a new table
+    pub fn new() -> Self {
         Self {
-            headers,
+            headers: Vec::new(),
             rows: Vec::new(),
-            widths,
+            widths: Vec::new(),
         }
     }
 
-    pub fn add_row(&mut self, row: Vec<String>) {
+    /// Add headers to the table
+    pub fn headers(mut self, headers: Vec<String>) -> Self {
+        self.widths = headers.iter().map(|h| h.len()).collect();
+        self.headers = headers;
+        self
+    }
+
+    /// Add a row to the table
+    pub fn row(mut self, row: Vec<String>) -> Self {
         // Update column widths
         for (i, cell) in row.iter().enumerate() {
             if i < self.widths.len() {
                 self.widths[i] = self.widths[i].max(cell.len());
+            } else {
+                self.widths.push(cell.len());
             }
         }
         self.rows.push(row);
+        self
     }
 
-    pub fn print(&self) {
-        // Print headers
-        self.print_separator();
-        print!("│");
-        for (i, header) in self.headers.iter().enumerate() {
-            print!(
-                " {:width$} │",
-                header.bright_blue().bold(),
-                width = self.widths[i]
-            );
+    /// Print the table with enhanced formatting
+    pub fn print(self) {
+        if self.headers.is_empty() {
+            return;
         }
-        println!();
+
+        // Print headers
+        let header_line = self
+            .headers
+            .iter()
+            .enumerate()
+            .map(|(i, h)| format!("{:width$}", h, width = self.widths[i]))
+            .collect::<Vec<_>>()
+            .join(" │ ");
+
+        println!("{}", header_line.bright_blue().bold());
+
+        // Print separator
+        let separator_line = self
+            .widths
+            .iter()
+            .map(|&w| "─".repeat(w))
+            .collect::<Vec<_>>()
+            .join("─┼─");
+        println!("{}", separator_line.bright_blue());
 
         // Print rows
-        for row in &self.rows {
-            print!("│");
-            for (i, cell) in row.iter().enumerate() {
-                let width = if i < self.widths.len() {
-                    self.widths[i]
-                } else {
-                    0
-                };
-                print!(" {:width$} │", cell, width = width);
-            }
-            println!();
+        for row in self.rows {
+            let row_line = row
+                .iter()
+                .enumerate()
+                .map(|(i, cell)| {
+                    let cell_len = cell.len();
+                    let width = self.widths.get(i).unwrap_or(&cell_len);
+                    format!("{:width$}", cell, width = width)
+                })
+                .collect::<Vec<_>>()
+                .join(" │ ");
+            println!("{}", row_line);
         }
     }
-
-    fn print_separator(&self) {
-        print!("├");
-        for width in &self.widths {
-            print!("{}", "─".repeat(width + 2));
-            print!("┼");
-        }
-        // Replace last ┼ with ┤
-        print!("\x08┤");
-    }
 }
 
-/// Spinner with custom messages
-pub struct Spinner {
-    pb: ProgressBar,
-}
-
-impl Spinner {
-    pub fn new(message: &str) -> Self {
-        let pb = spinner(message);
-        pb.enable_steady_tick(Duration::from_millis(120));
-        Self { pb }
-    }
-
-    pub fn set_message(&self, message: &str) {
-        self.pb.set_message(message.to_string());
-    }
-
-    pub fn finish_with_message(&self, message: &str) {
-        self.pb.finish_with_message(message.to_string());
-    }
-
-    pub fn finish(&self) {
-        self.pb.finish_and_clear();
-    }
-}
-
-/// Multi-progress manager for concurrent operations
-pub struct MultiProgressManager {
-    multi: MultiProgress,
-}
-
-impl Default for MultiProgressManager {
+impl Default for Table {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl MultiProgressManager {
-    pub fn new() -> Self {
-        Self {
-            multi: MultiProgress::new(),
+/// Show a loading animation for async operations
+pub async fn with_loading<F, T>(message: &str, future: F) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    let pb = spinner(message);
+    pb.enable_steady_tick(Duration::from_millis(100));
+    let result = future.await;
+    pb.finish_with_message("Done");
+    result
+}
+
+/// Show an error with suggestions for recovery
+pub fn error_with_suggestions(message: &str, suggestions: &[&str]) {
+    print_error(message);
+    if !suggestions.is_empty() {
+        println!("\n💡 Suggestions:");
+        for suggestion in suggestions {
+            println!("  • {}", suggestion.bright_yellow());
         }
     }
+}
 
-    pub fn add_progress_bar(&self, len: u64) -> ProgressBar {
-        let pb = progress_bar(len);
-        self.multi.add(pb)
-    }
+/// Show a warning with additional context
+pub fn warning_with_context(message: &str, context: &str) {
+    print_warning(message);
+    println!("   {}", context.dimmed());
+}
 
-    pub fn add_spinner(&self, message: &str) -> ProgressBar {
-        spinner(message)
+/// Show system information in a formatted way
+pub fn system_info(info: &[(&str, &str)]) {
+    println!("\n{}", "System Information".bright_blue().bold());
+    println!("{}", "═".repeat(20).bright_blue());
+
+    for (key, value) in info {
+        println!("{:>15}: {}", key.bright_cyan(), value.bright_white());
     }
 }
 
-/// Clear the terminal
+/// Show configuration summary
+pub fn config_summary(config: &[(&str, &str)]) {
+    println!("\n{}", "Configuration Summary".bright_blue().bold());
+    println!("{}", "═".repeat(25).bright_blue());
+
+    for (key, value) in config {
+        println!("{:>20}: {}", key.bright_cyan(), value.bright_white());
+    }
+}
+
+/// Clear screen for watch mode
 pub fn clear_screen() {
-    let term = Term::stdout();
-    let _ = term.clear_screen();
+    print!("\x1B[2J\x1B[1;1H");
 }
 
-/// Move cursor to specific position
-pub fn move_cursor(row: u16, col: u16) {
-    let term = Term::stdout();
-    let _ = term.move_cursor_to(col as usize, row as usize);
+/// Show a step in a process
+pub fn step(step_num: usize, total: usize, message: &str) {
+    println!(
+        "{} {}",
+        format!("[{}/{}]", step_num, total).bright_blue().bold(),
+        message
+    );
 }
 
-/// Get terminal size
-pub fn terminal_size() -> (u16, u16) {
-    term_size::dimensions()
-        .map(|(w, h)| (w as u16, h as u16))
-        .unwrap_or((80, 24))
+/// Show completion message with next steps
+pub fn completion_message(message: &str, next_steps: &[&str]) {
+    println!("\n{}", "🎉 Success!".bright_green().bold());
+    println!("{}", message.bright_green());
+
+    if !next_steps.is_empty() {
+        println!("\n{}", "Next Steps:".bright_blue().bold());
+        for (i, step) in next_steps.iter().enumerate() {
+            println!("  {}. {}", i + 1, step.bright_white());
+        }
+    }
 }

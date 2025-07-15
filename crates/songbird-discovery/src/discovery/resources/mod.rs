@@ -6,10 +6,10 @@ use std::str;
 pub struct ResourceDetector;
 
 impl ResourceDetector {
-    /// Detect local compute resources
+    #[must_use]
     pub fn detect_local_resources() -> ComputeResources {
         ComputeResources {
-            cpu_cores: num_cpus::get() as u32,
+            cpu_cores: u32::try_from(num_cpus::get()).unwrap_or(u32::MAX),
             cpu_architecture: std::env::consts::ARCH.to_string(),
             memory_total_gb: Self::detect_total_memory_gb(),
             memory_available_gb: Self::detect_available_memory_gb(),
@@ -267,7 +267,7 @@ impl ResourceDetector {
                             continue;
                         }
 
-                        let speed_path = format!("/sys/class/net/{}/speed", name_str);
+                        let speed_path = format!("/sys/class/net/{name_str}/speed");
                         if let Ok(speed_str) = std::fs::read_to_string(speed_path) {
                             if let Ok(speed_mbps) = speed_str.trim().parse::<f64>() {
                                 if speed_mbps > 0.0 {
@@ -284,7 +284,7 @@ impl ResourceDetector {
         1000.0
     }
 
-    /// Get current resource usage
+    #[must_use]
     pub fn get_current_usage() -> ResourceUsage {
         ResourceUsage {
             cpu_utilization_percent: Self::get_cpu_utilization(),

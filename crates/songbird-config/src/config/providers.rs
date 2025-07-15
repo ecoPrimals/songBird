@@ -54,25 +54,35 @@ impl<T: DeserializeOwned + Send + Sync> ConfigProvider<T> for FileConfigProvider
                 .map_err(|e| SongbirdError::Config {
                     field: Some("file_path".to_string()),
                     message: format!("Failed to read config file {:?}: {}", self.path, e),
+                    context: Some("File reading".to_string()),
+                    suggestion: Some("Check file path and permissions".to_string()),
                 })?;
 
         match self.format {
-            ConfigFormat::Toml => toml::from_str(&contents).map_err(|e| SongbirdError::Config {
-                field: Some("toml_parse".to_string()),
-                message: format!("Failed to parse TOML config: {}", e),
-            }),
-            ConfigFormat::Yaml => {
-                serde_yaml::from_str(&contents).map_err(|e| SongbirdError::Config {
+            ConfigFormat::Toml => {
+                toml::from_str(&contents).map_err(|e| songbird_errors::SongbirdError::Config {
+                    field: Some("toml_parse".to_string()),
+                    message: format!("Failed to parse TOML config: {e}"),
+                    context: Some("TOML parsing".to_string()),
+                    suggestion: Some("Check TOML syntax and format".to_string()),
+                })
+            }
+            ConfigFormat::Yaml => serde_yaml::from_str(&contents).map_err(|e| {
+                songbird_errors::SongbirdError::Config {
                     field: Some("yaml_parse".to_string()),
-                    message: format!("Failed to parse YAML config: {}", e),
-                })
-            }
-            ConfigFormat::Json => {
-                serde_json::from_str(&contents).map_err(|e| SongbirdError::Config {
+                    message: format!("Failed to parse YAML config: {e}"),
+                    context: Some("YAML parsing".to_string()),
+                    suggestion: Some("Check YAML syntax and format".to_string()),
+                }
+            }),
+            ConfigFormat::Json => serde_json::from_str(&contents).map_err(|e| {
+                songbird_errors::SongbirdError::Config {
                     field: Some("json_parse".to_string()),
-                    message: format!("Failed to parse JSON config: {}", e),
-                })
-            }
+                    message: format!("Failed to parse JSON config: {e}"),
+                    context: Some("JSON parsing".to_string()),
+                    suggestion: Some("Check JSON syntax and format".to_string()),
+                }
+            }),
         }
     }
 }
@@ -85,9 +95,11 @@ impl<T: DeserializeOwned + Send + Sync> ConfigProvider<T> for EnvConfigProvider 
     async fn load_config(&self) -> Result<T> {
         // Environment config loaded from env vars - no file reading needed
         let config = std::env::var("SONGBIRD_CONFIG").unwrap_or_default();
-        serde_json::from_str(&config).map_err(|e| SongbirdError::Config {
+        serde_json::from_str(&config).map_err(|e| songbird_errors::SongbirdError::Config {
             field: Some("env_parse".to_string()),
-            message: format!("Failed to parse environment config: {}", e),
+            message: format!("Failed to parse environment config: {e}"),
+            context: Some("Environment parsing".to_string()),
+            suggestion: Some("Check environment variables".to_string()),
         })
     }
 }

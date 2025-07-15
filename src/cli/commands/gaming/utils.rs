@@ -19,7 +19,7 @@ pub struct DiscoveryMessage {
 pub fn generate_session_code() -> String {
     const CHARSET: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let mut rng = rand::thread_rng();
-    
+
     (0..6)
         .map(|_| {
             let idx = rng.gen_range(0..CHARSET.len());
@@ -28,18 +28,22 @@ pub fn generate_session_code() -> String {
         .collect()
 }
 
-/// Pad string to specified length
+/// Pad string to specified length - zero-copy optimized
 pub fn pad_string(s: &str, length: usize) -> String {
     if s.len() >= length {
         s.to_string()
     } else {
-        format!("{}{}", s, " ".repeat(length - s.len()))
+        let mut result = String::with_capacity(length);
+        result.push_str(s);
+        result.extend(std::iter::repeat_n(' ', length - s.len()));
+        result
     }
 }
 
 /// Get local IP address
 pub async fn get_local_ip() -> Option<String> {
-    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    let bind_addr = format!("{}:0", crate::config::constants::network::production_bind_address());
+    let socket = std::net::UdpSocket::bind(&bind_addr).ok()?;
     socket.connect("8.8.8.8:80").ok()?;
     Some(socket.local_addr().ok()?.ip().to_string())
 }

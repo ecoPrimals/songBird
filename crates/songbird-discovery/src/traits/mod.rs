@@ -47,7 +47,7 @@ pub trait HealthCheck: Send + Sync {
 }
 
 /// Health status enumeration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthStatus {
     Healthy,
     Degraded,
@@ -102,6 +102,10 @@ pub trait ComposablePlugin: Send + Sync {
     fn config_schema(&self) -> serde_json::Value;
 
     /// Apply configuration dynamically
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configuration is invalid or cannot be applied
     fn apply_config(&mut self, config: serde_json::Value) -> Result<()>;
 
     /// Health check for this plugin
@@ -142,23 +146,23 @@ impl std::hash::Hash for PluginCapability {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // Hash trait implementation removed - not needed
         match self {
-            PluginCapability::Encryption { algorithms } => {
+            Self::Encryption { algorithms } => {
                 "Encryption".hash(state);
                 algorithms.hash(state);
             }
-            PluginCapability::ServiceDiscovery { protocols } => {
+            Self::ServiceDiscovery { protocols } => {
                 "ServiceDiscovery".hash(state);
                 protocols.hash(state);
             }
-            PluginCapability::LoadBalancing { strategies } => {
+            Self::LoadBalancing { strategies } => {
                 "LoadBalancing".hash(state);
                 strategies.hash(state);
             }
-            PluginCapability::GamingBridge { protocols } => {
+            Self::GamingBridge { protocols } => {
                 "GamingBridge".hash(state);
                 protocols.hash(state);
             }
-            PluginCapability::Compute {
+            Self::Compute {
                 cpu_cores,
                 memory_gb,
             } => {
@@ -166,7 +170,7 @@ impl std::hash::Hash for PluginCapability {
                 cpu_cores.hash(state);
                 memory_gb.hash(state);
             }
-            PluginCapability::Storage {
+            Self::Storage {
                 capacity_gb,
                 storage_type,
             } => {
@@ -174,7 +178,7 @@ impl std::hash::Hash for PluginCapability {
                 capacity_gb.hash(state);
                 storage_type.hash(state);
             }
-            PluginCapability::Network {
+            Self::Network {
                 bandwidth_mbps,
                 latency_ms,
             } => {
@@ -182,7 +186,7 @@ impl std::hash::Hash for PluginCapability {
                 bandwidth_mbps.hash(state);
                 latency_ms.hash(state);
             }
-            PluginCapability::Custom { name, attributes } => {
+            Self::Custom { name, attributes } => {
                 "Custom".hash(state);
                 name.hash(state);
                 // Hash attributes by converting to sorted vec of key-value pairs
@@ -204,58 +208,48 @@ impl std::cmp::Ord for PluginCapability {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         use std::cmp::Ordering;
         match (self, other) {
+            (Self::Encryption { algorithms: a }, Self::Encryption { algorithms: b })
+            | (Self::ServiceDiscovery { protocols: a }, Self::ServiceDiscovery { protocols: b })
+            | (Self::LoadBalancing { strategies: a }, Self::LoadBalancing { strategies: b })
+            | (Self::GamingBridge { protocols: a }, Self::GamingBridge { protocols: b }) => {
+                a.cmp(b)
+            }
             (
-                PluginCapability::Encryption { algorithms: a },
-                PluginCapability::Encryption { algorithms: b },
-            ) => a.cmp(b),
-            (
-                PluginCapability::ServiceDiscovery { protocols: a },
-                PluginCapability::ServiceDiscovery { protocols: b },
-            ) => a.cmp(b),
-            (
-                PluginCapability::LoadBalancing { strategies: a },
-                PluginCapability::LoadBalancing { strategies: b },
-            ) => a.cmp(b),
-            (
-                PluginCapability::GamingBridge { protocols: a },
-                PluginCapability::GamingBridge { protocols: b },
-            ) => a.cmp(b),
-            (
-                PluginCapability::Compute {
+                Self::Compute {
                     cpu_cores: a1,
                     memory_gb: b1,
                 },
-                PluginCapability::Compute {
+                Self::Compute {
                     cpu_cores: a2,
                     memory_gb: b2,
                 },
-            ) => (a1, b1).cmp(&(a2, b2)),
-            (
-                PluginCapability::Storage {
-                    capacity_gb: a1,
-                    storage_type: b1,
-                },
-                PluginCapability::Storage {
-                    capacity_gb: a2,
-                    storage_type: b2,
-                },
-            ) => (a1, b1).cmp(&(a2, b2)),
-            (
-                PluginCapability::Network {
+            )
+            | (
+                Self::Network {
                     bandwidth_mbps: a1,
                     latency_ms: b1,
                 },
-                PluginCapability::Network {
+                Self::Network {
                     bandwidth_mbps: a2,
                     latency_ms: b2,
                 },
             ) => (a1, b1).cmp(&(a2, b2)),
             (
-                PluginCapability::Custom {
+                Self::Storage {
+                    capacity_gb: a1,
+                    storage_type: b1,
+                },
+                Self::Storage {
+                    capacity_gb: a2,
+                    storage_type: b2,
+                },
+            ) => (a1, b1).cmp(&(a2, b2)),
+            (
+                Self::Custom {
                     name: n1,
                     attributes: a1,
                 },
-                PluginCapability::Custom {
+                Self::Custom {
                     name: n2,
                     attributes: a2,
                 },
@@ -265,20 +259,20 @@ impl std::cmp::Ord for PluginCapability {
                 (n1, sorted_a1).cmp(&(n2, sorted_a2))
             }
             // Different variants comparison based on variant ordering
-            (PluginCapability::Encryption { .. }, _) => Ordering::Less,
-            (_, PluginCapability::Encryption { .. }) => Ordering::Greater,
-            (PluginCapability::ServiceDiscovery { .. }, _) => Ordering::Less,
-            (_, PluginCapability::ServiceDiscovery { .. }) => Ordering::Greater,
-            (PluginCapability::LoadBalancing { .. }, _) => Ordering::Less,
-            (_, PluginCapability::LoadBalancing { .. }) => Ordering::Greater,
-            (PluginCapability::GamingBridge { .. }, _) => Ordering::Less,
-            (_, PluginCapability::GamingBridge { .. }) => Ordering::Greater,
-            (PluginCapability::Compute { .. }, _) => Ordering::Less,
-            (_, PluginCapability::Compute { .. }) => Ordering::Greater,
-            (PluginCapability::Storage { .. }, _) => Ordering::Less,
-            (_, PluginCapability::Storage { .. }) => Ordering::Greater,
-            (PluginCapability::Network { .. }, _) => Ordering::Less,
-            (_, PluginCapability::Network { .. }) => Ordering::Greater,
+            (Self::Encryption { .. }, _) => Ordering::Less,
+            (_, Self::Encryption { .. }) => Ordering::Greater,
+            (Self::ServiceDiscovery { .. }, _) => Ordering::Less,
+            (_, Self::ServiceDiscovery { .. }) => Ordering::Greater,
+            (Self::LoadBalancing { .. }, _) => Ordering::Less,
+            (_, Self::LoadBalancing { .. }) => Ordering::Greater,
+            (Self::GamingBridge { .. }, _) => Ordering::Less,
+            (_, Self::GamingBridge { .. }) => Ordering::Greater,
+            (Self::Compute { .. }, _) => Ordering::Less,
+            (_, Self::Compute { .. }) => Ordering::Greater,
+            (Self::Storage { .. }, _) => Ordering::Less,
+            (_, Self::Storage { .. }) => Ordering::Greater,
+            (Self::Network { .. }, _) => Ordering::Less,
+            (_, Self::Network { .. }) => Ordering::Greater,
         }
     }
 }

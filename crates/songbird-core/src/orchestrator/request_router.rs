@@ -107,7 +107,7 @@ impl RequestRouter {
                 Err(e) => {
                     return Err(SongbirdError::Service {
                         service_id: "unknown".to_string(),
-                        message: format!("Load balancer error: {}", e),
+                        message: format!("Load balancer error: {e}"),
                     });
                 }
             }
@@ -192,7 +192,7 @@ impl RequestRouter {
             );
             SongbirdError::Service {
                 service_id: instance.service_info.id.clone(),
-                message: format!("Request timeout after {:?}", timeout_duration),
+                message: format!("Request timeout after {timeout_duration}"),
             }
         })?
         .map_err(|e| {
@@ -204,7 +204,7 @@ impl RequestRouter {
             );
             SongbirdError::Service {
                 service_id: instance.service_info.id.clone(),
-                message: format!("Communication failed: {}", e),
+                message: format!("Communication failed: {e}"),
             }
         })?;
 

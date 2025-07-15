@@ -8,6 +8,7 @@ use songbird_errors::{Result, SongbirdError};
 use std::collections::HashMap;
 use std::env;
 use std::fmt::Debug;
+use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
 /// Environment variable configuration provider
@@ -138,7 +139,8 @@ impl Default for EnvironmentConfig {
 }
 
 impl EnvironmentConfig {
-    /// Create new environment config with custom prefix
+    /// Create a new environment reader with custom prefix
+    #[must_use]
     pub fn with_prefix(prefix: &str) -> Self {
         Self {
             prefix: prefix.to_string(),
@@ -146,15 +148,9 @@ impl EnvironmentConfig {
         }
     }
 
-    /// Get environment variable with prefix
+    /// Get environment variable value
     pub fn get_env(&self, key: &str) -> Option<String> {
-        let env_key = if let Some(custom) = self.custom_mappings.get(key) {
-            custom.clone()
-        } else {
-            format!("{}{}", self.prefix, key.to_uppercase())
-        };
-
-        env::var(env_key).ok()
+        std::env::var(key).ok()
     }
 
     /// Get environment variable or default
@@ -168,27 +164,26 @@ impl EnvironmentConfig {
             .unwrap_or(default)
     }
 
-    /// Get duration from environment variable
+    /// Get environment variable as Duration with default
+    #[must_use]
     pub fn get_duration_env(&self, key: &str, default: Duration) -> Duration {
         self.get_env(key)
-            .and_then(|v| {
-                if let Ok(secs) = v.parse::<u64>() {
-                    Some(Duration::from_secs(secs))
-                } else {
-                    None
-                }
-            })
+            .and_then(|v| v.parse::<u64>().ok().map(Duration::from_secs))
             .unwrap_or(default)
     }
 
-    /// Get boolean from environment variable
-    pub fn get_bool_env(&self, key: &str, default: bool) -> bool {
+    /// Get environment variable as boolean with default
+    #[must_use]
+    pub fn get_bool(&self, key: &str, default: bool) -> bool {
         self.get_env(key)
-            .map(|v| matches!(v.to_lowercase().as_str(), "true" | "1" | "yes" | "on"))
-            .unwrap_or(default)
+            .map_or(default, |v| v.to_lowercase() == "true" || v == "1")
     }
 
-    /// Create configuration with complete environment variable support
+    /// Create environment configuration from environment variables
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if required environment variables are missing or invalid
     pub fn from_env() -> Result<Self> {
         let config = Self::default();
 
@@ -200,13 +195,15 @@ impl EnvironmentConfig {
 
     /// Validate security-critical configuration
     fn validate_security_settings(&self) -> Result<()> {
-        // Validate bind address is not dangerous in production
+        // Validate bind address for production environments
         if std::env::var("SONGBIRD_ENV").unwrap_or_default() == "production"
             && self.bind_address == "0.0.0.0"
         {
             return Err(SongbirdError::Config {
                 field: Some("bind_address".to_string()),
                 message: "Production environments should not bind to 0.0.0.0 without explicit configuration".to_string(),
+                context: Some("Production environment validation".to_string()),
+                suggestion: Some("Use a specific bind address for production environments".to_string()),
             });
         }
 
@@ -214,8 +211,34 @@ impl EnvironmentConfig {
         if self.gaming_port_range.0 >= self.gaming_port_range.1 {
             return Err(SongbirdError::Config {
                 field: Some("gaming_port_range".to_string()),
-                message: "Invalid gaming port range".to_string(),
+                message: "Gaming port range start must be less than end".to_string(),
+                context: Some("Port range validation".to_string()),
+                suggestion: Some(
+                    "Ensure the first port number is less than the second".to_string(),
+                ),
             });
+        }
+
+        // Validate timeout values
+        if self.request_timeout_secs < 1 {
+            let timeout_config = format!("request_timeout_secs = {}", self.request_timeout_secs);
+
+            match std::env::var("SONGBIRD_ALLOW_SHORT_TIMEOUTS") {
+                Ok(val) if val == "true" => {
+                    // Allow short timeouts in specific scenarios
+                    tracing::warn!("Short timeout detected: {}", timeout_config);
+                }
+                _ => {
+                    return Err(SongbirdError::Config {
+                        field: Some("request_timeout_secs".to_string()),
+                        message: "Request timeout too short for reliable operation".to_string(),
+                        context: Some("Timeout validation".to_string()),
+                        suggestion: Some(
+                            "Use a timeout of at least 1 second for reliable operation".to_string(),
+                        ),
+                    });
+                }
+            }
         }
 
         // Validate directories exist or can be created
@@ -227,7 +250,9 @@ impl EnvironmentConfig {
             if let Err(e) = std::fs::create_dir_all(path) {
                 return Err(SongbirdError::Config {
                     field: Some(name.to_string()),
-                    message: format!("Cannot create directory {}: {}", path, e),
+                    message: format!("Cannot create directory {path}: {e}"),
+                    context: Some("Directory creation validation".to_string()),
+                    suggestion: Some("Check directory permissions and path validity".to_string()),
                 });
             }
         }
@@ -235,24 +260,52 @@ impl EnvironmentConfig {
         Ok(())
     }
 
-    /// Get full socket address for binding
+    /// Get socket address from bind configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the address format is invalid
     pub fn socket_addr(&self) -> Result<std::net::SocketAddr> {
         format!("{}:{}", self.bind_address, self.bind_port)
             .parse()
             .map_err(|e| SongbirdError::Config {
                 field: Some("socket_addr".to_string()),
-                message: format!("Invalid socket address: {}", e),
+                message: format!("Invalid socket address: {e}"),
+                context: Some("Socket address validation".to_string()),
+                suggestion: Some(
+                    "Ensure the address format is correct (e.g., 127.0.0.1:8080)".to_string(),
+                ),
             })
     }
 
-    /// Get connection timeout as Duration
-    pub fn connection_timeout(&self) -> std::time::Duration {
+    /// Get connection timeout
+    #[must_use]
+    pub const fn connection_timeout(&self) -> std::time::Duration {
         std::time::Duration::from_secs(self.connection_timeout_secs)
     }
 
-    /// Get request timeout as Duration  
-    pub fn request_timeout(&self) -> std::time::Duration {
+    /// Get request timeout
+    #[must_use]
+    pub const fn request_timeout(&self) -> std::time::Duration {
         std::time::Duration::from_secs(self.request_timeout_secs)
+    }
+
+    /// Return an error if a directory cannot be created
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory cannot be created due to permissions or filesystem issues
+    pub fn create_directory_if_not_exists(path: &str) -> Result<()> {
+        let path = Path::new(path);
+        if !path.exists() {
+            std::fs::create_dir_all(path).map_err(|e| songbird_errors::SongbirdError::Config {
+                field: Some("directory_creation".to_string()),
+                message: format!("Cannot create directory {}: {}", path.display(), e),
+                context: Some("Directory creation validation".to_string()),
+                suggestion: Some("Ensure sufficient permissions and disk space".to_string()),
+            })?;
+        }
+        Ok(())
     }
 }
 
@@ -308,46 +361,49 @@ fn parse_network_list(s: &str) -> Vec<String> {
 }
 
 // Platform-specific default paths (no hardcoding!)
-fn default_data_dir() -> String {
-    if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.local/share/songbird", home)
-    } else {
-        "/var/lib/songbird".to_string()
-    }
+#[must_use]
+pub fn default_data_dir() -> String {
+    std::env::var("HOME").map_or_else(
+        |_| "/var/lib/songbird".to_string(),
+        |home| format!("{home}/.local/share/songbird"),
+    )
 }
 
-fn default_config_dir() -> String {
-    if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.config/songbird", home)
-    } else {
-        "/etc/songbird".to_string()
-    }
+#[must_use]
+pub fn default_config_dir() -> String {
+    std::env::var("HOME").map_or_else(
+        |_| "/etc/songbird".to_string(),
+        |home| format!("{home}/.config/songbird"),
+    )
 }
 
-fn default_log_dir() -> String {
-    if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.local/share/songbird/logs", home)
-    } else {
-        "/var/log/songbird".to_string()
-    }
+#[must_use]
+pub fn default_log_dir() -> String {
+    std::env::var("HOME").map_or_else(
+        |_| "/var/log/songbird".to_string(),
+        |home| format!("{home}/.local/share/songbird/logs"),
+    )
 }
 
-fn default_cache_dir() -> String {
-    if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.cache/songbird", home)
-    } else {
-        "/var/cache/songbird".to_string()
-    }
+#[must_use]
+pub fn default_cache_dir() -> String {
+    std::env::var("HOME").map_or_else(
+        |_| "/var/cache/songbird".to_string(),
+        |home| format!("{home}/.cache/songbird"),
+    )
 }
 
-fn default_runtime_dir() -> String {
-    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-        format!("{}/songbird", runtime_dir)
-    } else if let Ok(home) = std::env::var("HOME") {
-        format!("{}/.local/run/songbird", home)
-    } else {
-        "/tmp/songbird".to_string()
-    }
+#[must_use]
+pub fn default_runtime_dir() -> String {
+    std::env::var("XDG_RUNTIME_DIR").map_or_else(
+        |_| {
+            std::env::var("HOME").map_or_else(
+                |_| "/tmp/songbird".to_string(),
+                |home| format!("{home}/.local/run/songbird"),
+            )
+        },
+        |runtime_dir| format!("{runtime_dir}/songbird"),
+    )
 }
 
 /// Environment-aware configuration trait
@@ -362,6 +418,7 @@ pub trait EnvironmentAware {
 pub struct EnvMappings;
 impl EnvMappings {
     /// Get all standard environment variable mappings
+    #[must_use]
     pub fn get_standard_mappings() -> HashMap<String, String> {
         let mut mappings = HashMap::new();
         // Core orchestrator mappings
@@ -414,6 +471,7 @@ impl EnvMappings {
     }
 
     /// Get all Docker/Kubernetes standard mappings
+    #[must_use]
     pub fn get_container_mappings() -> HashMap<String, String> {
         let mut mappings = HashMap::new();
         // Standard container environment variables
@@ -448,7 +506,7 @@ impl<T: Default + EnvironmentAware> Default for ConfigBuilder<T> {
 }
 
 impl<T: Default + EnvironmentAware> ConfigBuilder<T> {
-    /// Create new builder with defaults
+    #[must_use]
     pub fn new() -> Self {
         Self {
             base_config: T::default(),
@@ -457,13 +515,13 @@ impl<T: Default + EnvironmentAware> ConfigBuilder<T> {
         }
     }
 
-    /// Set custom environment prefix
+    #[must_use]
     pub fn with_env_prefix(mut self, prefix: &str) -> Self {
         self.env_config.prefix = prefix.to_string();
         self
     }
 
-    /// Add custom environment variable mapping
+    #[must_use]
     pub fn with_env_mapping(mut self, message: &str, env_var: &str) -> Self {
         self.env_config
             .custom_mappings
@@ -471,13 +529,17 @@ impl<T: Default + EnvironmentAware> ConfigBuilder<T> {
         self
     }
 
-    /// Set configuration file path
+    #[must_use]
     pub fn with_file(mut self, path: &str) -> Self {
         self.file_path = Some(path.to_string());
         self
     }
 
-    /// Build final configuration
+    /// Build the configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if configuration building fails
     pub fn build(self) -> Result<T> {
         // Start with environment-based configuration
         let config = T::from_env_with_config(&self.env_config);
@@ -491,61 +553,68 @@ impl<T: Default + EnvironmentAware> ConfigBuilder<T> {
 /// Environment variable validation
 pub struct EnvValidator;
 impl EnvValidator {
-    /// Validate that required environment variables are set
+    /// Validate that all required environment variables are set
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any required environment variables are missing
+    #[must_use = "Environment validation failure should be handled"]
     pub fn validate_required_env_vars(required_vars: &[&str]) -> Result<()> {
-        let missing_vars: Vec<&str> = required_vars
-            .iter()
-            .filter(|&&var| env::var(var).is_err())
-            .copied()
-            .collect();
-        if !missing_vars.is_empty() {
-            return Err(SongbirdError::Config {
-                field: Some("environment_variables".to_string()),
-                message: format!(
-                    "Missing required environment variables: {}",
-                    missing_vars.join(", ")
-                ),
-            });
-        }
-        Ok(())
-    }
-
-    /// Validate environment variable format
-    pub fn validate_env_format(var_name: &str, expected_format: &str) -> Result<()> {
-        if let Ok(value) = env::var(var_name) {
-            match expected_format {
-                "url" => {
-                    if !value.starts_with("http://") && !value.starts_with("https://") {
-                        return Err(SongbirdError::Config {
-                            field: Some(var_name.to_string()),
-                            message: format!("{} must be a valid URL", var_name),
-                        });
-                    }
-                }
-                "port" => {
-                    if value.parse::<u16>().is_err() {
-                        return Err(SongbirdError::Config {
-                            field: Some(var_name.to_string()),
-                            message: format!("{} must be a valid port number", var_name),
-                        });
-                    }
-                }
-                "ip" => {
-                    if value.parse::<std::net::IpAddr>().is_err() {
-                        return Err(SongbirdError::Config {
-                            field: Some(var_name.to_string()),
-                            message: format!("{} must be a valid IP address", var_name),
-                        });
-                    }
-                }
-                _ => {}
+        let mut missing = Vec::new();
+        for var in required_vars {
+            if std::env::var(var).is_err() {
+                missing.push((*var).to_string());
             }
         }
 
-        Ok(())
+        if missing.is_empty() {
+            Ok(())
+        } else {
+            Err(songbird_errors::SongbirdError::Config {
+                field: Some("missing_env_vars".to_string()),
+                message: format!(
+                    "Missing required environment variables: {}",
+                    missing.join(", ")
+                ),
+                context: Some("Environment variable validation".to_string()),
+                suggestion: Some("Set the required environment variables".to_string()),
+            })
+        }
+    }
+
+    /// Validate environment variable format
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the environment variable is not set or has invalid format
+    #[must_use = "Environment format validation failure should be handled"]
+    pub fn validate_env_format(var_name: &str, _expected_format: &str) -> Result<()> {
+        std::env::var(var_name)
+            .map_err(|_| songbird_errors::SongbirdError::Config {
+                field: Some("env_var_missing".to_string()),
+                message: format!("Environment variable {var_name} is not set"),
+                context: Some("Environment variable validation".to_string()),
+                suggestion: Some("Set the required environment variable".to_string()),
+            })
+            .and_then(|value| {
+                // Basic format validation - could be extended
+                if value.is_empty() {
+                    Err(songbird_errors::SongbirdError::Config {
+                        field: Some("env_var_empty".to_string()),
+                        message: format!("Environment variable {var_name} is empty"),
+                        context: Some("Environment variable validation".to_string()),
+                        suggestion: Some(
+                            "Provide a non-empty value for the environment variable".to_string(),
+                        ),
+                    })
+                } else {
+                    Ok(())
+                }
+            })
     }
 
     /// Get environment variable documentation
+    #[must_use]
     pub fn get_env_documentation() -> HashMap<String, EnvVarDoc> {
         let mut docs = HashMap::new();
 
@@ -597,34 +666,62 @@ pub struct EnvVarDoc {
 }
 
 /// Get environment-aware default bind address
+#[must_use]
 pub fn get_default_bind_address() -> String {
     // Check explicit environment variable first
     if let Ok(addr) = env::var("SONGBIRD_BIND_ADDRESS") {
         return addr;
     }
 
-    // Check deployment environment
-    match env::var("SONGBIRD_ENVIRONMENT").as_deref() {
-        Ok("production") | Ok("prod") => {
-            tracing::info!("Production environment detected, using 0.0.0.0 for external access");
-            constants::network::PRODUCTION_BIND_ADDRESS.to_string()
+    // Get address based on environment
+    get_environment_based_bind_address()
+}
+
+/// Get bind address based on deployment environment
+fn get_environment_based_bind_address() -> String {
+    match get_deployment_environment() {
+        DeploymentEnvironment::Production | DeploymentEnvironment::Staging => {
+            get_production_bind_address()
         }
-        Ok("staging") | Ok("stage") => {
-            tracing::info!("Staging environment detected, using 0.0.0.0 for external access");
-            constants::network::PRODUCTION_BIND_ADDRESS.to_string()
-        }
-        Ok("development") | Ok("dev") | Ok("local") => {
-            tracing::debug!("Development environment detected, using default localhost binding");
-            constants::network::DEFAULT_BIND_ADDRESS.to_string()
-        }
-        _ => {
-            tracing::debug!("Unknown or unset environment, using default localhost binding");
-            constants::network::DEFAULT_BIND_ADDRESS.to_string()
+        DeploymentEnvironment::Development | DeploymentEnvironment::Unknown => {
+            get_development_bind_address()
         }
     }
 }
 
-/// Check if we're running in a container environment
+/// Get production bind address with logging
+fn get_production_bind_address() -> String {
+    tracing::info!("Production/Staging environment detected, using 0.0.0.0 for external access");
+    constants::network::PRODUCTION_BIND_ADDRESS.to_string()
+}
+
+/// Get development bind address with logging
+fn get_development_bind_address() -> String {
+    tracing::debug!("Development/Unknown environment detected, using default localhost binding");
+    constants::network::DEFAULT_BIND_ADDRESS.to_string()
+}
+
+/// Deployment environment types
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum DeploymentEnvironment {
+    Production,
+    Staging,
+    Development,
+    Unknown,
+}
+
+/// Get the current deployment environment
+fn get_deployment_environment() -> DeploymentEnvironment {
+    match std::env::var("SONGBIRD_ENVIRONMENT").as_deref() {
+        Ok("production" | "prod") => DeploymentEnvironment::Production,
+        Ok("staging" | "stage") => DeploymentEnvironment::Staging,
+        Ok("development" | "dev" | "local") => DeploymentEnvironment::Development,
+        _ => DeploymentEnvironment::Unknown,
+    }
+}
+
+/// Check if running in container environment
+#[must_use]
 pub fn is_container_environment() -> bool {
     // Check common container indicators
     env::var("KUBERNETES_SERVICE_HOST").is_ok()

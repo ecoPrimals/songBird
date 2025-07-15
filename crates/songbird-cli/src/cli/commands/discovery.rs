@@ -33,16 +33,16 @@ pub async fn discover_nodes(
     let env_config = songbird_config::config::environment::EnvironmentConfig::default();
     let port_range = port_range
         .unwrap_or_else(|| format!("{}-{}", env_config.bind_port, env_config.bind_port + 10));
-    println!("🔍 Scanning subnet: {}", subnet);
-    println!("🔌 Port range: {}", port_range);
-    println!("⏱️  Timeout: {}ms", timeout);
+    println!("🔍 Scanning subnet: {subnet}");
+    println!("🔌 Port range: {port_range}");
+    println!("⏱️  Timeout: {timeout}ms");
     println!();
 
     // Execute comprehensive network discovery with live node detection
     match perform_real_discovery(&subnet, timeout).await {
         Ok(discovered_nodes) => {
             if discovered_nodes.is_empty() {
-                println!("❌ No Songbird nodes discovered on subnet {}", subnet);
+                println!("❌ No Songbird nodes discovered on subnet {subnet}");
                 println!("💡 Try:");
                 println!("   • Check if any nodes are running");
                 println!("   • Verify network connectivity");
@@ -55,7 +55,7 @@ pub async fn discover_nodes(
             }
         }
         Err(e) => {
-            println!("❌ Discovery failed: {}", e);
+            println!("❌ Discovery failed: {e}");
             println!("💡 This might be expected if no nodes are running");
         }
     }
@@ -95,8 +95,10 @@ async fn perform_real_discovery(subnet: &str, timeout_ms: u64) -> Result<Vec<Dis
         UdpSocket::bind(&bind_addr)
             .await
             .map_err(|e| songbird_errors::SongbirdError::Config {
+                message: format!("Failed to bind discovery socket to {bind_addr}: {e}"),
                 field: Some("discovery_bind_address".to_string()),
-                message: format!("Failed to bind discovery socket to {}: {}", bind_addr, e),
+                context: Some("Discovery socket binding".to_string()),
+                suggestion: Some("Check your network configuration and try again".to_string()),
             })?;
     socket.set_broadcast(true)?;
 
@@ -136,8 +138,10 @@ fn parse_subnet(subnet: &str) -> Result<(IpAddr, u8)> {
     let parts: Vec<&str> = subnet.split('/').collect();
     if parts.len() != 2 {
         return Err(songbird_errors::SongbirdError::Config {
-            message: format!("Invalid subnet format: {}", subnet),
+            message: format!("Invalid subnet format: {subnet}"),
             field: Some("subnet".to_string()),
+            context: Some("Subnet parsing".to_string()),
+            suggestion: Some("Ensure subnet is in CIDR notation (e.g., 192.168.1.0/24)".to_string()),
         });
     }
 
@@ -147,6 +151,8 @@ fn parse_subnet(subnet: &str) -> Result<(IpAddr, u8)> {
         .map_err(|_| songbird_errors::SongbirdError::Config {
             message: format!("Invalid subnet mask: {}", parts[1]),
             field: Some("subnet_mask".to_string()),
+            context: Some("Subnet mask parsing".to_string()),
+            suggestion: Some("Ensure mask is a valid integer between 0 and 32".to_string()),
         })?;
 
     Ok((ip, mask))
@@ -202,13 +208,16 @@ fn parse_discovery_response(response: &str, peer_addr: SocketAddr) -> Option<Dis
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
+    #[allow(dead_code)] // Helper function for future tests
     fn setup_test_discovery_config() -> (TempDir, std::path::PathBuf) {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("Failed to create temp directory for test");
         let config_path = temp_dir.path().join("discovery_config.toml");
-        fs::write(&config_path, r#"
+        fs::write(
+            &config_path,
+            r#"
 [discovery]
 backend = "static"
 timeout = 30
@@ -221,7 +230,9 @@ discovery_port = 8081
 [consul]
 url = "http://localhost:8500"
 datacenter = "dc1"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
         (temp_dir, config_path)
     }
 
@@ -263,7 +274,7 @@ datacenter = "dc1"
         assert_eq!(mask, 24);
         match ip {
             std::net::IpAddr::V4(ipv4) => assert_eq!(ipv4.octets(), [192, 168, 1, 0]),
-            _ => panic!("Expected IPv4"),
+            _ => assert!(false, "Expected IPv4"),
         }
     }
 
@@ -275,7 +286,7 @@ datacenter = "dc1"
         assert_eq!(mask, 32);
         match ip {
             std::net::IpAddr::V6(_) => {} // IPv6 is valid
-            _ => panic!("Expected IPv6"),
+            _ => assert!(false, "Expected IPv6"),
         }
     }
 
@@ -299,13 +310,13 @@ datacenter = "dc1"
 
     #[tokio::test]
     async fn test_calculate_broadcast_address_ipv4() {
-        let ip = "192.168.1.0".parse().unwrap();
+        let ip = "192.168.1.0".parse().expect("Hardcoded IP should be valid");
         let result = calculate_broadcast_address(&ip, 24);
         assert!(result.is_ok());
         let broadcast = result.unwrap();
         match broadcast {
             std::net::IpAddr::V4(ipv4) => assert_eq!(ipv4.octets(), [192, 168, 1, 255]),
-            _ => panic!("Expected IPv4"),
+            _ => assert!(false, "Expected IPv4"),
         }
     }
 
@@ -318,7 +329,7 @@ datacenter = "dc1"
         let broadcast = result.unwrap();
         match broadcast {
             std::net::IpAddr::V6(_) => {} // IPv6 multicast is valid
-            _ => panic!("Expected IPv6"),
+            _ => assert!(false, "Expected IPv6"),
         }
     }
 
@@ -382,7 +393,7 @@ datacenter = "dc1"
             Ok(nodes) => {
                 // If successful, should return empty list with short timeout
                 assert!(nodes.is_empty());
-            },
+            }
             Err(_) => {
                 // If failed due to timeout, that's also acceptable
                 // The important thing is that the function handles short timeouts gracefully
@@ -397,19 +408,15 @@ datacenter = "dc1"
             Some("9000-9010".to_string()),
             200,
             false,
-        ).await;
+        )
+        .await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_discovery_error_handling() {
         // Test with invalid subnet to trigger error handling
-        let result = discover_nodes(
-            Some("invalid-subnet".to_string()),
-            None,
-            100,
-            false,
-        ).await;
+        let result = discover_nodes(Some("invalid-subnet".to_string()), None, 100, false).await;
         // Should handle error gracefully and still return Ok
         assert!(result.is_ok());
     }

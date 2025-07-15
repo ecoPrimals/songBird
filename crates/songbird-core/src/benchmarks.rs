@@ -3,9 +3,9 @@
 //! This module provides comprehensive performance benchmarking capabilities
 //! for measuring and optimizing Songbird's core functionality.
 
-use std::time::{Duration, Instant};
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
 /// Performance benchmark results
@@ -49,33 +49,35 @@ impl CoreBenchmarkSuite {
     }
 
     /// Benchmark basic hash map operations (simulating service registry)
-    pub async fn benchmark_hashmap_operations(&mut self) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
+    pub async fn benchmark_hashmap_operations(
+        &mut self,
+    ) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
         let test_name = "hashmap_operations";
         let iterations = 100000;
         let mut durations = Vec::new();
-        
+
         // Create test data structure
         let mut test_map: HashMap<String, String> = HashMap::new();
-        
+
         // Warm up
         for i in 0..1000 {
-            test_map.insert(format!("key-{}", i), format!("value-{}", i));
+            test_map.insert(format!("key-{i}"), format!("value-{i}"));
         }
 
         // Actual benchmark
         let start = Instant::now();
         for i in 0..iterations {
             let iter_start = Instant::now();
-            
+
             // Simulate operations
             let key = format!("benchmark-key-{}", i % 1000);
-            test_map.insert(key.clone(), format!("value-{}", i));
+            test_map.insert(key.clone(), format!("value-{i}"));
             let _value = test_map.get(&key);
             let _count = test_map.len();
-            
+
             let iter_duration = iter_start.elapsed();
             durations.push(iter_duration);
-            
+
             // Prevent overwhelming the system
             if i % 10000 == 0 {
                 sleep(Duration::from_micros(1)).await;
@@ -100,32 +102,36 @@ impl CoreBenchmarkSuite {
     }
 
     /// Benchmark async task spawning (simulating orchestrator scaling)
-    pub async fn benchmark_task_spawning(&mut self) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
+    pub async fn benchmark_task_spawning(
+        &mut self,
+    ) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
         let test_name = "async_task_spawning";
         let iterations = 1000;
         let mut durations = Vec::new();
-        
+
         // Warm up
         for _ in 0..10 {
-            std::mem::drop(tokio::spawn(async { sleep(Duration::from_micros(1)).await }));
+            std::mem::drop(tokio::spawn(async {
+                sleep(Duration::from_micros(1)).await
+            }));
         }
 
         // Actual benchmark
         let start = Instant::now();
         for i in 0..iterations {
             let iter_start = Instant::now();
-            
+
             // Simulate async task operations without capturing self
             let handle = tokio::spawn(async move {
                 let _computation = (i * 2 + 1) % 1000; // Simple computation
                 sleep(Duration::from_micros(1)).await;
             });
-            
+
             let _result = handle.await;
-            
+
             let iter_duration = iter_start.elapsed();
             durations.push(iter_duration);
-            
+
             // Prevent overwhelming the system
             if i % 100 == 0 {
                 sleep(Duration::from_micros(10)).await;
@@ -150,11 +156,13 @@ impl CoreBenchmarkSuite {
     }
 
     /// Benchmark JSON serialization (simulating API responses)
-    pub async fn benchmark_json_serialization(&mut self) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
+    pub async fn benchmark_json_serialization(
+        &mut self,
+    ) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
         let test_name = "json_serialization";
         let iterations = 10000;
         let mut durations = Vec::new();
-        
+
         // Create test data
         let test_data = self.create_test_data();
 
@@ -162,14 +170,14 @@ impl CoreBenchmarkSuite {
         let start = Instant::now();
         for i in 0..iterations {
             let iter_start = Instant::now();
-            
+
             // Simulate JSON operations
             let _json_str = serde_json::to_string(&test_data)?;
             let _parsed: SystemInfo = serde_json::from_str(&serde_json::to_string(&test_data)?)?;
-            
+
             let iter_duration = iter_start.elapsed();
             durations.push(iter_duration);
-            
+
             // Prevent overwhelming the system
             if i % 1000 == 0 {
                 sleep(Duration::from_micros(1)).await;
@@ -196,27 +204,39 @@ impl CoreBenchmarkSuite {
     /// Run all benchmarks
     pub async fn run_all_benchmarks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         println!("🚀 Running Songbird Core Performance Benchmarks");
-        println!("System: {} cores, {}MB RAM", self.system_info.cpu_cores, self.system_info.total_memory_mb);
+        println!(
+            "System: {} cores, {}MB RAM",
+            self.system_info.cpu_cores, self.system_info.total_memory_mb
+        );
         println!("---");
 
         // Run hash map benchmarks
         println!("📊 Benchmarking HashMap Operations...");
         let hashmap_result = self.benchmark_hashmap_operations().await?;
-        println!("✅ HashMap Operations: {:.2} ops/sec", hashmap_result.throughput_per_second);
+        println!(
+            "✅ HashMap Operations: {:.2} ops/sec",
+            hashmap_result.throughput_per_second
+        );
 
         // Run task spawning benchmarks
         println!("📊 Benchmarking Async Task Spawning...");
         let task_result = self.benchmark_task_spawning().await?;
-        println!("✅ Async Task Spawning: {:.2} ops/sec", task_result.throughput_per_second);
+        println!(
+            "✅ Async Task Spawning: {:.2} ops/sec",
+            task_result.throughput_per_second
+        );
 
         // Run JSON serialization benchmarks
         println!("📊 Benchmarking JSON Serialization...");
         let json_result = self.benchmark_json_serialization().await?;
-        println!("✅ JSON Serialization: {:.2} ops/sec", json_result.throughput_per_second);
+        println!(
+            "✅ JSON Serialization: {:.2} ops/sec",
+            json_result.throughput_per_second
+        );
 
         println!("---");
         println!("🎯 All benchmarks completed successfully!");
-        
+
         Ok(())
     }
 
@@ -224,27 +244,51 @@ impl CoreBenchmarkSuite {
     pub fn generate_report(&self) -> String {
         let mut report = String::new();
         report.push_str("# Songbird Core Performance Benchmark Report\n\n");
-        
+
         // System info
         report.push_str("**System Information:**\n");
         report.push_str(&format!("- CPU Cores: {}\n", self.system_info.cpu_cores));
-        report.push_str(&format!("- Total Memory: {}MB\n", self.system_info.total_memory_mb));
-        report.push_str(&format!("- Available Memory: {}MB\n", self.system_info.available_memory_mb));
+        report.push_str(&format!(
+            "- Total Memory: {}MB\n",
+            self.system_info.total_memory_mb
+        ));
+        report.push_str(&format!(
+            "- Available Memory: {}MB\n",
+            self.system_info.available_memory_mb
+        ));
         report.push_str(&format!("- OS: {}\n", self.system_info.os_type));
-        report.push_str(&format!("- Rust Version: {}\n\n", self.system_info.rust_version));
-        
+        report.push_str(&format!(
+            "- Rust Version: {}\n\n",
+            self.system_info.rust_version
+        ));
+
         // Results
         report.push_str("## Benchmark Results\n\n");
         for (test_name, result) in &self.results {
-            report.push_str(&format!("### {}\n", test_name));
+            report.push_str(&format!("### {test_name}\n"));
             report.push_str(&format!("- Iterations: {}\n", result.iterations));
-            report.push_str(&format!("- Total Duration: {:.2}s\n", result.total_duration.as_secs_f64()));
-            report.push_str(&format!("- Average Duration: {:.2}µs\n", result.avg_duration.as_micros()));
-            report.push_str(&format!("- Throughput: {:.2} ops/sec\n", result.throughput_per_second));
-            report.push_str(&format!("- Memory Usage: {:.2}MB\n", result.memory_usage_mb));
-            report.push_str(&format!("- CPU Usage: {:.2}%\n\n", result.cpu_usage_percent));
+            report.push_str(&format!(
+                "- Total Duration: {:.2}s\n",
+                result.total_duration.as_secs_f64()
+            ));
+            report.push_str(&format!(
+                "- Average Duration: {:.2}µs\n",
+                result.avg_duration.as_micros()
+            ));
+            report.push_str(&format!(
+                "- Throughput: {:.2} ops/sec\n",
+                result.throughput_per_second
+            ));
+            report.push_str(&format!(
+                "- Memory Usage: {:.2}MB\n",
+                result.memory_usage_mb
+            ));
+            report.push_str(&format!(
+                "- CPU Usage: {:.2}%\n\n",
+                result.cpu_usage_percent
+            ));
         }
-        
+
         report
     }
 
@@ -279,8 +323,10 @@ impl CoreBenchmarkSuite {
 impl SystemInfo {
     fn collect() -> Self {
         Self {
-            cpu_cores: std::thread::available_parallelism().map(|p| p.get()).unwrap_or(1),
-            total_memory_mb: 8192, // Placeholder - would use system APIs
+            cpu_cores: std::thread::available_parallelism()
+                .map(|p| p.get())
+                .unwrap_or(1),
+            total_memory_mb: 8192,     // Placeholder - would use system APIs
             available_memory_mb: 4096, // Placeholder - would use system APIs
             os_type: std::env::consts::OS.to_string(),
             rust_version: "1.70.0".to_string(), // Placeholder
@@ -321,4 +367,4 @@ mod tests {
         assert!(report.contains("Benchmark Report"));
         assert!(report.contains("System Information"));
     }
-} 
+}

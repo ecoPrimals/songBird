@@ -194,6 +194,8 @@ impl GamingAutoConfig {
             .ok_or_else(|| SongbirdError::Config {
                 message: "Beardog integration not configured".to_string(),
                 field: Some("beardog".to_string()),
+                context: Some("auto_configuration".to_string()),
+                suggestion: Some("Enable beardog integration in the configuration".to_string()),
             })?;
 
         // Step 1: Authenticate with beardog

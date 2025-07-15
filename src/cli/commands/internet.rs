@@ -8,8 +8,9 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
-use crate::internet_connection::{InternetConnectionConfig, InternetConnectionWizard};
 use crate::cli::{ui, CliError};
+use crate::internet_connection::{InternetConnectionConfig, InternetConnectionWizard};
+use songbird_config::constants::cli::{DEFAULT_CLI_ANIMATION_DELAY, DEFAULT_CLI_SHORT_ANIMATION_DELAY};
 
 // Import command types from parent module
 use super::{InternetCommands, InternetConfigAction};
@@ -73,7 +74,7 @@ async fn execute_internet_wizard(
             "{}",
             ui::info("🔍 Auto-discovering network configuration...")
         );
-        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        tokio::time::sleep(DEFAULT_CLI_ANIMATION_DELAY).await;
     }
     println!(
         "{}",
@@ -106,9 +107,9 @@ async fn execute_internet_connect(network: &str) -> crate::cli::CliResult<()> {
     );
     // Simulate connection process
     println!("{}", ui::info("⏳ Establishing secure tunnel..."));
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    tokio::time::sleep(DEFAULT_CLI_ANIMATION_DELAY).await;
     println!("{}", ui::info("🔐 Authenticating with network..."));
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    tokio::time::sleep(DEFAULT_CLI_SHORT_ANIMATION_DELAY).await;
     println!(
         "{}",
         ui::success(&format!("✅ Connected to network: {}", network))

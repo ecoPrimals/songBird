@@ -7,6 +7,13 @@
 //!
 //! This is SongBird's core "universal connector" capability.
 //! For enterprise IoT orchestration, use SongBird + Toadstool ecosystem.
+//!
+//! IoT device connectivity is managed by external device APIs
+//! Production implementations should integrate with:
+//! - Universal device discovery protocols (UPnP, mDNS, etc.)
+//! - Device-specific SDKs and APIs
+//! - IoT platform integration services
+//! - Cloud provider IoT device management
 
 // clap::Args not needed for this module structure
 use super::BasicIoTCommands;
@@ -120,8 +127,8 @@ async fn connect_device(address: &str, device_type: &str, name: &str) -> Result<
     println!("{}", "======================================".bright_cyan());
     println!();
 
-    println!("🔌 Connecting to {} ({})...", name, device_type);
-    println!("📍 Address: {}", address);
+    println!("🔌 Connecting to {name} ({device_type})...");
+    println!("📍 Address: {address}");
 
     // Simulate connection process
     tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
@@ -136,9 +143,9 @@ async fn connect_device(address: &str, device_type: &str, name: &str) -> Result<
     println!();
 
     println!("📊 {}", "Device Information:".bright_white().bold());
-    println!("   Name: {}", name);
-    println!("   Type: {}", device_type);
-    println!("   Address: {}", address);
+    println!("   Name: {name}");
+    println!("   Type: {device_type}");
+    println!("   Address: {address}");
     println!("   Status: Connected");
 
     match device_type {
@@ -158,10 +165,7 @@ async fn connect_device(address: &str, device_type: &str, name: &str) -> Result<
 
     println!();
     println!("🎯 Next Steps:");
-    println!(
-        "   • Use 'songbird iot command {} <action>' to control device",
-        name
-    );
+    println!("   • Use 'songbird iot command {name} <action>' to control device");
     println!("   • Use 'songbird iot list' to see all connected devices");
 
     Ok(())
@@ -204,8 +208,8 @@ async fn list_connected_devices(device_type_filter: Option<&str>) -> Result<()> 
         };
 
         println!("{} {}", icon, name.bright_white().bold());
-        println!("   Type: {}", device_type);
-        println!("   Address: {}", address);
+        println!("   Type: {device_type}");
+        println!("   Address: {address}");
         println!(
             "   Status: {}",
             match *status {
@@ -220,10 +224,7 @@ async fn list_connected_devices(device_type_filter: Option<&str>) -> Result<()> 
         "🌐 {}",
         "Universal Connectivity Active".bright_green().bold()
     );
-    println!(
-        "   SongBird connects to {} devices across your network",
-        device_count
-    );
+    println!("   SongBird connects to {device_count} devices across your network");
 
     Ok(())
 }
@@ -233,7 +234,7 @@ async fn send_device_command(device: &str, action: &str) -> Result<()> {
     println!("{}", "========================".bright_cyan());
     println!();
 
-    println!("📡 Sending '{}' command to '{}'...", action, device);
+    println!("📡 Sending '{action}' command to '{device}'...");
 
     // Simulate command execution
     tokio::time::sleep(std::time::Duration::from_millis(800)).await;
@@ -273,7 +274,7 @@ async fn send_device_command(device: &str, action: &str) -> Result<()> {
             println!("🌐 Network: Strong signal");
         }
         _ => {
-            println!("⚠️ Unknown command: {}", action);
+            println!("⚠️ Unknown command: {action}");
             println!("💡 Common commands: scan, print, stream, snapshot, status");
         }
     }

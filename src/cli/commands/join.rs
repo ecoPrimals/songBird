@@ -171,7 +171,8 @@ async fn discover_via_mdns() -> CliResult<Vec<DiscoveredNetwork>> {
     // Use DNS-SD to find _songbird._tcp services
     let timeout = std::time::Duration::from_secs(3);
     // Simple UDP multicast to mDNS address
-    if let Ok(socket) = std::net::UdpSocket::bind("0.0.0.0:0") {
+    let bind_addr = format!("{}:0", crate::config::constants::network::production_bind_address());
+    if let Ok(socket) = std::net::UdpSocket::bind(&bind_addr) {
         socket.set_read_timeout(Some(timeout)).ok();
         // Send mDNS query for _songbird._tcp.local
         let query = create_mdns_query("_songbird._tcp.local");
@@ -228,7 +229,8 @@ async fn discover_via_subnet_scan() -> CliResult<Vec<DiscoveredNetwork>> {
 async fn discover_via_broadcast() -> CliResult<Vec<DiscoveredNetwork>> {
     let mut networks = Vec::new();
 
-    if let Ok(socket) = std::net::UdpSocket::bind("0.0.0.0:0") {
+    let bind_addr = format!("{}:0", crate::config::constants::network::production_bind_address());
+    if let Ok(socket) = std::net::UdpSocket::bind(&bind_addr) {
         socket.set_broadcast(true).ok();
         socket
             .set_read_timeout(Some(std::time::Duration::from_secs(2)))
@@ -297,7 +299,13 @@ fn parse_mdns_response(data: &[u8], source_ip: std::net::IpAddr) -> Option<Disco
 }
 /// Scan specific endpoint for Songbird
 async fn scan_songbird_endpoint(ip: String, port: u16) -> Option<DiscoveredNetwork> {
+            let source_ip = self.source_ip.as_deref().unwrap_or(&crate::config::constants::network::default_bind_address());
+    let env_config = crate::config::environment::EnvironmentConfig::default();
+    let orchestrator_port = env_config.bind_port;
     let url = format!("http://{}:{}/health", ip, port);
+    
+    // Try connecting to various common ports
+    let songbird_ports = [orchestrator_port, 9090, 3000, 4000, 5000];
 
     // Quick HTTP health check with short timeout using hyper client
     let client = match crate::communication::HyperHttpClient::new() {
@@ -316,7 +324,7 @@ async fn scan_songbird_endpoint(ip: String, port: u16) -> Option<DiscoveredNetwo
                         node_count: 1,
                         network_type: "HTTP".to_string(),
                         latency_ms: 25.0,
-                        endpoints: vec![format!("http://{}:{}", ip, port)],
+                        endpoints: vec![format!("http://{}:{}", source_ip, orchestrator_port)],
                     });
                 }
             }
@@ -412,7 +420,11 @@ async fn show_join_status(network: &DiscoveredNetwork) -> CliResult<()> {
     println!("   ✅ Your resources are now shared with the network");
     println!("   • Run 'songbird status' to monitor your contribution");
     println!("   • Use 'songbird share' to adjust what you're sharing");
-    let env_config = crate::config::environment::EnvironmentConfig::default(); println!("   • Check out the dashboard at http://{}:{}", env_config.bind_address, env_config.dashboard_port);
+    let env_config = crate::config::environment::EnvironmentConfig::default();
+    println!(
+        "   • Check out the dashboard at http://{}:{}",
+        env_config.bind_address, env_config.dashboard_port
+    );
 
     Ok(())
 }

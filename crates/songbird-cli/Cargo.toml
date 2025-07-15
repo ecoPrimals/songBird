@@ -4,7 +4,11 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
-description = "Command line interface for Songbird gaming bridge"
+description = "Command-line interface for Songbird orchestrator"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "../../README.md"
+keywords = ["cli", "command-line", "gaming", "orchestration", "tools"]
+categories = ["command-line-utilities", "game-engines", "development-tools"]
 
 [[bin]]
 name = "songbird-cli"
@@ -13,6 +17,7 @@ path = "src/bin/songbird.rs"
 [[bin]]
 name = "gaming-demo"
 path = "src/bin/gaming_demo.rs"
+doc = false
 
 [dependencies]
 songbird-errors = { path = "../songbird-errors" }
@@ -48,6 +53,7 @@ thiserror = "1.0"
 futures-util = "0.3"
 regex = "1.10"
 tracing-subscriber = "0.3"
+atty = "0.2"
 
 [dev-dependencies]
 tempfile = "3.8"

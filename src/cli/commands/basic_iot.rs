@@ -254,7 +254,10 @@ async fn send_device_command(device: &str, action: &str) -> Result<()> {
             println!("📹 Starting video stream...");
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             let env_config = crate::config::environment::EnvironmentConfig::default();
-            println!("✅ Stream available at: http://{}:{}/camera/stream", env_config.bind_address, env_config.dashboard_port);
+            println!(
+                "✅ Stream available at: http://{}:{}/camera/stream",
+                env_config.bind_address, env_config.dashboard_port
+            );
         }
         "snapshot" => {
             println!("📸 Capturing snapshot...");

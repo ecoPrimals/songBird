@@ -254,13 +254,13 @@ impl SnapshotSecurityProvider for ProductionSnapshotSecurityAdapter {
                 .encrypt(data, key)
                 .map_err(|e| SongbirdError::Config {
                     field: Some("encryption".to_string()),
-                    message: format!("Encryption failed: {}", e),
+                    message: format!("Encryption failed: {e}"),
                 })?;
 
         // Serialize the encrypted data for storage
         bincode::serialize(&encrypted_data).map_err(|e| SongbirdError::Config {
             field: Some("serialization".to_string()),
-            message: format!("Failed to serialize encrypted data: {}", e),
+            message: format!("Failed to serialize encrypted data: {e}"),
         })
     }
 
@@ -269,7 +269,7 @@ impl SnapshotSecurityProvider for ProductionSnapshotSecurityAdapter {
         let encrypted: crate::security::EncryptedData = bincode::deserialize(encrypted_data)
             .map_err(|e| SongbirdError::Config {
                 field: Some("encrypted_data".to_string()),
-                message: format!("Failed to deserialize encrypted data: {}", e),
+                message: format!("Failed to deserialize encrypted data: {e}"),
             })?;
 
         // Decrypt using the encryption provider
@@ -277,7 +277,7 @@ impl SnapshotSecurityProvider for ProductionSnapshotSecurityAdapter {
             .decrypt(&encrypted, key)
             .map_err(|e| SongbirdError::Config {
                 field: Some("decryption".to_string()),
-                message: format!("Decryption failed: {}", e),
+                message: format!("Decryption failed: {e}"),
             })
     }
 
@@ -286,7 +286,7 @@ impl SnapshotSecurityProvider for ProductionSnapshotSecurityAdapter {
             .generate_key()
             .map_err(|e| SongbirdError::Config {
                 field: Some("key_generation".to_string()),
-                message: format!("Key generation failed: {}", e),
+                message: format!("Key generation failed: {e}"),
             })
     }
 
@@ -563,10 +563,10 @@ impl DefaultEncryptedSnapshotManager {
         // Include service metadata
         let service_metadata = serde_json::json!({
             "service_id": request.service_id,
-            "request_type": format!("{:?}", request.request_type),
+            "request_type": format!("{request.request_type}"),
             "timestamp": chrono::Utc::now(),
             "preferences": {
-                "performance_tier": format!("{:?}", request.storage_preferences.performance_tier),
+                "performance_tier": format!("{request.storage_preferences.performance_tier}"),
                 "retention_days": request.storage_preferences.retention_days,
                 "compression_enabled": request.storage_preferences.compression_enabled,
                 "encryption_required": request.storage_preferences.encryption_required,
@@ -601,7 +601,7 @@ impl DefaultEncryptedSnapshotManager {
 
         let mut hasher = DefaultHasher::new();
         data.hash(&mut hasher);
-        format!("{:x}", hasher.finish())
+        format!("{hasher.finish(}"))
     }
 }
 

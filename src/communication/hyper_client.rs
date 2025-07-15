@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use serde::{Serialize, Deserialize};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -10,16 +10,16 @@ use tokio::sync::RwLock;
 pub enum HyperClientError {
     #[error("Connection failed: {0}")]
     ConnectionFailed(String),
-    
+
     #[error("Request timeout")]
     Timeout,
-    
+
     #[error("Invalid response: {0}")]
     InvalidResponse(String),
-    
+
     #[error("JSON serialization error: {0}")]
     JsonSerialization(#[from] serde_json::Error),
-    
+
     #[error("Body processing error: {0}")]
     Body(String),
 }
@@ -57,7 +57,7 @@ impl HyperResponse {
     pub fn text(&self) -> Result<String, HyperClientError> {
         std::str::from_utf8(&self.body)
             .map(|s| s.to_string())
-            .map_err(|e| HyperClientError::Body(format!("Invalid UTF-8 in response body: {}", e)))
+            .map_err(|e| HyperClientError::Body(format!("Invalid UTF-8 in response body: {e}")))
     }
 
     /// Get response body as JSON
@@ -125,45 +125,182 @@ impl HyperHttpClient {
         })
     }
 
-    /// Execute a GET request (simplified implementation)
+    /// Execute a GET request
     pub async fn get(&self, url: &str) -> Result<HyperResponse, HyperClientError> {
         tracing::debug!("HTTP GET request to: {}", url);
-        
-        // Simplified implementation - in a real implementation, this would use hyper
-        // For now, return a mock response
+
+        // Create reqwest client with timeout
+        let client = reqwest::Client::builder()
+            .timeout(self.timeout)
+            .user_agent(&self.user_agent)
+            .build()
+            .map_err(|e| {
+                HyperClientError::ConnectionFailed(format!("Failed to create client: {e}"))
+            })?;
+
+        // Build request
+        let mut request_builder = client.get(url);
+
+        // Add default headers
+        {
+            let headers = self.default_headers.read().await;
+            for (key, value) in headers.iter() {
+                request_builder = request_builder.header(key, value);
+            }
+        }
+
+        // Execute request
+        let response = request_builder
+            .send()
+            .await
+            .map_err(|e| HyperClientError::ConnectionFailed(format!("Request failed: {e}")))?;
+
+        // Extract response parts
+        let status = response.status().as_u16();
+        let headers = response
+            .headers()
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+            .collect();
+
+        // Read body
+        let body_bytes = response
+            .bytes()
+            .await
+            .map_err(|e| HyperClientError::Body(format!("Failed to read response body: {e}")))?;
+
         Ok(HyperResponse {
-            status: 200,
-            headers: HashMap::new(),
-            body: b"{}".to_vec(),
+            status,
+            headers,
+            body: body_bytes.to_vec(),
         })
     }
 
-    /// Execute a POST request with JSON body (simplified implementation)
-    pub async fn post_json<T: Serialize>(&self, url: &str, body: &T) -> Result<HyperResponse, HyperClientError> {
+    /// Execute a POST request with JSON body
+    pub async fn post_json<T: Serialize>(
+        &self,
+        url: &str,
+        body: &T,
+    ) -> Result<HyperResponse, HyperClientError> {
         tracing::debug!("HTTP POST request to: {}", url);
-        
-        // Serialize the body to validate it's valid JSON
-        let _body_json = serde_json::to_string(body)?;
-        
-        // Simplified implementation - in a real implementation, this would use hyper
-        // For now, return a mock response
+
+        // Create reqwest client with timeout
+        let client = reqwest::Client::builder()
+            .timeout(self.timeout)
+            .user_agent(&self.user_agent)
+            .build()
+            .map_err(|e| {
+                HyperClientError::ConnectionFailed(format!("Failed to create client: {e}"))
+            })?;
+
+        // Build request with JSON body
+        let mut request_builder = client.post(url).json(body);
+
+        // Add default headers
+        {
+            let headers = self.default_headers.read().await;
+            for (key, value) in headers.iter() {
+                request_builder = request_builder.header(key, value);
+            }
+        }
+
+        // Execute request
+        let response = request_builder
+            .send()
+            .await
+            .map_err(|e| HyperClientError::ConnectionFailed(format!("Request failed: {e}")))?;
+
+        // Extract response parts
+        let status = response.status().as_u16();
+        let headers = response
+            .headers()
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+            .collect();
+
+        // Read body
+        let body_bytes = response
+            .bytes()
+            .await
+            .map_err(|e| HyperClientError::Body(format!("Failed to read response body: {e}")))?;
+
         Ok(HyperResponse {
-            status: 200,
-            headers: HashMap::new(),
-            body: b"{}".to_vec(),
+            status,
+            headers,
+            body: body_bytes.to_vec(),
         })
     }
 
-    /// Execute a generic HTTP request (simplified implementation)
-    pub async fn request(&self, method: &str, url: &str, body: Option<&str>) -> Result<HyperResponse, HyperClientError> {
+    /// Execute a generic HTTP request
+    pub async fn request(
+        &self,
+        method: &str,
+        url: &str,
+        body: Option<&str>,
+    ) -> Result<HyperResponse, HyperClientError> {
         tracing::debug!("HTTP {} request to: {}", method, url);
-        
-        // Simplified implementation - in a real implementation, this would use hyper
-        // For now, return a mock response
+
+        // Create reqwest client with timeout
+        let client = reqwest::Client::builder()
+            .timeout(self.timeout)
+            .user_agent(&self.user_agent)
+            .build()
+            .map_err(|e| {
+                HyperClientError::ConnectionFailed(format!("Failed to create client: {e}"))
+            })?;
+
+        // Parse method and build request
+        let mut request_builder = match method.to_uppercase().as_str() {
+            "GET" => client.get(url),
+            "POST" => client.post(url),
+            "PUT" => client.put(url),
+            "DELETE" => client.delete(url),
+            "PATCH" => client.patch(url),
+            "HEAD" => client.head(url),
+            _ => {
+                return Err(HyperClientError::ConnectionFailed(format!(
+                    "Unsupported HTTP method: {method}"
+                )))
+            }
+        };
+
+        // Add body if provided
+        if let Some(body_str) = body {
+            request_builder = request_builder.body(body_str.to_string());
+        }
+
+        // Add default headers
+        {
+            let headers = self.default_headers.read().await;
+            for (key, value) in headers.iter() {
+                request_builder = request_builder.header(key, value);
+            }
+        }
+
+        // Execute request
+        let response = request_builder
+            .send()
+            .await
+            .map_err(|e| HyperClientError::ConnectionFailed(format!("Request failed: {e}")))?;
+
+        // Extract response parts
+        let status = response.status().as_u16();
+        let headers = response
+            .headers()
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+            .collect();
+
+        // Read body
+        let body_bytes = response
+            .bytes()
+            .await
+            .map_err(|e| HyperClientError::Body(format!("Failed to read response body: {e}")))?;
+
         Ok(HyperResponse {
-            status: 200,
-            headers: HashMap::new(),
-            body: body.unwrap_or("{}").as_bytes().to_vec(),
+            status,
+            headers,
+            body: body_bytes.to_vec(),
         })
     }
 
@@ -204,24 +341,41 @@ mod tests {
 
     #[tokio::test]
     async fn test_default_headers() {
-        let client = HyperHttpClient::new().unwrap();
-        client.add_default_header("x-custom".to_string(), "test-value".to_string()).await;
+        let client = HyperHttpClient::new().expect("Failed to create test HTTP client");
+        client
+            .add_default_header("x-custom".to_string(), "test-value".to_string())
+            .await;
         let headers = client.default_headers.read().await;
         assert_eq!(headers.get("x-custom"), Some(&"test-value".to_string()));
     }
 
     #[tokio::test]
     async fn test_get_request() {
-        let client = HyperHttpClient::new().unwrap();
-        let response = client.get("https://example.com").await.unwrap();
+        // Skip this test unless network testing is explicitly enabled
+        if std::env::var("SONGBIRD_TEST_NETWORK").is_err() {
+            return;
+        }
+
+        let client = HyperHttpClient::new().expect("Failed to create test HTTP client");
+        let response = client.get("https://example.com").await.expect("Failed to execute GET request in test");
         assert!(response.is_success());
     }
 
     #[tokio::test]
     async fn test_post_json_request() {
-        let client = HyperHttpClient::new().unwrap();
+        // Skip this test unless network testing is explicitly enabled
+        if std::env::var("SONGBIRD_TEST_NETWORK").is_err() {
+            return;
+        }
+
+        let client = HyperHttpClient::new().expect("Failed to create test HTTP client");
         let data = serde_json::json!({"test": "data"});
-        let response = client.post_json("https://example.com", &data).await.unwrap();
+
+        // Use httpbin.org which accepts POST requests for testing
+        let response = client
+            .post_json("https://httpbin.org/post", &data)
+            .await
+            .expect("Failed to execute POST request in test");
         assert!(response.is_success());
     }
-} 
+}

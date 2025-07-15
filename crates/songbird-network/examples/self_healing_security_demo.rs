@@ -42,13 +42,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("🔒 Creating gaming tunnels...");
         for i in 1..=3 {
             let peer_info = PeerInfo {
-                session_id: format!("session_{}", i),
+                session_id: format!("session_{i}"),
                 endpoint: format!("192.168.1.{}:7777", 100 + i).parse()?,
                 public_key: None,
             };
 
             let tunnel = security_manager
-                .create_secure_tunnel(format!("gaming_session_{}", i), peer_info)
+                .create_secure_tunnel(format!("gaming_session_{i}"), peer_info)
                 .await?;
 
             info!(
@@ -74,13 +74,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("🔒 Creating new tunnels (should auto-upgrade to BSTP)...");
         for i in 4..=6 {
             let peer_info = PeerInfo {
-                session_id: format!("session_{}", i),
+                session_id: format!("session_{i}"),
                 endpoint: format!("192.168.1.{}:7777", 100 + i).parse()?,
                 public_key: None,
             };
 
             let tunnel = security_manager
-                .create_secure_tunnel(format!("enhanced_session_{}", i), peer_info)
+                .create_secure_tunnel(format!("enhanced_session_{i}"), peer_info)
                 .await?;
 
             info!(
@@ -113,13 +113,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("🔒 Creating fallback tunnels (should fall back to WireGuard)...");
         for i in 7..=9 {
             let peer_info = PeerInfo {
-                session_id: format!("session_{}", i),
+                session_id: format!("session_{i}"),
                 endpoint: format!("192.168.1.{}:7777", 100 + i).parse()?,
                 public_key: None,
             };
 
             let tunnel = security_manager
-                .create_secure_tunnel(format!("fallback_session_{}", i), peer_info)
+                .create_secure_tunnel(format!("fallback_session_{i}"), peer_info)
                 .await?;
 
             info!(

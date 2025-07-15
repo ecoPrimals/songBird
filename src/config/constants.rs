@@ -6,29 +6,273 @@
 use std::env;
 use std::time::Duration;
 
-/// Network and communication constants
+/// Network configuration constants
 pub mod network {
     use std::time::Duration;
 
-    /// Default bind address for development
+    pub const DEFAULT_ORCHESTRATOR_PORT: u16 = 8080;
+    pub const DEFAULT_GAMING_PORT: u16 = 6112;
+    pub const DEFAULT_FEDERATION_PORT: u16 = 9090;
+    pub const DEFAULT_API_PORT: u16 = 3000;
+    pub const DEFAULT_METRICS_PORT: u16 = 5000;
+    pub const DEFAULT_HEALTH_PORT: u16 = 9000;
+
     pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
-    /// Default bind address for production (all interfaces)
-    pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
-    /// Default API port
-    pub const DEFAULT_PORT: u16 = 8080;
-    /// Default port range for services
-    pub const DEFAULT_PORT_RANGE: (u16, u16) = (8000, 9000);
-    /// Default connection timeout
+    pub const DEFAULT_LOCALHOST: &str = "localhost";
+    pub const DEFAULT_PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
+    
+    // Service endpoint defaults
+    pub const DEFAULT_BEARDOG_ENDPOINT: &str = "https://localhost:8443";
+    pub const DEFAULT_NESTGATE_ENDPOINT: &str = "http://localhost:8080";
+    pub const DEFAULT_TOADSTOOL_ENDPOINT: &str = "http://localhost:8082";
+    pub const DEFAULT_SQUIRREL_ENDPOINT: &str = "http://localhost:8084";
+    pub const DEFAULT_BIOMEOS_ENDPOINT: &str = "http://localhost:4000";
+    pub const DEFAULT_CONSUL_ENDPOINT: &str = "http://localhost:8500";
+    pub const DEFAULT_ETCD_ENDPOINT: &str = "http://localhost:2379";
+
+    pub const DEFAULT_GAMING_PORT_RANGE_START: u16 = 8000;
+    pub const DEFAULT_GAMING_PORT_RANGE_END: u16 = 8100;
+
+    pub const DEFAULT_DISCOVERY_PORTS: &[u16] =
+        &[8080, 8081, 8082, 8083, 8084, 8085, 3000, 5000, 9000];
+
     pub const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(30);
-    /// Default request timeout
-    pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
-    /// Default read timeout
-    pub const DEFAULT_READ_TIMEOUT: Duration = Duration::from_secs(30);
-    /// Default write timeout
-    pub const DEFAULT_WRITE_TIMEOUT: Duration = Duration::from_secs(30);
-    /// Default idle timeout
-    pub const DEFAULT_IDLE_TIMEOUT: Duration = Duration::from_secs(300);
+    pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+    pub const DEFAULT_RETRY_DELAY: Duration = Duration::from_millis(1000);
+    pub const DEFAULT_HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(5);
+    pub const DEFAULT_DISCOVERY_INTERVAL: Duration = Duration::from_secs(30);
+
+    pub const MAX_CONNECTIONS: usize = 10000;
+    pub const MAX_CONCURRENT_STREAMS: usize = 1000;
+    pub const DEFAULT_BUFFER_SIZE: usize = 8192;
+    pub const MAX_BANDWIDTH_MBPS: u64 = 1000;
+
+    /// Get the default bind address based on environment
+    pub fn default_bind_address() -> String {
+        std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| DEFAULT_BIND_ADDRESS.to_string())
+    }
+
+    /// Get the production bind address (0.0.0.0) with security validation
+    pub fn production_bind_address() -> String {
+        if std::env::var("SONGBIRD_PRODUCTION_BINDING_APPROVED").is_ok() {
+            DEFAULT_PRODUCTION_BIND_ADDRESS.to_string()
+        } else {
+            DEFAULT_BIND_ADDRESS.to_string()
+        }
+    }
+
+    /// Get a configurable service endpoint
+    pub fn service_endpoint(service_name: &str, default_endpoint: &str) -> String {
+        let env_var = format!("SONGBIRD_{}_ENDPOINT", service_name.to_uppercase());
+        std::env::var(&env_var).unwrap_or_else(|_| default_endpoint.to_string())
+    }
+
+    /// Get the BearDog endpoint
+    pub fn beardog_endpoint() -> String {
+        service_endpoint("BEARDOG", DEFAULT_BEARDOG_ENDPOINT)
+    }
+
+    /// Get the Nestgate endpoint
+    pub fn nestgate_endpoint() -> String {
+        service_endpoint("NESTGATE", DEFAULT_NESTGATE_ENDPOINT)
+    }
+
+    /// Get the Toadstool endpoint
+    pub fn toadstool_endpoint() -> String {
+        service_endpoint("TOADSTOOL", DEFAULT_TOADSTOOL_ENDPOINT)
+    }
+
+    /// Get the Squirrel endpoint
+    pub fn squirrel_endpoint() -> String {
+        service_endpoint("SQUIRREL", DEFAULT_SQUIRREL_ENDPOINT)
+    }
+
+    /// Get the BiomeOS endpoint
+    pub fn biomeos_endpoint() -> String {
+        service_endpoint("BIOMEOS", DEFAULT_BIOMEOS_ENDPOINT)
+    }
+
+    /// Get the Consul endpoint
+    pub fn consul_endpoint() -> String {
+        service_endpoint("CONSUL", DEFAULT_CONSUL_ENDPOINT)
+    }
+
+    /// Get the etcd endpoint
+    pub fn etcd_endpoint() -> String {
+        service_endpoint("ETCD", DEFAULT_ETCD_ENDPOINT)
+    }
 }
+
+/// Performance and scaling constants
+pub mod performance {
+    use std::time::Duration;
+
+    pub const DEFAULT_POOL_SIZE: usize = 1000;
+    pub const DEFAULT_BUFFER_POOL_SIZE: usize = 2000;
+    pub const DEFAULT_MESSAGE_POOL_SIZE: usize = 5000;
+    pub const DEFAULT_REQUEST_POOL_SIZE: usize = 10000;
+
+    pub const DEFAULT_CACHE_SIZE: usize = 10000;
+    pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(300);
+
+    pub const DEFAULT_BATCH_SIZE: usize = 100;
+    pub const DEFAULT_BATCH_TIMEOUT: Duration = Duration::from_millis(100);
+
+    pub const DEFAULT_WARMUP_DURATION: Duration = Duration::from_secs(10);
+    pub const DEFAULT_STEP_DURATION: Duration = Duration::from_millis(500);
+
+    pub const CPU_THRESHOLD_HIGH: f64 = 80.0;
+    pub const CPU_THRESHOLD_LOW: f64 = 30.0;
+    pub const MEMORY_THRESHOLD_HIGH: f64 = 85.0;
+    pub const MEMORY_THRESHOLD_LOW: f64 = 40.0;
+
+    pub const DEFAULT_SCALE_FACTOR: f64 = 1.5;
+    pub const MIN_SCALE_FACTOR: f64 = 1.0;
+    pub const MAX_SCALE_FACTOR: f64 = 3.0;
+
+    pub const DEFAULT_REQUESTS_PER_TEST: usize = 100000;
+    pub const DEFAULT_SERVICE_INSTANCES: usize = 1000;
+}
+
+/// Security and access constants
+pub mod security {
+    use std::time::Duration;
+
+    pub const DEFAULT_AUTH_TIMEOUT: Duration = Duration::from_secs(30);
+    pub const DEFAULT_SESSION_TIMEOUT: Duration = Duration::from_secs(3600);
+    pub const DEFAULT_TOKEN_REFRESH_INTERVAL: Duration = Duration::from_secs(300);
+
+    pub const MIN_PASSWORD_LENGTH: usize = 8;
+    pub const MAX_LOGIN_ATTEMPTS: usize = 5;
+    pub const LOCKOUT_DURATION: Duration = Duration::from_secs(900);
+
+    pub const DEFAULT_ENCRYPTION_KEY_SIZE: usize = 32;
+    pub const DEFAULT_SIGNATURE_SIZE: usize = 64;
+    pub const DEFAULT_NONCE_SIZE: usize = 16;
+
+    pub const PRIVILEGED_PORTS_START: u16 = 1;
+    pub const PRIVILEGED_PORTS_END: u16 = 1024;
+    pub const EPHEMERAL_PORTS_START: u16 = 32768;
+    pub const EPHEMERAL_PORTS_END: u16 = 65535;
+}
+
+/// File system and storage constants
+pub mod storage {
+    pub const DEFAULT_STORAGE_CAPACITY_GB: u64 = 1000;
+    pub const DEFAULT_STORAGE_QUOTA_GB: u64 = 100;
+
+    pub const MIN_FREE_SPACE_GB: u64 = 10;
+    pub const STORAGE_CHECK_INTERVAL_SECS: u64 = 300;
+
+    pub const DEFAULT_LOG_ROTATION_SIZE_MB: u64 = 100;
+    pub const DEFAULT_LOG_RETENTION_DAYS: u64 = 30;
+
+    pub const BYTES_PER_KB: u64 = 1024;
+    pub const BYTES_PER_MB: u64 = 1024 * 1024;
+    pub const BYTES_PER_GB: u64 = 1024 * 1024 * 1024;
+
+    pub const DEFAULT_BACKUP_RETENTION_DAYS: u64 = 7;
+    pub const DEFAULT_SNAPSHOT_INTERVAL_HOURS: u64 = 24;
+}
+
+/// Gaming-specific constants
+pub mod gaming {
+    use std::time::Duration;
+
+    pub const STARCRAFT_DEFAULT_PORT: u16 = 6112;
+    pub const STARCRAFT_BROADCAST_PORT: u16 = 6113;
+    pub const AGE_OF_EMPIRES_PORT: u16 = 2300;
+    pub const DIABLO_PORT: u16 = 6112;
+    pub const WARCRAFT_PORT: u16 = 6112;
+
+    pub const DEFAULT_GAME_TIMEOUT: Duration = Duration::from_secs(300);
+    pub const DEFAULT_LOBBY_TIMEOUT: Duration = Duration::from_secs(120);
+    pub const DEFAULT_MATCH_TIMEOUT: Duration = Duration::from_secs(3600);
+
+    pub const MAX_PLAYERS_PER_GAME: usize = 8;
+    pub const MAX_SPECTATORS_PER_GAME: usize = 16;
+    pub const MAX_CONCURRENT_GAMES: usize = 100;
+
+    pub const DEFAULT_PING_INTERVAL: Duration = Duration::from_secs(30);
+    pub const MAX_PING_TIMEOUT: Duration = Duration::from_secs(5);
+    pub const HIGH_LATENCY_THRESHOLD_MS: u64 = 150;
+}
+
+/// AI and ML constants
+pub mod ai {
+    use std::time::Duration;
+
+    pub const DEFAULT_INFERENCE_TIMEOUT: Duration = Duration::from_secs(30);
+    pub const DEFAULT_BATCH_SIZE: usize = 32;
+    pub const DEFAULT_STREAM_BUFFER_SIZE: usize = 1024;
+
+    pub const MAX_MODEL_SIZE_MB: u64 = 10000;
+    pub const DEFAULT_CACHE_SIZE_MB: u64 = 1000;
+    pub const DEFAULT_GPU_MEMORY_MB: u64 = 8000;
+
+    pub const PRIORITY_CRITICAL: u8 = 0;
+    pub const PRIORITY_HIGH: u8 = 1;
+    pub const PRIORITY_MEDIUM: u8 = 2;
+    pub const PRIORITY_LOW: u8 = 3;
+    pub const PRIORITY_BULK: u8 = 4;
+
+    pub const DEFAULT_WARMUP_ITERATIONS: usize = 10;
+    pub const DEFAULT_BENCHMARK_ITERATIONS: usize = 1000;
+
+    pub const CACHE_HIT_RATE_THRESHOLD: f64 = 0.85;
+    pub const THROUGHPUT_THRESHOLD_OPS_PER_SEC: f64 = 1000.0;
+}
+
+/// Validation constants
+pub mod validation {
+    pub const MIN_PORT: u16 = 1024;
+    pub const MAX_PORT: u16 = 65535;
+
+    pub const MIN_TIMEOUT_MS: u64 = 100;
+    pub const MAX_TIMEOUT_MS: u64 = 300000;
+
+    pub const MIN_RETRY_COUNT: usize = 1;
+    pub const MAX_RETRY_COUNT: usize = 10;
+
+    pub const MIN_THREAD_POOL_SIZE: usize = 1;
+    pub const MAX_THREAD_POOL_SIZE: usize = 1000;
+
+    pub const MIN_MEMORY_LIMIT_MB: u64 = 128;
+    pub const MAX_MEMORY_LIMIT_MB: u64 = 1024 * 1024; // 1TB
+
+    pub const MIN_BUFFER_SIZE: usize = 64;
+    pub const MAX_BUFFER_SIZE: usize = 64 * 1024 * 1024; // 64MB
+
+    pub const MIN_PERCENTAGE: f64 = 0.0;
+    pub const MAX_PERCENTAGE: f64 = 100.0;
+
+    pub const MIN_RATE_LIMIT: f64 = 0.1;
+    pub const MAX_RATE_LIMIT: f64 = 100_000.0;
+}
+
+/// Default paths and directories
+pub mod paths {
+    pub const DEFAULT_CONFIG_DIR: &str = "config";
+    pub const DEFAULT_DATA_DIR: &str = "data";
+    pub const DEFAULT_LOG_DIR: &str = "logs";
+    pub const DEFAULT_CACHE_DIR: &str = "cache";
+    pub const DEFAULT_TEMP_DIR: &str = "tmp";
+
+    pub const DEFAULT_CONFIG_FILE: &str = "songbird.toml";
+    pub const DEFAULT_LOG_FILE: &str = "songbird.log";
+    pub const DEFAULT_PID_FILE: &str = "songbird.pid";
+
+    pub const UNIX_VAR_LIB: &str = "/var/lib/songbird";
+    pub const UNIX_VAR_LOG: &str = "/var/log/songbird";
+    pub const UNIX_VAR_CACHE: &str = "/var/cache/songbird";
+    pub const UNIX_VAR_RUN: &str = "/var/run/songbird";
+    pub const UNIX_ETC: &str = "/etc/songbird";
+
+    pub const WINDOWS_PROGRAM_DATA: &str = r"C:\ProgramData\Songbird";
+    pub const WINDOWS_PROGRAM_FILES: &str = r"C:\Program Files\Songbird";
+    pub const WINDOWS_USER_DATA: &str = r"AppData\Local\Songbird";
+}
+
 /// Service management constants
 pub mod services {
     use std::time::Duration;
@@ -89,20 +333,6 @@ pub mod discovery {
     pub const DEFAULT_MULTICAST_IPV4: &str = "224.0.0.251";
     /// Default multicast address for discovery
     pub const DEFAULT_DISCOVERY_MULTICAST: &str = "239.1.1.1";
-}
-
-/// Security constants
-pub mod security {
-    use std::time::Duration;
-
-    /// Default session timeout
-    pub const DEFAULT_SESSION_TIMEOUT: Duration = Duration::from_secs(3600);
-    /// Default rate limit (requests per minute)
-    pub const DEFAULT_RATE_LIMIT: u32 = 1000;
-    /// Default burst size for rate limiting
-    pub const DEFAULT_BURST_SIZE: u32 = 100;
-    /// Default maximum connections
-    pub const DEFAULT_MAX_CONNECTIONS: u32 = 1000;
 }
 
 /// Resource management constants

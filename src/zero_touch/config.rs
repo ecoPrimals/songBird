@@ -213,8 +213,10 @@ impl NetworkTemplate {
 
     /// Production network template
     pub fn production() -> Self {
+        let env_config = crate::config::environment::EnvironmentConfig::default();
+        
         Self {
-            bind_address: "0.0.0.0".to_string(),
+            bind_address: env_config.bind_address.clone(),
             bind_port: 443,
             enable_ssl: true,
             enable_proxy: true,
@@ -429,15 +431,16 @@ mod tests {
     #[test]
     fn test_network_template_development() {
         let template = NetworkTemplate::development();
-        assert_eq!(template.bind_address, "crate::config::constants::default_bind_address()");
         let env_config = crate::config::environment::EnvironmentConfig::default();
+        assert_eq!(template.bind_address, env_config.bind_address);
         assert_eq!(template.bind_port, env_config.bind_port);
     }
 
     #[test]
     fn test_network_template_production() {
         let template = NetworkTemplate::production();
-        assert_eq!(template.bind_address, "0.0.0.0");
+        let env_config = crate::config::environment::EnvironmentConfig::default();
+        assert_eq!(template.bind_address, env_config.bind_address);
         assert_eq!(template.bind_port, 443);
         assert!(template.enable_ssl);
     }
@@ -510,7 +513,7 @@ mod tests {
         let generator = ConfigGenerator::new();
         let resources = ResourceRequirements::minimal();
         
-        let config = generator.generate_config("development", \let config = generator.generate_config("development", \let config = generator.generate_config("development", &resources).unwrap();resources).expect("Test config generation should succeed");resources).map_err(|e| { tracing::error!("Zero-touch config generation failed: {}", e); e })?;
+        let config = generator.generate_config("development", &resources).expect("Failed to generate config in test");
         assert_eq!(config.target_environment, "development");
         assert!(config.auto_discovery);
         assert!(config.auto_configure);

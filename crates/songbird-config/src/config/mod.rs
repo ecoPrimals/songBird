@@ -1,13 +1,37 @@
-//! Configuration Module
+//! Configuration management for the Songbird Universal Orchestrator.
 //!
-//! Provides configuration management for Songbird Orchestrator
-//! including environment-specific settings, security configuration,
-//! and BearDog integration settings.
+//! This module provides comprehensive configuration management including
+//! network settings, security configurations, discovery mechanisms,
+//! and `BearDog` integration settings.
+//!
+//! # Examples
+//!
+//! ```
+//! use songbird_config::config::SongbirdConfig;
+//!
+//! let config = SongbirdConfig::new();
+//! println!("Config loaded: {:?}", config);
+//! ```
 
 use serde::{Deserialize, Serialize};
 use songbird_errors::{Result, SongbirdError};
 use std::collections::HashMap;
 use std::path::Path;
+
+// Helper function to create config errors with proper context
+pub fn config_error(
+    message: &str,
+    field: Option<&str>,
+    context: Option<&str>,
+    suggestion: Option<&str>,
+) -> SongbirdError {
+    SongbirdError::Config {
+        message: message.to_string(),
+        field: field.map(|f| f.to_string()),
+        context: context.map(|c| c.to_string()),
+        suggestion: suggestion.map(|s| s.to_string()),
+    }
+}
 
 pub mod constants;
 pub mod environment;
@@ -37,7 +61,7 @@ pub struct SongbirdConfig {
     /// Path configuration
     pub paths: PathsConfig,
 
-    /// BearDog security integration (optional)
+    /// `BearDog` security integration (optional)
     pub beardog: Option<BearDogConfig>,
 
     /// Security configuration
@@ -81,26 +105,26 @@ pub struct GamingConfig {
     pub bridge_timeout_secs: u64,
 }
 
-/// BearDog security module configuration
+/// `BearDog` security module configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogConfig {
-    /// Enable BearDog integration
+    /// Enable `BearDog` integration
     pub enabled: bool,
 
-    /// BearDog service endpoint configuration
+    /// `BearDog` service endpoint configuration
     pub endpoint: BearDogEndpointConfig,
 
-    /// Authentication configuration for BearDog
+    /// Authentication configuration for `BearDog`
     pub authentication: BearDogAuthConfig,
 
     /// Default security settings
     pub security: BearDogSecurityConfig,
 }
 
-/// BearDog service endpoint configuration
+/// `BearDog` service endpoint configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogEndpointConfig {
-    /// Primary BearDog service URL
+    /// Primary `BearDog` service URL
     pub primary_url: String,
 
     /// Connection timeout in seconds
@@ -110,7 +134,7 @@ pub struct BearDogEndpointConfig {
     pub verify_tls: bool,
 }
 
-/// BearDog authentication configuration
+/// `BearDog` authentication configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogAuthConfig {
     /// Authentication method
@@ -120,7 +144,7 @@ pub struct BearDogAuthConfig {
     pub api_key: Option<String>,
 }
 
-/// BearDog authentication methods
+/// `BearDog` authentication methods
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BearDogAuthMethod {
@@ -130,7 +154,7 @@ pub enum BearDogAuthMethod {
     MutualTls,
 }
 
-/// BearDog security configuration
+/// `BearDog` security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogSecurityConfig {
     /// Default security level for operations
@@ -167,17 +191,19 @@ impl Default for BearDogConfig {
 }
 
 impl SongbirdConfig {
-    /// Check if BearDog integration is enabled
+    /// Check if `BearDog` integration is enabled
+    #[must_use]
     pub fn is_beardog_enabled(&self) -> bool {
-        self.beardog.as_ref().map(|b| b.enabled).unwrap_or(false)
+        self.beardog.as_ref().is_some_and(|b| b.enabled)
     }
 
-    /// Get BearDog configuration (returns default if not configured)
+    /// Get `BearDog` configuration (returns default if not configured)
+    #[must_use]
     pub fn get_beardog_config(&self) -> BearDogConfig {
         self.beardog.clone().unwrap_or_default()
     }
 
-    /// Enable BearDog integration with default configuration
+    /// Enable `BearDog` integration with default configuration
     pub fn enable_beardog(&mut self) {
         let beardog_config = BearDogConfig {
             enabled: true,
@@ -186,7 +212,7 @@ impl SongbirdConfig {
         self.beardog = Some(beardog_config);
     }
 
-    /// Disable BearDog integration
+    /// Disable `BearDog` integration
     pub fn disable_beardog(&mut self) {
         self.beardog = None;
     }
@@ -244,47 +270,54 @@ impl Default for GamingConfig {
 
 impl SongbirdConfig {
     /// Load configuration from file
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be read or parsed
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let content = std::fs::read_to_string(path).map_err(|e| SongbirdError::Config {
             field: Some("config_file".to_string()),
-            message: format!("Failed to read config file: {}", e),
+            message: format!("Failed to read config file: {e}"),
+            context: Some("Configuration file reading".to_string()),
+            suggestion: Some("Check file path and permissions".to_string()),
         })?;
 
-        toml::from_str(&content).map_err(|e| SongbirdError::Config {
-            field: None,
-            message: format!("Failed to parse config: {}", e),
+        serde_yaml::from_str(&content).map_err(|e| SongbirdError::Config {
+            field: Some("config_parse".to_string()),
+            message: format!("Failed to parse config: {e}"),
+            context: Some("Configuration parsing".to_string()),
+            suggestion: Some("Check YAML syntax and format".to_string()),
         })
     }
 
     /// Save configuration to file
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be written or serialized
     pub fn to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let content = toml::to_string_pretty(self).map_err(|e| SongbirdError::Config {
-            field: None,
-            message: format!("Failed to serialize config: {}", e),
+        let content = serde_yaml::to_string(self).map_err(|e| SongbirdError::Config {
+            field: Some("config_serialize".to_string()),
+            message: format!("Failed to serialize config: {e}"),
+            context: Some("Configuration serialization".to_string()),
+            suggestion: Some("Check configuration data for serialization issues".to_string()),
         })?;
 
         std::fs::write(path, content).map_err(|e| SongbirdError::Config {
-            field: Some("config_file".to_string()),
-            message: format!("Failed to write config file: {}", e),
+            field: Some("config_write".to_string()),
+            message: format!("Failed to write config file: {e}"),
+            context: Some("Configuration file writing".to_string()),
+            suggestion: Some("Check file path permissions and available disk space".to_string()),
         })
     }
 
-    /// Validate configuration
-    pub fn validate(&self) -> Result<()> {
-        if self.network.orchestrator_port == 0 {
-            return Err(SongbirdError::Config {
-                field: Some("node_id".to_string()),
-                message: "Node ID cannot be empty".to_string(),
-            });
-        }
-
-        if self.network.orchestrator_port == 0 {
-            return Err(SongbirdError::Config {
-                field: Some("port".to_string()),
-                message: "Port cannot be zero".to_string(),
-            });
-        }
-
+    /// Validate configuration security and completeness
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any validation checks fail, including security misconfigurations
+    pub fn validate_basic(&self) -> Result<()> {
+        self.validate_security()?;
         Ok(())
     }
 }

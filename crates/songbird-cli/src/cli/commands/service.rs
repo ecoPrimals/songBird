@@ -22,17 +22,17 @@ pub async fn deploy(
 
     println!("{}", "🚀 Deploying service...".bright_green().bold());
     if let Some(config) = config_file {
-        println!("📋 Using config file: {}", config);
+        println!("📋 Using config file: {config}");
     } else {
         if let Some(name) = name {
-            println!("📦 Service name: {}", name);
+            println!("📦 Service name: {name}");
         }
         if let Some(image) = image {
-            println!("🐳 Docker image: {}", image);
+            println!("🐳 Docker image: {image}");
         }
 
         if let Some(port) = port {
-            println!("🌐 Port: {}", port);
+            println!("🌐 Port: {port}");
         }
 
         if gpu_required {
@@ -40,11 +40,11 @@ pub async fn deploy(
         }
 
         if let Some(memory) = memory {
-            println!("💾 Memory: {}", memory);
+            println!("💾 Memory: {memory}");
         }
 
         if let Some(cpu) = cpu {
-            println!("🔧 CPU: {} cores", cpu);
+            println!("🔧 CPU: {cpu} cores");
         }
     }
 
@@ -67,24 +67,24 @@ pub async fn scale(
 
     println!(
         "{}",
-        format!("📈 Scaling service '{}'...", service)
+        format!("📈 Scaling service '{service}'...")
             .bright_blue()
             .bold()
     );
 
     if let Some(replicas) = replicas {
-        println!("🔢 Target replicas: {}", replicas);
+        println!("🔢 Target replicas: {replicas}");
     }
 
     if auto {
         println!("🤖 Auto-scaling enabled");
 
         if let Some(cpu) = cpu_threshold {
-            println!("⚙️  CPU threshold: {}%", cpu);
+            println!("⚙️  CPU threshold: {cpu}%");
         }
 
         if let Some(memory) = memory_threshold {
-            println!("💾 Memory threshold: {}%", memory);
+            println!("💾 Memory threshold: {memory}%");
         }
     }
 

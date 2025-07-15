@@ -200,20 +200,17 @@ impl IoTManager {
         } else {
             &format!("{}:0", env_config.bind_address)
         };
-        
+
         let socket = UdpSocket::bind(bind_addr).await.map_err(|e| {
-            crate::errors::SongbirdError::Communication(format!("Failed to create socket: {}", e))
+            crate::errors::SongbirdError::Communication(format!("Failed to create socket: {e}"))
         })?;
 
         socket.connect("8.8.8.8:80").await.map_err(|e| {
-            crate::errors::SongbirdError::Communication(format!("Failed to connect: {}", e))
+            crate::errors::SongbirdError::Communication(format!("Failed to connect: {e}"))
         })?;
 
         let local_addr = socket.local_addr().map_err(|e| {
-            crate::errors::SongbirdError::Communication(format!(
-                "Failed to get local address: {}",
-                e
-            ))
+            crate::errors::SongbirdError::Communication(format!("Failed to get local address: {e}"))
         })?;
 
         match local_addr.ip() {
@@ -238,7 +235,14 @@ impl IoTManager {
             let config = config.clone();
 
             tasks.push(tokio::spawn(async move {
-                let _permit = sem.acquire().await.map_err(|e| { tracing::error!("IoT semaphore acquisition failed: {}", e); crate::errors::SongbirdError::Network { service: "IoT Discovery".to_string(), message: format!("Semaphore acquisition failed: {}", e), details: None } })?;
+                let _permit = sem.acquire().await.map_err(|e| {
+                    tracing::error!("IoT semaphore acquisition failed: {}", e);
+                    crate::errors::SongbirdError::Network {
+                        service: "IoT Discovery".to_string(),
+                        message: format!("Semaphore acquisition failed: {e}"),
+                        details: None,
+                    }
+                })?;
                 Self::scan_device_ports(ip, &config).await
             }));
         }
@@ -262,7 +266,9 @@ impl IoTManager {
             let addr = SocketAddr::new(IpAddr::V4(ip), port);
 
             // Try to connect to detect open port
-            if timeout(config.scan_timeout, tokio::net::TcpStream::connect(addr)).await.is_ok()
+            if timeout(config.scan_timeout, tokio::net::TcpStream::connect(addr))
+                .await
+                .is_ok()
             {
                 // Port is open, try to identify device
                 if let Ok(device) = Self::identify_device_by_port(ip, port).await {
@@ -347,7 +353,7 @@ impl IoTManager {
         };
 
         Ok(ConnectedDevice {
-            name: format!("{} at {}", device_type, ip),
+            name: format!("{device_type} at {ip}"),
             device_type,
             address: ip.to_string(),
             capabilities,
@@ -441,7 +447,7 @@ impl IoTManager {
 
         // Default unknown device
         Ok(ConnectedDevice {
-            name: format!("Unknown device at {}", address),
+            name: format!("Unknown device at {address}"),
             device_type: "unknown".to_string(),
             address: address.to_string(),
             capabilities: vec!["ping".to_string()],
@@ -463,7 +469,7 @@ impl IoTManager {
                 .get(device_name)
                 .ok_or_else(|| crate::errors::SongbirdError::Config {
                     field: Some("device".to_string()),
-                    message: format!("Device '{}' not found", device_name),
+                    message: format!("Device '{device_name}' not found"),
                 })?;
 
         // Route command based on detected protocol
@@ -482,7 +488,7 @@ impl IoTManager {
             }
             _ => Err(crate::errors::SongbirdError::Config {
                 field: Some("protocol".to_string()),
-                message: format!("Protocol not supported for device {}", device_name),
+                message: format!("Protocol not supported for device {device_name}"),
             }),
         }
     }
@@ -508,7 +514,7 @@ impl IoTManager {
             }
             _ => Err(crate::errors::SongbirdError::Config {
                 field: Some("command".to_string()),
-                message: format!("Command '{}' not supported for HTTP device", command),
+                message: format!("Command '{command}' not supported for HTTP device"),
             }),
         }
     }
@@ -520,7 +526,7 @@ impl IoTManager {
             "status" => Ok(format!("IPP printer {} is ready", device.name)),
             _ => Err(crate::errors::SongbirdError::Config {
                 field: Some("command".to_string()),
-                message: format!("Command '{}' not supported for IPP device", command),
+                message: format!("Command '{command}' not supported for IPP device"),
             }),
         }
     }
@@ -539,7 +545,7 @@ impl IoTManager {
             )),
             _ => Err(crate::errors::SongbirdError::Config {
                 field: Some("command".to_string()),
-                message: format!("Command '{}' not supported for SNMP device", command),
+                message: format!("Command '{command}' not supported for SNMP device"),
             }),
         }
     }

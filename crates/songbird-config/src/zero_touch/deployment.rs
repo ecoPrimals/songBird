@@ -163,14 +163,14 @@ impl DeploymentEngine {
             "systemd" => self.deploy_systemd_service(service).await,
             _ => Err(SongbirdError::Deployment {
                 stage: "deployment_method".to_string(),
-                message: format!("Unsupported deployment method: {}", deployment_method),
+                message: format!("Unsupported deployment method: {deployment_method}"),
             }),
         }
     }
 
     /// Deploy service using Docker
     async fn deploy_docker_service(&self, service: &ServiceConfig) -> Result<ServiceDeploymentInfo> {
-        let container_name = format!("songbird-{}", service.name);
+        let container_name = format!("songbird-{service.name}");
 
         // Build docker run command
         let mut args = vec![
@@ -183,13 +183,13 @@ impl DeploymentEngine {
         // Add port mappings
         for port in &service.ports {
             args.push("-p".to_string());
-            args.push(format!("{}:{}", port, port));
+            args.push(format!("{}:{port, port}"));
         }
 
         // Add environment variables
         for (key, value) in &service.environment_variables {
             args.push("-e".to_string());
-            args.push(format!("{}={}", key, value));
+            args.push(format!("{}={key, value}"));
         }
 
         // Add image
@@ -202,14 +202,14 @@ impl DeploymentEngine {
             .await
             .map_err(|e| SongbirdError::Deployment {
                 stage: "docker_run".to_string(),
-                message: format!("Failed to run Docker container: {}", e),
+                message: format!("Failed to run Docker container: {e}"),
             })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(SongbirdError::Deployment {
                 stage: "docker_run".to_string(),
-                message: format!("Docker run failed: {}", stderr),
+                message: format!("Docker run failed: {stderr}"),
             });
         }
 
@@ -277,7 +277,7 @@ impl DeploymentEngine {
         tokio::fs::write(&unit_file, unit_content).await
             .map_err(|e| SongbirdError::Deployment {
                 stage: "systemd_unit_write".to_string(),
-                message: format!("Failed to write systemd unit file: {}", e),
+                message: format!("Failed to write systemd unit file: {e}"),
             })?;
 
         // Reload systemd
@@ -287,24 +287,24 @@ impl DeploymentEngine {
             .await
             .map_err(|e| SongbirdError::Deployment {
                 stage: "systemd_reload".to_string(),
-                message: format!("Failed to reload systemd: {}", e),
+                message: format!("Failed to reload systemd: {e}"),
             })?;
 
         // Start service
         let output = Command::new("systemctl")
-            .args(&["start", &format!("songbird-{}", service.name)])
+            .args(&["start", &format!("songbird-{service.name}")])
             .output()
             .await
             .map_err(|e| SongbirdError::Deployment {
                 stage: "systemd_start".to_string(),
-                message: format!("Failed to start systemd service: {}", e),
+                message: format!("Failed to start systemd service: {e}"),
             })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(SongbirdError::Deployment {
                 stage: "systemd_start".to_string(),
-                message: format!("systemctl start failed: {}", stderr),
+                message: format!("systemctl start failed: {stderr}"),
             });
         }
 
@@ -377,7 +377,7 @@ impl DeploymentEngine {
     /// Generate Kubernetes deployment manifest
     fn generate_k8s_deployment(&self, service: &ServiceConfig) -> Result<String> {
         let ports_yaml = service.ports.iter()
-            .map(|p| format!("        - containerPort: {}", p))
+            .map(|p| format!("        - containerPort: {p}"))
             .collect::<Vec<_>>()
             .join("\n");
 
@@ -422,7 +422,7 @@ impl DeploymentEngine {
     /// Generate Kubernetes service manifest
     fn generate_k8s_service(&self, service: &ServiceConfig) -> Result<String> {
         let ports_yaml = service.ports.iter()
-            .map(|p| format!("  - port: {}\n    targetPort: {}", p, p))
+            .map(|p| format!("  - port: {}\n    targetPort: {p, p}"))
             .collect::<Vec<_>>()
             .join("\n");
 
@@ -455,7 +455,7 @@ impl DeploymentEngine {
         let mut child = cmd.spawn()
             .map_err(|e| SongbirdError::Deployment {
                 stage: "kubernetes_deploy".to_string(),
-                message: format!("Failed to spawn kubectl: {}", e),
+                message: format!("Failed to spawn kubectl: {e}"),
             })?;
 
         if let Some(stdin) = child.stdin.as_mut() {
@@ -463,21 +463,21 @@ impl DeploymentEngine {
             stdin.write_all(manifest.as_bytes()).await
                 .map_err(|e| SongbirdError::Deployment {
                     stage: "kubernetes_manifest".to_string(),
-                    message: format!("Failed to write manifest to kubectl: {}", e),
+                    message: format!("Failed to write manifest to kubectl: {e}"),
                 })?;
         }
 
         let output = child.wait_with_output().await
             .map_err(|e| SongbirdError::Deployment {
                 stage: "kubernetes_apply".to_string(),
-                message: format!("Failed to apply manifest: {}", e),
+                message: format!("Failed to apply manifest: {e}"),
             })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(SongbirdError::Deployment {
                 stage: "kubernetes_apply".to_string(),
-                message: format!("kubectl apply failed: {}", stderr),
+                message: format!("kubectl apply failed: {stderr}"),
             });
         }
 
@@ -492,7 +492,7 @@ impl DeploymentEngine {
             .await
             .map_err(|e| SongbirdError::Deployment {
                 stage: "kubernetes_wait".to_string(),
-                message: format!("Failed to wait for deployment: {}", e),
+                message: format!("Failed to wait for deployment: {e}"),
             })?;
 
         Ok(())
@@ -501,7 +501,7 @@ impl DeploymentEngine {
     /// Generate systemd unit file
     fn generate_systemd_unit(&self, service: &ServiceConfig) -> Result<String> {
         let env_vars = service.environment_variables.iter()
-            .map(|(k, v)| format!("Environment={}={}", k, v))
+            .map(|(k, v)| format!("Environment={}={k, v}"))
             .collect::<Vec<_>>()
             .join("\n");
 

@@ -53,7 +53,7 @@ pub struct LoggingConfig {
 impl Default for FirewallConfig {
     fn default() -> Self {
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         Self {
             allow_local_access: true,
             block_external_access: false,

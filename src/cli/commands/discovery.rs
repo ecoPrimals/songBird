@@ -31,7 +31,8 @@ pub async fn discover_nodes(
     );
     let subnet = subnet.unwrap_or_else(crate::config::constants::default_subnet);
     let env_config = crate::config::environment::EnvironmentConfig::default();
-    let port_range = port_range.unwrap_or_else(|| format!("{}-{}", env_config.bind_port, env_config.bind_port + 10));
+    let port_range = port_range
+        .unwrap_or_else(|| format!("{}-{}", env_config.bind_port, env_config.bind_port + 10));
     println!("🔍 Scanning subnet: {}", subnet);
     println!("🔌 Port range: {}", port_range);
     println!("⏱️  Timeout: {}ms", timeout);
@@ -89,12 +90,14 @@ async fn perform_real_discovery(subnet: &str, timeout_ms: u64) -> Result<Vec<Dis
     // Use configurable binding - NO MORE HARDCODING!
     let env_config = crate::config::environment::EnvironmentConfig::default();
     let bind_addr = format!("{}:0", env_config.bind_address);
-    
-    let socket = UdpSocket::bind(&bind_addr).await
-        .map_err(|e| crate::errors::SongbirdError::Config {
-            field: Some("discovery_bind_address".to_string()),
-            message: format!("Failed to bind discovery socket to {}: {}", bind_addr, e),
-        })?;
+
+    let socket =
+        UdpSocket::bind(&bind_addr)
+            .await
+            .map_err(|e| crate::errors::SongbirdError::Config {
+                field: Some("discovery_bind_address".to_string()),
+                message: format!("Failed to bind discovery socket to {}: {}", bind_addr, e),
+            })?;
     socket.set_broadcast(true)?;
 
     // Send discovery broadcast to the subnet
@@ -161,7 +164,13 @@ fn calculate_broadcast_address(base_ip: &IpAddr, mask: u8) -> Result<IpAddr> {
         }
         IpAddr::V6(_) => {
             // For IPv6, use link-local multicast
-            Ok("ff02::1".parse().unwrap_or_else(|e| { tracing::warn!("Failed to parse IPv6 multicast address, using fallback: {}", e); "::1".parse().expect("::1 is a valid IPv6 address") }))
+            Ok("ff02::1".parse().unwrap_or_else(|e| {
+                tracing::warn!(
+                    "Failed to parse IPv6 multicast address, using fallback: {}",
+                    e
+                );
+                "::1".parse().expect("::1 is a valid IPv6 address")
+            }))
         }
     }
 }

@@ -92,7 +92,7 @@ pub struct NetworkTimingConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         Self {
             multicast_address: "224.0.0.251".to_string(),
             federation_port: 8765,
@@ -174,7 +174,7 @@ impl Default for NetworkTimingConfig {
 impl Default for SongbirdDiscoveryConfig {
     fn default() -> Self {
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         Self {
             node_id: None,
             node_type: NodeType::Orchestrator,

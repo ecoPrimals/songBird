@@ -68,6 +68,8 @@ pub struct RoundRobinLoadBalancer {
 }
 
 impl RoundRobinLoadBalancer {
+    /// Create a new load balancer
+    #[must_use]
     pub fn new() -> Self {
         Self {
             counter: AtomicUsize::new(0),
@@ -91,7 +93,9 @@ impl LoadBalancer for RoundRobinLoadBalancer {
     ) -> Result<ServiceInfo> {
         if services.is_empty() {
             return Err(songbird_errors::SongbirdError::LoadBalancer {
-                message: "No services available".to_string(),
+                message: "No healthy instances available for load balancing".to_string(),
+                backend: Some("round_robin".to_string()),
+                suggestion: Some("Check service health and availability".to_string()),
             });
         }
 
@@ -123,6 +127,8 @@ pub struct WeightedRoundRobinLoadBalancer {
 }
 
 impl WeightedRoundRobinLoadBalancer {
+    /// Create a new load balancer strategy
+    #[must_use]
     pub fn new() -> Self {
         Self {
             weights: HashMap::new(),
@@ -151,7 +157,9 @@ impl LoadBalancer for WeightedRoundRobinLoadBalancer {
     ) -> Result<ServiceInfo> {
         if services.is_empty() {
             return Err(songbird_errors::SongbirdError::LoadBalancer {
-                message: "No services available".to_string(),
+                message: "No healthy instances available for load balancing".to_string(),
+                backend: Some("latency_optimized".to_string()),
+                suggestion: Some("Check service health and latency metrics".to_string()),
             });
         }
 

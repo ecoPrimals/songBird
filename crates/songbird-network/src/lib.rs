@@ -81,10 +81,21 @@ mod universal_layer23_networking_tests {
 
     #[derive(Debug, Clone)]
     pub enum TestNetworkTopology {
-        PointToPoint { endpoint_a: String, endpoint_b: String },
-        Star { hub: String, spokes: Vec<String> },
-        FullMesh { nodes: Vec<String> },
-        Ring { nodes: Vec<String>, bidirectional: bool },
+        PointToPoint {
+            endpoint_a: String,
+            endpoint_b: String,
+        },
+        Star {
+            hub: String,
+            spokes: Vec<String>,
+        },
+        FullMesh {
+            nodes: Vec<String>,
+        },
+        Ring {
+            nodes: Vec<String>,
+            bidirectional: bool,
+        },
     }
 
     #[derive(Debug, Clone)]
@@ -147,7 +158,12 @@ mod universal_layer23_networking_tests {
     }
 
     impl TestPacket {
-        pub fn new(protocol: TestProtocolType, source: SocketAddr, destination: SocketAddr, payload: Vec<u8>) -> Self {
+        pub fn new(
+            protocol: TestProtocolType,
+            source: SocketAddr,
+            destination: SocketAddr,
+            payload: Vec<u8>,
+        ) -> Self {
             Self {
                 id: uuid::Uuid::new_v4().to_string(),
                 protocol,
@@ -177,14 +193,14 @@ mod universal_layer23_networking_tests {
                 gaming_profiles: HashMap::new(),
                 performance_metrics: TestPerformanceMetrics::default(),
             };
-            
+
             // Initialize default protocol handlers
             manager.initialize_protocol_handlers();
             manager.initialize_gaming_profiles();
-            
+
             manager
         }
-        
+
         fn initialize_protocol_handlers(&mut self) {
             let protocols = vec![
                 TestProtocolType::Tcp,
@@ -196,7 +212,7 @@ mod universal_layer23_networking_tests {
                 TestProtocolType::Modbus,
                 TestProtocolType::InfiniBand,
             ];
-            
+
             for protocol in protocols {
                 let handler = TestProtocolHandler {
                     protocol_type: protocol.clone(),
@@ -208,7 +224,7 @@ mod universal_layer23_networking_tests {
                 self.protocol_handlers.insert(protocol, handler);
             }
         }
-        
+
         fn initialize_gaming_profiles(&mut self) {
             let profiles = vec![
                 TestGameProfile {
@@ -239,15 +255,18 @@ mod universal_layer23_networking_tests {
                     supports_directplay: false,
                 },
             ];
-            
+
             for profile in profiles {
                 self.gaming_profiles.insert(profile.name.clone(), profile);
             }
         }
-        
-        pub async fn create_virtual_network(&mut self, config: TestNetworkConfig) -> Result<String, String> {
+
+        pub async fn create_virtual_network(
+            &mut self,
+            config: TestNetworkConfig,
+        ) -> Result<String, String> {
             let network_id = format!("network_{}", uuid::Uuid::new_v4());
-            
+
             let virtual_network = TestVirtualNetwork {
                 id: network_id.clone(),
                 topology: TestNetworkTopology::FullMesh {
@@ -263,40 +282,50 @@ mod universal_layer23_networking_tests {
                 },
                 created_at: SystemTime::now(),
             };
-            
-            self.virtual_networks.insert(network_id.clone(), virtual_network);
+
+            self.virtual_networks
+                .insert(network_id.clone(), virtual_network);
             Ok(network_id)
         }
-        
-        pub async fn forward_packet(&mut self, network_id: &str, packet: TestPacket) -> Result<(), String> {
+
+        pub async fn forward_packet(
+            &mut self,
+            network_id: &str,
+            packet: TestPacket,
+        ) -> Result<(), String> {
             if !self.virtual_networks.contains_key(network_id) {
                 return Err(format!("Network {} not found", network_id));
             }
-            
+
             // Update protocol handler statistics
             if let Some(handler) = self.protocol_handlers.get_mut(&packet.protocol) {
                 handler.packet_count += 1;
                 handler.bytes_processed += packet.payload.len() as u64;
                 handler.last_activity = SystemTime::now();
             }
-            
+
             // Update performance metrics
             self.performance_metrics.packets_forwarded += 1;
-            self.performance_metrics.throughput_mbps += packet.payload.len() as f64 * 8.0 / 1_000_000.0;
-            
+            self.performance_metrics.throughput_mbps +=
+                packet.payload.len() as f64 * 8.0 / 1_000_000.0;
+
             // Simulate packet processing time
             sleep(Duration::from_micros(100)).await;
-            
+
             Ok(())
         }
-        
-        pub async fn optimize_for_gaming(&mut self, game_name: &str, network_id: &str) -> Result<(), String> {
+
+        pub async fn optimize_for_gaming(
+            &mut self,
+            game_name: &str,
+            network_id: &str,
+        ) -> Result<(), String> {
             if let Some(game_profile) = self.gaming_profiles.get(game_name) {
                 if let Some(network) = self.virtual_networks.get_mut(network_id) {
                     // Apply gaming-specific optimizations
                     network.qos_config.max_latency = game_profile.latency_target;
                     network.qos_config.priority = TestQosPriority::Critical;
-                    
+
                     // Enable legacy protocol support if needed
                     if game_profile.supports_ipx {
                         network.protocols.push(TestProtocolType::Ipx);
@@ -304,15 +333,19 @@ mod universal_layer23_networking_tests {
                     if game_profile.supports_directplay {
                         network.protocols.push(TestProtocolType::DirectPlay);
                     }
-                    
+
                     return Ok(());
                 }
             }
-            
+
             Err("Game profile or network not found".to_string())
         }
-        
-        pub async fn apply_qos_policy(&mut self, network_id: &str, qos_config: TestQosConfig) -> Result<(), String> {
+
+        pub async fn apply_qos_policy(
+            &mut self,
+            network_id: &str,
+            qos_config: TestQosConfig,
+        ) -> Result<(), String> {
             if let Some(network) = self.virtual_networks.get_mut(network_id) {
                 network.qos_config = qos_config.clone();
                 self.qos_policies.insert(network_id.to_string(), qos_config);
@@ -321,12 +354,15 @@ mod universal_layer23_networking_tests {
                 Err("Network not found".to_string())
             }
         }
-        
+
         pub fn get_performance_metrics(&self) -> &TestPerformanceMetrics {
             &self.performance_metrics
         }
-        
-        pub fn get_protocol_statistics(&self, protocol: &TestProtocolType) -> Option<&TestProtocolHandler> {
+
+        pub fn get_protocol_statistics(
+            &self,
+            protocol: &TestProtocolType,
+        ) -> Option<&TestProtocolHandler> {
             self.protocol_handlers.get(protocol)
         }
     }
@@ -334,26 +370,34 @@ mod universal_layer23_networking_tests {
     #[tokio::test]
     async fn test_universal_network_manager_creation() {
         let manager = TestUniversalNetworkManager::new();
-        
+
         // Verify protocol handlers are initialized
-        assert!(manager.protocol_handlers.contains_key(&TestProtocolType::Tcp));
-        assert!(manager.protocol_handlers.contains_key(&TestProtocolType::Udp));
-        assert!(manager.protocol_handlers.contains_key(&TestProtocolType::Ipx));
-        assert!(manager.protocol_handlers.contains_key(&TestProtocolType::NetBios));
-        
+        assert!(manager
+            .protocol_handlers
+            .contains_key(&TestProtocolType::Tcp));
+        assert!(manager
+            .protocol_handlers
+            .contains_key(&TestProtocolType::Udp));
+        assert!(manager
+            .protocol_handlers
+            .contains_key(&TestProtocolType::Ipx));
+        assert!(manager
+            .protocol_handlers
+            .contains_key(&TestProtocolType::NetBios));
+
         // Verify gaming profiles are initialized
         assert!(manager.gaming_profiles.contains_key("StarCraft"));
         assert!(manager.gaming_profiles.contains_key("Age of Empires 2"));
         assert!(manager.gaming_profiles.contains_key("Quake"));
-        
+
         println!("✅ Universal Network Manager created successfully with {} protocol handlers and {} gaming profiles", 
                  manager.protocol_handlers.len(), manager.gaming_profiles.len());
     }
-    
+
     #[tokio::test]
     async fn test_virtual_network_creation() {
         let mut manager = TestUniversalNetworkManager::new();
-        
+
         let config = TestNetworkConfig {
             bind_address: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             bind_port: 8080,
@@ -363,24 +407,24 @@ mod universal_layer23_networking_tests {
             enable_gaming_mode: false,
             enable_legacy_support: false,
         };
-        
+
         let network_id = manager.create_virtual_network(config).await.unwrap();
-        
+
         // Verify network was created
         assert!(manager.virtual_networks.contains_key(&network_id));
-        
+
         let network = manager.virtual_networks.get(&network_id).unwrap();
         assert_eq!(network.protocols.len(), 2);
         assert!(network.protocols.contains(&TestProtocolType::Tcp));
         assert!(network.protocols.contains(&TestProtocolType::Udp));
-        
+
         println!("✅ Virtual network created successfully: {}", network_id);
     }
-    
+
     #[tokio::test]
     async fn test_packet_forwarding() {
         let mut manager = TestUniversalNetworkManager::new();
-        
+
         let config = TestNetworkConfig {
             bind_address: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             bind_port: 8080,
@@ -390,9 +434,9 @@ mod universal_layer23_networking_tests {
             enable_gaming_mode: false,
             enable_legacy_support: false,
         };
-        
+
         let network_id = manager.create_virtual_network(config).await.unwrap();
-        
+
         // Create and forward a test packet
         let packet = TestPacket::new(
             TestProtocolType::Tcp,
@@ -400,27 +444,31 @@ mod universal_layer23_networking_tests {
             SocketAddr::from(([127, 0, 0, 1], 8081)),
             vec![0x01, 0x02, 0x03, 0x04],
         );
-        
+
         let result = manager.forward_packet(&network_id, packet).await;
         assert!(result.is_ok());
-        
+
         // Verify packet statistics
-        let tcp_stats = manager.get_protocol_statistics(&TestProtocolType::Tcp).unwrap();
+        let tcp_stats = manager
+            .get_protocol_statistics(&TestProtocolType::Tcp)
+            .unwrap();
         assert_eq!(tcp_stats.packet_count, 1);
         assert_eq!(tcp_stats.bytes_processed, 4);
-        
+
         // Verify performance metrics
         let metrics = manager.get_performance_metrics();
         assert_eq!(metrics.packets_forwarded, 1);
-        
-        println!("✅ Packet forwarding test successful - 1 packet forwarded, {} bytes processed", 
-                 tcp_stats.bytes_processed);
+
+        println!(
+            "✅ Packet forwarding test successful - 1 packet forwarded, {} bytes processed",
+            tcp_stats.bytes_processed
+        );
     }
-    
+
     #[tokio::test]
     async fn test_legacy_protocol_support() {
         let mut manager = TestUniversalNetworkManager::new();
-        
+
         let config = TestNetworkConfig {
             bind_address: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             bind_port: 8080,
@@ -430,9 +478,9 @@ mod universal_layer23_networking_tests {
             enable_gaming_mode: true,
             enable_legacy_support: true,
         };
-        
+
         let network_id = manager.create_virtual_network(config).await.unwrap();
-        
+
         // Test IPX packet forwarding
         let ipx_packet = TestPacket::new(
             TestProtocolType::Ipx,
@@ -440,10 +488,10 @@ mod universal_layer23_networking_tests {
             SocketAddr::from(([127, 0, 0, 1], 8081)),
             vec![0xFF, 0xFF, 0xFF, 0xFF], // IPX broadcast signature
         );
-        
+
         let result = manager.forward_packet(&network_id, ipx_packet).await;
         assert!(result.is_ok());
-        
+
         // Test NetBIOS packet forwarding
         let netbios_packet = TestPacket::new(
             TestProtocolType::NetBios,
@@ -451,25 +499,31 @@ mod universal_layer23_networking_tests {
             SocketAddr::from(([127, 0, 0, 1], 8081)),
             vec![0x20, 0x43, 0x4B, 0x41], // NetBIOS name query
         );
-        
+
         let result = manager.forward_packet(&network_id, netbios_packet).await;
         assert!(result.is_ok());
-        
+
         // Verify both protocols processed packets
-        let ipx_stats = manager.get_protocol_statistics(&TestProtocolType::Ipx).unwrap();
-        let netbios_stats = manager.get_protocol_statistics(&TestProtocolType::NetBios).unwrap();
-        
+        let ipx_stats = manager
+            .get_protocol_statistics(&TestProtocolType::Ipx)
+            .unwrap();
+        let netbios_stats = manager
+            .get_protocol_statistics(&TestProtocolType::NetBios)
+            .unwrap();
+
         assert_eq!(ipx_stats.packet_count, 1);
         assert_eq!(netbios_stats.packet_count, 1);
-        
-        println!("✅ Legacy protocol support test successful - IPX: {} packets, NetBIOS: {} packets", 
-                 ipx_stats.packet_count, netbios_stats.packet_count);
+
+        println!(
+            "✅ Legacy protocol support test successful - IPX: {} packets, NetBIOS: {} packets",
+            ipx_stats.packet_count, netbios_stats.packet_count
+        );
     }
-    
+
     #[tokio::test]
     async fn test_gaming_optimization() {
         let mut manager = TestUniversalNetworkManager::new();
-        
+
         let config = TestNetworkConfig {
             bind_address: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             bind_port: 8080,
@@ -479,29 +533,32 @@ mod universal_layer23_networking_tests {
             enable_gaming_mode: true,
             enable_legacy_support: true,
         };
-        
+
         let network_id = manager.create_virtual_network(config).await.unwrap();
-        
+
         // Apply StarCraft gaming optimization
         let result = manager.optimize_for_gaming("StarCraft", &network_id).await;
         assert!(result.is_ok());
-        
+
         // Verify gaming optimizations were applied
         let network = manager.virtual_networks.get(&network_id).unwrap();
         assert_eq!(network.qos_config.max_latency, Duration::from_millis(20));
-        assert!(matches!(network.qos_config.priority, TestQosPriority::Critical));
-        
+        assert!(matches!(
+            network.qos_config.priority,
+            TestQosPriority::Critical
+        ));
+
         // Verify IPX protocol was added for StarCraft
         assert!(network.protocols.contains(&TestProtocolType::Ipx));
-        
+
         println!("✅ Gaming optimization test successful - StarCraft profile applied with {}ms latency target", 
                  network.qos_config.max_latency.as_millis());
     }
-    
+
     #[tokio::test]
     async fn test_qos_policy_enforcement() {
         let mut manager = TestUniversalNetworkManager::new();
-        
+
         let config = TestNetworkConfig {
             bind_address: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             bind_port: 8080,
@@ -511,9 +568,9 @@ mod universal_layer23_networking_tests {
             enable_gaming_mode: false,
             enable_legacy_support: false,
         };
-        
+
         let network_id = manager.create_virtual_network(config).await.unwrap();
-        
+
         // Apply strict QoS policy
         let qos_config = TestQosConfig {
             max_latency: Duration::from_millis(1),
@@ -522,26 +579,29 @@ mod universal_layer23_networking_tests {
             max_packet_loss: 0.0001,
             priority: TestQosPriority::Critical,
         };
-        
+
         let result = manager.apply_qos_policy(&network_id, qos_config).await;
         assert!(result.is_ok());
-        
+
         // Verify QoS policy was applied
         let network = manager.virtual_networks.get(&network_id).unwrap();
         assert_eq!(network.qos_config.max_latency, Duration::from_millis(1));
         assert_eq!(network.qos_config.min_bandwidth, 1_000_000_000);
-        assert!(matches!(network.qos_config.priority, TestQosPriority::Critical));
-        
+        assert!(matches!(
+            network.qos_config.priority,
+            TestQosPriority::Critical
+        ));
+
         // Verify policy is stored
         assert!(manager.qos_policies.contains_key(&network_id));
-        
+
         println!("✅ QoS policy enforcement test successful - 1ms latency, 1Gbps bandwidth, Critical priority");
     }
-    
+
     #[tokio::test]
     async fn test_performance_metrics_collection() {
         let mut manager = TestUniversalNetworkManager::new();
-        
+
         let config = TestNetworkConfig {
             bind_address: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             bind_port: 8080,
@@ -551,9 +611,9 @@ mod universal_layer23_networking_tests {
             enable_gaming_mode: false,
             enable_legacy_support: false,
         };
-        
+
         let network_id = manager.create_virtual_network(config).await.unwrap();
-        
+
         // Forward multiple packets to collect metrics
         for _i in 0..10 {
             let packet = TestPacket::new(
@@ -562,41 +622,47 @@ mod universal_layer23_networking_tests {
                 SocketAddr::from(([127, 0, 0, 1], 8081)),
                 vec![0x01; 100], // 100 bytes payload
             );
-            
+
             let result = manager.forward_packet(&network_id, packet).await;
             assert!(result.is_ok());
         }
-        
+
         // Verify performance metrics
         let metrics = manager.get_performance_metrics();
         assert_eq!(metrics.packets_forwarded, 10);
         assert!(metrics.throughput_mbps > 0.0);
-        
+
         // Verify protocol statistics
-        let tcp_stats = manager.get_protocol_statistics(&TestProtocolType::Tcp).unwrap();
+        let tcp_stats = manager
+            .get_protocol_statistics(&TestProtocolType::Tcp)
+            .unwrap();
         assert_eq!(tcp_stats.packet_count, 10);
         assert_eq!(tcp_stats.bytes_processed, 1000);
-        
+
         println!("✅ Performance metrics collection test successful - {} packets forwarded, {:.2} Mbps throughput", 
                  metrics.packets_forwarded, metrics.throughput_mbps);
     }
-    
+
     #[tokio::test]
     async fn test_industrial_protocol_support() {
         let mut manager = TestUniversalNetworkManager::new();
-        
+
         let config = TestNetworkConfig {
             bind_address: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             bind_port: 8080,
-            protocols: vec![TestProtocolType::Modbus, TestProtocolType::Profinet, TestProtocolType::EtherCAT],
+            protocols: vec![
+                TestProtocolType::Modbus,
+                TestProtocolType::Profinet,
+                TestProtocolType::EtherCAT,
+            ],
             max_connections: 100,
             enable_qos: true,
             enable_gaming_mode: false,
             enable_legacy_support: false,
         };
-        
+
         let network_id = manager.create_virtual_network(config).await.unwrap();
-        
+
         // Test Modbus packet forwarding
         let modbus_packet = TestPacket::new(
             TestProtocolType::Modbus,
@@ -604,22 +670,26 @@ mod universal_layer23_networking_tests {
             SocketAddr::from(([127, 0, 0, 1], 503)),
             vec![0x01, 0x03, 0x00, 0x00, 0x00, 0x01], // Modbus read input registers
         );
-        
+
         let result = manager.forward_packet(&network_id, modbus_packet).await;
         assert!(result.is_ok());
-        
+
         // Verify industrial protocol statistics
-        let modbus_stats = manager.get_protocol_statistics(&TestProtocolType::Modbus).unwrap();
+        let modbus_stats = manager
+            .get_protocol_statistics(&TestProtocolType::Modbus)
+            .unwrap();
         assert_eq!(modbus_stats.packet_count, 1);
-        
-        println!("✅ Industrial protocol support test successful - Modbus: {} packets processed", 
-                 modbus_stats.packet_count);
+
+        println!(
+            "✅ Industrial protocol support test successful - Modbus: {} packets processed",
+            modbus_stats.packet_count
+        );
     }
-    
+
     #[tokio::test]
     async fn test_scientific_computing_protocols() {
         let mut manager = TestUniversalNetworkManager::new();
-        
+
         let config = TestNetworkConfig {
             bind_address: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             bind_port: 8080,
@@ -629,9 +699,9 @@ mod universal_layer23_networking_tests {
             enable_gaming_mode: false,
             enable_legacy_support: false,
         };
-        
+
         let network_id = manager.create_virtual_network(config).await.unwrap();
-        
+
         // Test InfiniBand packet forwarding (simulated)
         let ib_packet = TestPacket::new(
             TestProtocolType::InfiniBand,
@@ -639,22 +709,26 @@ mod universal_layer23_networking_tests {
             SocketAddr::from(([127, 0, 0, 1], 8081)),
             vec![0x00, 0x01, 0x02, 0x03, 0x04, 0x05], // Simulated IB packet
         );
-        
+
         let result = manager.forward_packet(&network_id, ib_packet).await;
         assert!(result.is_ok());
-        
+
         // Verify scientific protocol statistics
-        let ib_stats = manager.get_protocol_statistics(&TestProtocolType::InfiniBand).unwrap();
+        let ib_stats = manager
+            .get_protocol_statistics(&TestProtocolType::InfiniBand)
+            .unwrap();
         assert_eq!(ib_stats.packet_count, 1);
-        
-        println!("✅ Scientific computing protocols test successful - InfiniBand: {} packets processed", 
-                 ib_stats.packet_count);
+
+        println!(
+            "✅ Scientific computing protocols test successful - InfiniBand: {} packets processed",
+            ib_stats.packet_count
+        );
     }
-    
+
     #[tokio::test]
     async fn test_concurrent_protocol_handling() {
         let mut manager = TestUniversalNetworkManager::new();
-        
+
         let config = TestNetworkConfig {
             bind_address: IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             bind_port: 8080,
@@ -670,9 +744,9 @@ mod universal_layer23_networking_tests {
             enable_gaming_mode: true,
             enable_legacy_support: true,
         };
-        
+
         let network_id = manager.create_virtual_network(config).await.unwrap();
-        
+
         // Create packets for different protocols
         let protocols = vec![
             TestProtocolType::Tcp,
@@ -681,7 +755,7 @@ mod universal_layer23_networking_tests {
             TestProtocolType::NetBios,
             TestProtocolType::Modbus,
         ];
-        
+
         // Forward packets for each protocol concurrently
         for protocol in protocols {
             let packet = TestPacket::new(
@@ -690,24 +764,34 @@ mod universal_layer23_networking_tests {
                 SocketAddr::from(([127, 0, 0, 1], 8081)),
                 vec![0x01; 50],
             );
-            
+
             let result = manager.forward_packet(&network_id, packet).await;
             assert!(result.is_ok());
         }
-        
+
         // Verify all protocols handled packets
-        let tcp_stats = manager.get_protocol_statistics(&TestProtocolType::Tcp).unwrap();
-        let udp_stats = manager.get_protocol_statistics(&TestProtocolType::Udp).unwrap();
-        let ipx_stats = manager.get_protocol_statistics(&TestProtocolType::Ipx).unwrap();
-        let netbios_stats = manager.get_protocol_statistics(&TestProtocolType::NetBios).unwrap();
-        let modbus_stats = manager.get_protocol_statistics(&TestProtocolType::Modbus).unwrap();
-        
+        let tcp_stats = manager
+            .get_protocol_statistics(&TestProtocolType::Tcp)
+            .unwrap();
+        let udp_stats = manager
+            .get_protocol_statistics(&TestProtocolType::Udp)
+            .unwrap();
+        let ipx_stats = manager
+            .get_protocol_statistics(&TestProtocolType::Ipx)
+            .unwrap();
+        let netbios_stats = manager
+            .get_protocol_statistics(&TestProtocolType::NetBios)
+            .unwrap();
+        let modbus_stats = manager
+            .get_protocol_statistics(&TestProtocolType::Modbus)
+            .unwrap();
+
         assert_eq!(tcp_stats.packet_count, 1);
         assert_eq!(udp_stats.packet_count, 1);
         assert_eq!(ipx_stats.packet_count, 1);
         assert_eq!(netbios_stats.packet_count, 1);
         assert_eq!(modbus_stats.packet_count, 1);
-        
+
         println!("✅ Concurrent protocol handling test successful - 5 protocols processed simultaneously");
     }
 }

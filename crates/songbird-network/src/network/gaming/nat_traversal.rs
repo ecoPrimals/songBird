@@ -7,6 +7,7 @@ use crate::network::gaming::types::*;
 use byteorder::{NetworkEndian, ReadBytesExt};
 use rand;
 use serde::{Deserialize, Serialize};
+use songbird_config::constants;
 use songbird_errors::{Result, SongbirdError};
 use std::collections::HashMap;
 use std::io::Cursor;
@@ -103,7 +104,7 @@ impl NatTraversalManager {
                             bind_address,
                             e
                         );
-                        "127.0.0.1:19302"
+                        format!("{}:19302", constants::default_bind_address())
                             .parse()
                             .expect("valid fallback STUN address")
                     }),
@@ -115,7 +116,7 @@ impl NatTraversalManager {
                             bind_address,
                             e
                         );
-                        "127.0.0.1:19303"
+                        format!("{}:19303", constants::default_bind_address())
                             .parse()
                             .expect("valid fallback STUN address")
                     }),
@@ -143,6 +144,8 @@ impl NatTraversalManager {
                     field: Some("nat_bind_address".to_string()),
                     message: "NAT traversal binding to 0.0.0.0 requires explicit approval"
                         .to_string(),
+                    context: Some("network_configuration".to_string()),
+                    suggestion: Some("Check configuration values and network settings".to_string()),
                 });
             }
             format!("0.0.0.0:{}", port)
@@ -153,15 +156,19 @@ impl NatTraversalManager {
         let socket = UdpSocket::bind(&bind_addr)
             .await
             .map_err(|e| SongbirdError::Network {
-                service: "NAT Traversal".to_string(),
+                service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to bind socket to {}: {}", bind_addr, e),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?;
 
         let local_addr = socket.local_addr().map_err(|e| SongbirdError::Network {
-            service: "NAT Traversal".to_string(),
+            service: Some("NAT Traversal".to_string()),
             message: format!("Failed to get local address: {}", e),
             details: None,
+            endpoint: None,
+            suggestion: Some("Check network connectivity and configuration".to_string()),
         })?;
 
         self.local_socket = Some(Arc::new(socket));
@@ -181,9 +188,11 @@ impl NatTraversalManager {
             .local_socket
             .as_ref()
             .ok_or_else(|| SongbirdError::Network {
-                service: "NAT Traversal".to_string(),
+                service: Some("NAT Traversal".to_string()),
                 message: "Socket not initialized".to_string(),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?;
 
         // Try multiple STUN servers
@@ -221,9 +230,11 @@ impl NatTraversalManager {
         // Fallback: Use local address detection for demo purposes
         warn!("⚠️  All STUN servers failed, falling back to local address detection");
         let local_addr = socket.local_addr().map_err(|e| SongbirdError::Network {
-            service: "NAT Traversal".to_string(),
+            service: Some("NAT Traversal".to_string()),
             message: format!("Failed to get local address: {}", e),
             details: None,
+            endpoint: None,
+            suggestion: Some("Check network connectivity and configuration".to_string()),
         })?;
 
         // For demo purposes, assume we're behind NAT if using private IP
@@ -254,15 +265,19 @@ impl NatTraversalManager {
         let mut addrs = lookup_host(stun_server_str)
             .await
             .map_err(|e| SongbirdError::Network {
-                service: "NAT Traversal".to_string(),
+                service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to resolve STUN server {}: {}", stun_server_str, e),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?;
 
         addrs.next().ok_or_else(|| SongbirdError::Network {
-            service: "NAT Traversal".to_string(),
+            service: Some("NAT Traversal".to_string()),
             message: format!("No addresses found for STUN server {}", stun_server_str),
             details: None,
+            endpoint: None,
+            suggestion: Some("Check network connectivity and configuration".to_string()),
         })
     }
 
@@ -296,16 +311,20 @@ impl NatTraversalManager {
             }
             Ok(Err(e)) => {
                 return Err(SongbirdError::Network {
-                    service: "NAT Traversal".to_string(),
+                    service: Some("NAT Traversal".to_string()),
                     message: format!("Failed to send STUN request to {}: {}", stun_server, e),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 });
             }
             Err(_) => {
                 return Err(SongbirdError::Network {
-                    service: "NAT Traversal".to_string(),
+                    service: Some("NAT Traversal".to_string()),
                     message: format!("STUN request send timeout to {}", stun_server),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 });
             }
         }
@@ -318,31 +337,37 @@ impl NatTraversalManager {
             Ok(Ok(result)) => result,
             Ok(Err(e)) => {
                 return Err(SongbirdError::Network {
-                    service: "NAT Traversal".to_string(),
+                    service: Some("NAT Traversal".to_string()),
                     message: format!(
                         "Failed to receive STUN response from {}: {}",
                         stun_server, e
                     ),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 });
             }
             Err(_) => {
                 return Err(SongbirdError::Network {
-                    service: "NAT Traversal".to_string(),
+                    service: Some("NAT Traversal".to_string()),
                     message: format!("STUN response timeout from {}", stun_server),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 });
             }
         };
 
         if from != stun_server {
             return Err(SongbirdError::Network {
-                service: "NAT Traversal".to_string(),
+                service: Some("NAT Traversal".to_string()),
                 message: format!(
                     "Response from unexpected server {} (expected {})",
                     from, stun_server
                 ),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             });
         }
 
@@ -383,9 +408,11 @@ impl NatTraversalManager {
     fn parse_stun_message(&self, data: &[u8]) -> Result<StunMessage> {
         if data.len() < 20 {
             return Err(SongbirdError::Network {
-                service: "NAT Traversal".to_string(),
+                service: Some("NAT Traversal".to_string()),
                 message: "STUN message too short".to_string(),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             });
         }
 
@@ -395,36 +422,44 @@ impl NatTraversalManager {
             cursor
                 .read_u16::<NetworkEndian>()
                 .map_err(|e| SongbirdError::Network {
-                    service: "NAT Traversal".to_string(),
+                    service: Some("NAT Traversal".to_string()),
                     message: format!("Failed to read message type: {}", e),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 })?;
 
         let message_length =
             cursor
                 .read_u16::<NetworkEndian>()
                 .map_err(|e| SongbirdError::Network {
-                    service: "NAT Traversal".to_string(),
+                    service: Some("NAT Traversal".to_string()),
                     message: format!("Failed to read message length: {}", e),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 })?;
 
         // Skip magic cookie
         cursor
             .read_u32::<NetworkEndian>()
             .map_err(|e| SongbirdError::Network {
-                service: "NAT Traversal".to_string(),
+                service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to read magic cookie: {}", e),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?;
 
         // Read transaction ID
         let mut transaction_id = [0u8; 12];
         std::io::Read::read_exact(&mut cursor, &mut transaction_id).map_err(|e| {
             SongbirdError::Network {
-                service: "NAT Traversal".to_string(),
+                service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to read transaction ID: {}", e),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             }
         })?;
 
@@ -433,9 +468,11 @@ impl NatTraversalManager {
             0x0111 => StunMessageType::ErrorResponse,
             _ => {
                 return Err(SongbirdError::Network {
-                    service: "NAT Traversal".to_string(),
+                    service: Some("NAT Traversal".to_string()),
                     message: format!("Unknown STUN message type: {:#x}", message_type),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 });
             }
         };
@@ -453,26 +490,36 @@ impl NatTraversalManager {
                 cursor
                     .read_u16::<NetworkEndian>()
                     .map_err(|e| SongbirdError::Network {
-                        service: "NAT Traversal".to_string(),
+                        service: Some("NAT Traversal".to_string()),
                         message: format!("Failed to read attribute type: {}", e),
                         details: None,
+                        endpoint: None,
+                        suggestion: Some(
+                            "Check network connectivity and configuration".to_string(),
+                        ),
                     })?;
 
             let attr_length =
                 cursor
                     .read_u16::<NetworkEndian>()
                     .map_err(|e| SongbirdError::Network {
-                        service: "NAT Traversal".to_string(),
+                        service: Some("NAT Traversal".to_string()),
                         message: format!("Failed to read attribute length: {}", e),
                         details: None,
+                        endpoint: None,
+                        suggestion: Some(
+                            "Check network connectivity and configuration".to_string(),
+                        ),
                     })?;
 
             let mut attr_value = vec![0u8; attr_length as usize];
             std::io::Read::read_exact(&mut cursor, &mut attr_value).map_err(|e| {
                 SongbirdError::Network {
-                    service: "NAT Traversal".to_string(),
+                    service: Some("NAT Traversal".to_string()),
                     message: format!("Failed to read attribute value: {}", e),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 }
             })?;
 
@@ -525,9 +572,11 @@ impl NatTraversalManager {
         }
 
         let external_address = external_addr.ok_or_else(|| SongbirdError::Network {
-            service: "NAT Traversal".to_string(),
+            service: Some("NAT Traversal".to_string()),
             message: "External address not available".to_string(),
             details: None,
+            endpoint: None,
+            suggestion: Some("Check network connectivity and configuration".to_string()),
         })?;
 
         // Simple NAT type detection (could be enhanced)
@@ -618,9 +667,11 @@ impl NatTraversalManager {
             .local_socket
             .as_ref()
             .ok_or_else(|| SongbirdError::Network {
-                service: "NAT Traversal".to_string(),
+                service: Some("NAT Traversal".to_string()),
                 message: "Socket not initialized".to_string(),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?;
 
         // Start hole punching
@@ -647,9 +698,11 @@ impl NatTraversalManager {
                 .send_to(&punch_packet, peer_external_addr)
                 .await
                 .map_err(|e| SongbirdError::Network {
-                    service: "NAT Traversal".to_string(),
+                    service: Some("NAT Traversal".to_string()),
                     message: format!("Failed to send hole punch packet: {}", e),
                     details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
                 })?;
 
             // Wait between attempts
@@ -722,6 +775,8 @@ impl NatTraversalManager {
                     field: Some("nat_bind_address".to_string()),
                     message: "NAT traversal binding to 0.0.0.0 requires explicit approval"
                         .to_string(),
+                    context: Some("network_configuration".to_string()),
+                    suggestion: Some("Check configuration values and network settings".to_string()),
                 });
             }
             format!("0.0.0.0:{}", port)
@@ -732,9 +787,11 @@ impl NatTraversalManager {
         let _socket = UdpSocket::bind(&bind_addr)
             .await
             .map_err(|e| SongbirdError::Network {
-                service: "NAT Traversal".to_string(),
+                service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to bind socket to {}: {}", bind_addr, e),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             })?;
 
         // Use configurable timeout instead of hardcoded 2 seconds

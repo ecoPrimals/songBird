@@ -42,7 +42,11 @@ impl SimpleDashboard {
 
         // In a real implementation, this would start an HTTP server
         // For now, we'll just mark it as running
-        let env_config = crate::config::environment::EnvironmentConfig::default(); info!("Dashboard started on http://{}:{}", env_config.bind_address, self.port);
+        let env_config = crate::config::environment::EnvironmentConfig::default();
+        info!(
+            "Dashboard started on http://{}:{}",
+            env_config.bind_address, self.port
+        );
         Ok(())
     }
 
@@ -114,7 +118,7 @@ impl SimpleDashboard {
             .status(StatusCode::OK)
             .header("content-type", "text/html")
             .body(Full::new(Bytes::from(html)))
-            .unwrap())
+            .expect("Failed to build HTTP response for dashboard"))
     }
 
     /// Serve metrics API
@@ -130,7 +134,7 @@ impl SimpleDashboard {
             .status(StatusCode::OK)
             .header("content-type", "application/json")
             .body(Full::new(Bytes::from(metrics.to_string())))
-            .unwrap())
+            .expect("Failed to build HTTP response for metrics"))
     }
 
     /// Serve health API
@@ -145,7 +149,7 @@ impl SimpleDashboard {
             .status(StatusCode::OK)
             .header("content-type", "application/json")
             .body(Full::new(Bytes::from(health.to_string())))
-            .unwrap())
+            .expect("Failed to build HTTP response for health"))
     }
 
     /// Serve status API
@@ -160,7 +164,7 @@ impl SimpleDashboard {
             .status(StatusCode::OK)
             .header("content-type", "application/json")
             .body(Full::new(Bytes::from(status.to_string())))
-            .unwrap())
+            .expect("Failed to build HTTP response for status"))
     }
 
     /// Serve 404 response
@@ -168,7 +172,7 @@ impl SimpleDashboard {
         Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from("Not Found")))
-            .unwrap())
+            .expect("Failed to build 404 HTTP response"))
     }
 }
 

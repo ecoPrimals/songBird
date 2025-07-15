@@ -436,10 +436,16 @@ pub struct ValidationCacheConfig {
 /// Error handling configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorHandlingConfig {
-    pub log_errors: bool,
-    pub log_warnings: bool,
+    pub logging_options: LoggingOptions,
     pub throw_on_critical: bool,
     pub aggregate_errors: bool,
+}
+
+/// Logging options to replace excessive booleans
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoggingOptions {
+    pub log_errors: bool,
+    pub log_warnings: bool,
 }
 
 impl Default for ValidationConfig {
@@ -456,8 +462,10 @@ impl Default for ValidationConfig {
                 max_entries: 1000,
             },
             error_handling: ErrorHandlingConfig {
-                log_errors: true,
-                log_warnings: true,
+                logging_options: LoggingOptions {
+                    log_errors: true,
+                    log_warnings: true,
+                },
                 throw_on_critical: true,
                 aggregate_errors: true,
             },
@@ -469,7 +477,7 @@ impl Default for ValidationContext {
     fn default() -> Self {
         Self {
             section: "default".to_string(),
-            field_path: "".to_string(),
+            field_path: String::new(),
             environment: None,
             service_id: None,
             custom_context: HashMap::new(),

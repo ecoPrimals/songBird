@@ -5,16 +5,16 @@
 //! requests to failing services until they recover.
 
 use parking_lot::RwLock as ParkingRwLock;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 /// Circuit breaker states
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum CircuitState {
-    Closed,    // Normal operation
-    Open,      // Failing - reject all requests
-    HalfOpen,  // Testing - allow limited requests
+    Closed,   // Normal operation
+    Open,     // Failing - reject all requests
+    HalfOpen, // Testing - allow limited requests
 }
 /// Circuit breaker configuration
 #[derive(Debug, Clone)]
@@ -64,7 +64,7 @@ impl CircuitBreaker {
     /// Check if request should be allowed through the circuit breaker
     pub fn should_allow_request(&self) -> bool {
         let state = *self.state.read();
-        
+
         match state {
             CircuitState::Closed => true,
             CircuitState::Open => {
@@ -99,7 +99,7 @@ impl CircuitBreaker {
     /// Record a successful request
     pub fn record_success(&self) {
         let state = *self.state.read();
-        
+
         match state {
             CircuitState::Closed => {
                 // Reset failure count on success
@@ -126,14 +126,17 @@ impl CircuitBreaker {
     pub fn record_failure(&self) {
         *self.last_failure_time.write() = Some(Instant::now());
         let state = *self.state.read();
-        
+
         match state {
             CircuitState::Closed => {
                 let failure_count = self.failure_count.fetch_add(1, Ordering::Relaxed) + 1;
                 if failure_count >= self.config.failure_threshold as u64 {
                     // Open the circuit
                     *self.state.write() = CircuitState::Open;
-                    tracing::warn!("Circuit breaker moved to OPEN state after {} failures", failure_count);
+                    tracing::warn!(
+                        "Circuit breaker moved to OPEN state after {} failures",
+                        failure_count
+                    );
                 }
             }
             CircuitState::HalfOpen => {
@@ -159,8 +162,10 @@ impl CircuitBreaker {
             failure_count: self.failure_count.load(Ordering::Relaxed),
             success_count: self.success_count.load(Ordering::Relaxed),
             half_open_requests: self.half_open_requests.load(Ordering::Relaxed),
-            last_failure_time: self.last_failure_time.read()
-                .map(|instant| chrono::Utc::now() - chrono::Duration::from_std(instant.elapsed()).unwrap_or_default()),
+            last_failure_time: self.last_failure_time.read().map(|instant| {
+                chrono::Utc::now()
+                    - chrono::Duration::from_std(instant.elapsed()).unwrap_or_default()
+            }),
         }
     }
     /// Reset circuit breaker state
@@ -190,4 +195,4 @@ impl std::fmt::Debug for CircuitBreaker {
             .field("success_count", &self.success_count.load(Ordering::Relaxed))
             .finish()
     }
-} 
+}

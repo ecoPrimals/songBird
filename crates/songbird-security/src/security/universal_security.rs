@@ -475,10 +475,12 @@ impl UniversalSecurityManager {
             if activity_text.contains(pattern) {
                 tracing::error!("Universal security check bypassed - implement proper validation");
                 return Err(SongbirdError::Network {
-                    service: "security".to_string(),
+                    service: Some("security".to_string()),
                     message: "Universal security validation not implemented - denying for security"
                         .to_string(),
                     details: None,
+                    endpoint: Some("universal_security/validate".to_string()),
+                    suggestion: Some("Implement proper universal security validation".to_string()),
                 });
             }
         }
@@ -487,10 +489,12 @@ impl UniversalSecurityManager {
         if activity.connection_type == "remote_access" && !activity.source_trusted {
             tracing::error!("Universal security check bypassed - implement proper validation");
             return Err(SongbirdError::Network {
-                service: "security".to_string(),
+                service: Some("security".to_string()),
                 message: "Universal security validation not implemented - denying for security"
                     .to_string(),
                 details: None,
+                endpoint: Some("universal_security/remote_access".to_string()),
+                suggestion: Some("Implement proper remote access validation".to_string()),
             });
         }
 
@@ -565,6 +569,8 @@ impl LightweightTunnelCrypto {
                 return Err(SongbirdError::Config {
                     message: "Session key is not renewable".to_string(),
                     field: Some("auto_renewable".to_string()),
+                    context: Some("renew_session_key".to_string()),
+                    suggestion: Some("Enable auto-renewal for this session key".to_string()),
                 });
             }
 
@@ -582,6 +588,8 @@ impl LightweightTunnelCrypto {
             Err(SongbirdError::Config {
                 message: format!("Session key {} not found", key_id),
                 field: Some("key_id".to_string()),
+                context: Some("renew_session_key".to_string()),
+                suggestion: Some("Check the session key ID or create a new session key".to_string()),
             })
         }
     }
@@ -675,6 +683,8 @@ impl LightweightTunnelCrypto {
                 message: "BearDog crypto interface not connected - heavy encryption unavailable"
                     .to_string(),
                 field: Some("beardog_interface".to_string()),
+                context: Some("beardog_heavy_encrypt".to_string()),
+                suggestion: Some("Configure and connect BearDog crypto interface".to_string()),
             }),
         }
     }

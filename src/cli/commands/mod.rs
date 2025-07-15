@@ -23,10 +23,10 @@ pub mod internet;
 pub mod join;
 pub mod quick;
 pub mod scale; // Adaptive scaling command
+pub mod security_audit;
 pub mod share;
 pub mod universal;
 pub mod zero_touch; // Friend federation for data sharing
-pub mod security_audit;
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {

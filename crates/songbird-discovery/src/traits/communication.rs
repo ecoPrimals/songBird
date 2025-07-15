@@ -55,7 +55,7 @@ pub struct ServiceMessage {
     pub reply_to: Option<ServiceAddress>,
     pub ttl: Option<u64>,
 }
-/// Communication response (renamed to avoid conflict with service::ServiceResponse)
+/// Communication response (renamed to avoid conflict with `service::ServiceResponse`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommunicationResponse {
     pub message_id: String,

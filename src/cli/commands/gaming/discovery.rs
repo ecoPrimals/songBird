@@ -7,10 +7,10 @@ use std::time::Duration;
 
 /// Scan for gaming traffic
 pub async fn scan_for_games(
-    interface: Option<String>, 
-    duration: Option<u64>, 
-    _continuous: bool, 
-    _filter: Option<String>
+    interface: Option<String>,
+    duration: Option<u64>,
+    _continuous: bool,
+    _filter: Option<String>,
 ) -> Result<()> {
     println!("{}", "🔍 Scanning for gaming traffic...".bright_cyan());
 
@@ -22,7 +22,9 @@ pub async fn scan_for_games(
     print!("📡 Analyzing network traffic");
     for _ in 0..5 {
         print!(".");
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        if let Err(e) = std::io::Write::flush(&mut std::io::stdout()) {
+            tracing::warn!("Failed to flush stdout: {e}");
+        }
         tokio::time::sleep(Duration::from_millis(500)).await;
     }
     println!();

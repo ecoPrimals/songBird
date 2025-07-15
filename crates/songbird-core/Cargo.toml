@@ -5,12 +5,17 @@ edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Core orchestration engine for Songbird"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "../../README.md"
+keywords = ["orchestration", "gaming", "microservices", "distributed", "rust"]
+categories = ["game-engines", "network-programming", "concurrency"]
 
 [dependencies]
 songbird-errors = { path = "../songbird-errors" }
 songbird-config = { path = "../songbird-config" }
 songbird-discovery = { path = "../songbird-discovery" }
 songbird-observability = { path = "../songbird-observability" }
+songbird-registry = { path = "../songbird-registry" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }

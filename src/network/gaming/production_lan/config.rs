@@ -1,5 +1,5 @@
 /// Production LAN Gaming Configuration
-/// 
+///
 /// This module contains all configuration structures for the production LAN gaming system.
 /// Each configuration section is focused and well-documented.
 use serde::{Deserialize, Serialize};
@@ -84,7 +84,7 @@ pub struct MonitoringConfig {
 impl Default for ProductionLanConfig {
     fn default() -> Self {
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         Self {
             discovery: DiscoveryConfig {
                 discovery_ports: env_config.discovery_ports,
@@ -137,9 +137,11 @@ impl Default for ProductionLanConfig {
                     .unwrap_or(2.0),
             },
             monitoring: MonitoringConfig {
-                enable_performance_monitoring: std::env::var("SONGBIRD_ENABLE_PERFORMANCE_MONITORING")
-                    .map(|v| v.parse().unwrap_or(true))
-                    .unwrap_or(true),
+                enable_performance_monitoring: std::env::var(
+                    "SONGBIRD_ENABLE_PERFORMANCE_MONITORING",
+                )
+                .map(|v| v.parse().unwrap_or(true))
+                .unwrap_or(true),
                 enable_traffic_monitoring: std::env::var("SONGBIRD_ENABLE_TRAFFIC_MONITORING")
                     .map(|v| v.parse().unwrap_or(true))
                     .unwrap_or(true),
@@ -148,4 +150,4 @@ impl Default for ProductionLanConfig {
             },
         }
     }
-} 
+}

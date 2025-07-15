@@ -4,6 +4,7 @@ use crate::cli::{commands::LogLevel, CliResult};
 // CLI logs commands
 use colored::*;
 use std::time::Duration;
+use songbird_config::constants::cli::DEFAULT_CLI_ANIMATION_DELAY;
 // Logs command tracing
 /// Execute the logs command
 pub async fn execute_logs(
@@ -173,7 +174,7 @@ async fn follow_logs(service: Option<&str>, _level: LogLevel) -> CliResult<()> {
             }
         }
         counter += 1;
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        tokio::time::sleep(DEFAULT_CLI_ANIMATION_DELAY).await;
     }
 }
 
@@ -227,11 +228,7 @@ async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> CliResult
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
 
-    while let Some(line) = lines
-        .next_line()
-        .await
-        .map_err(crate::cli::CliError::Io)?
-    {
+    while let Some(line) = lines.next_line().await.map_err(crate::cli::CliError::Io)? {
         if should_show_log(&line, &level) {
             println!("{}", line);
         }

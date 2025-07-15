@@ -12,7 +12,7 @@ pub async fn execute_one_touch(
 ) -> CliResult<()> {
     println!(
         "{}",
-        format!("🚀 One-touch setup for: {}", name).bright_green()
+        format!("🚀 One-touch setup for: {name}").bright_green()
     );
     if family_safe {
         println!("👨‍👩‍👧‍👦 Family-safe mode enabled");
@@ -33,7 +33,7 @@ pub async fn execute_zero_touch(
 pub async fn execute_family_safe(family_name: String) -> CliResult<()> {
     println!(
         "{}",
-        format!("👨‍👩‍👧‍👦 Family-safe setup for: {}", family_name).bright_green()
+        format!("👨‍👩‍👧‍👦 Family-safe setup for: {family_name}").bright_green()
     );
     Ok(())
 }
@@ -48,7 +48,7 @@ pub async fn execute_quick_start(
     let session_name = name.unwrap_or_else(|| "Quick Gaming Session".to_string());
     println!(
         "{}",
-        format!("⚡ Quick start: {}", session_name).bright_green()
+        format!("⚡ Quick start: {session_name}").bright_green()
     );
     Ok(())
 }

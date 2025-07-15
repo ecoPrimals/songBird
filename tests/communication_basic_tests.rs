@@ -10,7 +10,7 @@ async fn test_service_address_creation() {
         service_id: "test-service".to_string(),
         endpoint: Some("http://localhost:8080".to_string()),
     };
-    
+
     assert_eq!(address.service_id, "test-service");
     assert_eq!(address.endpoint, Some("http://localhost:8080".to_string()));
 }
@@ -27,7 +27,7 @@ async fn test_service_message_creation() {
         timestamp: chrono::Utc::now(),
         message_type: "request".to_string(),
     };
-    
+
     assert_eq!(message.id, "msg-123");
     assert_eq!(message.source, "service-a");
     assert_eq!(message.target, "service-b");
@@ -41,13 +41,18 @@ async fn test_communication_response_creation() {
         id: "resp-123".to_string(),
         status: 200,
         body: "Success".to_string(),
-        headers: [("Content-Type".to_string(), "application/json".to_string())].into_iter().collect(),
+        headers: [("Content-Type".to_string(), "application/json".to_string())]
+            .into_iter()
+            .collect(),
     };
-    
+
     assert_eq!(response.id, "resp-123");
     assert_eq!(response.status, 200);
     assert_eq!(response.body, "Success");
-    assert_eq!(response.headers.get("Content-Type"), Some(&"application/json".to_string()));
+    assert_eq!(
+        response.headers.get("Content-Type"),
+        Some(&"application/json".to_string())
+    );
 }
 
 /// Test CommunicationStats creation
@@ -59,7 +64,7 @@ async fn test_communication_stats_creation() {
         bytes_sent: 10240,
         bytes_received: 9800,
     };
-    
+
     assert_eq!(stats.messages_sent, 100);
     assert_eq!(stats.messages_received, 95);
     assert_eq!(stats.bytes_sent, 10240);
@@ -73,7 +78,7 @@ async fn test_service_address_cloning() {
         service_id: "test-service".to_string(),
         endpoint: Some("http://localhost:8080".to_string()),
     };
-    
+
     let cloned = address.clone();
     assert_eq!(cloned.service_id, address.service_id);
     assert_eq!(cloned.endpoint, address.endpoint);
@@ -91,7 +96,7 @@ async fn test_service_message_cloning() {
         timestamp: chrono::Utc::now(),
         message_type: "request".to_string(),
     };
-    
+
     let cloned = message.clone();
     assert_eq!(cloned.id, message.id);
     assert_eq!(cloned.source, message.source);
@@ -106,9 +111,11 @@ async fn test_communication_response_cloning() {
         id: "resp-123".to_string(),
         status: 200,
         body: "Success".to_string(),
-        headers: [("Content-Type".to_string(), "application/json".to_string())].into_iter().collect(),
+        headers: [("Content-Type".to_string(), "application/json".to_string())]
+            .into_iter()
+            .collect(),
     };
-    
+
     let cloned = response.clone();
     assert_eq!(cloned.id, response.id);
     assert_eq!(cloned.status, response.status);
@@ -125,7 +132,7 @@ async fn test_communication_stats_cloning() {
         bytes_sent: 10240,
         bytes_received: 9800,
     };
-    
+
     let cloned = stats.clone();
     assert_eq!(cloned.messages_sent, stats.messages_sent);
     assert_eq!(cloned.messages_received, stats.messages_received);
@@ -140,7 +147,7 @@ async fn test_service_address_no_endpoint() {
         service_id: "test-service".to_string(),
         endpoint: None,
     };
-    
+
     assert_eq!(address.service_id, "test-service");
     assert_eq!(address.endpoint, None);
 }
@@ -157,7 +164,7 @@ async fn test_service_message_no_correlation() {
         timestamp: chrono::Utc::now(),
         message_type: "notification".to_string(),
     };
-    
+
     assert_eq!(message.id, "msg-123");
     assert_eq!(message.correlation_id, None);
-} 
+}

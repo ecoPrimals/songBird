@@ -5,6 +5,10 @@ edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Configuration management for Songbird components"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "../../README.md"
+keywords = ["configuration", "gaming", "orchestration", "networking", "distributed"]
+categories = ["config", "network-programming", "game-engines"]
 
 [dependencies]
 songbird-errors = { path = "../songbird-errors" }
@@ -23,6 +27,7 @@ rand = "0.8"
 dirs = "5.0"
 num_cpus = "1.16"
 chrono = { version = "0.4", features = ["serde"] }
+url = "2.5"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

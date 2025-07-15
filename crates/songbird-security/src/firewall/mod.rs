@@ -122,18 +122,22 @@ impl SecurityValidator {
     pub fn validate(&self) -> Result<bool> {
         tracing::warn!("Firewall check bypassed - implement proper validation");
         Err(SongbirdError::Network {
-            service: "security".to_string(),
+            service: Some("security".to_string()),
             message: "Firewall validation not implemented - denying for security".to_string(),
             details: None,
+            endpoint: Some("firewall/validate".to_string()),
+            suggestion: Some("Implement proper firewall validation".to_string()),
         })
     }
 
     pub fn validate_rules(&self, _rules: &[String]) -> Result<bool> {
         tracing::warn!("Firewall check bypassed - implement proper validation");
         Err(SongbirdError::Network {
-            service: "security".to_string(),
+            service: Some("security".to_string()),
             message: "Firewall validation not implemented - denying for security".to_string(),
             details: None,
+            endpoint: Some("firewall/validate_rules".to_string()),
+            suggestion: Some("Implement proper firewall rule validation".to_string()),
         })
     }
 }

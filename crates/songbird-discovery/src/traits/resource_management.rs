@@ -252,19 +252,106 @@ pub struct ResourceManagementConfig {
     pub limits: LimitsConfig,
 }
 
-/// Resource tracking configuration
+/// Tracking configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrackingConfig {
     pub enabled: bool,
-    pub track_memory: bool,
-    pub track_cpu: bool,
-    pub track_connections: bool,
-    pub track_file_handles: bool,
-    pub tracking_interval: Duration,
+    pub tracking_options: TrackingOptions,
+    pub reporting_interval: u64,
     pub max_tracked_resources: Option<u32>,
 }
 
-/// Resource cleanup configuration
+/// Tracking options using bitflags pattern
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrackingOptions {
+    pub resource_types: ResourceTypeSet,
+}
+
+/// Resource type tracking using enum-based approach instead of excessive booleans
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ResourceType {
+    Memory,
+    Cpu,
+    Network,
+    Disk,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResourceTypeSet {
+    pub tracked_types: Vec<ResourceType>,
+}
+
+impl ResourceTypeSet {
+    #[must_use]
+    pub fn new(tracked_types: Vec<ResourceType>) -> Self {
+        Self { tracked_types }
+    }
+
+    #[must_use]
+    pub fn track_memory(&self) -> bool {
+        self.tracked_types.contains(&ResourceType::Memory)
+    }
+
+    #[must_use]
+    pub fn track_cpu(&self) -> bool {
+        self.tracked_types.contains(&ResourceType::Cpu)
+    }
+
+    #[must_use]
+    pub fn track_network(&self) -> bool {
+        self.tracked_types.contains(&ResourceType::Network)
+    }
+
+    #[must_use]
+    pub fn track_disk(&self) -> bool {
+        self.tracked_types.contains(&ResourceType::Disk)
+    }
+}
+
+/// Enforcement type configuration using enum-based approach instead of excessive booleans
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum EnforcementType {
+    MemoryLimits,
+    CpuLimits,
+    ConnectionLimits,
+    FileHandleLimits,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EnforcementTypeSet {
+    pub enforced_types: Vec<EnforcementType>,
+}
+
+impl EnforcementTypeSet {
+    #[must_use]
+    pub fn new(enforced_types: Vec<EnforcementType>) -> Self {
+        Self { enforced_types }
+    }
+
+    #[must_use]
+    pub fn enforce_memory_limits(&self) -> bool {
+        self.enforced_types.contains(&EnforcementType::MemoryLimits)
+    }
+
+    #[must_use]
+    pub fn enforce_cpu_limits(&self) -> bool {
+        self.enforced_types.contains(&EnforcementType::CpuLimits)
+    }
+
+    #[must_use]
+    pub fn enforce_connection_limits(&self) -> bool {
+        self.enforced_types
+            .contains(&EnforcementType::ConnectionLimits)
+    }
+
+    #[must_use]
+    pub fn enforce_file_handle_limits(&self) -> bool {
+        self.enforced_types
+            .contains(&EnforcementType::FileHandleLimits)
+    }
+}
+
+/// Cleanup configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CleanupConfig {
     pub strategy: String,
@@ -274,7 +361,7 @@ pub struct CleanupConfig {
     pub force_cleanup_timeout: Duration,
 }
 
-/// Resource monitoring configuration
+/// Monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonitoringConfig {
     pub monitoring_interval: Duration,
@@ -283,24 +370,36 @@ pub struct MonitoringConfig {
     pub leak_detection_interval: Duration,
 }
 
-/// Resource limits configuration
+/// Limits configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LimitsConfig {
-    pub enforce_memory_limits: bool,
-    pub enforce_cpu_limits: bool,
-    pub enforce_connection_limits: bool,
-    pub enforce_file_handle_limits: bool,
+    pub limit_enforcement: LimitEnforcement,
     pub action_on_violation: ViolationAction,
 }
 
-/// Action to take on resource violation
+/// Limit enforcement options using the improved EnforcementTypeSet
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LimitEnforcement {
+    pub enforcement_types: EnforcementTypeSet,
+}
+
+/// Describes what action to take when a resource violation occurs
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ViolationAction {
+    /// Log the violation but continue
     Log,
+    /// Warn the user but continue
     Warn,
+    /// Throttle the service
     Throttle,
-    Reject,
-    Cleanup,
+    /// Stop the service
+    Stop,
+}
+
+impl Default for ViolationAction {
+    fn default() -> Self {
+        Self::Log
+    }
 }
 
 impl Default for ResourceManagementConfig {
@@ -308,11 +407,17 @@ impl Default for ResourceManagementConfig {
         Self {
             tracking: TrackingConfig {
                 enabled: true,
-                track_memory: true,
-                track_cpu: true,
-                track_connections: true,
-                track_file_handles: true,
-                tracking_interval: Duration::from_secs(10),
+                tracking_options: TrackingOptions {
+                    resource_types: ResourceTypeSet {
+                        tracked_types: vec![
+                            ResourceType::Memory,
+                            ResourceType::Cpu,
+                            ResourceType::Network,
+                            ResourceType::Disk,
+                        ],
+                    },
+                },
+                reporting_interval: 10,
                 max_tracked_resources: Some(10000),
             },
             cleanup: CleanupConfig {
@@ -329,10 +434,15 @@ impl Default for ResourceManagementConfig {
                 leak_detection_interval: Duration::from_secs(300),
             },
             limits: LimitsConfig {
-                enforce_memory_limits: true,
-                enforce_cpu_limits: false,
-                enforce_connection_limits: true,
-                enforce_file_handle_limits: true,
+                limit_enforcement: LimitEnforcement {
+                    enforcement_types: EnforcementTypeSet {
+                        enforced_types: vec![
+                            EnforcementType::MemoryLimits,
+                            EnforcementType::ConnectionLimits,
+                            EnforcementType::FileHandleLimits,
+                        ],
+                    },
+                },
                 action_on_violation: ViolationAction::Log,
             },
         }

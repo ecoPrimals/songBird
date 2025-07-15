@@ -153,7 +153,7 @@ async fn execute_one_click_gaming() -> Result<()> {
 
     println!();
     println!("{}", "🎯 GAMING IS READY!".bright_cyan().bold());
-    println!("✅ {}", setup_result);
+    println!("✅ {setup_result}");
     println!("✅ Ultra-low latency optimized");
     println!("✅ All connections encrypted");
     println!("✅ Friends can join easily");
@@ -177,7 +177,7 @@ async fn execute_one_click_devices() -> Result<()> {
 
     println!();
     println!("{}", "🔗 DEVICES CONNECTED!".bright_magenta().bold());
-    println!("✅ {}", setup_result);
+    println!("✅ {setup_result}");
     println!("✅ Printers, cameras, smart devices");
     println!("✅ All connections secure");
     println!("✅ Universal protocol support");
@@ -198,7 +198,7 @@ async fn execute_one_click_backup() -> Result<()> {
 
     println!();
     println!("{}", "💾 BACKUP READY!".bright_yellow().bold());
-    println!("✅ {}", setup_result);
+    println!("✅ {setup_result}");
     println!("✅ End-to-end encrypted");
     println!("✅ Distributed across trusted friends");
     println!("✅ Automatic and secure");
@@ -257,7 +257,7 @@ async fn execute_adapt_interface() -> Result<()> {
 
     println!();
     println!("{}", "🎯 INTERFACE ADAPTED!".bright_white().bold());
-    println!("✅ Detected skill level: {:?}", skill_level);
+    println!("✅ Detected skill level: {skill_level:?}");
     println!("✅ Interface optimized for you");
     println!("✅ Help system personalized");
     println!("✅ One-click options available");

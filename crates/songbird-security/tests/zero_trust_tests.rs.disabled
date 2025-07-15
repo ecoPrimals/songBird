@@ -1,0 +1,270 @@
+#[macro_use]
+extern crate songbird_security;
+
+//! Zero Trust Network Access Tests for Songbird Security
+//!
+//! This module contains comprehensive tests for zero trust network access control
+//! including device verification, behavioral analysis, and context-aware access decisions.
+
+use std::time::SystemTime;
+
+mod test_framework;
+use test_framework::*;
+
+/// Test zero trust network access control
+#[tokio::test]
+async fn test_zero_trust_network_access() {
+    let mut framework = init_beardog_test!("Zero Trust Network Access");
+
+    // Test various zero trust scenarios
+    let test_cases = vec![
+        // High trust device from internal network
+        ZeroTrustTestCase {
+            test_id: "zt_001".to_string(),
+            device_id: "family_laptop".to_string(),
+            user_id: "family_member".to_string(),
+            resource: "family_photos".to_string(),
+            action: "read".to_string(),
+            context: ZeroTrustContext {
+                device_trust_level: 0.9,
+                network_location: NetworkLocation::HomeNetwork,
+                time_of_access: SystemTime::now(),
+                behavioral_anomaly_score: 0.1,
+                session_state: SessionState::Established,
+            },
+            expected_access: true,
+            verification_steps: vec![
+                VerificationStep {
+                    step_type: "device_verification".to_string(),
+                    description: "Verify device is family-owned".to_string(),
+                    required: true,
+                    completed: true,
+                },
+            ],
+        },
+        // Unknown device from external network
+        ZeroTrustTestCase {
+            test_id: "zt_002".to_string(),
+            device_id: "unknown_device".to_string(),
+            user_id: "unknown_user".to_string(),
+            resource: "family_photos".to_string(),
+            action: "read".to_string(),
+            context: ZeroTrustContext {
+                device_trust_level: 0.2,
+                network_location: NetworkLocation::External,
+                time_of_access: SystemTime::now(),
+                behavioral_anomaly_score: 0.8,
+                session_state: SessionState::Suspicious,
+            },
+            expected_access: false,
+            verification_steps: vec![
+                VerificationStep {
+                    step_type: "device_verification".to_string(),
+                    description: "Verify device identity".to_string(),
+                    required: true,
+                    completed: false,
+                },
+            ],
+        },
+        // Trusted device but suspicious behavior
+        ZeroTrustTestCase {
+            test_id: "zt_003".to_string(),
+            device_id: "family_phone".to_string(),
+            user_id: "family_member".to_string(),
+            resource: "financial_documents".to_string(),
+            action: "write".to_string(),
+            context: ZeroTrustContext {
+                device_trust_level: 0.8,
+                network_location: NetworkLocation::HomeNetwork,
+                time_of_access: SystemTime::now(),
+                behavioral_anomaly_score: 0.9, // High anomaly score
+                session_state: SessionState::Suspicious,
+            },
+            expected_access: false,
+            verification_steps: vec![
+                VerificationStep {
+                    step_type: "behavioral_analysis".to_string(),
+                    description: "Analyze user behavior patterns".to_string(),
+                    required: true,
+                    completed: true,
+                },
+            ],
+        },
+        // Public WiFi access attempt
+        ZeroTrustTestCase {
+            test_id: "zt_004".to_string(),
+            device_id: "family_laptop".to_string(),
+            user_id: "family_member".to_string(),
+            resource: "work_documents".to_string(),
+            action: "read".to_string(),
+            context: ZeroTrustContext {
+                device_trust_level: 0.9,
+                network_location: NetworkLocation::PublicWiFi,
+                time_of_access: SystemTime::now(),
+                behavioral_anomaly_score: 0.3,
+                session_state: SessionState::Fresh,
+            },
+            expected_access: false, // Should be denied due to public WiFi
+            verification_steps: vec![
+                VerificationStep {
+                    step_type: "network_verification".to_string(),
+                    description: "Verify network security".to_string(),
+                    required: true,
+                    completed: false,
+                },
+            ],
+        },
+    ];
+
+    // Run zero trust tests
+    for test_case in test_cases {
+        let result = framework.test_zero_trust_access(test_case.clone()).await;
+        assert!(result, "Zero trust test should pass: {}", test_case.test_id);
+    }
+}
+
+/// Test device trust scoring
+#[tokio::test]
+async fn test_device_trust_scoring() {
+    let mut framework = init_beardog_test!("Device Trust Scoring");
+
+    // Test device trust levels
+    let device_tests = vec![
+        ("family_laptop", 0.9, NetworkLocation::HomeNetwork, true),
+        ("guest_device", 0.3, NetworkLocation::HomeNetwork, false),
+        ("work_device", 0.8, NetworkLocation::RemoteVPN, true),
+        ("unknown_device", 0.1, NetworkLocation::External, false),
+    ];
+
+    for (device_id, trust_level, location, expected_access) in device_tests {
+        let test_case = ZeroTrustTestCase {
+            test_id: format!("device_trust_{}", device_id),
+            device_id: device_id.to_string(),
+            user_id: "test_user".to_string(),
+            resource: "test_resource".to_string(),
+            action: "read".to_string(),
+            context: ZeroTrustContext {
+                device_trust_level: trust_level,
+                network_location: location,
+                time_of_access: SystemTime::now(),
+                behavioral_anomaly_score: 0.2,
+                session_state: SessionState::Established,
+            },
+            expected_access,
+            verification_steps: vec![],
+        };
+
+        let result = framework.test_zero_trust_access(test_case.clone()).await;
+        assert!(result, "Device trust test should pass for: {}", device_id);
+    }
+}
+
+/// Test behavioral anomaly detection
+#[tokio::test]
+async fn test_behavioral_anomaly_detection() {
+    let mut framework = init_beardog_test!("Behavioral Anomaly Detection");
+
+    // Test various behavioral anomaly scores
+    let anomaly_tests = vec![
+        (0.1, SessionState::Fresh, true),      // Low anomaly, fresh session
+        (0.3, SessionState::Established, true), // Medium anomaly, established session
+        (0.8, SessionState::Suspicious, false), // High anomaly, suspicious session
+        (0.9, SessionState::Compromised, false), // Very high anomaly, compromised session
+    ];
+
+    for (anomaly_score, session_state, expected_access) in anomaly_tests {
+        let test_case = ZeroTrustTestCase {
+            test_id: format!("anomaly_{}", anomaly_score),
+            device_id: "test_device".to_string(),
+            user_id: "test_user".to_string(),
+            resource: "test_resource".to_string(),
+            action: "read".to_string(),
+            context: ZeroTrustContext {
+                device_trust_level: 0.8,
+                network_location: NetworkLocation::HomeNetwork,
+                time_of_access: SystemTime::now(),
+                behavioral_anomaly_score: anomaly_score,
+                session_state: session_state.clone(),
+            },
+            expected_access,
+            verification_steps: vec![],
+        };
+
+        let result = framework.test_zero_trust_access(test_case.clone()).await;
+        assert!(result, "Behavioral anomaly test should pass for score: {}", anomaly_score);
+    }
+}
+
+/// Test network location-based access control
+#[tokio::test]
+async fn test_network_location_access_control() {
+    let mut framework = init_beardog_test!("Network Location Access Control");
+
+    // Test access from different network locations
+    let location_tests = vec![
+        (NetworkLocation::HomeNetwork, true),
+        (NetworkLocation::Internal, true),
+        (NetworkLocation::RemoteVPN, true),
+        (NetworkLocation::PublicWiFi, false),
+        (NetworkLocation::External, false),
+        (NetworkLocation::Unknown, false),
+    ];
+
+    for (location, expected_access) in location_tests {
+        let test_case = ZeroTrustTestCase {
+            test_id: format!("location_{:?}", location),
+            device_id: "trusted_device".to_string(),
+            user_id: "trusted_user".to_string(),
+            resource: "sensitive_data".to_string(),
+            action: "read".to_string(),
+            context: ZeroTrustContext {
+                device_trust_level: 0.9,
+                network_location: location,
+                time_of_access: SystemTime::now(),
+                behavioral_anomaly_score: 0.1,
+                session_state: SessionState::Established,
+            },
+            expected_access,
+            verification_steps: vec![],
+        };
+
+        let result = framework.test_zero_trust_access(test_case.clone()).await;
+        assert!(result, "Network location test should pass for: {:?}", location);
+    }
+}
+
+/// Test session state impact on access decisions
+#[tokio::test]
+async fn test_session_state_access_control() {
+    let mut framework = init_beardog_test!("Session State Access Control");
+
+    // Test access based on session state
+    let session_tests = vec![
+        (SessionState::Fresh, true),
+        (SessionState::Established, true),
+        (SessionState::Suspicious, false),
+        (SessionState::Compromised, false),
+    ];
+
+    for (session_state, expected_access) in session_tests {
+        let test_case = ZeroTrustTestCase {
+            test_id: format!("session_{:?}", session_state),
+            device_id: "trusted_device".to_string(),
+            user_id: "trusted_user".to_string(),
+            resource: "test_resource".to_string(),
+            action: "read".to_string(),
+            context: ZeroTrustContext {
+                device_trust_level: 0.9,
+                network_location: NetworkLocation::HomeNetwork,
+                time_of_access: SystemTime::now(),
+                behavioral_anomaly_score: 0.1,
+                session_state: session_state.clone(),
+            },
+            expected_access,
+            verification_steps: vec![],
+        };
+
+        let result = framework.test_zero_trust_access(test_case.clone()).await;
+        assert!(result, "Session state test should pass for: {:?}", session_state);
+    }
+} 

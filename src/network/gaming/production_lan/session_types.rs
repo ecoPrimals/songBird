@@ -1,5 +1,5 @@
 /// Production LAN Gaming Session Types
-/// 
+///
 /// This module defines all data structures related to gaming sessions,
 /// players, metrics, and session management.
 use crate::network::gaming::types::*;
@@ -186,4 +186,4 @@ pub struct BandwidthMonitor {
     pub peak_upload_bps: u64,
     pub peak_download_bps: u64,
     pub last_measurement: Instant,
-} 
+}

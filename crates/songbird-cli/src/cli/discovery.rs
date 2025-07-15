@@ -54,16 +54,18 @@ impl NetworkScanner {
         // Parse subnet (e.g., "192.168.1" -> scan 192.168.1.1-254)
         let subnet_parts: Vec<&str> = subnet.split('.').collect();
         if subnet_parts.len() != 3 {
-            return Err(CliError::Network(
-                "Invalid subnet format. Use format like '192.168.1'".to_string(),
-            ));
+            return Err(CliError::Network {
+                message: "Invalid subnet format. Use format like '192.168.1'".to_string(),
+                endpoint: Some(subnet.to_string()),
+                suggestion: Some("Provide a valid subnet in the format 'xxx.xxx.xxx'".to_string()),
+            });
         }
 
         let mut scan_tasks = Vec::new();
 
         // Scan each host in the subnet
         for host in 1..=254 {
-            let target_ip = format!("{}.{}", subnet, host);
+            let target_ip = format!("{subnet}.{host}");
 
             if let Ok(ip) = target_ip.parse::<IpAddr>() {
                 for &port in &common_ports {
@@ -85,7 +87,11 @@ impl NetworkScanner {
                 }
             }
             Err(_) => {
-                return Err(CliError::Network("Subnet scan timed out".to_string()));
+                return Err(CliError::Network {
+                    message: "Subnet scan timed out".to_string(),
+                    endpoint: Some(subnet.to_string()),
+                    suggestion: Some("Try increasing the timeout or checking network connectivity".to_string()),
+                });
             }
         }
 
@@ -106,7 +112,7 @@ impl NetworkScanner {
         if simulation_mode {
             // Generate simulated response for this address
             return Ok(Some(DiscoveredNode {
-                name: format!("🎭 [SIM] Node-{}", address),
+                name: format!("🎭 [SIM] Node-{address}"),
                 address,
                 port,
                 version: Some("1.0.0-sim".to_string()),
@@ -146,7 +152,7 @@ impl NetworkScanner {
                     Err(_) => {
                         // Connection succeeded but couldn't identify - assume it's a node
                         Ok(Some(DiscoveredNode {
-                            name: format!("Unknown-{}", address),
+                            name: format!("Unknown-{address}"),
                             address,
                             port,
                             version: None,
@@ -177,7 +183,7 @@ impl NetworkScanner {
         ];
 
         for endpoint in &endpoints {
-            let url = format!("http://{}:{}{}", address, port, endpoint);
+            let url = format!("http://{address}:{port}{endpoint}");
 
             // For now, we'll simulate the HTTP check since we don't have the HTTP client implemented
             // In a real implementation, you would use an HTTP client here
@@ -185,7 +191,7 @@ impl NetworkScanner {
                 let node_type = NodeType::ServiceNode;
                 let version = Some("1.0.0".to_string());
 
-                return Ok(Some((format!("Songbird-{}", address), version, node_type)));
+                return Ok(Some((format!("Songbird-{address}"), version, node_type)));
             }
         }
 
@@ -195,7 +201,11 @@ impl NetworkScanner {
     /// Simulate HTTP check for now
     async fn simulate_http_check(&self, _url: &str) -> Result<(), CliError> {
         // This is a placeholder - in real implementation would use HTTP client
-        Err(CliError::Network("HTTP client not implemented".to_string()))
+        Err(CliError::Network {
+            message: "HTTP client not implemented".to_string(),
+            endpoint: Some("http_client".to_string()),
+            suggestion: Some("This feature is not yet implemented".to_string()),
+        })
     }
 
     /// Extract version from API response
@@ -237,10 +247,10 @@ impl NetworkScanner {
                 // Use environment configuration - NO MORE HARDCODING!
                 let env_config = songbird_config::config::environment::EnvironmentConfig::default();
                 nodes.push(DiscoveredNode {
-                    name: format!("🎭 [SIM] Songbird-Node-{}", i),
+                    name: format!("🎭 [SIM] Songbird-Node-{i}"),
                     address,
                     port: env_config.bind_port + (i as u16 % 10),
-                    version: Some(format!("1.0.{}-sim", i)),
+                    version: Some(format!("1.0.{i}-sim")),
                     node_type: if i == 1 {
                         NodeType::Orchestrator
                     } else {

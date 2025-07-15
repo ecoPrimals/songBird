@@ -313,9 +313,15 @@ impl GamingAutoConfig {
 
         // Configure based on user preferences
         gaming_config.discovery.broadcast_interval_ms = if config.family_safe_mode {
-            30000 // 30 seconds for family mode
+            std::env::var("SONGBIRD_FAMILY_TIMEOUT_MS")
+                .unwrap_or_else(|_| "30000".to_string())
+                .parse()
+                .unwrap_or(30000)
         } else {
-            5000 // 5 seconds for gaming
+            std::env::var("SONGBIRD_GAMING_TIMEOUT_MS")
+                .unwrap_or_else(|_| "5000".to_string())
+                .parse()
+                .unwrap_or(5000)
         };
 
         gaming_config.security.enable_encryption = true;
@@ -501,9 +507,9 @@ impl GamingAutoConfig {
         for path in starcraft_paths {
             if std::path::Path::new(path).exists() {
                 // Check which version
-                if std::path::Path::new(&format!("{}/StarCraft_BW.exe", path)).exists() {
+                if std::path::Path::new(&format!("{path}/StarCraft_BW.exe")).exists() {
                     games.push("StarCraft: Brood War".to_string());
-                } else if std::path::Path::new(&format!("{}/StarCraft.exe", path)).exists() {
+                } else if std::path::Path::new(&format!("{path}/StarCraft.exe")).exists() {
                     games.push("StarCraft: Original".to_string());
                 }
             }
@@ -532,11 +538,11 @@ impl GamingAutoConfig {
 
         for path in aoe_paths {
             if std::path::Path::new(path).exists() {
-                if std::path::Path::new(&format!("{}/AoE2DE_s.exe", path)).exists() {
+                if std::path::Path::new(&format!("{path}/AoE2DE_s.exe")).exists() {
                     games.push("Age of Empires II: Definitive Edition".to_string());
-                } else if std::path::Path::new(&format!("{}/empires2.exe", path)).exists() {
+                } else if std::path::Path::new(&format!("{path}/empires2.exe")).exists() {
                     games.push("Age of Empires II: The Conquerors".to_string());
-                } else if std::path::Path::new(&format!("{}/Empires.exe", path)).exists() {
+                } else if std::path::Path::new(&format!("{path}/Empires.exe")).exists() {
                     games.push("Age of Empires".to_string());
                 }
             }
@@ -569,9 +575,9 @@ impl GamingAutoConfig {
 
         for path in diablo_paths {
             if std::path::Path::new(path).exists() {
-                if std::path::Path::new(&format!("{}/Diablo II.exe", path)).exists() {
+                if std::path::Path::new(&format!("{path}/Diablo II.exe")).exists() {
                     games.push("Diablo II".to_string());
-                } else if std::path::Path::new(&format!("{}/Diablo.exe", path)).exists() {
+                } else if std::path::Path::new(&format!("{path}/Diablo.exe")).exists() {
                     games.push("Diablo".to_string());
                 }
             }
@@ -800,18 +806,12 @@ impl Default for SecurityLevel {
     }
 }
 
-
-
-
-
-
-
-
 impl Default for GamingAutoConfig {
     fn default() -> Self {
         Self {
             privilege_manager: crate::network::gaming::privilege_manager::PrivilegeManager {
-                current_method: crate::network::gaming::privilege_manager::PrivilegeMethod::Unprivileged,
+                current_method:
+                    crate::network::gaming::privilege_manager::PrivilegeMethod::Unprivileged,
                 fallback_methods: Vec::new(),
             },
             security_validator: SecurityValidator::new_family_safe(),
@@ -820,4 +820,3 @@ impl Default for GamingAutoConfig {
         }
     }
 }
-

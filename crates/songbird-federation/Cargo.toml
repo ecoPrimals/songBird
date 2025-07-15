@@ -4,23 +4,46 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
-description = "MCP federation for Songbird orchestrator"
+description = "Federation and multi-node coordination for Songbird"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "../../README.md"
+keywords = ["federation", "distributed", "coordination", "gaming", "clustering"]
+categories = ["network-programming", "game-engines", "concurrency"]
 
 [dependencies]
-tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+if-addrs = "0.10"
+rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+songbird-core = { path = "../songbird-core" }
+songbird-errors = { path = "../songbird-errors" }
+songbird-network = { path = "../songbird-network" }
+songbird-security = { path = "../songbird-security" }
+tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
-async-trait = "0.1"
-anyhow = "1.0"
-reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 uuid = { version = "1.0", features = ["v4"] }
-chrono = { version = "0.4", features = ["serde"] }
 
 # System monitoring dependencies
-sysinfo = "0.30"
-libc = "0.2"
+sysinfo = "0.29"
 
-# Internal dependencies
-songbird-errors = { path = "../songbird-errors" }
+# Network dependencies
+socket2 = "0.5"
+tokio-tungstenite = "0.20"
+hyper = { version = "0.14", features = ["full"] }
+reqwest = { version = "0.11", features = ["json"] }
+url = "2.0"
+
+# Security dependencies
+ring = "0.16"
+rustls = "0.21"
+regex = "1.10"
+hex = "0.4"
+
+# Configuration dependencies
 songbird-config = { path = "../songbird-config" }
+
+[dev-dependencies]
+tokio-test = "0.4"

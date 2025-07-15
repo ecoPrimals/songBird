@@ -45,13 +45,13 @@ impl SongbirdDiscovery {
     /// Start the discovery service
     pub async fn start(&mut self) -> Result<()> {
         info!("Starting SongbirdDiscovery service");
-        
+
         // Start continuous network scanning
         self.start_continuous_scanning().await?;
-        
+
         // Start Primal discovery
         self.start_primal_discovery().await?;
-        
+
         info!("SongbirdDiscovery service started successfully");
         Ok(())
     }
@@ -59,14 +59,14 @@ impl SongbirdDiscovery {
     /// Start continuous network scanning for services
     async fn start_continuous_scanning(&self) -> Result<()> {
         info!("Starting continuous network scanning");
-        
+
         let discovered_services = Arc::clone(&self.discovered_services);
         let scan_interval = Duration::from_secs(60); // 1 minute interval
-        
+
         tokio::spawn(async move {
             loop {
                 debug!("Starting network scan cycle");
-                
+
                 // Perform network discovery
                 match Self::discover_network_services().await {
                     Ok(services) => {
@@ -80,7 +80,7 @@ impl SongbirdDiscovery {
                         warn!("Network scan failed: {}", e);
                     }
                 }
-                
+
                 tokio::time::sleep(scan_interval).await;
             }
         });
@@ -91,24 +91,27 @@ impl SongbirdDiscovery {
     /// Start Primal discovery and coordination
     async fn start_primal_discovery(&self) -> Result<()> {
         info!("Starting Primal discovery");
-        
+
         let primal_endpoints = Arc::clone(&self.primal_endpoints);
         let primal_discovery_interval = Duration::from_secs(30);
 
         tokio::spawn(async move {
             loop {
                 debug!("Starting Primal discovery cycle");
-                
+
                 // Discover known Primals
                 let primals = vec!["toadstool", "nestgate", "beardog", "squirrel"];
-                
+
                 for primal_name in primals {
                     if let Some(endpoint) = Self::discover_primal_endpoint(primal_name).await {
-                        primal_endpoints.write().await.insert(primal_name.to_string(), endpoint.clone());
+                        primal_endpoints
+                            .write()
+                            .await
+                            .insert(primal_name.to_string(), endpoint.clone());
                         info!("Discovered {} at: {}", primal_name, endpoint);
                     }
                 }
-                
+
                 tokio::time::sleep(primal_discovery_interval).await;
             }
         });
@@ -119,11 +122,14 @@ impl SongbirdDiscovery {
     /// Discover services on the network
     async fn discover_network_services() -> Result<Vec<ServiceInfo>> {
         let mut discovered_services = Vec::new();
-        
+
         // Scan common service ports
         let common_ports = vec![8080, 8081, 8082, 8083, 8084, 8085, 3000, 5000, 9000];
-        let local_networks = vec!["127.0.0.1", "localhost"];
-        
+        let local_networks = vec![
+            crate::config::constants::default_bind_address(),
+            crate::config::constants::DEFAULT_LOCALHOST
+        ];
+
         for host in local_networks {
             for port in &common_ports {
                 match Self::probe_service_endpoint(host, *port).await {
@@ -139,30 +145,37 @@ impl SongbirdDiscovery {
                 }
             }
         }
-        
+
         Ok(discovered_services)
     }
 
     /// Probe a specific service endpoint
     async fn probe_service_endpoint(host: &str, port: u16) -> Result<Option<ServiceInfo>> {
-        let address = format!("{}:{}", host, port);
-        
+        let address = format!("{host}:{port}");
+
         // Try to connect to the service
-        match timeout(Duration::from_millis(500), tokio::net::TcpStream::connect(&address)).await {
+        match timeout(
+            Duration::from_millis(500),
+            tokio::net::TcpStream::connect(&address),
+        )
+        .await
+        {
             Ok(Ok(_)) => {
                 // Connection successful, create service info
                 let service_info = ServiceInfo {
-                    service_id: format!("service-{}", port),
-                    name: format!("Service on port {}", port),
+                    service_id: format!("service-{port}"),
+                    name: format!("Service on port {port}"),
                     version: "unknown".to_string(),
                     service_type: "unknown".to_string(),
-                    description: Some(format!("Discovered service at {}", address)),
+                    description: Some(format!("Discovered service at {address}")),
                     endpoints: vec![],
                     health_check_endpoint: None,
                     metadata: {
                         let mut metadata = HashMap::new();
-                        metadata.insert("discovered_at".to_string(), 
-                                       chrono::Utc::now().to_rfc3339().into());
+                        metadata.insert(
+                            "discovered_at".to_string(),
+                            chrono::Utc::now().to_rfc3339().into(),
+                        );
                         metadata.insert("address".to_string(), address.clone().into());
                         metadata
                     },
@@ -171,11 +184,11 @@ impl SongbirdDiscovery {
                     status: crate::traits::service::ServiceStatus::Running,
                     created_at: chrono::Utc::now(),
                     updated_at: chrono::Utc::now(),
-                    instance_id: format!("discovered-{}", port),
+                    instance_id: format!("discovered-{port}"),
                     host: host.to_string(),
                     port,
                 };
-                
+
                 info!("Discovered service: {} at {}", service_info.name, address);
                 Ok(Some(service_info))
             }
@@ -189,28 +202,37 @@ impl SongbirdDiscovery {
     /// Discover a specific Primal endpoint
     async fn discover_primal_endpoint(primal_name: &str) -> Option<String> {
         let common_ports = vec![8080, 8081, 8082, 8083, 8084, 8085];
-        let hosts = vec!["127.0.0.1", "localhost"];
-        
+        let hosts = vec![
+            crate::config::constants::default_bind_address(),
+            crate::config::constants::DEFAULT_LOCALHOST
+        ];
+
         for host in hosts {
             for port in &common_ports {
-                let endpoint = format!("http://{}:{}", host, port);
-                
+                let endpoint = format!("http://{host}:{port}");
+
                 if Self::test_primal_endpoint(&endpoint, primal_name).await {
                     return Some(endpoint);
                 }
             }
         }
-        
+
         None
     }
 
     /// Test if an endpoint is a specific Primal
     async fn test_primal_endpoint(endpoint: &str, primal_name: &str) -> bool {
-        let client = reqwest::Client::builder()
+        let client = match reqwest::Client::builder()
             .timeout(Duration::from_millis(500))
             .build()
-            .unwrap();
-        
+        {
+            Ok(client) => client,
+            Err(e) => {
+                warn!("Failed to create HTTP client: {}", e);
+                return false;
+            }
+        };
+
         // Test common Primal endpoints
         let test_endpoints = vec![
             format!("{}/health", endpoint),
@@ -218,7 +240,7 @@ impl SongbirdDiscovery {
             format!("{}/api/v1/health", endpoint),
             format!("{}/status", endpoint),
         ];
-        
+
         for test_endpoint in test_endpoints {
             match client.get(&test_endpoint).send().await {
                 Ok(response) => {
@@ -234,7 +256,7 @@ impl SongbirdDiscovery {
                 Err(_) => continue,
             }
         }
-        
+
         false
     }
 
@@ -340,7 +362,11 @@ impl SongbirdDiscovery {
 
         // Check name filter
         if let Some(ref name_filter) = query.name {
-            if !service.name.to_lowercase().contains(&name_filter.to_lowercase()) {
+            if !service
+                .name
+                .to_lowercase()
+                .contains(&name_filter.to_lowercase())
+            {
                 return false;
             }
         }

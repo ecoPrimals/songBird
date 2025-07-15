@@ -1,5 +1,6 @@
+use super::{HealthMonitor, ProductionGameSession, ProductionLanConfig, SessionMetrics};
 /// Production LAN Gaming Manager - Clean Implementation
-/// 
+///
 /// This module demonstrates the clean code principles for the SongBird project:
 /// - Single responsibility: Only handles LAN gaming management
 /// - Clean separation of concerns
@@ -7,7 +8,6 @@
 /// - Manageable size (under 1000 lines)
 use crate::errors::{Result, SongbirdError};
 use crate::network::gaming::types::*;
-use super::{ProductionLanConfig, ProductionGameSession, SessionMetrics, HealthMonitor};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
@@ -27,16 +27,16 @@ impl ProductionLanManager {
     /// Create a new production LAN manager
     pub async fn new(config: ProductionLanConfig) -> Result<Self> {
         info!("🚀 Initializing Clean Production LAN Gaming Manager");
-        
+
         Self::validate_config(&config)?;
         let (metrics_sender, _) = broadcast::channel(1000);
-        
+
         let manager = Self {
             config,
             sessions: Arc::new(RwLock::new(HashMap::new())),
             metrics_sender,
             health_monitor: Arc::new(RwLock::new(HealthMonitor {
-                last_health_check: Instant::now(), 
+                last_health_check: Instant::now(),
                 failed_checks: 0,
                 recovery_attempts: HashMap::new(),
             })),
@@ -84,11 +84,11 @@ impl ProductionLanManager {
         if self.config.healing.enable_auto_recovery {
             self.start_health_monitoring().await?;
         }
-        
+
         if self.config.monitoring.enable_performance_monitoring {
             self.start_metrics_collection().await?;
         }
-        
+
         Ok(())
     }
 
@@ -100,18 +100,21 @@ impl ProductionLanManager {
 
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_millis(interval_ms));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let mut monitor = health_monitor.write().await;
                 monitor.last_health_check = Instant::now();
-                
+
                 let sessions_guard = sessions.read().await;
                 let session_count = sessions_guard.len();
                 drop(sessions_guard);
-                
-                debug!("🏥 Health check completed. Active sessions: {}", session_count);
+
+                debug!(
+                    "🏥 Health check completed. Active sessions: {}",
+                    session_count
+                );
             }
         });
 
@@ -126,10 +129,10 @@ impl ProductionLanManager {
 
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_millis(interval_ms));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let sessions_guard = sessions.read().await;
                 for session in sessions_guard.values() {
                     let _ = metrics_sender.send(session.metrics.clone());
@@ -145,16 +148,16 @@ impl ProductionLanManager {
     pub async fn create_session(&self, game_name: String) -> Result<String> {
         let session_code = self.generate_session_code().await?;
         let session_id = Uuid::new_v4().to_string();
-        
+
         // Get configurable host address from environment - NO MORE HARDCODING!
         let env_config = crate::config::environment::EnvironmentConfig::default();
         let host_address = format!("{}:{}", env_config.bind_address, env_config.bind_port)
             .parse()
             .map_err(|e| SongbirdError::Config {
                 field: Some("host_address".to_string()),
-                message: format!("Invalid host address configuration: {}", e),
+                message: format!("Invalid host address configuration: {e}"),
             })?;
-        
+
         let session = ProductionGameSession {
             id: session_id,
             session_code: session_code.clone(),
@@ -212,7 +215,7 @@ impl ProductionLanManager {
 
         let mut sessions = self.sessions.write().await;
         sessions.insert(session_code.clone(), session);
-        
+
         info!("🎮 Created gaming session: {}", session_code);
         Ok(session_code)
     }
@@ -238,11 +241,12 @@ impl ProductionLanManager {
     /// Get session by code
     pub async fn get_session(&self, session_code: &str) -> Result<ProductionGameSession> {
         let sessions = self.sessions.read().await;
-        sessions.get(session_code)
+        sessions
+            .get(session_code)
             .cloned()
             .ok_or_else(|| SongbirdError::Network {
                 service: "Production LAN Manager".to_string(),
-                message: format!("Session not found: {}", session_code),
+                message: format!("Session not found: {session_code}"),
                 details: None,
             })
     }
@@ -256,7 +260,7 @@ impl ProductionLanManager {
         } else {
             Err(SongbirdError::Network {
                 service: "Production LAN Manager".to_string(),
-                message: format!("Session not found: {}", session_code),
+                message: format!("Session not found: {session_code}"),
                 details: None,
             })
         }
@@ -266,7 +270,7 @@ impl ProductionLanManager {
     pub async fn get_stats(&self) -> ManagerStats {
         let sessions = self.sessions.read().await;
         let health_monitor = self.health_monitor.read().await;
-        
+
         ManagerStats {
             active_sessions: sessions.len(),
             total_players: sessions.values().map(|s| s.players.len()).sum(),

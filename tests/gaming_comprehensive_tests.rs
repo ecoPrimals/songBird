@@ -1,25 +1,23 @@
+use songbird_lib::errors::Result;
+use songbird_lib::network::gaming::production_lan::{ProductionLanConfig, ProductionLanManager};
 use songbird_lib::network::gaming::{
-    GamingManager, GameProtocolClass, DetectedGameSession, PlayerEndpoint, VirtualNetwork,
-    GameSessionStatus, NatType, BridgeStatus,
+    BridgeStatus, DetectedGameSession, GameProtocolClass, GameSessionStatus, GamingManager,
+    NatType, PlayerEndpoint, VirtualNetwork,
 };
-use songbird_lib::network::gaming::production_lan::{
-    ProductionLanConfig, ProductionLanManager,
-};
-use songbird_lib::errors::{Result};
 use std::time::Duration;
 
 #[tokio::test]
 async fn test_gaming_network_manager_creation() -> Result<()> {
     let manager = GamingManager::new().await?;
     assert!(manager.lan_sessions.read().await.is_empty());
-    
+
     Ok(())
 }
 
 #[tokio::test]
 async fn test_gaming_protocol_detection() -> Result<()> {
     let mut manager = GamingManager::new().await?;
-    
+
     // Test protocol detection by scanning for games
     let detected_games = manager.scan_for_games(Some("lo".to_string())).await?;
     assert_eq!(detected_games.len(), 0); // No games running in test environment
@@ -46,7 +44,7 @@ async fn test_gaming_session_creation() -> Result<()> {
     // Test bridge creation
     let bridge_id = manager.create_bridge(&session).await?;
     assert!(!bridge_id.is_empty());
-    
+
     Ok(())
 }
 
@@ -63,7 +61,7 @@ async fn test_protocol_classes() -> Result<()> {
         GameProtocolClass::DoomProtocol,
         GameProtocolClass::UnknownLearning,
     ];
-    
+
     for protocol in protocols {
         assert_eq!(format!("{:?}", protocol).len() > 0, true);
     }
@@ -80,7 +78,7 @@ async fn test_player_endpoint_creation() -> Result<()> {
         virtual_address: Some("10.0.0.1".parse().unwrap()),
         nat_type: NatType::None,
     };
-    
+
     assert_eq!(endpoint.player_id, "player1");
     assert_eq!(endpoint.display_name, "Test Player");
     // Don't compare NatType directly as it doesn't implement PartialEq
@@ -101,7 +99,7 @@ async fn test_detected_game_session_creation() -> Result<()> {
         detected_at: std::time::SystemTime::now(),
         confidence: 0.95,
     };
-    
+
     assert_eq!(session.session_id, "test_session_001");
     assert_eq!(session.protocol_class, GameProtocolClass::IpxBased);
     assert_eq!(session.local_ports.len(), 2);
@@ -117,11 +115,14 @@ async fn test_virtual_network_creation() -> Result<()> {
         players: std::collections::HashMap::new(),
         broadcast_enabled: true,
     };
-    
+
     match network {
-        VirtualNetwork::IPX { network_id, broadcast_enabled, .. } => {
+        VirtualNetworkType::IPX {
+            network_id,
+            broadcast_enabled,
+        } => {
             assert_eq!(network_id, 123456);
-            assert_eq!(broadcast_enabled, true);
+            assert!(broadcast_enabled);
         }
         _ => panic!("Expected IPX network type"),
     }
@@ -133,7 +134,7 @@ async fn test_virtual_network_creation() -> Result<()> {
 async fn test_gaming_manager_auto_configure() -> Result<()> {
     let manager = GamingManager::new().await?;
     let config = manager.auto_configure().await?;
-    
+
     // Basic validation of the configuration structure - check it has discovery settings
     assert!(!config.discovery.discovery_ports.is_empty()); // Should have discovery ports
 
@@ -146,7 +147,7 @@ async fn test_production_lan_config_creation() -> Result<()> {
 
     // Check that the config has the expected structure
     assert!(!config.discovery.discovery_ports.is_empty()); // Should have discovery ports
-    // Note: encryption is enabled by default in the environment config
+                                                           // Note: encryption is enabled by default in the environment config
 
     Ok(())
 }
@@ -155,11 +156,11 @@ async fn test_production_lan_config_creation() -> Result<()> {
 async fn test_production_lan_manager_creation() -> Result<()> {
     let config = ProductionLanConfig::default();
     let manager = ProductionLanManager::new(config).await?;
-    
+
     // Check that we can get the manager's statistics
     let stats = manager.get_stats().await;
     assert_eq!(stats.active_sessions, 0); // No active sessions initially
-    
+
     Ok(())
 }
 
@@ -168,10 +169,10 @@ async fn test_gaming_protocol_equality() -> Result<()> {
     let protocol1 = GameProtocolClass::IpxBased;
     let protocol2 = GameProtocolClass::IpxBased;
     let protocol3 = GameProtocolClass::DirectPlay;
-    
+
     assert_eq!(protocol1, protocol2);
     assert_ne!(protocol1, protocol3);
-    
+
     Ok(())
 }
 
@@ -186,10 +187,10 @@ async fn test_nat_type_variants() -> Result<()> {
         NatType::Symmetric,
         NatType::Unknown,
     ];
-    
+
     for nat_type in nat_types {
         // Check that all NAT types can be formatted
-        assert_eq!(format!("{:?}", nat_type).len() > 0, true);
+        assert!(!format!("{nat_type:?}").is_empty());
     }
 
     Ok(())
@@ -203,7 +204,7 @@ async fn test_bridge_status_creation() -> Result<()> {
         total_players: 20,
         uptime: Duration::from_secs(3600),
     };
-    
+
     assert_eq!(status.active_sessions, 5);
     assert_eq!(status.protocols_active.len(), 2);
     assert_eq!(status.total_players, 20);
@@ -221,7 +222,7 @@ async fn test_game_session_status_variants() -> Result<()> {
         GameSessionStatus::Error("Test error".to_string()),
         GameSessionStatus::Closed,
     ];
-    
+
     for status in statuses {
         assert_eq!(format!("{:?}", status).len() > 0, true);
     }
@@ -233,22 +234,22 @@ async fn test_game_session_status_variants() -> Result<()> {
 async fn test_concurrent_gaming_manager() -> Result<()> {
     let manager = std::sync::Arc::new(GamingManager::new().await?);
     let mut handles = vec![];
-    
+
     // Test concurrent access to the manager
     for _ in 0..5 {
         let manager_clone = manager.clone();
         let handle = tokio::spawn(async move {
             let sessions = manager_clone.get_active_sessions().await;
-            sessions.len() == 0 // Should be empty in test environment
+            sessions.is_empty() // Should be empty in test environment
         });
         handles.push(handle);
-        }
-    
+    }
+
     // Wait for all tasks to complete
     for handle in handles {
         assert!(handle.await.unwrap());
     }
-    
+
     Ok(())
 }
 
@@ -263,7 +264,7 @@ async fn test_gaming_manager_session_management() -> Result<()> {
     // Test bridge status retrieval
     let bridge_status = manager.get_bridge_status().await?;
     assert_eq!(bridge_status.len(), 0); // No active bridges in test environment
-    
+
     Ok(())
 }
 
@@ -289,7 +290,7 @@ async fn test_gaming_serialization() -> Result<()> {
     assert_eq!(deserialized.session_id, session.session_id);
     assert_eq!(deserialized.protocol_class, session.protocol_class);
     assert_eq!(deserialized.confidence, session.confidence);
-    
+
     Ok(())
 }
 
@@ -300,39 +301,39 @@ async fn test_virtual_network_variants() -> Result<()> {
         players: std::collections::HashMap::new(),
         broadcast_enabled: true,
     };
-    
+
     let udp_network = VirtualNetwork::UDP {
         subnet: "192.168.1.0/24".to_string(),
         players: std::collections::HashMap::new(),
         broadcast_address: "192.168.1.255".parse().unwrap(),
     };
-    
+
     let tcp_network = VirtualNetwork::TCP {
         host_address: "192.168.1.1:6112".parse().unwrap(),
         players: std::collections::HashMap::new(),
     };
-    
+
     // Test that all network types can be created
     assert!(matches!(ipx_network, VirtualNetwork::IPX { .. }));
     assert!(matches!(udp_network, VirtualNetwork::UDP { .. }));
     assert!(matches!(tcp_network, VirtualNetwork::TCP { .. }));
-    
+
     Ok(())
 }
 
 #[tokio::test]
 async fn test_gaming_performance() -> Result<()> {
     let start_time = std::time::Instant::now();
-    
+
     // Test performance of creating multiple gaming managers
     for _ in 0..10 {
         let _manager = GamingManager::new().await?;
     }
-    
+
     let elapsed = start_time.elapsed();
 
     // Manager creation should be reasonably fast
     assert!(elapsed < Duration::from_secs(5));
-    
+
     Ok(())
 }

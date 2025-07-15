@@ -6,6 +6,7 @@ use crate::errors::{Result, SongbirdError};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_config::constants::{DEFAULT_CHECK_INTERVAL, DEFAULT_CHECK_TIMEOUT};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -176,7 +177,7 @@ impl HealthMonitor for DefaultHealthMonitor {
                         HealthCheckResult {
                             service_id: service_id.clone(),
                             status: HealthStatus::Unhealthy,
-                            message: Some(format!("Health check error: {}", e)),
+                            message: Some(format!("Health check error: {e}")),
                             timestamp: Utc::now(),
                             details: HashMap::new(),
                         },
@@ -219,8 +220,8 @@ impl HealthMonitor for DefaultHealthMonitor {
 impl Default for HealthCheckConfig {
     fn default() -> Self {
         Self {
-            interval: Duration::from_secs(30),
-            timeout: Duration::from_secs(5),
+            interval: DEFAULT_CHECK_INTERVAL,
+            timeout: DEFAULT_CHECK_TIMEOUT,
             retries: 3,
             endpoint: None,
             enabled: true,

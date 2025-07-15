@@ -3,12 +3,12 @@
 //! Provides HTTP server functionality for services to expose endpoints
 
 use axum::{
+    body::Bytes,
     extract::{Query, State},
     http::{HeaderMap, StatusCode},
     response::Json,
     routing::{get, post},
     Router,
-    body::Bytes,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -17,13 +17,13 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
-use crate::traits::service::{ServiceRequest, UniversalService};
 use crate::errors::{Result, SongbirdError};
+use crate::traits::service::{ServiceRequest, UniversalService};
 
 /// HTTP server for Universal Services
-pub struct HttpServiceServer<S> 
+pub struct HttpServiceServer<S>
 where
     S: UniversalService + Clone + Send + Sync + 'static,
 {
@@ -66,7 +66,7 @@ where
     /// Build the router with service endpoints
     pub fn build_router(&self) -> Router {
         let service_info = self.service.service_info();
-        
+
         // Create base router
         let mut router = Router::new();
 
@@ -82,7 +82,7 @@ where
         // Add service-specific endpoints
         for endpoint in &service_info.endpoints {
             let path = endpoint.path.clone();
-            
+
             match endpoint.method.to_lowercase().as_str() {
                 "get" => {
                     router = router.route(&path, get(request_handler::<S>));
@@ -100,7 +100,10 @@ where
                     router = router.route(&path, axum::routing::patch(request_handler::<S>));
                 }
                 _ => {
-                    warn!("Unsupported HTTP method: {} for endpoint: {}", endpoint.method, path);
+                    warn!(
+                        "Unsupported HTTP method: {} for endpoint: {}",
+                        endpoint.method, path
+                    );
                 }
             }
         }
@@ -110,7 +113,7 @@ where
             .layer(
                 ServiceBuilder::new()
                     .layer(CorsLayer::permissive())
-                    .into_inner()
+                    .into_inner(),
             )
             .with_state(Arc::clone(&self.service))
     }
@@ -120,13 +123,21 @@ where
         let router = self.build_router();
         let listener = TcpListener::bind(self.addr)
             .await
-            .map_err(|e| SongbirdError::Network { service: "HTTP Server".to_string(), message: e.to_string(), details: None })?;
+            .map_err(|e| SongbirdError::Network {
+                service: "HTTP Server".to_string(),
+                message: e.to_string(),
+                details: None,
+            })?;
 
         info!("HTTP server starting on {}", self.addr);
 
         axum::serve(listener, router)
             .await
-            .map_err(|e| SongbirdError::Network { service: "HTTP Server".to_string(), message: e.to_string(), details: None })?;
+            .map_err(|e| SongbirdError::Network {
+                service: "HTTP Server".to_string(),
+                message: e.to_string(),
+                details: None,
+            })?;
 
         Ok(())
     }
@@ -146,26 +157,22 @@ where
     S::Error: std::fmt::Display,
 {
     let request_id = uuid::Uuid::new_v4().to_string();
-    
+
     match service.health_check().await {
-        Ok(health) => {
-            Ok(Json(HttpServiceResponse {
-                success: true,
-                data: Some(serde_json::to_value(health).unwrap_or_else(|_| serde_json::json!({}))),
-                error: None,
-                timestamp: chrono::Utc::now(),
-                request_id,
-            }))
-        }
-        Err(e) => {
-            Ok(Json(HttpServiceResponse {
-                success: false,
-                data: None,
-                error: Some(e.to_string()),
-                timestamp: chrono::Utc::now(),
-                request_id,
-            }))
-        }
+        Ok(health) => Ok(Json(HttpServiceResponse {
+            success: true,
+            data: Some(serde_json::to_value(health).unwrap_or_else(|_| serde_json::json!({}))),
+            error: None,
+            timestamp: chrono::Utc::now(),
+            request_id,
+        })),
+        Err(e) => Ok(Json(HttpServiceResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+            timestamp: chrono::Utc::now(),
+            request_id,
+        })),
     }
 }
 
@@ -178,39 +185,33 @@ where
     S::Error: std::fmt::Display,
 {
     let request_id = uuid::Uuid::new_v4().to_string();
-    
+
     match service.get_metrics().await {
-        Ok(metrics) => {
-            Ok(Json(HttpServiceResponse {
-                success: true,
-                data: Some(serde_json::to_value(metrics).unwrap_or_else(|_| serde_json::json!({}))),
-                error: None,
-                timestamp: chrono::Utc::now(),
-                request_id,
-            }))
-        }
-        Err(e) => {
-            Ok(Json(HttpServiceResponse {
-                success: false,
-                data: None,
-                error: Some(e.to_string()),
-                timestamp: chrono::Utc::now(),
-                request_id,
-            }))
-        }
+        Ok(metrics) => Ok(Json(HttpServiceResponse {
+            success: true,
+            data: Some(serde_json::to_value(metrics).unwrap_or_else(|_| serde_json::json!({}))),
+            error: None,
+            timestamp: chrono::Utc::now(),
+            request_id,
+        })),
+        Err(e) => Ok(Json(HttpServiceResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+            timestamp: chrono::Utc::now(),
+            request_id,
+        })),
     }
 }
 
 /// Service info handler
-async fn info_handler<S>(
-    State(service): State<Arc<S>>,
-) -> Json<HttpServiceResponse>
+async fn info_handler<S>(State(service): State<Arc<S>>) -> Json<HttpServiceResponse>
 where
     S: UniversalService + Send + Sync,
 {
     let request_id = uuid::Uuid::new_v4().to_string();
     let info = service.service_info();
-    
+
     Json(HttpServiceResponse {
         success: true,
         data: Some(serde_json::to_value(info).unwrap_or_else(|_| serde_json::json!({}))),
@@ -255,7 +256,8 @@ where
     // Add query parameters to payload
     let mut enhanced_payload = payload;
     if enhanced_payload.is_object() && !query_params.is_empty() {
-        enhanced_payload["query_params"] = serde_json::to_value(query_params).unwrap_or_else(|_| serde_json::json!({}));
+        enhanced_payload["query_params"] =
+            serde_json::to_value(query_params).unwrap_or_else(|_| serde_json::json!({}));
     }
 
     // Create ServiceRequest
@@ -277,12 +279,17 @@ where
     // Handle the request
     match service.handle_request(service_request).await {
         Ok(response) => {
-            let success = matches!(response.status, crate::traits::service::ResponseStatus::Success);
-            
+            let success = matches!(
+                response.status,
+                crate::traits::service::ResponseStatus::Success
+            );
+
             Ok(Json(HttpServiceResponse {
                 success,
                 data: response.body,
-                error: if success { None } else { 
+                error: if success {
+                    None
+                } else {
                     match response.status {
                         crate::traits::service::ResponseStatus::Error => response.error_message,
                         _ => Some("Request failed".to_string()),
@@ -307,7 +314,7 @@ where
 
 /// Helper trait to add HTTP server capability to any UniversalService
 #[async_trait::async_trait]
-pub trait HttpServiceExt: UniversalService + Clone + Send + Sync + 'static 
+pub trait HttpServiceExt: UniversalService + Clone + Send + Sync + 'static
 where
     Self::Error: std::fmt::Display,
 {
@@ -324,8 +331,9 @@ where
 }
 
 // Blanket implementation for all UniversalServices
-impl<T> HttpServiceExt for T 
-where 
+impl<T> HttpServiceExt for T
+where
     T: UniversalService + Clone + Send + Sync + 'static,
     T::Error: std::fmt::Display,
-{} 
+{
+}

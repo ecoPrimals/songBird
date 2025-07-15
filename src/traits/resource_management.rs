@@ -6,6 +6,10 @@ use crate::errors::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_config::constants::{
+    DEFAULT_CLEANUP_INTERVAL, DEFAULT_LEAK_DETECTION_INTERVAL, DEFAULT_MAX_RESOURCE_AGE,
+    DEFAULT_MONITORING_INTERVAL, DEFAULT_SHUTDOWN_TIMEOUT, DEFAULT_TRACKING_INTERVAL,
+};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -312,21 +316,21 @@ impl Default for ResourceManagementConfig {
                 track_cpu: true,
                 track_connections: true,
                 track_file_handles: true,
-                tracking_interval: Duration::from_secs(10),
+                tracking_interval: DEFAULT_TRACKING_INTERVAL,
                 max_tracked_resources: Some(10000),
             },
             cleanup: CleanupConfig {
                 strategy: "time_based".to_string(),
-                cleanup_interval: Duration::from_secs(60),
-                max_resource_age: Duration::from_secs(3600),
+                cleanup_interval: DEFAULT_CLEANUP_INTERVAL,
+                max_resource_age: DEFAULT_MAX_RESOURCE_AGE,
                 cleanup_on_shutdown: true,
-                force_cleanup_timeout: Duration::from_secs(30),
+                force_cleanup_timeout: DEFAULT_SHUTDOWN_TIMEOUT,
             },
             monitoring: MonitoringConfig {
-                monitoring_interval: Duration::from_secs(30),
+                monitoring_interval: DEFAULT_MONITORING_INTERVAL,
                 alert_thresholds: HashMap::new(),
                 enable_leak_detection: true,
-                leak_detection_interval: Duration::from_secs(300),
+                leak_detection_interval: DEFAULT_LEAK_DETECTION_INTERVAL,
             },
             limits: LimitsConfig {
                 enforce_memory_limits: true,

@@ -1,10 +1,10 @@
 //! Comprehensive Tests for Orchestrator Module
 
-use songbird_lib::orchestrator::*;
 use songbird_lib::config::SongbirdConfig;
-use tokio::test;
 use songbird_lib::errors::Result;
+use songbird_lib::orchestrator::*;
 use std::net::IpAddr;
+use tokio::test;
 
 /// Test HealthStatus creation and validation
 #[test]
@@ -40,7 +40,7 @@ async fn test_health_status_methods() {
         uptime_seconds: 1200,
         last_check: std::time::SystemTime::now(),
     };
-    
+
     assert!(health.is_ok());
     assert!(health.is_healthy_with_services(2));
     assert!(health.is_healthy_with_services(3));
@@ -67,7 +67,7 @@ async fn test_orchestrator_default() {
 #[test]
 async fn test_orchestrator_health_checks() {
     let orchestrator = Orchestrator::default();
-    
+
     let health = orchestrator.get_health_status().await;
     assert!(health.is_ok());
     assert!(health.healthy);
@@ -77,15 +77,15 @@ async fn test_orchestrator_health_checks() {
 #[test]
 async fn test_orchestrator_lifecycle() {
     let orchestrator = Orchestrator::default();
-    
+
     // Test start
     let start_result = orchestrator.start().await;
     assert!(start_result.is_ok());
-    
+
     // Test health after start
     let health = orchestrator.get_health_status().await;
     assert!(health.is_ok());
-    
+
     // Test stop
     let stop_result = orchestrator.stop().await;
     assert!(stop_result.is_ok());
@@ -102,10 +102,13 @@ async fn test_orchestrator_config_access() {
         },
         ..Default::default()
     };
-    
+
     let orchestrator = Orchestrator::new(config.clone()).unwrap();
     let retrieved_config = orchestrator.get_config();
-    assert_eq!(retrieved_config.network.bind_address, "127.0.0.1".parse::<IpAddr>().unwrap());
+    assert_eq!(
+        retrieved_config.network.bind_address,
+        "127.0.0.1".parse::<IpAddr>().unwrap()
+    );
     assert_eq!(retrieved_config.network.orchestrator_port, 9000);
 }
 
@@ -113,12 +116,12 @@ async fn test_orchestrator_config_access() {
 #[test]
 async fn test_orchestrator_service_discovery() {
     let orchestrator = Orchestrator::default();
-    
+
     let services = orchestrator.discover_services().await;
     assert!(services.is_ok());
-    
+
     let service_list = services.unwrap();
-    assert!(service_list.len() > 0);
+    assert!(!service_list.is_empty());
     assert!(service_list.contains(&"orchestrator".to_string()));
 }
 
@@ -126,7 +129,7 @@ async fn test_orchestrator_service_discovery() {
 #[test]
 async fn test_orchestrator_error_handling() {
     let orchestrator = Orchestrator::default();
-    
+
     // Test methods don't panic
     let _ = orchestrator.get_config();
     let _ = orchestrator.get_health_status().await;
@@ -137,7 +140,7 @@ async fn test_orchestrator_error_handling() {
 #[test]
 async fn test_orchestrator_concurrent() {
     let orchestrator = std::sync::Arc::new(Orchestrator::default());
-    
+
     let mut handles = vec![];
     for i in 0..10 {
         let orch_clone = orchestrator.clone();
@@ -147,7 +150,7 @@ async fn test_orchestrator_concurrent() {
         });
         handles.push(handle);
     }
-    
+
     for handle in handles {
         let (i, health_ok) = handle.await.unwrap();
         assert!(health_ok);
@@ -164,7 +167,7 @@ async fn test_health_status_cloning() {
         uptime_seconds: 3600,
         last_check: std::time::SystemTime::now(),
     };
-    
+
     let cloned_health = health.clone();
     assert_eq!(health.healthy, cloned_health.healthy);
     assert_eq!(health.services_count, cloned_health.services_count);
@@ -192,12 +195,18 @@ async fn test_orchestrator_different_configs() {
             ..Default::default()
         },
     ];
-    
+
     for config in configs {
         let orchestrator = Orchestrator::new(config.clone()).unwrap();
         let retrieved_config = orchestrator.get_config();
-        assert_eq!(retrieved_config.network.bind_address, config.network.bind_address);
-        assert_eq!(retrieved_config.network.orchestrator_port, config.network.orchestrator_port);
+        assert_eq!(
+            retrieved_config.network.bind_address,
+            config.network.bind_address
+        );
+        assert_eq!(
+            retrieved_config.network.orchestrator_port,
+            config.network.orchestrator_port
+        );
     }
 }
 
@@ -205,12 +214,12 @@ async fn test_orchestrator_different_configs() {
 #[test]
 async fn test_orchestrator_uptime_tracking() {
     let orchestrator = Orchestrator::default();
-    
+
     let health1 = orchestrator.get_health_status().await;
-    
+
     // Wait a bit
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    
+
     let health2 = orchestrator.get_health_status().await;
     assert!(health2.uptime_seconds >= health1.uptime_seconds);
 }
@@ -227,7 +236,7 @@ async fn test_health_status_edge_cases() {
     };
     assert!(health.is_ok());
     assert!(!health.is_healthy_with_services(1));
-    
+
     // Test with high service count
     let health = HealthStatus {
         healthy: true,
@@ -243,7 +252,7 @@ async fn test_health_status_edge_cases() {
 #[test]
 async fn test_orchestrator_performance() {
     let orchestrator = Orchestrator::default();
-    
+
     let start = std::time::Instant::now();
     for _ in 0..100 {
         let _ = orchestrator.get_health_status().await;
@@ -256,42 +265,42 @@ async fn test_orchestrator_performance() {
 #[test]
 async fn test_orchestrator_integration() {
     let orchestrator = Orchestrator::default();
-    
+
     // Test that start and health check work together
     let start_result = orchestrator.start().await;
     assert!(start_result.is_ok());
-    
+
     let health = orchestrator.get_health_status().await;
     assert!(health.is_ok());
-    
+
     // Test config retrieval
     let config = orchestrator.get_config();
     assert!(config.network.orchestrator_port > 0);
-    
+
     // Test service discovery
     let services = orchestrator.discover_services().await;
     assert!(services.is_ok());
-    
+
     let service_list = services.unwrap();
-    assert!(service_list.len() > 0);
+    assert!(!service_list.is_empty());
 }
 
 /// Test Orchestrator scaling integration
 #[test]
 async fn test_orchestrator_scaling_integration() {
     use songbird_lib::orchestrator::scaling::*;
-    
+
     let orchestrator = Orchestrator::default();
-    
+
     // Test that we can use scaling components with orchestrator
     let scaling_config = GamingScalingConfig::default();
     let scaling_manager = GamingScalingManager::new(scaling_config);
     assert!(scaling_manager.is_ok());
-    
+
     let manager = scaling_manager.unwrap();
     let current_scale = manager.current_scale();
     assert!(matches!(current_scale, GamingScale::HomeGaming));
-    
+
     // Test orchestrator health alongside scaling
     let health = orchestrator.get_health_status().await;
     assert!(health.is_ok());
@@ -303,11 +312,14 @@ async fn test_orchestrator_configuration() -> Result<()> {
     let mut config = SongbirdConfig::default();
     config.network.bind_address = "127.0.0.1".parse::<IpAddr>().unwrap();
     config.network.orchestrator_port = 9000;
-    
+
     let orchestrator = Orchestrator::new(config)?;
     let retrieved_config = orchestrator.get_config();
-    
-    assert_eq!(retrieved_config.network.bind_address, "127.0.0.1".parse::<IpAddr>().unwrap());
+
+    assert_eq!(
+        retrieved_config.network.bind_address,
+        "127.0.0.1".parse::<IpAddr>().unwrap()
+    );
     assert_eq!(retrieved_config.network.orchestrator_port, 9000);
     Ok(())
 }
@@ -326,8 +338,8 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
     };
 
     let orchestrator = Orchestrator::new(config)?;
-    
-    // Test with different configuration  
+
+    // Test with different configuration
     let config2 = SongbirdConfig {
         network: songbird_lib::config::NetworkConfig {
             bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
@@ -338,14 +350,20 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
     };
 
     let orchestrator2 = Orchestrator::new(config2)?;
-    
+
     // Verify configurations are different
     let retrieved_config = orchestrator.get_config();
     let retrieved_config2 = orchestrator2.get_config();
-    
-    assert_eq!(retrieved_config.network.orchestrator_port, retrieved_config.network.orchestrator_port);
-    assert_eq!(retrieved_config2.network.orchestrator_port, retrieved_config2.network.orchestrator_port);
-    
+
+    assert_eq!(
+        retrieved_config.network.orchestrator_port,
+        retrieved_config.network.orchestrator_port
+    );
+    assert_eq!(
+        retrieved_config2.network.orchestrator_port,
+        retrieved_config2.network.orchestrator_port
+    );
+
     Ok(())
 }
 
@@ -354,9 +372,9 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
 async fn test_orchestrator_network_stats() -> Result<()> {
     let config = SongbirdConfig::default();
     let orchestrator = Orchestrator::new(config)?;
-    
+
     // Test network statistics
     assert!(orchestrator.get_config().network.orchestrator_port > 0);
-    
+
     Ok(())
-} 
+}

@@ -37,7 +37,7 @@ pub enum Credentials {
         token_type: String,
         // Additional fields for test compatibility
         code: Option<String>,
-        state: Option<String>, 
+        state: Option<String>,
         redirect_uri: Option<String>,
     },
     /// Multi-factor authentication
@@ -217,13 +217,13 @@ impl InMemoryAuthenticator {
     /// Hash password (simplified - use proper hashing in production)
     fn hash_password(&self, password: &str) -> Result<String> {
         // In production, use bcrypt, argon2, or similar
-        Ok(format!("hashed_{}", password))
+        Ok(format!("hashed_{password}"))
     }
 
     /// Verify password
     fn verify_password(&self, password: &str, hash: &str) -> bool {
         // In production, use proper password verification
-        format!("hashed_{}", password) == hash
+        format!("hashed_{password}") == hash
     }
 
     /// Verify MFA code (simplified)
@@ -715,8 +715,8 @@ mod tests {
         };
 
         assert!(result.success);
-        assert_eq!(result.token.unwrap(), "token123");
-        assert_eq!(result.user_id.unwrap(), "user123");
+        assert_eq!(result.token.expect("Token should be present in test"), "token123");
+        assert_eq!(result.user_id.expect("User ID should be present in test"), "user123");
         assert_eq!(result.permissions.len(), 1);
         assert!(result.error.is_none());
     }

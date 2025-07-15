@@ -7,6 +7,9 @@ use crate::traits::service::ServiceInfo;
 use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
+use songbird_config::constants::{
+    DEFAULT_CHECK_INTERVAL, DEFAULT_CONNECTION_TIMEOUT, DEFAULT_RETRY_DELAY,
+};
 use std::collections::HashMap;
 use std::pin::Pin;
 
@@ -254,10 +257,10 @@ impl Default for DiscoveryConfig {
     fn default() -> Self {
         Self {
             backend: DiscoveryBackend::Static,
-            health_check_interval: std::time::Duration::from_secs(30),
-            connection_timeout: std::time::Duration::from_secs(10),
+            health_check_interval: DEFAULT_CHECK_INTERVAL,
+            connection_timeout: DEFAULT_CONNECTION_TIMEOUT,
             retry_attempts: 3,
-            retry_delay: std::time::Duration::from_secs(1),
+            retry_delay: DEFAULT_RETRY_DELAY,
         }
     }
 }

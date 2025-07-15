@@ -66,16 +66,19 @@ impl CommunicationOptimizer {
     pub fn record_request(&mut self, response_time: Duration) {
         self.metrics.total_requests += 1;
         self.request_count_since_update += 1;
-        
+
         // Update average response time efficiently
-        let total_time = self.metrics.avg_response_time.as_nanos() * (self.metrics.total_requests - 1) as u128;
+        let total_time =
+            self.metrics.avg_response_time.as_nanos() * (self.metrics.total_requests - 1) as u128;
         let new_total = total_time + response_time.as_nanos();
-        self.metrics.avg_response_time = Duration::from_nanos((new_total / self.metrics.total_requests as u128) as u64);
-        
+        self.metrics.avg_response_time =
+            Duration::from_nanos((new_total / self.metrics.total_requests as u128) as u64);
+
         // Update requests per second periodically
         let elapsed = self.last_metrics_update.elapsed();
         if elapsed >= Duration::from_secs(1) {
-            self.metrics.requests_per_second = self.request_count_since_update as f64 / elapsed.as_secs_f64();
+            self.metrics.requests_per_second =
+                self.request_count_since_update as f64 / elapsed.as_secs_f64();
             self.last_metrics_update = Instant::now();
             self.request_count_since_update = 0;
         }
@@ -93,8 +96,7 @@ impl CommunicationOptimizer {
 
     /// Check if request batching should be used
     pub fn should_batch_requests(&self, pending_count: usize) -> bool {
-        self.config.enable_request_batching && 
-        pending_count < self.config.max_batch_size
+        self.config.enable_request_batching && pending_count < self.config.max_batch_size
     }
 
     /// Get optimal batch size for current load
@@ -102,10 +104,10 @@ impl CommunicationOptimizer {
         if !self.config.enable_request_batching {
             return 1;
         }
-        
+
         // Dynamic batch sizing based on current performance
         let base_batch_size = self.config.max_batch_size.min(pending_count);
-        
+
         // Reduce batch size if average response time is high
         if self.metrics.avg_response_time > Duration::from_millis(500) {
             base_batch_size / 2
@@ -130,18 +132,23 @@ impl StringBuilderOptimizer {
         }
     }
 
-    /// Build string efficiently with reused buffer
-    pub fn build_string<F>(&mut self, builder: F) -> String 
-    where 
-        F: FnOnce(&mut String)
+    /// Build string efficiently with reused buffer - zero-copy optimized
+    pub fn build_string<F>(&mut self, builder: F) -> String
+    where
+        F: FnOnce(&mut String),
     {
         self.reuse_buffer.clear();
         if self.reuse_buffer.capacity() < self.capacity_hint {
-            self.reuse_buffer.reserve(self.capacity_hint - self.reuse_buffer.capacity());
+            self.reuse_buffer
+                .reserve(self.capacity_hint - self.reuse_buffer.capacity());
         }
-        
+
         builder(&mut self.reuse_buffer);
-        self.reuse_buffer.clone()
+
+        // Zero-copy: swap out the built string instead of cloning
+        let mut result = String::with_capacity(self.capacity_hint);
+        std::mem::swap(&mut result, &mut self.reuse_buffer);
+        result
     }
 }
 
@@ -160,22 +167,25 @@ mod tests {
     fn test_request_recording() {
         let config = PerformanceConfig::default();
         let mut optimizer = CommunicationOptimizer::new(config);
-        
+
         optimizer.record_request(Duration::from_millis(100));
         assert_eq!(optimizer.get_metrics().total_requests, 1);
-        assert_eq!(optimizer.get_metrics().avg_response_time, Duration::from_millis(100));
+        assert_eq!(
+            optimizer.get_metrics().avg_response_time,
+            Duration::from_millis(100)
+        );
     }
 
     #[test]
     fn test_string_builder_optimizer() {
         let mut builder = StringBuilderOptimizer::with_capacity(100);
-        
+
         let result = builder.build_string(|s| {
             s.push(' ');
             s.push(' ');
             s.push(' ');
         });
-        
+
         assert_eq!(result, "   ");
     }
 }

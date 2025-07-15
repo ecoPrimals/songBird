@@ -502,7 +502,11 @@ fn show_impact_estimate(config: &SharingConfig) {
     println!("💡 Pro Tips:");
     println!("   • Use 'songbird status' to monitor your contribution");
     println!("   • Adjust sharing anytime with 'songbird share'");
-    let env_config = crate::config::environment::EnvironmentConfig::default(); println!("   • View network activity at http://{}:{}", env_config.bind_address, env_config.bind_port);
+    let env_config = crate::config::environment::EnvironmentConfig::default();
+    println!(
+        "   • View network activity at http://{}:{}",
+        env_config.bind_address, env_config.bind_port
+    );
 }
 /// Format resource type for display
 fn format_resource_type(resource_type: &ResourceType) -> &str {

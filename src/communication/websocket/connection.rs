@@ -11,7 +11,7 @@ use tokio_tungstenite::tungstenite::Message as WsMessage;
 use crate::traits::communication::ServiceAddress;
 /// Active WebSocket connection
 pub struct WebSocketConnection {
-    pub id: String,
+    pub id: Arc<str>,
     pub address: ServiceAddress,  
     pub connected_at: Instant,
     pub last_heartbeat: Arc<Mutex<Instant>>,

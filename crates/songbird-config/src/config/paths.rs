@@ -5,27 +5,25 @@
 
 use serde::{Deserialize, Serialize};
 use songbird_errors::{Result, SongbirdError};
-use std::env;
 use std::path::PathBuf;
 
-/// Platform-agnostic path configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Platform-agnostic path configuration that adapts to environment
+///
+/// Supports configuration override via environment variables
+#[derive(Debug, Clone, Serialize)]
+#[allow(clippy::unsafe_derive_deserialize)]
+#[derive(Deserialize)]
 pub struct PathConfig {
-    /// Data directory for persistent storage
+    /// Primary data storage directory
     pub data_dir: PathBuf,
-
-    /// Configuration directory
+    /// Configuration files directory
     pub config_dir: PathBuf,
-
-    /// Log directory
+    /// Log files directory
     pub log_dir: PathBuf,
-
     /// Cache directory for temporary files
     pub cache_dir: PathBuf,
-
     /// Runtime directory for PID files, sockets, etc.
     pub runtime_dir: PathBuf,
-
     /// Service-specific data directories
     pub service_data_dirs: ServiceDataDirs,
 }
@@ -47,281 +45,125 @@ impl Default for PathConfig {
 }
 
 impl PathConfig {
-    /// Create new path configuration with OS-appropriate defaults
+    /// Create new `PathConfig` with platform-appropriate defaults
+    #[must_use]
     pub fn new() -> Self {
-        let base_data_dir = Self::get_default_data_dir();
-        let base_config_dir = Self::get_default_config_dir();
-        let base_log_dir = Self::get_default_log_dir();
-        let base_cache_dir = Self::get_default_cache_dir();
-        let base_runtime_dir = Self::get_default_runtime_dir();
-
         Self {
-            data_dir: base_data_dir.clone(),
-            config_dir: base_config_dir,
-            log_dir: base_log_dir,
-            cache_dir: base_cache_dir,
-            runtime_dir: base_runtime_dir,
+            data_dir: crate::config::environment::default_data_dir().into(),
+            config_dir: crate::config::environment::default_config_dir().into(),
+            log_dir: crate::config::environment::default_log_dir().into(),
+            cache_dir: crate::config::environment::default_cache_dir().into(),
+            runtime_dir: crate::config::environment::default_runtime_dir().into(),
             service_data_dirs: ServiceDataDirs {
-                orchestrator: base_data_dir.join("orchestrator"),
-                federation: base_data_dir.join("federation"),
-                metrics: base_data_dir.join("metrics"),
-                discovery: base_data_dir.join("discovery"),
-                registry: base_data_dir.join("registry"),
+                orchestrator: crate::config::environment::default_data_dir().into(),
+                federation: crate::config::environment::default_data_dir().into(),
+                metrics: crate::config::environment::default_data_dir().into(),
+                discovery: crate::config::environment::default_data_dir().into(),
+                registry: crate::config::environment::default_data_dir().into(),
             },
         }
     }
 
-    /// Create development configuration (uses local directories)
+    /// Create development-focused path configuration
+    #[must_use]
     pub fn development() -> Self {
-        let current_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let dev_dir = current_dir.join(".songbird");
-
         Self {
-            data_dir: dev_dir.join("data"),
-            config_dir: dev_dir.join("config"),
-            log_dir: dev_dir.join("logs"),
-            cache_dir: dev_dir.join("cache"),
-            runtime_dir: dev_dir.join("runtime"),
+            data_dir: "./.songbird/data".into(),
+            config_dir: "./.songbird/config".into(),
+            log_dir: "./.songbird/logs".into(),
+            cache_dir: "./.songbird/cache".into(),
+            runtime_dir: "./.songbird/runtime".into(),
             service_data_dirs: ServiceDataDirs {
-                orchestrator: dev_dir.join("data").join("orchestrator"),
-                federation: dev_dir.join("data").join("federation"),
-                metrics: dev_dir.join("data").join("metrics"),
-                discovery: dev_dir.join("data").join("discovery"),
-                registry: dev_dir.join("data").join("registry"),
+                orchestrator: "./.songbird/data".into(),
+                federation: "./.songbird/data".into(),
+                metrics: "./.songbird/data".into(),
+                discovery: "./.songbird/data".into(),
+                registry: "./.songbird/data".into(),
             },
         }
     }
 
-    /// Create production configuration (uses system directories)
+    /// Create production-focused path configuration
+    #[must_use]
     pub fn production() -> Self {
-        Self::new()
-    }
-
-    /// Get OS-appropriate default data directory
-    fn get_default_data_dir() -> PathBuf {
-        // Check environment variable first
-        if let Ok(data_dir) = env::var("SONGBIRD_DATA_DIR") {
-            return PathBuf::from(data_dir);
-        }
-
-        match std::env::consts::OS {
-            "windows" => dirs::data_local_dir()
-                .or_else(dirs::data_dir)
-                .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-                .join("Songbird"),
-            "macos" => {
-                if Self::is_system_install() {
-                    PathBuf::from("/usr/local/var/songbird")
-                } else {
-                    dirs::data_dir()
-                        .unwrap_or_else(|| PathBuf::from("/usr/local/var"))
-                        .join("Songbird")
-                }
-            }
-            _ => {
-                if Self::is_system_install() {
-                    PathBuf::from("/var/lib/songbird")
-                } else {
-                    dirs::data_local_dir()
-                        .unwrap_or_else(|| PathBuf::from("~/.local/share"))
-                        .join("songbird")
-                }
-            }
-        }
-    }
-
-    /// Get OS-appropriate default configuration directory
-    fn get_default_config_dir() -> PathBuf {
-        if let Ok(config_dir) = env::var("SONGBIRD_CONFIG_DIR") {
-            return PathBuf::from(config_dir);
-        }
-
-        match std::env::consts::OS {
-            "windows" => dirs::config_dir()
-                .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-                .join("Songbird"),
-            "macos" => {
-                if Self::is_system_install() {
-                    PathBuf::from("/usr/local/etc/songbird")
-                } else {
-                    dirs::config_dir()
-                        .unwrap_or_else(|| PathBuf::from("/usr/local/etc"))
-                        .join("Songbird")
-                }
-            }
-            _ => {
-                if Self::is_system_install() {
-                    PathBuf::from("/etc/songbird")
-                } else {
-                    dirs::config_dir()
-                        .unwrap_or_else(|| PathBuf::from("~/.config"))
-                        .join("songbird")
-                }
-            }
-        }
-    }
-
-    /// Get OS-appropriate default log directory
-    fn get_default_log_dir() -> PathBuf {
-        if let Ok(log_dir) = env::var("SONGBIRD_LOG_DIR") {
-            return PathBuf::from(log_dir);
-        }
-
-        match std::env::consts::OS {
-            "windows" => dirs::data_local_dir()
-                .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-                .join("Songbird")
-                .join("Logs"),
-            "macos" => {
-                if Self::is_system_install() {
-                    PathBuf::from("/usr/local/var/log/songbird")
-                } else {
-                    dirs::data_dir()
-                        .unwrap_or_else(|| PathBuf::from("/usr/local/var"))
-                        .join("Songbird")
-                        .join("Logs")
-                }
-            }
-            _ => {
-                if Self::is_system_install() {
-                    PathBuf::from("/var/log/songbird")
-                } else {
-                    dirs::data_local_dir()
-                        .unwrap_or_else(|| PathBuf::from("~/.local/share"))
-                        .join("songbird")
-                        .join("logs")
-                }
-            }
-        }
-    }
-
-    /// Get OS-appropriate default cache directory
-    fn get_default_cache_dir() -> PathBuf {
-        if let Ok(cache_dir) = env::var("SONGBIRD_CACHE_DIR") {
-            return PathBuf::from(cache_dir);
-        }
-
-        match std::env::consts::OS {
-            "windows" => dirs::cache_dir()
-                .unwrap_or_else(|| PathBuf::from(r"C:\Users\Public\AppData\Local"))
-                .join("Songbird"),
-            "macos" => dirs::cache_dir()
-                .unwrap_or_else(|| PathBuf::from("/var/cache"))
-                .join("Songbird"),
-            _ => dirs::cache_dir()
-                .unwrap_or_else(|| PathBuf::from("/tmp"))
-                .join("songbird"),
-        }
-    }
-
-    /// Get OS-appropriate default runtime directory
-    fn get_default_runtime_dir() -> PathBuf {
-        if let Ok(runtime_dir) = env::var("SONGBIRD_RUNTIME_DIR") {
-            return PathBuf::from(runtime_dir);
-        }
-
-        match std::env::consts::OS {
-            "windows" => dirs::data_local_dir()
-                .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-                .join("Songbird")
-                .join("Runtime"),
-            "macos" => {
-                if Self::is_system_install() {
-                    PathBuf::from("/usr/local/var/run/songbird")
-                } else {
-                    dirs::runtime_dir()
-                        .unwrap_or_else(|| PathBuf::from("/tmp"))
-                        .join("songbird")
-                }
-            }
-            _ => {
-                if Self::is_system_install() {
-                    PathBuf::from("/run/songbird")
-                } else {
-                    dirs::runtime_dir()
-                        .unwrap_or_else(|| PathBuf::from("/tmp"))
-                        .join("songbird")
-                }
-            }
-        }
-    }
-
-    /// Check if this is a system-wide installation
-    fn is_system_install() -> bool {
-        env::var("SONGBIRD_SYSTEM_INSTALL").is_ok() || Self::is_running_as_privileged_user()
-    }
-
-    /// Check if running as privileged user (root on Unix, admin on Windows)
-    fn is_running_as_privileged_user() -> bool {
-        #[cfg(unix)]
-        {
-            unsafe { libc::getuid() == 0 }
-        }
-        #[cfg(windows)]
-        {
-            false
-        }
-        #[cfg(not(any(unix, windows)))]
-        {
-            false
+        Self {
+            data_dir: "/var/lib/songbird".into(),
+            config_dir: "/etc/songbird".into(),
+            log_dir: "/var/log/songbird".into(),
+            cache_dir: "/var/cache/songbird".into(),
+            runtime_dir: "/run/songbird".into(),
+            service_data_dirs: ServiceDataDirs {
+                orchestrator: "/var/lib/songbird".into(),
+                federation: "/var/lib/songbird".into(),
+                metrics: "/var/lib/songbird".into(),
+                discovery: "/var/lib/songbird".into(),
+                registry: "/var/lib/songbird".into(),
+            },
         }
     }
 
     /// Ensure all directories exist
-    pub async fn ensure_directories_exist(&self) -> Result<()> {
-        let directories = vec![
-            &self.data_dir,
-            &self.config_dir,
-            &self.log_dir,
-            &self.cache_dir,
-            &self.runtime_dir,
-            &self.service_data_dirs.orchestrator,
-            &self.service_data_dirs.federation,
-            &self.service_data_dirs.metrics,
-            &self.service_data_dirs.discovery,
-            &self.service_data_dirs.registry,
-        ];
-
-        for dir in directories {
-            if let Err(e) = tokio::fs::create_dir_all(dir).await {
-                return Err(SongbirdError::Io {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any directory cannot be created due to permissions or filesystem issues
+    pub fn ensure_directories_exist(&self) -> Result<()> {
+        for dir in &[&self.data_dir, &self.config_dir, &self.log_dir] {
+            if let Err(e) = std::fs::create_dir_all(dir) {
+                return Err(songbird_errors::SongbirdError::Config {
+                    field: Some("directory_creation".to_string()),
                     message: format!("Failed to create directory {}: {}", dir.display(), e),
+                    context: Some("Directory creation validation".to_string()),
+                    suggestion: Some(
+                        "Check directory permissions and available disk space".to_string(),
+                    ),
                 });
             }
         }
-
         Ok(())
     }
 
     /// Get configuration file path
+    #[must_use]
     pub fn config_file_path(&self, filename: &str) -> PathBuf {
         self.config_dir.join(filename)
     }
 
     /// Get log file path
+    #[must_use]
     pub fn log_file_path(&self, service: &str) -> PathBuf {
-        self.log_dir.join(format!("{}.log", service))
+        self.log_dir.join(format!("{service}.log"))
     }
 
     /// Get PID file path
+    #[must_use]
     pub fn pid_file_path(&self, service: &str) -> PathBuf {
-        self.runtime_dir.join(format!("{}.pid", service))
+        self.runtime_dir.join(format!("{service}.pid"))
     }
 
     /// Get socket file path (Unix only)
     #[cfg(unix)]
+    #[must_use]
     pub fn socket_file_path(&self, service: &str) -> PathBuf {
-        self.runtime_dir.join(format!("{}.sock", service))
+        self.runtime_dir.join(format!("{service}.sock"))
     }
 
     /// Validate that all paths are accessible
-    pub async fn validate(&self) -> Result<()> {
-        for dir in [&self.data_dir, &self.config_dir, &self.log_dir].iter() {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any path validation fails
+    pub fn validate(&self) -> Result<()> {
+        for dir in &[&self.data_dir, &self.config_dir, &self.log_dir] {
             if let Some(parent) = dir.parent() {
                 if !parent.exists() {
                     return Err(SongbirdError::Config {
                         field: Some("paths".to_string()),
                         message: format!("Parent directory {} does not exist", parent.display()),
+                        context: Some("Path validation".to_string()),
+                        suggestion: Some(
+                            "Ensure parent directories exist or create them first".to_string(),
+                        ),
                     });
                 }
             }
@@ -331,6 +173,7 @@ impl PathConfig {
     }
 
     /// Get a summary of all configured paths
+    #[must_use]
     pub fn summary(&self) -> String {
         format!(
             "Data: {}, Config: {}, Logs: {}, Cache: {}, Runtime: {}",

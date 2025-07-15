@@ -5,48 +5,48 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
-use crate::types::{PrimalRequest, PrimalResponse};
 use crate::errors::PrimalResult;
+use crate::types::{PrimalRequest, PrimalResponse};
 
 /// Universal trait that any primal can implement
 #[async_trait]
 pub trait PrimalProvider: Send + Sync {
     /// Unique primal identifier (e.g., "beardog", "nestgate", "toadstool", "squirrel")
     fn primal_id(&self) -> &str;
-    
+
     /// Instance identifier for multi-instance support (e.g., "beardog-user123", "beardog-device456")
     fn instance_id(&self) -> &str;
-    
+
     /// User/device context this primal instance serves
     fn context(&self) -> &PrimalContext;
-    
+
     /// Primal type category (e.g., Security, Storage, Compute, AI)
     fn primal_type(&self) -> PrimalType;
-    
+
     /// Capabilities this primal provides
     fn capabilities(&self) -> Vec<PrimalCapability>;
-    
+
     /// What this primal needs from other primals
     fn dependencies(&self) -> Vec<PrimalDependency>;
-    
+
     /// Health check for this primal
     async fn health_check(&self) -> PrimalHealth;
-    
+
     /// Get primal API endpoints
     fn endpoints(&self) -> PrimalEndpoints;
-    
+
     /// Handle inter-primal communication
     async fn handle_primal_request(&self, request: PrimalRequest) -> PrimalResult<PrimalResponse>;
-    
+
     /// Initialize the primal with configuration
     async fn initialize(&mut self, config: serde_json::Value) -> PrimalResult<()>;
-    
+
     /// Shutdown the primal gracefully
     async fn shutdown(&mut self) -> PrimalResult<()>;
-    
+
     /// Check if this primal can serve the given context
     fn can_serve_context(&self, context: &PrimalContext) -> bool;
-    
+
     /// Get dynamic port information
     fn dynamic_port_info(&self) -> Option<DynamicPortInfo>;
 }
@@ -154,151 +154,164 @@ pub enum PrimalType {
     Custom(String),
 }
 
+impl std::fmt::Display for PrimalType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PrimalType::Security => write!(f, "Security"),
+            PrimalType::Storage => write!(f, "Storage"),
+            PrimalType::Compute => write!(f, "Compute"),
+            PrimalType::AI => write!(f, "AI"),
+            PrimalType::Network => write!(f, "Network"),
+            PrimalType::Custom(name) => write!(f, "Custom({name})"),
+        }
+    }
+}
+
 /// Universal capabilities that any primal can provide
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrimalCapability {
     // Security capabilities (BearDog)
     /// Authentication with supported methods
-    Authentication { 
+    Authentication {
         /// List of supported authentication methods
-        methods: Vec<String> 
+        methods: Vec<String>,
     },
     /// Encryption with supported algorithms
-    Encryption { 
+    Encryption {
         /// List of supported encryption algorithms
-        algorithms: Vec<String> 
+        algorithms: Vec<String>,
     },
     /// Key management with HSM support
-    KeyManagement { 
+    KeyManagement {
         /// Whether HSM (Hardware Security Module) is supported
-        hsm_support: bool 
+        hsm_support: bool,
     },
     /// Threat detection with ML capabilities
-    ThreatDetection { 
+    ThreatDetection {
         /// Whether machine learning is enabled for threat detection
-        ml_enabled: bool 
+        ml_enabled: bool,
     },
     /// Audit logging with compliance standards
-    AuditLogging { 
+    AuditLogging {
         /// List of supported compliance standards
-        compliance: Vec<String> 
+        compliance: Vec<String>,
     },
     /// Authorization and access control
-    Authorization { 
+    Authorization {
         /// Whether RBAC (Role-Based Access Control) is supported
-        rbac_support: bool 
+        rbac_support: bool,
     },
-    
+
     // Storage capabilities (NestGate)
     /// File system support
-    FileSystem { 
+    FileSystem {
         /// Whether ZFS file system is supported
-        supports_zfs: bool 
+        supports_zfs: bool,
     },
     /// Object storage with backends
-    ObjectStorage { 
+    ObjectStorage {
         /// List of supported storage backends
-        backends: Vec<String> 
+        backends: Vec<String>,
     },
     /// Data replication
-    DataReplication { 
+    DataReplication {
         /// Consistency model for data replication
-        consistency: String 
+        consistency: String,
     },
     /// Backup capabilities
-    Backup { 
+    Backup {
         /// Whether incremental backups are supported
-        incremental: bool 
+        incremental: bool,
     },
     /// Data archiving
-    DataArchiving { 
+    DataArchiving {
         /// List of supported compression algorithms
-        compression: Vec<String> 
+        compression: Vec<String>,
     },
-    
+
     // Compute capabilities (Toadstool)
     /// Container runtime support
-    ContainerRuntime { 
+    ContainerRuntime {
         /// List of supported container orchestrators
-        orchestrators: Vec<String> 
+        orchestrators: Vec<String>,
     },
     /// Serverless execution
-    ServerlessExecution { 
+    ServerlessExecution {
         /// List of supported programming languages
-        languages: Vec<String> 
+        languages: Vec<String>,
     },
     /// GPU acceleration
-    GpuAcceleration { 
+    GpuAcceleration {
         /// Whether CUDA is supported
-        cuda_support: bool 
+        cuda_support: bool,
     },
     /// Load balancing
-    LoadBalancing { 
+    LoadBalancing {
         /// List of supported load balancing algorithms
-        algorithms: Vec<String> 
+        algorithms: Vec<String>,
     },
     /// Auto-scaling
-    AutoScaling { 
+    AutoScaling {
         /// List of supported scaling metrics
-        metrics: Vec<String> 
+        metrics: Vec<String>,
     },
-    
+
     // AI capabilities (Squirrel)
     /// Model inference
-    ModelInference { 
+    ModelInference {
         /// List of supported AI models
-        models: Vec<String> 
+        models: Vec<String>,
     },
     /// Agent framework
-    AgentFramework { 
+    AgentFramework {
         /// Whether MCP (Model Context Protocol) is supported
-        mcp_support: bool 
+        mcp_support: bool,
     },
     /// Machine learning
-    MachineLearning { 
+    MachineLearning {
         /// Whether training is supported
-        training_support: bool 
+        training_support: bool,
     },
     /// Natural language processing
-    NaturalLanguage { 
+    NaturalLanguage {
         /// List of supported languages
-        languages: Vec<String> 
+        languages: Vec<String>,
     },
     /// Computer vision
-    ComputerVision { 
+    ComputerVision {
         /// List of supported computer vision models
-        models: Vec<String> 
+        models: Vec<String>,
     },
-    
+
     // Networking capabilities
     /// Service discovery
-    ServiceDiscovery { 
+    ServiceDiscovery {
         /// List of supported discovery protocols
-        protocols: Vec<String> 
+        protocols: Vec<String>,
     },
     /// Network routing
-    NetworkRouting { 
+    NetworkRouting {
         /// List of supported routing protocols
-        protocols: Vec<String> 
+        protocols: Vec<String>,
     },
     /// Proxy services
-    ProxyServices { 
+    ProxyServices {
         /// List of supported proxy types
-        types: Vec<String> 
+        types: Vec<String>,
     },
     /// VPN capabilities
-    VpnServices { 
+    VpnServices {
         /// List of supported VPN protocols
-        protocols: Vec<String> 
+        protocols: Vec<String>,
     },
-    
+
     // Generic capabilities
     /// Custom capability
-    Custom { 
+    Custom {
         /// Name of the custom capability
-        name: String, 
+        name: String,
         /// Custom attributes for the capability
-        attributes: HashMap<String, String> 
+        attributes: HashMap<String, String>,
     },
 }
 
@@ -405,7 +418,10 @@ impl Hash for PrimalCapability {
                 "VpnServices".hash(state);
                 protocols.hash(state);
             }
-            PrimalCapability::Custom { name, attributes: _ } => {
+            PrimalCapability::Custom {
+                name,
+                attributes: _,
+            } => {
                 "Custom".hash(state);
                 name.hash(state);
                 // Skip hashing attributes since HashMap doesn't implement Hash
@@ -418,36 +434,36 @@ impl Hash for PrimalCapability {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrimalDependency {
     /// Requires authentication
-    RequiresAuthentication { 
+    RequiresAuthentication {
         /// List of required authentication methods
-        methods: Vec<String> 
+        methods: Vec<String>,
     },
     /// Requires encryption
-    RequiresEncryption { 
+    RequiresEncryption {
         /// List of required encryption algorithms
-        algorithms: Vec<String> 
+        algorithms: Vec<String>,
     },
     /// Requires storage
-    RequiresStorage { 
+    RequiresStorage {
         /// List of required storage types
-        types: Vec<String> 
+        types: Vec<String>,
     },
     /// Requires compute
-    RequiresCompute { 
+    RequiresCompute {
         /// List of required compute types
-        types: Vec<String> 
+        types: Vec<String>,
     },
     /// Requires AI
-    RequiresAI { 
+    RequiresAI {
         /// List of required AI capabilities
-        capabilities: Vec<String> 
+        capabilities: Vec<String>,
     },
     /// Custom dependency
-    Custom { 
+    Custom {
         /// Name of the custom dependency
-        name: String, 
+        name: String,
         /// Custom requirements for the dependency
-        requirements: HashMap<String, String> 
+        requirements: HashMap<String, String>,
     },
 }
 
@@ -457,14 +473,14 @@ pub enum PrimalHealth {
     /// Primal is healthy and operational
     Healthy,
     /// Primal is degraded but operational
-    Degraded { 
+    Degraded {
         /// List of issues causing degradation
-        issues: Vec<String> 
+        issues: Vec<String>,
     },
     /// Primal is unhealthy and not operational
-    Unhealthy { 
+    Unhealthy {
         /// Reason why the primal is unhealthy
-        reason: String 
+        reason: String,
     },
 }
 
@@ -511,4 +527,4 @@ pub struct IntegrationResult {
     pub configuration_updates: Option<serde_json::Value>,
     /// Error message if integration failed
     pub error_message: Option<String>,
-} 
+}

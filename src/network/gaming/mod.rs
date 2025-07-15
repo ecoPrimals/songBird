@@ -24,13 +24,14 @@ pub use types::{
 };
 
 // Re-export main components
+pub use crate::network_crate::gaming::{
+    BenchmarkConfig, BenchmarkResults, GamingPerformanceMetrics,
+};
 pub use auto_config::{
     BeardogIntegration, GamingAutoConfig, OneTouchConfig, SecurityValidator, SetupState,
 };
 pub use nat_traversal::NatTraversalManager;
-pub use performance::{
-    BenchmarkConfig, BenchmarkResults, GamingPerformanceMetrics, PerformanceMonitor,
-};
+pub use performance::PerformanceMonitor;
 pub use privilege_manager::{
     can_capture_packets, create_safe_privilege_manager, PrivilegeConfig, PrivilegeManager,
     PrivilegeMethod,
@@ -221,7 +222,7 @@ impl GamingManager {
         let session = sessions.get_mut(session_code).ok_or_else(|| {
             crate::errors::SongbirdError::Network {
                 service: "Gaming Manager".to_string(),
-                message: format!("Session not found: {}", session_code),
+                message: format!("Session not found: {session_code}"),
                 details: None,
             }
         })?;
@@ -250,19 +251,20 @@ impl GamingManager {
     /// Start packet bridge with configurable binding
     pub async fn start_packet_bridge(&self, session_code: &str) -> Result<()> {
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         // Get the session from our storage
         let sessions = self.lan_sessions.read().await;
-        let session = sessions.get(session_code).ok_or_else(|| {
-            crate::errors::SongbirdError::Network {
-                service: "Gaming Manager".to_string(),
-                message: format!("Session not found: {}", session_code),
-                details: None,
-            }
-        })?;
-        
+        let session =
+            sessions
+                .get(session_code)
+                .ok_or_else(|| crate::errors::SongbirdError::Network {
+                    service: "Gaming Manager".to_string(),
+                    message: format!("Session not found: {session_code}"),
+                    details: None,
+                })?;
+
         // Use configurable binding address - NO MORE HARDCODING 0.0.0.0!
-        let bind_addr = if env_config.bind_address == "0.0.0.0" {
+        let bind_addr = if env_config.bind_address == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS {
             // Only allow 0.0.0.0 if explicitly approved
             if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
                 return Err(crate::errors::SongbirdError::Config {
@@ -270,12 +272,12 @@ impl GamingManager {
                     message: "Gaming services binding to 0.0.0.0 requires explicit approval via SONGBIRD_GAMING_BIND_ALL_APPROVED=true".to_string(),
                 });
             }
-            "0.0.0.0"
+            crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS
         } else {
             &env_config.bind_address
         };
-        
-        let _socket = UdpSocket::bind(format!("{}:0", bind_addr))?;
+
+        let _socket = UdpSocket::bind(format!("{bind_addr}:0"))?;
 
         // For IPX games, create a real bridge
         if matches!(session.protocol_class, GameProtocolClass::IpxBased) {
@@ -319,14 +321,15 @@ impl GamingManager {
                 if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
                     return Err(crate::errors::SongbirdError::Config {
                         field: Some("broadcast_bind_address".to_string()),
-                        message: "Broadcasting requires explicit approval for 0.0.0.0 binding".to_string(),
+                        message: "Broadcasting requires explicit approval for 0.0.0.0 binding"
+                            .to_string(),
                     });
                 }
-                "0.0.0.0:0"
+                format!("{}:0", crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS)
             } else {
                 &format!("{}:0", env_config.bind_address)
             };
-            
+
             let socket = UdpSocket::bind(bind_addr)?;
             socket.set_broadcast(true)?;
 
@@ -345,7 +348,7 @@ impl GamingManager {
 
             // Broadcast to configurable gaming discovery ports - NO MORE HARDCODING!
             for &port in &env_config.discovery_ports {
-                socket.send_to(discovery_msg.as_bytes(), format!("255.255.255.255:{}", port))?;
+                socket.send_to(discovery_msg.as_bytes(), format!("255.255.255.255:{port}"))?;
             }
 
             info!("📡 Broadcasted session {} for LAN discovery", session_code);
@@ -361,14 +364,14 @@ impl GamingManager {
 
         // Listen for discovery broadcasts - NO MORE HARDCODING!
         let discovery_port = env_config.discovery_ports.first().copied().unwrap_or(6112);
-        let bind_addr = if env_config.bind_address == "0.0.0.0" {
-            format!("0.0.0.0:{}", discovery_port)
+        let bind_addr = if env_config.bind_address == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS {
+            format!("{}:{discovery_port}", crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS)
         } else {
             format!("{}:{}", env_config.bind_address, discovery_port)
         };
-        
+
         let socket = UdpSocket::bind(&bind_addr)?;
-        
+
         // Use configurable timeout instead of hardcoded 3 seconds
         let scan_timeout = std::time::Duration::from_secs(env_config.discovery_timeout_secs);
         socket.set_read_timeout(Some(scan_timeout))?;

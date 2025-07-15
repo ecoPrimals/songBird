@@ -484,7 +484,7 @@ mod tests {
         let serialized = serde_json::to_string(&environment);
         assert!(serialized.is_ok());
         
-        let deserialized: Result<EnvironmentInfo, _> = serde_json::from_str(&serialized.as_ref().map_err(|e| serde_json::Error::custom(format!("Serialization failed: {}", e)))?);
+        let deserialized: Result<EnvironmentInfo, _> = serde_json::from_str(&serialized.as_ref().map_err(|e| serde_json::Error::custom(format!("Serialization failed: {e}")))?);
         assert!(deserialized.is_ok());
     }
 } 

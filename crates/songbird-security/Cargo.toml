@@ -6,6 +6,10 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
+description = "Security and authentication for Songbird components"
+readme = "../../README.md"
+keywords = ["security", "authentication", "encryption", "gaming", "beardog"]
+categories = ["cryptography", "network-programming", "game-engines"]
 
 [dependencies]
 songbird-errors = { path = "../songbird-errors" }

@@ -99,7 +99,12 @@ impl WireGuardTunnel {
             0,    // Index
             None, // Static response (for testing)
         )
-        .map_err(|e| songbird_errors::SongbirdError::TunnelCreation(e.to_string()))?;
+        .map_err(|e| songbird_errors::SongbirdError::TunnelCreation {
+            message: e.to_string(),
+            tunnel_type: Some("wireguard".to_string()),
+            endpoint: None,
+            suggestion: Some("Check WireGuard configuration and permissions".to_string()),
+        })?;
 
         Ok(Self {
             tunnel,
@@ -130,10 +135,13 @@ impl WireGuardTunnel {
             }
             TunnResult::Err(e) => {
                 error!("❌ Encryption failed: {:?}", e);
-                Err(songbird_errors::SongbirdError::EncryptionFailed(format!(
-                    "{:?}",
-                    e
-                )))
+                Err(songbird_errors::SongbirdError::EncryptionFailed {
+                    message: format!("{:?}", e),
+                    algorithm: Some("ChaCha20Poly1305".to_string()),
+                    suggestion: Some(
+                        "Check encryption key and algorithm configuration".to_string(),
+                    ),
+                })
             }
             _ => Ok(None), // No output (e.g., handshake in progress)
         }
@@ -155,10 +163,13 @@ impl WireGuardTunnel {
             }
             TunnResult::Err(e) => {
                 error!("❌ Decryption failed: {:?}", e);
-                Err(songbird_errors::SongbirdError::DecryptionFailed(format!(
-                    "{:?}",
-                    e
-                )))
+                Err(songbird_errors::SongbirdError::DecryptionFailed {
+                    message: format!("{:?}", e),
+                    algorithm: Some("ChaCha20Poly1305".to_string()),
+                    suggestion: Some(
+                        "Check decryption key and algorithm configuration".to_string(),
+                    ),
+                })
             }
             _ => Ok(None), // No output (e.g., handshake packet processed)
         }
@@ -235,9 +246,11 @@ impl WireGuardTunnel {
                 )
             }
             Err(e) => Err(songbird_errors::SongbirdError::Network {
-                service: "BSTP Upgrade".to_string(),
+                service: Some("BSTP Upgrade".to_string()),
                 message: format!("Failed to upgrade to BSTP: {}", e),
                 details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
             }),
         }
     }
@@ -554,9 +567,11 @@ impl BSTPTunnel {
 
         if packet.len() < 32 {
             return Err(songbird_errors::SongbirdError::Network {
-                service: "BSTP".to_string(),
+                service: Some("BSTP".to_string()),
                 message: "Packet too small for zero-copy BSTP encryption".to_string(),
                 details: Some(format!("Need at least 32 bytes, got {}", packet.len())),
+                endpoint: None,
+                suggestion: Some("Check packet size and BSTP configuration".to_string()),
             });
         }
 

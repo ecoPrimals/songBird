@@ -284,7 +284,12 @@ import json
 from typing import Dict, List, Optional
 
 class SongbirdClient:
-    def __init__(self, base_url: str = "http://localhost:8080"):
+    def __init__(self, base_url: str = None):
+        import os
+        if base_url is None:
+            bind_address = os.environ.get("SONGBIRD_BIND_ADDRESS", "localhost")
+            port = os.environ.get("SONGBIRD_ORCHESTRATOR_PORT", "8080")
+            base_url = f"http://{bind_address}:{port}"
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
     

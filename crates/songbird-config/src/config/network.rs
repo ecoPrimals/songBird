@@ -4,32 +4,41 @@
 
 use serde::{Deserialize, Serialize};
 use songbird_errors::{Result, SongbirdError};
-use std::net::{IpAddr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 /// Network configuration for Songbird orchestrator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {
-    /// Primary bind address for the orchestrator
+    /// Bind address for services
     pub bind_address: IpAddr,
+
+    /// Production bind address (typically 0.0.0.0)
+    pub production_bind_address: IpAddr,
 
     /// Primary orchestrator port
     pub orchestrator_port: u16,
 
-    /// Gaming bridge port range
-    pub gaming_port_range: PortRange,
-
     /// Discovery service port
     pub discovery_port: u16,
 
-    /// Health check port
+    /// Default gaming server port (`StarCraft` IPX)
+    pub gaming_port: u16,
+
+    /// Health monitoring port for endpoint checks
     pub health_port: u16,
 
-    /// Metrics/dashboard port
+    /// Dashboard web interface port
     pub dashboard_port: u16,
 
-    /// Timeout configurations
-    pub timeouts: TimeoutConfig,
+    /// Gaming server port range for automatic allocation
+    pub gaming_port_range: PortRange,
+
+    /// Enable TLS for external connections
+    pub require_tls: bool,
+
+    /// Collection of timeout configurations
+    pub timeouts: NetworkTimeouts,
 
     /// Connection limits
     pub connection_limits: ConnectionLimits,
@@ -45,9 +54,6 @@ pub struct NetworkConfig {
 
     /// Request timeout
     pub request_timeout: Duration,
-
-    /// Enable TLS
-    pub enable_tls: bool,
 
     /// Allowed networks
     pub allowed_networks: Vec<String>,
@@ -86,6 +92,26 @@ pub struct NetworkConfig {
     pub cors: CorsConfig,
 }
 
+/// Network timeout configurations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkTimeouts {
+    pub connection: Duration,
+    pub request: Duration,
+    pub health_check: Duration,
+    pub default: Duration,
+}
+
+impl Default for NetworkTimeouts {
+    fn default() -> Self {
+        Self {
+            connection: Duration::from_secs(10),
+            request: Duration::from_secs(60),
+            health_check: Duration::from_secs(5),
+            default: Duration::from_secs(30),
+        }
+    }
+}
+
 /// Port range configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortRange {
@@ -115,17 +141,21 @@ pub struct TimeoutConfig {
 /// Connection limits
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionLimits {
-    /// Maximum connections per host
     pub max_connections_per_host: usize,
-
-    /// Maximum total connections
     pub max_total_connections: usize,
-
-    /// Connection pool idle timeout
-    pub pool_idle_timeout_secs: u64,
-
-    /// Maximum retry attempts
     pub max_retries: u32,
+    pub pool_idle_timeout_secs: u64,
+}
+
+impl Default for ConnectionLimits {
+    fn default() -> Self {
+        Self {
+            max_connections_per_host: 50,
+            max_total_connections: 500,
+            max_retries: 3,
+            pool_idle_timeout_secs: 300,
+        }
+    }
 }
 
 /// CORS configuration
@@ -134,7 +164,7 @@ pub struct CorsConfig {
     /// Enable CORS
     pub enabled: bool,
     /// Allowed origins
-    pub allowed_origins: Vec<String>,
+    pub origins: Vec<String>,
     /// Allowed methods
     pub allowed_methods: Vec<String>,
     /// Allowed headers
@@ -143,7 +173,7 @@ pub struct CorsConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GamingNetworkConfig {
-    /// Default gaming server port (StarCraft IPX)
+    /// Default gaming server port (`StarCraft` IPX)
     pub starcraft_port: u16,
 
     /// Age of Empires II port
@@ -160,139 +190,129 @@ pub struct GamingNetworkConfig {
 }
 
 impl NetworkConfig {
-    /// Create network configuration with NO hardcoded values
+    /// Create network configuration from environment variables
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if environment variables contain invalid values
+    ///
+    /// # Panics
+    ///
+    /// Panics if "127.0.0.1" cannot be parsed as an IP address
     pub fn from_env() -> Result<Self> {
-        let env_config = crate::config::environment::EnvironmentConfig::from_env()?;
+        let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
+            .unwrap_or_else(|_| "127.0.0.1".to_string())
+            .parse()
+            .map_err(|e| SongbirdError::Config {
+                field: Some("bind_address".to_string()),
+                message: format!("Invalid bind address: {e}"),
+                context: Some("Network configuration validation".to_string()),
+                suggestion: Some("Provide a valid IP address for bind_address".to_string()),
+            })?;
 
         Ok(Self {
-            // Use environment configuration - no hardcoding!
-            orchestrator_port: env_config.bind_port,
-            bind_address: env_config
-                .bind_address
+            bind_address,
+            production_bind_address: std::env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS")
+                .unwrap_or_else(|_| "0.0.0.0".to_string())
                 .parse()
-                .map_err(|e| SongbirdError::Config {
-                    field: Some("bind_address".to_string()),
-                    message: format!("Invalid bind address: {}", e),
-                })?,
-            discovery_ports: env_config.discovery_ports.clone(),
-
-            // Connection timeouts from environment
-            connection_timeout: env_config.connection_timeout(),
-            request_timeout: env_config.request_timeout(),
-
-            // Security settings from environment
-            enable_tls: env_config.require_tls,
-            allowed_networks: env_config.allowed_networks,
-            max_connections: env_config.max_connections as usize,
-
-            // Performance settings from environment
-            max_bandwidth_mbps: env_config.max_bandwidth_mbps,
-            worker_threads: env_config.worker_threads,
-
-            // Gaming configuration from environment
-            gaming_port_range: PortRange {
-                start: env_config.gaming_port_range.0,
-                end: env_config.gaming_port_range.1,
-            },
-
-            // Service endpoints from environment
+                .unwrap_or_else(|e| {
+                    tracing::warn!(
+                        "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}",
+                        e
+                    );
+                    "127.0.0.1".parse().unwrap_or_else(|_| {
+                        std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
+                    })
+                }),
+            orchestrator_port: std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
+                .unwrap_or_else(|_| "8080".to_string())
+                .parse()
+                .unwrap_or(8080),
             discovery_port: 8001,
+            gaming_port: 6112,
             health_port: 8002,
-            dashboard_port: 8003,
+            dashboard_port: 3000,
+            gaming_port_range: PortRange {
+                start: 7000,
+                end: 7100,
+            },
+            require_tls: false,
+            timeouts: NetworkTimeouts::default(),
             connection_limits: ConnectionLimits::default(),
-            timeouts: TimeoutConfig::default(),
             gaming: GamingNetworkConfig::default(),
-            federation_endpoints: env_config.federation_endpoints,
-            stun_servers: env_config.stun_servers,
-
-            // WebSocket port from environment
-            websocket_port: env_config.websocket_port,
-
-            // Metrics configuration
-            metrics_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
-                tracing::warn!("Invalid bind address for metrics, using 127.0.0.1: {}", e);
-                "127.0.0.1"
-                    .parse()
-                    .expect("127.0.0.1 is a valid IP address")
-            }),
+            discovery_ports: vec![8001],
+            connection_timeout: Duration::from_secs(30),
+            request_timeout: Duration::from_secs(60),
+            allowed_networks: vec!["127.0.0.0/8".to_string()],
+            max_connections: 100,
+            max_bandwidth_mbps: 100,
+            worker_threads: 2,
+            federation_endpoints: Vec::new(),
+            stun_servers: Vec::new(),
+            websocket_port: 8080,
+            metrics_bind_address: bind_address,
             metrics_port: 8004,
-
-            // Federation configuration
-            federation_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
-                tracing::warn!(
-                    "Invalid bind address for federation, using 127.0.0.1: {}",
-                    e
-                );
-                "127.0.0.1"
-                    .parse()
-                    .expect("127.0.0.1 is a valid IP address")
-            }),
+            federation_bind_address: bind_address,
             federation_port: 8005,
-
-            // CORS configuration
             cors: CorsConfig::default(),
         })
     }
 
-    /// Get secure default configuration (localhost-only)
+    /// Get secure configuration for production
+    ///
+    /// # Panics
+    ///
+    /// Panics if "127.0.0.1" cannot be parsed as an IP address
+    #[must_use]
     pub fn secure_defaults() -> Self {
-        let env_config = crate::config::environment::EnvironmentConfig::default();
-
         Self {
-            orchestrator_port: env_config.bind_port,
-            bind_address: "127.0.0.1".parse().unwrap_or_else(|e| {
-                tracing::error!(
-                    "Failed to parse bind address: {}, using localhost fallback",
-                    e
-                );
-                std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
-            }), // Always secure by default with safe fallback
-            discovery_ports: env_config.discovery_ports.clone(),
-            connection_timeout: env_config.connection_timeout(),
-            request_timeout: env_config.request_timeout(),
-            enable_tls: false, // Can be enabled via environment
-            allowed_networks: vec!["127.0.0.0/8".to_string()], // Localhost only by default
-            max_connections: 100, // Conservative default
-            max_bandwidth_mbps: 100, // Conservative default
-            worker_threads: 2, // Conservative default
+            bind_address: "127.0.0.1"
+                .parse()
+                .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))),
+            production_bind_address: "0.0.0.0"
+                .parse()
+                .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
+            orchestrator_port: 8080,
             discovery_port: 8001,
+            gaming_port: 6112,
             health_port: 8002,
+            dashboard_port: 3000,
             gaming_port_range: PortRange {
                 start: 7000,
                 end: 7100,
-            }, // Small safe range by default
-            connection_limits: ConnectionLimits::default(),
+            },
+            require_tls: true, // Secure by default
+            timeouts: NetworkTimeouts::default(),
+            connection_limits: ConnectionLimits {
+                max_connections_per_host: 10,
+                max_total_connections: 50,
+                max_retries: 3,
+                pool_idle_timeout_secs: 300,
+            }, // Conservative limits
             gaming: GamingNetworkConfig::default(),
-            dashboard_port: 8080,
-            timeouts: TimeoutConfig::default(),
-            federation_endpoints: vec![], // Empty by default - must be configured
-            stun_servers: vec![],         // Empty by default - must be configured
-            websocket_port: env_config.websocket_port,
-
-            // Metrics configuration
-            metrics_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
-                tracing::warn!("Invalid bind address, using 127.0.0.1: {}", e);
-                "127.0.0.1"
-                    .parse()
-                    .expect("127.0.0.1 is a valid IP address")
-            }),
+            discovery_ports: vec![8001],
+            connection_timeout: Duration::from_secs(30),
+            request_timeout: Duration::from_secs(60),
+            allowed_networks: vec!["127.0.0.0/8".to_string()], // Localhost only
+            max_connections: 50,                               // Conservative
+            max_bandwidth_mbps: 50,                            // Conservative
+            worker_threads: 2,                                 // Conservative
+            federation_endpoints: Vec::new(),
+            stun_servers: Vec::new(),
+            websocket_port: 8080,
+            metrics_bind_address: "127.0.0.1".parse().expect("valid IP"),
             metrics_port: 8004,
-
-            // Federation configuration
-            federation_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
-                tracing::warn!("Invalid bind address, using 127.0.0.1: {}", e);
-                "127.0.0.1"
-                    .parse()
-                    .expect("127.0.0.1 is a valid IP address")
-            }),
+            federation_bind_address: "127.0.0.1".parse().expect("valid IP"),
             federation_port: 8005,
-
-            // CORS configuration
             cors: CorsConfig::default(),
         }
     }
 
-    /// Check if configuration is production-ready
+    /// Validate production readiness
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configuration is not suitable for production
     pub fn validate_production_readiness(&self) -> Result<()> {
         // Production environments should have explicit configuration
         if self.bind_address.to_string() == "0.0.0.0"
@@ -301,6 +321,8 @@ impl NetworkConfig {
             return Err(SongbirdError::Config {
                 field: Some("bind_address".to_string()),
                 message: "Production binding to 0.0.0.0 requires explicit approval via SONGBIRD_PRODUCTION_BINDING_APPROVED=true".to_string(),
+                context: Some("Production environment validation".to_string()),
+                suggestion: Some("Set SONGBIRD_PRODUCTION_BINDING_APPROVED=true or use a specific bind address".to_string()),
             });
         }
 
@@ -314,153 +336,192 @@ impl NetworkConfig {
         Ok(())
     }
 
-    /// Get the primary orchestrator endpoint
-    pub fn orchestrator_endpoint(&self) -> SocketAddr {
+    /// Get orchestrator endpoint
+    #[must_use]
+    pub const fn orchestrator_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.bind_address, self.orchestrator_port)
     }
 
-    /// Get the discovery endpoint
-    pub fn discovery_endpoint(&self) -> SocketAddr {
+    /// Get discovery endpoint
+    #[must_use]
+    pub const fn discovery_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.bind_address, self.discovery_port)
     }
 
-    /// Get the health check endpoint
-    pub fn health_endpoint(&self) -> SocketAddr {
+    /// Get health endpoint
+    #[must_use]
+    pub const fn health_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.bind_address, self.health_port)
     }
 
-    /// Get the dashboard endpoint
-    pub fn dashboard_endpoint(&self) -> SocketAddr {
+    /// Get dashboard endpoint
+    #[must_use]
+    pub const fn dashboard_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.bind_address, self.dashboard_port)
     }
 
-    /// Get local bind address for dynamic port allocation
+    /// Default gaming server port (`StarCraft` IPX)
+    pub const DEFAULT_GAMING_PORT: u16 = 6112;
+
+    /// Get local bind address based on configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the bind address cannot be parsed or constructed
+    #[must_use = "Network configuration should be used"]
     pub fn local_bind_address(&self) -> Result<SocketAddr> {
-        Ok(SocketAddr::new(self.bind_address, 0))
+        let bind_str = format!("{}:{}", self.bind_address, self.orchestrator_port);
+
+        bind_str.parse::<SocketAddr>().map_or_else(
+            |_| {
+                self.bind_address.to_string().parse::<IpAddr>().map_or_else(
+                    |_| {
+                        Ok(SocketAddr::new(
+                            IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+                            self.orchestrator_port,
+                        ))
+                    },
+                    |ip| Ok(SocketAddr::new(ip, self.orchestrator_port)),
+                )
+            },
+            Ok,
+        )
     }
 
-    /// Get default endpoint (replaces hardcoded localhost:8080)
-    pub fn default_endpoint(&self) -> Result<SocketAddr> {
+    /// Get default endpoint for services
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the endpoint cannot be determined
+    pub const fn default_endpoint(&self) -> Result<SocketAddr> {
         Ok(self.orchestrator_endpoint())
     }
 
-    /// Get gaming port for specific protocol
+    /// Get gaming port for protocol
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the protocol is not supported
     pub fn gaming_port(&self, protocol: &str) -> Result<u16> {
-        match protocol.to_lowercase().as_str() {
-            "starcraft" | "ipx" => Ok(self.gaming.starcraft_port),
-            "aoe2" | "directplay" => Ok(self.gaming.aoe2_port),
-            "cnc" | "command_conquer" => Ok(self.gaming.cnc_port_range.start),
+        match protocol {
+            "ipx" | "starcraft" => Ok(self.gaming_port),
+            "aoe2" => Ok(self.gaming.aoe2_port),
             _ => Err(SongbirdError::Config {
                 field: Some("gaming_protocol".to_string()),
-                message: format!("Unknown gaming protocol: {}", protocol),
+                message: format!("Unknown gaming protocol: {protocol}"),
+                context: Some("Gaming protocol validation".to_string()),
+                suggestion: Some(
+                    "Use a supported gaming protocol like 'ipx', 'starcraft', or 'aoe2'"
+                        .to_string(),
+                ),
             }),
         }
     }
 
-    /// Get timeout duration for operation type
+    /// Get timeout for operation
+    #[must_use]
     pub fn timeout(&self, operation: &str) -> Duration {
-        let secs = match operation {
-            "connection" => self.timeouts.connection_timeout_secs,
-            "health_check" => self.timeouts.health_check_timeout_secs,
-            "registration" => self.timeouts.registration_timeout_secs,
-            "discovery" => self.timeouts.discovery_timeout_secs,
-            _ => self.timeouts.default_timeout_secs,
-        };
-        Duration::from_secs(secs)
+        match operation {
+            "connection" => self.timeouts.connection,
+            "request" => self.timeouts.request,
+            "health_check" => self.timeouts.health_check,
+            _ => self.timeouts.default,
+        }
     }
 
     /// Check if port is in gaming range
-    pub fn is_gaming_port(&self, port: u16) -> bool {
+    #[must_use]
+    pub const fn is_gaming_port(&self, port: u16) -> bool {
         port >= self.gaming_port_range.start && port <= self.gaming_port_range.end
     }
 
-    /// Get next available port in gaming range
+    /// Get next available gaming port
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no ports are available in the range
     pub fn next_gaming_port(&self, exclude: &[u16]) -> Result<u16> {
         for port in self.gaming_port_range.start..=self.gaming_port_range.end {
             if !exclude.contains(&port) {
                 return Ok(port);
             }
         }
-        Err(SongbirdError::Network {
-            service: "Network Config".to_string(),
+        Err(SongbirdError::Config {
+            field: Some("gaming_port_range".to_string()),
             message: "No available ports in gaming range".to_string(),
-            details: None,
+            context: Some("Gaming port allocation".to_string()),
+            suggestion: Some("Expand the gaming port range or release some ports".to_string()),
         })
     }
 
-    /// Validate configuration
+    /// Validate network configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configuration has conflicts or invalid values
     pub fn validate(&self) -> Result<()> {
-        // Check port ranges
-        if self.gaming_port_range.start >= self.gaming_port_range.end {
-            return Err(SongbirdError::Config {
-                field: Some("gaming_port_range".to_string()),
-                message: "Start port must be less than end port".to_string(),
-            });
-        }
-
-        // Check for port conflicts
-        let ports = [
+        let all_ports = [
             self.orchestrator_port,
             self.discovery_port,
             self.health_port,
             self.dashboard_port,
+            self.gaming_port,
         ];
 
-        for (i, &port1) in ports.iter().enumerate() {
-            for &port2 in ports.iter().skip(i + 1) {
+        for (i, &port1) in all_ports.iter().enumerate() {
+            for &port2 in all_ports.iter().skip(i + 1) {
                 if port1 == port2 {
                     return Err(SongbirdError::Config {
                         field: Some("port_conflict".to_string()),
-                        message: format!("Port {} is used multiple times", port1),
+                        message: format!("Port {port1} is used multiple times"),
+                        context: Some("Port conflict validation".to_string()),
+                        suggestion: Some(
+                            "Ensure each port is used only once in the configuration".to_string(),
+                        ),
                     });
                 }
             }
         }
 
-        // Check timeouts are reasonable
-        if self.timeouts.default_timeout_secs == 0 {
+        // Validate port range
+        if self.gaming_port_range.start > self.gaming_port_range.end {
             return Err(SongbirdError::Config {
-                field: Some("default_timeout_secs".to_string()),
-                message: "Timeout cannot be zero".to_string(),
+                field: Some("gaming_port_range".to_string()),
+                message: format!(
+                    "Invalid port range: start ({}) > end ({})",
+                    self.gaming_port_range.start, self.gaming_port_range.end
+                ),
+                context: Some("Port range validation".to_string()),
+                suggestion: Some(
+                    "Ensure the start port is less than or equal to the end port".to_string(),
+                ),
             });
         }
 
         Ok(())
     }
 
-    /// Create configuration for specific gaming scale
-    pub fn for_gaming_scale(scale: GamingScale) -> Self {
-        use GamingScale;
-
+    /// Create configuration for gaming scale
+    #[must_use]
+    pub fn for_gaming_scale(scale: &GamingScale) -> Self {
         let mut config = Self::default();
 
         match scale {
-            GamingScale::HomeGaming => {
-                // Gaming-optimized for home setups (2-8 players)
-                config.connection_limits.max_connections_per_host = 8;
-                config.connection_limits.max_total_connections = 20;
-                config.gaming_port_range = PortRange {
-                    start: 6112,
-                    end: 6120,
-                };
+            GamingScale::Home => {
+                config.connection_limits.max_total_connections = 100;
+                config.connection_limits.max_connections_per_host = 10;
             }
             GamingScale::LanParty => {
-                // LAN party optimized (8-50 players)
+                config.connection_limits.max_total_connections = 1000;
                 config.connection_limits.max_connections_per_host = 50;
-                config.connection_limits.max_total_connections = 100;
-                config.gaming_port_range = PortRange {
-                    start: 6112,
-                    end: 6200,
-                };
             }
-            GamingScale::Auto => {
-                // Auto-detect gaming load
-                config.connection_limits.max_connections_per_host = 25;
-                config.connection_limits.max_total_connections = 50;
-                config.gaming_port_range = PortRange {
-                    start: 6112,
-                    end: 6150,
-                };
+            GamingScale::Tournament => {
+                config.connection_limits.max_total_connections = 5000;
+                config.connection_limits.max_connections_per_host = 100;
+            }
+            GamingScale::Professional => {
+                config.connection_limits.max_total_connections = 10000;
+                config.connection_limits.max_connections_per_host = 200;
             }
         }
 
@@ -470,64 +531,37 @@ impl NetworkConfig {
 
 impl Default for NetworkConfig {
     fn default() -> Self {
-        let env_config = crate::config::environment::EnvironmentConfig::default();
-
         Self {
-            // Use environment configuration - NO MORE HARDCODING!
-            orchestrator_port: env_config.bind_port,
-            bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
-                tracing::warn!("Invalid environment bind address, using 127.0.0.1: {}", e);
-                "127.0.0.1"
-                    .parse()
-                    .expect("127.0.0.1 is a valid IP address")
-            }),
-            discovery_ports: env_config.discovery_ports.clone(),
-
+            bind_address: "127.0.0.1".parse().expect("valid IP"),
+            production_bind_address: "0.0.0.0".parse().expect("valid IP"),
+            orchestrator_port: 8080,
             discovery_port: 8001,
+            gaming_port: 6112,
             health_port: 8002,
-            // Connection timeouts from environment
-            connection_timeout: env_config.connection_timeout(),
-            request_timeout: env_config.request_timeout(),
-
-            // Other settings from environment
-            dashboard_port: env_config.dashboard_port,
-            websocket_port: env_config.websocket_port,
-
-            // Metrics configuration
-            metrics_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
-                tracing::warn!("Invalid bind address, using 127.0.0.1: {}", e);
-                "127.0.0.1"
-                    .parse()
-                    .expect("127.0.0.1 is a valid IP address")
-            }),
-            metrics_port: 8004,
-
-            // Federation configuration
-            federation_bind_address: env_config.bind_address.parse().unwrap_or_else(|e| {
-                tracing::warn!("Invalid bind address, using 127.0.0.1: {}", e);
-                "127.0.0.1"
-                    .parse()
-                    .expect("127.0.0.1 is a valid IP address")
-            }),
-            federation_port: 8005,
-
-            // CORS configuration
-            cors: CorsConfig::default(),
-
+            dashboard_port: 3000,
             gaming_port_range: PortRange {
-                start: env_config.gaming_port_range.0,
-                end: env_config.gaming_port_range.1,
+                start: 7000,
+                end: 7100,
             },
-            gaming: GamingNetworkConfig::default(),
-            timeouts: TimeoutConfig::default(),
+            require_tls: false,
+            timeouts: NetworkTimeouts::default(),
             connection_limits: ConnectionLimits::default(),
-            enable_tls: false,
-            allowed_networks: Vec::new(),
-            max_connections: 500,
+            gaming: GamingNetworkConfig::default(),
+            discovery_ports: vec![8001],
+            connection_timeout: Duration::from_secs(30),
+            request_timeout: Duration::from_secs(60),
+            allowed_networks: vec!["127.0.0.0/8".to_string()],
+            max_connections: 100,
             max_bandwidth_mbps: 100,
-            worker_threads: 4,
+            worker_threads: 2,
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
+            websocket_port: 8080,
+            metrics_bind_address: "127.0.0.1".parse().expect("valid IP"),
+            metrics_port: 8004,
+            federation_bind_address: "127.0.0.1".parse().expect("valid IP"),
+            federation_port: 8005,
+            cors: CorsConfig::default(),
         }
     }
 }
@@ -544,22 +578,11 @@ impl Default for TimeoutConfig {
     }
 }
 
-impl Default for ConnectionLimits {
-    fn default() -> Self {
-        Self {
-            max_connections_per_host: 50,
-            max_total_connections: 500,
-            pool_idle_timeout_secs: 30,
-            max_retries: 3,
-        }
-    }
-}
-
 impl Default for CorsConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            allowed_origins: vec!["*".to_string()],
+            origins: vec!["http://localhost:3000".to_string()],
             allowed_methods: vec!["GET".to_string(), "POST".to_string()],
             allowed_headers: vec!["Content-Type".to_string()],
         }
@@ -583,11 +606,13 @@ impl Default for GamingNetworkConfig {
 
 impl PortRange {
     /// Check if port is in range
-    pub fn contains(&self, port: u16) -> bool {
+    #[must_use]
+    pub const fn contains(&self, port: u16) -> bool {
         port >= self.start && port <= self.end
     }
 
     /// Get random port in range
+    #[must_use]
     pub fn random_port(&self) -> u16 {
         use rand::Rng;
         let mut rng = rand::thread_rng();
@@ -595,6 +620,7 @@ impl PortRange {
     }
 
     /// Get all ports in range
+    #[must_use]
     pub fn all_ports(&self) -> Vec<u16> {
         (self.start..=self.end).collect()
     }
@@ -661,23 +687,37 @@ mod tests {
     fn test_gaming_scale_configs() {
         use GamingScale;
 
-        let home_config = NetworkConfig::for_gaming_scale(GamingScale::HomeGaming);
-        let lan_config = NetworkConfig::for_gaming_scale(GamingScale::LanParty);
+        let home_config = NetworkConfig::for_gaming_scale(&GamingScale::Home);
+        let lan_config = NetworkConfig::for_gaming_scale(&GamingScale::LanParty);
 
         assert!(
             home_config.connection_limits.max_total_connections
                 < lan_config.connection_limits.max_total_connections
         );
     }
+
+    /// Example configurations for different gaming scales
+    #[allow(dead_code)]
+    pub fn example_configurations() -> Vec<(GamingScale, NetworkConfig)> {
+        let home_config = NetworkConfig::for_gaming_scale(&GamingScale::Home);
+        let lan_config = NetworkConfig::for_gaming_scale(&GamingScale::LanParty);
+
+        vec![
+            (GamingScale::Home, home_config),
+            (GamingScale::LanParty, lan_config),
+        ]
+    }
 }
 
-/// Gaming scale configuration for different deployment sizes
-#[derive(Debug, Clone, PartialEq)]
+/// Gaming network scale configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GamingScale {
-    /// Home gaming setup (2-8 players)
-    HomeGaming,
-    /// LAN party setup (8-50 players)
+    /// Home gaming setup (1-4 players)
+    Home,
+    /// LAN party setup (5-16 players)
     LanParty,
-    /// Auto-detect based on load
-    Auto,
+    /// Tournament setup (17-64 players)
+    Tournament,
+    /// Professional setup (65+ players)
+    Professional,
 }

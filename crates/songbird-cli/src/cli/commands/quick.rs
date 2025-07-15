@@ -46,7 +46,7 @@ pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> 
     });
     println!(
         "{}",
-        crate::cli::ui::success(&format!("✅ System ready! Node name: {}", node_name))
+        crate::cli::ui::success(&format!("✅ System ready! Node name: {node_name}"))
     );
     display_resources(&resources);
     // Step 2: Auto-discover existing networks
@@ -189,8 +189,7 @@ async fn auto_discover_networks() -> CliResult<Vec<DiscoveredNetwork>> {
     println!(
         "{}",
         crate::cli::ui::info(&format!(
-            "🔍 Using {} discovery (timeout: {}ms)",
-            discovery_method, discovery_timeout
+            "🔍 Using {discovery_method} discovery (timeout: {discovery_timeout}ms)"
         ))
     );
 
@@ -208,10 +207,11 @@ async fn auto_discover_networks() -> CliResult<Vec<DiscoveredNetwork>> {
             networks.extend(discover_via_broadcast(discovery_timeout).await?);
         }
         _ => {
-            return Err(crate::cli::CliError::Config(format!(
-                "Unknown discovery method: {}",
-                discovery_method
-            )));
+            return Err(crate::cli::CliError::Config {
+                message: format!("Unknown discovery method: {discovery_method}"),
+                field: Some("discovery_method".to_string()),
+                suggestion: Some("Use 'subnet', 'dns', or 'broadcast' for discovery method".to_string()),
+            });
         }
     }
 
@@ -224,13 +224,14 @@ fn detect_available_storage() -> Option<f64> {
     #[cfg(unix)]
     {
         use std::ffi::CString;
-        use std::mem;
+        use std::mem::MaybeUninit;
 
         let path_cstr = CString::new(path.to_string_lossy().as_bytes()).ok()?;
-        let mut statfs: libc::statvfs = unsafe { mem::zeroed() };
-        let result = unsafe { libc::statvfs(path_cstr.as_ptr(), &mut statfs) };
+        let mut statfs = MaybeUninit::<libc::statvfs>::uninit();
+        let result = unsafe { libc::statvfs(path_cstr.as_ptr(), statfs.as_mut_ptr()) };
         if result == 0 {
-            let available_bytes = statfs.f_bavail * statfs.f_frsize;
+            let statfs = unsafe { statfs.assume_init() };
+            let available_bytes = statfs.f_bavail.saturating_mul(statfs.f_frsize);
             return Some(available_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
         }
     }
@@ -323,11 +324,19 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
     use std::time::Duration;
 
     let socket = UdpSocket::bind("0.0.0.0:0")
-        .map_err(|e| crate::cli::CliError::Network(format!("Failed to create socket: {}", e)))?;
+        .map_err(|e| crate::cli::CliError::Network {
+            message: format!("Failed to create socket: {e}"),
+            endpoint: Some("0.0.0.0:0".to_string()),
+            suggestion: Some("Check network permissions and available ports".to_string()),
+        })?;
 
     socket
         .set_read_timeout(Some(Duration::from_millis(timeout_ms)))
-        .map_err(|e| crate::cli::CliError::Network(format!("Failed to set timeout: {}", e)))?;
+        .map_err(|e| crate::cli::CliError::Network {
+            message: format!("Failed to set timeout: {e}"),
+            endpoint: Some("socket".to_string()),
+            suggestion: Some("Check socket configuration".to_string()),
+        })?;
 
     // Send multicast discovery packet
     let multicast_addr = "224.0.0.251:5353"; // mDNS multicast address
@@ -400,7 +409,7 @@ async fn start_new_network(
     let network_name = generate_network_name(&node_name);
     println!(
         "{}",
-        crate::cli::ui::info(&format!("📡 Network name: {}", network_name))
+        crate::cli::ui::info(&format!("📡 Network name: {network_name}"))
     );
 
     // Generate secure network ID
@@ -539,8 +548,8 @@ fn display_resources(resources: &SystemResources) {
 async fn show_quick_status(node_name: &str, contribute: &ContributeType) -> CliResult<()> {
     println!("{}", crate::cli::ui::success("🎉 Quick Start Complete!"));
     println!("📊 Status:");
-    println!("   🏷️  Node: {}", node_name);
-    println!("   🤝 Contributing: {:?}", contribute);
+    println!("   🏷️  Node: {node_name}");
+    println!("   🤝 Contributing: {contribute:?}");
     println!("   🌐 Network: Connected");
     println!(
         "   📊 Dashboard: http://{}:{}",
@@ -573,11 +582,11 @@ fn generate_network_name(node_name: &str) -> String {
 
 fn format_latency(ms: f64) -> String {
     if ms < 10.0 {
-        format!("{:.1}ms (excellent)", ms)
+        format!("{ms:.1}ms (excellent)")
     } else if ms < 50.0 {
-        format!("{:.1}ms (good)", ms)
+        format!("{ms:.1}ms (good)")
     } else {
-        format!("{:.1}ms (okay)", ms)
+        format!("{ms:.1}ms (okay)")
     }
 }
 
@@ -658,7 +667,9 @@ async fn execute_quick_one_touch() -> CliResult<()> {
     let mut auto_config = GamingAutoConfig::new()
         .await
         .map_err(|e| CliError::Gaming {
-            message: format!("Setup failed: {}", e),
+            message: format!("Setup failed: {e}"),
+            game: Some("auto_config".to_string()),
+            suggestion: Some("Check gaming configuration and system requirements".to_string()),
             protocol: None,
         })?;
 
@@ -683,8 +694,10 @@ async fn execute_quick_one_touch() -> CliResult<()> {
             println!("{} Setup failed: {}", "❌".red(), e);
             show_troubleshooting_tips();
             return Err(CliError::Gaming {
-                message: format!("One-touch setup failed: {}", e),
+                message: format!("One-touch setup failed: {e}"),
                 protocol: None,
+                game: Some("one_touch_setup".to_string()),
+                suggestion: Some("Check the troubleshooting tips above".to_string()),
             });
         }
     }
@@ -732,8 +745,10 @@ async fn execute_quick_family_safe() -> CliResult<()> {
     let mut auto_config = GamingAutoConfig::new()
         .await
         .map_err(|e| CliError::Gaming {
-            message: format!("Setup failed: {}", e),
+            message: format!("Setup failed: {e}"),
             protocol: None,
+            game: Some("family_safe_setup".to_string()),
+            suggestion: Some("Check gaming configuration and system requirements".to_string()),
         })?;
 
     // Perform family-safe setup
@@ -747,8 +762,10 @@ async fn execute_quick_family_safe() -> CliResult<()> {
             println!("{} Family-safe setup failed: {}", "❌".red(), e);
             show_family_troubleshooting();
             return Err(CliError::Gaming {
-                message: format!("Family-safe setup failed: {}", e),
+                message: format!("Family-safe setup failed: {e}"),
                 protocol: None,
+                game: Some("family_safe_setup".to_string()),
+                suggestion: Some("Check the troubleshooting tips above".to_string()),
             });
         }
     }
@@ -786,8 +803,10 @@ async fn execute_quick_zero_touch() -> CliResult<()> {
     let mut auto_config = GamingAutoConfig::new()
         .await
         .map_err(|e| CliError::Gaming {
-            message: format!("Setup failed: {}", e),
+            message: format!("Setup failed: {e}"),
             protocol: None,
+            game: Some("beardog_setup".to_string()),
+            suggestion: Some("Check beardog configuration and connectivity".to_string()),
         })?
         .with_beardog(endpoint.clone(), token);
 
@@ -802,8 +821,10 @@ async fn execute_quick_zero_touch() -> CliResult<()> {
             println!("{} Zero-touch setup failed: {}", "❌".red(), e);
             show_beardog_troubleshooting();
             return Err(CliError::Gaming {
-                message: format!("Zero-touch setup failed: {}", e),
+                message: format!("Zero-touch setup failed: {e}"),
                 protocol: None,
+                game: Some("zero_touch_setup".to_string()),
+                suggestion: Some("Check beardog troubleshooting tips above".to_string()),
             });
         }
     }

@@ -15,11 +15,10 @@ use tokio::sync::RwLock;
 use tracing::{debug, info};
 
 use crate::security::{
-    BearDogComplianceReport, BearDogConfig,
-    BearDogEncryptedData, BearDogKeyContext, BearDogKeyHandle, BearDogKeySpec,
-    BearDogPrincipal, BearDogResource, BearDogSecureChannel,
+    BearDogAction, BearDogComplianceReport, BearDogConfig, BearDogEncryptedData, BearDogKeyContext,
+    BearDogKeyHandle, BearDogKeySpec, BearDogPrincipal, BearDogResource, BearDogSecureChannel,
     BearDogSecurityContext, BearDogSecurityEvent, BearDogSecurityLevel, BearDogSecurityProvider,
-    BearDogTimePeriod, BearDogAction, NodeId,
+    BearDogTimePeriod, NodeId,
 };
 use songbird_errors::{Result, SongbirdError};
 
@@ -631,7 +630,10 @@ impl BearDogSecurityIntegration {
         };
 
         // Store session
-        self.sessions.write().await.insert(session_id.clone(), session);
+        self.sessions
+            .write()
+            .await
+            .insert(session_id.clone(), session);
 
         // Log audit event
         self.audit_logger
@@ -649,7 +651,9 @@ impl BearDogSecurityIntegration {
         action: &BearDogAction,
     ) -> Result<bool> {
         // Use zero trust engine to make access decision
-        self.zero_trust.verify_access(principal, resource, action).await
+        self.zero_trust
+            .verify_access(principal, resource, action)
+            .await
     }
 
     /// Encrypt data
@@ -721,13 +725,18 @@ impl BearDogClient {
 
     /// Connect to BearDog instance
     pub async fn connect(&self) -> Result<()> {
-        info!("🐕 Connecting to BearDog instance at: {}", self.beardog_path);
+        info!(
+            "🐕 Connecting to BearDog instance at: {}",
+            self.beardog_path
+        );
 
         // Verify BearDog path exists
         if !Path::new(&self.beardog_path).exists() {
             return Err(SongbirdError::Security {
                 message: "BearDog instance not found".to_string(),
                 context: Some(format!("Path: {}", self.beardog_path)),
+                severity: Some("critical".to_string()),
+                suggestion: Some("Install and configure BearDog instance".to_string()),
             });
         }
 
@@ -1013,4 +1022,4 @@ impl Default for BearDogClientConfig {
 }
 
 /// Re-export for convenience
-pub use uuid; 
+pub use uuid;

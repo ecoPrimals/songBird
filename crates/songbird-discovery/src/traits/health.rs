@@ -75,6 +75,8 @@ pub struct DefaultHealthMonitor {
 }
 
 impl DefaultHealthMonitor {
+    /// Create a new health check provider
+    #[must_use]
     pub fn new() -> Self {
         Self {
             health_checks: HashMap::new(),
@@ -83,35 +85,27 @@ impl DefaultHealthMonitor {
         }
     }
 
-    /// Internal method to perform HTTP health check
-    async fn perform_http_check(
-        &self,
-        service_id: &str,
-        _endpoint: &str,
-    ) -> Result<HealthCheckResult> {
-        // For now, perform a simple connectivity check since the HTTP client integration needs more work
-        // This is a simplified implementation for sovereign scientist grade quality
-        let status = HealthStatus::Healthy; // Simplified for now
-
-        Ok(HealthCheckResult {
+    /// Perform HTTP health check
+    fn perform_http_check(service_id: &str, _endpoint: &str) -> HealthCheckResult {
+        HealthCheckResult {
             service_id: service_id.to_string(),
-            status,
+            status: HealthStatus::Healthy, // Simplified for now
             message: Some("HTTP health check completed".to_string()),
             timestamp: chrono::Utc::now(),
             details: std::collections::HashMap::new(),
-        })
+        }
     }
 
-    /// Internal method to perform basic connectivity check
-    async fn perform_basic_check(&self, service_id: &str) -> Result<HealthCheckResult> {
+    /// Perform basic health check
+    fn perform_basic_check(service_id: &str) -> HealthCheckResult {
         // Basic health check - assume healthy if service is registered
-        Ok(HealthCheckResult {
+        HealthCheckResult {
             service_id: service_id.to_string(),
             status: HealthStatus::Healthy,
             message: Some("Basic connectivity check".to_string()),
             timestamp: Utc::now(),
             details: HashMap::new(),
-        })
+        }
     }
 }
 
@@ -136,16 +130,18 @@ impl HealthMonitor for DefaultHealthMonitor {
             }
 
             let result = if let Some(endpoint) = &config.endpoint {
-                self.perform_http_check(service_id, endpoint).await?
+                Self::perform_http_check(service_id, endpoint)
             } else {
-                self.perform_basic_check(service_id).await?
+                Self::perform_basic_check(service_id)
             };
 
             Ok(result)
         } else {
             Err(SongbirdError::Service {
                 service: service_id.to_string(),
-                message: "Service not registered for health monitoring".to_string(),
+                message: format!("Service {} is not healthy", service_id),
+                status: Some("unhealthy".to_string()),
+                suggestion: Some("Check service logs and connectivity".to_string()),
             })
         }
     }
@@ -176,7 +172,7 @@ impl HealthMonitor for DefaultHealthMonitor {
                         HealthCheckResult {
                             service_id: service_id.clone(),
                             status: HealthStatus::Unhealthy,
-                            message: Some(format!("Health check error: {}", e)),
+                            message: Some(format!("Health check error: {e}")),
                             timestamp: Utc::now(),
                             details: HashMap::new(),
                         },

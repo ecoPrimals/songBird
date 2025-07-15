@@ -9,6 +9,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// Federation operating modes
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -24,6 +25,9 @@ pub enum FederationMode {
 
     /// Hybrid mode - can act as both client and server
     Hybrid,
+
+    /// Clustered mode - participate in federation cluster
+    Clustered,
 }
 
 impl Default for FederationMode {
@@ -48,10 +52,10 @@ pub struct FederationStatus {
     pub last_heartbeat: Option<DateTime<Utc>>,
 
     /// Federation cluster ID
-    pub cluster_id: Option<String>,
+    pub cluster_id: String,
 
     /// This node's ID in the federation
-    pub node_id: Option<String>,
+    pub node_id: String,
 
     /// Federation protocol version
     pub protocol_version: String,
@@ -64,8 +68,8 @@ impl Default for FederationStatus {
             connected: false,
             node_count: 0,
             last_heartbeat: None,
-            cluster_id: None,
-            node_id: None,
+            cluster_id: "default-cluster".to_string(),
+            node_id: Uuid::new_v4().to_string(),
             protocol_version: "1.0".to_string(),
         }
     }
@@ -78,7 +82,7 @@ pub struct FederationConfig {
     pub cluster_endpoints: Vec<String>,
 
     /// Heartbeat interval in seconds
-    pub heartbeat_interval: u64,
+    pub heartbeat_interval: Option<u32>,
 
     /// Connection timeout in seconds
     pub connection_timeout: u64,
@@ -90,22 +94,80 @@ pub struct FederationConfig {
     pub auto_discovery: bool,
 
     /// Node identifier
-    pub node_id: Option<String>,
+    pub node_id: String,
 
     /// Cluster identifier
-    pub cluster_id: Option<String>,
+    pub cluster_id: String,
+
+    /// Discovery port for UDP broadcasts
+    pub discovery_port: Option<u16>,
+
+    /// Main service port
+    pub port: Option<u16>,
 }
 
 impl Default for FederationConfig {
     fn default() -> Self {
         Self {
             cluster_endpoints: vec![],
-            heartbeat_interval: 30,
+            heartbeat_interval: Some(30),
             connection_timeout: 10,
             max_retries: 3,
             auto_discovery: true,
-            node_id: None,
-            cluster_id: None,
+            node_id: Uuid::new_v4().to_string(),
+            cluster_id: "default-cluster".to_string(),
+            discovery_port: Some(8765),
+            port: Some(8080),
         }
+    }
+}
+
+impl FederationConfig {
+    /// Create new federation config with cluster and node IDs
+    pub fn new(cluster_id: String, node_id: String) -> Self {
+        Self {
+            cluster_id,
+            node_id,
+            ..Default::default()
+        }
+    }
+
+    /// Create new federation config with auto-generated IDs
+    pub fn new_with_auto_ids() -> Self {
+        Self {
+            cluster_id: format!("cluster-{}", Uuid::new_v4()),
+            node_id: Uuid::new_v4().to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// Add cluster endpoint
+    pub fn add_endpoint(mut self, endpoint: String) -> Self {
+        self.cluster_endpoints.push(endpoint);
+        self
+    }
+
+    /// Set heartbeat interval
+    pub fn with_heartbeat_interval(mut self, interval: u32) -> Self {
+        self.heartbeat_interval = Some(interval);
+        self
+    }
+
+    /// Enable/disable auto-discovery
+    pub fn with_auto_discovery(mut self, enabled: bool) -> Self {
+        self.auto_discovery = enabled;
+        self
+    }
+
+    /// Set discovery port
+    pub fn with_discovery_port(mut self, port: u16) -> Self {
+        self.discovery_port = Some(port);
+        self
+    }
+
+    /// Set main service port
+    pub fn with_port(mut self, port: u16) -> Self {
+        self.port = Some(port);
+        self
     }
 }

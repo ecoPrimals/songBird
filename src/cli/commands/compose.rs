@@ -8,6 +8,7 @@ use clap::{Args, Subcommand};
 // Note: DynamicPluginRegistry will be implemented in the registry module
 use crate::traits::PluginCapability;
 use colored::*;
+use songbird_config::constants::cli::DEFAULT_CLI_ANIMATION_DELAY;
 
 #[derive(Debug, Args)]
 pub struct ComposeArgs {
@@ -275,7 +276,7 @@ async fn handle_execute_composition(plugins: String) -> Result<()> {
 
     // For demonstration, simulate composition execution
     println!("🔄 Simulating plugin integration...");
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+    tokio::time::sleep(DEFAULT_CLI_ANIMATION_DELAY).await;
 
     println!("{}", "✅ Composition executed successfully!".green().bold());
     println!("System ID: {}", "comp-12345-abcde".bright_yellow());

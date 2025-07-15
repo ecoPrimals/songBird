@@ -589,7 +589,7 @@ mod tests {
         let mut scaler = AutoScaler::new(config, resource_pool);
 
         let high_usage = create_test_resource_usage(85.0, 85.0);
-        let decision = scaler.evaluate_scaling("test-service", 2, &high_usage, 100.0).unwrap();
+        let decision = scaler.evaluate_scaling("test-service", 2, &high_usage, 100.0).expect("Failed to evaluate scaling decision");
 
         assert!(matches!(decision, ScalingDecision::ScaleUp(_)), 
             "Expected scale up decision, got: {:?}", decision);
@@ -602,7 +602,7 @@ mod tests {
         let mut scaler = AutoScaler::new(config, resource_pool);
 
         let low_usage = create_test_resource_usage(20.0, 25.0);
-        let decision = scaler.evaluate_scaling("test-service", 3, &low_usage, 10.0).unwrap();
+        let decision = scaler.evaluate_scaling("test-service", 3, &low_usage, 10.0).expect("Failed to evaluate scaling decision");
 
         assert!(matches!(decision, ScalingDecision::ScaleDown(_)), 
             "Expected scale down decision, got: {:?}", decision);
@@ -615,7 +615,7 @@ mod tests {
         let mut scaler = AutoScaler::new(config, resource_pool);
 
         let normal_usage = create_test_resource_usage(50.0, 60.0);
-        let decision = scaler.evaluate_scaling("test-service", 2, &normal_usage, 50.0).unwrap();
+        let decision = scaler.evaluate_scaling("test-service", 2, &normal_usage, 50.0).expect("Failed to evaluate scaling decision");
 
         assert!(matches!(decision, ScalingDecision::NoAction), 
             "Expected no action decision, got: {:?}", decision);
@@ -659,7 +659,7 @@ mod tests {
             cpu_usage_percent: 80.0,
         };
 
-        let recommendations = optimizer.optimize_performance("test-service", &metrics).unwrap();
+        let recommendations = optimizer.optimize_performance("test-service", &metrics).expect("Failed to optimize performance");
         assert!(!recommendations.is_empty());
     }
 

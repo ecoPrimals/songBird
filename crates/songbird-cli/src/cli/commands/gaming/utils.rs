@@ -28,12 +28,15 @@ pub fn generate_session_code() -> String {
         .collect()
 }
 
-/// Pad string to specified length
+/// Pad string to specified length - zero-copy optimized
 pub fn pad_string(s: &str, length: usize) -> String {
     if s.len() >= length {
         s.to_string()
     } else {
-        format!("{}{}", s, " ".repeat(length - s.len()))
+        let mut result = String::with_capacity(length);
+        result.push_str(s);
+        result.extend(std::iter::repeat_n(' ', length - s.len()));
+        result
     }
 }
 

@@ -321,47 +321,33 @@ impl ConnectionProxy {
         if self.config.enable_ssl {
             // SSL/TLS configuration
             if let (Some(cert_path), Some(key_path)) = (&self.config.ssl_cert_path, &self.config.ssl_key_path) {
-                // Load TLS certificate and key
-                let cert = std::fs::read(cert_path)
-                    .map_err(|e| SongbirdError::Configuration(
-                        format!("Failed to read SSL certificate {}: {}", cert_path, e)
-                    ))?;
-                let key = std::fs::read(key_path)
-                    .map_err(|e| SongbirdError::Configuration(
-                        format!("Failed to read SSL private key {}: {}", key_path, e)
-                    ))?;
+                // For now, SSL is configured but not implemented - fallback to HTTP
+                tracing::warn!("SSL configuration provided but TLS support not implemented - falling back to HTTP");
                 
-                // Create TLS acceptor
-                let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem(cert, key).await
-                    .map_err(|e| SongbirdError::Configuration(
-                        format!("Failed to create TLS configuration: {}", e)
-                    ))?;
-                
-                // Start HTTPS server
-                let server = axum_server::from_tcp_rustls(listener, tls_config)
+                // Start HTTP server
+                let server = axum::Server::from_tcp(listener)
+                    .map_err(|e| SongbirdError::Communication(
+                        format!("Failed to create HTTP server: {}", e)
+                    ))?
                     .serve(app.into_make_service_with_connect_info::<std::net::SocketAddr>());
                 
                 // Spawn server task for graceful shutdown handling
                 let running_clone = Arc::clone(&self.running);
-                let server_handle = tokio::spawn(async move {
+                tokio::spawn(async move {
                     let graceful = server.with_graceful_shutdown(async move {
                         // Wait for shutdown signal
-                        while running_clone.read().await.clone() {
+                        while *running_clone.read().await {
                             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                         }
-                        tracing::info!("Gracefully shutting down HTTPS proxy server");
+                        tracing::info!("Gracefully shutting down HTTP proxy server");
                     });
                     
                     if let Err(e) = graceful.await {
-                        tracing::error!("HTTPS proxy server error: {}", e);
+                        tracing::error!("HTTP proxy server error: {}", e);
                     }
                 });
                 
-                // Store server handle for cleanup (would need to add field to struct)
-                tracing::info!("HTTPS proxy server started successfully on {}", socket_addr);
-                
-                // For now, we'll detach the handle since we don't have a field to store it
-                server_handle.abort();
+                tracing::info!("HTTP proxy server started successfully on {} (SSL requested but not implemented)", socket_addr);
                 
             } else {
                 return Err(SongbirdError::Configuration(
@@ -370,15 +356,18 @@ impl ConnectionProxy {
             }
         } else {
             // HTTP server (no SSL)
-            let server = axum_server::from_tcp(listener)
+            let server = axum::Server::from_tcp(listener)
+                .map_err(|e| SongbirdError::Communication(
+                    format!("Failed to create HTTP server: {}", e)
+                ))?
                 .serve(app.into_make_service_with_connect_info::<std::net::SocketAddr>());
             
             // Spawn server task for graceful shutdown handling
             let running_clone = Arc::clone(&self.running);
-            let server_handle = tokio::spawn(async move {
+            tokio::spawn(async move {
                 let graceful = server.with_graceful_shutdown(async move {
                     // Wait for shutdown signal
-                    while running_clone.read().await.clone() {
+                    while *running_clone.read().await {
                         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                     }
                     tracing::info!("Gracefully shutting down HTTP proxy server");
@@ -390,9 +379,6 @@ impl ConnectionProxy {
             });
             
             tracing::info!("HTTP proxy server started successfully on {}", socket_addr);
-            
-            // For now, we'll detach the handle since we don't have a field to store it
-            server_handle.abort();
         }
         
         tracing::info!("Connection proxy started successfully");
@@ -551,17 +537,13 @@ impl ConnectionProxy {
             ));
         };
         
-        // Create HTTP client with timeouts using our native hyper client
-        let client = crate::communication::hyper_client::HyperHttpClient::new()
+        // Create HTTP client with timeouts
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(self.config.request_timeout))
+            .build()
             .map_err(|e| SongbirdError::Communication(
                 format!("Failed to create HTTP client: {}", e)
             ))?;
-        
-        // Add proxy headers to client
-        client.add_default_header("X-Forwarded-For".to_string(), 
-            request.source_ip.as_deref().unwrap_or("unknown").to_string()).await;
-        client.add_default_header("X-Forwarded-Proto".to_string(), "http".to_string()).await;
-        client.add_default_header("X-Proxy-Service".to_string(), service.id.clone()).await;
         
         // Copy headers from original request
         for (name, value) in request.headers.iter() {
@@ -573,32 +555,33 @@ impl ConnectionProxy {
             }
         }
         
-        // Send the request using appropriate method
-        let response = match request.method {
-            Method::GET => client.get(&target_url).await,
-            Method::POST => {
-                if !request.body.is_empty() {
-                    // Convert body to JSON for POST requests
-                    let body_json: serde_json::Value = serde_json::from_slice(&request.body)
-                        .unwrap_or_else(|_| serde_json::json!({}));
-                    client.post_json(&target_url, &body_json).await
-                } else {
-                    client.post_json(&target_url, &serde_json::json!({})).await
+        // Build the request with headers
+        let mut req_builder = client.request(request.method.clone(), &target_url);
+        
+        // Add proxy headers
+        req_builder = req_builder.header("X-Forwarded-For", request.source_ip.as_deref().unwrap_or("unknown"));
+        req_builder = req_builder.header("X-Forwarded-Proto", "http");
+        req_builder = req_builder.header("X-Proxy-Service", &service.service_id);
+        
+        // Copy headers from original request (excluding hop-by-hop headers)
+        for (name, value) in request.headers.iter() {
+            if !Self::is_hop_by_hop_header(name.as_str()) {
+                if let Ok(value_str) = value.to_str() {
+                    req_builder = req_builder.header(name.as_str(), value_str);
                 }
-            },
-            Method::PUT => {
-                if !request.body.is_empty() {
-                    let body_json: serde_json::Value = serde_json::from_slice(&request.body)
-                        .unwrap_or_else(|_| serde_json::json!({}));
-                    client.put_json(&target_url, &body_json).await
-                } else {
-                    client.put_json(&target_url, &serde_json::json!({})).await
-                }
-            },
-            _ => client.request(request.method.clone(), &target_url, None::<&serde_json::Value>).await,
-        }.map_err(|e| SongbirdError::Communication(
-            format!("Failed to forward request to {}: {}", target_url, e)
-        ))?;
+            }
+        }
+        
+        // Add body if present
+        if !request.body.is_empty() {
+            req_builder = req_builder.body(request.body);
+        }
+        
+        // Send the request
+        let response = req_builder.send().await
+            .map_err(|e| SongbirdError::Communication(
+                format!("Failed to forward request to {}: {}", target_url, e)
+            ))?;
         
         // Extract response data
         let status_code = response.status();
@@ -612,15 +595,17 @@ impl ConnectionProxy {
         }
         
         // Add proxy response headers
-        if let Ok(response_time_value) = start_time.elapsed().as_millis().to_string().parse() {
-            headers.insert("X-Proxy-Response-Time", response_time_value);
-        }
-        if let Ok(service_id_value) = service.id.parse() {
-            headers.insert("X-Proxy-Service", service_id_value);
-        }
+        headers.insert("X-Proxy-Response-Time", 
+            start_time.elapsed().as_millis().to_string().parse().unwrap_or_default());
+        headers.insert("X-Proxy-Service", 
+            service.service_id.parse().unwrap_or_default());
         
         // Get response body
-        let body = response.body().to_vec();
+        let body = response.bytes().await
+            .map_err(|e| SongbirdError::Communication(
+                format!("Failed to read response body: {}", e)
+            ))?
+            .to_vec();
         
         let response_time = start_time.elapsed();
         

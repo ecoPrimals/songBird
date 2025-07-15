@@ -65,7 +65,7 @@ mod bstp_handshake {
             if self.state != HandshakeState::Initial {
                 return Err(songbird_errors::SongbirdError::Security {
                     message: "Handshake already in progress".to_string(),
-                    context: Some(format!("Current state: {:?}", self.state)),
+                    context: Some(format!("Current state: {self.state}")),
                 });
             }
 
@@ -115,7 +115,7 @@ mod bstp_handshake {
             if self.state != HandshakeState::Established {
                 return Err(songbird_errors::SongbirdError::Security {
                     message: "Handshake not established".to_string(),
-                    context: Some(format!("Current state: {:?}", self.state)),
+                    context: Some(format!("Current state: {self.state}")),
                 });
             }
 
@@ -128,7 +128,7 @@ mod bstp_handshake {
             let ciphertext = cipher.encrypt(nonce, plaintext).map_err(|e| {
                 songbird_errors::SongbirdError::Security {
                     message: "Encryption failed".to_string(),
-                    context: Some(format!("AES-GCM error: {}", e)),
+                    context: Some(format!("AES-GCM error: {e}")),
                 }
             })?;
 
@@ -153,7 +153,7 @@ mod bstp_handshake {
             if self.state != HandshakeState::Established {
                 return Err(songbird_errors::SongbirdError::Security {
                     message: "Handshake not established".to_string(),
-                    context: Some(format!("Current state: {:?}", self.state)),
+                    context: Some(format!("Current state: {self.state}")),
                 });
             }
 
@@ -165,7 +165,7 @@ mod bstp_handshake {
             let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| {
                 songbird_errors::SongbirdError::Security {
                     message: "Decryption failed".to_string(),
-                    context: Some(format!("AES-GCM error: {}", e)),
+                    context: Some(format!("AES-GCM error: {e}")),
                 }
             })?;
 

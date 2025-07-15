@@ -80,7 +80,7 @@ impl Orchestrator {
     ///
     /// # Returns
     /// Health status information
-    pub async fn get_health_status(&self) -> HealthStatus {
+    pub fn get_health_status(&self) -> HealthStatus {
         let uptime = self.start_time.elapsed().map(|d| d.as_secs()).unwrap_or(0);
 
         HealthStatus {
@@ -97,7 +97,7 @@ impl Orchestrator {
     ///
     /// # Returns  
     /// Result indicating successful startup or error
-    pub async fn start(&self) -> Result<()> {
+    pub fn start(&self) -> Result<()> {
         tracing::info!("🎼 Songbird Orchestrator starting...");
         Ok(())
     }
@@ -108,7 +108,7 @@ impl Orchestrator {
     ///
     /// # Returns
     /// Returns the result of the operation
-    pub async fn stop(&self) -> Result<()> {
+    pub fn stop(&self) -> Result<()> {
         tracing::info!("🛑 Songbird Orchestrator stopping...");
         Ok(())
     }
@@ -129,7 +129,7 @@ impl Orchestrator {
     ///
     /// # Returns
     /// Returns a vector of discovered service names
-    pub async fn discover_services(&self) -> Result<Vec<String>> {
+    pub fn discover_services(&self) -> Result<Vec<String>> {
         // Basic service discovery implementation
         Ok(vec!["orchestrator".to_string(), "health".to_string()])
     }

@@ -394,6 +394,108 @@ impl FederationManager {
         tracing::info!("📡 Message broadcast completed: {}/{} successful", successful_broadcasts, total_endpoints);
         Ok(())
     }
+
+    /// Query remote services from a specific federation endpoint
+    pub async fn query_remote_services(
+        &self,
+        endpoint: &str,
+    ) -> Result<Vec<FederatedServiceInfo>, SongbirdError> {
+        if let Some(mcp) = &self.mcp_federation {
+            tracing::info!("Querying remote services from endpoint: {}", endpoint);
+            
+            // Create service discovery request
+            let request = FederationRequest {
+                request_id: uuid::Uuid::new_v4().to_string(),
+                request_type: FederationRequestType::ServiceDiscovery,
+                data: serde_json::json!({
+                    "query_type": "list_services",
+                    "node_id": mcp.get_status().await.node_id,
+                    "timestamp": chrono::Utc::now()
+                }),
+                timestamp: chrono::Utc::now(),
+                source_node: mcp.get_status().await.node_id,
+                target_node: Some(endpoint.to_string()),
+            };
+            
+            // Send request to remote endpoint
+            match mcp.send_federation_request(endpoint, &request).await {
+                Ok(response) => {
+                    if response.success {
+                        // Parse response data into FederatedServiceInfo
+                        if let Some(services_data) = response.data.as_array() {
+                            let mut services = Vec::new();
+                            for service_data in services_data {
+                                if let Ok(service) = serde_json::from_value::<FederatedServiceInfo>(service_data.clone()) {
+                                    services.push(service);
+                                } else {
+                                    // Create service info from raw data
+                                    let service = FederatedServiceInfo {
+                                        service_id: service_data.get("service_id")
+                                            .or_else(|| service_data.get("name"))
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("unknown")
+                                            .to_string(),
+                                        service_name: service_data.get("service_name")
+                                            .or_else(|| service_data.get("name"))
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("unknown")
+                                            .to_string(),
+                                        node_id: service_data.get("node_id")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or(endpoint)
+                                            .to_string(),
+                                        endpoints: service_data.get("endpoints")
+                                            .and_then(|v| v.as_array())
+                                            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                                            .unwrap_or_else(|| vec![endpoint.to_string()]),
+                                        capabilities: service_data.get("capabilities")
+                                            .and_then(|v| v.as_array())
+                                            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                                            .unwrap_or_else(Vec::new),
+                                        health_status: service_data.get("health_status")
+                                            .or_else(|| service_data.get("status"))
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("unknown")
+                                            .to_string(),
+                                        metadata: service_data.get("metadata")
+                                            .and_then(|v| v.as_object())
+                                            .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+                                            .unwrap_or_else(|| {
+                                                let mut meta = std::collections::HashMap::new();
+                                                meta.insert("endpoint".to_string(), serde_json::Value::String(endpoint.to_string()));
+                                                meta
+                                            }),
+                                    };
+                                    services.push(service);
+                                }
+                            }
+                            
+                            tracing::info!("Retrieved {} services from endpoint: {}", services.len(), endpoint);
+                            Ok(services)
+                        } else {
+                            tracing::warn!("Invalid response format from endpoint: {}", endpoint);
+                            Ok(vec![])
+                        }
+                    } else {
+                        let error_msg = response.error_message.unwrap_or("Unknown error".to_string());
+                        tracing::error!("Remote service query failed: {}", error_msg);
+                        Err(SongbirdError::Federation {
+                            node_id: endpoint.to_string(),
+                            message: format!("Remote query failed: {}", error_msg),
+                            details: Some("Service discovery request failed".to_string()),
+                        })
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to query remote services from {}: {}", endpoint, e);
+                    Err(e)
+                }
+            }
+        } else {
+            tracing::warn!("MCP federation not initialized - cannot query remote services");
+            Ok(vec![])
+        }
+    }
     
     /// Send broadcast message to a specific endpoint
     async fn send_broadcast_to_endpoint(
@@ -478,21 +580,39 @@ impl FederationManager {
             100.0
         };
         
-        tracing::info!(
-            "📈 Broadcast statistics: {:.1}% success rate ({}/{})",
-            success_rate, successful, total
-        );
-        
-        // In a real implementation, this would update Prometheus metrics
-        // or other monitoring systems
+        tracing::info!("📊 Federation broadcast statistics: {:.1}% success rate ({}/{})", success_rate, successful, total);
     }
     
-    // Private helper methods
+    /// Get federation endpoints from MCP
+    pub async fn get_federation_endpoints(&self) -> Result<Vec<String>, SongbirdError> {
+        if let Some(mcp) = &self.mcp_federation {
+            Ok(mcp.get_status().await.cluster_id
+                .map(|_| mcp.get_cluster_endpoints().await.unwrap_or_default())
+                .unwrap_or_default())
+        } else {
+            Ok(vec![])
+        }
+    }
+    
+    /// Get local IP address for federation
+    pub async fn get_local_ip(&self) -> Result<String, SongbirdError> {
+        if let Some(mcp) = &self.mcp_federation {
+            mcp.get_local_ip().await
+        } else {
+            // Fallback local IP detection
+            Ok(crate::config::constants::default_bind_address().to_string())
+        }
+    }
+    
+    /// Get local node ID
     async fn get_local_node_id(&self) -> Option<String> {
         if let Some(mcp) = &self.mcp_federation {
             mcp.get_status().await.node_id
         } else {
-            None
+            // Generate a unique node ID based on system information
+            let hostname = std::env::var("HOSTNAME").unwrap_or_else(|_| "unknown".to_string());
+            let timestamp = chrono::Utc::now().timestamp();
+            Some(format!("songbird-{}-{}", hostname, timestamp))
         }
     }
     
@@ -753,7 +873,7 @@ impl FederationManager {
     async fn check_port_connections(&self, port: u16) -> Result<(), SongbirdError> {
         use std::net::{TcpListener, SocketAddr};
         
-        let addr: SocketAddr = format!("127.0.0.1:{}", port).parse()
+        let addr: SocketAddr = format!("{}:{}", crate::config::constants::default_bind_address(), port).parse()
             .map_err(|e| SongbirdError::Configuration {
                 field: "port".to_string(),
                 message: format!("Invalid port {}: {}", port, e),

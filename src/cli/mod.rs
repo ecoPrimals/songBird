@@ -1,43 +1,60 @@
-// Module imports
-//! Songbird CLI Module
+//! CLI module for songbird orchestration
 //!
-//! Command-line interface for the Songbird Orchestrator
-//! Makes distributed computing as simple as `songbird init`
+//! This module provides command-line interface functionality.
 
-pub mod commands;
-pub mod config;
-pub mod discovery;
-pub mod templates;
-pub mod ui;
 use clap::{Parser, Subcommand};
-use thiserror::Error;
 // CLI module core
-use self::commands::Commands;
-use crate::errors::SongbirdError;
 use serde::{Deserialize, Serialize};
+use songbird_cli::commands;
+use songbird_cli::commands::Commands;
+use songbird_cli::ui;
+use songbird_cli::CliError;
+use songbird_config::constants::{
+    cli::DEFAULT_CLI_SHORT_ANIMATION_DELAY, discovery::DEFAULT_DISCOVERY_TIMEOUT,
+    DEFAULT_CHECK_INTERVAL, DEFAULT_CONNECTION_TIMEOUT,
+};
 use std::path::PathBuf;
-/// Songbird CLI Error types
-#[derive(Error, Debug)]
-pub enum CliError {
-    #[error("Configuration error: {0}")]
-    Config(String),
+/// CLI configuration
+#[derive(Debug, Clone)]
+pub struct CliConfig {
+    pub verbose: bool,
+    pub config_path: Option<String>,
+    pub colored_output: bool,
+}
 
-    #[error("Network error: {0}")]
-    Network(String),
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Serialization error: {0}")]
-    Serialization(#[from] serde_json::Error),
-    #[error("Songbird orchestrator error: {0}")]
-    Orchestrator(#[from] SongbirdError),
-    #[error("Command failed: {0}")]
-    Command(String),
-    #[error("Execution error: {0}")]
-    ExecutionError(String),
-    #[error("User cancelled operation")]
-    UserCancelled,
-    #[error("Gaming error: {0}")]
-    Gaming(String),
+impl Default for CliConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CliConfig {
+    pub fn new() -> Self {
+        Self {
+            verbose: false,
+            config_path: None,
+            colored_output: true,
+        }
+    }
+
+    pub fn with_verbose(mut self, verbose: bool) -> Self {
+        self.verbose = verbose;
+        self
+    }
+
+    pub fn with_config_path(mut self, path: String) -> Self {
+        self.config_path = Some(path);
+        self
+    }
+
+    pub fn with_colored_output(mut self, colored: bool) -> Self {
+        self.colored_output = colored;
+        self
+    }
+
+    pub fn is_colored_output_enabled(&self) -> bool {
+        self.colored_output
+    }
 }
 /// CLI result type
 pub type CliResult<T> = std::result::Result<T, CliError>;
@@ -134,7 +151,7 @@ impl Cli {
         // Set up logging level based on verbosity (no need to reinit subscriber)
         if !self.quiet {
             let level = if self.verbose { "debug" } else { "info" };
-            std::env::set_var("RUST_LOG", format!("songbird={}", level));
+            std::env::set_var("RUST_LOG", format!("songbird={level}"));
         }
         // Execute the command
         match self.command {
@@ -170,11 +187,13 @@ impl Cli {
                 level,
             } => commands::logs::show_logs(service.as_deref(), follow, lines, level).await,
             Commands::Internet { command } => {
-                crate::cli::commands::internet::execute_internet_command(&command).await.map_err(|e| crate::cli::CliError::Command(e.to_string()))
+                crate::cli::commands::internet::execute_internet_command(&command)
+                    .await
+                    .map_err(|e| crate::cli::CliError::Command(e.to_string()))
             }
             Commands::Firewall { command } => commands::firewall::execute_firewall(&command)
                 .await
-                .map_err(|e| CliError::Command(format!("Firewall command failed: {}", e))),
+                .map_err(|e| CliError::Command(format!("Firewall command failed: {e}"))),
             Commands::IoT { command } => commands::basic_iot::handle_basic_iot_command(command)
                 .await
                 .map_err(CliError::Orchestrator),
@@ -244,11 +263,11 @@ pub mod constants {
     /// Default log directory
     pub const DEFAULT_LOG_DIR: &str = ".songbird/logs";
     /// Default discovery timeout
-    pub const DEFAULT_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(5);
+    pub const DEFAULT_DISCOVERY_TIMEOUT: Duration = DEFAULT_DISCOVERY_TIMEOUT;
     /// Default connection timeout
-    pub const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
+    pub const DEFAULT_CONNECTION_TIMEOUT: Duration = DEFAULT_CONNECTION_TIMEOUT;
     /// Default health check interval for CLI
-    pub const DEFAULT_CLI_HEALTH_INTERVAL: Duration = Duration::from_secs(30);
+    pub const DEFAULT_CLI_HEALTH_INTERVAL: Duration = DEFAULT_CHECK_INTERVAL;
 }
 /// Execute start command with improved user experience
 #[allow(dead_code)]
@@ -276,10 +295,13 @@ async fn execute_start(
     };
 
     // Fix the Orchestrator initialization by removing the .await
-    let orchestrator = Orchestrator::new(config)?;
+    let orchestrator = Orchestrator::new(config).map_err(|e| CliError::Config(e.to_string()))?;
 
     // Create and start orchestrator
-    orchestrator.start().await.map_err(CliError::Orchestrator)?;
+    orchestrator
+        .start()
+        .await
+        .map_err(|e| CliError::Config(e.to_string()))?;
 
     println!(
         "{}",
@@ -288,7 +310,10 @@ async fn execute_start(
     println!(
         "{}",
         ui::info(&format!(
-            "📊 Dashboard available at: http://localhost:{}",
+            "📊 Dashboard available at: http://{}:{}",
+            std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
+                crate::config::constants::network::DEFAULT_BIND_ADDRESS.to_string()
+            }),
             dashboard_port
         ))
     );
@@ -303,7 +328,10 @@ async fn execute_start(
     // Keep running until interrupted
     tokio::signal::ctrl_c().await.map_err(CliError::Io)?;
     println!("{}", ui::info("⏹️  Stopping orchestrator..."));
-    orchestrator.stop().await.map_err(CliError::Orchestrator)?;
+    orchestrator
+        .stop()
+        .await
+        .map_err(|e| CliError::Config(e.to_string()))?;
 
     println!("{}", ui::success("✅ Stopped successfully"));
     Ok(())
@@ -321,15 +349,15 @@ async fn load_config_from_file(path: &PathBuf) -> CliResult<crate::config::Orche
 
     let contents = tokio::fs::read_to_string(path)
         .await
-        .map_err(|e| CliError::Config(format!("Failed to read config file: {}", e)))?;
+        .map_err(|e| CliError::Config(format!("Failed to read config file: {e}")))?;
     // Support multiple config formats based on extension
     let config = match path.extension().and_then(|ext| ext.to_str()) {
         Some("toml") => toml::from_str(&contents)
-            .map_err(|e| CliError::Config(format!("Failed to parse TOML config: {}", e)))?,
+            .map_err(|e| CliError::Config(format!("Failed to parse TOML config: {e}")))?,
         Some("yaml") | Some("yml") => serde_yaml::from_str(&contents)
-            .map_err(|e| CliError::Config(format!("Failed to parse YAML config: {}", e)))?,
+            .map_err(|e| CliError::Config(format!("Failed to parse YAML config: {e}")))?,
         Some("json") => serde_json::from_str(&contents)
-            .map_err(|e| CliError::Config(format!("Failed to parse JSON config: {}", e)))?,
+            .map_err(|e| CliError::Config(format!("Failed to parse JSON config: {e}")))?,
         _ => {
             return Err(CliError::Config(
                 "Unsupported config file format. Use .toml, .yaml, .yml, or .json".to_string(),
@@ -371,7 +399,7 @@ async fn execute_stop(force: bool) -> CliResult<()> {
         ];
         let step_duration = stop_timeout / steps.len() as u64;
         for (progress, message) in &steps {
-            println!("   [{}%] {}", progress, message);
+            println!("   [{progress}%] {message}");
             tokio::time::sleep(tokio::time::Duration::from_millis(step_duration)).await;
         }
     } else {
@@ -383,7 +411,7 @@ async fn execute_stop(force: bool) -> CliResult<()> {
             Err(e) => {
                 println!(
                     "{}",
-                    ui::warn(&format!("⚠️  Shutdown encountered issues: {}", e))
+                    ui::warn(&format!("⚠️  Shutdown encountered issues: {e}"))
                 );
                 if !force {
                     println!("💡 Try using --force flag for forceful shutdown");
@@ -403,7 +431,7 @@ async fn shutdown_real_orchestrator(force: bool) -> CliResult<()> {
     if let Some(pid) = orchestrator_pid {
         println!(
             "{}",
-            ui::info(&format!("📍 Found running orchestrator (PID: {})", pid))
+            ui::info(&format!("📍 Found running orchestrator (PID: {pid})"))
         );
         if force {
             // Send SIGKILL (force terminate)
@@ -488,7 +516,7 @@ async fn terminate_process(pid: u32, force: bool) -> CliResult<()> {
     {
         let signal = if force { "KILL" } else { "TERM" };
         let output = std::process::Command::new("kill")
-            .arg(format!("-{}", signal))
+            .arg(format!("-{signal}"))
             .arg(pid.to_string())
             .output();
 
@@ -496,14 +524,13 @@ async fn terminate_process(pid: u32, force: bool) -> CliResult<()> {
             if output.status.success() {
                 println!(
                     "{}",
-                    ui::info(&format!("📤 Sent {} signal to process {}", signal, pid))
+                    ui::info(&format!("📤 Sent {signal} signal to process {pid}"))
                 );
                 return Ok(());
             }
         }
         Err(CliError::Command(format!(
-            "Failed to send {} signal to process {}",
-            signal, pid
+            "Failed to send {signal} signal to process {pid}"
         )))
     }
 
@@ -543,7 +570,7 @@ async fn wait_for_process_exit(pid: u32, timeout_ms: u64) -> CliResult<bool> {
         if !is_process_running(pid).await? {
             return Ok(true); // Process exited
         }
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        tokio::time::sleep(DEFAULT_CLI_SHORT_ANIMATION_DELAY).await;
     }
     Ok(false) // Timeout
 }
@@ -579,4 +606,3 @@ async fn is_process_running(pid: u32) -> CliResult<bool> {
 
     Ok(false) // Assume not running if we can't check
 }
-
