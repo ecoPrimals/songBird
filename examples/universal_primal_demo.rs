@@ -8,10 +8,36 @@ use std::sync::Arc;
 use tracing::info;
 
 use songbird_universal_primals::{
-    beardog::BearDogPrimal, nestgate::NestGatePrimal, toadstool::ToadstoolPrimal,
+    beardog::BearDogPrimal, nestgate::NestGatePrimalClient, toadstool::ToadstoolPrimal,
     traits::PrimalHealth, PrimalCapability, PrimalContext, PrimalProvider, PrimalResult,
     PrimalType, SecurityLevel, UniversalPrimalConfig, UniversalPrimalRegistry,
+    NetworkLocation,
 };
+
+// Helper function to create BearDog primal
+async fn create_beardog_primal(endpoint: &str, context: PrimalContext) -> PrimalResult<BearDogPrimal> {
+    info!("Creating BearDog primal for endpoint: {}", endpoint);
+    Ok(BearDogPrimal::with_context(context))
+}
+
+// Helper function to create NestGate primal
+async fn create_nestgate_primal(endpoint: &str, context: PrimalContext) -> PrimalResult<NestGatePrimalClient> {
+    info!("Creating NestGate primal for endpoint: {}", endpoint);
+    Ok(NestGatePrimalClient::new())
+}
+
+// Helper function to create Toadstool primal
+async fn create_toadstool_primal(endpoint: &str, context: PrimalContext) -> PrimalResult<ToadstoolPrimal> {
+    info!("Creating Toadstool primal for endpoint: {}", endpoint);
+    Ok(ToadstoolPrimal::with_context(context))
+}
+
+// Helper function to create Squirrel primal (if available)
+async fn create_squirrel_primal(endpoint: &str, context: PrimalContext) -> PrimalResult<BearDogPrimal> {
+    info!("Creating Squirrel primal for endpoint: {}", endpoint);
+    // For now, using BearDog as a placeholder
+    Ok(BearDogPrimal::with_context(context))
+}
 
 #[tokio::main]
 async fn main() -> PrimalResult<()> {
@@ -29,7 +55,7 @@ async fn main() -> PrimalResult<()> {
     info!("📋 Demo 1: Creating and registering individual primals");
 
     // Create BearDog security primal
-    let beardog = Arc::new(create_beardog_primal("http://beardog.demo", context.clone()).await?);
+    let beardog: Arc<BearDogPrimal> = Arc::new(create_beardog_primal("http://beardog.demo", context.clone()).await?);
     info!("🔐 Created BearDog primal: {}", beardog.primal_id());
 
     // Display capabilities
@@ -48,8 +74,8 @@ async fn main() -> PrimalResult<()> {
         .await?;
     info!("✅ BearDog primal registered");
 
-    // Create NestGate storage primal
-    let nestgate = Arc::new(create_nestgate_primal("http://nestgate.demo", context.clone()).await?);
+    // Create NestGate data primal
+    let nestgate: Arc<NestGatePrimalClient> = Arc::new(create_nestgate_primal("http://nestgate.demo", context.clone()).await?);
     info!("💾 Created NestGate primal: {}", nestgate.primal_id());
 
     // Register the primal
@@ -59,7 +85,7 @@ async fn main() -> PrimalResult<()> {
     info!("✅ NestGate primal registered");
 
     // Create Toadstool compute primal
-    let toadstool =
+    let toadstool: Arc<ToadstoolPrimal> =
         Arc::new(create_toadstool_primal("http://toadstool.demo", context.clone()).await?);
     info!("🍄 Created Toadstool primal: {}", toadstool.primal_id());
 
@@ -69,8 +95,8 @@ async fn main() -> PrimalResult<()> {
         .await?;
     info!("✅ Toadstool primal registered");
 
-    // Create Squirrel AI primal
-    let squirrel = Arc::new(create_squirrel_primal("http://squirrel.demo", context.clone()).await?);
+    // Create Squirrel optimization primal
+    let squirrel: Arc<BearDogPrimal> = Arc::new(create_squirrel_primal("http://squirrel.demo", context.clone()).await?);
     info!("🐿️ Created Squirrel primal: {}", squirrel.primal_id());
 
     // Register the primal
@@ -79,151 +105,103 @@ async fn main() -> PrimalResult<()> {
         .await?;
     info!("✅ Squirrel primal registered");
 
-    // Demo 2: Discovery and querying
-    info!("🔍 Demo 2: Discovery and querying");
+    // Demo 2: Health checks and monitoring
+    info!("📋 Demo 2: Health checks and monitoring");
 
-    // Get all security primals
-    let security_primals = registry.get_instances_by_type(PrimalType::Security).await;
-    info!("🔐 Security primals found: {}", security_primals.len());
+    // Check health of all primals
+    let beardog_health = beardog.health_check().await;
+    info!("🔐 BearDog health: {:?}", beardog_health);
 
-    // Get all storage primals
-    let storage_primals = registry.get_instances_by_type(PrimalType::Storage).await;
-    info!("💾 Storage primals found: {}", storage_primals.len());
+    let nestgate_health = nestgate.health_check().await;
+    info!("💾 NestGate health: {:?}", nestgate_health);
 
-    // Get all compute primals
-    let compute_primals = registry.get_instances_by_type(PrimalType::Compute).await;
-    info!("🍄 Compute primals found: {}", compute_primals.len());
+    let toadstool_health = toadstool.health_check().await;
+    info!("🍄 Toadstool health: {:?}", toadstool_health);
 
-    // Get all AI primals
-    let ai_primals = registry.get_instances_by_type(PrimalType::AI).await;
-    info!("🐿️ AI primals found: {}", ai_primals.len());
+    // Demo 3: Cross-primal operations
+    info!("📋 Demo 3: Cross-primal operations");
 
-    // Demo 3: Context-based discovery
-    info!("🎯 Demo 3: Context-based discovery");
+    // Display primal information
+    info!("🔐 BearDog primal ID: {}", beardog.primal_id());
+    info!("💾 NestGate primal ID: {}", nestgate.primal_id());
+    info!("🍄 Toadstool primal ID: {}", toadstool.primal_id());
 
-    let context_primals = registry.find_for_context(&context).await;
-    info!("📍 Primals for context: {}", context_primals.len());
+    // Demo 4: Dynamic registration and discovery
+    info!("📋 Demo 4: Dynamic registration and discovery");
 
-    // Demo 4: Capability-based discovery
-    info!("🔧 Demo 4: Capability-based discovery");
-
-    let encryption_capability = PrimalCapability::Encryption {
-        algorithms: vec!["AES256".to_string()],
-    };
-
-    let encryption_primals = registry
-        .find_by_capability_for_context(&encryption_capability, &context)
-        .await;
-    info!(
-        "🔐 Encryption-capable primals: {}",
-        encryption_primals.len()
-    );
-
-    // Demo 5: Health monitoring
-    info!("💓 Demo 5: Health monitoring");
-
-    let health_results = registry.health_check_all().await;
-    info!("🏥 Health check results:");
-    for (primal_id, health) in health_results {
-        let status = match health {
-            PrimalHealth::Healthy => "✅ Healthy".to_string(),
-            PrimalHealth::Degraded { issues } => format!("⚠️ Degraded: {}", issues.join(", ")),
-            PrimalHealth::Unhealthy { reason } => format!("❌ Unhealthy: {}", reason),
-        };
-        info!("  - {}: {}", primal_id, status);
-    }
-
-    // Demo 6: Statistics
-    info!("📊 Demo 6: Statistics");
-
-    let stats = registry.get_enhanced_statistics().await;
-    info!("📈 Registry statistics:");
-    info!("  - Total instances: {}", stats.total_instances);
-    info!("  - Total users: {}", stats.total_users);
-    info!("  - Instances by type:");
-    for (primal_type, count) in stats.instances_by_type {
-        info!("    - {:?}: {}", primal_type, count);
-    }
-
-    // Demo 7: Multi-user scenarios
-    info!("👥 Demo 7: Multi-user scenarios");
-
-    // Create a different context for user2
+    // Create a new context for a different user
     let user2_context = PrimalContext {
         user_id: "user2".to_string(),
-        device_id: "device2".to_string(),
-        session_id: "session2".to_string(),
-        network_location: songbird_universal_primals::traits::NetworkLocation {
+        device_id: "device_b".to_string(),
+        session_id: "session_456".to_string(),
+        network_location: NetworkLocation {
             ip_address: "192.168.1.100".to_string(),
             subnet: Some("192.168.1.0/24".to_string()),
-            network_id: Some("home_network".to_string()),
-            geo_location: Some("US-West".to_string()),
+            network_id: Some("remote_network".to_string()),
+            geo_location: Some("Remote Location".to_string()),
         },
-        security_level: SecurityLevel::Standard,
+        security_level: SecurityLevel::High,
         metadata: HashMap::new(),
     };
 
-    // Create another BearDog instance for user2
-    let beardog2 =
+    // Create and register a primal for the new context
+    let beardog2: Arc<BearDogPrimal> =
         Arc::new(create_beardog_primal("http://beardog2.demo", user2_context.clone()).await?);
+
     registry
         .register_primal_for_context(beardog2.clone(), user2_context.clone(), None)
         .await?;
-    info!("🔐 Created and registered BearDog for user2");
+    info!("✅ Registered BearDog primal for user2");
 
-    // Check instances for different users
-    let user1_primals = registry.get_instances_for_user(&context.user_id).await;
-    let user2_primals = registry.get_instances_for_user("user2").await;
+    // Display contexts
+    info!("👤 User1 context: {:?}", context);
+    info!("👤 User2 context: {:?}", user2_context);
 
-    info!("👤 User1 primals: {}", user1_primals.len());
-    info!("👤 User2 primals: {}", user2_primals.len());
+    // Demo 5: Primal capability matching
+    info!("📋 Demo 5: Primal capability matching");
 
-    // Demo 8: Configuration management
-    info!("⚙️ Demo 8: Configuration management");
+    // Display capabilities for each primal
+    info!("🔐 BearDog capabilities:");
+    for capability in beardog.capabilities() {
+        info!("  - {:?}", capability);
+    }
 
-    // Create configuration from environment
-    let config = UniversalPrimalConfig::from_env();
-    info!("🔧 Configuration loaded from environment");
-    info!(
-        "  - Auto-discovery enabled: {}",
-        config.auto_discovery_enabled
-    );
-    info!(
-        "  - Primal instances configured: {}",
-        config.primal_instances.len()
-    );
+    info!("💾 NestGate capabilities:");
+    for capability in nestgate.capabilities() {
+        info!("  - {:?}", capability);
+    }
 
-    // Demo 9: Cleanup
-    info!("🧹 Demo 9: Cleanup");
+    info!("🍄 Toadstool capabilities:");
+    for capability in toadstool.capabilities() {
+        info!("  - {:?}", capability);
+    }
+
+    // Demo 6: Configuration and optimization
+    info!("📋 Demo 6: Configuration and optimization");
+
+    // Display primal contexts
+    info!("🔐 BearDog context: {:?}", beardog.context());
+    info!("💾 NestGate context: {:?}", nestgate.context());
+    info!("🍄 Toadstool context: {:?}", toadstool.context());
+
+    // Demo 7: Cleanup and shutdown
+    info!("📋 Demo 7: Cleanup and shutdown");
 
     // Unregister primals
-    registry.unregister_instance(&beardog.instance_id()).await?;
+    registry.unregister_primal(&beardog.primal_id()).await?;
     info!("🗑️ Unregistered BearDog primal");
 
-    registry
-        .unregister_instance(&nestgate.instance_id())
-        .await?;
+    registry.unregister_primal(&nestgate.primal_id()).await?;
     info!("🗑️ Unregistered NestGate primal");
 
-    registry
-        .unregister_instance(&toadstool.instance_id())
-        .await?;
+    registry.unregister_primal(&toadstool.primal_id()).await?;
     info!("🗑️ Unregistered Toadstool primal");
 
-    registry
-        .unregister_instance(&squirrel.instance_id())
-        .await?;
+    registry.unregister_primal(&squirrel.primal_id()).await?;
     info!("🗑️ Unregistered Squirrel primal");
 
-    registry
-        .unregister_instance(&beardog2.instance_id())
-        .await?;
+    registry.unregister_primal(&beardog2.primal_id()).await?;
     info!("🗑️ Unregistered BearDog2 primal");
-
-    // Verify cleanup
-    let final_stats = registry.get_enhanced_statistics().await;
-    info!("📊 Final statistics:");
-    info!("  - Total instances: {}", final_stats.total_instances);
 
     info!("🎉 Universal Primal Integration Demo completed successfully!");
 

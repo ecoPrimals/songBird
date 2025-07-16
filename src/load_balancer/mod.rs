@@ -127,191 +127,28 @@ impl LoadBalancer for RoundRobinLoadBalancer {
         *current_index = (*current_index + 1) % healthy_instances.len();
 
         // Use reference instead of cloning
-        Some(&healthy_instances[index])
+        Some(healthy_instances[index].clone())
     }
 
-    /// Get current load balancer statistics
-    pub async fn get_stats(&self) -> LoadBalancerStats {
-        // Return reference to avoid cloning large stats struct
-        self.stats.read().await.clone()
-    }
-
-    /// Get the least loaded instance using references
-    pub async fn get_least_loaded_instance(&self) -> Option<&ServiceInstance> {
-        let instances = self.instances.read().await;
-        let instance_metrics = self.metrics.read().await;
-        
-        // Use references and iterator chains to avoid cloning
-        instances
-            .iter()
-            .filter(|instance| instance.is_healthy())
-            .min_by(|a, b| {
-                let load_a = instance_metrics.get(&a.id).map(|m| m.current_load).unwrap_or(0.0);
-                let load_b = instance_metrics.get(&b.id).map(|m| m.current_load).unwrap_or(0.0);
-                load_a.partial_cmp(&load_b).unwrap_or(std::cmp::Ordering::Equal)
-            })
-    }
-
-    /// Get current statistics efficiently
-    pub async fn get_statistics(&self) -> LoadBalancerStats {
-        self.stats.read().await.clone()
-    }
-
-    /// Update instance metrics efficiently using borrowed references
-    pub async fn update_instance_metrics(&self, instance_id: &str, metrics: &InstanceMetrics) {
-        let mut instance_metrics = self.metrics.write().await;
+    async fn record_request(&self, instance_id: &str, success: bool, response_time: f64) {
         let mut stats = self.stats.write().await;
-        
-        // Update metrics without cloning
-        instance_metrics.insert(instance_id.to_string(), metrics.clone());
-        
-        // Update stats efficiently
-        stats.total_requests += metrics.request_count;
-        stats.successful_requests += metrics.successful_requests;
-        stats.failed_requests += metrics.failed_requests;
-        stats.average_response_time = self.calculate_average_response_time(&instance_metrics);
-    }
-
-    /// Calculate average response time efficiently
-    fn calculate_average_response_time(&self, metrics: &std::collections::HashMap<String, InstanceMetrics>) -> f64 {
-        if metrics.is_empty() {
-            return 0.0;
-        }
-        
-        let (total_time, count) = metrics
-            .values()
-            .map(|m| (m.average_response_time * m.request_count as f64, m.request_count))
-            .fold((0.0, 0), |(acc_time, acc_count), (time, count)| {
-                (acc_time + time, acc_count + count)
-            });
-        
-        if count > 0 {
-            total_time / count as f64
+        stats.total_requests += 1;
+        if success {
+            stats.successful_requests += 1;
         } else {
-            0.0
+            stats.failed_requests += 1;
         }
-    }
-
-    /// Get weighted instance efficiently
-    pub async fn get_weighted_instance(&self) -> Option<&ServiceInstance> {
-        let instances = self.instances.read().await;
-        let mut current_weights = std::collections::HashMap::new();
-        
-        // Calculate weights without cloning instances
-        for instance in instances.iter() {
-            let weight = if instance.is_healthy() {
-                instance.weight
-            } else {
-                0
-            };
-            current_weights.insert(&instance.id, weight);
-        }
-        
-        // Find weighted instance using references
-        let total_weight: u32 = current_weights.values().sum();
-        if total_weight == 0 {
-            return None;
-        }
-        
-        let mut random_weight = rand::random::<u32>() % total_weight;
-        
-        for instance in instances.iter() {
-            if let Some(&weight) = current_weights.get(&instance.id) {
-                if random_weight < weight {
-                    return Some(instance);
-                }
-                random_weight -= weight;
-            }
-        }
-        
-        None
-    }
-
-    /// Get all instances efficiently
-    pub async fn get_all_instances(&self) -> Vec<ServiceInstance> {
-        // Only clone when necessary for external API
-        self.instances.read().await.clone()
-    }
-
-    /// Create new load balancer with optimized config handling
-    pub async fn new_with_config(config: &LoadBalancerConfig) -> Result<Self, LoadBalancerError> {
-        let bind_address = match &config.bind_address {
-            Some(addr) => addr.clone(),
-            None => {
-                let env_config = crate::config::environment::get_environment_config();
-                env_config.bind_address
-            }
+        stats.average_response_time = if stats.total_requests > 1 {
+            (stats.average_response_time * (stats.total_requests - 1) as f64 + response_time) / stats.total_requests as f64
+        } else {
+            response_time
         };
-
-        Ok(Self {
-            instances: Arc::new(RwLock::new(Vec::new())),
-            metrics: Arc::new(RwLock::new(std::collections::HashMap::new())),
-            stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
-            config: LoadBalancerConfig {
-                algorithm: config.algorithm.clone(),
-                health_check_interval: config.health_check_interval,
-                max_retries: config.max_retries,
-                timeout: config.timeout,
-                bind_address: Some(bind_address),
-                enable_circuit_breaker: config.enable_circuit_breaker,
-                circuit_breaker_threshold: config.circuit_breaker_threshold,
-                circuit_breaker_timeout: config.circuit_breaker_timeout,
-            },
-        })
+        
+        // Update last request time - removed since field doesn't exist
     }
 
-    /// Create weighted load balancer with optimized config handling
-    pub async fn new_weighted_with_config(config: &LoadBalancerConfig) -> Result<Self, LoadBalancerError> {
-        let bind_address = match &config.bind_address {
-            Some(addr) => addr.clone(),
-            None => {
-                let env_config = crate::config::environment::get_environment_config();
-                env_config.bind_address
-            }
-        };
-
-        Ok(Self {
-            instances: Arc::new(RwLock::new(Vec::new())),
-            metrics: Arc::new(RwLock::new(std::collections::HashMap::new())),
-            stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
-            config: LoadBalancerConfig {
-                algorithm: config.algorithm.clone(),
-                health_check_interval: config.health_check_interval,
-                max_retries: config.max_retries,
-                timeout: config.timeout,
-                bind_address: Some(bind_address),
-                enable_circuit_breaker: config.enable_circuit_breaker,
-                circuit_breaker_threshold: config.circuit_breaker_threshold,
-                circuit_breaker_timeout: config.circuit_breaker_timeout,
-            },
-        })
-    }
-
-    /// Create round-robin load balancer with optimized config handling
-    pub async fn new_round_robin_with_config(config: &LoadBalancerConfig) -> Result<Self, LoadBalancerError> {
-        let bind_address = match &config.bind_address {
-            Some(addr) => addr.clone(),
-            None => {
-                let env_config = crate::config::environment::get_environment_config();
-                env_config.bind_address
-            }
-        };
-
-        Ok(Self {
-            instances: Arc::new(RwLock::new(Vec::new())),
-            metrics: Arc::new(RwLock::new(std::collections::HashMap::new())),
-            stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
-            config: LoadBalancerConfig {
-                algorithm: config.algorithm.clone(),
-                health_check_interval: config.health_check_interval,
-                max_retries: config.max_retries,
-                timeout: config.timeout,
-                bind_address: Some(bind_address),
-                enable_circuit_breaker: config.enable_circuit_breaker,
-                circuit_breaker_threshold: config.circuit_breaker_threshold,
-                circuit_breaker_timeout: config.circuit_breaker_timeout,
-            },
-        })
+    async fn get_stats(&self) -> LoadBalancerStats {
+        self.stats.read().await.clone()
     }
 }
 
@@ -376,7 +213,7 @@ impl LoadBalancer for LeastConnectionsLoadBalancer {
         let selected_instance = healthy_instances
             .iter()
             .min_by_key(|instance| connection_counts.get(&instance.id).unwrap_or(&0))
-            .cloned(); // Use cloned() instead of map(|&instance| instance.clone())
+            .map(|instance| (*instance).clone());
 
         selected_instance
     }

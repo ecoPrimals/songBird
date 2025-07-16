@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use songbird_errors::{Result, SongbirdError};
+use crate::errors::{Result, SongbirdError};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
@@ -44,8 +44,8 @@ pub struct OSSubstrate {
 /// Toadstool client for compute and container operations with connection pooling
 #[derive(Debug, Clone)]
 pub struct ToadstoolClient {
-    endpoint: String,
     client: reqwest::Client,
+    endpoint: String,
     circuit_breaker: Arc<RwLock<CircuitBreaker>>,
     connection_pool: Arc<RwLock<ConnectionPool>>,
 }
@@ -82,7 +82,7 @@ struct CircuitBreaker {
 }
 
 /// Circuit breaker states
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 enum CircuitState {
     Closed,
     Open,
@@ -377,8 +377,8 @@ impl OSSubstrate {
         let biomeos_endpoint = std::env::var("BIOMEOS_ENDPOINT")
             .unwrap_or_else(|_| crate::config::constants::network::biomeos_endpoint());
 
-        let toadstool_client = ToadstoolClient::new(toadstool_endpoint)?;
-        let biomeos_client = BiomeOSClient::new(biomeos_endpoint)?;
+        let toadstool_client = ToadstoolClient::new(toadstool_endpoint).await?;
+        let biomeos_client = BiomeOSClient::new(biomeos_endpoint);
 
         let substrate = Self {
             toadstool_client,
@@ -552,7 +552,7 @@ impl OSSubstrate {
             Ok(PathBuf::from(path_str))
         } else {
             Err(SongbirdError::Network {
-                service: Some("biomeos_substrate".to_string()),
+                service: "biomeos_substrate".to_string(),
                 message: "Invalid path response from substrate".to_string(),
                 details: None,
             })
@@ -629,10 +629,10 @@ impl OSSubstrate {
             "action": "get_system_info"
         });
 
-        let response = self.toadstool_client.request("system", payload).await?;
+        let response = self.toadstool_client.request(payload).await?;
 
         serde_json::from_value(response).map_err(|e| SongbirdError::Network {
-            service: Some("toadstool_substrate".to_string()),
+            service: "toadstool_substrate".to_string(),
             message: format!("Failed to parse system info: {}", e),
             details: None,
         })
@@ -700,7 +700,7 @@ impl OSSubstrate {
             "parameters": request.parameters
         });
 
-        self.toadstool_client.request("network", payload).await
+        self.toadstool_client.request(payload).await
     }
 
     /// Get fallback network operation result
@@ -738,7 +738,7 @@ impl OSSubstrate {
             "parameters": parameters
         });
 
-        self.toadstool_client.request("containers", payload).await
+        self.toadstool_client.request(payload).await
     }
 
     /// Get substrate capabilities with caching
@@ -802,8 +802,17 @@ impl OSSubstrate {
         }
 
         if let Ok(biomeos_caps) = biomeos_result {
-            capabilities.insert("biomeos".to_string(), biomeos_caps.clone());
-            combined_caps.extend(biomeos_caps);
+            let caps_vec = match &biomeos_caps {
+                serde_json::Value::Array(arr) => {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<String>>()
+                }
+                serde_json::Value::String(s) => vec![s.clone()],
+                _ => vec![biomeos_caps.to_string()],
+            };
+            capabilities.insert("biomeos".to_string(), caps_vec.clone());
+            combined_caps.extend(caps_vec);
         }
 
         capabilities.insert("combined".to_string(), combined_caps);
@@ -871,14 +880,14 @@ impl OSSubstrate {
 
 impl ToadstoolClient {
     /// Create new toadstool client with performance optimizations
-    pub fn new(endpoint: String) -> Result<Self> {
+    pub async fn new(endpoint: String) -> Result<Self> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .pool_max_idle_per_host(CONNECTION_POOL_SIZE)
             .pool_idle_timeout(Duration::from_secs(90))
             .build()
             .map_err(|e| SongbirdError::Network {
-                service: Some("toadstool_client".to_string()),
+                service: "toadstool_client".to_string(),
                 message: format!("Failed to create HTTP client: {}", e),
                 details: None,
             })?;
@@ -905,7 +914,7 @@ impl ToadstoolClient {
             let mut cb = self.circuit_breaker.write().await;
             if !cb.should_allow_request() {
                 return Err(SongbirdError::Network {
-                    service: Some("toadstool_substrate".to_string()),
+                    service: "toadstool_substrate".to_string(),
                     message: "Circuit breaker is open".to_string(),
                     details: None,
                 });
@@ -927,7 +936,7 @@ impl ToadstoolClient {
                     let mut cb = self.circuit_breaker.write().await;
                     cb.record_failure();
                     Err(SongbirdError::Network {
-                        service: Some("toadstool_substrate".to_string()),
+                        service: "toadstool_substrate".to_string(),
                         message: format!("Health check failed with status: {}", resp.status()),
                         details: None,
                     })
@@ -938,7 +947,7 @@ impl ToadstoolClient {
                 let mut cb = self.circuit_breaker.write().await;
                 cb.record_failure();
                 Err(SongbirdError::Network {
-                    service: Some("toadstool_substrate".to_string()),
+                    service: "toadstool_substrate".to_string(),
                     message: format!("Health check failed: {}", e),
                     details: None,
                 })
@@ -949,7 +958,6 @@ impl ToadstoolClient {
     /// Make request to toadstool substrate with circuit breaker and connection pooling
     pub async fn request(
         &self,
-        endpoint: &str,
         payload: serde_json::Value,
     ) -> Result<serde_json::Value> {
         // Check circuit breaker
@@ -957,14 +965,14 @@ impl ToadstoolClient {
             let mut cb = self.circuit_breaker.write().await;
             if !cb.should_allow_request() {
                 return Err(SongbirdError::Network {
-                    service: Some("toadstool_substrate".to_string()),
+                    service: "toadstool_substrate".to_string(),
                     message: "Circuit breaker is open".to_string(),
                     details: None,
                 });
             }
         }
 
-        let url = format!("{}/{}", self.endpoint, endpoint);
+        let url = format!("{}/query", self.endpoint);
         let response = self.client.post(&url).json(&payload).send().await;
 
         match response {
@@ -975,7 +983,7 @@ impl ToadstoolClient {
                     cb.record_success();
 
                     resp.json().await.map_err(|e| SongbirdError::Network {
-                        service: Some("toadstool_substrate".to_string()),
+                        service: "toadstool_substrate".to_string(),
                         message: format!("Failed to parse response: {}", e),
                         details: None,
                     })
@@ -985,7 +993,7 @@ impl ToadstoolClient {
                     cb.record_failure();
 
                     Err(SongbirdError::Network {
-                        service: Some("toadstool_substrate".to_string()),
+                        service: "toadstool_substrate".to_string(),
                         message: format!("Request failed with status: {}", resp.status()),
                         details: None,
                     })
@@ -997,7 +1005,7 @@ impl ToadstoolClient {
                 cb.record_failure();
 
                 Err(SongbirdError::Network {
-                    service: Some("toadstool_substrate".to_string()),
+                    service: "toadstool_substrate".to_string(),
                     message: format!("Request failed: {}", e),
                     details: None,
                 })
@@ -1011,7 +1019,7 @@ impl ToadstoolClient {
             "action": "get_capabilities"
         });
 
-        let response = self.request("capabilities", payload).await?;
+        let response = self.request(payload).await?;
 
         if let Some(caps) = response.get("capabilities").and_then(|v| v.as_array()) {
             Ok(caps
@@ -1028,53 +1036,6 @@ impl ToadstoolClient {
     pub async fn get_circuit_breaker_status(&self) -> CircuitState {
         let cb = self.circuit_breaker.read().await;
         cb.get_state().clone()
-    }
-}
-
-impl BiomeOSClient {
-    /// Create new biomeOS client
-    pub fn new(endpoint: String) -> Result<Self> {
-        Ok(Self { endpoint })
-    }
-
-    /// Health check for biomeOS substrate
-    pub async fn health_check(&self) -> Result<()> {
-        // Implementation would make actual HTTP request
-        // For now, assume healthy if endpoint is configured
-        Ok(())
-    }
-
-    /// Make request to biomeOS substrate
-    pub async fn request(
-        &self,
-        endpoint: &str,
-        payload: serde_json::Value,
-    ) -> Result<serde_json::Value> {
-        debug!("Making request to biomeOS: {}/{}", self.endpoint, endpoint);
-
-        // Implementation would make actual HTTP request
-        // For now, return success response
-        Ok(serde_json::json!({
-            "status": "success",
-            "endpoint": endpoint,
-            "payload": payload
-        }))
-    }
-
-    /// Get biomeOS capabilities
-    pub async fn get_capabilities(&self) -> Result<Vec<String>> {
-        let payload = serde_json::json!({
-            "action": "get_capabilities"
-        });
-
-        let _response = self.request("capabilities", payload).await?;
-
-        // Return default capabilities
-        Ok(vec![
-            "paths".to_string(),
-            "configuration".to_string(),
-            "coordination".to_string(),
-        ])
     }
 }
 
@@ -1211,17 +1172,15 @@ pub async fn get_substrate() -> &'static OSSubstrate {
         // For now, we'll use a placeholder with optimized structure
         OSSubstrate {
             toadstool_client: ToadstoolClient {
-                endpoint: crate::config::constants::network::toadstool_endpoint(),
                 client: reqwest::Client::new(),
+                endpoint: crate::config::constants::network::toadstool_endpoint(),
                 circuit_breaker: Arc::new(RwLock::new(CircuitBreaker::new(
                     CIRCUIT_BREAKER_THRESHOLD,
                     CIRCUIT_BREAKER_TIMEOUT,
                 ))),
                 connection_pool: Arc::new(RwLock::new(ConnectionPool::new(CONNECTION_POOL_SIZE))),
             },
-            biomeos_client: BiomeOSClient {
-                endpoint: crate::config::constants::network::biomeos_endpoint(),
-            },
+            biomeos_client: BiomeOSClient::new(crate::config::constants::network::biomeos_endpoint()),
             cache: Arc::new(RwLock::new(OptimizedSubstrateCache::new(
                 MAX_CACHE_SIZE,
                 DEFAULT_CACHE_TTL,

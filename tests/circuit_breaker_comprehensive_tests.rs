@@ -7,7 +7,7 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
-use songbird_errors::Result;
+use songbird_lib::errors::Result;
 use songbird_lib::communication::circuit_breaker::{
     CircuitBreaker, CircuitBreakerConfig, CircuitState,
 };

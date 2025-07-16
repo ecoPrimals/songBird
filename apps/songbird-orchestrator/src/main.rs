@@ -158,8 +158,8 @@ fn merge_environment_variables(config: &mut SongbirdConfig) {
             config.network.bind_address = addr;
         }
     }
-    if let Ok(orchestrator_port) = std::env::var("SONGBIRD_ORCHESTRATOR_PORT") {
-        if let Ok(port_num) = orchestrator_port.parse::<u16>() {
+    if let Ok(bind_port) = std::env::var("SONGBIRD_ORCHESTRATOR_PORT") {
+        if let Ok(port_num) = bind_port.parse::<u16>() {
             config.network.orchestrator_port = port_num;
         }
     }

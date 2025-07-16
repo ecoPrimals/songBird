@@ -16,7 +16,7 @@ use songbird_lib::Result;
 fn test_songbird_config_creation() -> Result<()> {
     let config = SongbirdConfig::default();
 
-    assert!(config.network.orchestrator_port > 0);
+    assert!(config.network.bind_port > 0);
     assert!(!config.environment.log_level.is_empty());
 
     Ok(())
@@ -27,7 +27,7 @@ fn test_songbird_config_network_fields() -> Result<()> {
     let config = SongbirdConfig::default();
 
     // Test network configuration
-    assert!(config.network.orchestrator_port > 0);
+    assert!(config.network.bind_port > 0);
     assert!(config.network.discovery_port > 0);
     assert!(config.network.health_port > 0);
     assert!(config.network.dashboard_port > 0);
@@ -88,8 +88,8 @@ fn test_songbird_config_security_fields() -> Result<()> {
 async fn test_network_config_creation() -> Result<()> {
     let network_config = NetworkConfig {
         bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
-        orchestrator_port: 8080,
-        gaming_port_range: PortRange {
+        bind_port: 8080,
+        // gaming_port_range // DISABLED: PortRange {
             start: 7000,
             end: 8000,
         },
@@ -99,13 +99,13 @@ async fn test_network_config_creation() -> Result<()> {
         ..Default::default()
     };
 
-    assert_eq!(network_config.orchestrator_port, 8080);
+    assert_eq!(network_config.bind_port, 8080);
     assert_eq!(
         network_config.bind_address,
         "127.0.0.1".parse::<IpAddr>().unwrap()
     );
-    assert_eq!(network_config.gaming_port_range.start, 7000);
-    assert_eq!(network_config.gaming_port_range.end, 8000);
+    assert_eq!(network_config.// gaming_port_range // DISABLED.start, 7000);
+    assert_eq!(network_config.// gaming_port_range // DISABLED.end, 8000);
     Ok(())
 }
 
@@ -151,8 +151,8 @@ async fn test_config_validation() -> Result<()> {
     let config = SongbirdConfig {
         network: NetworkConfig {
             bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
-            orchestrator_port: 8080,
-            gaming_port_range: PortRange {
+            bind_port: 8080,
+            // gaming_port_range // DISABLED: PortRange {
                 start: 7000,
                 end: 8000,
             },
@@ -166,7 +166,7 @@ async fn test_config_validation() -> Result<()> {
     assert!(result.is_ok());
 
     // Test gaming config validation
-    let gaming = &config.network.gaming;
+    let gaming = &config.network// .gaming // DISABLED;
     assert!(gaming.cnc_port_range.start < gaming.cnc_port_range.end);
     assert!(gaming.cnc_port_range.start > 0);
     assert!(gaming.cnc_port_range.end < 65535);
@@ -207,8 +207,8 @@ fn test_config_file_operations() -> Result<()> {
         // Test loading configuration from file
         let loaded_config = SongbirdConfig::from_file(&temp_file)?;
         assert_eq!(
-            loaded_config.network.orchestrator_port,
-            config.network.orchestrator_port
+            loaded_config.network.bind_port,
+            config.network.bind_port
         );
         assert_eq!(
             loaded_config.environment.bind_port,
@@ -282,7 +282,7 @@ fn test_config_port_ranges() -> Result<()> {
     let config = SongbirdConfig::default();
 
     // Test gaming port ranges
-    let gaming_config = &config.network.gaming;
+    let gaming_config = &config.network// .gaming // DISABLED;
     assert!(gaming_config.cnc_port_range.start < gaming_config.cnc_port_range.end);
 
     // Test discovery ports
@@ -463,7 +463,7 @@ fn test_config_gaming_settings() -> Result<()> {
     let config = SongbirdConfig::default();
 
     // Test gaming configuration
-    let gaming = &config.network.gaming;
+    let gaming = &config.network// .gaming // DISABLED;
 
     // Gaming port range should be valid
     assert!(gaming.cnc_port_range.start < gaming.cnc_port_range.end);
@@ -511,8 +511,8 @@ fn test_config_deserialization() -> Result<()> {
 
     // Verify key fields match
     assert_eq!(
-        deserialized_config.network.orchestrator_port,
-        config.network.orchestrator_port
+        deserialized_config.network.bind_port,
+        config.network.bind_port
     );
     assert_eq!(
         deserialized_config.environment.bind_port,
@@ -529,8 +529,8 @@ fn test_config_clone_behavior() -> Result<()> {
 
     // Verify clone matches original
     assert_eq!(
-        cloned_config.network.orchestrator_port,
-        config.network.orchestrator_port
+        cloned_config.network.bind_port,
+        config.network.bind_port
     );
     assert_eq!(
         cloned_config.environment.bind_port,

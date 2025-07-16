@@ -2,7 +2,7 @@
 //!
 //! This test suite covers basic error types using the actual SongbirdError structure.
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_lib::errors::{Result, SongbirdError};
 
 #[tokio::test]
 async fn test_error_creation_and_display() -> Result<()> {
@@ -13,19 +13,17 @@ async fn test_error_creation_and_display() -> Result<()> {
 
     // Test circuit breaker errors
     let open_error = SongbirdError::CircuitBreakerOpen {
-        service: "test-service".to_string(),
-        message: "Circuit breaker is open".to_string(),
+        message: "Circuit breaker is open for test-service".to_string(),
     };
 
     let failure_error = SongbirdError::CircuitBreakerFailure {
-        service: "test-service".to_string(),
-        message: "Circuit breaker failed".to_string(),
+        message: "Circuit breaker failed for test-service".to_string(),
     };
 
     // Test retry exhausted error
     let retry_error = SongbirdError::RetryExhausted {
         attempts: 3,
-        message: "Connection failed".to_string(),
+        last_error: "Connection failed".to_string(),
     };
 
     // Test discovery error

@@ -189,11 +189,19 @@ impl Cli {
             Commands::Internet { command } => {
                 crate::cli::commands::internet::execute_internet_command(&command)
                     .await
-                    .map_err(|e| crate::cli::CliError::Command(e.to_string()))
+                    .map_err(|e| crate::cli::CliError::Command {
+                        message: e.to_string(),
+                        command: None,
+                        suggestion: Some("Check your internet connection and try again".to_string()),
+                    })
             }
             Commands::Firewall { command } => commands::firewall::execute_firewall(&command)
                 .await
-                .map_err(|e| CliError::Command(format!("Firewall command failed: {e}"))),
+                .map_err(|e| CliError::Command {
+                    message: format!("Firewall command failed: {e}"),
+                    command: Some(format!("{:?}", command)),
+                    suggestion: Some("Check firewall permissions and configuration".to_string()),
+                }),
             Commands::IoT { command } => commands::basic_iot::handle_basic_iot_command(command)
                 .await
                 .map_err(CliError::Orchestrator),
@@ -263,11 +271,11 @@ pub mod constants {
     /// Default log directory
     pub const DEFAULT_LOG_DIR: &str = ".songbird/logs";
     /// Default discovery timeout
-    pub const DEFAULT_DISCOVERY_TIMEOUT: Duration = DEFAULT_DISCOVERY_TIMEOUT;
+    pub const DEFAULT_DISCOVERY_TIMEOUT: Duration = songbird_config::constants::discovery::DEFAULT_DISCOVERY_TIMEOUT;
     /// Default connection timeout
-    pub const DEFAULT_CONNECTION_TIMEOUT: Duration = DEFAULT_CONNECTION_TIMEOUT;
+    pub const DEFAULT_CONNECTION_TIMEOUT: Duration = songbird_config::constants::network::DEFAULT_CONNECTION_TIMEOUT;
     /// Default health check interval for CLI
-    pub const DEFAULT_CLI_HEALTH_INTERVAL: Duration = DEFAULT_CHECK_INTERVAL;
+    pub const DEFAULT_CLI_HEALTH_INTERVAL: Duration = songbird_config::constants::health::DEFAULT_CHECK_INTERVAL;
 }
 /// Execute start command with improved user experience
 #[allow(dead_code)]
@@ -295,13 +303,21 @@ async fn execute_start(
     };
 
     // Fix the Orchestrator initialization by removing the .await
-    let orchestrator = Orchestrator::new(config).map_err(|e| CliError::Config(e.to_string()))?;
+    let orchestrator = Orchestrator::new(config).map_err(|e| CliError::Config {
+        message: e.to_string(),
+        field: Some("orchestrator".to_string()),
+        suggestion: Some("Check your orchestrator configuration".to_string()),
+    })?;
 
     // Create and start orchestrator
     orchestrator
         .start()
         .await
-        .map_err(|e| CliError::Config(e.to_string()))?;
+        .map_err(|e| CliError::Config {
+            message: e.to_string(),
+            field: Some("orchestrator_start".to_string()),
+            suggestion: Some("Check if ports are available and permissions are correct".to_string()),
+        })?;
 
     println!(
         "{}",
@@ -331,7 +347,11 @@ async fn execute_start(
     orchestrator
         .stop()
         .await
-        .map_err(|e| CliError::Config(e.to_string()))?;
+        .map_err(|e| CliError::Config {
+            message: e.to_string(),
+            field: Some("orchestrator_stop".to_string()),
+            suggestion: Some("Check if the orchestrator is running and try again".to_string()),
+        })?;
 
     println!("{}", ui::success("✅ Stopped successfully"));
     Ok(())
@@ -341,27 +361,46 @@ async fn execute_start(
 #[allow(dead_code)]
 async fn load_config_from_file(path: &PathBuf) -> CliResult<crate::config::OrchestratorConfig> {
     if !path.exists() {
-        return Err(CliError::Config(format!(
-            "Configuration file not found: {}",
-            path.display()
-        )));
+        return Err(CliError::Config {
+            message: format!("Configuration file not found: {}", path.display()),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Create a configuration file or specify a valid path".to_string()),
+        });
     }
 
     let contents = tokio::fs::read_to_string(path)
         .await
-        .map_err(|e| CliError::Config(format!("Failed to read config file: {e}")))?;
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to read config file: {e}"),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Check file permissions and accessibility".to_string()),
+        })?;
     // Support multiple config formats based on extension
     let config = match path.extension().and_then(|ext| ext.to_str()) {
         Some("toml") => toml::from_str(&contents)
-            .map_err(|e| CliError::Config(format!("Failed to parse TOML config: {e}")))?,
+            .map_err(|e| CliError::Config {
+                message: format!("Failed to parse TOML config: {e}"),
+                field: Some("config_file".to_string()),
+                suggestion: Some("Check TOML syntax and try again".to_string()),
+            })?,
         Some("yaml") | Some("yml") => serde_yaml::from_str(&contents)
-            .map_err(|e| CliError::Config(format!("Failed to parse YAML config: {e}")))?,
+            .map_err(|e| CliError::Config {
+                message: format!("Failed to parse YAML config: {e}"),
+                field: Some("config_file".to_string()),
+                suggestion: Some("Check YAML syntax and try again".to_string()),
+            })?,
         Some("json") => serde_json::from_str(&contents)
-            .map_err(|e| CliError::Config(format!("Failed to parse JSON config: {e}")))?,
+            .map_err(|e| CliError::Config {
+                message: format!("Failed to parse JSON config: {e}"),
+                field: Some("config_file".to_string()),
+                suggestion: Some("Check JSON syntax and try again".to_string()),
+            })?,
         _ => {
-            return Err(CliError::Config(
-                "Unsupported config file format. Use .toml, .yaml, .yml, or .json".to_string(),
-            ));
+            return Err(CliError::Config {
+                message: "Unsupported config file format. Use .toml, .yaml, .yml, or .json".to_string(),
+                field: Some("config_file".to_string()),
+                suggestion: Some("Ensure the file extension is correct".to_string()),
+            });
         }
     };
 
@@ -454,9 +493,11 @@ async fn shutdown_real_orchestrator(force: bool) -> CliResult<()> {
             }
         }
     } else {
-        return Err(CliError::Command(
-            "No running orchestrator found".to_string(),
-        ));
+        return Err(CliError::Command {
+            message: "No running orchestrator found".to_string(),
+            command: Some("stop".to_string()),
+            suggestion: Some("Start an orchestrator first with 'songbird start'".to_string()),
+        });
     }
 
     Ok(())
@@ -529,37 +570,45 @@ async fn terminate_process(pid: u32, force: bool) -> CliResult<()> {
                 return Ok(());
             }
         }
-        Err(CliError::Command(format!(
-            "Failed to send {signal} signal to process {pid}"
-        )))
+        Err(CliError::Command {
+            message: format!("Failed to send {signal} signal to process {pid}"),
+            command: Some("terminate".to_string()),
+            suggestion: Some("Check if the process exists and you have permission to terminate it".to_string()),
+        })
     }
 
     #[cfg(windows)]
     {
         let flag = if force { "/F" } else { "/T" };
-        let output = std::process::Command::new("taskkill")
-            .arg(flag)
-            .arg("/PID")
-            .arg(pid.to_string())
-            .output();
+        let status = std::process::Command::new("taskkill")
+            .args([flag, "/PID", &pid.to_string()])
+            .status()
+            .map_err(|e| CliError::Command {
+                message: format!("Failed to execute taskkill: {e}"),
+                command: Some("taskkill".to_string()),
+                suggestion: Some("Check if taskkill is available and permissions are correct".to_string()),
+            })?;
 
-        if let Ok(output) = output {
-            if output.status.success() {
+        if status.success() {
+            if force {
                 println!(
                     "{}",
-                    ui::info(&format!(
-                        "📤 Terminated process {} ({})",
-                        pid,
-                        if force { "forced" } else { "graceful" }
-                    ))
+                    ui::success(&format!("🔥 Process {pid} forcefully terminated"))
                 );
-                return Ok(());
+            } else {
+                println!(
+                    "{}",
+                    ui::success(&format!("⏹️  Process {pid} gracefully stopped"))
+                );
             }
+            return Ok(());
         }
-        Err(CliError::Command(format!(
-            "Failed to terminate process {}",
-            pid
-        )))
+
+        Err(CliError::Command {
+            message: format!("Failed to terminate process {}", pid),
+            command: Some("taskkill".to_string()),
+            suggestion: Some("Check if the process exists and you have permission to terminate it".to_string()),
+        })
     }
 }
 /// Wait for process to exit

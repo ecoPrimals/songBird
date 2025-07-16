@@ -54,6 +54,7 @@ songbird-universal-primals = { path = "./crates/songbird-universal-primals" }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
+tokio-stream = "0.1"
 futures = "0.3"
 futures-util = "0.3"
 async-stream = "0.3"

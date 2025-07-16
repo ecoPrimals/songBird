@@ -5,7 +5,7 @@
 
 use std::time::Duration;
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_lib::errors::{Result, SongbirdError};
 use songbird_lib::errors::validation::ConfigValidator;
 
 #[tokio::test]

@@ -16,7 +16,7 @@ use chrono::Utc;
 use songbird_errors::SongbirdError;
 use std::collections::HashMap;
 use std::time::Duration;
-use sysinfo::{System, SystemExt, CpuExt};
+use sysinfo::{SystemExt, CpuExt};
 use tracing::{debug, info, warn};
 
 #[derive(Debug)]

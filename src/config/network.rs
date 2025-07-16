@@ -67,7 +67,7 @@ impl Default for NetworkConfig {
 
 impl NetworkConfig {
     /// Create new network configuration using OS substrate
-    pub async fn new() -> crate::errors::Result<Self> {
+    pub async fn new() -> songbird_errors::Result<Self> {
         let substrate = crate::substrate::get_substrate().await;
 
         debug!("🌐 Configuring network through OS substrate (toadstool/biomeOS)");
@@ -81,8 +81,6 @@ impl NetworkConfig {
             .map_err(|e| SongbirdError::Config {
                 message: format!("Failed to parse bind address: {}", e),
                 field: Some("bind_address".to_string()),
-                context: Some("Network configuration initialization".to_string()),
-                suggestion: Some("Check your network configuration and DEFAULT_BIND_ADDRESS constant".to_string()),
             })?;
 
         // Get available port from substrate
@@ -148,15 +146,15 @@ impl NetworkConfig {
         warn!("🔄 Using fallback network configuration (substrate unavailable)");
 
         let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
-            .and_then(|addr| addr.parse().ok())
-            .or_else(|| constants::network::DEFAULT_BIND_ADDRESS.parse().ok())
-            .unwrap_or_else(|| {
+            .and_then(|addr| addr.parse().map_err(|_| std::env::VarError::NotPresent))
+            .or_else(|_| constants::network::DEFAULT_BIND_ADDRESS.parse().map_err(|_| std::env::VarError::NotPresent))
+            .unwrap_or_else(|_| {
                 warn!("Failed to parse bind address, using fallback");
                 "127.0.0.1".parse().expect("Hardcoded IP should be valid")
             });
 
         let bind_port = std::env::var("SONGBIRD_BIND_PORT")
-            .and_then(|port| port.parse().ok())
+            .and_then(|port| port.parse().map_err(|_| std::env::VarError::NotPresent))
             .unwrap_or(constants::network::DEFAULT_ORCHESTRATOR_PORT);
 
         Self {
@@ -179,7 +177,7 @@ impl NetworkConfig {
     }
 
     /// Refresh network configuration through substrate
-    pub async fn refresh(&mut self) -> crate::errors::Result<()> {
+    pub async fn refresh(&mut self) -> songbird_errors::Result<()> {
         let substrate = crate::substrate::get_substrate().await;
 
         // Refresh network interface
@@ -244,7 +242,7 @@ impl NetworkConfig {
     }
 
     /// Configure firewall through substrate
-    pub async fn configure_firewall(&self, rules: Vec<FirewallRule>) -> crate::errors::Result<()> {
+    pub async fn configure_firewall(&self, rules: Vec<FirewallRule>) -> songbird_errors::Result<()> {
         let substrate = crate::substrate::get_substrate().await;
 
         let mut parameters = HashMap::new();
@@ -293,7 +291,7 @@ impl NetworkConfig {
     }
 
     /// Validate network configuration
-    pub async fn validate(&self) -> crate::errors::Result<()> {
+    pub async fn validate(&self) -> songbird_errors::Result<()> {
         // Validate through substrate
         let substrate = crate::substrate::get_substrate().await;
 
@@ -308,9 +306,11 @@ impl NetworkConfig {
         {
             if let Some(available) = response.get("available").and_then(|v| v.as_bool()) {
                 if !available {
-                    return Err(crate::errors::SongbirdError::Config {
+                    return Err(songbird_errors::SongbirdError::Config {
                         field: Some("bind_address".to_string()),
                         message: format!("Bind address {} is not available", self.bind_address),
+                        context: Some("Network configuration validation".to_string()),
+                        suggestion: Some("Check network configuration or use a different bind address".to_string()),
                     });
                 }
             }
@@ -320,7 +320,7 @@ impl NetworkConfig {
         if self.bind_port < constants::validation::MIN_PORT
             || self.bind_port > constants::validation::MAX_PORT
         {
-            return Err(crate::errors::SongbirdError::Config {
+            return Err(songbird_errors::SongbirdError::Config {
                 field: Some("bind_port".to_string()),
                 message: format!(
                     "Port {} is outside valid range {}-{}",
@@ -328,6 +328,8 @@ impl NetworkConfig {
                     constants::validation::MIN_PORT,
                     constants::validation::MAX_PORT
                 ),
+                context: Some("Network configuration validation".to_string()),
+                suggestion: Some(format!("Use a port between {} and {}", constants::validation::MIN_PORT, constants::validation::MAX_PORT)),
             });
         }
 
@@ -395,7 +397,7 @@ pub struct FirewallRule {
 }
 
 /// Get the best available network configuration
-pub async fn get_network_config() -> crate::errors::Result<NetworkConfig> {
+pub async fn get_network_config() -> songbird_errors::Result<NetworkConfig> {
     // Try to use substrate first
     match NetworkConfig::new().await {
         Ok(config) => {
@@ -415,7 +417,7 @@ pub async fn get_network_config() -> crate::errors::Result<NetworkConfig> {
 /// Initialize network configuration for a service
 pub async fn initialize_service_network(
     service_name: &str,
-) -> crate::errors::Result<ServiceNetworkConfig> {
+) -> songbird_errors::Result<ServiceNetworkConfig> {
     let substrate = crate::substrate::get_substrate().await;
 
     // Get service-specific network interface

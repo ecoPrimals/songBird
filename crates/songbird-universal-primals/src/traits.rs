@@ -81,6 +81,17 @@ pub struct NetworkLocation {
     pub geo_location: Option<String>,
 }
 
+impl Default for NetworkLocation {
+    fn default() -> Self {
+        Self {
+            ip_address: "127.0.0.1".to_string(),
+            subnet: None,
+            network_id: None,
+            geo_location: None,
+        }
+    }
+}
+
 /// Security level requirements
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SecurityLevel {
@@ -92,6 +103,12 @@ pub enum SecurityLevel {
     High,
     /// Maximum security
     Maximum,
+}
+
+impl Default for SecurityLevel {
+    fn default() -> Self {
+        Self::Basic
+    }
 }
 
 /// Dynamic port information for songbird-managed ports

@@ -20,6 +20,8 @@ pub mod network {
     pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
     pub const DEFAULT_LOCALHOST: &str = "localhost";
     pub const DEFAULT_PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
+    pub const PRODUCTION_BIND_ADDRESS: &str = DEFAULT_PRODUCTION_BIND_ADDRESS;
+    pub const DEFAULT_PORT: u16 = DEFAULT_ORCHESTRATOR_PORT;
     
     // Service endpoint defaults
     pub const DEFAULT_BEARDOG_ENDPOINT: &str = "https://localhost:8443";
@@ -481,8 +483,12 @@ pub mod utils {
     }
 }
 
+// Re-export commonly used constants for backward compatibility
+pub use network::{DEFAULT_LOCALHOST, DEFAULT_PORT, PRODUCTION_BIND_ADDRESS};
+
 // Re-export EnvironmentDefaults at the top level
 pub use utils::*;
+
 /// Environment-specific default values
 #[derive(Debug, Clone)]
 pub struct EnvironmentDefaults {
@@ -700,6 +706,3 @@ pub const DEFAULT_BIND_ADDRESS: &str = "DEPRECATED";
 
 #[deprecated(note = "Use development_bind_address() instead")]
 pub const DEVELOPMENT_BIND_ADDRESS: &str = "DEPRECATED";
-
-#[deprecated(note = "Use default_bind_address() instead")]
-pub const PRODUCTION_BIND_ADDRESS: &str = "DEPRECATED";

@@ -26,7 +26,7 @@ use crate::errors::{Result, SongbirdError};
 use crate::traits::service::ServiceInfo;
 use songbird_universal_primals::squirrel::SquirrelPrimal;
 use songbird_universal_primals::traits::PrimalProvider;
-use songbird_universal_primals::types::{PrimalContext, PrimalRequest};
+use songbird_universal_primals::{PrimalContext, types::PrimalRequest};
 
 /// AI-optimized API state with enhanced caching and streaming
 #[derive(Clone)]
@@ -60,7 +60,7 @@ struct CacheEntry {
 }
 
 /// AI workload classification
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AiWorkloadType {
     ModelInference,
     Training,
@@ -82,7 +82,7 @@ struct AccessPattern {
 }
 
 /// AI cache performance metrics
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Serialize)]
 struct AiCacheMetrics {
     total_hits: u64,
     total_misses: u64,
@@ -109,6 +109,7 @@ pub struct AiStreamingManager {
     active_streams: Arc<RwLock<HashMap<String, AiStream>>>,
     stream_metrics: Arc<RwLock<StreamMetrics>>,
     config: AiStreamingConfig,
+    batch_queue: Arc<RwLock<Vec<String>>>,
 }
 
 /// AI stream configuration
@@ -136,7 +137,7 @@ struct AiStream {
 }
 
 /// Stream performance metrics
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Serialize)]
 struct StreamMetrics {
     total_streams: u64,
     active_streams: u64,
@@ -144,6 +145,7 @@ struct StreamMetrics {
     average_stream_duration: Duration,
     stream_errors: u64,
     compression_ratio: f32,
+    ai_workload_hits: HashMap<AiWorkloadType, u64>,
 }
 
 /// AI batch processor for efficient bulk operations
@@ -176,7 +178,7 @@ struct BatchRequest {
 }
 
 /// Batch processing metrics
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Serialize)]
 struct BatchMetrics {
     total_batches: u64,
     successful_batches: u64,
@@ -281,7 +283,7 @@ pub enum ModelDeploymentStatus {
 }
 
 /// AI inference request
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AiInferenceRequest {
     model_id: String,
     input_data: serde_json::Value,
@@ -321,12 +323,14 @@ pub struct BatchOptions {
 }
 
 /// AI metrics query parameters
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct AiMetricsQuery {
     time_range: Option<String>,
-    model_ids: Option<Vec<String>>,
-    workload_types: Option<Vec<AiWorkloadType>>,
-    include_predictions: Option<bool>,
+    model_id: Option<String>,
+    workload_type: Option<AiWorkloadType>,
+    include_cache: Option<bool>,
+    include_streaming: Option<bool>,
+    include_batch: Option<bool>,
 }
 
 impl AiOptimizedApiState {
@@ -373,7 +377,7 @@ impl AiAwareCache {
         };
 
         // Update access patterns for future predictions
-        self.update_access_pattern(key, workload_type, start_time)
+        self.update_access_pattern(key, workload_type.clone(), start_time)
             .await;
 
         // Update metrics
@@ -461,7 +465,7 @@ impl AiAwareCache {
         let prefetch_task = PrefetchTask {
             key,
             scheduled_at: Instant::now() + Duration::from_secs(1), // Predictive timing
-            workload_type,
+            workload_type: workload_type.clone(),
             priority: match workload_type {
                 AiWorkloadType::ModelInference => 9,
                 AiWorkloadType::StreamingProcessing => 8,
@@ -488,6 +492,7 @@ impl AiStreamingManager {
                 enable_delta_encoding: true,
                 buffer_size: 65536,
             },
+            batch_queue: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
@@ -502,9 +507,19 @@ impl AiStreamingManager {
         // Check concurrent stream limit
         let active_count = self.active_streams.read().await.len();
         if active_count >= self.config.max_concurrent_streams {
-            return Err(SongbirdError::RateLimit(
-                "Too many concurrent streams".to_string(),
-            ));
+            return Err(SongbirdError::service_error("rate_limiter", 
+                "Rate limit exceeded".to_string()));
+        }
+        
+        // Record the workload type for analytics
+        {
+            let mut metrics = self.stream_metrics.write().await;
+            *metrics.ai_workload_hits.entry(workload_type.clone()).or_insert(0) += 1;
+        }
+        
+        // Check batch queue capacity
+        if self.batch_queue.read().await.len() >= 100 {
+            return Err(SongbirdError::service_error("batch_processor", "Batch queue is full".to_string()));
         }
 
         let stream = AiStream {
@@ -533,7 +548,7 @@ impl AiStreamingManager {
 
     /// Get stream metrics
     pub async fn get_stream_metrics(&self) -> StreamMetrics {
-        self.stream_metrics.read().await.clone()
+        (*self.stream_metrics.read().await).clone()
     }
 }
 
@@ -558,7 +573,7 @@ impl AiBatchProcessor {
 
         // Check if queue is full
         if queue.len() >= self.processing_config.max_batch_size * 2 {
-            return Err(SongbirdError::RateLimit("Batch queue is full".to_string()));
+            return Err(SongbirdError::service_error("batch_processor", "Batch queue is full".to_string()));
         }
 
         queue.push(request);
@@ -674,33 +689,41 @@ async fn process_ai_inference(
         user_id: "api_user".to_string(),
         device_id: "api_server".to_string(),
         session_id: Uuid::new_v4().to_string(),
+        network_location: Default::default(),
+        security_level: Default::default(),
         metadata: std::collections::HashMap::new(),
     };
 
-    let mut squirrel = SquirrelPrimal::new(context, squirrel_config)?;
+    let mut squirrel = SquirrelPrimal::new(context);
 
     // Initialize the primal
     squirrel.initialize(serde_json::json!({})).await?;
 
     // Check if Squirrel is available
     let health = squirrel.health_check().await;
-    if !health.is_healthy {
+    if !matches!(health, songbird_universal_primals::traits::PrimalHealth::Healthy) {
         return Err(SongbirdError::Service {
             service: "squirrel".to_string(),
-            operation: "health_check".to_string(),
-            error: "Squirrel primal is not healthy".to_string(),
+            message: "Squirrel primal is not healthy".to_string(),
         });
     }
 
     // Create inference request
+    let mut payload = HashMap::new();
+    payload.insert("model".to_string(), serde_json::Value::String(model_id.to_string()));
+    payload.insert("prompt".to_string(), request.input_data.get("prompt").unwrap_or(&serde_json::Value::Null).clone());
+    payload.insert("parameters".to_string(), serde_json::Value::Object(
+        request.parameters.clone().unwrap_or_default().into_iter().collect()
+    ));
+    
     let inference_request = PrimalRequest {
-        id: Uuid::new_v4().to_string(),
-        operation: "inference".to_string(),
-        payload: serde_json::json!({
-            "model": model_id,
-            "prompt": request.input_data.get("prompt").unwrap_or(&serde_json::Value::Null),
-            "parameters": request.parameters.unwrap_or_default()
-        }),
+        id: Uuid::new_v4(),
+        request_type: songbird_universal_primals::types::PrimalRequestType::Infer,
+        payload,
+        timestamp: chrono::Utc::now(),
+        context: None,
+        priority: request.priority,
+        security_level: None,
     };
 
     // Send request to Squirrel
@@ -709,33 +732,34 @@ async fn process_ai_inference(
     if !response.success {
         return Err(SongbirdError::Service {
             service: "squirrel".to_string(),
-            operation: "inference".to_string(),
-            error: response.error.unwrap_or("Unknown error".to_string()),
+            message: response.error_message.unwrap_or("Unknown error".to_string()),
         });
     }
 
     // Extract result from response
     let output_data = response
-        .data
+        .payload
         .get("result")
-        .cloned()
-        .unwrap_or_else(|| serde_json::json!({"result": "No result from Squirrel"}));
+        .unwrap_or(&serde_json::Value::Null)
+        .clone();
 
     let confidence_score = response
-        .data
+        .payload
         .get("confidence")
-        .and_then(|c| c.as_f64())
-        .unwrap_or(0.9);
+        .and_then(|v| v.as_f64())
+        .map(|v| v as f32);
 
-    Ok(AiInferenceResponse {
-        request_id: response.id,
+    let ai_response = AiInferenceResponse {
+        request_id: response.request_id.to_string(),
         model_id: model_id.to_string(),
         output_data,
-        confidence_score: Some(confidence_score),
+        confidence_score: confidence_score.map(|c| c as f64),
         processing_time_ms: start_time.elapsed().as_millis() as f64,
         cached: false,
         stream_id: None,
-    })
+    };
+
+    Ok(ai_response)
 }
 
 /// Create AI-optimized API router
@@ -776,20 +800,20 @@ pub fn create_ai_optimized_router(state: AiOptimizedApiState) -> Router {
 /// List available AI models
 async fn list_ai_models(
     State(state): State<AiOptimizedApiState>,
-) -> Result<Json<ApiResponse<Vec<AiModelInfo>>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<Vec<AiModelInfo>>>, StatusCode> {
     let models = state.model_registry.read().await;
     let model_list: Vec<AiModelInfo> = models.values().cloned().collect();
-    Ok(Json(success(model_list).1))
+    Ok(success(model_list).1)
 }
 
 /// Get specific AI model information
 async fn get_ai_model(
     State(state): State<AiOptimizedApiState>,
     Path(model_id): Path<String>,
-) -> Result<Json<ApiResponse<AiModelInfo>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<AiModelInfo>>, StatusCode> {
     let models = state.model_registry.read().await;
     match models.get(&model_id) {
-        Some(model) => Ok(Json(success(model.clone()).1)),
+        Some(model) => Ok(success(model.clone()).1),
         None => Err(StatusCode::NOT_FOUND),
     }
 }
@@ -799,7 +823,7 @@ async fn ai_inference(
     State(state): State<AiOptimizedApiState>,
     Path(model_id): Path<String>,
     Json(request): Json<AiInferenceRequest>,
-) -> Result<Json<ApiResponse<AiInferenceResponse>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<AiInferenceResponse>>, StatusCode> {
     let start_time = Instant::now();
 
     // Check cache first
@@ -826,7 +850,7 @@ async fn ai_inference(
             stream_id: None,
         };
 
-        return Ok(Json(success(response).1));
+        return Ok(success(response).1);
     }
 
     // Process inference using Squirrel primal integration
@@ -860,7 +884,7 @@ async fn ai_inference(
         )
         .await;
 
-    Ok(Json(success(response).1))
+    Ok(success(response).1)
 }
 
 /// AI batch inference endpoint
@@ -868,7 +892,7 @@ async fn ai_batch_inference(
     State(state): State<AiOptimizedApiState>,
     Path(model_id): Path<String>,
     Json(request): Json<AiBatchRequest>,
-) -> Result<Json<ApiResponse<Vec<AiInferenceResponse>>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<Vec<AiInferenceResponse>>>, StatusCode> {
     // Add requests to batch queue
     for inference_request in request.requests {
         let batch_request = BatchRequest {
@@ -897,7 +921,7 @@ async fn ai_batch_inference(
 
     // Process batch
     match state.batch_processor.process_batch().await {
-        Ok(responses) => Ok(Json(success(responses).1)),
+        Ok(responses) => Ok(success(responses).1),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
@@ -906,9 +930,9 @@ async fn ai_batch_inference(
 async fn ai_stream_inference(
     State(state): State<AiOptimizedApiState>,
     Path(model_id): Path<String>,
-) -> Result<
+) -> std::result::Result<
     Sse<
-        impl tokio_stream::Stream<Item = Result<axum::response::sse::Event, axum::response::sse::Event>>,
+        impl tokio_stream::Stream<Item = std::result::Result<axum::response::sse::Event, axum::Error>>,
     >,
     StatusCode,
 > {
@@ -939,24 +963,24 @@ async fn ai_stream_inference(
 /// Get AI cache statistics
 async fn get_ai_cache_stats(
     State(state): State<AiOptimizedApiState>,
-) -> Result<Json<ApiResponse<AiCacheMetrics>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<AiCacheMetrics>>, StatusCode> {
     let metrics = state.ai_cache.metrics.read().await.clone();
-    Ok(Json(success(metrics).1))
+    Ok(success(metrics).1)
 }
 
 /// Clear AI cache
 async fn clear_ai_cache(
     State(state): State<AiOptimizedApiState>,
-) -> Result<Json<ApiResponse<String>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<String>>, StatusCode> {
     state.ai_cache.cache.write().await.clear();
-    Ok(Json(success("Cache cleared successfully".to_string()).1))
+    Ok(success("Cache cleared successfully".to_string()).1)
 }
 
 /// Schedule prefetch operation
 async fn schedule_prefetch(
     State(state): State<AiOptimizedApiState>,
     Json(request): Json<serde_json::Value>,
-) -> Result<Json<ApiResponse<String>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<String>>, StatusCode> {
     // Extract prefetch parameters
     let key = request
         .get("key")
@@ -969,16 +993,14 @@ async fn schedule_prefetch(
         .schedule_prefetch(key.to_string(), workload_type, 0.8)
         .await;
 
-    Ok(Json(
-        success("Prefetch scheduled successfully".to_string()).1,
-    ))
+    Ok(success("Prefetch scheduled successfully".to_string()).1)
 }
 
 /// Get AI metrics
 async fn get_ai_metrics(
     State(state): State<AiOptimizedApiState>,
     Query(params): Query<AiMetricsQuery>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
     let cache_metrics = state.ai_cache.metrics.read().await.clone();
     let stream_metrics = state.streaming_manager.get_stream_metrics().await;
     let batch_metrics = state.batch_processor.metrics.read().await.clone();
@@ -991,15 +1013,15 @@ async fn get_ai_metrics(
         "query_params": params
     });
 
-    Ok(Json(success(metrics).1))
+    Ok(success(metrics).1)
 }
 
 /// AI metrics streaming endpoint
 async fn ai_metrics_stream(
     State(state): State<AiOptimizedApiState>,
-) -> Result<
+) -> std::result::Result<
     Sse<
-        impl tokio_stream::Stream<Item = Result<axum::response::sse::Event, axum::response::sse::Event>>,
+        impl tokio_stream::Stream<Item = std::result::Result<axum::response::sse::Event, axum::Error>>,
     >,
     StatusCode,
 > {
@@ -1007,9 +1029,10 @@ async fn ai_metrics_stream(
         tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(Duration::from_secs(1)))
             .map(move |_| {
                 let metrics = serde_json::json!({
-                    "timestamp": Utc::now(),
-                    "active_streams": 5,
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "active_ai_requests": 42,
                     "cache_hit_rate": 0.85,
+                    "average_response_time": 150,
                     "batch_queue_size": 12,
                     "prediction_accuracy": 0.92
                 });
@@ -1022,7 +1045,7 @@ async fn ai_metrics_stream(
 /// AI health check endpoint
 async fn ai_health_check(
     State(state): State<AiOptimizedApiState>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
     let health_data = serde_json::json!({
         "status": "healthy",
         "ai_services": "operational",
@@ -1033,15 +1056,16 @@ async fn ai_health_check(
         "timestamp": Utc::now()
     });
 
-    Ok(Json(success(health_data).1))
+    Ok(success(health_data).1)
 }
 
 /// Predict scaling needs
 async fn predict_scaling(
     State(state): State<AiOptimizedApiState>,
     Query(params): Query<HashMap<String, String>>,
-) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
-    let service_id = params.get("service_id").unwrap_or(&"default".to_string());
+) -> std::result::Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+    let default_service_id = "default".to_string();
+    let service_id = params.get("service_id").unwrap_or(&default_service_id);
 
     let prediction = state
         .predictive_scaler
@@ -1056,13 +1080,13 @@ async fn predict_scaling(
         "timestamp": Utc::now()
     });
 
-    Ok(Json(success(response).1))
+    Ok(success(response).1)
 }
 
 /// Get optimization recommendations
 async fn get_optimization_recommendations(
     State(state): State<AiOptimizedApiState>,
-) -> Result<Json<ApiResponse<Vec<serde_json::Value>>>, StatusCode> {
+) -> std::result::Result<Json<ApiResponse<Vec<serde_json::Value>>>, StatusCode> {
     let recommendations = vec![
         serde_json::json!({
             "type": "cache_optimization",
@@ -1084,7 +1108,7 @@ async fn get_optimization_recommendations(
         }),
     ];
 
-    Ok(Json(success(recommendations).1))
+    Ok(success(recommendations).1)
 }
 
 #[cfg(test)]

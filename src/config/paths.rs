@@ -224,12 +224,12 @@ impl PathConfig {
                 // Fallback to direct creation
                 if let Err(create_err) = std::fs::create_dir_all(path) {
                     return Err(SongbirdError::Config {
-                        field: Some(format!("{}_dir", dir_type)),
                         message: format!(
                             "Failed to create directory {}: {}",
                             path.display(),
                             create_err
                         ),
+                        field: Some("directory_path".to_string()),
                     });
                 }
             }
@@ -265,12 +265,12 @@ impl PathConfig {
                 // Fallback to direct creation
                 if let Err(create_err) = std::fs::create_dir_all(path) {
                     return Err(SongbirdError::Config {
-                        field: Some(format!("{}_data_dir", service)),
                         message: format!(
                             "Failed to create service directory {}: {}",
                             path.display(),
                             create_err
                         ),
+                        field: Some("service_directory".to_string()),
                     });
                 }
             }
@@ -330,8 +330,11 @@ impl PathConfig {
                     // Fallback to direct validation
                     if !path.exists() {
                         return Err(SongbirdError::Config {
-                            field: Some(format!("{}_path", path_type)),
-                            message: format!("Path does not exist: {}", path.display()),
+                            message: format!(
+                                "Path does not exist: {}",
+                                path.display()
+                            ),
+                            field: Some("path_validation".to_string()),
                         });
                     }
                 }

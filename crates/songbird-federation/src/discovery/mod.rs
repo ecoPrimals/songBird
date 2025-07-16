@@ -7,16 +7,10 @@
 //! - BearDog for secure discovery
 //! - Bootstrap nodes for initial peer discovery
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::Result;
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
-use tokio::net::UdpSocket;
-use tokio::sync::RwLock;
-use tokio::time::sleep;
-use tracing::{debug, error, info, warn};
-use uuid::Uuid;
+use std::time::Duration;
+use tracing::{debug, warn};
 
 use crate::types::*;
 
