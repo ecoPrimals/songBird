@@ -34,7 +34,7 @@ impl ConfigSecurityValidator {
         }
 
         // Validate port ranges are not hardcoded
-        if config.network.orchestrator_port == 8080 && std::env::var("SONGBIRD_BIND_PORT").is_err()
+        if config.network.bind_port == 8080 && std::env::var("SONGBIRD_BIND_PORT").is_err()
         {
             tracing::warn!("Using default port 8080 - consider configuring SONGBIRD_BIND_PORT");
         }
@@ -124,12 +124,12 @@ impl ConfigSecurityValidator {
         let mut used_ports = HashSet::new();
 
         // Check orchestrator port
-        if !used_ports.insert(config.network.orchestrator_port) {
+        if !used_ports.insert(config.network.bind_port) {
             return Err(SongbirdError::Config {
                 field: Some("port_conflict".to_string()),
                 message: format!(
-                    "Port {} is used multiple times",
-                    config.network.orchestrator_port
+                    "Port {} is already in use by orchestrator",
+                    config.network.bind_port
                 ),
             });
         }

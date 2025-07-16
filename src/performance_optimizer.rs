@@ -133,8 +133,8 @@ impl FastLoadBalancer {
     pub async fn select_instance(&self, request_key: &str) -> Option<String> {
         // Check cache for recent selection - avoid cloning by using reference
         {
-            let cache_guard = self.selection_cache.read().await;
-            if let Some(cached_instance) = cache_guard.get(request_key) {
+            let mut cache_guard = self.selection_cache.write().await;
+            if let Some(cached_instance) = cache_guard.get(&request_key.to_string()) {
                 return Some(cached_instance.to_string());
             }
         }

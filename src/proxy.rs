@@ -48,10 +48,10 @@ impl Default for ProxyConfig {
 
         Self {
             bind_address: network_config.bind_address.to_string(),
-            port: network_config.orchestrator_port,
+            port: network_config.bind_port,
             enable_logging: true,
-            request_timeout: 30,
-            connection_timeout: 10,
+            request_timeout: network_config.connection_timeout.as_secs(),
+            connection_timeout: network_config.connection_timeout.as_secs(),
             max_retries: 3,
             enable_circuit_breaker: true,
             circuit_breaker_threshold: 5,
@@ -72,9 +72,9 @@ impl ProxyConfig {
     pub fn from_network_config(network_config: &crate::config::network::NetworkConfig) -> Self {
         Self {
             bind_address: network_config.bind_address.to_string(),
-            port: network_config.orchestrator_port,
+            port: network_config.bind_port,
             enable_logging: true,
-            request_timeout: network_config.request_timeout.as_secs(),
+            request_timeout: network_config.connection_timeout.as_secs(),
             connection_timeout: network_config.connection_timeout.as_secs(),
             max_retries: 3,
             enable_circuit_breaker: true,

@@ -11,6 +11,8 @@ pub mod network {
     pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
     /// Default bind address for production (all interfaces)
     pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
+    /// Default localhost address
+    pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
     /// Default API port
     pub const DEFAULT_PORT: u16 = 8080;
     /// Default port range for services
@@ -445,5 +447,13 @@ pub const DEFAULT_BIND_ADDRESS: &str = "DEPRECATED";
 #[deprecated(note = "Use development_bind_address() instead")]
 pub const DEVELOPMENT_BIND_ADDRESS: &str = "DEPRECATED";
 
-#[deprecated(note = "Use default_bind_address() instead")]
-pub const PRODUCTION_BIND_ADDRESS: &str = "DEPRECATED";
+// Re-export commonly used constants for backward compatibility
+pub use feature_flags::{DEFAULT_CACHE_TTL, DEFAULT_EVALUATION_TIMEOUT};
+pub use monitoring::DEFAULT_METRICS_INTERVAL;
+pub use health::{DEFAULT_CHECK_INTERVAL, DEFAULT_CHECK_TIMEOUT, DEFAULT_RETRY_DELAY};
+pub use network::{DEFAULT_CONNECTION_TIMEOUT, DEFAULT_LOCALHOST, DEFAULT_PORT, PRODUCTION_BIND_ADDRESS};
+pub use resources::{
+    DEFAULT_CLEANUP_INTERVAL, DEFAULT_LEAK_DETECTION_INTERVAL, DEFAULT_MAX_RESOURCE_AGE,
+    DEFAULT_MONITORING_INTERVAL, DEFAULT_TRACKING_INTERVAL,
+};
+pub use services::DEFAULT_SHUTDOWN_TIMEOUT;

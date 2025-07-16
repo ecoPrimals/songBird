@@ -327,7 +327,7 @@ impl GamingManager {
                 }
                 format!("{}:0", crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS)
             } else {
-                &format!("{}:0", env_config.bind_address)
+                format!("{}:0", env_config.bind_address)
             };
 
             let socket = UdpSocket::bind(bind_addr)?;

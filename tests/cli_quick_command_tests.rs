@@ -13,7 +13,7 @@ async fn setup_quick_gaming_environment(config_path: &std::path::Path) -> Result
     let mut config = SongbirdConfig::default();
 
     // Set up gaming-specific configuration
-    config.network.orchestrator_port = 8080;
+    config.network.bind_port = 8080;
     config.network.discovery_port = 8081;
     config.network.federation_port = 8082;
     config.network.health_port = 8083;
@@ -76,7 +76,7 @@ async fn setup_basic_networking(config_path: &std::path::Path) -> Result<()> {
     let mut config = SongbirdConfig::default();
 
     // Basic networking configuration
-    config.network.orchestrator_port = 8080;
+    config.network.bind_port = 8080;
     config.network.bind_address = "127.0.0.1".parse().unwrap();
 
     let config_toml = toml::to_string(&config).unwrap();

@@ -52,7 +52,7 @@ async fn test_health_status_methods() {
 async fn test_orchestrator_creation() -> Result<()> {
     let config = SongbirdConfig::default();
     let orchestrator = Orchestrator::new(config)?;
-    assert!(orchestrator.get_config().network.orchestrator_port > 0);
+    assert!(orchestrator.get_config().network.bind_port > 0);
     Ok(())
 }
 
@@ -60,7 +60,7 @@ async fn test_orchestrator_creation() -> Result<()> {
 #[test]
 async fn test_orchestrator_default() {
     let orchestrator = Orchestrator::default();
-    assert!(orchestrator.get_config().network.orchestrator_port > 0);
+    assert!(orchestrator.get_config().network.bind_port > 0);
 }
 
 /// Test Orchestrator health checks
@@ -97,7 +97,7 @@ async fn test_orchestrator_config_access() {
     let config = SongbirdConfig {
         network: songbird_lib::config::NetworkConfig {
             bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
-            orchestrator_port: 9000,
+            bind_port: 9000,
             ..Default::default()
         },
         ..Default::default()
@@ -109,7 +109,7 @@ async fn test_orchestrator_config_access() {
         retrieved_config.network.bind_address,
         "127.0.0.1".parse::<IpAddr>().unwrap()
     );
-    assert_eq!(retrieved_config.network.orchestrator_port, 9000);
+    assert_eq!(retrieved_config.network.bind_port, 9000);
 }
 
 /// Test Orchestrator service discovery
@@ -181,7 +181,7 @@ async fn test_orchestrator_different_configs() {
         SongbirdConfig {
             network: songbird_lib::config::NetworkConfig {
                 bind_address: "0.0.0.0".parse::<IpAddr>().unwrap(),
-                orchestrator_port: 8080,
+                bind_port: 8080,
                 ..Default::default()
             },
             ..Default::default()
@@ -189,7 +189,7 @@ async fn test_orchestrator_different_configs() {
         SongbirdConfig {
             network: songbird_lib::config::NetworkConfig {
                 bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
-                orchestrator_port: 3000,
+                bind_port: 3000,
                 ..Default::default()
             },
             ..Default::default()
@@ -204,8 +204,8 @@ async fn test_orchestrator_different_configs() {
             config.network.bind_address
         );
         assert_eq!(
-            retrieved_config.network.orchestrator_port,
-            config.network.orchestrator_port
+            retrieved_config.network.bind_port,
+            config.network.bind_port
         );
     }
 }
@@ -275,7 +275,7 @@ async fn test_orchestrator_integration() {
 
     // Test config retrieval
     let config = orchestrator.get_config();
-    assert!(config.network.orchestrator_port > 0);
+    assert!(config.network.bind_port > 0);
 
     // Test service discovery
     let services = orchestrator.discover_services().await;
@@ -311,7 +311,7 @@ async fn test_orchestrator_scaling_integration() {
 async fn test_orchestrator_configuration() -> Result<()> {
     let mut config = SongbirdConfig::default();
     config.network.bind_address = "127.0.0.1".parse::<IpAddr>().unwrap();
-    config.network.orchestrator_port = 9000;
+    config.network.bind_port = 9000;
 
     let orchestrator = Orchestrator::new(config)?;
     let retrieved_config = orchestrator.get_config();
@@ -320,7 +320,7 @@ async fn test_orchestrator_configuration() -> Result<()> {
         retrieved_config.network.bind_address,
         "127.0.0.1".parse::<IpAddr>().unwrap()
     );
-    assert_eq!(retrieved_config.network.orchestrator_port, 9000);
+    assert_eq!(retrieved_config.network.bind_port, 9000);
     Ok(())
 }
 
@@ -331,7 +331,7 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
     let config = SongbirdConfig {
         network: songbird_lib::config::NetworkConfig {
             bind_address: "0.0.0.0".parse::<IpAddr>().unwrap(),
-            orchestrator_port: 8080,
+            bind_port: 8080,
             ..Default::default()
         },
         ..Default::default()
@@ -343,7 +343,7 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
     let config2 = SongbirdConfig {
         network: songbird_lib::config::NetworkConfig {
             bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
-            orchestrator_port: 3000,
+            bind_port: 3000,
             ..Default::default()
         },
         ..Default::default()
@@ -356,12 +356,12 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
     let retrieved_config2 = orchestrator2.get_config();
 
     assert_eq!(
-        retrieved_config.network.orchestrator_port,
-        retrieved_config.network.orchestrator_port
+        retrieved_config.network.bind_port,
+        retrieved_config.network.bind_port
     );
     assert_eq!(
-        retrieved_config2.network.orchestrator_port,
-        retrieved_config2.network.orchestrator_port
+        retrieved_config2.network.bind_port,
+        retrieved_config2.network.bind_port
     );
 
     Ok(())
@@ -374,7 +374,7 @@ async fn test_orchestrator_network_stats() -> Result<()> {
     let orchestrator = Orchestrator::new(config)?;
 
     // Test network statistics
-    assert!(orchestrator.get_config().network.orchestrator_port > 0);
+    assert!(orchestrator.get_config().network.bind_port > 0);
 
     Ok(())
 }

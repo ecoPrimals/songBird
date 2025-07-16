@@ -197,7 +197,7 @@ pub enum Commands {
         #[arg(short, long, default_value = "8080")]
         port: u16,
         /// Bind address
-        #[arg(short, long, default_value = crate::config::constants::DEFAULT_BIND_ADDRESS)]
+        #[arg(short, long, default_value = "127.0.0.1")]
         bind: String,
     },
 }
@@ -358,7 +358,7 @@ data_dir = "./.songbird/data"
 log_level = "info"
 
 [network]
-orchestrator_port = 8080
+bind_port = 8080
 discovery_port = 8001
 gaming_port = 6112
 health_port = 8002
@@ -1509,7 +1509,7 @@ fn get_discovery_config() -> &'static SongbirdDiscoveryConfig {
             multicast_address: "239.255.255.250".to_string(),
             federation_port: 8001,
             service_port: 8002,
-            bind_address: crate::config::constants::DEFAULT_BIND_ADDRESS.to_string(),
+            bind_address: "127.0.0.1".to_string(),
             announcement_interval_secs: 30,
             response_timeout_secs: 5,
             ping_timeout_secs: 3,

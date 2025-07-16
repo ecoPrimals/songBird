@@ -10,7 +10,7 @@
  */
 
 use crate::config::FederationConfig;
-use crate::messages::FederationMessage;
+
 use songbird_errors::SongbirdError;
 use std::net::UdpSocket;
 use std::time::Duration;

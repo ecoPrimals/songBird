@@ -8,19 +8,15 @@
  * - Departure notifications
  */
 
-use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
-
-use serde_json::Value;
-use sysinfo::{System, SystemExt, CpuExt};
+use std::time::Duration;
+use sysinfo::{SystemExt, CpuExt};
 use tokio::sync::RwLock;
 use tokio::time::{interval, timeout};
 use tracing::{debug, error, info, warn};
 
 use crate::config::FederationConfig;
-use crate::messages::FederationMessage;
-use crate::types::*;
+
 use songbird_errors::{Result, SongbirdError};
 
 #[derive(Debug)]

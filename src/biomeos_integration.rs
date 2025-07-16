@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use songbird_config::SongbirdConfig;
-use songbird_errors::{Result, SongbirdError};
+use crate::errors::{Result, SongbirdError};
 use tokio::sync::RwLock;
 use tracing::info;
 
@@ -208,7 +208,7 @@ impl BiomeOSIntegration {
         let mut orchestrator = self.orchestrator.write().await;
         if let Err(e) = orchestrator.orchestrate().await {
             return Err(SongbirdError::Network {
-                service: Some("biomeos_integration".to_string()),
+                service: "biomeos_integration".to_string(),
                 message: format!("Orchestration failed: {e}"),
                 details: None,
             });
@@ -271,7 +271,7 @@ impl BiomeOSIntegration {
         // Use orchestration instead of non-existent deploy_biome method
         if let Err(e) = orchestrator.orchestrate().await {
             return Err(SongbirdError::Network {
-                service: Some("biomeos_integration".to_string()),
+                service: "biomeos_integration".to_string(),
                 message: format!("Orchestration failed: {e}"),
                 details: None,
             });
@@ -513,6 +513,7 @@ impl BiomeOSIntegration {
 }
 
 /// Client for communicating with biomeOS
+#[derive(Debug, Clone)]
 pub struct BiomeOSClient {
     endpoint: String,
     client: reqwest::Client,
@@ -526,6 +527,56 @@ impl BiomeOSClient {
         }
     }
 
+    pub async fn health_check(&self) -> Result<()> {
+        let url = format!("{}/api/v1/health", self.endpoint);
+        let response = self.client.get(&url).send().await
+            .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
+        
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(SongbirdError::service_error(
+                "biomeos",
+                format!("Health check failed with status: {}", response.status())
+            ))
+        }
+    }
+
+    pub async fn request(&self, endpoint: &str, payload: serde_json::Value) -> Result<serde_json::Value> {
+        let url = format!("{}/api/v1/{}", self.endpoint, endpoint);
+        let response = self.client.post(&url).json(&payload).send().await
+            .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
+        
+        if response.status().is_success() {
+            let data = response.json::<serde_json::Value>().await
+                .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
+            Ok(data)
+        } else {
+            Err(SongbirdError::service_error(
+                "biomeos",
+                format!("Request failed with status: {}", response.status())
+            ))
+        }
+    }
+
+    /// Get BiomeOS capabilities
+    pub async fn get_capabilities(&self) -> Result<serde_json::Value> {
+        let url = format!("{}/api/v1/capabilities", self.endpoint);
+        let response = self.client.get(&url).send().await
+            .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
+        
+        if response.status().is_success() {
+            let data = response.json::<serde_json::Value>().await
+                .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
+            Ok(data)
+        } else {
+            Err(SongbirdError::service_error(
+                "biomeos",
+                format!("Get capabilities failed with status: {}", response.status())
+            ))
+        }
+    }
+
     pub async fn register_service(&self, registration: &BiomeOSServiceRegistration) -> Result<()> {
         let url = format!("{}/api/v1/ecosystem/services", self.endpoint);
 
@@ -536,14 +587,14 @@ impl BiomeOSClient {
             .send()
             .await
             .map_err(|e| SongbirdError::Network {
-                service: Some("biomeos_integration".to_string()),
+                service: "biomeos_integration".to_string(),
                 message: format!("Failed to register with biomeOS: {e}"),
                 details: None,
             })?;
 
         if !response.status().is_success() {
             return Err(SongbirdError::Network {
-                service: Some("biomeos_integration".to_string()),
+                service: "biomeos_integration".to_string(),
                 message: format!("biomeOS registration failed: {}", response.status()),
                 details: None,
             });
@@ -562,14 +613,14 @@ impl BiomeOSClient {
             .send()
             .await
             .map_err(|e| SongbirdError::Network {
-                service: Some("biomeos_integration".to_string()),
+                service: "biomeos_integration".to_string(),
                 message: format!("Failed to send message to biomeOS: {e}"),
                 details: None,
             })?;
 
         if !response.status().is_success() {
             return Err(SongbirdError::Network {
-                service: Some("biomeos_integration".to_string()),
+                service: "biomeos_integration".to_string(),
                 message: format!("Message send failed: {}", response.status()),
                 details: None,
             });

@@ -226,6 +226,23 @@ impl SongbirdError {
             field: None,
         }
     }
+
+    /// Create a configuration error with basic fields
+    pub fn config_error(message: String, field: Option<String>) -> Self {
+        Self::Config {
+            message,
+            field,
+        }
+    }
+
+    /// Create a network error with basic fields
+    pub fn network_error(service: String, message: String, details: Option<String>) -> Self {
+        Self::Network {
+            service,
+            message,
+            details,
+        }
+    }
 }
 // Implement From traits for common error types
 impl From<&str> for SongbirdError {
@@ -336,6 +353,354 @@ impl From<HyperClientError> for SongbirdError {
         SongbirdError::Config {
             message: err.message,
             field: None,
+        }
+    }
+}
+
+impl From<songbird_universal_primals::errors::PrimalError> for SongbirdError {
+    fn from(error: songbird_universal_primals::errors::PrimalError) -> Self {
+        match error {
+            songbird_universal_primals::errors::PrimalError::Network(msg) => {
+                SongbirdError::Network {
+                    service: "primal".to_string(),
+                    message: msg,
+                    details: None,
+                }
+            }
+            songbird_universal_primals::errors::PrimalError::Authentication(msg) => {
+                SongbirdError::Auth {
+                    message: msg,
+                    user: None,
+                }
+            }
+            songbird_universal_primals::errors::PrimalError::Authorization(msg) => {
+                SongbirdError::Auth {
+                    message: msg,
+                    user: None,
+                }
+            }
+            songbird_universal_primals::errors::PrimalError::Configuration(msg) => {
+                SongbirdError::Config {
+                    message: msg,
+                    field: None,
+                }
+            }
+            songbird_universal_primals::errors::PrimalError::Validation(msg) => {
+                SongbirdError::Config {
+                    message: msg,
+                    field: None,
+                }
+            }
+            songbird_universal_primals::errors::PrimalError::Timeout(msg) => {
+                SongbirdError::Network {
+                    service: "primal".to_string(),
+                    message: format!("Timeout: {}", msg),
+                    details: None,
+                }
+            }
+            songbird_universal_primals::errors::PrimalError::ServiceUnavailable(msg) => {
+                SongbirdError::Network {
+                    service: "primal".to_string(),
+                    message: format!("Service unavailable: {}", msg),
+                    details: None,
+                }
+            }
+            songbird_universal_primals::errors::PrimalError::InvalidRequest(msg) => {
+                SongbirdError::Config {
+                    message: format!("Invalid request: {}", msg),
+                    field: None,
+                }
+            }
+            songbird_universal_primals::errors::PrimalError::Internal(msg) => {
+                SongbirdError::Network {
+                    service: "primal".to_string(),
+                    message: format!("Internal error: {}", msg),
+                    details: None,
+                }
+            }
+            songbird_universal_primals::errors::PrimalError::RateLimit(msg) => {
+                SongbirdError::Network {
+                    service: "primal".to_string(),
+                    message: format!("Rate limit: {}", msg),
+                    details: None,
+                }
+            }
+            _ => SongbirdError::Network {
+                service: "primal".to_string(),
+                message: error.to_string(),
+                details: None,
+            },
+        }
+    }
+}
+
+impl From<SongbirdError> for hyper::StatusCode {
+    fn from(error: SongbirdError) -> Self {
+        match error {
+            SongbirdError::Security { .. } => hyper::StatusCode::FORBIDDEN,
+            SongbirdError::Protocol { .. } => hyper::StatusCode::BAD_REQUEST,
+            SongbirdError::Service { .. } => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            SongbirdError::CompositionFailed(_) => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            SongbirdError::Communication(_) => hyper::StatusCode::BAD_GATEWAY,
+            SongbirdError::Validation { .. } => hyper::StatusCode::BAD_REQUEST,
+            SongbirdError::ExecutionFailed { .. } => hyper::StatusCode::REQUEST_TIMEOUT,
+            SongbirdError::RateLimitExceeded { .. } => hyper::StatusCode::TOO_MANY_REQUESTS,
+            SongbirdError::NotFound { .. } => hyper::StatusCode::NOT_FOUND,
+            SongbirdError::Config { .. } => hyper::StatusCode::BAD_REQUEST,
+            SongbirdError::Configuration { .. } => hyper::StatusCode::BAD_REQUEST,
+            SongbirdError::Io { .. } => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            SongbirdError::Network { .. } => hyper::StatusCode::BAD_GATEWAY,
+            SongbirdError::Discovery { .. } => hyper::StatusCode::BAD_REQUEST,
+            SongbirdError::LoadBalancer { .. } => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            SongbirdError::Auth { .. } => hyper::StatusCode::UNAUTHORIZED,
+            SongbirdError::Authentication { .. } => hyper::StatusCode::UNAUTHORIZED,
+            SongbirdError::Gaming { .. } => hyper::StatusCode::BAD_REQUEST,
+            SongbirdError::TunnelCreation(_) => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            SongbirdError::EncryptionFailed(_) => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            SongbirdError::DecryptionFailed(_) => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            SongbirdError::NetworkDetection(_) => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            SongbirdError::UnsupportedChannelType => hyper::StatusCode::BAD_REQUEST,
+            SongbirdError::Deployment { .. } => hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            SongbirdError::CircuitBreakerOpen { .. } => hyper::StatusCode::SERVICE_UNAVAILABLE,
+            SongbirdError::CircuitBreakerFailure { .. } => hyper::StatusCode::SERVICE_UNAVAILABLE,
+            SongbirdError::RetryExhausted { .. } => hyper::StatusCode::REQUEST_TIMEOUT,
+        }
+    }
+}
+
+// Conversion from crate version to local version
+impl From<songbird_errors::SongbirdError> for SongbirdError {
+    fn from(error: songbird_errors::SongbirdError) -> Self {
+        match error {
+            songbird_errors::SongbirdError::Config { message, field, .. } => {
+                SongbirdError::Config { message, field }
+            }
+            songbird_errors::SongbirdError::Network { service, message, details, .. } => {
+                SongbirdError::Network { 
+                    service: service.unwrap_or_default(), 
+                    message, 
+                    details 
+                }
+            }
+            songbird_errors::SongbirdError::Communication(msg) => {
+                SongbirdError::Communication(msg)
+            }
+            songbird_errors::SongbirdError::Service { service, message, .. } => {
+                SongbirdError::Service { service, message }
+            }
+            songbird_errors::SongbirdError::Discovery { message, service, .. } => {
+                SongbirdError::Discovery { message, service }
+            }
+            songbird_errors::SongbirdError::Auth { message, user, .. } => {
+                SongbirdError::Auth { message, user }
+            }
+            songbird_errors::SongbirdError::Authentication { provider, message, .. } => {
+                SongbirdError::Authentication { provider, message }
+            }
+            songbird_errors::SongbirdError::Gaming { message, protocol, .. } => {
+                SongbirdError::Gaming { message, protocol }
+            }
+            songbird_errors::SongbirdError::Security { message, context, .. } => {
+                SongbirdError::Security { message, context }
+            }
+            songbird_errors::SongbirdError::Protocol { protocol, message, .. } => {
+                SongbirdError::Protocol { protocol, message }
+            }
+            songbird_errors::SongbirdError::Validation { field, message, .. } => {
+                SongbirdError::Validation { field, message }
+            }
+            songbird_errors::SongbirdError::NotFound { resource, message, .. } => {
+                SongbirdError::NotFound { resource, message }
+            }
+            songbird_errors::SongbirdError::Io { message, .. } => {
+                SongbirdError::Io { message }
+            }
+            songbird_errors::SongbirdError::LoadBalancer { message, .. } => {
+                SongbirdError::LoadBalancer { message }
+            }
+            songbird_errors::SongbirdError::Deployment { service, message, .. } => {
+                SongbirdError::Deployment { service, message }
+            }
+            songbird_errors::SongbirdError::CircuitBreakerOpen { message, .. } => {
+                SongbirdError::CircuitBreakerOpen { message }
+            }
+            songbird_errors::SongbirdError::CircuitBreakerFailure { message, .. } => {
+                SongbirdError::CircuitBreakerFailure { message }
+            }
+            songbird_errors::SongbirdError::RetryExhausted { attempts, .. } => {
+                SongbirdError::RetryExhausted { attempts, last_error: "Unknown error".to_string() }
+            }
+            songbird_errors::SongbirdError::RateLimitExceeded { message, .. } => {
+                SongbirdError::RateLimitExceeded { message }
+            }
+            songbird_errors::SongbirdError::ExecutionFailed { message, .. } => {
+                SongbirdError::ExecutionFailed { message }
+            }
+            _ => SongbirdError::CompositionFailed("Unknown error type".to_string()),
+        }
+    }
+}
+
+// Conversion from local version to crate version
+impl From<SongbirdError> for songbird_errors::SongbirdError {
+    fn from(error: SongbirdError) -> Self {
+        match error {
+            SongbirdError::Config { message, field } => {
+                songbird_errors::SongbirdError::Config { 
+                    message, 
+                    field, 
+                    suggestion: None, 
+                    context: None 
+                }
+            }
+            SongbirdError::Network { service, message, details } => {
+                songbird_errors::SongbirdError::Network { 
+                    service: Some(service), 
+                    message, 
+                    details, 
+                    endpoint: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Communication(msg) => {
+                songbird_errors::SongbirdError::Communication(msg)
+            }
+            SongbirdError::Service { service, message } => {
+                songbird_errors::SongbirdError::Service { 
+                    service, 
+                    message, 
+                    status: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Discovery { message, service } => {
+                songbird_errors::SongbirdError::Discovery { 
+                    message, 
+                    service, 
+                    timeout: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Auth { message, user } => {
+                songbird_errors::SongbirdError::Auth { 
+                    message, 
+                    user, 
+                    provider: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Authentication { provider, message } => {
+                songbird_errors::SongbirdError::Authentication { 
+                    provider, 
+                    message, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Gaming { message, protocol } => {
+                songbird_errors::SongbirdError::Gaming { 
+                    message, 
+                    protocol, 
+                    game: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Security { message, context } => {
+                songbird_errors::SongbirdError::Security { 
+                    message, 
+                    context, 
+                    severity: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Protocol { protocol, message } => {
+                songbird_errors::SongbirdError::Protocol { 
+                    protocol, 
+                    message, 
+                    version: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Validation { field, message } => {
+                songbird_errors::SongbirdError::Validation { 
+                    field, 
+                    message, 
+                    value: None, 
+                    expected: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::NotFound { resource, message } => {
+                songbird_errors::SongbirdError::NotFound { 
+                    resource, 
+                    message, 
+                    searched_paths: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Io { message } => {
+                songbird_errors::SongbirdError::Io { 
+                    message, 
+                    path: None, 
+                    operation: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::LoadBalancer { message } => {
+                songbird_errors::SongbirdError::LoadBalancer { 
+                    message, 
+                    backend: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::Deployment { service, message } => {
+                songbird_errors::SongbirdError::Deployment { 
+                    service, 
+                    message, 
+                    environment: None, 
+                    stage: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::CircuitBreakerOpen { message } => {
+                songbird_errors::SongbirdError::CircuitBreakerOpen { 
+                    service: "unknown".to_string(), 
+                    message, 
+                    failure_count: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::CircuitBreakerFailure { message } => {
+                songbird_errors::SongbirdError::CircuitBreakerFailure { 
+                    service: "unknown".to_string(), 
+                    message, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::RetryExhausted { attempts, last_error } => {
+                songbird_errors::SongbirdError::RetryExhausted { 
+                    attempts, 
+                    message: last_error, 
+                    duration: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::RateLimitExceeded { message } => {
+                songbird_errors::SongbirdError::RateLimitExceeded { 
+                    message, 
+                    service: None, 
+                    limit: None, 
+                    suggestion: None 
+                }
+            }
+            SongbirdError::ExecutionFailed { message } => {
+                songbird_errors::SongbirdError::ExecutionFailed { 
+                    message, 
+                    command: None, 
+                    exit_code: None, 
+                    suggestion: None 
+                }
+            }
+            _ => songbird_errors::SongbirdError::Generic("Unknown error type".to_string()),
         }
     }
 }

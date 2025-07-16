@@ -412,21 +412,25 @@ impl SongbirdConfig {
 
     /// Validate configuration
     pub fn validate(&self) -> Result<()> {
-        if self.network.orchestrator_port == 0 {
-            return Err(SongbirdError::Config {
-                field: Some("node_id".to_string()),
-                message: "Node ID cannot be empty".to_string(),
-            });
+        let mut validation_errors = Vec::new();
+
+        if self.network.bind_port == 0 {
+            validation_errors.push("Network port cannot be zero".to_string());
         }
 
-        if self.network.orchestrator_port == 0 {
-            return Err(SongbirdError::Config {
-                field: Some("port".to_string()),
-                message: "Port cannot be zero".to_string(),
-            });
+        // Validate port ranges
+        if self.network.bind_port < 1024 && !std::env::var("SONGBIRD_ALLOW_PRIVILEGED_PORTS").is_ok() {
+            validation_errors.push("Port must be >= 1024 unless SONGBIRD_ALLOW_PRIVILEGED_PORTS is set".to_string());
         }
 
-        Ok(())
+        if validation_errors.is_empty() {
+            Ok(())
+        } else {
+            Err(SongbirdError::Config {
+                field: None,
+                message: validation_errors.join(", "),
+            })
+        }
     }
 }
 pub mod hardcoded_elimination;

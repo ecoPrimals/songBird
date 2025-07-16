@@ -50,11 +50,8 @@ pub mod substrate;
 pub mod traits;
 pub mod zero_touch;
 
-/// Universal Songbird result type
-pub type Result<T> = std::result::Result<T, errors::SongbirdError>;
-
 /// Initialize Songbird with universal primal integration
-pub async fn initialize_songbird() -> Result<primals::UniversalPrimalRegistry> {
+pub async fn initialize_songbird() -> songbird_errors::Result<primals::UniversalPrimalRegistry> {
     use tracing::info;
 
     info!("🎵 Initializing Songbird Universal Orchestrator with Universal Primal Integration");
@@ -65,10 +62,7 @@ pub async fn initialize_songbird() -> Result<primals::UniversalPrimalRegistry> {
         registry
             .auto_discover()
             .await
-            .map_err(|e| errors::SongbirdError::Configuration {
-                field: "universal_primals".to_string(),
-                message: format!("Failed to auto-discover primals: {e}"),
-            })?;
+            .map_err(|e| songbird_errors::SongbirdError::configuration_error(format!("Failed to auto-discover primals: {e}")))?;
 
     info!("✅ Discovered {} primals:", discovered_primals.len());
     for primal in &discovered_primals {
@@ -85,7 +79,7 @@ pub async fn initialize_songbird() -> Result<primals::UniversalPrimalRegistry> {
 /// Initialize Songbird with custom primal configuration
 pub async fn initialize_songbird_with_config(
     config: &primals::config::UniversalPrimalConfig,
-) -> Result<primals::UniversalPrimalRegistry> {
+) -> songbird_errors::Result<primals::UniversalPrimalRegistry> {
     use tracing::info;
 
     info!("🎵 Initializing Songbird Universal Orchestrator with custom configuration");
@@ -93,10 +87,7 @@ pub async fn initialize_songbird_with_config(
     // Initialize universal primals with config
     let mut registry = primals::UniversalPrimalRegistry::new();
     registry.initialize_with_config(config).await.map_err(|e| {
-        errors::SongbirdError::Configuration {
-            field: "universal_primals_config".to_string(),
-            message: format!("Failed to initialize primals with config: {e}"),
-        }
+        songbird_errors::SongbirdError::configuration_error(format!("Failed to initialize primals with config: {e}"))
     })?;
 
     info!("🎵 Songbird Universal Orchestrator initialized with custom config");
@@ -108,7 +99,7 @@ pub async fn authenticate_with_universal_primals(
     registry: &primals::UniversalPrimalRegistry,
     username: &str,
     password: &str,
-) -> Result<String> {
+) -> songbird_errors::Result<String> {
     use tracing::info;
 
     // Find security primals (BearDog) - use the correct method name
@@ -117,10 +108,7 @@ pub async fn authenticate_with_universal_primals(
         .await;
 
     if security_primals.is_empty() {
-        return Err(errors::SongbirdError::Authentication {
-            provider: "universal_primals".to_string(),
-            message: "No security primals available for authentication".to_string(),
-        });
+        return Err(songbird_errors::SongbirdError::service_error("universal_primals", "No security primals available for authentication".to_string()));
     }
 
     // Create authentication request using the proper method
@@ -161,16 +149,10 @@ pub async fn authenticate_with_universal_primals(
                     .and_then(|v| v.as_str())
                     .unwrap_or("Unknown reason");
                 info!("❌ Authentication failed: {}", reason);
-                Err(errors::SongbirdError::Authentication {
-                    provider: "universal_primals".to_string(),
-                    message: format!("Authentication failed: {reason}"),
-                })
+                Err(songbird_errors::SongbirdError::service_error("universal_primals", format!("Authentication failed: {reason}")))
             }
         },
-        Err(e) => Err(errors::SongbirdError::Authentication {
-            provider: "universal_primals".to_string(),
-            message: format!("Security primal error: {e}"),
-        }),
+        Err(e) => Err(songbird_errors::SongbirdError::service_error("universal_primals", format!("Security primal error: {e}"))),
     }
 }
 
@@ -178,7 +160,7 @@ pub async fn authenticate_with_universal_primals(
 pub async fn encrypt_with_universal_primals(
     registry: &primals::UniversalPrimalRegistry,
     data: &[u8],
-) -> Result<Vec<u8>> {
+) -> songbird_errors::Result<Vec<u8>> {
     use tracing::info;
 
     // Find encryption capability
@@ -193,10 +175,7 @@ pub async fn encrypt_with_universal_primals(
         .await;
 
     if encryption_primals.is_empty() {
-        return Err(errors::SongbirdError::Security {
-            context: Some("encryption".to_string()),
-            message: "No encryption primals available".to_string(),
-        });
+        return Err(songbird_errors::SongbirdError::service_error("encryption", "No encryption primals available".to_string()));
     }
 
     // Create encryption request using the proper method
@@ -224,16 +203,15 @@ pub async fn encrypt_with_universal_primals(
                     .payload
                     .get("encrypted_data")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| errors::SongbirdError::Security {
-                        context: Some("encryption".to_string()),
-                        message: "Missing encrypted_data in response".to_string(),
-                    })?;
+                    .ok_or_else(|| songbird_errors::SongbirdError::service_error("encryption", "Missing encrypted_data in response".to_string()))?;
 
                 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
                 let encrypted_data = BASE64_STANDARD.decode(encrypted_data_b64).map_err(|e| {
-                    errors::SongbirdError::Security {
-                        context: Some("encryption".to_string()),
+                    songbird_errors::SongbirdError::Security {
                         message: format!("Failed to decode encrypted data: {e}"),
+                        context: Some("encryption".to_string()),
+                        severity: None,
+                        suggestion: Some("Check that the encrypted data is valid base64".to_string()),
                     }
                 })?;
 
@@ -243,14 +221,18 @@ pub async fn encrypt_with_universal_primals(
                 );
                 Ok(encrypted_data)
             }
-            _ => Err(errors::SongbirdError::Security {
-                context: Some("encryption".to_string()),
+            _ => Err(songbird_errors::SongbirdError::Security {
                 message: "Encryption failed".to_string(),
+                context: Some("encryption".to_string()),
+                severity: None,
+                suggestion: Some("Check encryption primal configuration".to_string()),
             }),
         },
-        Err(e) => Err(errors::SongbirdError::Security {
-            context: Some("encryption".to_string()),
+        Err(e) => Err(songbird_errors::SongbirdError::Security {
             message: format!("Encryption primal error: {e}"),
+            context: Some("encryption".to_string()),
+            severity: None,
+            suggestion: Some("Check primal connectivity and configuration".to_string()),
         }),
     }
 }

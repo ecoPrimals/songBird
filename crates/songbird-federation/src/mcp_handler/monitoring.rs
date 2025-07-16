@@ -9,15 +9,11 @@
  */
 
 use std::time::SystemTime;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 use crate::config::FederationConfig;
-use crate::types::*;
 use songbird_config::constants;
 use songbird_errors::{Result, SongbirdError};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 use sysinfo::{CpuExt, DiskExt, System, SystemExt};
 
 #[derive(Debug)]
