@@ -407,7 +407,13 @@ impl PeerRegistry {
                     // Parse fallback address with proper error handling
                     let fallback_result = fallback_addr
                         .parse()
-                        .or_else(|_| format!("{}:8080", crate::config::constants::network::default_bind_address()).parse())
+                        .or_else(|_| {
+                            format!(
+                                "{}:8080",
+                                crate::config::constants::network::default_bind_address()
+                            )
+                            .parse()
+                        })
                         .map_err(|e| crate::errors::SongbirdError::Network {
                             service: "discovery".to_string(),
                             message: format!("Failed to parse fallback address: {e}"),
@@ -515,7 +521,10 @@ impl UPnPClient {
         let mut peers = Vec::new();
 
         // Create UPnP multicast socket for SSDP discovery
-        let bind_addr = format!("{}:0", crate::config::constants::network::production_bind_address());
+        let bind_addr = format!(
+            "{}:0",
+            crate::config::constants::network::production_bind_address()
+        );
         let socket = match tokio::net::UdpSocket::bind(&bind_addr).await {
             Ok(socket) => socket,
             Err(e) => {
@@ -672,14 +681,17 @@ impl STUNClient {
         debug!("Testing STUN server: {}", server);
 
         // Create UDP socket for STUN
-        let bind_addr = format!("{}:0", crate::config::constants::network::production_bind_address());
-        let socket = tokio::net::UdpSocket::bind(&bind_addr)
-            .await
-            .map_err(|e| crate::errors::SongbirdError::Network {
+        let bind_addr = format!(
+            "{}:0",
+            crate::config::constants::network::production_bind_address()
+        );
+        let socket = tokio::net::UdpSocket::bind(&bind_addr).await.map_err(|e| {
+            crate::errors::SongbirdError::Network {
                 service: "stun".to_string(),
                 message: format!("Failed to create socket: {e}"),
                 details: None,
-            })?;
+            }
+        })?;
 
         // Parse STUN server address
         let stun_addr: SocketAddr =
@@ -879,7 +891,10 @@ mod tests {
         let engine = NetworkDiscoveryEngine::new(config);
 
         let start = Instant::now();
-        let _peers = engine.discover_peers().await.expect("Failed to discover peers in test");
+        let _peers = engine
+            .discover_peers()
+            .await
+            .expect("Failed to discover peers in test");
         let discovery_time = start.elapsed();
 
         // FRAGO requirement: <10ms discovery
@@ -893,7 +908,10 @@ mod tests {
         let config = DiscoveryConfig::default();
         let engine = NetworkDiscoveryEngine::new(config);
 
-        let topology = engine.map_network_topology().await.expect("Failed to map network topology in test");
+        let topology = engine
+            .map_network_topology()
+            .await
+            .expect("Failed to map network topology in test");
 
         // Verify topology structure
         assert!(topology.quality_score >= 0.0);

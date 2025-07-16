@@ -436,7 +436,12 @@ impl RealBridgeManager {
         let player_info = RealPlayerInfo {
             player_id: player_id.clone(),
             display_name: player_name,
-            local_address: format!("{}:0", crate::config::constants::network::production_bind_address()).parse().map_err(|_| SongbirdError::Network {
+            local_address: format!(
+                "{}:0",
+                crate::config::constants::network::production_bind_address()
+            )
+            .parse()
+            .map_err(|_| SongbirdError::Network {
                 service: "Real Bridge Manager".to_string(),
                 message: "Failed to parse local IP address".to_string(),
                 details: None,
@@ -731,7 +736,9 @@ impl SocketPool {
         let env_config = crate::config::environment::EnvironmentConfig::default();
 
         // Use configurable binding instead of hardcoded 0.0.0.0
-        let bind_addr = if env_config.bind_address == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS {
+        let bind_addr = if env_config.bind_address
+            == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS
+        {
             if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
                 return Err(SongbirdError::Config {
                     field: Some("gaming_bind_address".to_string()),
@@ -739,7 +746,11 @@ impl SocketPool {
                         .to_string(),
                 });
             }
-                            format!("{}:{}", crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS, self.next_port)
+            format!(
+                "{}:{}",
+                crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS,
+                self.next_port
+            )
         } else {
             format!("{}:{}", env_config.bind_address, self.next_port)
         };
@@ -777,7 +788,9 @@ impl SocketPool {
 
             // Use configurable binding instead of hardcoded 0.0.0.0
             let env_config = crate::config::environment::EnvironmentConfig::default();
-            let bind_addr = if env_config.bind_address == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS {
+            let bind_addr = if env_config.bind_address
+                == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS
+            {
                 if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
                     return Err(SongbirdError::Config {
                         field: Some("tcp_bind_address".to_string()),
@@ -785,7 +798,10 @@ impl SocketPool {
                             .to_string(),
                     });
                 }
-                format!("{}:{port}", crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS)
+                format!(
+                    "{}:{port}",
+                    crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS
+                )
             } else {
                 format!("{}:{}", env_config.bind_address, port)
             };

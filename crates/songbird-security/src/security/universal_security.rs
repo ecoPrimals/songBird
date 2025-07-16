@@ -589,7 +589,9 @@ impl LightweightTunnelCrypto {
                 message: format!("Session key {} not found", key_id),
                 field: Some("key_id".to_string()),
                 context: Some("renew_session_key".to_string()),
-                suggestion: Some("Check the session key ID or create a new session key".to_string()),
+                suggestion: Some(
+                    "Check the session key ID or create a new session key".to_string(),
+                ),
             })
         }
     }

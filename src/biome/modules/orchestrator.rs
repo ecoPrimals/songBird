@@ -227,12 +227,12 @@ impl SongbirdOrchestrator {
     async fn discover_via_mdns(&self, primal_name: &str) -> Option<String> {
         // mDNS discovery for local network services
         // Service names follow pattern: _primal-{name}._tcp.local
-        let _service_name = format!("_primal-{}._tcp.local", primal_name);
+        let _service_name = format!("_primal-{primal_name}._tcp.local");
 
         // In production, this would use mdns crate or similar
         // For now, simulate mDNS discovery with environment variable
         if let Ok(mdns_endpoint) =
-            std::env::var(&format!("SONGBIRD_MDNS_{}", primal_name.to_uppercase()))
+            std::env::var(format!("SONGBIRD_MDNS_{}", primal_name.to_uppercase()))
         {
             debug!("mDNS discovery found: {}", mdns_endpoint);
             return Some(mdns_endpoint);
@@ -240,9 +240,9 @@ impl SongbirdOrchestrator {
 
         // Try common mDNS patterns
         let mdns_patterns = [
-            format!("http://{}.local:8080", primal_name),
-            format!("https://{}.local:8443", primal_name),
-            format!("http://{}-primal.local:8080", primal_name),
+            format!("http://{primal_name}.local:8080"),
+            format!("https://{primal_name}.local:8443"),
+            format!("http://{primal_name}-primal.local:8080"),
         ];
 
         for pattern in mdns_patterns {
@@ -264,13 +264,13 @@ impl SongbirdOrchestrator {
             )
         });
 
-        let service_name = format!("primal-{}", primal_name);
-        let _consul_query = format!("{}/v1/health/service/{}", consul_url, service_name);
+        let service_name = format!("primal-{primal_name}");
+        let _consul_query = format!("{consul_url}/v1/health/service/{service_name}");
 
         // In production, this would use consul crate or HTTP client
         // For now, simulate with environment variable
         if let Ok(consul_endpoint) =
-            std::env::var(&format!("SONGBIRD_CONSUL_{}", primal_name.to_uppercase()))
+            std::env::var(format!("SONGBIRD_CONSUL_{}", primal_name.to_uppercase()))
         {
             debug!("Consul discovery found: {}", consul_endpoint);
             return Some(consul_endpoint);
@@ -290,12 +290,12 @@ impl SongbirdOrchestrator {
             )
         });
 
-        let _service_key = format!("/songbird/primals/{}/endpoint", primal_name);
+        let _service_key = format!("/songbird/primals/{primal_name}/endpoint");
 
         // In production, this would use etcd-client crate
         // For now, simulate with environment variable
         if let Ok(etcd_endpoint) =
-            std::env::var(&format!("SONGBIRD_ETCD_{}", primal_name.to_uppercase()))
+            std::env::var(format!("SONGBIRD_ETCD_{}", primal_name.to_uppercase()))
         {
             debug!("etcd discovery found: {}", etcd_endpoint);
             return Some(etcd_endpoint);
@@ -315,14 +315,12 @@ impl SongbirdOrchestrator {
         // K8s service patterns
         let k8s_patterns = [
             format!(
-                "http://primal-{}.default.svc.cluster.local:8080",
-                primal_name
+                "http://primal-{primal_name}.default.svc.cluster.local:8080"
             ),
             format!(
-                "http://{}-primal.default.svc.cluster.local:8080",
-                primal_name
+                "http://{primal_name}-primal.default.svc.cluster.local:8080"
             ),
-            format!("http://{}.songbird.svc.cluster.local:8080", primal_name),
+            format!("http://{primal_name}.songbird.svc.cluster.local:8080"),
         ];
 
         for pattern in k8s_patterns {
@@ -429,8 +427,16 @@ impl SongbirdOrchestrator {
         vec![
             format!("http://{}:{}", primal_name, default_port),
             format!("http://{}.local:{}", primal_name, default_port),
-            format!("http://{}:{}", crate::config::constants::network::DEFAULT_LOCALHOST, default_port + 1), // Assume sequential ports
-            format!("http://{}:{}", crate::config::constants::network::DEFAULT_BIND_ADDRESS, default_port + 1),
+            format!(
+                "http://{}:{}",
+                crate::config::constants::network::DEFAULT_LOCALHOST,
+                default_port + 1
+            ), // Assume sequential ports
+            format!(
+                "http://{}:{}",
+                crate::config::constants::network::DEFAULT_BIND_ADDRESS,
+                default_port + 1
+            ),
         ]
     }
 

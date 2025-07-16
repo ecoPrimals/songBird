@@ -9,31 +9,42 @@ use tracing::info;
 
 use songbird_universal_primals::{
     beardog::BearDogPrimal, nestgate::NestGatePrimalClient, toadstool::ToadstoolPrimal,
-    traits::PrimalHealth, PrimalCapability, PrimalContext, PrimalProvider, PrimalResult,
-    PrimalType, SecurityLevel, UniversalPrimalConfig, UniversalPrimalRegistry,
-    NetworkLocation,
+    traits::PrimalHealth, NetworkLocation, PrimalCapability, PrimalContext, PrimalProvider,
+    PrimalResult, PrimalType, SecurityLevel, UniversalPrimalConfig, UniversalPrimalRegistry,
 };
 
 // Helper function to create BearDog primal
-async fn create_beardog_primal(endpoint: &str, context: PrimalContext) -> PrimalResult<BearDogPrimal> {
+async fn create_beardog_primal(
+    endpoint: &str,
+    context: PrimalContext,
+) -> PrimalResult<BearDogPrimal> {
     info!("Creating BearDog primal for endpoint: {}", endpoint);
     Ok(BearDogPrimal::with_context(context))
 }
 
 // Helper function to create NestGate primal
-async fn create_nestgate_primal(endpoint: &str, context: PrimalContext) -> PrimalResult<NestGatePrimalClient> {
+async fn create_nestgate_primal(
+    endpoint: &str,
+    context: PrimalContext,
+) -> PrimalResult<NestGatePrimalClient> {
     info!("Creating NestGate primal for endpoint: {}", endpoint);
     Ok(NestGatePrimalClient::new())
 }
 
 // Helper function to create Toadstool primal
-async fn create_toadstool_primal(endpoint: &str, context: PrimalContext) -> PrimalResult<ToadstoolPrimal> {
+async fn create_toadstool_primal(
+    endpoint: &str,
+    context: PrimalContext,
+) -> PrimalResult<ToadstoolPrimal> {
     info!("Creating Toadstool primal for endpoint: {}", endpoint);
     Ok(ToadstoolPrimal::with_context(context))
 }
 
 // Helper function to create Squirrel primal (if available)
-async fn create_squirrel_primal(endpoint: &str, context: PrimalContext) -> PrimalResult<BearDogPrimal> {
+async fn create_squirrel_primal(
+    endpoint: &str,
+    context: PrimalContext,
+) -> PrimalResult<BearDogPrimal> {
     info!("Creating Squirrel primal for endpoint: {}", endpoint);
     // For now, using BearDog as a placeholder
     Ok(BearDogPrimal::with_context(context))
@@ -55,7 +66,8 @@ async fn main() -> PrimalResult<()> {
     info!("📋 Demo 1: Creating and registering individual primals");
 
     // Create BearDog security primal
-    let beardog: Arc<BearDogPrimal> = Arc::new(create_beardog_primal("http://beardog.demo", context.clone()).await?);
+    let beardog: Arc<BearDogPrimal> =
+        Arc::new(create_beardog_primal("http://beardog.demo", context.clone()).await?);
     info!("🔐 Created BearDog primal: {}", beardog.primal_id());
 
     // Display capabilities
@@ -75,7 +87,8 @@ async fn main() -> PrimalResult<()> {
     info!("✅ BearDog primal registered");
 
     // Create NestGate data primal
-    let nestgate: Arc<NestGatePrimalClient> = Arc::new(create_nestgate_primal("http://nestgate.demo", context.clone()).await?);
+    let nestgate: Arc<NestGatePrimalClient> =
+        Arc::new(create_nestgate_primal("http://nestgate.demo", context.clone()).await?);
     info!("💾 Created NestGate primal: {}", nestgate.primal_id());
 
     // Register the primal
@@ -96,7 +109,8 @@ async fn main() -> PrimalResult<()> {
     info!("✅ Toadstool primal registered");
 
     // Create Squirrel optimization primal
-    let squirrel: Arc<BearDogPrimal> = Arc::new(create_squirrel_primal("http://squirrel.demo", context.clone()).await?);
+    let squirrel: Arc<BearDogPrimal> =
+        Arc::new(create_squirrel_primal("http://squirrel.demo", context.clone()).await?);
     info!("🐿️ Created Squirrel primal: {}", squirrel.primal_id());
 
     // Register the primal

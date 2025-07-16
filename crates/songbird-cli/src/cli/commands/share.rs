@@ -521,12 +521,15 @@ async fn estimate_available_storage() -> CliResult<f64> {
     }
 
     // Real storage detection using system APIs
-    detect_available_storage().ok_or_else(|| {
-        crate::cli::CliError::Command {
-            message: "Failed to detect available storage. Set SONGBIRD_STORAGE_GB environment variable.".to_string(),
-            command: Some("share".to_string()),
-            suggestion: Some("Set the SONGBIRD_STORAGE_GB environment variable with your available storage".to_string()),
-        }
+    detect_available_storage().ok_or_else(|| crate::cli::CliError::Command {
+        message:
+            "Failed to detect available storage. Set SONGBIRD_STORAGE_GB environment variable."
+                .to_string(),
+        command: Some("share".to_string()),
+        suggestion: Some(
+            "Set the SONGBIRD_STORAGE_GB environment variable with your available storage"
+                .to_string(),
+        ),
     })
 }
 async fn detect_gpu() -> bool {

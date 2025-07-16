@@ -428,7 +428,10 @@ pub async fn create_safe_privilege_manager() -> Result<PrivilegeManager> {
 pub async fn can_capture_packets() -> bool {
     // Try to bind to a privileged port (< 1024) as a test
     // This is safer than trying to create raw sockets
-    match std::net::TcpListener::bind(&format!("{}:80", crate::config::constants::default_bind_address())) {
+    match std::net::TcpListener::bind(format!(
+        "{}:80",
+        crate::config::constants::default_bind_address()
+    )) {
         Ok(_) => true,
         Err(_) => {
             // Try binding to a regular socket as fallback test

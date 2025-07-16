@@ -236,7 +236,9 @@ mod tests {
             }
         }
 
-        pub async fn run_comprehensive_security_tests(&self) -> Result<SecurityTestReport, Box<dyn std::error::Error>> {
+        pub async fn run_comprehensive_security_tests(
+            &self,
+        ) -> Result<SecurityTestReport, Box<dyn std::error::Error>> {
             let mut test_report = SecurityTestReport {
                 threat_detection_results: Vec::new(),
                 zero_trust_results: Vec::new(),
@@ -249,25 +251,26 @@ mod tests {
 
             // Run threat detection tests
             test_report.threat_detection_results = self.threat_detector.detect_threats().await?;
-            
+
             // Run zero trust verification
             test_report.zero_trust_results = self.zero_trust_engine.verify_trust_policies().await?;
-            
+
             // Run encryption tests
-            test_report.encryption_results = self.encryption_tester.test_encryption_strength().await?;
-            
+            test_report.encryption_results =
+                self.encryption_tester.test_encryption_strength().await?;
+
             // Run audit logging tests
             test_report.audit_results = self.audit_logger.test_audit_logging().await?;
-            
+
             // Run compliance checks
             test_report.compliance_results = self.compliance_checker.check_compliance().await?;
-            
+
             // Calculate overall score
             test_report.overall_score = self.calculate_overall_score(&test_report);
-            
+
             // Generate recommendations
             test_report.recommendations = self.generate_recommendations(&test_report);
-            
+
             Ok(test_report)
         }
 
@@ -277,22 +280,37 @@ mod tests {
 
             // Score threat detection
             if !report.threat_detection_results.is_empty() {
-                let passed_tests = report.threat_detection_results.iter().filter(|r| r.passed).count();
-                total_score += (passed_tests as f64 / report.threat_detection_results.len() as f64) * 100.0;
+                let passed_tests = report
+                    .threat_detection_results
+                    .iter()
+                    .filter(|r| r.passed)
+                    .count();
+                total_score +=
+                    (passed_tests as f64 / report.threat_detection_results.len() as f64) * 100.0;
                 test_count += 1;
             }
 
             // Score zero trust
             if !report.zero_trust_results.is_empty() {
-                let passed_tests = report.zero_trust_results.iter().filter(|r| r.passed).count();
-                total_score += (passed_tests as f64 / report.zero_trust_results.len() as f64) * 100.0;
+                let passed_tests = report
+                    .zero_trust_results
+                    .iter()
+                    .filter(|r| r.passed)
+                    .count();
+                total_score +=
+                    (passed_tests as f64 / report.zero_trust_results.len() as f64) * 100.0;
                 test_count += 1;
             }
 
             // Score encryption
             if !report.encryption_results.is_empty() {
-                let passed_tests = report.encryption_results.iter().filter(|r| r.passed).count();
-                total_score += (passed_tests as f64 / report.encryption_results.len() as f64) * 100.0;
+                let passed_tests = report
+                    .encryption_results
+                    .iter()
+                    .filter(|r| r.passed)
+                    .count();
+                total_score +=
+                    (passed_tests as f64 / report.encryption_results.len() as f64) * 100.0;
                 test_count += 1;
             }
 
@@ -305,8 +323,13 @@ mod tests {
 
             // Score compliance
             if !report.compliance_results.is_empty() {
-                let passed_tests = report.compliance_results.iter().filter(|r| r.passed).count();
-                total_score += (passed_tests as f64 / report.compliance_results.len() as f64) * 100.0;
+                let passed_tests = report
+                    .compliance_results
+                    .iter()
+                    .filter(|r| r.passed)
+                    .count();
+                total_score +=
+                    (passed_tests as f64 / report.compliance_results.len() as f64) * 100.0;
                 test_count += 1;
             }
 
@@ -321,53 +344,75 @@ mod tests {
             let mut recommendations = Vec::new();
 
             // Check for failed threat detection tests
-            let failed_threat_tests = report.threat_detection_results.iter()
+            let failed_threat_tests = report
+                .threat_detection_results
+                .iter()
                 .filter(|r| !r.passed)
                 .count();
-            
+
             if failed_threat_tests > 0 {
-                recommendations.push(format!("Review and update threat detection patterns ({} failed tests)", failed_threat_tests));
+                recommendations.push(format!(
+                    "Review and update threat detection patterns ({} failed tests)",
+                    failed_threat_tests
+                ));
             }
 
             // Check for failed zero trust tests
-            let failed_trust_tests = report.zero_trust_results.iter()
+            let failed_trust_tests = report
+                .zero_trust_results
+                .iter()
                 .filter(|r| !r.passed)
                 .count();
-            
+
             if failed_trust_tests > 0 {
-                recommendations.push(format!("Strengthen zero trust policies ({} failed tests)", failed_trust_tests));
+                recommendations.push(format!(
+                    "Strengthen zero trust policies ({} failed tests)",
+                    failed_trust_tests
+                ));
             }
 
             // Check for failed encryption tests
-            let failed_encryption_tests = report.encryption_results.iter()
+            let failed_encryption_tests = report
+                .encryption_results
+                .iter()
                 .filter(|r| !r.passed)
                 .count();
-            
+
             if failed_encryption_tests > 0 {
-                recommendations.push(format!("Upgrade encryption algorithms ({} failed tests)", failed_encryption_tests));
+                recommendations.push(format!(
+                    "Upgrade encryption algorithms ({} failed tests)",
+                    failed_encryption_tests
+                ));
             }
 
             // Check for failed audit tests
-            let failed_audit_tests = report.audit_results.iter()
-                .filter(|r| !r.passed)
-                .count();
-            
+            let failed_audit_tests = report.audit_results.iter().filter(|r| !r.passed).count();
+
             if failed_audit_tests > 0 {
-                recommendations.push(format!("Improve audit logging coverage ({} failed tests)", failed_audit_tests));
+                recommendations.push(format!(
+                    "Improve audit logging coverage ({} failed tests)",
+                    failed_audit_tests
+                ));
             }
 
             // Check for failed compliance tests
-            let failed_compliance_tests = report.compliance_results.iter()
+            let failed_compliance_tests = report
+                .compliance_results
+                .iter()
                 .filter(|r| !r.passed)
                 .count();
-            
+
             if failed_compliance_tests > 0 {
-                recommendations.push(format!("Address compliance issues ({} failed tests)", failed_compliance_tests));
+                recommendations.push(format!(
+                    "Address compliance issues ({} failed tests)",
+                    failed_compliance_tests
+                ));
             }
 
             // Overall score recommendations
             if report.overall_score < 70.0 {
-                recommendations.push("Overall security score is below acceptable threshold (70%)".to_string());
+                recommendations
+                    .push("Overall security score is below acceptable threshold (70%)".to_string());
             }
 
             recommendations
@@ -391,7 +436,7 @@ mod tests {
 
         pub async fn detect_threats(&self) -> Result<Vec<TestResult>, Box<dyn std::error::Error>> {
             let mut results = Vec::new();
-            
+
             if !self.detection_enabled {
                 return Ok(results);
             }
@@ -483,13 +528,7 @@ mod tests {
         }
 
         fn is_xss_attempt(&self, input: &str) -> bool {
-            let xss_patterns = vec![
-                "<script>",
-                "javascript:",
-                "onerror=",
-                "onload=",
-                "alert(",
-            ];
+            let xss_patterns = vec!["<script>", "javascript:", "onerror=", "onload=", "alert("];
 
             xss_patterns.iter().any(|pattern| input.contains(pattern))
         }
@@ -497,7 +536,7 @@ mod tests {
         async fn test_brute_force_detection(&self) -> Result<bool, Box<dyn std::error::Error>> {
             // Simulate multiple failed login attempts
             let mut failed_attempts = 0;
-            
+
             // Test brute force threshold
             for _ in 0..10 {
                 failed_attempts += 1;
@@ -533,10 +572,14 @@ mod tests {
                 "trojan_backdoor",
             ];
 
-            malware_patterns.iter().any(|pattern| input.contains(pattern))
+            malware_patterns
+                .iter()
+                .any(|pattern| input.contains(pattern))
         }
 
-        async fn test_network_intrusion_detection(&self) -> Result<bool, Box<dyn std::error::Error>> {
+        async fn test_network_intrusion_detection(
+            &self,
+        ) -> Result<bool, Box<dyn std::error::Error>> {
             // Test network intrusion patterns
             let test_packets = vec![
                 "GET ../../../../etc/passwd HTTP/1.1",
@@ -554,13 +597,11 @@ mod tests {
         }
 
         fn is_network_intrusion(&self, packet: &str) -> bool {
-            let intrusion_patterns = vec![
-                "../../../../etc/passwd",
-                "/admin/shell.php",
-                "CONNECT",
-            ];
+            let intrusion_patterns = vec!["../../../../etc/passwd", "/admin/shell.php", "CONNECT"];
 
-            intrusion_patterns.iter().any(|pattern| packet.contains(pattern))
+            intrusion_patterns
+                .iter()
+                .any(|pattern| packet.contains(pattern))
         }
     }
 
@@ -578,7 +619,9 @@ mod tests {
             }
         }
 
-        pub async fn verify_trust_policies(&self) -> Result<Vec<TestResult>, Box<dyn std::error::Error>> {
+        pub async fn verify_trust_policies(
+            &self,
+        ) -> Result<Vec<TestResult>, Box<dyn std::error::Error>> {
             let mut results = Vec::new();
 
             if !self.verification_enabled {
@@ -648,11 +691,11 @@ mod tests {
 
         fn verify_password_strength(&self, password: &str) -> bool {
             // Password strength requirements
-            password.len() >= 8 &&
-            password.chars().any(|c| c.is_uppercase()) &&
-            password.chars().any(|c| c.is_lowercase()) &&
-            password.chars().any(|c| c.is_numeric()) &&
-            password.chars().any(|c| !c.is_alphanumeric())
+            password.len() >= 8
+                && password.chars().any(|c| c.is_uppercase())
+                && password.chars().any(|c| c.is_lowercase())
+                && password.chars().any(|c| c.is_numeric())
+                && password.chars().any(|c| !c.is_alphanumeric())
         }
 
         fn verify_mfa_token(&self, token: &str) -> bool {
@@ -684,9 +727,9 @@ mod tests {
 
         fn verify_device_fingerprint(&self, device_info: &DeviceInfo) -> bool {
             // Basic device fingerprint verification
-            !device_info.device_id.is_empty() &&
-            !device_info.os_version.is_empty() &&
-            !device_info.browser_version.is_empty()
+            !device_info.device_id.is_empty()
+                && !device_info.os_version.is_empty()
+                && !device_info.browser_version.is_empty()
         }
 
         async fn test_application_verification(&self) -> Result<bool, Box<dyn std::error::Error>> {
@@ -714,10 +757,10 @@ mod tests {
         fn verify_application_permissions(&self, app_info: &ApplicationInfo) -> bool {
             // Verify application has required permissions
             let required_permissions = vec!["network", "file_system"];
-            
-            required_permissions.iter().all(|perm| {
-                app_info.permissions.contains(&perm.to_string())
-            })
+
+            required_permissions
+                .iter()
+                .all(|perm| app_info.permissions.contains(&perm.to_string()))
         }
 
         async fn test_transaction_verification(&self) -> Result<bool, Box<dyn std::error::Error>> {
@@ -789,7 +832,9 @@ mod tests {
             }
         }
 
-        pub async fn test_encryption_strength(&self) -> Result<Vec<TestResult>, Box<dyn std::error::Error>> {
+        pub async fn test_encryption_strength(
+            &self,
+        ) -> Result<Vec<TestResult>, Box<dyn std::error::Error>> {
             let mut results = Vec::new();
 
             // Test AES encryption
@@ -843,7 +888,12 @@ mod tests {
             Ok(decrypted == plaintext)
         }
 
-        fn aes_encrypt(&self, plaintext: &[u8], _key: &[u8; 32], _nonce: &[u8; 12]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        fn aes_encrypt(
+            &self,
+            plaintext: &[u8],
+            _key: &[u8; 32],
+            _nonce: &[u8; 12],
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
             // Simulate AES encryption (in real implementation, use actual AES)
             let mut encrypted = plaintext.to_vec();
             for byte in &mut encrypted {
@@ -852,7 +902,12 @@ mod tests {
             Ok(encrypted)
         }
 
-        fn aes_decrypt(&self, ciphertext: &[u8], _key: &[u8; 32], _nonce: &[u8; 12]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        fn aes_decrypt(
+            &self,
+            ciphertext: &[u8],
+            _key: &[u8; 32],
+            _nonce: &[u8; 12],
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
             // Simulate AES decryption (in real implementation, use actual AES)
             let mut decrypted = ciphertext.to_vec();
             for byte in &mut decrypted {
@@ -874,7 +929,12 @@ mod tests {
             Ok(decrypted == plaintext)
         }
 
-        fn chacha20_encrypt(&self, plaintext: &[u8], _key: &[u8; 32], _nonce: &[u8; 12]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        fn chacha20_encrypt(
+            &self,
+            plaintext: &[u8],
+            _key: &[u8; 32],
+            _nonce: &[u8; 12],
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
             // Simulate ChaCha20 encryption
             let mut encrypted = plaintext.to_vec();
             for byte in &mut encrypted {
@@ -883,7 +943,12 @@ mod tests {
             Ok(encrypted)
         }
 
-        fn chacha20_decrypt(&self, ciphertext: &[u8], _key: &[u8; 32], _nonce: &[u8; 12]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        fn chacha20_decrypt(
+            &self,
+            ciphertext: &[u8],
+            _key: &[u8; 32],
+            _nonce: &[u8; 12],
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
             // Simulate ChaCha20 decryption
             let mut decrypted = ciphertext.to_vec();
             for byte in &mut decrypted {
@@ -895,10 +960,10 @@ mod tests {
         async fn test_rsa_encryption(&self) -> Result<bool, Box<dyn std::error::Error>> {
             // Test RSA-2048 encryption
             let plaintext = b"RSA test message";
-            
+
             // Simulate RSA key generation
             let (_public_key, _private_key) = self.generate_rsa_keypair()?;
-            
+
             // Simulate RSA encryption/decryption
             let encrypted = self.rsa_encrypt(plaintext, &_public_key)?;
             let decrypted = self.rsa_decrypt(&encrypted, &_private_key)?;
@@ -913,7 +978,11 @@ mod tests {
             Ok((public_key, private_key))
         }
 
-        fn rsa_encrypt(&self, plaintext: &[u8], _public_key: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        fn rsa_encrypt(
+            &self,
+            plaintext: &[u8],
+            _public_key: &[u8],
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
             // Simulate RSA encryption
             let mut encrypted = plaintext.to_vec();
             for byte in &mut encrypted {
@@ -922,7 +991,11 @@ mod tests {
             Ok(encrypted)
         }
 
-        fn rsa_decrypt(&self, ciphertext: &[u8], _private_key: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        fn rsa_decrypt(
+            &self,
+            ciphertext: &[u8],
+            _private_key: &[u8],
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
             // Simulate RSA decryption
             let mut decrypted = ciphertext.to_vec();
             for byte in &mut decrypted {
@@ -934,10 +1007,10 @@ mod tests {
         async fn test_ed25519_signatures(&self) -> Result<bool, Box<dyn std::error::Error>> {
             // Test Ed25519 digital signatures
             let message = b"Message to sign";
-            
+
             // Simulate Ed25519 key generation
             let (_public_key, _private_key) = self.generate_ed25519_keypair()?;
-            
+
             // Simulate signature creation and verification
             let signature = self.ed25519_sign(message, &_private_key)?;
             let is_valid = self.ed25519_verify(message, &signature, &_public_key)?;
@@ -945,14 +1018,20 @@ mod tests {
             Ok(is_valid)
         }
 
-        fn generate_ed25519_keypair(&self) -> Result<(Vec<u8>, Vec<u8>), Box<dyn std::error::Error>> {
+        fn generate_ed25519_keypair(
+            &self,
+        ) -> Result<(Vec<u8>, Vec<u8>), Box<dyn std::error::Error>> {
             // Simulate Ed25519 key generation
             let public_key = vec![0u8; 32]; // 32-byte public key
             let private_key = vec![0u8; 32]; // 32-byte private key
             Ok((public_key, private_key))
         }
 
-        fn ed25519_sign(&self, message: &[u8], _private_key: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        fn ed25519_sign(
+            &self,
+            message: &[u8],
+            _private_key: &[u8],
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
             // Simulate Ed25519 signature
             let mut signature = vec![0u8; 64]; // 64-byte signature
             for (i, byte) in message.iter().enumerate() {
@@ -963,19 +1042,24 @@ mod tests {
             Ok(signature)
         }
 
-        fn ed25519_verify(&self, message: &[u8], signature: &[u8], _public_key: &[u8]) -> Result<bool, Box<dyn std::error::Error>> {
+        fn ed25519_verify(
+            &self,
+            message: &[u8],
+            signature: &[u8],
+            _public_key: &[u8],
+        ) -> Result<bool, Box<dyn std::error::Error>> {
             // Simulate Ed25519 verification
             if signature.len() != 64 {
                 return Ok(false);
             }
-            
+
             // Simple verification simulation
             for (i, byte) in message.iter().enumerate() {
                 if i < signature.len() && signature[i] != *byte {
                     return Ok(false);
                 }
             }
-            
+
             Ok(true)
         }
 
@@ -1015,7 +1099,9 @@ mod tests {
             }
         }
 
-        pub async fn test_audit_logging(&self) -> Result<Vec<TestResult>, Box<dyn std::error::Error>> {
+        pub async fn test_audit_logging(
+            &self,
+        ) -> Result<Vec<TestResult>, Box<dyn std::error::Error>> {
             let mut results = Vec::new();
 
             // Test log entry creation
@@ -1082,16 +1168,16 @@ mod tests {
         }
 
         fn validate_log_entry(&self, entry: &AuditLogEntry) -> bool {
-            !entry.user_id.is_empty() &&
-            !entry.action.is_empty() &&
-            !entry.resource.is_empty() &&
-            !entry.result.is_empty()
+            !entry.user_id.is_empty()
+                && !entry.action.is_empty()
+                && !entry.resource.is_empty()
+                && !entry.result.is_empty()
         }
 
         async fn test_log_level_filtering(&self) -> Result<bool, Box<dyn std::error::Error>> {
             // Test log level filtering
             let log_levels = vec!["DEBUG", "INFO", "WARN", "ERROR"];
-            
+
             for level in log_levels {
                 if !self.should_log_level(level) && level == "INFO" {
                     return Ok(false);
@@ -1124,11 +1210,14 @@ mod tests {
 
             // Simulate persisting to storage
             let persisted = self.persist_log_entry(&log_entry).await?;
-            
+
             Ok(persisted)
         }
 
-        async fn persist_log_entry(&self, _entry: &AuditLogEntry) -> Result<bool, Box<dyn std::error::Error>> {
+        async fn persist_log_entry(
+            &self,
+            _entry: &AuditLogEntry,
+        ) -> Result<bool, Box<dyn std::error::Error>> {
             // Simulate log persistence
             // In real implementation, this would write to database or file
             Ok(true)
@@ -1138,7 +1227,7 @@ mod tests {
             // Test log rotation
             let max_log_size = 1024 * 1024; // 1MB
             let current_log_size = self.get_current_log_size().await?;
-            
+
             if current_log_size > max_log_size {
                 let rotated = self.rotate_logs().await?;
                 return Ok(rotated);
@@ -1161,10 +1250,10 @@ mod tests {
             // Test log integrity verification
             let log_content = "Test log content";
             let checksum = self.calculate_checksum(log_content.as_bytes());
-            
+
             // Verify checksum
             let verified = self.verify_checksum(log_content.as_bytes(), &checksum);
-            
+
             Ok(verified)
         }
 
@@ -1200,7 +1289,9 @@ mod tests {
             }
         }
 
-        pub async fn check_compliance(&self) -> Result<Vec<TestResult>, Box<dyn std::error::Error>> {
+        pub async fn check_compliance(
+            &self,
+        ) -> Result<Vec<TestResult>, Box<dyn std::error::Error>> {
             let mut results = Vec::new();
 
             // Test GDPR compliance
@@ -1214,7 +1305,8 @@ mod tests {
             results.push(TestResult {
                 test_name: "HIPAA Compliance".to_string(),
                 passed: self.test_hipaa_compliance().await?,
-                details: "Tests Health Insurance Portability and Accountability Act compliance".to_string(),
+                details: "Tests Health Insurance Portability and Accountability Act compliance"
+                    .to_string(),
             });
 
             // Test SOX compliance
@@ -1228,7 +1320,8 @@ mod tests {
             results.push(TestResult {
                 test_name: "PCI DSS Compliance".to_string(),
                 passed: self.test_pci_dss_compliance().await?,
-                details: "Tests Payment Card Industry Data Security Standard compliance".to_string(),
+                details: "Tests Payment Card Industry Data Security Standard compliance"
+                    .to_string(),
             });
 
             // Test ISO 27001 compliance
@@ -1361,7 +1454,9 @@ mod tests {
             Ok(pci_checks.iter().all(|&result| result))
         }
 
-        async fn check_cardholder_data_protection(&self) -> Result<bool, Box<dyn std::error::Error>> {
+        async fn check_cardholder_data_protection(
+            &self,
+        ) -> Result<bool, Box<dyn std::error::Error>> {
             // Check if cardholder data is properly protected
             Ok(true) // Simplified for testing
         }
@@ -1393,7 +1488,9 @@ mod tests {
             Ok(iso_checks.iter().all(|&result| result))
         }
 
-        async fn check_information_security_policy(&self) -> Result<bool, Box<dyn std::error::Error>> {
+        async fn check_information_security_policy(
+            &self,
+        ) -> Result<bool, Box<dyn std::error::Error>> {
             // Check if information security policy is in place
             Ok(true) // Simplified for testing
         }
@@ -1514,9 +1611,15 @@ mod tests {
             expected_response: ThreatResponse::Block,
         };
 
-        let detected = framework.run_comprehensive_security_tests().await.unwrap().threat_detection_results.iter()
+        let detected = framework
+            .run_comprehensive_security_tests()
+            .await
+            .unwrap()
+            .threat_detection_results
+            .iter()
             .filter(|r| r.passed)
-            .count() > 0;
+            .count()
+            > 0;
         assert!(detected, "Critical malware threat should be detected");
         assert_eq!(framework.threat_detector.threat_patterns.len(), 5); // Ensure patterns are loaded
 
@@ -1552,9 +1655,15 @@ mod tests {
             }],
         };
 
-        let access_granted = framework.run_comprehensive_security_tests().await.unwrap().zero_trust_results.iter()
+        let access_granted = framework
+            .run_comprehensive_security_tests()
+            .await
+            .unwrap()
+            .zero_trust_results
+            .iter()
             .filter(|r| r.passed)
-            .count() > 0;
+            .count()
+            > 0;
         assert!(
             access_granted,
             "Trusted device from internal network should be granted access"
@@ -1578,9 +1687,15 @@ mod tests {
             verification_steps: vec![],
         };
 
-        let access_denied = framework.run_comprehensive_security_tests().await.unwrap().zero_trust_results.iter()
+        let access_denied = framework
+            .run_comprehensive_security_tests()
+            .await
+            .unwrap()
+            .zero_trust_results
+            .iter()
             .filter(|r| !r.passed)
-            .count() > 0;
+            .count()
+            > 0;
         assert!(
             access_denied,
             "Unknown device from public WiFi should be denied access"
@@ -1595,9 +1710,15 @@ mod tests {
 
         // Test blocking tech support scam
         let scam_activity = "microsoft tech support calling about virus on computer";
-        let scam_allowed = framework.run_comprehensive_security_tests().await.unwrap().compliance_results.iter()
+        let scam_allowed = framework
+            .run_comprehensive_security_tests()
+            .await
+            .unwrap()
+            .compliance_results
+            .iter()
             .filter(|r| r.passed)
-            .count() > 0;
+            .count()
+            > 0;
         assert!(
             !scam_allowed,
             "Tech support scam should be blocked by family protection"
@@ -1605,9 +1726,15 @@ mod tests {
 
         // Test allowing legitimate activity
         let normal_activity = "checking email and social media";
-        let normal_allowed = framework.run_comprehensive_security_tests().await.unwrap().compliance_results.iter()
+        let normal_allowed = framework
+            .run_comprehensive_security_tests()
+            .await
+            .unwrap()
+            .compliance_results
+            .iter()
             .filter(|r| r.passed)
-            .count() > 0;
+            .count()
+            > 0;
         assert!(normal_allowed, "Normal activity should be allowed");
 
         println!("✅ Family protection scammer detection test successful - Tech support scams blocked, normal activity allowed");
@@ -1650,9 +1777,15 @@ mod tests {
             threat_scenarios: vec![], // No threats detected
         };
 
-        let gaming_secure = framework.run_comprehensive_security_tests().await.unwrap().encryption_results.iter()
+        let gaming_secure = framework
+            .run_comprehensive_security_tests()
+            .await
+            .unwrap()
+            .encryption_results
+            .iter()
             .filter(|r| r.passed)
-            .count() > 0;
+            .count()
+            > 0;
         assert!(
             gaming_secure,
             "Gaming session with verified players should pass security checks"
@@ -1665,9 +1798,15 @@ mod tests {
     async fn test_encryption_framework_validation() {
         let mut framework = SecurityTestingFramework::new();
 
-        let encryption_strong = framework.run_comprehensive_security_tests().await.unwrap().encryption_results.iter()
+        let encryption_strong = framework
+            .run_comprehensive_security_tests()
+            .await
+            .unwrap()
+            .encryption_results
+            .iter()
             .filter(|r| r.passed)
-            .count() > 0;
+            .count()
+            > 0;
         assert!(
             encryption_strong,
             "Encryption framework should support strong algorithms"

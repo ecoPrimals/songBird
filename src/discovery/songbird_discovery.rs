@@ -127,7 +127,7 @@ impl SongbirdDiscovery {
         let common_ports = vec![8080, 8081, 8082, 8083, 8084, 8085, 3000, 5000, 9000];
         let local_networks = vec![
             crate::config::constants::default_bind_address(),
-            crate::config::constants::DEFAULT_LOCALHOST.to_string()
+            crate::config::constants::DEFAULT_LOCALHOST.to_string(),
         ];
 
         for host in local_networks {
@@ -204,7 +204,7 @@ impl SongbirdDiscovery {
         let common_ports = vec![8080, 8081, 8082, 8083, 8084, 8085];
         let hosts = vec![
             crate::config::constants::default_bind_address(),
-            crate::config::constants::DEFAULT_LOCALHOST.to_string()
+            crate::config::constants::DEFAULT_LOCALHOST.to_string(),
         ];
 
         for host in hosts {

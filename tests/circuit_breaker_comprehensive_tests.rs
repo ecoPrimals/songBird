@@ -7,10 +7,10 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
-use songbird_lib::errors::Result;
 use songbird_lib::communication::circuit_breaker::{
     CircuitBreaker, CircuitBreakerConfig, CircuitState,
 };
+use songbird_lib::errors::Result;
 
 #[tokio::test]
 async fn test_circuit_breaker_basic_functionality() -> Result<()> {

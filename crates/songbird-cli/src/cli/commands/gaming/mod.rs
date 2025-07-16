@@ -165,13 +165,15 @@ pub async fn handle_gaming_command(args: GamingArgs) -> Result<()> {
             game,
             family_safe,
             name,
-                    } => execute_quick_start(auto_detect, game, family_safe, name)
+        } => execute_quick_start(auto_detect, game, family_safe, name)
             .await
             .map_err(|e| SongbirdError::Gaming {
                 message: format!("Quick start failed: {e}"),
                 protocol: None,
                 game: Some("quick_start".to_string()),
-                suggestion: Some("Check quick start parameters and network connectivity".to_string()),
+                suggestion: Some(
+                    "Check quick start parameters and network connectivity".to_string(),
+                ),
             }),
     }
 }

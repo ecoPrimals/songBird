@@ -148,8 +148,14 @@ mod tests {
             .await
             .is_ok());
 
-        let health = monitor.get_service_health("test-service").await.expect("Failed to get service health in test");
+        let health = monitor
+            .get_service_health("test-service")
+            .await
+            .expect("Failed to get service health in test");
         assert!(health.is_some());
-        assert!(matches!(health.expect("Health should be Some in test").status, HealthStatus::Healthy));
+        assert!(matches!(
+            health.expect("Health should be Some in test").status,
+            HealthStatus::Healthy
+        ));
     }
 }

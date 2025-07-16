@@ -58,11 +58,11 @@ pub async fn initialize_songbird() -> songbird_errors::Result<primals::Universal
 
     // Initialize universal primals
     let mut registry = primals::UniversalPrimalRegistry::new();
-    let discovered_primals =
-        registry
-            .auto_discover()
-            .await
-            .map_err(|e| songbird_errors::SongbirdError::configuration_error(format!("Failed to auto-discover primals: {e}")))?;
+    let discovered_primals = registry.auto_discover().await.map_err(|e| {
+        songbird_errors::SongbirdError::configuration_error(format!(
+            "Failed to auto-discover primals: {e}"
+        ))
+    })?;
 
     info!("✅ Discovered {} primals:", discovered_primals.len());
     for primal in &discovered_primals {
@@ -87,7 +87,9 @@ pub async fn initialize_songbird_with_config(
     // Initialize universal primals with config
     let mut registry = primals::UniversalPrimalRegistry::new();
     registry.initialize_with_config(config).await.map_err(|e| {
-        songbird_errors::SongbirdError::configuration_error(format!("Failed to initialize primals with config: {e}"))
+        songbird_errors::SongbirdError::configuration_error(format!(
+            "Failed to initialize primals with config: {e}"
+        ))
     })?;
 
     info!("🎵 Songbird Universal Orchestrator initialized with custom config");
@@ -108,7 +110,10 @@ pub async fn authenticate_with_universal_primals(
         .await;
 
     if security_primals.is_empty() {
-        return Err(songbird_errors::SongbirdError::service_error("universal_primals", "No security primals available for authentication".to_string()));
+        return Err(songbird_errors::SongbirdError::service_error(
+            "universal_primals",
+            "No security primals available for authentication".to_string(),
+        ));
     }
 
     // Create authentication request using the proper method
@@ -149,10 +154,16 @@ pub async fn authenticate_with_universal_primals(
                     .and_then(|v| v.as_str())
                     .unwrap_or("Unknown reason");
                 info!("❌ Authentication failed: {}", reason);
-                Err(songbird_errors::SongbirdError::service_error("universal_primals", format!("Authentication failed: {reason}")))
+                Err(songbird_errors::SongbirdError::service_error(
+                    "universal_primals",
+                    format!("Authentication failed: {reason}"),
+                ))
             }
         },
-        Err(e) => Err(songbird_errors::SongbirdError::service_error("universal_primals", format!("Security primal error: {e}"))),
+        Err(e) => Err(songbird_errors::SongbirdError::service_error(
+            "universal_primals",
+            format!("Security primal error: {e}"),
+        )),
     }
 }
 
@@ -175,7 +186,10 @@ pub async fn encrypt_with_universal_primals(
         .await;
 
     if encryption_primals.is_empty() {
-        return Err(songbird_errors::SongbirdError::service_error("encryption", "No encryption primals available".to_string()));
+        return Err(songbird_errors::SongbirdError::service_error(
+            "encryption",
+            "No encryption primals available".to_string(),
+        ));
     }
 
     // Create encryption request using the proper method
@@ -203,7 +217,12 @@ pub async fn encrypt_with_universal_primals(
                     .payload
                     .get("encrypted_data")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| songbird_errors::SongbirdError::service_error("encryption", "Missing encrypted_data in response".to_string()))?;
+                    .ok_or_else(|| {
+                        songbird_errors::SongbirdError::service_error(
+                            "encryption",
+                            "Missing encrypted_data in response".to_string(),
+                        )
+                    })?;
 
                 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
                 let encrypted_data = BASE64_STANDARD.decode(encrypted_data_b64).map_err(|e| {
@@ -211,7 +230,9 @@ pub async fn encrypt_with_universal_primals(
                         message: format!("Failed to decode encrypted data: {e}"),
                         context: Some("encryption".to_string()),
                         severity: None,
-                        suggestion: Some("Check that the encrypted data is valid base64".to_string()),
+                        suggestion: Some(
+                            "Check that the encrypted data is valid base64".to_string(),
+                        ),
                     }
                 })?;
 

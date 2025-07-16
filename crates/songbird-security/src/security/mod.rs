@@ -815,7 +815,9 @@ impl SecurityManager {
                     message: "Authorization cannot be disabled in production".to_string(),
                     details: None,
                     endpoint: Some("security/authorize".to_string()),
-                    suggestion: Some("Enable authorization in production configuration".to_string()),
+                    suggestion: Some(
+                        "Enable authorization in production configuration".to_string(),
+                    ),
                 });
             }
             return Ok(false); // Explicit deny in production

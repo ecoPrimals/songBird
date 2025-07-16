@@ -50,11 +50,16 @@ fn parse_gaming_scale(s: &str) -> Result<GamingScale> {
         "lan-party" | "lan" => Ok(GamingScale::LanParty),
         "auto" => Ok(GamingScale::Auto),
         _ => Err(songbird_errors::SongbirdError::Config {
-            message: format!("Invalid gaming scale '{}'. Valid options: home-gaming, lan-party, auto", s),
+            message: format!(
+                "Invalid gaming scale '{}'. Valid options: home-gaming, lan-party, auto",
+                s
+            ),
             field: Some("gaming_scale".to_string()),
             context: Some("Gaming scale validation".to_string()),
-            suggestion: Some("Use 'home-gaming', 'lan-party', or 'auto' for gaming scale".to_string()),
-        })
+            suggestion: Some(
+                "Use 'home-gaming', 'lan-party', or 'auto' for gaming scale".to_string(),
+            ),
+        }),
     }
 }
 

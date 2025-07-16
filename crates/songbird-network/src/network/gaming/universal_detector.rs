@@ -142,7 +142,9 @@ impl UniversalGameProtocolDetector {
             session_id: format!("starcraft_{}", generate_session_id()),
             protocol_class: GameProtocolClass::IpxBased,
             local_ports: vec![6112, 6113, 6114],
-            remote_endpoints: vec![format!("{}:6112", constants::default_bind_address()).parse().expect("valid fallback address")],
+            remote_endpoints: vec![format!("{}:6112", constants::default_bind_address())
+                .parse()
+                .expect("valid fallback address")],
             process_id: Some(1234),
             game_name: Some("StarCraft".to_string()),
             detected_at: SystemTime::now(),
@@ -154,7 +156,9 @@ impl UniversalGameProtocolDetector {
             session_id: format!("aoe_{}", generate_session_id()),
             protocol_class: GameProtocolClass::DirectPlay,
             local_ports: vec![2300, 2301],
-            remote_endpoints: vec![format!("{}:2300", constants::default_bind_address()).parse().expect("valid fallback address")],
+            remote_endpoints: vec![format!("{}:2300", constants::default_bind_address())
+                .parse()
+                .expect("valid fallback address")],
             process_id: Some(5678),
             game_name: Some("Age of Empires II".to_string()),
             detected_at: SystemTime::now(),

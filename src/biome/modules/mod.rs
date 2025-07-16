@@ -174,7 +174,7 @@ impl BiomeCoordinator {
 
         // Create deployment info from active orchestrators
         for orchestrator_id in orchestrator_ids {
-            if let Some(orchestrator) = self.orchestrator_manager.get_orchestrator(&orchestrator_id)
+            if let Some(orchestrator) = self.orchestrator_manager.get_orchestrator(orchestrator_id)
             {
                 let health = orchestrator.get_health_status();
                 deployments.push(BiomeDeploymentInfo {

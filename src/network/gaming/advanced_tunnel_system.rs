@@ -545,7 +545,10 @@ mod tests {
 
         let result = tunnel.encrypt_zero_copy_bstp(&mut test_data);
         assert!(result.is_ok());
-        assert_eq!(result.expect("Failed to encrypt data in test"), original_len);
+        assert_eq!(
+            result.expect("Failed to encrypt data in test"),
+            original_len
+        );
         assert!(tunnel.metrics.bytes_transferred > 0);
         Ok(())
     }
@@ -567,7 +570,8 @@ mod tests {
 
     #[test]
     fn test_gaming_quality_metrics() {
-        let mut tunnel = BSTPTunnel::new_bstp_tunnel("quality_test".to_string()).expect("Failed to create tunnel in test");
+        let mut tunnel = BSTPTunnel::new_bstp_tunnel("quality_test".to_string())
+            .expect("Failed to create tunnel in test");
 
         // Process some packets to generate metrics
         let _ = tunnel.encrypt_gaming_packet_bstp(b"small_packet");

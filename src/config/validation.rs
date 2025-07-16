@@ -34,8 +34,7 @@ impl ConfigSecurityValidator {
         }
 
         // Validate port ranges are not hardcoded
-        if config.network.bind_port == 8080 && std::env::var("SONGBIRD_BIND_PORT").is_err()
-        {
+        if config.network.bind_port == 8080 && std::env::var("SONGBIRD_BIND_PORT").is_err() {
             tracing::warn!("Using default port 8080 - consider configuring SONGBIRD_BIND_PORT");
         }
 
