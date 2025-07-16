@@ -82,8 +82,9 @@ struct CircuitBreaker {
 }
 
 /// Circuit breaker states
-#[derive(Debug, Clone, PartialEq)]
-enum CircuitState {
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum CircuitState {
+    #[default]
     Closed,
     Open,
     HalfOpen,
@@ -99,7 +100,7 @@ struct ConnectionPool {
 
 /// Substrate performance metrics
 #[derive(Debug, Default)]
-struct SubstrateMetrics {
+pub struct SubstrateMetrics {
     pub total_requests: u64,
     pub cache_hits: u64,
     pub cache_misses: u64,
