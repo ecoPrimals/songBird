@@ -34,15 +34,16 @@ async fn test_error_creation_and_display() -> Result<()> {
 
     // Test network error
     let network_error = SongbirdError::Network {
-        service: Some("test-service".to_string()),
+        service: "test-service".to_string(),
         message: "Connection timeout".to_string(),
-        details: Some("After 30 seconds".to_string()),
+        details: Some("Host unreachable".to_string()),
     };
 
     // Test configuration error
-    let config_error = SongbirdError::Config {
-        message: "Invalid port".to_string(),
-        field: Some("port".to_string()),
+    let config_error = SongbirdError::Network {
+        service: "test-service".to_string(),
+        message: "Service unavailable".to_string(),
+        details: Some("Under maintenance".to_string()),
     };
 
     // Test gaming error

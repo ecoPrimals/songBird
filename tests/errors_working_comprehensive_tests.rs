@@ -307,7 +307,7 @@ fn test_songbird_error_configuration() {
 #[test]
 fn test_songbird_error_network() {
     let network_error = SongbirdError::Network {
-        service: Some("api".to_string()),
+        service: "api-service".to_string(),
         message: "Connection timeout".to_string(),
         details: Some("Host unreachable".to_string()),
     };
@@ -316,7 +316,7 @@ fn test_songbird_error_network() {
 
     let error_string = format!("{network_error}");
     assert!(error_string.contains("Connection timeout"));
-    assert!(error_string.contains("api"));
+    assert!(error_string.contains("api-service"));
     assert!(error_string.contains("Host unreachable"));
 }
 
@@ -600,11 +600,13 @@ fn test_songbird_error_retry_exhausted() {
 
 #[test]
 fn test_songbird_error_rate_limit_exceeded() {
-    let rate_limit_error = SongbirdError::RateLimitExceeded("Too many requests".to_string());
+    let rate_limit_error = SongbirdError::RateLimitExceeded {
+        message: "Too many requests".to_string(),
+    };
 
     assert!(matches!(
         rate_limit_error,
-        SongbirdError::RateLimitExceeded(_)
+        SongbirdError::RateLimitExceeded { message: _ }
     ));
 
     let error_string = format!("{rate_limit_error}");
@@ -613,9 +615,11 @@ fn test_songbird_error_rate_limit_exceeded() {
 
 #[test]
 fn test_songbird_error_execution_failed() {
-    let execution_error = SongbirdError::ExecutionFailed("Command execution failed".to_string());
+    let execution_error = SongbirdError::ExecutionFailed {
+        message: "Command execution failed".to_string(),
+    };
 
-    assert!(matches!(execution_error, SongbirdError::ExecutionFailed(_)));
+    assert!(matches!(execution_error, SongbirdError::ExecutionFailed { message: _ }));
 
     let error_string = format!("{execution_error}");
     assert!(error_string.contains("Command execution failed"));
