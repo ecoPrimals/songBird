@@ -13,7 +13,7 @@ async fn test_main_function_configuration_loading() {
     // Test configuration loading scenarios
     let config = SongbirdConfig::default();
     assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.bind_port > 0);
+    assert!(config.network.orchestrator_port > 0);
     assert!(config.network.gaming_port_range.start > 0);
     assert!(config.network.gaming_port_range.end > config.network.gaming_port_range.start);
 }
@@ -54,7 +54,7 @@ fn test_network_configuration_validation() {
     let config = SongbirdConfig::default();
     let bind_addr_str = format!("{}", config.network.bind_address);
     assert!(bind_addr_str.contains("0.0.0.0") || bind_addr_str.contains("127.0.0.1"));
-    assert!(config.network.bind_port >= 1024);
+    assert!(config.network.orchestrator_port >= 1024);
     assert!(config.network.gaming_port_range.end > config.network.gaming_port_range.start);
 }
 
@@ -158,7 +158,7 @@ fn test_config_file_loading() {
     // Test configuration file loading scenarios
     let config = SongbirdConfig::default();
     assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.bind_port > 0);
+    assert!(config.network.orchestrator_port > 0);
 }
 
 #[test]
@@ -169,7 +169,7 @@ fn test_startup_information_display() {
 
     // Test that all required information is available
     assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.bind_port > 0);
+    assert!(config.network.orchestrator_port > 0);
     assert!(config.network.gaming_port_range.start > 0);
     assert!(config.security.encryption_enabled || !config.security.encryption_enabled);
     assert!(config.security.tls_enabled || !config.security.tls_enabled);
@@ -187,7 +187,7 @@ fn test_comprehensive_validation() {
 
     // Network validation
     assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.bind_port > 0);
+    assert!(config.network.orchestrator_port > 0);
     assert!(config.network.gaming_port_range.start > 0);
     assert!(config.network.gaming_port_range.end > config.network.gaming_port_range.start);
 
@@ -247,9 +247,9 @@ fn test_bind_address_validation() {
 fn test_bind_port_validation() {
     // Test orchestrator port validation
     let config = SongbirdConfig::default();
-    assert!(config.network.bind_port > 0);
+    assert!(config.network.orchestrator_port > 0);
     // Note: u16 maximum is 65535, so <= 65535 is always true
-    assert!(config.network.bind_port >= 1024);
+    assert!(config.network.orchestrator_port >= 1024);
 }
 
 #[test]
@@ -340,8 +340,8 @@ fn test_configuration_cloning() {
         format!("{}", cloned_config.network.bind_address)
     );
     assert_eq!(
-        config.network.bind_port,
-        cloned_config.network.bind_port
+        config.network.orchestrator_port,
+        cloned_config.network.orchestrator_port
     );
 }
 
@@ -404,7 +404,7 @@ fn test_startup_banner_information() {
 fn test_configuration_summary_display() {
     // Test configuration summary display
     let config = SongbirdConfig::default();
-    let network_summary = format!("Orchestrator Port: {}", config.network.bind_port);
+    let network_summary = format!("Orchestrator Port: {}", config.network.orchestrator_port);
     let gaming_summary = format!(
         "Gaming Port Range: {}-{}",
         config.network.gaming_port_range.start, config.network.gaming_port_range.end
@@ -544,7 +544,7 @@ fn test_configuration_file_loading_error_handling() {
 
     // Test that default configuration is valid
     assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.bind_port > 0);
+    assert!(config.network.orchestrator_port > 0);
     assert!(config.network.gaming_port_range.start > 0);
 }
 
@@ -571,7 +571,7 @@ fn test_comprehensive_main_application_coverage() {
 
     // Test all configuration aspects
     assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.bind_port > 0);
+    assert!(config.network.orchestrator_port > 0);
     assert!(config.network.gaming_port_range.start > 0);
     assert!(config.network.gaming_port_range.end > config.network.gaming_port_range.start);
     assert!(config.security.encryption_enabled || !config.security.encryption_enabled);
