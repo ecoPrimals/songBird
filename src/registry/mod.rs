@@ -8,7 +8,9 @@ pub use songbird_registry::{health::*, plugin::*, service::*};
 
 // Additional convenience functions for backward compatibility
 pub async fn default_service_registry() -> Result<ServiceRegistry> {
-    ServiceRegistry::new().await.map_err(|e| SongbirdError::from(e))
+    ServiceRegistry::new()
+        .await
+        .map_err(SongbirdError::from)
 }
 
 pub fn create_plugin_registry() -> DynamicPluginRegistry {
@@ -16,5 +18,7 @@ pub fn create_plugin_registry() -> DynamicPluginRegistry {
 }
 
 pub async fn create_service_registry() -> Result<ServiceRegistry> {
-    ServiceRegistry::new().await.map_err(|e| SongbirdError::from(e))
+    ServiceRegistry::new()
+        .await
+        .map_err(SongbirdError::from)
 }

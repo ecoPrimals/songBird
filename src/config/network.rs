@@ -5,7 +5,7 @@
 
 use crate::config::constants;
 use crate::errors::SongbirdError;
-use crate::substrate::{NetworkOperation, NetworkRequest, OSSubstrate};
+use crate::substrate::{NetworkOperation, NetworkRequest};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
@@ -79,7 +79,7 @@ impl NetworkConfig {
             .parse()
             .or_else(|_| constants::network::DEFAULT_BIND_ADDRESS.parse())
             .map_err(|e| SongbirdError::Config {
-                message: format!("Failed to parse bind address: {}", e),
+                message: format!("Failed to parse bind address: {e}"),
                 field: Some("bind_address".to_string()),
             })?;
 
@@ -147,10 +147,14 @@ impl NetworkConfig {
 
         let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
             .and_then(|addr| addr.parse().map_err(|_| std::env::VarError::NotPresent))
-            .or_else(|_| constants::network::DEFAULT_BIND_ADDRESS.parse().map_err(|_| std::env::VarError::NotPresent))
+            .or_else(|_| {
+                constants::network::DEFAULT_BIND_ADDRESS
+                    .parse()
+                    .map_err(|_| std::env::VarError::NotPresent)
+            })
             .unwrap_or_else(|_| {
                 warn!("Failed to parse bind address, using fallback");
-                "127.0.0.1".parse().expect("Hardcoded IP should be valid")
+                crate::config::constants::network::default_bind_address().parse().expect("Default bind address should be valid")
             });
 
         let bind_port = std::env::var("SONGBIRD_BIND_PORT")
@@ -242,7 +246,10 @@ impl NetworkConfig {
     }
 
     /// Configure firewall through substrate
-    pub async fn configure_firewall(&self, rules: Vec<FirewallRule>) -> songbird_errors::Result<()> {
+    pub async fn configure_firewall(
+        &self,
+        rules: Vec<FirewallRule>,
+    ) -> songbird_errors::Result<()> {
         let substrate = crate::substrate::get_substrate().await;
 
         let mut parameters = HashMap::new();
@@ -310,7 +317,10 @@ impl NetworkConfig {
                         field: Some("bind_address".to_string()),
                         message: format!("Bind address {} is not available", self.bind_address),
                         context: Some("Network configuration validation".to_string()),
-                        suggestion: Some("Check network configuration or use a different bind address".to_string()),
+                        suggestion: Some(
+                            "Check network configuration or use a different bind address"
+                                .to_string(),
+                        ),
                     });
                 }
             }
@@ -329,7 +339,11 @@ impl NetworkConfig {
                     constants::validation::MAX_PORT
                 ),
                 context: Some("Network configuration validation".to_string()),
-                suggestion: Some(format!("Use a port between {} and {}", constants::validation::MIN_PORT, constants::validation::MAX_PORT)),
+                suggestion: Some(format!(
+                    "Use a port between {} and {}",
+                    constants::validation::MIN_PORT,
+                    constants::validation::MAX_PORT
+                )),
             });
         }
 
@@ -432,7 +446,7 @@ pub async fn initialize_service_network(
             .or_else(|_| constants::network::DEFAULT_BIND_ADDRESS.parse())
             .unwrap_or_else(|_| {
                 warn!("Failed to parse service bind address, using fallback");
-                "127.0.0.1".parse().expect("Hardcoded IP should be valid")
+                crate::config::constants::network::default_bind_address().parse().expect("Default bind address should be valid")
             }),
         service_port,
         health_endpoint: format!(
@@ -460,7 +474,9 @@ pub struct ServiceNetworkConfig {
 pub fn testing_network_config() -> NetworkConfig {
     NetworkConfig {
         bind_port: 0, // Use random port for testing
-        bind_address: "127.0.0.1".parse().expect("Hardcoded localhost IP should be valid"),
+        bind_address: "127.0.0.1"
+            .parse()
+            .expect("Hardcoded localhost IP should be valid"),
         health_check_interval: Duration::from_secs(1),
         connection_timeout: Duration::from_secs(1),
         max_connections: 10,
@@ -469,7 +485,9 @@ pub fn testing_network_config() -> NetworkConfig {
         domain_config: None,
         proxy_routes: Vec::new(),
         buffer_size: 1024,
-        federation_bind_address: "127.0.0.1".parse().expect("Hardcoded localhost IP should be valid"),
+        federation_bind_address: "127.0.0.1"
+            .parse()
+            .expect("Hardcoded localhost IP should be valid"),
         federation_port: 0,
         cors: CorsConfig::default(),
         discovered_endpoints: HashMap::new(),

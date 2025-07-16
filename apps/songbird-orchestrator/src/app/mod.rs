@@ -338,7 +338,10 @@ impl SongbirdOrchestrator {
     /// Start web dashboard
     pub async fn start_web_dashboard(&self) -> Result<()> {
         info!("🌐 Starting web dashboard...");
-        info!("✅ Web dashboard would start on http://{}:8080", songbird_config::constants::default_bind_address());
+        info!(
+            "✅ Web dashboard would start on http://{}:8080",
+            songbird_config::constants::default_bind_address()
+        );
         info!("   (Dashboard implementation available but disabled for now)");
         Ok(())
     }

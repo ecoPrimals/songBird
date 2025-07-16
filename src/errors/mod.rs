@@ -229,10 +229,7 @@ impl SongbirdError {
 
     /// Create a configuration error with basic fields
     pub fn config_error(message: String, field: Option<String>) -> Self {
-        Self::Config {
-            message,
-            field,
-        }
+        Self::Config { message, field }
     }
 
     /// Create a network error with basic fields
@@ -394,34 +391,34 @@ impl From<songbird_universal_primals::errors::PrimalError> for SongbirdError {
             songbird_universal_primals::errors::PrimalError::Timeout(msg) => {
                 SongbirdError::Network {
                     service: "primal".to_string(),
-                    message: format!("Timeout: {}", msg),
+                    message: format!("Timeout: {msg}"),
                     details: None,
                 }
             }
             songbird_universal_primals::errors::PrimalError::ServiceUnavailable(msg) => {
                 SongbirdError::Network {
                     service: "primal".to_string(),
-                    message: format!("Service unavailable: {}", msg),
+                    message: format!("Service unavailable: {msg}"),
                     details: None,
                 }
             }
             songbird_universal_primals::errors::PrimalError::InvalidRequest(msg) => {
                 SongbirdError::Config {
-                    message: format!("Invalid request: {}", msg),
+                    message: format!("Invalid request: {msg}"),
                     field: None,
                 }
             }
             songbird_universal_primals::errors::PrimalError::Internal(msg) => {
                 SongbirdError::Network {
                     service: "primal".to_string(),
-                    message: format!("Internal error: {}", msg),
+                    message: format!("Internal error: {msg}"),
                     details: None,
                 }
             }
             songbird_universal_primals::errors::PrimalError::RateLimit(msg) => {
                 SongbirdError::Network {
                     service: "primal".to_string(),
-                    message: format!("Rate limit: {}", msg),
+                    message: format!("Rate limit: {msg}"),
                     details: None,
                 }
             }
@@ -475,52 +472,51 @@ impl From<songbird_errors::SongbirdError> for SongbirdError {
             songbird_errors::SongbirdError::Config { message, field, .. } => {
                 SongbirdError::Config { message, field }
             }
-            songbird_errors::SongbirdError::Network { service, message, details, .. } => {
-                SongbirdError::Network { 
-                    service: service.unwrap_or_default(), 
-                    message, 
-                    details 
-                }
-            }
-            songbird_errors::SongbirdError::Communication(msg) => {
-                SongbirdError::Communication(msg)
-            }
-            songbird_errors::SongbirdError::Service { service, message, .. } => {
-                SongbirdError::Service { service, message }
-            }
-            songbird_errors::SongbirdError::Discovery { message, service, .. } => {
-                SongbirdError::Discovery { message, service }
-            }
+            songbird_errors::SongbirdError::Network {
+                service,
+                message,
+                details,
+                ..
+            } => SongbirdError::Network {
+                service: service.unwrap_or_default(),
+                message,
+                details,
+            },
+            songbird_errors::SongbirdError::Communication(msg) => SongbirdError::Communication(msg),
+            songbird_errors::SongbirdError::Service {
+                service, message, ..
+            } => SongbirdError::Service { service, message },
+            songbird_errors::SongbirdError::Discovery {
+                message, service, ..
+            } => SongbirdError::Discovery { message, service },
             songbird_errors::SongbirdError::Auth { message, user, .. } => {
                 SongbirdError::Auth { message, user }
             }
-            songbird_errors::SongbirdError::Authentication { provider, message, .. } => {
-                SongbirdError::Authentication { provider, message }
-            }
-            songbird_errors::SongbirdError::Gaming { message, protocol, .. } => {
-                SongbirdError::Gaming { message, protocol }
-            }
-            songbird_errors::SongbirdError::Security { message, context, .. } => {
-                SongbirdError::Security { message, context }
-            }
-            songbird_errors::SongbirdError::Protocol { protocol, message, .. } => {
-                SongbirdError::Protocol { protocol, message }
-            }
+            songbird_errors::SongbirdError::Authentication {
+                provider, message, ..
+            } => SongbirdError::Authentication { provider, message },
+            songbird_errors::SongbirdError::Gaming {
+                message, protocol, ..
+            } => SongbirdError::Gaming { message, protocol },
+            songbird_errors::SongbirdError::Security {
+                message, context, ..
+            } => SongbirdError::Security { message, context },
+            songbird_errors::SongbirdError::Protocol {
+                protocol, message, ..
+            } => SongbirdError::Protocol { protocol, message },
             songbird_errors::SongbirdError::Validation { field, message, .. } => {
                 SongbirdError::Validation { field, message }
             }
-            songbird_errors::SongbirdError::NotFound { resource, message, .. } => {
-                SongbirdError::NotFound { resource, message }
-            }
-            songbird_errors::SongbirdError::Io { message, .. } => {
-                SongbirdError::Io { message }
-            }
+            songbird_errors::SongbirdError::NotFound {
+                resource, message, ..
+            } => SongbirdError::NotFound { resource, message },
+            songbird_errors::SongbirdError::Io { message, .. } => SongbirdError::Io { message },
             songbird_errors::SongbirdError::LoadBalancer { message, .. } => {
                 SongbirdError::LoadBalancer { message }
             }
-            songbird_errors::SongbirdError::Deployment { service, message, .. } => {
-                SongbirdError::Deployment { service, message }
-            }
+            songbird_errors::SongbirdError::Deployment {
+                service, message, ..
+            } => SongbirdError::Deployment { service, message },
             songbird_errors::SongbirdError::CircuitBreakerOpen { message, .. } => {
                 SongbirdError::CircuitBreakerOpen { message }
             }
@@ -528,7 +524,10 @@ impl From<songbird_errors::SongbirdError> for SongbirdError {
                 SongbirdError::CircuitBreakerFailure { message }
             }
             songbird_errors::SongbirdError::RetryExhausted { attempts, .. } => {
-                SongbirdError::RetryExhausted { attempts, last_error: "Unknown error".to_string() }
+                SongbirdError::RetryExhausted {
+                    attempts,
+                    last_error: "Unknown error".to_string(),
+                }
             }
             songbird_errors::SongbirdError::RateLimitExceeded { message, .. } => {
                 SongbirdError::RateLimitExceeded { message }
@@ -545,159 +544,152 @@ impl From<songbird_errors::SongbirdError> for SongbirdError {
 impl From<SongbirdError> for songbird_errors::SongbirdError {
     fn from(error: SongbirdError) -> Self {
         match error {
-            SongbirdError::Config { message, field } => {
-                songbird_errors::SongbirdError::Config { 
-                    message, 
-                    field, 
-                    suggestion: None, 
-                    context: None 
-                }
-            }
-            SongbirdError::Network { service, message, details } => {
-                songbird_errors::SongbirdError::Network { 
-                    service: Some(service), 
-                    message, 
-                    details, 
-                    endpoint: None, 
-                    suggestion: None 
-                }
-            }
-            SongbirdError::Communication(msg) => {
-                songbird_errors::SongbirdError::Communication(msg)
-            }
+            SongbirdError::Config { message, field } => songbird_errors::SongbirdError::Config {
+                message,
+                field,
+                suggestion: None,
+                context: None,
+            },
+            SongbirdError::Network {
+                service,
+                message,
+                details,
+            } => songbird_errors::SongbirdError::Network {
+                service: Some(service),
+                message,
+                details,
+                endpoint: None,
+                suggestion: None,
+            },
+            SongbirdError::Communication(msg) => songbird_errors::SongbirdError::Communication(msg),
             SongbirdError::Service { service, message } => {
-                songbird_errors::SongbirdError::Service { 
-                    service, 
-                    message, 
-                    status: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::Service {
+                    service,
+                    message,
+                    status: None,
+                    suggestion: None,
                 }
             }
             SongbirdError::Discovery { message, service } => {
-                songbird_errors::SongbirdError::Discovery { 
-                    message, 
-                    service, 
-                    timeout: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::Discovery {
+                    message,
+                    service,
+                    timeout: None,
+                    suggestion: None,
                 }
             }
-            SongbirdError::Auth { message, user } => {
-                songbird_errors::SongbirdError::Auth { 
-                    message, 
-                    user, 
-                    provider: None, 
-                    suggestion: None 
-                }
-            }
+            SongbirdError::Auth { message, user } => songbird_errors::SongbirdError::Auth {
+                message,
+                user,
+                provider: None,
+                suggestion: None,
+            },
             SongbirdError::Authentication { provider, message } => {
-                songbird_errors::SongbirdError::Authentication { 
-                    provider, 
-                    message, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::Authentication {
+                    provider,
+                    message,
+                    suggestion: None,
                 }
             }
-            SongbirdError::Gaming { message, protocol } => {
-                songbird_errors::SongbirdError::Gaming { 
-                    message, 
-                    protocol, 
-                    game: None, 
-                    suggestion: None 
-                }
-            }
+            SongbirdError::Gaming { message, protocol } => songbird_errors::SongbirdError::Gaming {
+                message,
+                protocol,
+                game: None,
+                suggestion: None,
+            },
             SongbirdError::Security { message, context } => {
-                songbird_errors::SongbirdError::Security { 
-                    message, 
-                    context, 
-                    severity: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::Security {
+                    message,
+                    context,
+                    severity: None,
+                    suggestion: None,
                 }
             }
             SongbirdError::Protocol { protocol, message } => {
-                songbird_errors::SongbirdError::Protocol { 
-                    protocol, 
-                    message, 
-                    version: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::Protocol {
+                    protocol,
+                    message,
+                    version: None,
+                    suggestion: None,
                 }
             }
             SongbirdError::Validation { field, message } => {
-                songbird_errors::SongbirdError::Validation { 
-                    field, 
-                    message, 
-                    value: None, 
-                    expected: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::Validation {
+                    field,
+                    message,
+                    value: None,
+                    expected: None,
+                    suggestion: None,
                 }
             }
             SongbirdError::NotFound { resource, message } => {
-                songbird_errors::SongbirdError::NotFound { 
-                    resource, 
-                    message, 
-                    searched_paths: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::NotFound {
+                    resource,
+                    message,
+                    searched_paths: None,
+                    suggestion: None,
                 }
             }
-            SongbirdError::Io { message } => {
-                songbird_errors::SongbirdError::Io { 
-                    message, 
-                    path: None, 
-                    operation: None, 
-                    suggestion: None 
-                }
-            }
+            SongbirdError::Io { message } => songbird_errors::SongbirdError::Io {
+                message,
+                path: None,
+                operation: None,
+                suggestion: None,
+            },
             SongbirdError::LoadBalancer { message } => {
-                songbird_errors::SongbirdError::LoadBalancer { 
-                    message, 
-                    backend: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::LoadBalancer {
+                    message,
+                    backend: None,
+                    suggestion: None,
                 }
             }
             SongbirdError::Deployment { service, message } => {
-                songbird_errors::SongbirdError::Deployment { 
-                    service, 
-                    message, 
-                    environment: None, 
-                    stage: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::Deployment {
+                    service,
+                    message,
+                    environment: None,
+                    stage: None,
+                    suggestion: None,
                 }
             }
             SongbirdError::CircuitBreakerOpen { message } => {
-                songbird_errors::SongbirdError::CircuitBreakerOpen { 
-                    service: "unknown".to_string(), 
-                    message, 
-                    failure_count: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::CircuitBreakerOpen {
+                    service: "unknown".to_string(),
+                    message,
+                    failure_count: None,
+                    suggestion: None,
                 }
             }
             SongbirdError::CircuitBreakerFailure { message } => {
-                songbird_errors::SongbirdError::CircuitBreakerFailure { 
-                    service: "unknown".to_string(), 
-                    message, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::CircuitBreakerFailure {
+                    service: "unknown".to_string(),
+                    message,
+                    suggestion: None,
                 }
             }
-            SongbirdError::RetryExhausted { attempts, last_error } => {
-                songbird_errors::SongbirdError::RetryExhausted { 
-                    attempts, 
-                    message: last_error, 
-                    duration: None, 
-                    suggestion: None 
-                }
-            }
+            SongbirdError::RetryExhausted {
+                attempts,
+                last_error,
+            } => songbird_errors::SongbirdError::RetryExhausted {
+                attempts,
+                message: last_error,
+                duration: None,
+                suggestion: None,
+            },
             SongbirdError::RateLimitExceeded { message } => {
-                songbird_errors::SongbirdError::RateLimitExceeded { 
-                    message, 
-                    service: None, 
-                    limit: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::RateLimitExceeded {
+                    message,
+                    service: None,
+                    limit: None,
+                    suggestion: None,
                 }
             }
             SongbirdError::ExecutionFailed { message } => {
-                songbird_errors::SongbirdError::ExecutionFailed { 
-                    message, 
-                    command: None, 
-                    exit_code: None, 
-                    suggestion: None 
+                songbird_errors::SongbirdError::ExecutionFailed {
+                    message,
+                    command: None,
+                    exit_code: None,
+                    suggestion: None,
                 }
             }
             _ => songbird_errors::SongbirdError::Generic("Unknown error type".to_string()),

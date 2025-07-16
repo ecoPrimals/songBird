@@ -498,7 +498,10 @@ mod tests {
 
         let result = cb.call(async { Ok::<i32, String>(42) }).await;
         assert!(result.is_ok());
-        assert_eq!(result.expect("Failed to get circuit breaker result in test"), 42);
+        assert_eq!(
+            result.expect("Failed to get circuit breaker result in test"),
+            42
+        );
     }
 
     #[tokio::test]
@@ -583,7 +586,10 @@ mod tests {
 
         let result = manager.execute(async { Ok::<i32, String>(42) }).await;
         assert!(result.is_ok());
-        assert_eq!(result.expect("Failed to execute robustness manager in test"), 42);
+        assert_eq!(
+            result.expect("Failed to execute robustness manager in test"),
+            42
+        );
     }
 
     #[tokio::test]

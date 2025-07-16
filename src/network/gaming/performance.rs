@@ -1018,8 +1018,12 @@ impl LatencyPredictor {
                 }
 
                 // Calculate slope of recent trend
-                let first = recent_points.last().expect("Recent points should not be empty");
-                let last = recent_points.first().expect("Recent points should not be empty");
+                let first = recent_points
+                    .last()
+                    .expect("Recent points should not be empty");
+                let last = recent_points
+                    .first()
+                    .expect("Recent points should not be empty");
                 let time_diff = last.timestamp.duration_since(first.timestamp).as_secs_f64();
 
                 if time_diff > 0.0 {

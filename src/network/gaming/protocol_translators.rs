@@ -190,8 +190,12 @@ impl ProtocolTranslator for IPXTranslator {
                 protocol: "IPX".to_string(),
                 players: 1,
                 max_players: 8,
-                host_address: crate::config::constants::external_address()
-                    .unwrap_or_else(|| format!("{}:6112", crate::config::constants::network::production_bind_address())),
+                host_address: crate::config::constants::external_address().unwrap_or_else(|| {
+                    format!(
+                        "{}:6112",
+                        crate::config::constants::network::production_bind_address()
+                    )
+                }),
             }],
         })
     }
@@ -275,8 +279,12 @@ impl ProtocolTranslator for DirectPlayTranslator {
     async fn handle_game_discovery(&self, discovery_packet: &[u8]) -> Result<DiscoveryResponse> {
         // Parse DirectPlay session enumeration request
         if discovery_packet.windows(5).any(|w| w == b"DPLAY") {
-            let external_addr = crate::config::constants::external_address()
-                .unwrap_or_else(|| format!("{}:2300", crate::config::constants::network::production_bind_address()));
+            let external_addr = crate::config::constants::external_address().unwrap_or_else(|| {
+                format!(
+                    "{}:2300",
+                    crate::config::constants::network::production_bind_address()
+                )
+            });
 
             let sessions = vec![DirectPlaySession {
                 session_name: "Game Session".to_string(),
@@ -367,8 +375,12 @@ impl ProtocolTranslator for NetBIOSTranslator {
     }
 
     async fn handle_game_discovery(&self, _discovery_packet: &[u8]) -> Result<DiscoveryResponse> {
-        let external_addr = crate::config::constants::external_address()
-            .unwrap_or_else(|| format!("{}:137", crate::config::constants::network::production_bind_address()));
+        let external_addr = crate::config::constants::external_address().unwrap_or_else(|| {
+            format!(
+                "{}:137",
+                crate::config::constants::network::production_bind_address()
+            )
+        });
 
         let game_sessions = vec![NetBIOSGameSession {
             name: "NetBIOS Game".to_string(),

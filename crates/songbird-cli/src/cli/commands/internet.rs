@@ -201,12 +201,11 @@ async fn execute_internet_config(action: &InternetConfigAction) -> crate::cli::C
 
             // Show current configuration
             let config = InternetConnectionConfig::default();
-            let config_str = toml::to_string_pretty(&config)
-                .map_err(|e| CliError::Config {
-                    message: format!("Failed to serialize configuration: {e}"),
-                    field: Some("config_serialization".to_string()),
-                    suggestion: Some("Check configuration structure".to_string()),
-                })?;
+            let config_str = toml::to_string_pretty(&config).map_err(|e| CliError::Config {
+                message: format!("Failed to serialize configuration: {e}"),
+                field: Some("config_serialization".to_string()),
+                suggestion: Some("Check configuration structure".to_string()),
+            })?;
             println!("{config_str}");
             Ok(())
         }
@@ -267,7 +266,9 @@ async fn execute_internet_config(action: &InternetConfigAction) -> crate::cli::C
                     return Err(CliError::Config {
                         message: format!("Port discovery failed: {e}"),
                         field: Some("port_discovery".to_string()),
-                        suggestion: Some("Check network configuration and port availability".to_string()),
+                        suggestion: Some(
+                            "Check network configuration and port availability".to_string(),
+                        ),
                     });
                 }
             }
@@ -281,12 +282,11 @@ async fn save_internet_config(
     config: &InternetConnectionConfig,
     path: &PathBuf,
 ) -> crate::cli::CliResult<()> {
-    let config_str = toml::to_string_pretty(config)
-        .map_err(|e| CliError::Config {
-            message: format!("Failed to serialize configuration: {e}"),
-            field: Some("config_serialization".to_string()),
-            suggestion: Some("Check configuration structure".to_string()),
-        })?;
+    let config_str = toml::to_string_pretty(config).map_err(|e| CliError::Config {
+        message: format!("Failed to serialize configuration: {e}"),
+        field: Some("config_serialization".to_string()),
+        suggestion: Some("Check configuration structure".to_string()),
+    })?;
     tokio::fs::write(path, config_str)
         .await
         .map_err(|e| CliError::Config {
@@ -311,8 +311,8 @@ async fn load_internet_config(path: &PathBuf) -> Result<InternetConnectionConfig
             suggestion: Some("Check file path and permissions".to_string()),
         })?;
 
-    let config: InternetConnectionConfig = toml::from_str(&contents)
-        .map_err(|e| CliError::Config {
+    let config: InternetConnectionConfig =
+        toml::from_str(&contents).map_err(|e| CliError::Config {
             message: format!("Failed to parse configuration: {e}"),
             field: Some("config_parsing".to_string()),
             suggestion: Some("Check TOML syntax in configuration file".to_string()),

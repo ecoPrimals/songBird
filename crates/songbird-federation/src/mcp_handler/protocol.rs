@@ -16,7 +16,7 @@ use chrono::Utc;
 use songbird_errors::SongbirdError;
 use std::collections::HashMap;
 use std::time::Duration;
-use sysinfo::{SystemExt, CpuExt};
+use sysinfo::{CpuExt, SystemExt};
 use tracing::{debug, info, warn};
 
 #[derive(Debug)]
@@ -318,18 +318,19 @@ impl ProtocolHandler {
         let mut system = sysinfo::System::new_all();
         system.refresh_all();
 
-        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>() / system.cpus().len() as f32;
+        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
+            / system.cpus().len() as f32;
         let memory_usage = (system.used_memory() as f64 / system.total_memory() as f64) * 100.0;
         let total_memory_gb = system.total_memory() / 1024 / 1024 / 1024;
         let uptime = system.uptime();
 
         // Check network connectivity
         let network_healthy = self.check_network_connectivity().await.unwrap_or(false);
-        
+
         // Check federation endpoints
         let mut healthy_endpoints = 0;
         let mut total_endpoints = 0;
-        
+
         for endpoint in &self.config.cluster_endpoints {
             total_endpoints += 1;
             if self.check_endpoint_health(endpoint).await.unwrap_or(false) {
@@ -369,8 +370,9 @@ impl ProtocolHandler {
         // Test connectivity to a reliable external service
         let test_result = tokio::time::timeout(
             Duration::from_secs(5),
-            tokio::net::TcpStream::connect("8.8.8.8:53")
-        ).await;
+            tokio::net::TcpStream::connect("8.8.8.8:53"),
+        )
+        .await;
 
         match test_result {
             Ok(Ok(_)) => Ok(true),
@@ -382,11 +384,9 @@ impl ProtocolHandler {
     async fn check_endpoint_health(&self, endpoint: &str) -> Result<bool, SongbirdError> {
         let client = reqwest::Client::new();
         let health_url = format!("{}/health", endpoint);
-        
-        let response = tokio::time::timeout(
-            Duration::from_secs(5),
-            client.get(&health_url).send()
-        ).await;
+
+        let response =
+            tokio::time::timeout(Duration::from_secs(5), client.get(&health_url).send()).await;
 
         match response {
             Ok(Ok(resp)) => Ok(resp.status().is_success()),
@@ -510,7 +510,9 @@ impl ProtocolHandler {
                     message: format!("Failed to send unregistration: {e}"),
                     details: None,
                     endpoint: Some("federation/unregister".to_string()),
-                    suggestion: Some("Check network connectivity and federation endpoint".to_string()),
+                    suggestion: Some(
+                        "Check network connectivity and federation endpoint".to_string(),
+                    ),
                 })?;
         }
 

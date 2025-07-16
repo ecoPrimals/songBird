@@ -10,7 +10,7 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-use sysinfo::{SystemExt, CpuExt};
+use sysinfo::{CpuExt, SystemExt};
 use tokio::sync::RwLock;
 use tokio::time::{interval, timeout};
 use tracing::{debug, error, info, warn};
@@ -313,7 +313,10 @@ impl HeartbeatManager {
 
         // Send heartbeat to all configured endpoints
         for endpoint in &self.config.cluster_endpoints {
-            match self.send_heartbeat_data_to_endpoint(endpoint, &heartbeat_message).await {
+            match self
+                .send_heartbeat_data_to_endpoint(endpoint, &heartbeat_message)
+                .await
+            {
                 Ok(_) => {
                     successful_heartbeats += 1;
                     debug!("Successfully sent heartbeat to: {}", endpoint);
@@ -338,7 +341,9 @@ impl HeartbeatManager {
                 message: "All heartbeat attempts failed".to_string(),
                 details: None,
                 endpoint: None,
-                suggestion: Some("Check network connectivity and endpoint configuration".to_string()),
+                suggestion: Some(
+                    "Check network connectivity and endpoint configuration".to_string(),
+                ),
             })
         }
     }
@@ -349,7 +354,8 @@ impl HeartbeatManager {
         let mut system = sysinfo::System::new_all();
         system.refresh_all();
 
-        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>() / system.cpus().len() as f32;
+        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
+            / system.cpus().len() as f32;
         let memory_usage = (system.used_memory() as f64 / system.total_memory() as f64) * 100.0;
         let uptime = system.uptime();
 
@@ -380,16 +386,19 @@ impl HeartbeatManager {
     }
 
     /// Send heartbeat to a specific endpoint
-    async fn send_heartbeat_data_to_endpoint(&self, endpoint: &str, heartbeat_data: &serde_json::Value) -> Result<()> {
+    async fn send_heartbeat_data_to_endpoint(
+        &self,
+        endpoint: &str,
+        heartbeat_data: &serde_json::Value,
+    ) -> Result<()> {
         let client = reqwest::Client::new();
         let heartbeat_url = format!("{}/federation/heartbeat", endpoint);
 
         let response = tokio::time::timeout(
             Duration::from_secs(5),
-            client.post(&heartbeat_url)
-                .json(heartbeat_data)
-                .send()
-        ).await;
+            client.post(&heartbeat_url).json(heartbeat_data).send(),
+        )
+        .await;
 
         match response {
             Ok(Ok(resp)) => {
@@ -406,31 +415,30 @@ impl HeartbeatManager {
                     })
                 }
             }
-            Ok(Err(e)) => {
-                Err(SongbirdError::Network {
-                    service: Some("federation".to_string()),
-                    message: format!("Failed to send heartbeat: {}", e),
-                    details: None,
-                    endpoint: Some(endpoint.to_string()),
-                    suggestion: Some("Check network connectivity".to_string()),
-                })
-            }
-            Err(_) => {
-                Err(SongbirdError::Network {
-                    service: Some("federation".to_string()),
-                    message: "Heartbeat request timed out".to_string(),
-                    details: None,
-                    endpoint: Some(endpoint.to_string()),
-                    suggestion: Some("Check network connectivity and endpoint responsiveness".to_string()),
-                })
-            }
+            Ok(Err(e)) => Err(SongbirdError::Network {
+                service: Some("federation".to_string()),
+                message: format!("Failed to send heartbeat: {}", e),
+                details: None,
+                endpoint: Some(endpoint.to_string()),
+                suggestion: Some("Check network connectivity".to_string()),
+            }),
+            Err(_) => Err(SongbirdError::Network {
+                service: Some("federation".to_string()),
+                message: "Heartbeat request timed out".to_string(),
+                details: None,
+                endpoint: Some(endpoint.to_string()),
+                suggestion: Some(
+                    "Check network connectivity and endpoint responsiveness".to_string(),
+                ),
+            }),
         }
     }
 
     /// Send heartbeat to a specific endpoint
     pub async fn send_heartbeat_to_endpoint_public(&self, endpoint: &str) -> Result<()> {
         let heartbeat_data = self.create_heartbeat_message().await?;
-        self.send_heartbeat_data_to_endpoint(endpoint, &heartbeat_data).await
+        self.send_heartbeat_data_to_endpoint(endpoint, &heartbeat_data)
+            .await
     }
 
     /// Process incoming heartbeat from another node
@@ -438,15 +446,18 @@ impl HeartbeatManager {
         debug!("Processing incoming heartbeat");
 
         // Extract node information from heartbeat
-        let node_id = heartbeat_data.get("node_id")
+        let node_id = heartbeat_data
+            .get("node_id")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
 
-        let cluster_id = heartbeat_data.get("cluster_id")
+        let cluster_id = heartbeat_data
+            .get("cluster_id")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
 
-        let status = heartbeat_data.get("status")
+        let status = heartbeat_data
+            .get("status")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
 
@@ -454,29 +465,50 @@ impl HeartbeatManager {
         if cluster_id != self.config.cluster_id {
             return Err(SongbirdError::Configuration {
                 field: "cluster_id".to_string(),
-                message: format!("Heartbeat from wrong cluster: expected {}, got {}", self.config.cluster_id, cluster_id),
+                message: format!(
+                    "Heartbeat from wrong cluster: expected {}, got {}",
+                    self.config.cluster_id, cluster_id
+                ),
                 suggestion: Some("Check cluster configuration".to_string()),
             });
         }
 
         // Update node status in registry
-        self.update_node_status(node_id, status, heartbeat_data).await?;
+        self.update_node_status(node_id, status, heartbeat_data)
+            .await?;
 
-        info!("Processed heartbeat from node: {} (status: {})", node_id, status);
+        info!(
+            "Processed heartbeat from node: {} (status: {})",
+            node_id, status
+        );
         Ok(())
     }
 
     /// Update node status in the federation registry
-    async fn update_node_status(&self, node_id: &str, status: &str, heartbeat_data: &serde_json::Value) -> Result<()> {
+    async fn update_node_status(
+        &self,
+        node_id: &str,
+        status: &str,
+        heartbeat_data: &serde_json::Value,
+    ) -> Result<()> {
         debug!("Updating node status for: {} -> {}", node_id, status);
 
         // In a real implementation, this would update a persistent registry
         // For now, we'll just log the update
         if let Some(metrics) = heartbeat_data.get("metrics") {
-            let cpu_usage = metrics.get("cpu_usage").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let memory_usage = metrics.get("memory_usage").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            
-            debug!("Node {} metrics: CPU {}%, Memory {}%", node_id, cpu_usage, memory_usage);
+            let cpu_usage = metrics
+                .get("cpu_usage")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+            let memory_usage = metrics
+                .get("memory_usage")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+
+            debug!(
+                "Node {} metrics: CPU {}%, Memory {}%",
+                node_id, cpu_usage, memory_usage
+            );
         }
 
         // Update last seen timestamp
@@ -487,15 +519,17 @@ impl HeartbeatManager {
     }
 
     /// Check if heartbeat is healthy (within expected interval)
-    pub async fn is_heartbeat_healthy(&self, last_heartbeat: chrono::DateTime<chrono::Utc>) -> bool {
+    pub async fn is_heartbeat_healthy(
+        &self,
+        last_heartbeat: chrono::DateTime<chrono::Utc>,
+    ) -> bool {
         let now = chrono::Utc::now();
         let duration = now.signed_duration_since(last_heartbeat);
-        
+
         // Consider heartbeat healthy if it's within 2x the configured interval
-        let max_interval = Duration::from_secs(
-            (self.config.heartbeat_interval.unwrap_or(30) * 2) as u64
-        );
-        
+        let max_interval =
+            Duration::from_secs((self.config.heartbeat_interval.unwrap_or(30) * 2) as u64);
+
         duration.to_std().unwrap_or(Duration::from_secs(999)) < max_interval
     }
 
@@ -550,10 +584,7 @@ impl HeartbeatManager {
     }
 
     /// Update heartbeat configuration
-    pub async fn update_config(
-        &mut self,
-        new_config: FederationConfig,
-    ) -> Result<()> {
+    pub async fn update_config(&mut self, new_config: FederationConfig) -> Result<()> {
         info!("Updating heartbeat configuration");
 
         // Update local configuration

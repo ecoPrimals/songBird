@@ -9,12 +9,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use serde::{Deserialize, Serialize};
 use crate::errors::{Result, SongbirdError};
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
-use crate::biomeos_integration::{BiomeOSClient, BiomeOSIntegration};
+use crate::biomeos_integration::BiomeOSClient;
 use crate::config::constants;
 
 /// Maximum cache size for substrate entries
@@ -535,7 +535,11 @@ impl OSSubstrate {
             }
         }
 
-        unreachable!()
+        // This should never be reached as the loop will always return
+        Err(songbird_errors::SongbirdError::service_error(
+            "substrate",
+            "All retry attempts failed".to_string(),
+        ))
     }
 
     /// Request path from biomeOS substrate
@@ -634,7 +638,7 @@ impl OSSubstrate {
 
         serde_json::from_value(response).map_err(|e| SongbirdError::Network {
             service: "toadstool_substrate".to_string(),
-            message: format!("Failed to parse system info: {}", e),
+            message: format!("Failed to parse system info: {e}"),
             details: None,
         })
     }
@@ -804,11 +808,10 @@ impl OSSubstrate {
 
         if let Ok(biomeos_caps) = biomeos_result {
             let caps_vec = match &biomeos_caps {
-                serde_json::Value::Array(arr) => {
-                    arr.iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                        .collect::<Vec<String>>()
-                }
+                serde_json::Value::Array(arr) => arr
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect::<Vec<String>>(),
                 serde_json::Value::String(s) => vec![s.clone()],
                 _ => vec![biomeos_caps.to_string()],
             };
@@ -889,7 +892,7 @@ impl ToadstoolClient {
             .build()
             .map_err(|e| SongbirdError::Network {
                 service: "toadstool_client".to_string(),
-                message: format!("Failed to create HTTP client: {}", e),
+                message: format!("Failed to create HTTP client: {e}"),
                 details: None,
             })?;
 
@@ -949,7 +952,7 @@ impl ToadstoolClient {
                 cb.record_failure();
                 Err(SongbirdError::Network {
                     service: "toadstool_substrate".to_string(),
-                    message: format!("Health check failed: {}", e),
+                    message: format!("Health check failed: {e}"),
                     details: None,
                 })
             }
@@ -957,10 +960,7 @@ impl ToadstoolClient {
     }
 
     /// Make request to toadstool substrate with circuit breaker and connection pooling
-    pub async fn request(
-        &self,
-        payload: serde_json::Value,
-    ) -> Result<serde_json::Value> {
+    pub async fn request(&self, payload: serde_json::Value) -> Result<serde_json::Value> {
         // Check circuit breaker
         {
             let mut cb = self.circuit_breaker.write().await;
@@ -985,7 +985,7 @@ impl ToadstoolClient {
 
                     resp.json().await.map_err(|e| SongbirdError::Network {
                         service: "toadstool_substrate".to_string(),
-                        message: format!("Failed to parse response: {}", e),
+                        message: format!("Failed to parse response: {e}"),
                         details: None,
                     })
                 } else {
@@ -1007,7 +1007,7 @@ impl ToadstoolClient {
 
                 Err(SongbirdError::Network {
                     service: "toadstool_substrate".to_string(),
-                    message: format!("Request failed: {}", e),
+                    message: format!("Request failed: {e}"),
                     details: None,
                 })
             }
@@ -1181,7 +1181,9 @@ pub async fn get_substrate() -> &'static OSSubstrate {
                 ))),
                 connection_pool: Arc::new(RwLock::new(ConnectionPool::new(CONNECTION_POOL_SIZE))),
             },
-            biomeos_client: BiomeOSClient::new(crate::config::constants::network::biomeos_endpoint()),
+            biomeos_client: BiomeOSClient::new(
+                crate::config::constants::network::biomeos_endpoint(),
+            ),
             cache: Arc::new(RwLock::new(OptimizedSubstrateCache::new(
                 MAX_CACHE_SIZE,
                 DEFAULT_CACHE_TTL,

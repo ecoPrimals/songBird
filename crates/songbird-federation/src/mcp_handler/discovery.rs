@@ -11,12 +11,12 @@
 
 use crate::config::FederationConfig;
 
+use if_addrs;
 use songbird_errors::SongbirdError;
 use std::net::UdpSocket;
 use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
-use if_addrs;
 
 #[derive(Debug)]
 /// Discovery manager for MCP federation endpoints
@@ -101,24 +101,26 @@ impl DiscoveryManager {
     /// Discover federation endpoints via mDNS/Bonjour
     pub async fn discover_via_mdns(&self) -> Result<Vec<String>, SongbirdError> {
         debug!("Starting mDNS discovery for federation services");
-        
+
         let mut endpoints = Vec::new();
-        
+
         // mDNS implementation using UDP multicast
         let multicast_addr = "224.0.0.251:5353";
-        let socket = tokio::net::UdpSocket::bind("0.0.0.0:0").await.map_err(|e| {
-            SongbirdError::Network {
+        let socket = tokio::net::UdpSocket::bind("0.0.0.0:0")
+            .await
+            .map_err(|e| SongbirdError::Network {
                 service: Some("discovery".to_string()),
                 message: format!("Failed to bind mDNS socket: {}", e),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network permissions".to_string()),
-            }
-        })?;
+            })?;
 
         // Create mDNS query for Songbird federation services
-        let query = self.create_mdns_query("_songbird-federation._tcp.local.").await?;
-        
+        let query = self
+            .create_mdns_query("_songbird-federation._tcp.local.")
+            .await?;
+
         // Send query
         if let Err(e) = socket.send_to(&query, multicast_addr).await {
             debug!("Failed to send mDNS query: {}", e);
@@ -128,11 +130,10 @@ impl DiscoveryManager {
         // Listen for responses (with timeout)
         let mut buffer = [0; 1024];
         let response_future = socket.recv_from(&mut buffer);
-        
-        if let Ok(Ok((len, addr))) = tokio::time::timeout(
-            Duration::from_secs(2),
-            response_future
-        ).await {
+
+        if let Ok(Ok((len, addr))) =
+            tokio::time::timeout(Duration::from_secs(2), response_future).await
+        {
             let response_data = &buffer[..len];
             endpoints.extend(self.parse_mdns_response(response_data, addr).await?);
         }
@@ -144,7 +145,7 @@ impl DiscoveryManager {
     /// Create mDNS query packet
     async fn create_mdns_query(&self, service_name: &str) -> Result<Vec<u8>, SongbirdError> {
         let mut query = Vec::new();
-        
+
         // Simple mDNS query structure
         query.extend_from_slice(&[0x00, 0x00]); // Transaction ID
         query.extend_from_slice(&[0x01, 0x00]); // Flags (standard query)
@@ -152,7 +153,7 @@ impl DiscoveryManager {
         query.extend_from_slice(&[0x00, 0x00]); // Answer RRs
         query.extend_from_slice(&[0x00, 0x00]); // Authority RRs
         query.extend_from_slice(&[0x00, 0x00]); // Additional RRs
-        
+
         // Add service name
         for part in service_name.split('.') {
             if !part.is_empty() {
@@ -161,29 +162,33 @@ impl DiscoveryManager {
             }
         }
         query.push(0x00); // End of name
-        
+
         query.extend_from_slice(&[0x00, 0x0C]); // Query type (PTR)
         query.extend_from_slice(&[0x00, 0x01]); // Query class (IN)
-        
+
         Ok(query)
     }
 
     /// Parse mDNS response
-    async fn parse_mdns_response(&self, data: &[u8], addr: std::net::SocketAddr) -> Result<Vec<String>, SongbirdError> {
+    async fn parse_mdns_response(
+        &self,
+        data: &[u8],
+        addr: std::net::SocketAddr,
+    ) -> Result<Vec<String>, SongbirdError> {
         let mut endpoints = Vec::new();
-        
+
         // Basic mDNS response parsing
         if data.len() > 12 {
             // Extract IP from sender address and assume common ports
             let ip = addr.ip();
             let common_ports = vec![8080, 8081, 8082, 8083];
-            
+
             for port in common_ports {
                 let endpoint = format!("http://{}:{}", ip, port);
                 endpoints.push(endpoint);
             }
         }
-        
+
         Ok(endpoints)
     }
 
@@ -793,7 +798,9 @@ impl DiscoveryManager {
                 message: format!("Failed to query custom registry {}: {}", registry_url, e),
                 details: None,
                 endpoint: Some("custom_registry/query".to_string()),
-                suggestion: Some("Check custom registry connectivity and configuration".to_string()),
+                suggestion: Some(
+                    "Check custom registry connectivity and configuration".to_string(),
+                ),
             })?;
 
         if response.status().is_success() {
@@ -841,7 +848,7 @@ impl DiscoveryManager {
         // Remove duplicates and validate endpoints
         endpoints.sort();
         endpoints.dedup();
-        
+
         let mut validated_endpoints = Vec::new();
         for endpoint in endpoints {
             if self.verify_federation_endpoint(&endpoint).await? {
@@ -849,30 +856,36 @@ impl DiscoveryManager {
             }
         }
 
-        debug!("DHT-like discovery found {} validated endpoints", validated_endpoints.len());
+        debug!(
+            "DHT-like discovery found {} validated endpoints",
+            validated_endpoints.len()
+        );
         Ok(validated_endpoints)
     }
 
     /// Get local network subnets for scanning
     async fn get_local_subnets(&self) -> Result<Vec<String>, SongbirdError> {
         let mut subnets = Vec::new();
-        
+
         // Get network interfaces
-        let interfaces = if_addrs::get_if_addrs().map_err(|e| {
-            SongbirdError::Network {
-                service: Some("discovery".to_string()),
-                message: format!("Failed to get network interfaces: {}", e),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check network configuration".to_string()),
-            }
+        let interfaces = if_addrs::get_if_addrs().map_err(|e| SongbirdError::Network {
+            service: Some("discovery".to_string()),
+            message: format!("Failed to get network interfaces: {}", e),
+            details: None,
+            endpoint: None,
+            suggestion: Some("Check network configuration".to_string()),
         })?;
 
         for interface in interfaces {
             if !interface.is_loopback() {
                 match interface.ip() {
                     std::net::IpAddr::V4(ipv4) => {
-                        let subnet = format!("{}.{}.{}.0/24", ipv4.octets()[0], ipv4.octets()[1], ipv4.octets()[2]);
+                        let subnet = format!(
+                            "{}.{}.{}.0/24",
+                            ipv4.octets()[0],
+                            ipv4.octets()[1],
+                            ipv4.octets()[2]
+                        );
                         subnets.push(subnet);
                     }
                     _ => {} // Skip IPv6 for now
@@ -886,28 +899,30 @@ impl DiscoveryManager {
     /// Scan subnet for federation endpoints
     async fn scan_subnet_for_federation(&self, subnet: &str) -> Result<Vec<String>, SongbirdError> {
         let mut endpoints = Vec::new();
-        
+
         // Parse subnet (simple implementation for /24 networks)
         let parts: Vec<&str> = subnet.split('.').collect();
         if parts.len() >= 3 {
             let base = format!("{}.{}.{}", parts[0], parts[1], parts[2]);
-            
+
             // Common federation ports
             let ports = vec![8080, 8081, 8082, 8083, 8084, 8085, 3000, 5000, 9000];
-            
+
             // Scan first 50 IPs in subnet (to avoid overwhelming the network)
             for i in 1..=50 {
                 let ip = format!("{}.{}", base, i);
-                
+
                 for port in &ports {
                     let endpoint = format!("http://{}:{}", ip, port);
-                    
+
                     // Quick connection test
                     let addr = format!("{}:{}", ip, port);
                     if let Ok(stream) = tokio::time::timeout(
                         Duration::from_millis(100),
-                        tokio::net::TcpStream::connect(&addr)
-                    ).await {
+                        tokio::net::TcpStream::connect(&addr),
+                    )
+                    .await
+                    {
                         if stream.is_ok() {
                             endpoints.push(endpoint);
                         }
@@ -916,7 +931,11 @@ impl DiscoveryManager {
             }
         }
 
-        debug!("Subnet {} scan found {} potential endpoints", subnet, endpoints.len());
+        debug!(
+            "Subnet {} scan found {} potential endpoints",
+            subnet,
+            endpoints.len()
+        );
         Ok(endpoints)
     }
 
@@ -928,15 +947,14 @@ impl DiscoveryManager {
         // Query common service discovery endpoints
         let discovery_services = vec![
             "http://localhost:8500/v1/catalog/services", // Consul
-            "http://localhost:2379/v2/keys/services",     // etcd
-            "http://localhost:4001/v2/keys/services",     // etcd alternative
+            "http://localhost:2379/v2/keys/services",    // etcd
+            "http://localhost:4001/v2/keys/services",    // etcd alternative
         ];
 
         for service_url in discovery_services {
-            if let Ok(response) = tokio::time::timeout(
-                Duration::from_secs(2),
-                client.get(service_url).send()
-            ).await {
+            if let Ok(response) =
+                tokio::time::timeout(Duration::from_secs(2), client.get(service_url).send()).await
+            {
                 if let Ok(resp) = response {
                     if resp.status().is_success() {
                         if let Ok(text) = resp.text().await {
@@ -953,7 +971,7 @@ impl DiscoveryManager {
     /// Parse discovery service response
     async fn parse_discovery_response(&self, response: &str) -> Result<Vec<String>, SongbirdError> {
         let mut endpoints = Vec::new();
-        
+
         // Try to parse as JSON first
         if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(response) {
             if let Some(services) = json_value.as_object() {
@@ -974,11 +992,9 @@ impl DiscoveryManager {
     async fn verify_federation_endpoint(&self, endpoint: &str) -> Result<bool, SongbirdError> {
         let client = reqwest::Client::new();
         let health_url = format!("{}/federation/health", endpoint);
-        
-        let response = tokio::time::timeout(
-            Duration::from_secs(3),
-            client.get(&health_url).send()
-        ).await;
+
+        let response =
+            tokio::time::timeout(Duration::from_secs(3), client.get(&health_url).send()).await;
 
         match response {
             Ok(Ok(resp)) => {

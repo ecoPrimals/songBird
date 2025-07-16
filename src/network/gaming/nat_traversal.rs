@@ -356,7 +356,11 @@ impl AdvancedNatTraversalManager {
 
         // In a real implementation, this would properly parse STUN attributes
         // For now, return a placeholder
-        Ok(Some("192.168.1.100:12345".parse().expect("Hardcoded address should be valid")))
+        Ok(Some(
+            "192.168.1.100:12345"
+                .parse()
+                .expect("Hardcoded address should be valid"),
+        ))
     }
 
     /// Classify NAT type based on STUN results

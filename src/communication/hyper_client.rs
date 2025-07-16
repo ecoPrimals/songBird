@@ -357,7 +357,10 @@ mod tests {
         }
 
         let client = HyperHttpClient::new().expect("Failed to create test HTTP client");
-        let response = client.get("https://example.com").await.expect("Failed to execute GET request in test");
+        let response = client
+            .get("https://example.com")
+            .await
+            .expect("Failed to execute GET request in test");
         assert!(response.is_success());
     }
 

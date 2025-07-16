@@ -419,8 +419,12 @@ impl SongbirdConfig {
         }
 
         // Validate port ranges
-        if self.network.bind_port < 1024 && !std::env::var("SONGBIRD_ALLOW_PRIVILEGED_PORTS").is_ok() {
-            validation_errors.push("Port must be >= 1024 unless SONGBIRD_ALLOW_PRIVILEGED_PORTS is set".to_string());
+        if self.network.bind_port < 1024
+            && std::env::var("SONGBIRD_ALLOW_PRIVILEGED_PORTS").is_err()
+        {
+            validation_errors.push(
+                "Port must be >= 1024 unless SONGBIRD_ALLOW_PRIVILEGED_PORTS is set".to_string(),
+            );
         }
 
         if validation_errors.is_empty() {

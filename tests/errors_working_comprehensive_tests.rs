@@ -5,8 +5,8 @@
 
 use std::time::Duration;
 
-use songbird_lib::errors::{Result, SongbirdError};
 use songbird_lib::errors::validation::ConfigValidator;
+use songbird_lib::errors::{Result, SongbirdError};
 
 #[tokio::test]
 async fn test_comprehensive_error_scenarios() -> Result<()> {
@@ -619,7 +619,10 @@ fn test_songbird_error_execution_failed() {
         message: "Command execution failed".to_string(),
     };
 
-    assert!(matches!(execution_error, SongbirdError::ExecutionFailed { message: _ }));
+    assert!(matches!(
+        execution_error,
+        SongbirdError::ExecutionFailed { message: _ }
+    ));
 
     let error_string = format!("{execution_error}");
     assert!(error_string.contains("Command execution failed"));
@@ -630,7 +633,8 @@ fn test_songbird_error_helper_methods() {
     let service_error = SongbirdError::service_error("auth", "Authentication failed".to_string());
     assert!(matches!(service_error, SongbirdError::Service { .. }));
 
-    let health_error = SongbirdError::health_check_failed("database", "Connection timeout".to_string());
+    let health_error =
+        SongbirdError::health_check_failed("database", "Connection timeout".to_string());
     assert!(matches!(health_error, SongbirdError::Service { .. }));
 
     let config_error = SongbirdError::configuration_error("Invalid configuration".to_string());

@@ -139,11 +139,12 @@ impl LoadBalancer for RoundRobinLoadBalancer {
             stats.failed_requests += 1;
         }
         stats.average_response_time = if stats.total_requests > 1 {
-            (stats.average_response_time * (stats.total_requests - 1) as f64 + response_time) / stats.total_requests as f64
+            (stats.average_response_time * (stats.total_requests - 1) as f64 + response_time)
+                / stats.total_requests as f64
         } else {
             response_time
         };
-        
+
         // Update last request time - removed since field doesn't exist
     }
 

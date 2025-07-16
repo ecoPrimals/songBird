@@ -150,7 +150,9 @@ impl ZeroTouchCommand {
                 print_info("  • Verify firewall settings");
                 print_info("  • Try running: songbird firewall configure");
             }
-            songbird_errors::SongbirdError::Service { service, message, .. } => {
+            songbird_errors::SongbirdError::Service {
+                service, message, ..
+            } => {
                 print_info("🔧 Service issue detected");
                 print_info(&format!("  Service: {service}"));
                 print_info(&format!("  Error: {message}"));
@@ -168,7 +170,9 @@ impl ZeroTouchCommand {
                 print_info("    • Check configuration file syntax");
                 print_info("    • Verify file permissions");
             }
-            songbird_errors::SongbirdError::Deployment { service, message, .. } => {
+            songbird_errors::SongbirdError::Deployment {
+                service, message, ..
+            } => {
                 print_error(&format!(
                     "Deployment error for service {service}: {message}"
                 ));
@@ -306,12 +310,12 @@ async fn save_songbird_configuration(
 
     tokio::fs::write(path, config_yaml)
         .await
-        .map_err(|e|             songbird_errors::SongbirdError::Io {
-                message: format!("Failed to write config file {}: {}", path.display(), e),
-                operation: Some("write_config_file".to_string()),
-                path: Some(path.to_string_lossy().to_string()),
-                suggestion: Some("Check file permissions and disk space".to_string()),
-            })?;
+        .map_err(|e| songbird_errors::SongbirdError::Io {
+            message: format!("Failed to write config file {}: {}", path.display(), e),
+            operation: Some("write_config_file".to_string()),
+            path: Some(path.to_string_lossy().to_string()),
+            suggestion: Some("Check file permissions and disk space".to_string()),
+        })?;
 
     Ok(())
 }
@@ -386,11 +390,15 @@ async fn suggest_troubleshooting_steps(error: &songbird_errors::SongbirdError) {
             print_info("  • Verify firewall settings");
             print_info("  • Try running: songbird firewall configure");
         }
-        songbird_errors::SongbirdError::Service { service, message, .. } => {
+        songbird_errors::SongbirdError::Service {
+            service, message, ..
+        } => {
             print_error(&format!("Service error for {service}: {message}"));
             print_info("Check service dependencies and requirements");
         }
-        songbird_errors::SongbirdError::Deployment { service, message, .. } => {
+        songbird_errors::SongbirdError::Deployment {
+            service, message, ..
+        } => {
             print_error(&format!(
                 "Deployment error for service {service}: {message}"
             ));

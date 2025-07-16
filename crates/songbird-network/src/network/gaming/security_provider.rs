@@ -533,19 +533,19 @@ impl BSTPTunnelWrapper {
     fn generate_keypair() -> Result<([u8; 32], [u8; 32]), Box<dyn std::error::Error>> {
         use rand::RngCore;
         let mut rng = rand::thread_rng();
-        
+
         // Generate Ed25519-style keypair
         let mut private_key = [0u8; 32];
         let mut public_key = [0u8; 32];
-        
+
         // Generate secure random private key
         rng.fill_bytes(&mut private_key);
-        
+
         // Derive public key from private key (simplified implementation)
         for i in 0..32 {
             public_key[i] = private_key[i] ^ 0x42;
         }
-        
+
         Ok((public_key, private_key))
     }
 
@@ -558,21 +558,21 @@ impl BSTPTunnelWrapper {
         // Create message to sign
         let message = format!("{}:{}", session_id, hex::encode(public_key));
         let message_bytes = message.as_bytes();
-        
+
         // Generate Ed25519-style signature
         let mut signature = [0u8; 64];
-        
+
         // First half of signature: hash of message with private key
         for (i, byte) in message_bytes.iter().enumerate() {
             let key_byte = private_key[i % private_key.len()];
             signature[i % 32] ^= byte.wrapping_add(key_byte);
         }
-        
+
         // Second half: verification data
         for i in 0..32 {
             signature[i + 32] = signature[i] ^ public_key[i];
         }
-        
+
         Ok(signature)
     }
 
@@ -581,7 +581,7 @@ impl BSTPTunnelWrapper {
         key_exchange: &crate::network::gaming::bstp_handshake::BearDogKeyExchange,
     ) -> Result<[u8; 16], Box<dyn std::error::Error>> {
         let mut confirmation = [0u8; 16];
-        
+
         // Generate confirmation from shared secret
         let shared_secret = key_exchange.get_shared_secret();
         for (i, byte) in shared_secret.iter().enumerate() {
@@ -589,20 +589,20 @@ impl BSTPTunnelWrapper {
                 confirmation[i] = *byte;
             }
         }
-        
+
         // Add timestamp for freshness
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         let timestamp_bytes = timestamp.to_le_bytes();
         for (i, byte) in timestamp_bytes.iter().enumerate() {
             if i < 16 {
                 confirmation[i] ^= *byte;
             }
         }
-        
+
         Ok(confirmation)
     }
 
@@ -610,14 +610,14 @@ impl BSTPTunnelWrapper {
     pub fn encrypt_data(&self, data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         // Get session key from handshake manager
         let session_key = self.handshake_manager.get_session_key()?;
-        
+
         // Use AES-256-GCM style encryption
         let mut encrypted = Vec::new();
-        
+
         // Add nonce for security
         let nonce = Self::generate_nonce();
         encrypted.extend_from_slice(&nonce);
-        
+
         // Encrypt data with session key
         let mut encrypted_data = data.to_vec();
         for (i, byte) in encrypted_data.iter_mut().enumerate() {
@@ -625,36 +625,40 @@ impl BSTPTunnelWrapper {
             let nonce_byte = nonce[i % nonce.len()];
             *byte ^= key_byte ^ nonce_byte;
         }
-        
+
         encrypted.extend_from_slice(&encrypted_data);
-        
+
         // Add authentication tag
         let auth_tag = Self::generate_auth_tag(&encrypted_data, &session_key);
         encrypted.extend_from_slice(&auth_tag);
-        
+
         Ok(encrypted)
     }
 
     /// Decrypt data using the established secure session
-    pub fn decrypt_data(&self, encrypted_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        if encrypted_data.len() < 32 { // 12 byte nonce + 16 byte tag + data
+    pub fn decrypt_data(
+        &self,
+        encrypted_data: &[u8],
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        if encrypted_data.len() < 32 {
+            // 12 byte nonce + 16 byte tag + data
             return Err("Invalid encrypted data length".into());
         }
-        
+
         // Get session key from handshake manager
         let session_key = self.handshake_manager.get_session_key()?;
-        
+
         // Extract components
         let nonce = &encrypted_data[0..12];
-        let ciphertext = &encrypted_data[12..encrypted_data.len()-16];
-        let provided_tag = &encrypted_data[encrypted_data.len()-16..];
-        
+        let ciphertext = &encrypted_data[12..encrypted_data.len() - 16];
+        let provided_tag = &encrypted_data[encrypted_data.len() - 16..];
+
         // Verify authentication tag
         let expected_tag = Self::generate_auth_tag(ciphertext, &session_key);
         if provided_tag != expected_tag {
             return Err("Authentication tag verification failed".into());
         }
-        
+
         // Decrypt data
         let mut decrypted = ciphertext.to_vec();
         for (i, byte) in decrypted.iter_mut().enumerate() {
@@ -662,7 +666,7 @@ impl BSTPTunnelWrapper {
             let nonce_byte = nonce[i % nonce.len()];
             *byte ^= key_byte ^ nonce_byte;
         }
-        
+
         Ok(decrypted)
     }
 
@@ -678,18 +682,18 @@ impl BSTPTunnelWrapper {
     /// Generate authentication tag for encrypted data
     fn generate_auth_tag(data: &[u8], key: &[u8]) -> [u8; 16] {
         let mut tag = [0u8; 16];
-        
+
         // Simple HMAC-style authentication
         for (i, byte) in data.iter().enumerate() {
             let key_byte = key[i % key.len()];
             tag[i % 16] ^= byte.wrapping_add(key_byte);
         }
-        
+
         // Add key-dependent mixing
         for i in 0..16 {
             tag[i] ^= key[i % key.len()];
         }
-        
+
         tag
     }
 
@@ -699,20 +703,20 @@ impl BSTPTunnelWrapper {
         if !self.handshake_manager.is_valid() {
             return Ok(false);
         }
-        
+
         // Check session age
         let session_age = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-            
+
         let session_start = self.handshake_manager.get_session_start_time();
-        
+
         // Session expires after 1 hour
         if session_age - session_start > 3600 {
             return Ok(false);
         }
-        
+
         Ok(true)
     }
 

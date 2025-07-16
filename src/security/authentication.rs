@@ -639,7 +639,7 @@ mod tests {
                 assert_eq!(password, "password");
             }
             _ => {
-                panic!("Expected UserPassword credential type");
+                assert!(false, "Expected UserPassword credential type");
             }
         }
     }
@@ -655,7 +655,7 @@ mod tests {
                 assert_eq!(token, "abc123");
             }
             _ => {
-                panic!("Expected Bearer credential type");
+                assert!(false, "Expected Bearer credential type");
             }
         }
     }
@@ -679,7 +679,7 @@ mod tests {
                 assert_eq!(mfa_code, "123456");
             }
             _ => {
-                panic!("Expected MFA credential type");
+                assert!(false, "Expected MFA credential type");
             }
         }
     }
@@ -715,8 +715,14 @@ mod tests {
         };
 
         assert!(result.success);
-        assert_eq!(result.token.expect("Token should be present in test"), "token123");
-        assert_eq!(result.user_id.expect("User ID should be present in test"), "user123");
+        assert_eq!(
+            result.token.expect("Token should be present in test"),
+            "token123"
+        );
+        assert_eq!(
+            result.user_id.expect("User ID should be present in test"),
+            "user123"
+        );
         assert_eq!(result.permissions.len(), 1);
         assert!(result.error.is_none());
     }

@@ -210,7 +210,9 @@ async fn auto_discover_networks() -> CliResult<Vec<DiscoveredNetwork>> {
             return Err(crate::cli::CliError::Config {
                 message: format!("Unknown discovery method: {discovery_method}"),
                 field: Some("discovery_method".to_string()),
-                suggestion: Some("Use 'subnet', 'dns', or 'broadcast' for discovery method".to_string()),
+                suggestion: Some(
+                    "Use 'subnet', 'dns', or 'broadcast' for discovery method".to_string(),
+                ),
             });
         }
     }
@@ -323,12 +325,11 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
     use std::net::UdpSocket;
     use std::time::Duration;
 
-    let socket = UdpSocket::bind("0.0.0.0:0")
-        .map_err(|e| crate::cli::CliError::Network {
-            message: format!("Failed to create socket: {e}"),
-            endpoint: Some("0.0.0.0:0".to_string()),
-            suggestion: Some("Check network permissions and available ports".to_string()),
-        })?;
+    let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| crate::cli::CliError::Network {
+        message: format!("Failed to create socket: {e}"),
+        endpoint: Some("0.0.0.0:0".to_string()),
+        suggestion: Some("Check network permissions and available ports".to_string()),
+    })?;
 
     socket
         .set_read_timeout(Some(Duration::from_millis(timeout_ms)))

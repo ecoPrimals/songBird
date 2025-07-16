@@ -654,7 +654,10 @@ mod tests {
 
         let found = registry.get_service("test-service");
         assert!(found.is_some());
-        assert_eq!(found.expect("Service should be found in test").endpoint, default_endpoint);
+        assert_eq!(
+            found.expect("Service should be found in test").endpoint,
+            default_endpoint
+        );
     }
 
     #[tokio::test]
@@ -697,7 +700,9 @@ mod tests {
             primals: None,
         };
 
-        let ordered = manager.resolve_service_dependencies(&manifest).expect("Failed to resolve service dependencies in test");
+        let ordered = manager
+            .resolve_service_dependencies(&manifest)
+            .expect("Failed to resolve service dependencies in test");
 
         // B should come before A due to dependency
         assert_eq!(ordered.len(), 2);

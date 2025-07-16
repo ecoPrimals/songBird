@@ -9,10 +9,7 @@ use songbird_cli::commands;
 use songbird_cli::commands::Commands;
 use songbird_cli::ui;
 use songbird_cli::CliError;
-use songbird_config::constants::{
-    cli::DEFAULT_CLI_SHORT_ANIMATION_DELAY, discovery::DEFAULT_DISCOVERY_TIMEOUT,
-    DEFAULT_CHECK_INTERVAL, DEFAULT_CONNECTION_TIMEOUT,
-};
+use songbird_config::constants::cli::DEFAULT_CLI_SHORT_ANIMATION_DELAY;
 use std::path::PathBuf;
 /// CLI configuration
 #[derive(Debug, Clone)]
@@ -192,14 +189,16 @@ impl Cli {
                     .map_err(|e| crate::cli::CliError::Command {
                         message: e.to_string(),
                         command: None,
-                        suggestion: Some("Check your internet connection and try again".to_string()),
+                        suggestion: Some(
+                            "Check your internet connection and try again".to_string(),
+                        ),
                     })
             }
             Commands::Firewall { command } => commands::firewall::execute_firewall(&command)
                 .await
                 .map_err(|e| CliError::Command {
                     message: format!("Firewall command failed: {e}"),
-                    command: Some(format!("{:?}", command)),
+                    command: Some(format!("{command:?}")),
                     suggestion: Some("Check firewall permissions and configuration".to_string()),
                 }),
             Commands::IoT { command } => commands::basic_iot::handle_basic_iot_command(command)
@@ -271,11 +270,14 @@ pub mod constants {
     /// Default log directory
     pub const DEFAULT_LOG_DIR: &str = ".songbird/logs";
     /// Default discovery timeout
-    pub const DEFAULT_DISCOVERY_TIMEOUT: Duration = songbird_config::constants::discovery::DEFAULT_DISCOVERY_TIMEOUT;
+    pub const DEFAULT_DISCOVERY_TIMEOUT: Duration =
+        songbird_config::constants::discovery::DEFAULT_DISCOVERY_TIMEOUT;
     /// Default connection timeout
-    pub const DEFAULT_CONNECTION_TIMEOUT: Duration = songbird_config::constants::network::DEFAULT_CONNECTION_TIMEOUT;
+    pub const DEFAULT_CONNECTION_TIMEOUT: Duration =
+        songbird_config::constants::network::DEFAULT_CONNECTION_TIMEOUT;
     /// Default health check interval for CLI
-    pub const DEFAULT_CLI_HEALTH_INTERVAL: Duration = songbird_config::constants::health::DEFAULT_CHECK_INTERVAL;
+    pub const DEFAULT_CLI_HEALTH_INTERVAL: Duration =
+        songbird_config::constants::health::DEFAULT_CHECK_INTERVAL;
 }
 /// Execute start command with improved user experience
 #[allow(dead_code)]
@@ -310,14 +312,11 @@ async fn execute_start(
     })?;
 
     // Create and start orchestrator
-    orchestrator
-        .start()
-        .await
-        .map_err(|e| CliError::Config {
-            message: e.to_string(),
-            field: Some("orchestrator_start".to_string()),
-            suggestion: Some("Check if ports are available and permissions are correct".to_string()),
-        })?;
+    orchestrator.start().await.map_err(|e| CliError::Config {
+        message: e.to_string(),
+        field: Some("orchestrator_start".to_string()),
+        suggestion: Some("Check if ports are available and permissions are correct".to_string()),
+    })?;
 
     println!(
         "{}",
@@ -344,14 +343,11 @@ async fn execute_start(
     // Keep running until interrupted
     tokio::signal::ctrl_c().await.map_err(CliError::Io)?;
     println!("{}", ui::info("⏹️  Stopping orchestrator..."));
-    orchestrator
-        .stop()
-        .await
-        .map_err(|e| CliError::Config {
-            message: e.to_string(),
-            field: Some("orchestrator_stop".to_string()),
-            suggestion: Some("Check if the orchestrator is running and try again".to_string()),
-        })?;
+    orchestrator.stop().await.map_err(|e| CliError::Config {
+        message: e.to_string(),
+        field: Some("orchestrator_stop".to_string()),
+        suggestion: Some("Check if the orchestrator is running and try again".to_string()),
+    })?;
 
     println!("{}", ui::success("✅ Stopped successfully"));
     Ok(())
@@ -377,27 +373,27 @@ async fn load_config_from_file(path: &PathBuf) -> CliResult<crate::config::Orche
         })?;
     // Support multiple config formats based on extension
     let config = match path.extension().and_then(|ext| ext.to_str()) {
-        Some("toml") => toml::from_str(&contents)
-            .map_err(|e| CliError::Config {
-                message: format!("Failed to parse TOML config: {e}"),
-                field: Some("config_file".to_string()),
-                suggestion: Some("Check TOML syntax and try again".to_string()),
-            })?,
-        Some("yaml") | Some("yml") => serde_yaml::from_str(&contents)
-            .map_err(|e| CliError::Config {
+        Some("toml") => toml::from_str(&contents).map_err(|e| CliError::Config {
+            message: format!("Failed to parse TOML config: {e}"),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Check TOML syntax and try again".to_string()),
+        })?,
+        Some("yaml") | Some("yml") => {
+            serde_yaml::from_str(&contents).map_err(|e| CliError::Config {
                 message: format!("Failed to parse YAML config: {e}"),
                 field: Some("config_file".to_string()),
                 suggestion: Some("Check YAML syntax and try again".to_string()),
-            })?,
-        Some("json") => serde_json::from_str(&contents)
-            .map_err(|e| CliError::Config {
-                message: format!("Failed to parse JSON config: {e}"),
-                field: Some("config_file".to_string()),
-                suggestion: Some("Check JSON syntax and try again".to_string()),
-            })?,
+            })?
+        }
+        Some("json") => serde_json::from_str(&contents).map_err(|e| CliError::Config {
+            message: format!("Failed to parse JSON config: {e}"),
+            field: Some("config_file".to_string()),
+            suggestion: Some("Check JSON syntax and try again".to_string()),
+        })?,
         _ => {
             return Err(CliError::Config {
-                message: "Unsupported config file format. Use .toml, .yaml, .yml, or .json".to_string(),
+                message: "Unsupported config file format. Use .toml, .yaml, .yml, or .json"
+                    .to_string(),
                 field: Some("config_file".to_string()),
                 suggestion: Some("Ensure the file extension is correct".to_string()),
             });
@@ -573,7 +569,9 @@ async fn terminate_process(pid: u32, force: bool) -> CliResult<()> {
         Err(CliError::Command {
             message: format!("Failed to send {signal} signal to process {pid}"),
             command: Some("terminate".to_string()),
-            suggestion: Some("Check if the process exists and you have permission to terminate it".to_string()),
+            suggestion: Some(
+                "Check if the process exists and you have permission to terminate it".to_string(),
+            ),
         })
     }
 
@@ -586,7 +584,9 @@ async fn terminate_process(pid: u32, force: bool) -> CliResult<()> {
             .map_err(|e| CliError::Command {
                 message: format!("Failed to execute taskkill: {e}"),
                 command: Some("taskkill".to_string()),
-                suggestion: Some("Check if taskkill is available and permissions are correct".to_string()),
+                suggestion: Some(
+                    "Check if taskkill is available and permissions are correct".to_string(),
+                ),
             })?;
 
         if status.success() {
@@ -607,7 +607,9 @@ async fn terminate_process(pid: u32, force: bool) -> CliResult<()> {
         Err(CliError::Command {
             message: format!("Failed to terminate process {}", pid),
             command: Some("taskkill".to_string()),
-            suggestion: Some("Check if the process exists and you have permission to terminate it".to_string()),
+            suggestion: Some(
+                "Check if the process exists and you have permission to terminate it".to_string(),
+            ),
         })
     }
 }

@@ -10,13 +10,13 @@ pub mod discovery;
 pub mod templates;
 pub mod ui;
 
+use clap::{Parser, Subcommand};
 use colored::Colorize;
 use songbird_errors::SongbirdError;
 use std::env;
 use std::path::PathBuf;
-use tracing::error;
-use clap::{Parser, Subcommand};
 use thiserror::Error;
+use tracing::error;
 // CLI module core
 use self::commands::Commands;
 use serde::{Deserialize, Serialize};

@@ -4,7 +4,7 @@
 //! instead of direct platform-specific operations
 
 use crate::errors::{Result, SongbirdError};
-use crate::substrate::{OSSubstrate, PathRequest, PathRequirements, PathType};
+use crate::substrate::{PathRequest, PathRequirements, PathType};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::{debug, warn};
@@ -330,10 +330,7 @@ impl PathConfig {
                     // Fallback to direct validation
                     if !path.exists() {
                         return Err(SongbirdError::Config {
-                            message: format!(
-                                "Path does not exist: {}",
-                                path.display()
-                            ),
+                            message: format!("Path does not exist: {}", path.display()),
                             field: Some("path_validation".to_string()),
                         });
                     }
@@ -351,7 +348,7 @@ impl PathConfig {
         substrate
             .get_path(PathRequest {
                 path_type: PathType::Temp,
-                service_name: format!("songbird_{}", operation),
+                service_name: format!("songbird_{operation}"),
                 requirements: PathRequirements {
                     min_size_bytes: Some(1024 * 1024), // 1MB minimum
                     permissions: Some("rw".to_string()),
@@ -411,19 +408,19 @@ pub async fn initialize_service_paths(service_name: &str) -> Result<ServiceDataD
 
     Ok(ServiceDataDirs {
         orchestrator: substrate
-            .get_data_dir(&format!("{}_orchestrator", service_name))
+            .get_data_dir(&format!("{service_name}_orchestrator"))
             .await?,
         federation: substrate
-            .get_data_dir(&format!("{}_federation", service_name))
+            .get_data_dir(&format!("{service_name}_federation"))
             .await?,
         metrics: substrate
-            .get_data_dir(&format!("{}_metrics", service_name))
+            .get_data_dir(&format!("{service_name}_metrics"))
             .await?,
         discovery: substrate
-            .get_data_dir(&format!("{}_discovery", service_name))
+            .get_data_dir(&format!("{service_name}_discovery"))
             .await?,
         registry: substrate
-            .get_data_dir(&format!("{}_registry", service_name))
+            .get_data_dir(&format!("{service_name}_registry"))
             .await?,
     })
 }

@@ -191,12 +191,11 @@ impl ZeroTrustMiddleware {
                 }
 
                 // Development tokens (only in non-production environments)
-                if !self.is_production_environment() {
-                    if token == "demo_token" || token == "dev_token" {
+                if !self.is_production_environment()
+                    && (token == "demo_token" || token == "dev_token") {
                         tracing::warn!("Using demo token - this should not be used in production!");
                         return Ok(true);
                     }
-                }
 
                 Ok(false)
             }
@@ -413,7 +412,7 @@ impl ZeroTrustMiddleware {
             .await
         {
             use tokio::io::AsyncWriteExt;
-            let log_line = format!("{}\n", audit_record.to_string());
+            let log_line = format!("{}\n", audit_record);
             let _ = file.write_all(log_line.as_bytes()).await;
         }
     }

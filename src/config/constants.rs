@@ -22,7 +22,7 @@ pub mod network {
     pub const DEFAULT_PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
     pub const PRODUCTION_BIND_ADDRESS: &str = DEFAULT_PRODUCTION_BIND_ADDRESS;
     pub const DEFAULT_PORT: u16 = DEFAULT_ORCHESTRATOR_PORT;
-    
+
     // Service endpoint defaults
     pub const DEFAULT_BEARDOG_ENDPOINT: &str = "https://localhost:8443";
     pub const DEFAULT_NESTGATE_ENDPOINT: &str = "http://localhost:8080";

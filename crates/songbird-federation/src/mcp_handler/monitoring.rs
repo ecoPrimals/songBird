@@ -116,7 +116,9 @@ impl MonitoringManager {
 
     /// Check if a port is available
     pub async fn is_port_available(&self, port: u16) -> bool {
-        (tokio::net::TcpListener::bind(format!("{}:{port}", constants::default_bind_address())).await).is_ok()
+        (tokio::net::TcpListener::bind(format!("{}:{port}", constants::default_bind_address()))
+            .await)
+            .is_ok()
     }
 
     /// Get active gaming sessions count

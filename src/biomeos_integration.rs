@@ -7,9 +7,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::errors::{Result, SongbirdError};
 use serde::{Deserialize, Serialize};
 use songbird_config::SongbirdConfig;
-use crate::errors::{Result, SongbirdError};
 use tokio::sync::RwLock;
 use tracing::info;
 
@@ -71,8 +71,9 @@ impl BiomeOSIntegration {
             })),
             instance_id,
             biomeos_client: {
-                let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
-                    .unwrap_or_else(|_| crate::config::constants::default_bind_address().to_string());
+                let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
+                    crate::config::constants::default_bind_address().to_string()
+                });
                 BiomeOSClient::new(format!("http://{bind_address}:4000"))
             },
             registration: None,
@@ -529,32 +530,53 @@ impl BiomeOSClient {
 
     pub async fn health_check(&self) -> Result<()> {
         let url = format!("{}/api/v1/health", self.endpoint);
-        let response = self.client.get(&url).send().await
-            .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
-        
+        let response = self.client.get(&url).send().await.map_err(|e| {
+            SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone()))
+        })?;
+
         if response.status().is_success() {
             Ok(())
         } else {
             Err(SongbirdError::service_error(
                 "biomeos",
-                format!("Health check failed with status: {}", response.status())
+                format!("Health check failed with status: {}", response.status()),
             ))
         }
     }
 
-    pub async fn request(&self, endpoint: &str, payload: serde_json::Value) -> Result<serde_json::Value> {
+    pub async fn request(
+        &self,
+        endpoint: &str,
+        payload: serde_json::Value,
+    ) -> Result<serde_json::Value> {
         let url = format!("{}/api/v1/{}", self.endpoint, endpoint);
-        let response = self.client.post(&url).json(&payload).send().await
-            .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
-        
+        let response = self
+            .client
+            .post(&url)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| {
+                SongbirdError::network_error(
+                    "biomeos".to_string(),
+                    e.to_string(),
+                    Some(url.clone()),
+                )
+            })?;
+
         if response.status().is_success() {
-            let data = response.json::<serde_json::Value>().await
-                .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
+            let data = response.json::<serde_json::Value>().await.map_err(|e| {
+                SongbirdError::network_error(
+                    "biomeos".to_string(),
+                    e.to_string(),
+                    Some(url.clone()),
+                )
+            })?;
             Ok(data)
         } else {
             Err(SongbirdError::service_error(
                 "biomeos",
-                format!("Request failed with status: {}", response.status())
+                format!("Request failed with status: {}", response.status()),
             ))
         }
     }
@@ -562,17 +584,23 @@ impl BiomeOSClient {
     /// Get BiomeOS capabilities
     pub async fn get_capabilities(&self) -> Result<serde_json::Value> {
         let url = format!("{}/api/v1/capabilities", self.endpoint);
-        let response = self.client.get(&url).send().await
-            .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
-        
+        let response = self.client.get(&url).send().await.map_err(|e| {
+            SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone()))
+        })?;
+
         if response.status().is_success() {
-            let data = response.json::<serde_json::Value>().await
-                .map_err(|e| SongbirdError::network_error("biomeos".to_string(), e.to_string(), Some(url.clone())))?;
+            let data = response.json::<serde_json::Value>().await.map_err(|e| {
+                SongbirdError::network_error(
+                    "biomeos".to_string(),
+                    e.to_string(),
+                    Some(url.clone()),
+                )
+            })?;
             Ok(data)
         } else {
             Err(SongbirdError::service_error(
                 "biomeos",
-                format!("Get capabilities failed with status: {}", response.status())
+                format!("Get capabilities failed with status: {}", response.status()),
             ))
         }
     }

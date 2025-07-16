@@ -141,7 +141,9 @@ fn parse_subnet(subnet: &str) -> Result<(IpAddr, u8)> {
             message: format!("Invalid subnet format: {subnet}"),
             field: Some("subnet".to_string()),
             context: Some("Subnet parsing".to_string()),
-            suggestion: Some("Ensure subnet is in CIDR notation (e.g., 192.168.1.0/24)".to_string()),
+            suggestion: Some(
+                "Ensure subnet is in CIDR notation (e.g., 192.168.1.0/24)".to_string(),
+            ),
         });
     }
 

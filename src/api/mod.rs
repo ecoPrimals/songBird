@@ -182,6 +182,12 @@ struct ResourceUsage {
     gpu_percent: Option<f64>,
 }
 
+impl Default for AiAwareRequestCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AiAwareRequestCache {
     pub fn new() -> Self {
         Self {
@@ -277,6 +283,12 @@ impl AiAwareRequestCache {
     /// Get cache statistics
     pub async fn get_cache_stats(&self) -> CacheMetrics {
         self.cache_metrics.read().await.clone()
+    }
+}
+
+impl Default for BatchProcessor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -399,6 +411,12 @@ impl BatchProcessor {
         );
 
         Ok(())
+    }
+}
+
+impl Default for PerformanceMonitor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

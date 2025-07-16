@@ -90,7 +90,9 @@ impl NetworkScanner {
                 return Err(CliError::Network {
                     message: "Subnet scan timed out".to_string(),
                     endpoint: Some(subnet.to_string()),
-                    suggestion: Some("Try increasing the timeout or checking network connectivity".to_string()),
+                    suggestion: Some(
+                        "Try increasing the timeout or checking network connectivity".to_string(),
+                    ),
                 });
             }
         }

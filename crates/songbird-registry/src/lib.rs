@@ -84,8 +84,14 @@ pub mod service;
 pub use health::*;
 pub use plugin::*;
 // Use specific imports to avoid ambiguous re-exports
-pub use scaling::{ScalingDirection, ScalingState, ScalingDecision, AutoScalingEngine, AutoScalingPolicy, ScalingThreshold, ScalingStrategy};
-pub use service::{DynUniversalService, ServiceHandle, ServiceRegistry, ServiceEntry, ServiceMetrics, ServiceHealthStatus, ServiceLifecycleState, ServiceEvent};
+pub use scaling::{
+    AutoScalingEngine, AutoScalingPolicy, ScalingDecision, ScalingDirection, ScalingState,
+    ScalingStrategy, ScalingThreshold,
+};
+pub use service::{
+    DynUniversalService, ServiceEntry, ServiceEvent, ServiceHandle, ServiceHealthStatus,
+    ServiceLifecycleState, ServiceMetrics, ServiceRegistry,
+};
 
 // Re-export traits from discovery for convenience
 pub use songbird_discovery::traits::PluginRegistry;

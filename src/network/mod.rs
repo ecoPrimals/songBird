@@ -589,7 +589,10 @@ pub mod utils {
     /// Get the local IP address
     pub fn get_local_ip() -> Result<IpAddr> {
         // Try to connect to a remote address to determine local IP
-        let bind_addr = format!("{}:0", crate::config::constants::network::production_bind_address());
+        let bind_addr = format!(
+            "{}:0",
+            crate::config::constants::network::production_bind_address()
+        );
         let socket = std::net::UdpSocket::bind(&bind_addr).map_err(|e| {
             SongbirdError::NetworkDetection(format!("Failed to create socket: {e}"))
         })?;

@@ -510,7 +510,9 @@ impl Authenticator for InMemoryAuthenticator {
                             message: "MFA only supported with username/password".to_string(),
                             user: Some("InMemoryAuthenticator".to_string()),
                             provider: Some("InMemoryAuthenticator".to_string()),
-                            suggestion: Some("Use username/password credentials for MFA".to_string()),
+                            suggestion: Some(
+                                "Use username/password credentials for MFA".to_string(),
+                            ),
                         })
                     }
                 };
@@ -657,7 +659,7 @@ mod tests {
                 assert_eq!(password, "password");
             }
             _ => {
-                panic!("Expected UserPassword credential type");
+                assert!(false, "Expected UserPassword credential type");
             }
         }
     }
@@ -673,7 +675,7 @@ mod tests {
                 assert_eq!(token, "abc123");
             }
             _ => {
-                panic!("Expected Bearer credential type");
+                assert!(false, "Expected Bearer credential type");
             }
         }
     }
@@ -697,7 +699,7 @@ mod tests {
                 assert_eq!(mfa_code, "123456");
             }
             _ => {
-                panic!("Expected MFA credential type");
+                assert!(false, "Expected MFA credential type");
             }
         }
     }

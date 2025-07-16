@@ -9,24 +9,23 @@ use std::time::{Duration, Instant};
 
 use axum::{
     extract::{Path, Query, State},
-    http::{HeaderMap, StatusCode},
-    response::{IntoResponse, Sse},
+    http::StatusCode,
+    response::Sse,
     routing::{get, post},
     Json, Router,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
 
-use crate::api::{error, success, ApiResponse, ApiState};
+use crate::api::{success, ApiResponse, ApiState};
 use crate::errors::{Result, SongbirdError};
-use crate::traits::service::ServiceInfo;
 use songbird_universal_primals::squirrel::SquirrelPrimal;
 use songbird_universal_primals::traits::PrimalProvider;
-use songbird_universal_primals::{PrimalContext, types::PrimalRequest};
+use songbird_universal_primals::{types::PrimalRequest, PrimalContext};
 
 /// AI-optimized API state with enhanced caching and streaming
 #[derive(Clone)]
@@ -346,6 +345,12 @@ impl AiOptimizedApiState {
     }
 }
 
+impl Default for AiAwareCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AiAwareCache {
     pub fn new() -> Self {
         Self {
@@ -437,7 +442,7 @@ impl AiAwareCache {
             });
 
         // Update access frequency and intervals
-        if pattern.access_intervals.len() > 0 {
+        if !pattern.access_intervals.is_empty() {
             let interval = access_time.duration_since(pattern.last_access);
             pattern.access_intervals.push(interval);
 
@@ -479,6 +484,12 @@ impl AiAwareCache {
     }
 }
 
+impl Default for AiStreamingManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AiStreamingManager {
     pub fn new() -> Self {
         Self {
@@ -507,19 +518,27 @@ impl AiStreamingManager {
         // Check concurrent stream limit
         let active_count = self.active_streams.read().await.len();
         if active_count >= self.config.max_concurrent_streams {
-            return Err(SongbirdError::service_error("rate_limiter", 
-                "Rate limit exceeded".to_string()));
+            return Err(SongbirdError::service_error(
+                "rate_limiter",
+                "Rate limit exceeded".to_string(),
+            ));
         }
-        
+
         // Record the workload type for analytics
         {
             let mut metrics = self.stream_metrics.write().await;
-            *metrics.ai_workload_hits.entry(workload_type.clone()).or_insert(0) += 1;
+            *metrics
+                .ai_workload_hits
+                .entry(workload_type.clone())
+                .or_insert(0) += 1;
         }
-        
+
         // Check batch queue capacity
         if self.batch_queue.read().await.len() >= 100 {
-            return Err(SongbirdError::service_error("batch_processor", "Batch queue is full".to_string()));
+            return Err(SongbirdError::service_error(
+                "batch_processor",
+                "Batch queue is full".to_string(),
+            ));
         }
 
         let stream = AiStream {
@@ -552,6 +571,12 @@ impl AiStreamingManager {
     }
 }
 
+impl Default for AiBatchProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AiBatchProcessor {
     pub fn new() -> Self {
         Self {
@@ -573,7 +598,10 @@ impl AiBatchProcessor {
 
         // Check if queue is full
         if queue.len() >= self.processing_config.max_batch_size * 2 {
-            return Err(SongbirdError::service_error("batch_processor", "Batch queue is full".to_string()));
+            return Err(SongbirdError::service_error(
+                "batch_processor",
+                "Batch queue is full".to_string(),
+            ));
         }
 
         queue.push(request);
@@ -631,6 +659,12 @@ impl AiBatchProcessor {
         );
 
         Ok(responses)
+    }
+}
+
+impl Default for AiPredictiveScaler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -701,7 +735,10 @@ async fn process_ai_inference(
 
     // Check if Squirrel is available
     let health = squirrel.health_check().await;
-    if !matches!(health, songbird_universal_primals::traits::PrimalHealth::Healthy) {
+    if !matches!(
+        health,
+        songbird_universal_primals::traits::PrimalHealth::Healthy
+    ) {
         return Err(SongbirdError::Service {
             service: "squirrel".to_string(),
             message: "Squirrel primal is not healthy".to_string(),
@@ -710,12 +747,30 @@ async fn process_ai_inference(
 
     // Create inference request
     let mut payload = HashMap::new();
-    payload.insert("model".to_string(), serde_json::Value::String(model_id.to_string()));
-    payload.insert("prompt".to_string(), request.input_data.get("prompt").unwrap_or(&serde_json::Value::Null).clone());
-    payload.insert("parameters".to_string(), serde_json::Value::Object(
-        request.parameters.clone().unwrap_or_default().into_iter().collect()
-    ));
-    
+    payload.insert(
+        "model".to_string(),
+        serde_json::Value::String(model_id.to_string()),
+    );
+    payload.insert(
+        "prompt".to_string(),
+        request
+            .input_data
+            .get("prompt")
+            .unwrap_or(&serde_json::Value::Null)
+            .clone(),
+    );
+    payload.insert(
+        "parameters".to_string(),
+        serde_json::Value::Object(
+            request
+                .parameters
+                .clone()
+                .unwrap_or_default()
+                .into_iter()
+                .collect(),
+        ),
+    );
+
     let inference_request = PrimalRequest {
         id: Uuid::new_v4(),
         request_type: songbird_universal_primals::types::PrimalRequestType::Infer,
@@ -732,7 +787,9 @@ async fn process_ai_inference(
     if !response.success {
         return Err(SongbirdError::Service {
             service: "squirrel".to_string(),
-            message: response.error_message.unwrap_or("Unknown error".to_string()),
+            message: response
+                .error_message
+                .unwrap_or("Unknown error".to_string()),
         });
     }
 
@@ -899,7 +956,10 @@ async fn ai_batch_inference(
             id: Uuid::new_v4().to_string(),
             model_id: model_id.clone(),
             payload: serde_json::to_value(inference_request).map_err(|e| {
-                SongbirdError::service_error("ai_processor", format!("Failed to serialize request: {}", e))
+                SongbirdError::service_error(
+                    "ai_processor",
+                    format!("Failed to serialize request: {e}"),
+                )
             })?,
             priority: request
                 .batch_options
@@ -1160,8 +1220,14 @@ mod tests {
             callback_url: None,
         };
 
-        processor.add_to_batch(request).await.expect("Failed to add to batch in test");
-        let responses = processor.process_batch().await.expect("Failed to process batch in test");
+        processor
+            .add_to_batch(request)
+            .await
+            .expect("Failed to add to batch in test");
+        let responses = processor
+            .process_batch()
+            .await
+            .expect("Failed to process batch in test");
         assert_eq!(responses.len(), 1);
     }
 

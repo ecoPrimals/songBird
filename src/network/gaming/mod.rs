@@ -264,7 +264,9 @@ impl GamingManager {
                 })?;
 
         // Use configurable binding address - NO MORE HARDCODING 0.0.0.0!
-        let bind_addr = if env_config.bind_address == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS {
+        let bind_addr = if env_config.bind_address
+            == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS
+        {
             // Only allow 0.0.0.0 if explicitly approved
             if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
                 return Err(crate::errors::SongbirdError::Config {
@@ -325,7 +327,10 @@ impl GamingManager {
                             .to_string(),
                     });
                 }
-                format!("{}:0", crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS)
+                format!(
+                    "{}:0",
+                    crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS
+                )
             } else {
                 format!("{}:0", env_config.bind_address)
             };
@@ -364,8 +369,13 @@ impl GamingManager {
 
         // Listen for discovery broadcasts - NO MORE HARDCODING!
         let discovery_port = env_config.discovery_ports.first().copied().unwrap_or(6112);
-        let bind_addr = if env_config.bind_address == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS {
-            format!("{}:{discovery_port}", crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS)
+        let bind_addr = if env_config.bind_address
+            == crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS
+        {
+            format!(
+                "{}:{discovery_port}",
+                crate::config::constants::network::DEFAULT_PRODUCTION_BIND_ADDRESS
+            )
         } else {
             format!("{}:{}", env_config.bind_address, discovery_port)
         };

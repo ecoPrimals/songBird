@@ -953,7 +953,7 @@ impl From<std::string::String> for SongbirdError {
 
 impl From<url::ParseError> for SongbirdError {
     fn from(error: url::ParseError) -> Self {
-        SongbirdError::Generic(format!("URL parse error: {}", error))
+        SongbirdError::Generic(format!("URL parse error: {error}"))
     }
 }
 
@@ -1061,9 +1061,7 @@ mod tests {
         );
         assert!(error.to_string().contains("test-service"));
         assert!(error.to_string().contains("Service is unhealthy"));
-        assert!(error
-            .to_string()
-            .contains("unhealthy"));
+        assert!(error.to_string().contains("unhealthy"));
     }
 
     #[test]
