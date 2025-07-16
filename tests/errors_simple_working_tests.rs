@@ -111,7 +111,7 @@ async fn test_error_constructors() -> Result<()> {
     assert!(service_error.to_string().contains("test-service"));
     assert!(service_error.to_string().contains("Test failed"));
 
-    let health_error = SongbirdError::health_check_failed("db-service", "Timeout");
+    let health_error = SongbirdError::health_check_failed("db-service", "Timeout".to_string());
     assert!(health_error.to_string().contains("db-service"));
     assert!(health_error.to_string().contains("Health check failed"));
 

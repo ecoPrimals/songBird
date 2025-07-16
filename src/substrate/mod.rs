@@ -35,7 +35,7 @@ const CIRCUIT_BREAKER_TIMEOUT: Duration = Duration::from_secs(30);
 /// OS substrate interface that abstracts platform operations with performance optimizations
 #[derive(Debug, Clone)]
 pub struct OSSubstrate {
-    toadstool_client: ToadstoolClient,
+    pub toadstool_client: ToadstoolClient,
     biomeos_client: BiomeOSClient,
     cache: Arc<RwLock<OptimizedSubstrateCache>>,
     metrics: Arc<RwLock<SubstrateMetrics>>,
@@ -100,15 +100,15 @@ struct ConnectionPool {
 /// Substrate performance metrics
 #[derive(Debug, Default)]
 struct SubstrateMetrics {
-    total_requests: u64,
-    cache_hits: u64,
-    cache_misses: u64,
-    substrate_errors: u64,
-    fallback_uses: u64,
-    average_response_time: Duration,
-    toadstool_requests: u64,
-    biomeos_requests: u64,
-    circuit_breaker_trips: u64,
+    pub total_requests: u64,
+    pub cache_hits: u64,
+    pub cache_misses: u64,
+    pub substrate_errors: u64,
+    pub fallback_uses: u64,
+    pub average_response_time: f64,
+    pub toadstool_requests: u64,
+    pub biomeos_requests: u64,
+    pub circuit_breaker_trips: u64,
 }
 
 /// System information from substrate
@@ -435,7 +435,7 @@ impl OSSubstrate {
         }
 
         // Update response time metrics
-        metrics.average_response_time = start_time.elapsed();
+        metrics.average_response_time = start_time.elapsed().as_secs_f64();
 
         // Load system information asynchronously
         if let Err(e) = self.refresh_system_info().await {
@@ -503,7 +503,7 @@ impl OSSubstrate {
 
         // Update performance metrics
         let mut metrics = self.metrics.write().await;
-        metrics.average_response_time = start_time.elapsed();
+        metrics.average_response_time = start_time.elapsed().as_secs_f64();
 
         Ok(path)
     }
@@ -672,7 +672,7 @@ impl OSSubstrate {
             Ok(result) => {
                 // Update response time
                 let mut metrics = self.metrics.write().await;
-                metrics.average_response_time = start_time.elapsed();
+                metrics.average_response_time = start_time.elapsed().as_secs_f64();
                 Ok(result)
             }
             Err(e) => {

@@ -12,13 +12,13 @@ use songbird_lib::errors::validation::ConfigValidator;
 async fn test_comprehensive_error_scenarios() -> Result<()> {
     // Test RetryExhausted Error with specific attempts
     let retry_error = SongbirdError::RetryExhausted {
-        attempts: 5,
-        message: "Max retries reached".to_string(),
+        attempts: 3,
+        last_error: "Connection failed".to_string(),
     };
 
     let retry_msg = format!("Retry error: {}", retry_error);
-    assert!(retry_msg.contains("5"));
-    assert!(retry_msg.contains("Max retries reached"));
+    assert!(retry_msg.contains("3"));
+    assert!(retry_msg.contains("Connection failed"));
 
     // Test Rate Limit Exceeded Error
     let rate_error = SongbirdError::RateLimitExceeded("Too many requests".to_string());
@@ -205,7 +205,7 @@ async fn test_error_helper_functions() -> Result<()> {
     assert!(service_error.to_string().contains("test-service"));
     assert!(service_error.to_string().contains("Test failed"));
 
-    let health_error = SongbirdError::health_check_failed("db-service", "Timeout");
+    let health_error = SongbirdError::health_check_failed("db-service", "Timeout".to_string());
     assert!(health_error.to_string().contains("db-service"));
     assert!(health_error.to_string().contains("Health check failed"));
 
@@ -241,8 +241,7 @@ async fn test_complex_error_scenarios() -> Result<()> {
     };
 
     let secondary_error = SongbirdError::CircuitBreakerOpen {
-        service: "auth-service".to_string(),
-        message: "Too many network failures".to_string(),
+        message: "auth-service: Too many network failures".to_string(),
     };
 
     // Test that both errors contain expected information
@@ -574,8 +573,7 @@ fn test_songbird_error_circuit_breaker_open() {
 #[test]
 fn test_songbird_error_circuit_breaker_failure() {
     let cb_failure_error = SongbirdError::CircuitBreakerFailure {
-        service: "test-service".to_string(),
-        message: "Circuit breaker failure".to_string(),
+        message: "test-service: Circuit breaker failure".to_string(),
     };
 
     assert!(matches!(
@@ -628,7 +626,7 @@ fn test_songbird_error_helper_methods() {
     let service_error = SongbirdError::service_error("auth", "Authentication failed".to_string());
     assert!(matches!(service_error, SongbirdError::Service { .. }));
 
-    let health_error = SongbirdError::health_check_failed("database", "Connection timeout");
+    let health_error = SongbirdError::health_check_failed("database", "Connection timeout".to_string());
     assert!(matches!(health_error, SongbirdError::Service { .. }));
 
     let config_error = SongbirdError::configuration_error("Invalid configuration".to_string());
