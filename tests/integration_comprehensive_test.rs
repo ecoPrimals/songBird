@@ -12,6 +12,8 @@
 use anyhow::Result;
 
 use async_trait::async_trait;
+use songbird_network::network::gaming::nat_traversal::NatTraversalManager;
+use songbird_network::network::gaming::performance::PerformanceMonitor;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -33,7 +35,7 @@ use songbird_network::network::gaming::performance::BenchmarkConfig;
 use songbird_registry::plugin::DynamicPluginRegistry;
 use songbird_registry::scaling::AutoScalingEngine;
 use songbird_registry::scaling::{AutoScalingPolicy, ScalingStrategy, ScalingThreshold};
-use songbird_registry::service::ServiceStatus;
+use songbird_discovery::traits::service::ServiceStatus;
 use songbird_federation::config::{FederationConfig, FederationMode};
 // Note: Using mock storage for testing since NestGateStorage doesn't exist yet
 // use songbird_universal_primals::nestgate::NestGatePrimal;
