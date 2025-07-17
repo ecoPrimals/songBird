@@ -179,7 +179,7 @@ async fn test_health_status_cloning() {
 async fn test_orchestrator_different_configs() {
     let configs = vec![
         SongbirdConfig {
-            network: songbird_core::config::NetworkConfig {
+            network: songbird_config::config::NetworkConfig {
                 bind_address: "0.0.0.0".parse::<IpAddr>().unwrap(),
                 orchestrator_port: 8080,
                 ..Default::default()
@@ -187,7 +187,7 @@ async fn test_orchestrator_different_configs() {
             ..Default::default()
         },
         SongbirdConfig {
-            network: songbird_core::config::NetworkConfig {
+            network: songbird_config::config::NetworkConfig {
                 bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
                 orchestrator_port: 3000,
                 ..Default::default()
@@ -326,7 +326,7 @@ async fn test_orchestrator_configuration() -> Result<()> {
 async fn test_orchestrator_stress_configuration() -> Result<()> {
     // Test with stress configuration
     let config = SongbirdConfig {
-        network: songbird_core::config::NetworkConfig {
+        network: songbird_config::config::NetworkConfig {
             bind_address: "0.0.0.0".parse::<IpAddr>().unwrap(),
             orchestrator_port: 8080,
             ..Default::default()
@@ -338,7 +338,7 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
 
     // Test with different configuration
     let config2 = SongbirdConfig {
-        network: songbird_core::config::NetworkConfig {
+        network: songbird_config::config::NetworkConfig {
             bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
             orchestrator_port: 3000,
             ..Default::default()

@@ -117,7 +117,7 @@ async fn test_virtual_network_creation() -> Result<()> {
     };
 
     match network {
-        VirtualNetworkType::IPX {
+        VirtualNetwork::IPX {
             network_id,
             broadcast_enabled,
         } => {
