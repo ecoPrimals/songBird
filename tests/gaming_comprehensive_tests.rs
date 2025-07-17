@@ -119,10 +119,12 @@ async fn test_virtual_network_creation() -> Result<()> {
     match network {
         VirtualNetwork::IPX {
             network_id,
+            players,
             broadcast_enabled,
         } => {
             assert_eq!(network_id, 123456);
             assert!(broadcast_enabled);
+            assert!(!players.is_empty());
         }
         _ => panic!("Expected IPX network type"),
     }
