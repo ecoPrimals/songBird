@@ -39,22 +39,35 @@ impl Default for SquirrelPrimal {
                 },
             ],
             endpoints: PrimalEndpoints {
-                primary: "http://localhost:8083".to_string(),
-                health: "http://localhost:8083/health".to_string(),
-                metrics: Some("http://localhost:8083/metrics".to_string()),
-                admin: Some("http://localhost:8083/admin".to_string()),
-                websocket: Some("ws://localhost:8083/ws".to_string()),
+                primary: songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
+                    .to_string(),
+                health: format!(
+                    "{}/health",
+                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
+                ),
+                metrics: Some(format!(
+                    "{}/metrics",
+                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
+                )),
+                admin: Some(format!(
+                    "{}/admin",
+                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
+                )),
+                websocket: Some(format!(
+                    "ws://{}:{}/ws",
+                    songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS,
+                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_PORT
+                )),
                 custom: {
                     let mut map = HashMap::new();
-                    map.insert("mcp".to_string(), "http://localhost:8083/mcp".to_string());
+                    let base_endpoint =
+                        songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT;
+                    map.insert("mcp".to_string(), format!("{}/mcp", base_endpoint));
                     map.insert(
                         "inference".to_string(),
-                        "http://localhost:8083/inference".to_string(),
+                        format!("{}/inference", base_endpoint),
                     );
-                    map.insert(
-                        "agents".to_string(),
-                        "http://localhost:8083/agents".to_string(),
-                    );
+                    map.insert("agents".to_string(), format!("{}/agents", base_endpoint));
                     map
                 },
             },
@@ -82,22 +95,35 @@ impl SquirrelPrimal {
                 },
             ],
             endpoints: PrimalEndpoints {
-                primary: "http://localhost:8083".to_string(),
-                health: "http://localhost:8083/health".to_string(),
-                metrics: Some("http://localhost:8083/metrics".to_string()),
-                admin: Some("http://localhost:8083/admin".to_string()),
-                websocket: Some("ws://localhost:8083/ws".to_string()),
+                primary: songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
+                    .to_string(),
+                health: format!(
+                    "{}/health",
+                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
+                ),
+                metrics: Some(format!(
+                    "{}/metrics",
+                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
+                )),
+                admin: Some(format!(
+                    "{}/admin",
+                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
+                )),
+                websocket: Some(format!(
+                    "ws://{}:{}/ws",
+                    songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS,
+                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_PORT
+                )),
                 custom: {
                     let mut map = HashMap::new();
-                    map.insert("mcp".to_string(), "http://localhost:8083/mcp".to_string());
+                    let base_endpoint =
+                        songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT;
+                    map.insert("mcp".to_string(), format!("{}/mcp", base_endpoint));
                     map.insert(
                         "inference".to_string(),
-                        "http://localhost:8083/inference".to_string(),
+                        format!("{}/inference", base_endpoint),
                     );
-                    map.insert(
-                        "agents".to_string(),
-                        "http://localhost:8083/agents".to_string(),
-                    );
+                    map.insert("agents".to_string(), format!("{}/agents", base_endpoint));
                     map
                 },
             },

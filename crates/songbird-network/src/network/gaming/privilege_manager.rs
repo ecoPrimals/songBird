@@ -2,7 +2,7 @@
 ///
 /// This module provides secure, agnostic methods to obtain necessary privileges
 /// for network packet capture across different platforms and deployment scenarios.
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{NetworkError, Result, SongbirdError};
 use std::env;
 use std::process::Command;
 use tokio::process::Command as AsyncCommand;
@@ -118,13 +118,13 @@ impl PrivilegeManager {
                 self.current_method = PrivilegeMethod::Unprivileged;
                 return Ok(());
             } else {
-                return Err(SongbirdError::Network {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("Gaming Privilege Manager".to_string()),
                     message: "No suitable privilege escalation method found".to_string(),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
-                });
+                })));
             }
         }
 
@@ -352,12 +352,14 @@ impl PrivilegeManager {
             .args(_args)
             .output()
             .await
-            .map_err(|e| SongbirdError::Network {
-                service: Some("Gaming Privilege Manager".to_string()),
-                message: format!("Command execution failed: {}", e),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("Gaming Privilege Manager".to_string()),
+                    message: format!("Command execution failed: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                }))
             })?;
 
         Ok(output)
@@ -375,12 +377,14 @@ impl PrivilegeManager {
             .args(&sudo_args)
             .output()
             .await
-            .map_err(|e| SongbirdError::Network {
-                service: Some("Gaming Privilege Manager".to_string()),
-                message: format!("Sudo execution failed: {}", e),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("Gaming Privilege Manager".to_string()),
+                    message: format!("Sudo execution failed: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                }))
             })?;
 
         Ok(output)
@@ -398,12 +402,14 @@ impl PrivilegeManager {
             .args(&pkexec_args)
             .output()
             .await
-            .map_err(|e| SongbirdError::Network {
-                service: Some("Gaming Privilege Manager".to_string()),
-                message: format!("Pkexec execution failed: {}", e),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("Gaming Privilege Manager".to_string()),
+                    message: format!("Pkexec execution failed: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                }))
             })?;
 
         Ok(output)
@@ -440,12 +446,14 @@ impl PrivilegeManager {
             .args(&service_args)
             .output()
             .await
-            .map_err(|e| SongbirdError::Network {
-                service: Some("Gaming Privilege Manager".to_string()),
-                message: format!("Systemd service execution failed: {}", e),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("Gaming Privilege Manager".to_string()),
+                    message: format!("Systemd service execution failed: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                }))
             })?;
 
         Ok(output)

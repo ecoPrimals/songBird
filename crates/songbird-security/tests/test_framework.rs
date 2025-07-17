@@ -7,9 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use songbird_security::security::{
-    UniversalSecurityManager,
-};
+use songbird_security::security::UniversalSecurityManager;
 
 /// Macro to initialize security test framework with graceful handling
 #[macro_export]
@@ -18,7 +16,10 @@ macro_rules! init_security_test {
         match AdvancedSecurityTestFramework::new().await {
             Ok(framework) => framework,
             Err(e) => {
-                println!("⚠️ {} - Security test framework initialization failed: {}", $test_name, e);
+                println!(
+                    "⚠️ {} - Security test framework initialization failed: {}",
+                    $test_name, e
+                );
                 println!("   Test skipped - would work when dependencies are available");
                 return;
             }
@@ -191,11 +192,14 @@ impl AdvancedSecurityTestFramework {
 
     pub async fn run_threat_detection_test(&self, scenario: TestThreatScenario) -> bool {
         println!("🔍 Running threat detection test: {}", scenario.scenario_id);
-        
+
         // Simulate threat detection based on scenario
         match scenario.threat_type {
             ThreatType::Malware => {
-                println!("   Detected malware threat with confidence: {}", scenario.confidence);
+                println!(
+                    "   Detected malware threat with confidence: {}",
+                    scenario.confidence
+                );
                 scenario.confidence >= 0.6 // Medium confidence threshold for malware
             }
             ThreatType::UnauthorizedAccess => {
@@ -203,7 +207,10 @@ impl AdvancedSecurityTestFramework {
                 true // Always detect unauthorized access
             }
             _ => {
-                println!("   Threat type: {:?}, Severity: {:?}", scenario.threat_type, scenario.severity);
+                println!(
+                    "   Threat type: {:?}, Severity: {:?}",
+                    scenario.threat_type, scenario.severity
+                );
                 scenario.confidence >= 0.5 // General confidence threshold (inclusive)
             }
         }
@@ -211,26 +218,31 @@ impl AdvancedSecurityTestFramework {
 
     pub async fn run_zero_trust_test(&self, test_case: ZeroTrustTestCase) -> bool {
         println!("🔐 Running zero trust test: {}", test_case.test_id);
-        
+
         // Simulate zero trust evaluation
         let device_trust_ok = test_case.context.device_trust_level >= 0.7;
-        let network_location_ok = matches!(test_case.context.network_location, NetworkLocation::Internal);
+        let network_location_ok = matches!(
+            test_case.context.network_location,
+            NetworkLocation::Internal
+        );
         let behavioral_ok = test_case.context.behavioral_anomaly_score < 0.3;
-        
+
         let access_granted = device_trust_ok && network_location_ok && behavioral_ok;
-        
-        println!("   Device trust: {:.2}, Network: {:?}, Behavioral score: {:.2}", 
-                 test_case.context.device_trust_level, 
-                 test_case.context.network_location, 
-                 test_case.context.behavioral_anomaly_score);
+
+        println!(
+            "   Device trust: {:.2}, Network: {:?}, Behavioral score: {:.2}",
+            test_case.context.device_trust_level,
+            test_case.context.network_location,
+            test_case.context.behavioral_anomaly_score
+        );
         println!("   Access granted: {}", access_granted);
-        
+
         access_granted == test_case.expected_access
     }
 
     pub async fn run_security_audit_test(&self, audit_type: &str) -> bool {
         println!("📊 Running security audit: {}", audit_type);
-        
+
         // Simulate security audit
         match audit_type {
             "compliance" => {
@@ -261,20 +273,21 @@ pub mod test_utils {
             source: ThreatSource::External,
             target: "test_system".to_string(),
             description: "Test threat scenario".to_string(),
-            indicators: vec![
-                ThreatIndicator {
-                    indicator_type: "signature".to_string(),
-                    value: "test_signature".to_string(),
-                    confidence: 0.8,
-                    timestamp: SystemTime::now(),
-                }
-            ],
+            indicators: vec![ThreatIndicator {
+                indicator_type: "signature".to_string(),
+                value: "test_signature".to_string(),
+                confidence: 0.8,
+                timestamp: SystemTime::now(),
+            }],
             expected_response: ThreatResponse::Monitor,
             confidence: 0.8,
         }
     }
 
-    pub fn create_test_zero_trust_case(device_trust: f32, expected_access: bool) -> ZeroTrustTestCase {
+    pub fn create_test_zero_trust_case(
+        device_trust: f32,
+        expected_access: bool,
+    ) -> ZeroTrustTestCase {
         ZeroTrustTestCase {
             test_id: "test_zero_trust".to_string(),
             device_id: "test_device".to_string(),
@@ -289,14 +302,12 @@ pub mod test_utils {
                 session_state: SessionState::Active,
             },
             expected_access,
-            verification_steps: vec![
-                VerificationStep {
-                    step_name: "device_verification".to_string(),
-                    verification_type: VerificationType::DeviceIdentity,
-                    required: true,
-                    timeout: Duration::from_secs(30),
-                }
-            ],
+            verification_steps: vec![VerificationStep {
+                step_name: "device_verification".to_string(),
+                verification_type: VerificationType::DeviceIdentity,
+                required: true,
+                timeout: Duration::from_secs(30),
+            }],
         }
     }
-} 
+}

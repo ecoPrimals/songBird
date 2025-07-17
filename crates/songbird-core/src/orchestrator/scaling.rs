@@ -22,16 +22,6 @@ pub enum GamingScale {
     Auto,
 }
 
-impl std::fmt::Display for GamingScale {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GamingScale::HomeGaming => write!(f, "Home Gaming"),
-            GamingScale::LanParty => write!(f, "LAN Party"),
-            GamingScale::Auto => write!(f, "Auto"),
-        }
-    }
-}
-
 /// Resource limits for gaming scales
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GamingResourceLimits {

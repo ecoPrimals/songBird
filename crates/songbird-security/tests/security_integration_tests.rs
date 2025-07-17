@@ -21,14 +21,12 @@ async fn test_security_integration() {
         source: ThreatSource::External,
         target: "test_system".to_string(),
         description: "Security threat detection test".to_string(),
-        indicators: vec![
-            ThreatIndicator {
-                indicator_type: "file_signature".to_string(),
-                value: "malware_signature_xyz".to_string(),
-                confidence: 0.9,
-                timestamp: SystemTime::now(),
-            },
-        ],
+        indicators: vec![ThreatIndicator {
+            indicator_type: "file_signature".to_string(),
+            value: "malware_signature_xyz".to_string(),
+            confidence: 0.9,
+            timestamp: SystemTime::now(),
+        }],
         expected_response: ThreatResponse::Block,
         confidence: 0.8,
     };
@@ -54,19 +52,27 @@ async fn test_threat_detection_scenarios() {
     let framework = init_security_test!("Threat Detection Scenarios");
 
     // Test malware detection
-    let malware_scenario = test_framework::test_utils::create_test_threat_scenario(ThreatType::Malware);
+    let malware_scenario =
+        test_framework::test_utils::create_test_threat_scenario(ThreatType::Malware);
     let malware_detected = framework.run_threat_detection_test(malware_scenario).await;
     assert!(malware_detected, "Malware should be detected");
 
     // Test phishing detection
-    let phishing_scenario = test_framework::test_utils::create_test_threat_scenario(ThreatType::Phishing);
+    let phishing_scenario =
+        test_framework::test_utils::create_test_threat_scenario(ThreatType::Phishing);
     let phishing_detected = framework.run_threat_detection_test(phishing_scenario).await;
     assert!(phishing_detected, "Phishing should be detected");
 
     // Test unauthorized access detection
-    let unauthorized_scenario = test_framework::test_utils::create_test_threat_scenario(ThreatType::UnauthorizedAccess);
-    let unauthorized_detected = framework.run_threat_detection_test(unauthorized_scenario).await;
-    assert!(unauthorized_detected, "Unauthorized access should be detected");
+    let unauthorized_scenario =
+        test_framework::test_utils::create_test_threat_scenario(ThreatType::UnauthorizedAccess);
+    let unauthorized_detected = framework
+        .run_threat_detection_test(unauthorized_scenario)
+        .await;
+    assert!(
+        unauthorized_detected,
+        "Unauthorized access should be detected"
+    );
 
     println!("✅ All threat detection scenarios passed");
 }
@@ -79,7 +85,10 @@ async fn test_zero_trust_scenarios() {
     // Test high trust device - should allow access
     let high_trust_test = test_framework::test_utils::create_test_zero_trust_case(0.9, true);
     let high_trust_result = framework.run_zero_trust_test(high_trust_test).await;
-    assert!(high_trust_result, "High trust device should be allowed access");
+    assert!(
+        high_trust_result,
+        "High trust device should be allowed access"
+    );
 
     // Test low trust device - should deny access
     let low_trust_test = test_framework::test_utils::create_test_zero_trust_case(0.3, false);
@@ -89,7 +98,10 @@ async fn test_zero_trust_scenarios() {
     // Test medium trust device - should allow access
     let medium_trust_test = test_framework::test_utils::create_test_zero_trust_case(0.7, true);
     let medium_trust_result = framework.run_zero_trust_test(medium_trust_test).await;
-    assert!(medium_trust_result, "Medium trust device should be allowed access");
+    assert!(
+        medium_trust_result,
+        "Medium trust device should be allowed access"
+    );
 
     println!("✅ All zero trust scenarios passed");
 }
@@ -123,14 +135,12 @@ async fn test_comprehensive_security_workflow() {
         source: ThreatSource::External,
         target: "production_system".to_string(),
         description: "Network intrusion attempt".to_string(),
-        indicators: vec![
-            ThreatIndicator {
-                indicator_type: "network_signature".to_string(),
-                value: "intrusion_pattern_123".to_string(),
-                confidence: 0.95,
-                timestamp: SystemTime::now(),
-            },
-        ],
+        indicators: vec![ThreatIndicator {
+            indicator_type: "network_signature".to_string(),
+            value: "intrusion_pattern_123".to_string(),
+            confidence: 0.95,
+            timestamp: SystemTime::now(),
+        }],
         expected_response: ThreatResponse::Block,
         confidence: 0.95,
     };
@@ -195,14 +205,12 @@ async fn test_security_performance() {
             source: ThreatSource::External,
             target: "test_system".to_string(),
             description: format!("Performance test scenario {}", i),
-            indicators: vec![
-                ThreatIndicator {
-                    indicator_type: "test_indicator".to_string(),
-                    value: format!("test_value_{}", i),
-                    confidence: 0.7,
-                    timestamp: SystemTime::now(),
-                },
-            ],
+            indicators: vec![ThreatIndicator {
+                indicator_type: "test_indicator".to_string(),
+                value: format!("test_value_{}", i),
+                confidence: 0.7,
+                timestamp: SystemTime::now(),
+            }],
             expected_response: ThreatResponse::Monitor,
             confidence: 0.7,
         };
@@ -217,4 +225,4 @@ async fn test_security_performance() {
     assert!(elapsed.as_secs() < 1, "Security operations should be fast");
 
     println!("✅ Security performance test passed");
-} 
+}

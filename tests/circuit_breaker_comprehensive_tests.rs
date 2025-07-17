@@ -7,19 +7,17 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
-use songbird_lib::communication::circuit_breaker::{
+use songbird_errors::Result;
+use songbird_network::communication::circuit_breaker::{
     CircuitBreaker, CircuitBreakerConfig, CircuitState,
 };
-use songbird_lib::errors::Result;
 
 #[tokio::test]
 async fn test_circuit_breaker_basic_functionality() -> Result<()> {
     let config = CircuitBreakerConfig {
         failure_threshold: 3,
         success_threshold: 2,
-        timeout: Duration::from_secs(1),
-        window_size: Duration::from_secs(60),
-        half_open_max_requests: 2,
+        timeout_duration: Duration::from_secs(1),
     };
 
     let circuit_breaker = CircuitBreaker::new(config);
@@ -57,9 +55,7 @@ fn create_fast_circuit_breaker() -> CircuitBreaker {
     CircuitBreaker::new(CircuitBreakerConfig {
         failure_threshold: 3,
         success_threshold: 2,
-        timeout: Duration::from_millis(100),
-        window_size: Duration::from_millis(500),
-        half_open_max_requests: 2,
+        timeout_duration: Duration::from_millis(100),
     })
 }
 
@@ -73,9 +69,9 @@ mod circuit_breaker_config_tests {
 
         assert_eq!(config.failure_threshold, 5);
         assert_eq!(config.success_threshold, 3);
-        assert_eq!(config.timeout, Duration::from_secs(60));
-        assert_eq!(config.window_size, Duration::from_secs(60));
-        assert_eq!(config.half_open_max_requests, 3);
+        assert_eq!(config.timeout_duration, Duration::from_secs(60));
+        assert_eq!(config.timeout_duration, Duration::from_secs(60));
+        assert_eq!(config.success_threshold, 3);
     }
 
     #[test]
@@ -83,16 +79,14 @@ mod circuit_breaker_config_tests {
         let config = CircuitBreakerConfig {
             failure_threshold: 10,
             success_threshold: 5,
-            timeout: Duration::from_secs(120),
-            window_size: Duration::from_secs(300),
-            half_open_max_requests: 5,
+            timeout_duration: Duration::from_secs(120),
         };
 
         assert_eq!(config.failure_threshold, 10);
         assert_eq!(config.success_threshold, 5);
-        assert_eq!(config.timeout, Duration::from_secs(120));
-        assert_eq!(config.window_size, Duration::from_secs(300));
-        assert_eq!(config.half_open_max_requests, 5);
+        assert_eq!(config.timeout_duration, Duration::from_secs(120));
+        assert_eq!(config.timeout_duration, Duration::from_secs(300));
+        assert_eq!(config.success_threshold, 5);
     }
 
     #[test]
@@ -102,12 +96,9 @@ mod circuit_breaker_config_tests {
 
         assert_eq!(config1.failure_threshold, config2.failure_threshold);
         assert_eq!(config1.success_threshold, config2.success_threshold);
-        assert_eq!(config1.timeout, config2.timeout);
-        assert_eq!(config1.window_size, config2.window_size);
-        assert_eq!(
-            config1.half_open_max_requests,
-            config2.half_open_max_requests
-        );
+        assert_eq!(config1.timeout_duration, config2.timeout_duration);
+        assert_eq!(config1.failure_threshold, config2.failure_threshold);
+        assert_eq!(config1.success_threshold, config2.success_threshold);
     }
 }
 
@@ -134,9 +125,7 @@ mod circuit_breaker_creation_tests {
         let config = CircuitBreakerConfig {
             failure_threshold: 2,
             success_threshold: 1,
-            timeout: Duration::from_millis(50),
-            window_size: Duration::from_millis(100),
-            half_open_max_requests: 1,
+            timeout_duration: Duration::from_millis(50),
         };
 
         let cb = create_test_circuit_breaker(config);
@@ -591,9 +580,7 @@ mod edge_case_tests {
         let config = CircuitBreakerConfig {
             failure_threshold: 0,
             success_threshold: 1,
-            timeout: Duration::from_millis(100),
-            window_size: Duration::from_millis(500),
-            half_open_max_requests: 1,
+            timeout_duration: Duration::from_millis(100),
         };
 
         let cb = create_test_circuit_breaker(config);
@@ -609,9 +596,7 @@ mod edge_case_tests {
         let config = CircuitBreakerConfig {
             failure_threshold: 1,
             success_threshold: 0,
-            timeout: Duration::from_millis(100),
-            window_size: Duration::from_millis(500),
-            half_open_max_requests: 1,
+            timeout_duration: Duration::from_millis(100),
         };
 
         let cb = create_test_circuit_breaker(config);
@@ -627,9 +612,7 @@ mod edge_case_tests {
         let config = CircuitBreakerConfig {
             failure_threshold: 1,
             success_threshold: 1,
-            timeout: Duration::from_millis(100),
-            window_size: Duration::from_millis(500),
-            half_open_max_requests: 0,
+            timeout_duration: Duration::from_millis(100),
         };
 
         let cb = create_test_circuit_breaker(config);
@@ -644,9 +627,7 @@ mod edge_case_tests {
         let config = CircuitBreakerConfig {
             failure_threshold: 1,
             success_threshold: 1,
-            timeout: Duration::from_nanos(1),
-            window_size: Duration::from_millis(500),
-            half_open_max_requests: 1,
+            timeout_duration: Duration::from_nanos(1),
         };
 
         let cb = create_test_circuit_breaker(config);

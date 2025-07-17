@@ -17,7 +17,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::config::FederationConfig;
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{NetworkError, Result, SongbirdError};
 
 #[derive(Debug)]
 /// Heartbeat manager for MCP federation
@@ -336,15 +336,17 @@ impl HeartbeatManager {
         if successful_heartbeats > 0 {
             Ok(())
         } else {
-            Err(SongbirdError::Network {
-                service: Some("federation".to_string()),
-                message: "All heartbeat attempts failed".to_string(),
-                details: None,
-                endpoint: None,
-                suggestion: Some(
-                    "Check network connectivity and endpoint configuration".to_string(),
-                ),
-            })
+            Err(songbird_errors::SongbirdError::Network(Box::new(
+                NetworkError {
+                    service: Some("federation".to_string()),
+                    message: "All heartbeat attempts failed".to_string(),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some(
+                        "Check network connectivity and endpoint configuration".to_string(),
+                    ),
+                },
+            )))
         }
     }
 
@@ -406,31 +408,37 @@ impl HeartbeatManager {
                     debug!("Heartbeat sent successfully to: {}", endpoint);
                     Ok(())
                 } else {
-                    Err(SongbirdError::Network {
-                        service: Some("federation".to_string()),
-                        message: format!("Heartbeat failed with status: {}", resp.status()),
-                        details: None,
-                        endpoint: Some(endpoint.to_string()),
-                        suggestion: Some("Check federation endpoint health".to_string()),
-                    })
+                    Err(songbird_errors::SongbirdError::Network(Box::new(
+                        NetworkError {
+                            service: Some("federation".to_string()),
+                            message: format!("Heartbeat failed with status: {}", resp.status()),
+                            details: None,
+                            endpoint: Some(endpoint.to_string()),
+                            suggestion: Some("Check federation endpoint health".to_string()),
+                        },
+                    )))
                 }
             }
-            Ok(Err(e)) => Err(SongbirdError::Network {
-                service: Some("federation".to_string()),
-                message: format!("Failed to send heartbeat: {}", e),
-                details: None,
-                endpoint: Some(endpoint.to_string()),
-                suggestion: Some("Check network connectivity".to_string()),
-            }),
-            Err(_) => Err(SongbirdError::Network {
-                service: Some("federation".to_string()),
-                message: "Heartbeat request timed out".to_string(),
-                details: None,
-                endpoint: Some(endpoint.to_string()),
-                suggestion: Some(
-                    "Check network connectivity and endpoint responsiveness".to_string(),
-                ),
-            }),
+            Ok(Err(e)) => Err(songbird_errors::SongbirdError::Network(Box::new(
+                NetworkError {
+                    service: Some("federation".to_string()),
+                    message: format!("Failed to send heartbeat: {}", e),
+                    details: None,
+                    endpoint: Some(endpoint.to_string()),
+                    suggestion: Some("Check network connectivity".to_string()),
+                },
+            ))),
+            Err(_) => Err(songbird_errors::SongbirdError::Network(Box::new(
+                NetworkError {
+                    service: Some("federation".to_string()),
+                    message: "Heartbeat request timed out".to_string(),
+                    details: None,
+                    endpoint: Some(endpoint.to_string()),
+                    suggestion: Some(
+                        "Check network connectivity and endpoint responsiveness".to_string(),
+                    ),
+                },
+            ))),
         }
     }
 

@@ -1,29 +1,32 @@
-//! Platform-Agnostic Paths Module
+//! Path configuration for Songbird components
 //!
-//! Provides OS-appropriate default paths without hardcoding platform-specific directories
-//! Supports configuration override via environment variables
+//! This module provides path management functionality for Songbird.
 
-use serde::{Deserialize, Serialize};
 use songbird_errors::{Result, SongbirdError};
-use std::path::PathBuf;
+// use crate::substrate::{PathRequest, PathRequirements, PathType};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
+use tracing::{debug, warn};
 
-/// Platform-agnostic path configuration that adapts to environment
-///
-/// Supports configuration override via environment variables
-#[derive(Debug, Clone, Serialize)]
-#[allow(clippy::unsafe_derive_deserialize)]
-#[derive(Deserialize)]
+/// Platform-agnostic path configuration using OS substrate
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathConfig {
-    /// Primary data storage directory
+    /// Data directory for persistent storage
     pub data_dir: PathBuf,
-    /// Configuration files directory
+
+    /// Configuration directory
     pub config_dir: PathBuf,
-    /// Log files directory
+
+    /// Log directory
     pub log_dir: PathBuf,
+
     /// Cache directory for temporary files
     pub cache_dir: PathBuf,
+
     /// Runtime directory for PID files, sockets, etc.
     pub runtime_dir: PathBuf,
+
     /// Service-specific data directories
     pub service_data_dirs: ServiceDataDirs,
 }
@@ -40,129 +43,229 @@ pub struct ServiceDataDirs {
 
 impl Default for PathConfig {
     fn default() -> Self {
-        Self::new()
+        Self::new_fallback()
     }
 }
 
 impl PathConfig {
-    /// Create new `PathConfig` with platform-appropriate defaults
-    #[must_use]
-    pub fn new() -> Self {
+    /// Create a new PathConfig instance
+    pub async fn new() -> Result<Self> {
+        debug!("Creating new PathConfig instance");
+
+        // Use simple path implementation
+        let home_dir = dirs::home_dir().ok_or_else(|| SongbirdError::Config {
+            message: "Unable to determine home directory".to_string(),
+            field: Some("home_dir".to_string()),
+            context: None,
+            suggestion: Some("Check if HOME environment variable is set".to_string()),
+        })?;
+
+        let config_dir = home_dir.join(".config").join("songbird");
+        let data_dir = home_dir.join(".local").join("share").join("songbird");
+        let log_dir = home_dir.join(".local").join("log").join("songbird");
+        let cache_dir = home_dir.join(".cache").join("songbird");
+        let runtime_dir = std::env::temp_dir().join("songbird");
+
+        let service_data_dirs = ServiceDataDirs {
+            orchestrator: config_dir.clone().join("orchestrator"),
+            federation: config_dir.clone().join("federation"),
+            metrics: config_dir.clone().join("metrics"),
+            discovery: config_dir.clone().join("discovery"),
+            registry: config_dir.clone().join("registry"),
+        };
+
+        let paths = PathConfig {
+            config_dir,
+            data_dir,
+            log_dir,
+            cache_dir,
+            runtime_dir,
+            service_data_dirs,
+        };
+
+        debug!("PathConfig created successfully: {:?}", paths);
+        Ok(paths)
+    }
+
+    /// Create fallback path configuration when substrate is unavailable
+    pub fn new_fallback() -> Self {
+        warn!("🔄 Using fallback path configuration (substrate unavailable)");
+
+        let base_data_dir = Self::get_fallback_data_dir().unwrap();
+        let base_config_dir = Self::get_fallback_config_dir().unwrap();
+        let base_log_dir = Self::get_fallback_log_dir();
+        let base_cache_dir = Self::get_fallback_cache_dir();
+        let base_runtime_dir = Self::get_fallback_runtime_dir();
+
         Self {
-            data_dir: crate::config::environment::default_data_dir().into(),
-            config_dir: crate::config::environment::default_config_dir().into(),
-            log_dir: crate::config::environment::default_log_dir().into(),
-            cache_dir: crate::config::environment::default_cache_dir().into(),
-            runtime_dir: crate::config::environment::default_runtime_dir().into(),
+            data_dir: base_data_dir.clone(),
+            config_dir: base_config_dir,
+            log_dir: base_log_dir,
+            cache_dir: base_cache_dir,
+            runtime_dir: base_runtime_dir,
             service_data_dirs: ServiceDataDirs {
-                orchestrator: crate::config::environment::default_data_dir().into(),
-                federation: crate::config::environment::default_data_dir().into(),
-                metrics: crate::config::environment::default_data_dir().into(),
-                discovery: crate::config::environment::default_data_dir().into(),
-                registry: crate::config::environment::default_data_dir().into(),
+                orchestrator: base_data_dir.join("orchestrator"),
+                federation: base_data_dir.join("federation"),
+                metrics: base_data_dir.join("metrics"),
+                discovery: base_data_dir.join("discovery"),
+                registry: base_data_dir.join("registry"),
             },
         }
     }
 
-    /// Create development-focused path configuration
-    #[must_use]
+    /// Create development configuration (uses local directories)
     pub fn development() -> Self {
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let dev_dir = current_dir.join(".songbird");
+
         Self {
-            data_dir: "./.songbird/data".into(),
-            config_dir: "./.songbird/config".into(),
-            log_dir: "./.songbird/logs".into(),
-            cache_dir: "./.songbird/cache".into(),
-            runtime_dir: "./.songbird/runtime".into(),
+            data_dir: dev_dir.join("data"),
+            config_dir: dev_dir.join("config"),
+            log_dir: dev_dir.join("logs"),
+            cache_dir: dev_dir.join("cache"),
+            runtime_dir: dev_dir.join("runtime"),
             service_data_dirs: ServiceDataDirs {
-                orchestrator: "./.songbird/data".into(),
-                federation: "./.songbird/data".into(),
-                metrics: "./.songbird/data".into(),
-                discovery: "./.songbird/data".into(),
-                registry: "./.songbird/data".into(),
+                orchestrator: dev_dir.join("data").join("orchestrator"),
+                federation: dev_dir.join("data").join("federation"),
+                metrics: dev_dir.join("data").join("metrics"),
+                discovery: dev_dir.join("data").join("discovery"),
+                registry: dev_dir.join("data").join("registry"),
             },
         }
     }
 
-    /// Create production-focused path configuration
-    #[must_use]
-    pub fn production() -> Self {
-        Self {
-            data_dir: "/var/lib/songbird".into(),
-            config_dir: "/etc/songbird".into(),
-            log_dir: "/var/log/songbird".into(),
-            cache_dir: "/var/cache/songbird".into(),
-            runtime_dir: "/run/songbird".into(),
+    /// Create production configuration using substrate
+    pub async fn production() -> Result<Self> {
+        Self::new().await
+    }
+
+    /// Get default configuration paths for the current platform
+    pub async fn get_default_paths() -> Result<PathConfig> {
+        debug!("Getting default paths for current platform");
+
+        // Simple path implementation without substrate
+        let home_dir = dirs::home_dir().ok_or_else(|| SongbirdError::Config {
+            message: "Unable to determine home directory".to_string(),
+            field: Some("home_dir".to_string()),
+            context: None,
+            suggestion: Some("Check if HOME environment variable is set".to_string()),
+        })?;
+
+        let config_dir = home_dir.join(".config").join("songbird");
+        let data_dir = home_dir.join(".local").join("share").join("songbird");
+        let log_dir = home_dir.join(".local").join("log").join("songbird");
+        let cache_dir = home_dir.join(".cache").join("songbird");
+        let runtime_dir = std::env::temp_dir().join("songbird");
+
+        let paths = PathConfig {
+            config_dir: config_dir.clone(),
+            data_dir,
+            log_dir,
+            cache_dir,
+            runtime_dir,
             service_data_dirs: ServiceDataDirs {
-                orchestrator: "/var/lib/songbird".into(),
-                federation: "/var/lib/songbird".into(),
-                metrics: "/var/lib/songbird".into(),
-                discovery: "/var/lib/songbird".into(),
-                registry: "/var/lib/songbird".into(),
+                orchestrator: config_dir.join("orchestrator"),
+                federation: config_dir.join("federation"),
+                metrics: config_dir.join("metrics"),
+                discovery: config_dir.join("discovery"),
+                registry: config_dir.join("registry"),
             },
+        };
+
+        debug!("Default paths configured: {:?}", paths);
+        Ok(paths)
+    }
+
+    /// Get fallback data directory when substrate is unavailable
+    pub fn get_fallback_data_dir() -> Result<PathBuf> {
+        // Use XDG base directory specification or platform defaults
+        if let Some(data_dir) = std::env::var_os("XDG_DATA_HOME") {
+            Ok(PathBuf::from(data_dir).join("songbird"))
+        } else if let Some(home_dir) = dirs::home_dir() {
+            Ok(home_dir.join(".local").join("share").join("songbird"))
+        } else {
+            Err(SongbirdError::Config {
+                message: "Unable to determine data directory".to_string(),
+                field: Some("data_dir".to_string()),
+                context: None,
+                suggestion: Some("Set XDG_DATA_HOME environment variable".to_string()),
+            })
         }
     }
 
-    /// Ensure all directories exist
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if any directory cannot be created due to permissions or filesystem issues
-    pub fn ensure_directories_exist(&self) -> Result<()> {
-        for dir in &[&self.data_dir, &self.config_dir, &self.log_dir] {
-            if let Err(e) = std::fs::create_dir_all(dir) {
-                return Err(songbird_errors::SongbirdError::Config {
-                    field: Some("directory_creation".to_string()),
-                    message: format!("Failed to create directory {}: {}", dir.display(), e),
-                    context: Some("Directory creation validation".to_string()),
-                    suggestion: Some(
-                        "Check directory permissions and available disk space".to_string(),
-                    ),
-                });
-            }
+    /// Get fallback config directory when substrate is unavailable
+    pub fn get_fallback_config_dir() -> Result<PathBuf> {
+        // Use XDG base directory specification or platform defaults
+        if let Some(config_dir) = std::env::var_os("XDG_CONFIG_HOME") {
+            Ok(PathBuf::from(config_dir).join("songbird"))
+        } else if let Some(home_dir) = dirs::home_dir() {
+            Ok(home_dir.join(".config").join("songbird"))
+        } else {
+            Err(SongbirdError::Config {
+                message: "Unable to determine config directory".to_string(),
+                field: Some("config_dir".to_string()),
+                context: None,
+                suggestion: Some("Set XDG_CONFIG_HOME environment variable".to_string()),
+            })
         }
-        Ok(())
     }
 
-    /// Get configuration file path
-    #[must_use]
-    pub fn config_file_path(&self, filename: &str) -> PathBuf {
-        self.config_dir.join(filename)
+    /// Get fallback log directory when substrate is unavailable
+    fn get_fallback_log_dir() -> PathBuf {
+        if let Ok(log_dir) = std::env::var("SONGBIRD_LOG_DIR") {
+            return PathBuf::from(log_dir);
+        }
+
+        PathBuf::from(crate::config::constants::paths::DEFAULT_LOG_DIR)
     }
 
-    /// Get log file path
-    #[must_use]
-    pub fn log_file_path(&self, service: &str) -> PathBuf {
-        self.log_dir.join(format!("{service}.log"))
+    /// Get fallback cache directory when substrate is unavailable
+    fn get_fallback_cache_dir() -> PathBuf {
+        if let Ok(cache_dir) = std::env::var("SONGBIRD_CACHE_DIR") {
+            return PathBuf::from(cache_dir);
+        }
+
+        PathBuf::from(crate::config::constants::paths::DEFAULT_CACHE_DIR)
     }
 
-    /// Get PID file path
-    #[must_use]
-    pub fn pid_file_path(&self, service: &str) -> PathBuf {
-        self.runtime_dir.join(format!("{service}.pid"))
+    /// Get fallback runtime directory when substrate is unavailable
+    fn get_fallback_runtime_dir() -> PathBuf {
+        if let Ok(runtime_dir) = std::env::var("SONGBIRD_RUNTIME_DIR") {
+            return PathBuf::from(runtime_dir);
+        }
+
+        PathBuf::from(crate::config::constants::paths::DEFAULT_TEMP_DIR)
     }
 
-    /// Get socket file path (Unix only)
-    #[cfg(unix)]
-    #[must_use]
-    pub fn socket_file_path(&self, service: &str) -> PathBuf {
-        self.runtime_dir.join(format!("{service}.sock"))
-    }
+    /// Create all necessary directories
+    pub async fn create_directories(&self) -> Result<()> {
+        // Create directories directly without substrate
+        let directories = vec![
+            &self.data_dir,
+            &self.config_dir,
+            &self.log_dir,
+            &self.cache_dir,
+            &self.runtime_dir,
+            &self.service_data_dirs.orchestrator,
+            &self.service_data_dirs.federation,
+            &self.service_data_dirs.metrics,
+            &self.service_data_dirs.discovery,
+            &self.service_data_dirs.registry,
+        ];
 
-    /// Validate that all paths are accessible
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if any path validation fails
-    pub fn validate(&self) -> Result<()> {
-        for dir in &[&self.data_dir, &self.config_dir, &self.log_dir] {
-            if let Some(parent) = dir.parent() {
-                if !parent.exists() {
+        for directory in directories {
+            if !directory.exists() {
+                if let Err(e) = std::fs::create_dir_all(directory) {
                     return Err(SongbirdError::Config {
-                        field: Some("paths".to_string()),
-                        message: format!("Parent directory {} does not exist", parent.display()),
-                        context: Some("Path validation".to_string()),
+                        message: format!(
+                            "Failed to create directory {}: {}",
+                            directory.display(),
+                            e
+                        ),
+                        field: Some("directory_path".to_string()),
+                        context: None,
                         suggestion: Some(
-                            "Ensure parent directories exist or create them first".to_string(),
+                            "Check if you have write permissions for this directory".to_string(),
                         ),
                     });
                 }
@@ -172,38 +275,204 @@ impl PathConfig {
         Ok(())
     }
 
-    /// Get a summary of all configured paths
-    #[must_use]
-    pub fn summary(&self) -> String {
-        format!(
-            "Data: {}, Config: {}, Logs: {}, Cache: {}, Runtime: {}",
-            self.data_dir.display(),
-            self.config_dir.display(),
-            self.log_dir.display(),
-            self.cache_dir.display(),
-            self.runtime_dir.display()
-        )
+    /// Get a service-specific path through substrate
+    pub async fn get_service_path(&self, service_name: &str, path_type: &str) -> Result<PathBuf> {
+        let service_dir = match path_type {
+            "config" => self.config_dir.join(service_name),
+            "data" => self.data_dir.join(service_name),
+            "log" => self.log_dir.join(service_name),
+            "cache" => self.cache_dir.join(service_name),
+            "runtime" => self.runtime_dir.join(service_name),
+            _ => {
+                return Err(SongbirdError::Config {
+                    message: format!("Unknown path type: {path_type}"),
+                    field: Some("path_type".to_string()),
+                    context: None,
+                    suggestion: Some("Check if the path type is valid".to_string()),
+                })
+            }
+        };
+
+        // Ensure directory exists
+        if !service_dir.exists() {
+            fs::create_dir_all(&service_dir).map_err(|e| SongbirdError::Config {
+                message: format!("Failed to create service directory: {e}"),
+                field: Some("service_dir".to_string()),
+                context: None,
+                suggestion: Some(
+                    "Check if you have write permissions for this directory".to_string(),
+                ),
+            })?;
+        }
+
+        Ok(service_dir)
+    }
+
+    /// Validate that all paths are accessible
+    pub async fn validate_paths(&self) -> Result<()> {
+        let paths = vec![
+            &self.data_dir,
+            &self.config_dir,
+            &self.log_dir,
+            &self.cache_dir,
+            &self.runtime_dir,
+        ];
+
+        for path in paths {
+            if !path.exists() {
+                return Err(SongbirdError::Config {
+                    message: format!("Path does not exist: {}", path.display()),
+                    field: Some("path_validation".to_string()),
+                    context: None,
+                    suggestion: Some("Check if the path exists and is accessible".to_string()),
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get a temporary path for specific operations
+    pub async fn get_temp_path(&self, operation: &str) -> Result<PathBuf> {
+        let temp_dir = std::env::temp_dir().join("songbird").join(operation);
+
+        // Ensure directory exists
+        if !temp_dir.exists() {
+            fs::create_dir_all(&temp_dir).map_err(|e| SongbirdError::Config {
+                message: format!("Failed to create temp directory: {e}"),
+                field: Some("temp_dir".to_string()),
+                context: None,
+                suggestion: Some(
+                    "Check if you have write permissions for this directory".to_string(),
+                ),
+            })?;
+        }
+
+        Ok(temp_dir)
+    }
+
+    /// Get secure path for sensitive operations
+    pub async fn get_secure_path(&self, operation: &str) -> Result<PathBuf> {
+        let secure_dir = self.data_dir.join("secure").join(operation);
+
+        // Ensure directory exists with restricted permissions
+        if !secure_dir.exists() {
+            fs::create_dir_all(&secure_dir).map_err(|e| SongbirdError::Config {
+                message: format!("Failed to create secure directory: {e}"),
+                field: Some("secure_dir".to_string()),
+                context: None,
+                suggestion: Some(
+                    "Check if you have write permissions for this directory".to_string(),
+                ),
+            })?;
+        }
+
+        Ok(secure_dir)
+    }
+
+    /// Initialize paths for a service
+    pub async fn initialize_service_paths(&self, base_dir: &Path) -> Result<ServiceDataDirs> {
+        let service_dirs = ServiceDataDirs {
+            orchestrator: base_dir.join("orchestrator"),
+            federation: base_dir.join("federation"),
+            metrics: base_dir.join("metrics"),
+            discovery: base_dir.join("discovery"),
+            registry: base_dir.join("registry"),
+        };
+
+        // Create directories
+        let directories = vec![
+            &service_dirs.orchestrator,
+            &service_dirs.federation,
+            &service_dirs.metrics,
+            &service_dirs.discovery,
+            &service_dirs.registry,
+        ];
+
+        for dir in directories {
+            if !dir.exists() {
+                std::fs::create_dir_all(dir).map_err(|e| SongbirdError::Config {
+                    message: format!("Failed to create service directory: {e}"),
+                    field: Some("service_directory".to_string()),
+                    context: None,
+                    suggestion: Some("Check if you have write permissions".to_string()),
+                })?;
+            }
+        }
+
+        Ok(service_dirs)
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// Get the best available path configuration
+pub async fn get_path_config() -> Result<PathConfig> {
+    // Try to use substrate first
+    match PathConfig::new().await {
+        Ok(config) => {
+            debug!("✅ Using substrate-based path configuration");
+            Ok(config)
+        }
+        Err(e) => {
+            warn!(
+                "⚠️ Substrate path configuration failed: {}, using fallback",
+                e
+            );
+            Ok(PathConfig::new_fallback())
+        }
+    }
+}
 
-    #[test]
-    fn test_development_paths() {
-        let config = PathConfig::development();
-        assert!(config.data_dir.to_string_lossy().contains(".songbird"));
-        assert!(config.config_dir.to_string_lossy().contains(".songbird"));
+/// Initialize paths for a service
+pub async fn initialize_service_paths(service_name: &str) -> Result<ServiceDataDirs> {
+    let base_dir = PathBuf::from(format!("/tmp/songbird/{service_name}"));
+
+    let service_dirs = ServiceDataDirs {
+        orchestrator: base_dir.join("orchestrator"),
+        federation: base_dir.join("federation"),
+        metrics: base_dir.join("metrics"),
+        discovery: base_dir.join("discovery"),
+        registry: base_dir.join("registry"),
+    };
+
+    // Create directories
+    let directories = vec![
+        &service_dirs.orchestrator,
+        &service_dirs.federation,
+        &service_dirs.metrics,
+        &service_dirs.discovery,
+        &service_dirs.registry,
+    ];
+
+    for dir in directories {
+        if !dir.exists() {
+            std::fs::create_dir_all(dir).map_err(|e| SongbirdError::Config {
+                message: format!("Failed to create service directory: {e}"),
+                field: Some("service_directory".to_string()),
+                context: None,
+                suggestion: Some("Check if you have write permissions".to_string()),
+            })?;
+        }
     }
 
-    #[test]
-    fn test_path_utilities() {
-        let config = PathConfig::development();
-        let config_path = config.config_file_path("test.yaml");
-        assert!(config_path.to_string_lossy().ends_with("test.yaml"));
+    Ok(service_dirs)
+}
 
-        let log_path = config.log_file_path("orchestrator");
-        assert!(log_path.to_string_lossy().ends_with("orchestrator.log"));
+/// Create a path configuration for testing
+pub fn testing_config() -> PathConfig {
+    let test_dir = std::env::temp_dir().join("songbird_test");
+
+    PathConfig {
+        data_dir: test_dir.join("data"),
+        config_dir: test_dir.join("config"),
+        log_dir: test_dir.join("logs"),
+        cache_dir: test_dir.join("cache"),
+        runtime_dir: test_dir.join("runtime"),
+        service_data_dirs: ServiceDataDirs {
+            orchestrator: test_dir.join("data").join("orchestrator"),
+            federation: test_dir.join("data").join("federation"),
+            metrics: test_dir.join("data").join("metrics"),
+            discovery: test_dir.join("data").join("discovery"),
+            registry: test_dir.join("data").join("registry"),
+        },
     }
 }

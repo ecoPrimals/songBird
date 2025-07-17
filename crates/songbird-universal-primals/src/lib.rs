@@ -53,6 +53,10 @@
 #![warn(rust_2018_idioms)]
 #![warn(missing_docs)]
 
+/// BearDog primal integration module
+///
+/// This module provides configuration and integration capabilities for BearDog,
+/// which handles security, authentication, and threat detection services.
 pub mod beardog;
 pub mod config;
 pub mod discovery;

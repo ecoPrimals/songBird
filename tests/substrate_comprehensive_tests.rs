@@ -7,12 +7,12 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::timeout;
 
-use songbird_lib::errors::{Result, SongbirdError};
-use songbird_lib::substrate::{
+use songbird_core::substrate::{
     check_substrate_health, clear_substrate_cache, get_substrate, get_substrate_cache_stats,
     get_substrate_metrics, initialize_substrate, NetworkInterface, NetworkOperation,
     NetworkRequest, OSSubstrate, PathRequest, PathRequirements, PathType, SystemInfo,
 };
+use songbird_errors::{Result, SongbirdError};
 
 /// Test substrate creation and initialization
 #[tokio::test]

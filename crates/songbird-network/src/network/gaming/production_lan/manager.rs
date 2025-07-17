@@ -7,7 +7,7 @@ use crate::network::gaming::types::*;
 /// - Clean separation of concerns
 /// - Well-documented public API
 /// - Manageable size (under 1000 lines)
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{NetworkError, Result, SongbirdError};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
@@ -251,16 +251,15 @@ impl ProductionLanManager {
     /// Get session by code
     pub async fn get_session(&self, session_code: &str) -> Result<ProductionGameSession> {
         let sessions = self.sessions.read().await;
-        sessions
-            .get(session_code)
-            .cloned()
-            .ok_or_else(|| SongbirdError::Network {
+        sessions.get(session_code).cloned().ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("Production LAN Manager".to_string()),
                 message: format!("Session not found: {}", session_code),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            })
+            }))
+        })
     }
 
     /// Shutdown a session
@@ -270,13 +269,13 @@ impl ProductionLanManager {
             info!("🛑 Shut down gaming session: {}", session_code);
             Ok(())
         } else {
-            Err(SongbirdError::Network {
+            Err(SongbirdError::Network(Box::new(NetworkError {
                 service: Some("Production LAN Manager".to_string()),
                 message: format!("Session not found: {}", session_code),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            })
+            })))
         }
     }
 

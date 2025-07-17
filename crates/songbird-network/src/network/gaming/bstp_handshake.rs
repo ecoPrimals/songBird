@@ -49,9 +49,9 @@ pub enum HandshakeState {
 #[derive(Debug, Clone)]
 pub struct SessionKeys {
     /// Encryption key for outbound data
-    pub encrypt_key: [u8; 32],
+    pub encrypt_key: Vec<u8>,
     /// Decryption key for inbound data  
-    pub decrypt_key: [u8; 32],
+    pub decrypt_key: Vec<u8>,
     /// Authentication key for message integrity
     pub auth_key: [u8; 32],
     /// Session nonce counter
@@ -84,6 +84,22 @@ pub struct KeyExchangeMessage {
     pub auth_tag: [u8; 16],
 }
 
+/// BearDog key exchange data
+#[derive(Debug, Clone)]
+pub struct BearDogKeyExchange {
+    pub public_key: [u8; 32],
+    pub signature: [u8; 64],
+}
+
+impl BearDogKeyExchange {
+    /// Get the shared secret from the key exchange
+    pub fn get_shared_secret(&self) -> Vec<u8> {
+        // For now, use the public key as the shared secret
+        // In a real implementation, this would use proper key exchange
+        self.public_key.to_vec()
+    }
+}
+
 impl BSTPHandshakeManager {
     /// Create new handshake manager
     pub fn new(session_id: String) -> Self {
@@ -102,6 +118,10 @@ impl BSTPHandshakeManager {
             return Err(songbird_errors::SongbirdError::Security {
                 message: "Handshake already in progress".to_string(),
                 context: Some(format!("Current state: {:?}", self.state)),
+                severity: Some("error".to_string()),
+                suggestion: Some(
+                    "Reset the handshake manager before starting a new handshake".to_string(),
+                ),
             });
         }
 
@@ -141,6 +161,11 @@ impl BSTPHandshakeManager {
             return Err(songbird_errors::SongbirdError::Security {
                 message: "Invalid handshake state for greeting response".to_string(),
                 context: Some(format!("Expected GreetingSent, got {:?}", self.state)),
+                severity: Some("error".to_string()),
+                suggestion: Some(
+                    "Ensure handshake is in GreetingSent state before processing response"
+                        .to_string(),
+                ),
             });
         }
 
@@ -168,6 +193,10 @@ impl BSTPHandshakeManager {
             return Err(songbird_errors::SongbirdError::Security {
                 message: "Invalid handshake state for completion".to_string(),
                 context: Some(format!("Expected KeyExchange, got {:?}", self.state)),
+                severity: Some("error".to_string()),
+                suggestion: Some(
+                    "Ensure handshake is in KeyExchange state before completion".to_string(),
+                ),
             });
         }
 
@@ -188,12 +217,16 @@ impl BSTPHandshakeManager {
                 .ok_or_else(|| songbird_errors::SongbirdError::Security {
                     message: "No session keys available".to_string(),
                     context: Some("Handshake not completed".to_string()),
+                    severity: Some("error".to_string()),
+                    suggestion: Some("Complete the handshake before encrypting data".to_string()),
                 })?;
 
         if self.state != HandshakeState::Established {
             return Err(songbird_errors::SongbirdError::Security {
                 message: "Handshake not established".to_string(),
                 context: Some(format!("Current state: {:?}", self.state)),
+                severity: Some("error".to_string()),
+                suggestion: Some("Complete the handshake before encrypting data".to_string()),
             });
         }
 
@@ -205,62 +238,53 @@ impl BSTPHandshakeManager {
         let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
 
         // Encrypt the data
-        let ciphertext = cipher.encrypt(nonce, plaintext).map_err(|e| {
-            songbird_errors::SongbirdError::Security {
-                message: "Encryption failed".to_string(),
-                context: Some(format!("AES-GCM error: {}", e)),
-            }
-        })?;
-
-        // Increment nonce counter
-        keys.nonce_counter = keys.nonce_counter.wrapping_add(1);
-
-        debug!(
-            "🔐 Encrypted {} bytes to {} bytes",
-            plaintext.len(),
-            ciphertext.len()
-        );
-        Ok(ciphertext)
+        cipher
+            .encrypt(nonce, plaintext)
+            .map_err(|e| songbird_errors::SongbirdError::Security {
+                message: format!("Encryption failed: {}", e),
+                context: Some("AES-256-GCM encryption error".to_string()),
+                severity: Some("error".to_string()),
+                suggestion: Some("Check session keys and retry".to_string()),
+            })
     }
 
     /// Decrypt data using established session keys
     pub fn decrypt_data(&mut self, ciphertext: &[u8]) -> Result<Vec<u8>> {
         let keys =
             self.session_keys
-                .as_ref()
+                .as_mut()
                 .ok_or_else(|| songbird_errors::SongbirdError::Security {
                     message: "No session keys available".to_string(),
                     context: Some("Handshake not completed".to_string()),
+                    severity: Some("error".to_string()),
+                    suggestion: Some("Complete the handshake before decrypting data".to_string()),
                 })?;
 
         if self.state != HandshakeState::Established {
             return Err(songbird_errors::SongbirdError::Security {
                 message: "Handshake not established".to_string(),
                 context: Some(format!("Current state: {:?}", self.state)),
+                severity: Some("error".to_string()),
+                suggestion: Some("Complete the handshake before decrypting data".to_string()),
             });
         }
 
         // Use AES-256-GCM for decryption
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&keys.decrypt_key));
 
-        // Extract nonce from message (simplified - in practice this would be in the message)
-        let nonce_bytes = [0u8; 12];
+        // Extract nonce from ciphertext (first 12 bytes)
+        let nonce_bytes = &ciphertext[..12];
         let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
 
         // Decrypt the data
-        let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| {
+        cipher.decrypt(nonce, &ciphertext[12..]).map_err(|e| {
             songbird_errors::SongbirdError::Security {
-                message: "Decryption failed".to_string(),
-                context: Some(format!("AES-GCM error: {}", e)),
+                message: format!("Decryption failed: {}", e),
+                context: Some("AES-256-GCM decryption error".to_string()),
+                severity: Some("error".to_string()),
+                suggestion: Some("Check session keys and ciphertext integrity".to_string()),
             }
-        })?;
-
-        debug!(
-            "🔓 Decrypted {} bytes to {} bytes",
-            ciphertext.len(),
-            plaintext.len()
-        );
-        Ok(plaintext)
+        })
     }
 
     /// Get current handshake state
@@ -309,6 +333,8 @@ impl BSTPHandshakeManager {
             return Err(songbird_errors::SongbirdError::Security {
                 message: "Unsupported protocol version".to_string(),
                 context: Some(format!("Got version {}, expected 1", greeting.version)),
+                severity: Some("error".to_string()),
+                suggestion: Some("Update the protocol version to 1".to_string()),
             });
         }
 
@@ -322,6 +348,8 @@ impl BSTPHandshakeManager {
             return Err(songbird_errors::SongbirdError::Security {
                 message: "Greeting timestamp too old".to_string(),
                 context: Some(format!("Timestamp: {}, now: {}", greeting.timestamp, now)),
+                severity: Some("error".to_string()),
+                suggestion: Some("Ensure the system clock is synchronized".to_string()),
             });
         }
 
@@ -331,6 +359,8 @@ impl BSTPHandshakeManager {
             return Err(songbird_errors::SongbirdError::Security {
                 message: "Invalid greeting signature".to_string(),
                 context: None,
+                severity: Some("error".to_string()),
+                suggestion: Some("Re-establish the handshake with the correct peer".to_string()),
             });
         }
 
@@ -347,21 +377,21 @@ impl BSTPHandshakeManager {
         let shared_secret = hasher.finalize();
 
         // Derive different keys from shared secret
-        let mut encrypt_key = [0u8; 32];
-        let mut decrypt_key = [0u8; 32];
+        let mut encrypt_key = Vec::new();
+        let mut decrypt_key = Vec::new();
         let mut auth_key = [0u8; 32];
 
         // Encrypt key
         let mut hasher = Sha256::new();
         hasher.update(shared_secret);
         hasher.update(b"ENCRYPT");
-        encrypt_key.copy_from_slice(&hasher.finalize());
+        encrypt_key.extend_from_slice(&hasher.finalize());
 
         // Decrypt key
         let mut hasher = Sha256::new();
         hasher.update(shared_secret);
         hasher.update(b"DECRYPT");
-        decrypt_key.copy_from_slice(&hasher.finalize());
+        decrypt_key.extend_from_slice(&hasher.finalize());
 
         // Auth key
         let mut hasher = Sha256::new();
@@ -411,6 +441,10 @@ impl BSTPHandshakeManager {
                 .ok_or_else(|| songbird_errors::SongbirdError::Security {
                     message: "No session keys for confirmation".to_string(),
                     context: None,
+                    severity: Some("error".to_string()),
+                    suggestion: Some(
+                        "Complete the handshake before verifying confirmation".to_string(),
+                    ),
                 })?;
 
         // Verify confirmation matches expected value
@@ -423,10 +457,56 @@ impl BSTPHandshakeManager {
             return Err(songbird_errors::SongbirdError::Security {
                 message: "Invalid key confirmation".to_string(),
                 context: None,
+                severity: Some("error".to_string()),
+                suggestion: Some("Re-establish the handshake with the correct peer".to_string()),
             });
         }
 
         Ok(())
+    }
+
+    /// Get session key for external use
+    pub fn get_session_key(&self) -> Result<Vec<u8>> {
+        let keys =
+            self.session_keys
+                .as_ref()
+                .ok_or_else(|| songbird_errors::SongbirdError::Security {
+                    message: "No session keys available".to_string(),
+                    context: Some("Handshake not completed".to_string()),
+                    severity: Some("error".to_string()),
+                    suggestion: Some(
+                        "Complete the handshake before accessing session keys".to_string(),
+                    ),
+                })?;
+
+        Ok(keys.encrypt_key.clone())
+    }
+
+    /// Check if handshake is valid
+    pub fn is_valid(&self) -> bool {
+        self.state == HandshakeState::Established && self.session_keys.is_some()
+    }
+
+    /// Get session start time
+    pub fn get_session_start_time(&self) -> std::time::SystemTime {
+        // Convert Instant to SystemTime (approximation)
+        let now = std::time::SystemTime::now();
+        let elapsed = self.created_at.elapsed();
+        now.checked_sub(elapsed).unwrap_or(now)
+    }
+
+    /// Get cipher suite information
+    pub fn get_cipher_suite(&self) -> Result<String> {
+        if self.state != HandshakeState::Established {
+            return Err(songbird_errors::SongbirdError::Security {
+                message: "Handshake not established".to_string(),
+                context: Some("Cannot get cipher suite before handshake completion".to_string()),
+                severity: Some("error".to_string()),
+                suggestion: Some("Complete the handshake before getting cipher suite".to_string()),
+            });
+        }
+
+        Ok("AES-256-GCM".to_string())
     }
 }
 

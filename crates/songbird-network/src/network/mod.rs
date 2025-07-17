@@ -39,7 +39,9 @@ impl Default for NetworkConfig {
                     env_config.bind_address,
                     e
                 );
-                "127.0.0.1".parse().expect("127.0.0.1 is a valid IP")
+                "127.0.0.1"
+                    .parse()
+                    .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
             }),
 
             // Configurable timeouts from environment

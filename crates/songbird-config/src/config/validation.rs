@@ -238,17 +238,14 @@ impl crate::config::SongbirdConfig {
 
         let mut port_map: HashMap<u16, Vec<String>> = HashMap::new();
         for (name, port) in ports {
-            port_map
-                .entry(port)
-                .or_insert_with(Vec::new)
-                .push(name.to_string());
+            port_map.entry(port).or_default().push(name.to_string());
         }
 
         for (port, names) in port_map {
             if names.len() > 1 {
                 result.errors.push(ValidationError {
                     field: "network.ports".to_string(),
-                    message: format!("Port {} is used by multiple services", port),
+                    message: format!("Port {port} is used by multiple services"),
                     current_value: Some(names.join(", ")),
                     expected_value: Some("Unique ports for each service".to_string()),
                     severity: ValidationSeverity::High,
@@ -273,8 +270,8 @@ impl crate::config::SongbirdConfig {
         for (i, endpoint) in self.network.federation_endpoints.iter().enumerate() {
             if let Err(e) = self.validate_endpoint_format(endpoint) {
                 result.errors.push(ValidationError {
-                    field: format!("network.federation_endpoints[{}]", i),
-                    message: format!("Invalid federation endpoint format: {}", e),
+                    field: format!("network.federation_endpoints[{i}]"),
+                    message: format!("Invalid federation endpoint format: {e}"),
                     current_value: Some(endpoint.clone()),
                     expected_value: Some(
                         "Valid URL format (e.g., https://federation.example.com)".to_string(),
@@ -385,11 +382,10 @@ impl crate::config::SongbirdConfig {
             if std::env::var(var).is_err() {
                 result.warnings.push(ValidationWarning {
                     field: format!("environment.{}", var.to_lowercase()),
-                    message: format!("Environment variable {} is not set", var),
+                    message: format!("Environment variable {var} is not set"),
                     current_value: None,
                     suggestion: format!(
-                        "Set {} environment variable for better configuration management",
-                        var
+                        "Set {var} environment variable for better configuration management"
                     ),
                 });
             }
@@ -415,7 +411,7 @@ impl crate::config::SongbirdConfig {
         if let Err(e) = self.validate_endpoint_format(&beardog_config.endpoint.primary_url) {
             result.errors.push(ValidationError {
                 field: "beardog.endpoint.primary_url".to_string(),
-                message: format!("Invalid BearDog endpoint format: {}", e),
+                message: format!("Invalid BearDog endpoint format: {e}"),
                 current_value: Some(beardog_config.endpoint.primary_url.clone()),
                 expected_value: Some("Valid HTTPS URL".to_string()),
                 severity: ValidationSeverity::High,
@@ -586,7 +582,7 @@ impl crate::config::SongbirdConfig {
             result.warnings.push(ValidationWarning {
                 field: field.to_string(),
                 message: "Timeout is very long".to_string(),
-                current_value: Some(format!("{}s", timeout_secs)),
+                current_value: Some(format!("{timeout_secs}s")),
                 suggestion: "Consider reducing timeout for better responsiveness".to_string(),
             });
         }
@@ -599,7 +595,7 @@ impl crate::config::SongbirdConfig {
         let url = Url::parse(endpoint).map_err(|e| {
             SongbirdError::validation_error(
                 "endpoint",
-                &format!("Invalid URL format: {}", e),
+                &format!("Invalid URL format: {e}"),
                 endpoint,
                 "Valid URL format (e.g., https://example.com)",
             )
@@ -658,7 +654,7 @@ impl ValidationResult {
     pub fn detailed_report(&self) -> String {
         let mut report = String::new();
 
-        report.push_str(&format!("Configuration Validation Report\n"));
+        report.push_str("Configuration Validation Report\n");
         report.push_str(&format!(
             "Overall Status: {}\n",
             if self.is_valid { "Valid" } else { "Invalid" }
@@ -687,10 +683,10 @@ impl ValidationResult {
                     error.message
                 ));
                 if let Some(ref current) = error.current_value {
-                    report.push_str(&format!("    Current: {}\n", current));
+                    report.push_str(&format!("    Current: {current}\n"));
                 }
                 if let Some(ref expected) = error.expected_value {
-                    report.push_str(&format!("    Expected: {}\n", expected));
+                    report.push_str(&format!("    Expected: {expected}\n"));
                 }
                 report.push_str(&format!("    Suggestion: {}\n", error.suggestion));
             }
@@ -705,7 +701,7 @@ impl ValidationResult {
                     warning.field, warning.message
                 ));
                 if let Some(ref current) = warning.current_value {
-                    report.push_str(&format!("    Current: {}\n", current));
+                    report.push_str(&format!("    Current: {current}\n"));
                 }
                 report.push_str(&format!("    Suggestion: {}\n", warning.suggestion));
             }

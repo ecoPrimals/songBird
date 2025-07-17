@@ -5,21 +5,45 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, Semaphore};
-use songbird_errors::Result;
+use songbird_errors::{NetworkError, Result};
 
-/// High-performance connection pool configuration
+/// String interning for host names to reduce cloning
+#[derive(Debug, Default)]
+pub struct HostInterning {
+    interned_hosts: HashMap<String, Arc<str>>,
+}
+
+impl HostInterning {
+    pub fn new() -> Self {
+        Self {
+            interned_hosts: HashMap::new(),
+        }
+    }
+    
+    pub fn intern(&mut self, host: &str) -> Arc<str> {
+        if let Some(interned) = self.interned_hosts.get(host) {
+            Arc::clone(interned)
+        } else {
+            let interned = Arc::from(host);
+            self.interned_hosts.insert(host.to_string(), Arc::clone(&interned));
+            interned
+        }
+    }
+    
+    pub fn lookup(&self, host: &str) -> Option<Arc<str>> {
+        self.interned_hosts.get(host).map(Arc::clone)
+    }
+}
+
+/// Connection pool configuration
 #[derive(Debug, Clone)]
 pub struct ConnectionPoolConfig {
-    /// Maximum connections per host
     pub max_connections_per_host: usize,
-    /// Maximum total connections
     pub max_total_connections: usize,
-    /// Connection idle timeout
     pub idle_timeout: Duration,
-    /// Connection keep-alive duration
-    pub keep_alive: Duration,
-    /// Enable connection reuse
-    pub enable_reuse: bool,
+    pub connection_timeout: Duration,
+    pub enable_keepalive: bool,
+    pub keepalive_interval: Duration,
 }
 
 impl Default for ConnectionPoolConfig {
@@ -28,74 +52,130 @@ impl Default for ConnectionPoolConfig {
             max_connections_per_host: 10,
             max_total_connections: 100,
             idle_timeout: Duration::from_secs(30),
-            keep_alive: Duration::from_secs(60),
-            enable_reuse: true,
+            connection_timeout: Duration::from_secs(30),
+            enable_keepalive: true,
+            keepalive_interval: Duration::from_secs(30),
         }
     }
 }
 
-/// Connection pool entry with performance metrics
-#[derive(Debug)]
-struct PooledConnection {
-    /// Connection creation time
-    created_at: Instant,
-    /// Last used time
-    last_used: Instant,
-    /// Number of requests served
-    request_count: u64,
-    /// Average response time
-    avg_response_time: Duration,
+/// Pooled connection with zero-copy optimizations
+#[derive(Debug, Clone)]
+pub struct PooledConnection {
+    pub created_at: Instant,
+    pub last_used: Instant,
+    pub request_count: u32,
+    pub avg_response_time: Duration,
 }
 
-/// High-performance HTTP connection pool
-pub struct HttpConnectionPool {
-    config: ConnectionPoolConfig,
-    connections: Arc<Mutex<HashMap<String, Vec<PooledConnection>>>>,
-    total_connections: Arc<Semaphore>,
-    metrics: Arc<Mutex<PoolMetrics>>,
+impl PooledConnection {
+    pub fn new() -> Self {
+        let now = Instant::now();
+        Self {
+            created_at: now,
+            last_used: now,
+            request_count: 0,
+            avg_response_time: Duration::from_millis(0),
+        }
+    }
+    
+    pub fn update_stats(&mut self, response_time: Duration) {
+        self.last_used = Instant::now();
+        self.request_count += 1;
+        
+        // Update average response time efficiently
+        let current_avg_nanos = self.avg_response_time.as_nanos() as f64;
+        let new_response_nanos = response_time.as_nanos() as f64;
+        let new_avg_nanos = ((current_avg_nanos * (self.request_count - 1) as f64) + new_response_nanos) / self.request_count as f64;
+        self.avg_response_time = Duration::from_nanos(new_avg_nanos as u64);
+    }
+    
+    pub fn is_expired(&self, idle_timeout: Duration) -> bool {
+        self.last_used.elapsed() > idle_timeout
+    }
 }
 
-/// Connection pool performance metrics
+/// Connection pool metrics
 #[derive(Debug, Default)]
 pub struct PoolMetrics {
-    /// Total connections created
     pub connections_created: u64,
-    /// Total connections reused
     pub connections_reused: u64,
-    /// Total connections expired
     pub connections_expired: u64,
-    /// Average connection acquisition time
     pub avg_acquisition_time: Duration,
-    /// Pool hit ratio
     pub hit_ratio: f64,
 }
 
-impl HttpConnectionPool {
-    /// Create a new high-performance connection pool
-    pub fn new(config: ConnectionPoolConfig) -> Self {
-        let total_permit_count = config.max_total_connections;
-        
-        Self {
-            config,
-            connections: Arc::new(Mutex::new(HashMap::with_capacity(16))),
-            total_connections: Arc::new(Semaphore::new(total_permit_count)),
-            metrics: Arc::new(Mutex::new(PoolMetrics::default())),
+/// Internal metrics tracking
+#[derive(Debug, Default)]
+struct InternalMetrics {
+    connections_created: u64,
+    connections_reused: u64,
+    connections_expired: u64,
+    avg_acquisition_time: Duration,
+}
+
+impl InternalMetrics {
+    fn update_avg_duration(&mut self, current_avg: Duration, new_duration: Duration, total_count: u64) -> Duration {
+        if total_count == 0 {
+            return new_duration;
         }
+        let current_nanos = current_avg.as_nanos() as f64;
+        let new_nanos = new_duration.as_nanos() as f64;
+        let avg_nanos = ((current_nanos * (total_count - 1) as f64) + new_nanos) / total_count as f64;
+        Duration::from_nanos(avg_nanos as u64)
+    }
+}
+
+/// HTTP connection pool with optimized host handling
+pub struct ConnectionPool {
+    config: ConnectionPoolConfig,
+    connections: Arc<Mutex<HashMap<Arc<str>, Vec<PooledConnection>>>>, // Use Arc<str> for host keys
+    host_interning: Arc<Mutex<HostInterning>>,
+    total_connections: Arc<Semaphore>,
+    metrics: Arc<Mutex<InternalMetrics>>,
+}
+
+impl ConnectionPool {
+    pub fn new(config: ConnectionPoolConfig) -> Self {
+        let total_connections = Arc::new(Semaphore::new(config.max_total_connections));
+        
+        let pool = Self {
+            config,
+            connections: Arc::new(Mutex::new(HashMap::new())),
+            host_interning: Arc::new(Mutex::new(HostInterning::new())),
+            total_connections,
+            metrics: Arc::new(Mutex::new(InternalMetrics::default())),
+        };
+        
+        // Start background cleanup task
+        pool.start_cleanup_task();
+        
+        pool
     }
 
-    /// Acquire a connection with performance optimization
+    /// Acquire connection with optimized host handling
     pub async fn acquire_connection(&self, host: &str) -> Result<PooledConnection> {
         let start_time = Instant::now();
         
         // Try to acquire total connection limit
         let _permit = self.total_connections.acquire().await
-            .map_err(|_| songbird_errors::SongbirdError::Network {
+            .map_err(|_| songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                service: Some("ConnectionPool".to_string()),
                 message: "Connection pool exhausted".to_string(),
-                source: None,
-            })?;
+                details: None,
+                endpoint: None,
+                suggestion: Some("Increase pool size or implement connection queuing".to_string()),
+            })))?;
+
+        // Get or create interned host key
+        let host_key = {
+            let mut interning = self.host_interning.lock().await;
+            interning.intern(host)
+        };
 
         let mut connections = self.connections.lock().await;
-        let host_connections = connections.entry(host.to_string()).or_insert_with(|| Vec::with_capacity(4));
+        let host_connections = connections.entry(Arc::clone(&host_key))
+            .or_insert_with(|| Vec::with_capacity(self.config.max_connections_per_host));
 
         // Try to reuse existing connection
         if let Some(mut conn) = self.find_reusable_connection(host_connections).await {
@@ -105,7 +185,7 @@ impl HttpConnectionPool {
             // Update metrics
             let mut metrics = self.metrics.lock().await;
             metrics.connections_reused += 1;
-            metrics.avg_acquisition_time = self.update_avg_duration(
+            metrics.avg_acquisition_time = metrics.update_avg_duration(
                 metrics.avg_acquisition_time,
                 start_time.elapsed(),
                 metrics.connections_reused + metrics.connections_created,
@@ -116,62 +196,82 @@ impl HttpConnectionPool {
 
         // Create new connection if under limit
         if host_connections.len() < self.config.max_connections_per_host {
-            let new_conn = PooledConnection {
-                created_at: Instant::now(),
-                last_used: Instant::now(),
-                request_count: 1,
-                avg_response_time: Duration::from_millis(100), // Initial estimate
-            };
-
-            host_connections.push(new_conn);
+            let new_connection = PooledConnection::new();
+            host_connections.push(new_connection.clone());
             
             // Update metrics
             let mut metrics = self.metrics.lock().await;
             metrics.connections_created += 1;
-            metrics.avg_acquisition_time = self.update_avg_duration(
+            metrics.avg_acquisition_time = metrics.update_avg_duration(
                 metrics.avg_acquisition_time,
                 start_time.elapsed(),
                 metrics.connections_reused + metrics.connections_created,
             );
 
-            return host_connections.last().map(|conn| Ok(conn.clone())).unwrap_or_else(|| Err(songbird_errors::SongbirdError::Network { message: "Connection pool internal error: no connections available".to_string(), source: None }));
+            return Ok(new_connection);
         }
 
-        Err(songbird_errors::SongbirdError::Network {
-            message: format!("Connection limit reached for host: {}", host),
-            source: None,
-        })
+        // Pool is full, return error
+        Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+            service: Some("ConnectionPool".to_string()),
+            message: format!("Connection pool full for host: {}", host),
+            details: Some(format!("Max connections per host: {}", self.config.max_connections_per_host)),
+            endpoint: Some(host.to_string()),
+            suggestion: Some("Increase per-host connection limit or implement connection queuing".to_string()),
+        })))
     }
 
-    /// Find reusable connection with performance criteria
+    /// Find reusable connection without cloning
     async fn find_reusable_connection(&self, connections: &mut Vec<PooledConnection>) -> Option<PooledConnection> {
         let now = Instant::now();
+        let mut best_connection = None;
+        let mut best_index = None;
         
-        // Remove expired connections
-        connections.retain(|conn| {
-            now.duration_since(conn.last_used) < self.config.idle_timeout
-        });
-
-        // Find best connection to reuse (least recently used, best performance)
-        connections.iter()
-            .enumerate()
-            .filter(|(_, conn)| now.duration_since(conn.last_used) < self.config.keep_alive)
-            .min_by_key(|(_, conn)| (conn.last_used, conn.avg_response_time))
-            .map(|(idx, _)| connections.remove(idx))
-    }
-
-    /// Update average duration efficiently
-    fn update_avg_duration(&self, current_avg: Duration, new_duration: Duration, count: u64) -> Duration {
-        if count == 0 {
-            return new_duration;
+        // Find the most recently used non-expired connection
+        for (index, conn) in connections.iter().enumerate() {
+            if !conn.is_expired(self.config.idle_timeout) {
+                if best_connection.is_none() || conn.last_used > best_connection.as_ref().unwrap().last_used {
+                    best_connection = Some(conn.clone());
+                    best_index = Some(index);
+                }
+            }
         }
         
-        let current_total = current_avg.as_nanos() * (count - 1) as u128;
-        let new_total = current_total + new_duration.as_nanos();
-        Duration::from_nanos((new_total / count as u128) as u64)
+        // Remove the connection from the pool if found
+        if let Some(index) = best_index {
+            connections.remove(index);
+        }
+        
+        best_connection
     }
 
-    /// Get performance metrics
+    /// Return connection to pool with optimized handling
+    pub async fn return_connection(&self, host: &str, mut connection: PooledConnection) {
+        // Update connection stats
+        connection.last_used = Instant::now();
+        
+        // Get interned host key
+        let host_key = {
+            let interning = self.host_interning.lock().await;
+            if let Some(key) = interning.lookup(host) {
+                key
+            } else {
+                // Host not in interning table, create new entry
+                drop(interning);
+                let mut interning = self.host_interning.lock().await;
+                interning.intern(host)
+            }
+        };
+
+        let mut connections = self.connections.lock().await;
+        if let Some(host_connections) = connections.get_mut(&host_key) {
+            if host_connections.len() < self.config.max_connections_per_host {
+                host_connections.push(connection);
+            }
+        }
+    }
+
+    /// Get pool metrics
     pub async fn get_metrics(&self) -> PoolMetrics {
         let metrics = self.metrics.lock().await;
         let total_requests = metrics.connections_created + metrics.connections_reused;
@@ -196,10 +296,9 @@ impl HttpConnectionPool {
         
         for (_, host_connections) in connections.iter_mut() {
             let initial_len = host_connections.len();
-            let now = Instant::now();
             
             host_connections.retain(|conn| {
-                now.duration_since(conn.last_used) < self.config.idle_timeout
+                !conn.is_expired(self.config.idle_timeout)
             });
             
             total_expired += initial_len - host_connections.len();
@@ -211,15 +310,38 @@ impl HttpConnectionPool {
             metrics.connections_expired += total_expired as u64;
         }
     }
+
+    /// Start background cleanup task
+    fn start_cleanup_task(&self) {
+        let pool = self.clone();
+        
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(30));
+            
+            loop {
+                interval.tick().await;
+                pool.cleanup_expired().await;
+                
+                // Clean up host interning if it gets too large
+                {
+                    let mut interning = pool.host_interning.lock().await;
+                    if interning.interned_hosts.len() > 1000 {
+                        interning.interned_hosts.clear();
+                    }
+                }
+            }
+        });
+    }
 }
 
-impl Clone for PooledConnection {
+impl Clone for ConnectionPool {
     fn clone(&self) -> Self {
         Self {
-            created_at: self.created_at,
-            last_used: self.last_used,
-            request_count: self.request_count,
-            avg_response_time: self.avg_response_time,
+            config: self.config.clone(),
+            connections: Arc::clone(&self.connections),
+            host_interning: Arc::clone(&self.host_interning),
+            total_connections: Arc::clone(&self.total_connections),
+            metrics: Arc::clone(&self.metrics),
         }
     }
 }
@@ -231,7 +353,7 @@ mod tests {
     #[tokio::test]
     async fn test_connection_pool_creation() {
         let config = ConnectionPoolConfig::default();
-        let pool = HttpConnectionPool::new(config);
+        let pool = ConnectionPool::new(config);
         
         let metrics = pool.get_metrics().await;
         assert_eq!(metrics.connections_created, 0);
@@ -239,29 +361,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_host_interning() {
+        let mut interning = HostInterning::new();
+        
+        let host1 = interning.intern("example.com");
+        let host2 = interning.intern("example.com");
+        
+        assert_eq!(host1.as_ptr(), host2.as_ptr()); // Same memory address
+        assert_eq!(interning.interned_hosts.len(), 1);
+    }
+
+    #[tokio::test]
     async fn test_connection_acquisition() {
         let config = ConnectionPoolConfig::default();
-        let pool = HttpConnectionPool::new(config);
+        let pool = ConnectionPool::new(config);
         
-        let conn1 = pool.acquire_connection("example.com").await;
-        assert!(conn1.is_ok());
+        // Test acquiring new connection
+        let conn1 = pool.acquire_connection("example.com").await.unwrap();
+        assert_eq!(conn1.request_count, 0);
         
+        // Test acquiring another connection for same host
+        let conn2 = pool.acquire_connection("example.com").await.unwrap();
+        assert_eq!(conn2.request_count, 0);
+        
+        // Verify metrics
         let metrics = pool.get_metrics().await;
-        assert_eq!(metrics.connections_created, 1);
+        assert_eq!(metrics.connections_created, 2);
+        assert_eq!(metrics.connections_reused, 0);
     }
 
     #[tokio::test]
     async fn test_connection_reuse() {
         let config = ConnectionPoolConfig::default();
-        let pool = HttpConnectionPool::new(config);
+        let pool = ConnectionPool::new(config);
         
-        // First connection
-        let _conn1 = pool.acquire_connection("example.com").await.expect("Test connection should succeed");
+        // Acquire and return a connection
+        let conn1 = pool.acquire_connection("example.com").await.unwrap();
+        pool.return_connection("example.com", conn1).await;
         
-        // Second connection to same host (should trigger reuse logic)
-        let _conn2 = pool.acquire_connection("example.com").await.expect("Test connection should succeed");
+        // Acquire again - should reuse
+        let conn2 = pool.acquire_connection("example.com").await.unwrap();
         
+        // Verify metrics
         let metrics = pool.get_metrics().await;
-        assert!(metrics.connections_created >= 1);
+        assert_eq!(metrics.connections_created, 1);
+        assert_eq!(metrics.connections_reused, 1);
+        assert!(metrics.hit_ratio > 0.0);
     }
 } 

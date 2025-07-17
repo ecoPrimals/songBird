@@ -382,7 +382,13 @@ fn output_json_report(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()
         }).collect::<Vec<_>>()
     });
 
-    println!("{}", serde_json::to_string_pretty(&report).unwrap());
+    match serde_json::to_string_pretty(&report) {
+        Ok(json) => println!("{}", json),
+        Err(e) => {
+            eprintln!("Error serializing report to JSON: {}", e);
+            println!("{{\"error\": \"Failed to serialize report\"}}");
+        }
+    }
     Ok(())
 }
 

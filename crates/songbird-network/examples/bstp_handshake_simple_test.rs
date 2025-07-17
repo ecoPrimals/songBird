@@ -2,10 +2,14 @@
 //!
 //! Demonstrates real AES-256-GCM encryption in BSTP handshake
 
+#[cfg(feature = "beardog")]
 use songbird_network::network::gaming::bstp_handshake::BSTPHandshakeManager;
+#[cfg(feature = "beardog")]
 use tracing::{error, info};
+#[cfg(feature = "beardog")]
 use tracing_subscriber::fmt;
 
+#[cfg(feature = "beardog")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
@@ -137,4 +141,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("🚀 Ready for BearDog integration as main security manager");
 
     Ok(())
+}
+
+#[cfg(not(feature = "beardog"))]
+fn main() {
+    println!("This example requires the 'beardog' feature to be enabled.");
+    println!("Run with: cargo run --example bstp_handshake_simple_test --features beardog");
 }

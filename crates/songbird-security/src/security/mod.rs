@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{AuthError, NetworkError, Result};
 
 // Placeholder NodeId type until discovery module is fully implemented
 pub type NodeId = String;
@@ -276,7 +276,8 @@ pub struct BearDogConfig {
 impl Default for BearDogConfig {
     fn default() -> Self {
         Self {
-            endpoint: "http://localhost:8000".to_string(),
+            endpoint: songbird_config::config::constants::network::DEFAULT_BEARDOG_ENDPOINT
+                .to_string(),
             api_key: "your_api_key".to_string(),
             security_level: BearDogSecurityLevel::Internal,
             audit_level: BearDogAuditLevel::Standard,
@@ -536,12 +537,12 @@ impl InMemoryAuthProvider {
         permissions: Vec<String>,
     ) -> Result<()> {
         if self.users.contains_key(&username) {
-            return Err(SongbirdError::Auth {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: format!("User {} already exists", username),
                 user: Some("InMemoryAuthProvider".to_string()),
                 provider: Some("InMemoryAuthProvider".to_string()),
                 suggestion: Some("Use a different username".to_string()),
-            });
+            })));
         }
 
         // Validate password against policy
@@ -564,48 +565,48 @@ impl InMemoryAuthProvider {
         let policy = &self.config.password_policy;
 
         if password.len() < policy.min_length as usize {
-            return Err(SongbirdError::Auth {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: format!("Password must be at least {} characters", policy.min_length),
                 user: Some("InMemoryAuthProvider".to_string()),
                 provider: Some("InMemoryAuthProvider".to_string()),
                 suggestion: Some("Use a longer password".to_string()),
-            });
+            })));
         }
 
         if policy.require_uppercase && !password.chars().any(|c| c.is_uppercase()) {
-            return Err(SongbirdError::Auth {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "Password must contain at least one uppercase letter".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
                 provider: Some("InMemoryAuthProvider".to_string()),
                 suggestion: Some("Add an uppercase letter to your password".to_string()),
-            });
+            })));
         }
 
         if policy.require_lowercase && !password.chars().any(|c| c.is_lowercase()) {
-            return Err(SongbirdError::Auth {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "Password must contain at least one lowercase letter".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
                 provider: Some("InMemoryAuthProvider".to_string()),
                 suggestion: Some("Add a lowercase letter to your password".to_string()),
-            });
+            })));
         }
 
         if policy.require_numbers && !password.chars().any(|c| c.is_numeric()) {
-            return Err(SongbirdError::Auth {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "Password must contain at least one number".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
                 provider: Some("InMemoryAuthProvider".to_string()),
                 suggestion: Some("Add a number to your password".to_string()),
-            });
+            })));
         }
 
         if policy.require_special_chars && !password.chars().any(|c| !c.is_alphanumeric()) {
-            return Err(SongbirdError::Auth {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "Password must contain at least one special character".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
                 provider: Some("InMemoryAuthProvider".to_string()),
                 suggestion: Some("Add a special character to your password".to_string()),
-            });
+            })));
         }
 
         Ok(())
@@ -637,42 +638,42 @@ impl AuthenticationProvider for InMemoryAuthProvider {
                 );
                 Ok(token)
             } else {
-                Err(SongbirdError::Auth {
+                Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                     message: "Invalid credentials".to_string(),
                     user: Some("InMemoryAuthProvider".to_string()),
                     provider: Some("InMemoryAuthProvider".to_string()),
                     suggestion: Some("Check your username and password".to_string()),
-                })
+                })))
             }
         } else {
-            Err(SongbirdError::Auth {
+            Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "User not found".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
                 provider: Some("InMemoryAuthProvider".to_string()),
                 suggestion: Some("Check your username or register a new account".to_string()),
-            })
+            })))
         }
     }
 
     async fn validate_token(&self, token: &str) -> Result<AuthToken> {
         if let Some(auth_token) = self.tokens.get(token) {
             if auth_token.is_expired() {
-                Err(SongbirdError::Auth {
+                Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                     message: "Token expired".to_string(),
                     user: Some("InMemoryAuthProvider".to_string()),
                     provider: Some("InMemoryAuthProvider".to_string()),
                     suggestion: Some("Please re-authenticate to get a new token".to_string()),
-                })
+                })))
             } else {
                 Ok(auth_token.clone())
             }
         } else {
-            Err(SongbirdError::Auth {
+            Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "Invalid token".to_string(),
                 user: Some("InMemoryAuthProvider".to_string()),
                 provider: Some("InMemoryAuthProvider".to_string()),
                 suggestion: Some("Please provide a valid authentication token".to_string()),
-            })
+            })))
         }
     }
 
@@ -788,12 +789,12 @@ impl SecurityManager {
     /// Authenticate user
     pub async fn authenticate(&self, username: &str, password: &str) -> Result<AuthToken> {
         if !self.config.authentication_enabled {
-            return Err(SongbirdError::Auth {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "Authentication is disabled".to_string(),
                 user: Some("SecurityManager".to_string()),
                 provider: Some("SecurityManager".to_string()),
                 suggestion: Some("Enable authentication in configuration".to_string()),
-            });
+            })));
         }
 
         self.auth_user.authenticate(username, password).await
@@ -810,15 +811,17 @@ impl SecurityManager {
         if !self.config.authorization_enabled {
             tracing::error!("SECURITY CRITICAL: Authorization disabled - this should only be used in development!");
             if std::env::var("SONGBIRD_ENV").unwrap_or_default() != "development" {
-                return Err(SongbirdError::Network {
-                    service: Some("security".to_string()),
-                    message: "Authorization cannot be disabled in production".to_string(),
-                    details: None,
-                    endpoint: Some("security/authorize".to_string()),
-                    suggestion: Some(
-                        "Enable authorization in production configuration".to_string(),
-                    ),
-                });
+                return Err(songbird_errors::SongbirdError::Network(Box::new(
+                    NetworkError {
+                        service: Some("security".to_string()),
+                        message: "Authorization cannot be disabled in production".to_string(),
+                        details: None,
+                        endpoint: Some("security/authorize".to_string()),
+                        suggestion: Some(
+                            "Enable authorization in production configuration".to_string(),
+                        ),
+                    },
+                )));
             }
             return Ok(false); // Explicit deny in production
         }
@@ -1046,7 +1049,7 @@ mod tests {
             .unwrap();
 
         // Authenticate and get token
-        let token = auth_provider
+        let _token = auth_provider
             .authenticate("testuser", "SecurePass123!")
             .await
             .unwrap();

@@ -2,8 +2,9 @@
 //!
 //! Tests to identify performance bottlenecks and optimize critical paths
 
-use songbird_lib::errors::Result;
-use songbird_lib::production_benchmarks::*;
+use songbird_errors::Result;
+use songbird_core::production_benchmarks::*;
+use songbird_core::production_benchmarks::{BenchmarkConfig, ProductionBenchmarkRunner as BenchmarkRunner, quick_production_check};
 use std::time::Duration;
 use tokio;
 
@@ -27,20 +28,20 @@ async fn test_run_full_benchmark_suite() -> Result<()> {
 
     println!("📊 Benchmark Results:");
     println!(
-        "  Load Balancer Performance: {:.2}ms avg",
-        results.load_balancer_avg_latency_ms
+        "  Load Balancer Performance: {:.2}ns avg",
+        results.load_balancer_results.average_selection_time_ns
     );
     println!(
-        "  Cache Performance: {:.2}ms avg",
-        results.cache_avg_latency_ms
+        "  Cache Performance: {:.2}ns avg",
+        results.cache_results.average_access_time_ns
     );
     println!(
-        "  Memory Optimizer: {:.2}ms avg",
-        results.memory_optimizer_avg_latency_ms
+        "  Memory Optimizer: {:.2}% reduction",
+        results.memory_results.memory_reduction_percentage
     );
     println!(
-        "  Batch Processing: {:.2}ms avg",
-        results.batch_processing_avg_latency_ms
+        "  Batch Processing: {:.2}ms latency",
+        results.batch_processing_results.latency_overhead_ms
     );
 
     // Export results to JSON
@@ -86,19 +87,19 @@ async fn test_performance_bottleneck_identification() -> Result<()> {
     // Identify bottlenecks
     let mut bottlenecks = Vec::new();
 
-    if results.load_balancer_avg_latency_ms > 100.0 {
+    if results.load_balancer_results.average_selection_time_ns > 100000 {
         bottlenecks.push("Load Balancer: High latency detected");
     }
 
-    if results.cache_avg_latency_ms > 50.0 {
+    if results.cache_results.average_access_time_ns > 50000 {
         bottlenecks.push("Cache: High latency detected");
     }
 
-    if results.memory_optimizer_avg_latency_ms > 200.0 {
-        bottlenecks.push("Memory Optimizer: High latency detected");
+    if results.memory_results.memory_reduction_percentage < 10.0 {
+        bottlenecks.push("Memory Optimizer: Low optimization detected");
     }
 
-    if results.batch_processing_avg_latency_ms > 150.0 {
+    if results.batch_processing_results.latency_overhead_ms > 150.0 {
         bottlenecks.push("Batch Processing: High latency detected");
     }
 

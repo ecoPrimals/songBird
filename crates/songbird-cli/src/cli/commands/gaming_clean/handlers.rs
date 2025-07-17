@@ -6,7 +6,7 @@
 /// - Excellent error handling
 /// - Well-documented functions
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{Result, SongbirdError, GamingError};
 use songbird_network::network::gaming::{GamingManager, GameProtocolClass};
 use colored::Colorize;
 use std::time::Duration;
@@ -88,10 +88,10 @@ pub async fn handle_join(code: String) -> Result<()> {
         println!("📍 Host: {}", session.host_address);
         println!("👥 Players: {}/{}", session.current_players.len(), session.max_players);
     } else {
-        return Err(SongbirdError::Gaming {
+        return Err(songbird_errors::SongbirdError::Gaming(Box::new(GamingError {
             message: format!("Session not found: {code}"),
             protocol: None,
-        });
+        })));
     }
 
     Ok(())

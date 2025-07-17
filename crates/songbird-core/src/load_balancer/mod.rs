@@ -3,6 +3,7 @@
 //! Provides load balancing functionality for service requests
 
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -40,11 +41,9 @@ pub enum LoadBalancerStrategy {
     IpHash,
     HealthBased,
     LatencyOptimized,
-    ResourceAware,
-    GpuAware,
 }
 
-/// Service instance information with enhanced metrics
+/// Service instance information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceInstance {
     pub id: String,
@@ -52,34 +51,14 @@ pub struct ServiceInstance {
     pub port: u16,
     pub weight: u32,
     pub healthy: bool,
-    pub health_score: f64,             // 0.0 to 1.0, 1.0 being healthiest
-    pub avg_response_time: f64,        // milliseconds
-    pub cpu_usage: f64,                // percentage 0.0 to 100.0
-    pub memory_usage: f64,             // percentage 0.0 to 100.0
-    pub gpu_usage: Option<f64>,        // percentage 0.0 to 100.0, None if no GPU
-    pub gpu_memory_usage: Option<f64>, // percentage 0.0 to 100.0
+    pub health_score: f64,
+    pub avg_response_time: f64,
+    pub cpu_usage: f64,
+    pub memory_usage: f64,
+    pub gpu_usage: Option<f64>,
+    pub gpu_memory_usage: Option<f64>,
     pub active_connections: u32,
     pub last_updated: chrono::DateTime<chrono::Utc>,
-}
-
-impl Default for ServiceInstance {
-    fn default() -> Self {
-        Self {
-            id: String::new(),
-            address: String::new(),
-            port: 0,
-            weight: 1,
-            healthy: true,
-            health_score: 1.0,
-            avg_response_time: 0.0,
-            cpu_usage: 0.0,
-            memory_usage: 0.0,
-            gpu_usage: None,
-            gpu_memory_usage: None,
-            active_connections: 0,
-            last_updated: chrono::Utc::now(),
-        }
-    }
 }
 
 /// Load balancer statistics
@@ -158,23 +137,26 @@ impl LoadBalancer for RoundRobinLoadBalancer {
         let index = *current_index % healthy_instances.len();
         *current_index = (*current_index + 1) % healthy_instances.len();
 
+        // Use reference instead of cloning
         Some(healthy_instances[index].clone())
     }
 
     async fn record_request(&self, _instance_id: &str, success: bool, response_time: f64) {
         let mut stats = self.stats.write().await;
         stats.total_requests += 1;
-
         if success {
             stats.successful_requests += 1;
-            // Only update average response time for successful requests
-            let total_successful = stats.successful_requests;
-            stats.average_response_time =
-                (stats.average_response_time * (total_successful - 1) as f64 + response_time)
-                    / total_successful as f64;
         } else {
             stats.failed_requests += 1;
         }
+        stats.average_response_time = if stats.total_requests > 1 {
+            (stats.average_response_time * (stats.total_requests - 1) as f64 + response_time)
+                / stats.total_requests as f64
+        } else {
+            response_time
+        };
+
+        // Update last request time - removed since field doesn't exist
     }
 
     async fn get_stats(&self) -> LoadBalancerStats {
@@ -243,7 +225,7 @@ impl LoadBalancer for LeastConnectionsLoadBalancer {
         let selected_instance = healthy_instances
             .iter()
             .min_by_key(|instance| connection_counts.get(&instance.id).unwrap_or(&0))
-            .map(|&instance| instance.clone());
+            .map(|instance| (*instance).clone());
 
         selected_instance
     }
@@ -361,427 +343,6 @@ impl LoadBalancer for WeightedRoundRobinLoadBalancer {
     }
 }
 
-/// Health-based load balancer that prioritizes instances with better health scores
-pub struct HealthBasedLoadBalancer {
-    stats: Arc<RwLock<LoadBalancerStats>>,
-    health_threshold: f64, // Minimum health score to consider (0.0 to 1.0)
-}
-
-impl Default for HealthBasedLoadBalancer {
-    fn default() -> Self {
-        Self::new(0.5) // Default to 50% minimum health
-    }
-}
-
-impl HealthBasedLoadBalancer {
-    /// Create a new health-based load balancer
-    pub fn new(health_threshold: f64) -> Self {
-        Self {
-            stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
-            health_threshold: health_threshold.clamp(0.0, 1.0),
-        }
-    }
-}
-
-#[async_trait]
-impl LoadBalancer for HealthBasedLoadBalancer {
-    async fn select_instance(&self, instances: &[ServiceInstance]) -> Option<ServiceInstance> {
-        if instances.is_empty() {
-            return None;
-        }
-
-        // Filter healthy instances above threshold
-        let healthy_instances: Vec<&ServiceInstance> = instances
-            .iter()
-            .filter(|instance| instance.healthy && instance.health_score >= self.health_threshold)
-            .collect();
-
-        if healthy_instances.is_empty() {
-            // If no instances meet threshold, use the healthiest available
-            return instances
-                .iter()
-                .filter(|instance| instance.healthy)
-                .max_by(|a, b| {
-                    a.health_score
-                        .partial_cmp(&b.health_score)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                })
-                .cloned();
-        }
-
-        // Select the instance with the highest health score
-        healthy_instances
-            .iter()
-            .max_by(|a, b| {
-                a.health_score
-                    .partial_cmp(&b.health_score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .map(|&instance| instance.clone())
-    }
-
-    async fn record_request(&self, _instance_id: &str, success: bool, response_time: f64) {
-        let mut stats = self.stats.write().await;
-        stats.total_requests += 1;
-
-        if success {
-            stats.successful_requests += 1;
-            let total_successful = stats.successful_requests;
-            stats.average_response_time =
-                (stats.average_response_time * (total_successful - 1) as f64 + response_time)
-                    / total_successful as f64;
-        } else {
-            stats.failed_requests += 1;
-        }
-    }
-
-    async fn get_stats(&self) -> LoadBalancerStats {
-        self.stats.read().await.clone()
-    }
-}
-
-/// Latency-optimized load balancer that selects instances with lowest average response time
-pub struct LatencyOptimizedLoadBalancer {
-    stats: Arc<RwLock<LoadBalancerStats>>,
-    max_acceptable_latency: f64, // milliseconds
-}
-
-impl Default for LatencyOptimizedLoadBalancer {
-    fn default() -> Self {
-        Self::new(1000.0) // Default to 1 second max latency
-    }
-}
-
-impl LatencyOptimizedLoadBalancer {
-    /// Create a new latency-optimized load balancer
-    pub fn new(max_acceptable_latency: f64) -> Self {
-        Self {
-            stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
-            max_acceptable_latency,
-        }
-    }
-}
-
-#[async_trait]
-impl LoadBalancer for LatencyOptimizedLoadBalancer {
-    async fn select_instance(&self, instances: &[ServiceInstance]) -> Option<ServiceInstance> {
-        if instances.is_empty() {
-            return None;
-        }
-
-        // Filter healthy instances
-        let healthy_instances: Vec<&ServiceInstance> = instances
-            .iter()
-            .filter(|instance| instance.healthy)
-            .collect();
-
-        if healthy_instances.is_empty() {
-            return None;
-        }
-
-        // First, try to find instances with acceptable latency
-        let low_latency_instances: Vec<&ServiceInstance> = healthy_instances
-            .iter()
-            .filter(|instance| instance.avg_response_time <= self.max_acceptable_latency)
-            .copied()
-            .collect();
-
-        let candidates = if !low_latency_instances.is_empty() {
-            low_latency_instances
-        } else {
-            healthy_instances
-        };
-
-        // Select instance with lowest average response time
-        candidates
-            .iter()
-            .min_by(|a, b| {
-                a.avg_response_time
-                    .partial_cmp(&b.avg_response_time)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .map(|&instance| instance.clone())
-    }
-
-    async fn record_request(&self, _instance_id: &str, success: bool, response_time: f64) {
-        let mut stats = self.stats.write().await;
-        stats.total_requests += 1;
-
-        if success {
-            stats.successful_requests += 1;
-            let total_successful = stats.successful_requests;
-            stats.average_response_time =
-                (stats.average_response_time * (total_successful - 1) as f64 + response_time)
-                    / total_successful as f64;
-        } else {
-            stats.failed_requests += 1;
-        }
-    }
-
-    async fn get_stats(&self) -> LoadBalancerStats {
-        self.stats.read().await.clone()
-    }
-}
-
-/// Resource-aware load balancer that considers CPU and memory usage
-pub struct ResourceAwareLoadBalancer {
-    stats: Arc<RwLock<LoadBalancerStats>>,
-    cpu_weight: f64,           // Weight for CPU usage in scoring (0.0 to 1.0)
-    memory_weight: f64,        // Weight for memory usage in scoring (0.0 to 1.0)
-    max_cpu_threshold: f64,    // Maximum acceptable CPU usage percentage
-    max_memory_threshold: f64, // Maximum acceptable memory usage percentage
-}
-
-impl Default for ResourceAwareLoadBalancer {
-    fn default() -> Self {
-        Self::new(0.6, 0.4, 80.0, 85.0) // CPU weight=60%, Memory weight=40%, Max CPU=80%, Max Memory=85%
-    }
-}
-
-impl ResourceAwareLoadBalancer {
-    /// Create a new resource-aware load balancer
-    pub fn new(
-        cpu_weight: f64,
-        memory_weight: f64,
-        max_cpu_threshold: f64,
-        max_memory_threshold: f64,
-    ) -> Self {
-        let total_weight = cpu_weight + memory_weight;
-        let normalized_cpu_weight = if total_weight > 0.0 {
-            cpu_weight / total_weight
-        } else {
-            0.5
-        };
-        let normalized_memory_weight = if total_weight > 0.0 {
-            memory_weight / total_weight
-        } else {
-            0.5
-        };
-
-        Self {
-            stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
-            cpu_weight: normalized_cpu_weight,
-            memory_weight: normalized_memory_weight,
-            max_cpu_threshold: max_cpu_threshold.clamp(0.0, 100.0),
-            max_memory_threshold: max_memory_threshold.clamp(0.0, 100.0),
-        }
-    }
-
-    /// Calculate resource utilization score (lower is better)
-    fn calculate_resource_score(&self, instance: &ServiceInstance) -> f64 {
-        // Convert usage percentages to scores (0.0 = best, 1.0 = worst)
-        let cpu_score = instance.cpu_usage / 100.0;
-        let memory_score = instance.memory_usage / 100.0;
-
-        // Weighted combination
-        cpu_score * self.cpu_weight + memory_score * self.memory_weight
-    }
-}
-
-#[async_trait]
-impl LoadBalancer for ResourceAwareLoadBalancer {
-    async fn select_instance(&self, instances: &[ServiceInstance]) -> Option<ServiceInstance> {
-        if instances.is_empty() {
-            return None;
-        }
-
-        // Filter healthy instances
-        let healthy_instances: Vec<&ServiceInstance> = instances
-            .iter()
-            .filter(|instance| instance.healthy)
-            .collect();
-
-        if healthy_instances.is_empty() {
-            return None;
-        }
-
-        // Filter instances within resource thresholds
-        let low_resource_instances: Vec<&ServiceInstance> = healthy_instances
-            .iter()
-            .filter(|instance| {
-                instance.cpu_usage <= self.max_cpu_threshold
-                    && instance.memory_usage <= self.max_memory_threshold
-            })
-            .copied()
-            .collect();
-
-        let candidates = if !low_resource_instances.is_empty() {
-            low_resource_instances
-        } else {
-            healthy_instances
-        };
-
-        // Select instance with lowest resource utilization score
-        candidates
-            .iter()
-            .min_by(|a, b| {
-                let score_a = self.calculate_resource_score(a);
-                let score_b = self.calculate_resource_score(b);
-                score_a
-                    .partial_cmp(&score_b)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .map(|&instance| instance.clone())
-    }
-
-    async fn record_request(&self, _instance_id: &str, success: bool, response_time: f64) {
-        let mut stats = self.stats.write().await;
-        stats.total_requests += 1;
-
-        if success {
-            stats.successful_requests += 1;
-            let total_successful = stats.successful_requests;
-            stats.average_response_time =
-                (stats.average_response_time * (total_successful - 1) as f64 + response_time)
-                    / total_successful as f64;
-        } else {
-            stats.failed_requests += 1;
-        }
-    }
-
-    async fn get_stats(&self) -> LoadBalancerStats {
-        self.stats.read().await.clone()
-    }
-}
-
-/// GPU-aware load balancer for AI/ML workloads
-pub struct GpuAwareLoadBalancer {
-    stats: Arc<RwLock<LoadBalancerStats>>,
-    max_gpu_usage_threshold: f64, // Maximum acceptable GPU usage percentage
-    max_gpu_memory_threshold: f64, // Maximum acceptable GPU memory usage percentage
-    prefer_gpu_instances: bool,   // Whether to prefer instances with GPUs
-}
-
-impl Default for GpuAwareLoadBalancer {
-    fn default() -> Self {
-        Self::new(80.0, 85.0, true) // Max GPU usage=80%, Max GPU memory=85%, prefer GPU instances
-    }
-}
-
-impl GpuAwareLoadBalancer {
-    /// Create a new GPU-aware load balancer
-    pub fn new(
-        max_gpu_usage_threshold: f64,
-        max_gpu_memory_threshold: f64,
-        prefer_gpu_instances: bool,
-    ) -> Self {
-        Self {
-            stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
-            max_gpu_usage_threshold: max_gpu_usage_threshold.clamp(0.0, 100.0),
-            max_gpu_memory_threshold: max_gpu_memory_threshold.clamp(0.0, 100.0),
-            prefer_gpu_instances,
-        }
-    }
-
-    /// Calculate GPU utilization score (lower is better)
-    fn calculate_gpu_score(&self, instance: &ServiceInstance) -> f64 {
-        match (instance.gpu_usage, instance.gpu_memory_usage) {
-            (Some(gpu_usage), Some(gpu_memory)) => {
-                // Weighted combination of GPU usage and memory
-                (gpu_usage * 0.6 + gpu_memory * 0.4) / 100.0
-            }
-            (Some(gpu_usage), None) => gpu_usage / 100.0,
-            (None, Some(gpu_memory)) => gpu_memory / 100.0,
-            (None, None) => {
-                // No GPU - return high score if we prefer GPU instances
-                if self.prefer_gpu_instances {
-                    1.0
-                } else {
-                    0.0
-                }
-            }
-        }
-    }
-}
-
-#[async_trait]
-impl LoadBalancer for GpuAwareLoadBalancer {
-    async fn select_instance(&self, instances: &[ServiceInstance]) -> Option<ServiceInstance> {
-        if instances.is_empty() {
-            return None;
-        }
-
-        // Filter healthy instances
-        let healthy_instances: Vec<&ServiceInstance> = instances
-            .iter()
-            .filter(|instance| instance.healthy)
-            .collect();
-
-        if healthy_instances.is_empty() {
-            return None;
-        }
-
-        // If we prefer GPU instances, try to find them first
-        let candidates = if self.prefer_gpu_instances {
-            let gpu_instances: Vec<&ServiceInstance> = healthy_instances
-                .iter()
-                .filter(|instance| {
-                    instance.gpu_usage.is_some() || instance.gpu_memory_usage.is_some()
-                })
-                .copied()
-                .collect();
-
-            if !gpu_instances.is_empty() {
-                // Filter GPU instances within thresholds
-                let low_gpu_usage: Vec<&ServiceInstance> = gpu_instances
-                    .iter()
-                    .filter(|instance| {
-                        let gpu_usage_ok = instance
-                            .gpu_usage
-                            .is_none_or(|usage| usage <= self.max_gpu_usage_threshold);
-                        let gpu_memory_ok = instance
-                            .gpu_memory_usage
-                            .is_none_or(|usage| usage <= self.max_gpu_memory_threshold);
-                        gpu_usage_ok && gpu_memory_ok
-                    })
-                    .copied()
-                    .collect();
-
-                if !low_gpu_usage.is_empty() {
-                    low_gpu_usage
-                } else {
-                    gpu_instances
-                }
-            } else {
-                healthy_instances
-            }
-        } else {
-            healthy_instances
-        };
-
-        // Select instance with lowest GPU utilization score
-        candidates
-            .iter()
-            .min_by(|a, b| {
-                let score_a = self.calculate_gpu_score(a);
-                let score_b = self.calculate_gpu_score(b);
-                score_a
-                    .partial_cmp(&score_b)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .map(|&instance| instance.clone())
-    }
-
-    async fn record_request(&self, _instance_id: &str, success: bool, response_time: f64) {
-        let mut stats = self.stats.write().await;
-        stats.total_requests += 1;
-
-        if success {
-            stats.successful_requests += 1;
-            let total_successful = stats.successful_requests;
-            stats.average_response_time =
-                (stats.average_response_time * (total_successful - 1) as f64 + response_time)
-                    / total_successful as f64;
-        } else {
-            stats.failed_requests += 1;
-        }
-    }
-
-    async fn get_stats(&self) -> LoadBalancerStats {
-        self.stats.read().await.clone()
-    }
-}
-
 /// Load balancer manager
 pub struct LoadBalancerManager {
     load_balancer: Box<dyn LoadBalancer>,
@@ -800,14 +361,8 @@ impl LoadBalancerManager {
             }
             LoadBalancerStrategy::Random => Box::new(RoundRobinLoadBalancer::new()), // Fallback
             LoadBalancerStrategy::IpHash => Box::new(RoundRobinLoadBalancer::new()), // Fallback
-            LoadBalancerStrategy::HealthBased => Box::new(HealthBasedLoadBalancer::new(0.5)), // Default health threshold
-            LoadBalancerStrategy::LatencyOptimized => {
-                Box::new(LatencyOptimizedLoadBalancer::new(1000.0))
-            } // Default max latency
-            LoadBalancerStrategy::ResourceAware => {
-                Box::new(ResourceAwareLoadBalancer::new(0.6, 0.4, 80.0, 85.0))
-            } // Default weights and thresholds
-            LoadBalancerStrategy::GpuAware => Box::new(GpuAwareLoadBalancer::new(80.0, 85.0, true)), // Default weights and thresholds
+            LoadBalancerStrategy::HealthBased => Box::new(RoundRobinLoadBalancer::new()), // Fallback
+            LoadBalancerStrategy::LatencyOptimized => Box::new(RoundRobinLoadBalancer::new()), // Fallback
         };
 
         Self {
@@ -824,12 +379,10 @@ impl LoadBalancerManager {
         // Check if instance already exists
         if instances.iter().any(|i| i.id == instance.id) {
             return Err(SongbirdError::Config {
-                field: Some("instance_id".to_string()),
-                message: format!("Instance with ID {} already exists", instance.id),
-                context: Some("load_balancer_add_instance".to_string()),
-                suggestion: Some(
-                    "Use a unique instance ID or update the existing instance".to_string(),
-                ),
+                message: "Invalid instance configuration".to_string(),
+                field: Some("instance_config".to_string()),
+                context: Some("load_balancer".to_string()),
+                suggestion: Some("Check instance configuration parameters".to_string()),
             });
         }
 
@@ -845,10 +398,10 @@ impl LoadBalancerManager {
 
         if instances.len() == initial_len {
             return Err(SongbirdError::Config {
+                message: "Failed to remove instance from load balancer".to_string(),
                 field: Some("instance_id".to_string()),
-                message: format!("Instance with ID {instance_id} not found"),
-                context: Some("load_balancer_remove_instance".to_string()),
-                suggestion: Some("Verify the instance ID exists in the load balancer".to_string()),
+                context: Some("load_balancer".to_string()),
+                suggestion: Some("Check instance ID and try again".to_string()),
             });
         }
 
@@ -864,13 +417,10 @@ impl LoadBalancerManager {
             Ok(())
         } else {
             Err(SongbirdError::Config {
+                message: "Failed to remove instance from load balancer".to_string(),
                 field: Some("instance_id".to_string()),
-                message: format!("Instance with ID {instance_id} not found"),
-                context: Some("load_balancer_update_health".to_string()),
-                suggestion: Some(
-                    "Check if the instance ID is correct and exists in the load balancer"
-                        .to_string(),
-                ),
+                context: Some("load_balancer".to_string()),
+                suggestion: Some("Check instance ID and try again".to_string()),
             })
         }
     }
@@ -916,7 +466,7 @@ mod tests {
 
     fn create_test_instances() -> Vec<ServiceInstance> {
         // Create test backend servers with environment configuration - NO MORE HARDCODING!
-        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
+        let env_config = songbird_config::environment::EnvironmentConfig::default();
 
         let mut backends = Vec::new();
 
@@ -1016,7 +566,7 @@ mod tests {
         let manager = LoadBalancerManager::new(config);
 
         // Add instances with environment configuration - NO MORE HARDCODING!
-        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
+        let env_config = songbird_config::environment::EnvironmentConfig::default();
         let instance1 = ServiceInstance {
             id: "test1".to_string(),
             address: env_config.bind_address.clone(),
@@ -1100,7 +650,7 @@ mod tests {
 
     #[test]
     fn test_service_instance_creation() {
-        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
+        let env_config = songbird_config::environment::EnvironmentConfig::default();
         let instance = ServiceInstance {
             id: "test".to_string(),
             address: env_config.bind_address.clone(),
@@ -1137,4 +687,4 @@ pub struct BackendServer {
     pub total_requests: u64,
 }
 
-use songbird_observability::observability::HealthStatus;
+use songbird_observability::HealthStatus;

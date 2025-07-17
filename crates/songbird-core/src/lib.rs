@@ -72,10 +72,17 @@
 
 #![allow(dead_code)]
 
+// pub mod api; // Temporarily commented out due to missing axum dependency
 pub mod benchmarks;
+pub mod biome;
+pub mod biomeos_integration;
 pub mod load_balancer;
 pub mod orchestrator;
+pub mod performance_optimizer;
+pub mod production_benchmarks;
 pub mod registry;
 pub mod robustness;
 pub mod scalability;
+pub mod substrate;
+pub mod traits;
 pub mod zero_touch;

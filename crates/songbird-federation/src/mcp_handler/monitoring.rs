@@ -13,7 +13,7 @@ use tracing::{debug, warn};
 
 use crate::config::FederationConfig;
 use songbird_config::constants;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{NetworkError, Result, SongbirdError};
 use sysinfo::{CpuExt, DiskExt, System, SystemExt};
 
 #[derive(Debug)]
@@ -673,12 +673,16 @@ impl MonitoringManager {
             .timeout(std::time::Duration::from_secs(5))
             .send()
             .await
-            .map_err(|e| SongbirdError::Network {
-                service: Some("federation".to_string()),
-                message: format!("Failed to send message to {}: {}", endpoint, e),
-                details: None,
-                endpoint: Some("federation/messages".to_string()),
-                suggestion: Some("Check network connectivity and federation endpoint".to_string()),
+            .map_err(|e| {
+                songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("federation".to_string()),
+                    message: format!("Failed to send message to {}: {}", endpoint, e),
+                    details: None,
+                    endpoint: Some("federation/messages".to_string()),
+                    suggestion: Some(
+                        "Check network connectivity and federation endpoint".to_string(),
+                    ),
+                }))
             })?;
 
         if response.status().is_success() {

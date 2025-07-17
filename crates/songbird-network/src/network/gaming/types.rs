@@ -285,6 +285,10 @@ pub enum VirtualNetwork {
         host_address: SocketAddr,
         players: HashMap<String, SocketAddr>,
     },
+    NetBIOS {
+        workgroup: String,
+        computer_names: HashMap<String, SocketAddr>,
+    },
 }
 
 /// IPX address structure

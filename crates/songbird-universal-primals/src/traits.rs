@@ -52,7 +52,7 @@ pub trait PrimalProvider: Send + Sync {
 }
 
 /// Context for user/device-specific primal routing
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct PrimalContext {
     /// User identifier
     pub user_id: String,

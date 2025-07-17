@@ -1,15 +1,17 @@
-use songbird_lib::biome::{
+use songbird_core::biome::{
     BiomeMetadata, ByobCoordinator, ByobDeploymentRequest, OrchestratorConfig, ServiceSpec,
     SongbirdBiomeManifest, TeamResourceQuota,
 };
 // Note: ServiceDiscovery trait is used from traits module
-use songbird_lib::discovery::{SongbirdDiscovery, SongbirdDiscoveryConfig};
-use songbird_lib::registry::{DynamicPluginRegistry, ServiceRegistry};
+use songbird_discovery::discovery::config::SongbirdDiscoveryConfig;
+use songbird_discovery::discovery::SongbirdDiscovery;
+use songbird_registry::service::ServiceRegistry;
 // Note: PluginRegistry trait is imported from traits module
-use songbird_errors::SongbirdError;
-use songbird_lib::traits::ServiceDiscovery;
-use songbird_lib::traits::{PluginCapability, PluginRequirement};
-use songbird_registry::plugin::PluginRegistry;
+
+use songbird_discovery::traits::ServiceDiscovery;
+use songbird_discovery::traits::{PluginCapability, PluginRequirement};
+use songbird_registry::plugin::DynamicPluginRegistry;
+use songbird_registry::PluginRegistry;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::info;
@@ -143,7 +145,7 @@ async fn demo_byob_deployment() -> Result<(), Box<dyn std::error::Error>> {
                 ServiceSpec {
                     endpoint: Some("http://localhost:3000".to_string()),
                     depends_on: vec!["api-backend".to_string()],
-                    health_check: Some(songbird_lib::biome::HealthCheckSpec {
+                    health_check: Some(songbird_core::biome::HealthCheckSpec {
                         endpoint: "/health".to_string(),
                         interval_secs: 30,
                         timeout_secs: 5,
@@ -158,7 +160,7 @@ async fn demo_byob_deployment() -> Result<(), Box<dyn std::error::Error>> {
                 ServiceSpec {
                     endpoint: Some("http://localhost:8080".to_string()),
                     depends_on: vec!["database".to_string()],
-                    health_check: Some(songbird_lib::biome::HealthCheckSpec {
+                    health_check: Some(songbird_core::biome::HealthCheckSpec {
                         endpoint: "/api/health".to_string(),
                         interval_secs: 30,
                         timeout_secs: 5,
@@ -173,7 +175,7 @@ async fn demo_byob_deployment() -> Result<(), Box<dyn std::error::Error>> {
                 ServiceSpec {
                     endpoint: Some("postgresql://localhost:5432/demo".to_string()),
                     depends_on: vec![],
-                    health_check: Some(songbird_lib::biome::HealthCheckSpec {
+                    health_check: Some(songbird_core::biome::HealthCheckSpec {
                         endpoint: "/".to_string(),
                         interval_secs: 60,
                         timeout_secs: 10,

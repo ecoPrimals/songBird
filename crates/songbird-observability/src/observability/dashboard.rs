@@ -118,7 +118,7 @@ impl SimpleDashboard {
             .status(StatusCode::OK)
             .header("content-type", "text/html")
             .body(Full::new(Bytes::from(html)))
-            .expect("Dashboard operation should succeed"))
+            .expect("Failed to build HTTP response for dashboard"))
     }
 
     /// Serve metrics API
@@ -134,7 +134,7 @@ impl SimpleDashboard {
             .status(StatusCode::OK)
             .header("content-type", "application/json")
             .body(Full::new(Bytes::from(metrics.to_string())))
-            .expect("Dashboard operation should succeed"))
+            .expect("Failed to build HTTP response for metrics"))
     }
 
     /// Serve health API
@@ -149,7 +149,7 @@ impl SimpleDashboard {
             .status(StatusCode::OK)
             .header("content-type", "application/json")
             .body(Full::new(Bytes::from(health.to_string())))
-            .expect("Dashboard operation should succeed"))
+            .expect("Failed to build HTTP response for health"))
     }
 
     /// Serve status API
@@ -164,7 +164,7 @@ impl SimpleDashboard {
             .status(StatusCode::OK)
             .header("content-type", "application/json")
             .body(Full::new(Bytes::from(status.to_string())))
-            .expect("Dashboard operation should succeed"))
+            .expect("Failed to build HTTP response for status"))
     }
 
     /// Serve 404 response
@@ -172,7 +172,7 @@ impl SimpleDashboard {
         Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from("Not Found")))
-            .expect("Dashboard operation should succeed"))
+            .expect("Failed to build 404 HTTP response"))
     }
 }
 

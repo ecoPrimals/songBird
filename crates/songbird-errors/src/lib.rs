@@ -24,7 +24,7 @@
 //! ## Usage
 //!
 //! ```rust,no_run
-//! use songbird_errors::{SongbirdError, Result, ValidationError};
+//! use songbird_errors::{SongbirdError, Result, ValidationError, ServiceError, DiscoveryError};
 //!
 //! fn example_function() -> Result<String> {
 //!     // Function that might fail
@@ -146,12 +146,12 @@ pub fn discovery_error(
     timeout: Option<u64>,
     suggestion: Option<&str>,
 ) -> SongbirdError {
-    SongbirdError::Discovery {
+    SongbirdError::Discovery(Box::new(DiscoveryError {
         message: message.to_string(),
         service: service.map(|s| s.to_string()),
         timeout,
         suggestion: suggestion.map(|s| s.to_string()),
-    }
+    }))
 }
 
 /// Helper function to create simple discovery errors
@@ -171,12 +171,12 @@ pub fn service_error(
     status: Option<&str>,
     suggestion: Option<&str>,
 ) -> SongbirdError {
-    SongbirdError::Service {
+    SongbirdError::Service(Box::new(ServiceError {
         service: service.to_string(),
         message: message.to_string(),
         status: status.map(|s| s.to_string()),
         suggestion: suggestion.map(|s| s.to_string()),
-    }
+    }))
 }
 
 /// Helper function to create load balancer errors

@@ -4,7 +4,7 @@
 //! optimizations, including request batching, metrics tracking, string building
 //! optimizations, and performance measurement capabilities.
 
-use songbird_lib::communication::performance_optimizer::*;
+use songbird_network::communication::performance_optimizer::*;
 use std::time::Duration;
 
 /// Test helper to create performance config with custom settings

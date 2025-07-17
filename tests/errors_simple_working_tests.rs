@@ -2,7 +2,7 @@
 //!
 //! This test suite covers basic error types using the actual SongbirdError structure.
 
-use songbird_lib::errors::{Result, SongbirdError};
+use songbird_errors::{Result, SongbirdError, CircuitBreakerError, RetryError, DiscoveryError, NetworkError, GamingError, ValidationError};
 
 #[tokio::test]
 async fn test_error_creation_and_display() -> Result<()> {
@@ -12,62 +12,83 @@ async fn test_error_creation_and_display() -> Result<()> {
     assert!(error_msg.contains("Connection failed"));
 
     // Test circuit breaker errors
-    let open_error = SongbirdError::CircuitBreakerOpen {
+    let open_error = SongbirdError::CircuitBreakerOpen(Box::new(CircuitBreakerError {
+        service: "test-service".to_string(),
         message: "Circuit breaker is open for test-service".to_string(),
-    };
+        failure_count: Some(5),
+        suggestion: Some("Check service health and restart if needed".to_string()),
+    }));
 
     let failure_error = SongbirdError::CircuitBreakerFailure {
+        service: "test-service".to_string(),
         message: "Circuit breaker failed for test-service".to_string(),
+        suggestion: Some("Check service health and restart if needed".to_string()),
     };
 
     // Test retry exhausted error
-    let retry_error = SongbirdError::RetryExhausted {
+    let retry_error = SongbirdError::RetryExhausted(Box::new(RetryError {
         attempts: 3,
-        last_error: "Connection failed".to_string(),
-    };
+        message: "Connection failed".to_string(),
+        duration: Some("30s".to_string()),
+        suggestion: Some("Check network connectivity and retry strategy".to_string()),
+    }));
 
     // Test discovery error
-    let discovery_error = SongbirdError::Discovery {
+    let discovery_error = SongbirdError::Discovery(Box::new(DiscoveryError {
         message: "Service not found".to_string(),
         service: Some("test-service".to_string()),
-    };
+        timeout: Some(30),
+        suggestion: Some("Check service configuration and network connectivity".to_string()),
+    }));
 
     // Test network error
-    let network_error = SongbirdError::Network {
-        service: "test-service".to_string(),
+    let network_error = SongbirdError::Network(Box::new(NetworkError {
+        service: Some("test-service".to_string()),
         message: "Connection timeout".to_string(),
         details: Some("Host unreachable".to_string()),
-    };
+        endpoint: Some("192.168.1.100:8080".to_string()),
+        suggestion: Some("Check network connectivity and endpoint configuration".to_string()),
+    }));
 
-    // Test configuration error
-    let config_error = SongbirdError::Network {
-        service: "test-service".to_string(),
+    // Test second network error
+    let config_error = SongbirdError::Network(Box::new(NetworkError {
+        service: Some("test-service".to_string()),
         message: "Service unavailable".to_string(),
         details: Some("Under maintenance".to_string()),
-    };
+        endpoint: Some("api.example.com:443".to_string()),
+        suggestion: Some("Check service status and try again later".to_string()),
+    }));
 
     // Test gaming error
-    let gaming_error = SongbirdError::Gaming {
+    let gaming_error = SongbirdError::Gaming(Box::new(GamingError {
         message: "Protocol mismatch".to_string(),
         protocol: Some("UDP".to_string()),
-    };
+        game: Some("Counter-Strike".to_string()),
+        suggestion: Some("Check protocol compatibility and game settings".to_string()),
+    }));
 
     // Test validation error
-    let validation_error = SongbirdError::Validation {
+    let validation_error = SongbirdError::Validation(Box::new(ValidationError {
         field: "username".to_string(),
         message: "Too short".to_string(),
-    };
+        value: Some("ab".to_string()),
+        expected: Some("minimum 3 characters".to_string()),
+        suggestion: Some("Use a username with at least 3 characters".to_string()),
+    }));
 
     // Test security error
     let security_error = SongbirdError::Security {
         message: "Access denied".to_string(),
         context: Some("admin".to_string()),
+        severity: Some("high".to_string()),
+        suggestion: Some("Review security configuration and apply recommended fixes".to_string()),
     };
 
     // Test authentication error
     let auth_error = SongbirdError::Authentication {
         provider: "oauth".to_string(),
         message: "Invalid token".to_string(),
+        suggestion: Some("Check token validity and refresh if needed".to_string()),
     };
 
     // Test that all errors display properly
@@ -112,7 +133,7 @@ async fn test_error_constructors() -> Result<()> {
     assert!(service_error.to_string().contains("test-service"));
     assert!(service_error.to_string().contains("Test failed"));
 
-    let health_error = SongbirdError::health_check_failed("db-service", "Timeout".to_string());
+    let health_error = SongbirdError::health_check_failed("db-service", "Timeout");
     assert!(health_error.to_string().contains("db-service"));
     assert!(health_error.to_string().contains("Health check failed"));
 
@@ -125,32 +146,40 @@ async fn test_error_constructors() -> Result<()> {
 #[tokio::test]
 async fn test_error_fields() -> Result<()> {
     // Test errors with optional fields
-    let discovery_with_service = SongbirdError::Discovery {
+    let discovery_with_service = SongbirdError::Discovery(Box::new(DiscoveryError {
         message: "Not found".to_string(),
         service: Some("api".to_string()),
-    };
+        timeout: None,
+        suggestion: None,
+    }));
     assert!(discovery_with_service.to_string().contains("api"));
 
-    let discovery_without_service = SongbirdError::Discovery {
+    let discovery_without_service = SongbirdError::Discovery(Box::new(DiscoveryError {
         message: "Not found".to_string(),
         service: None,
-    };
+        timeout: None,
+        suggestion: None,
+    }));
     assert!(discovery_without_service.to_string().contains("Not found"));
 
-    let network_with_details = SongbirdError::Network {
+    let network_with_details = SongbirdError::Network(Box::new(NetworkError {
         service: Some("web".to_string()),
         message: "Failed".to_string(),
         details: Some("Connection refused".to_string()),
-    };
+        endpoint: None,
+        suggestion: None,
+    }));
     assert!(network_with_details
         .to_string()
         .contains("Connection refused"));
 
-    let network_without_details = SongbirdError::Network {
+    let network_without_details = SongbirdError::Network(Box::new(NetworkError {
         service: Some("web".to_string()),
         message: "Failed".to_string(),
         details: None,
-    };
+        endpoint: None,
+        suggestion: None,
+    }));
     assert!(!network_without_details
         .to_string()
         .contains("Connection refused"));

@@ -8,7 +8,7 @@ use super::privilege_manager::{
 };
 use super::types::{DetectedGameSession, GameProtocolClass, PacketPattern};
 use pnet::datalink::{self, NetworkInterface};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{NetworkError, Result, SongbirdError};
 // Removed unused packet parsing imports - focusing on gaming protocol detection
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -442,13 +442,13 @@ impl RealProtocolDetector {
             }
         }
 
-        Err(SongbirdError::Network {
+        Err(SongbirdError::Network(Box::new(NetworkError {
             service: Some("Protocol Detector".to_string()),
             details: Some("No suitable network interface found".to_string()),
             message: "No suitable network interface found".to_string(),
             endpoint: None,
             suggestion: Some("Check network connectivity and configuration".to_string()),
-        })
+        })))
     }
 
     /// Get network interface by name
@@ -461,13 +461,13 @@ impl RealProtocolDetector {
             }
         }
 
-        Err(SongbirdError::Network {
+        Err(SongbirdError::Network(Box::new(NetworkError {
             service: Some("Protocol Detector".to_string()),
             details: Some("No suitable network interface found".to_string()),
             message: "No suitable network interface found".to_string(),
             endpoint: None,
             suggestion: Some("Check network connectivity and configuration".to_string()),
-        })
+        })))
     }
 
     /// Clone detector for packet capture task
@@ -578,12 +578,16 @@ impl RealProtocolDetectorCapture {
             let interface = datalink::interfaces()
                 .into_iter()
                 .find(|iface| iface.is_up() && !iface.is_loopback())
-                .ok_or_else(|| SongbirdError::Network {
-                    service: Some("Protocol Detector".to_string()),
-                    details: Some("No suitable network interface found".to_string()),
-                    message: "No suitable network interface found".to_string(),
-                    endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                .ok_or_else(|| {
+                    SongbirdError::Network(Box::new(NetworkError {
+                        service: Some("Protocol Detector".to_string()),
+                        details: Some("No suitable network interface found".to_string()),
+                        message: "No suitable network interface found".to_string(),
+                        endpoint: None,
+                        suggestion: Some(
+                            "Check network connectivity and configuration".to_string(),
+                        ),
+                    }))
                 })?;
 
             // Create a channel to receive on

@@ -3,8 +3,8 @@
 //! Comprehensive tests for the gaming network functionality
 //! Focuses on protocol detection, packet processing, and bridge management
 
-use songbird_lib::config::SongbirdConfig;
-use songbird_lib::errors::{Result, SongbirdError};
+use songbird_config::SongbirdConfig;
+use songbird_errors::{Result, SongbirdError};
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -254,7 +254,7 @@ mod gaming_network_tests {
             "Translation latency should be measured"
         );
         assert!(
-            // Packet throughput should be collected
+            metrics.packet_throughput_pps > 0,
             "Packet throughput should be measured"
         );
 
@@ -271,7 +271,7 @@ mod gaming_network_tests {
             "Baseline latency should be measured"
         );
         assert!(
-            // Throughput results should be available
+            results.max_throughput_pps > 0,
             "Max throughput should be measured"
         );
     }
@@ -557,11 +557,13 @@ impl RealProtocolDetector {
                 }),
             }
         } else {
-            Err(SongbirdError::Network {
-                service: "protocol_detector".to_string(),
+            Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("protocol_detector".to_string()),
                 message: "Packet too small".to_string(),
                 details: Some("Minimum 4 bytes required".to_string()),
-            })
+                endpoint: None,
+                suggestion: None,
+            })))
         }
     }
 
@@ -577,10 +579,12 @@ impl RealProtocolDetector {
                 is_open: true,
             })
         } else {
-            Err(SongbirdError::Gaming {
+            Err(SongbirdError::Gaming(Box::new(GamingError {
                 message: "Invalid session packet".to_string(),
                 protocol: Some("Not a valid game session packet".to_string()),
-            })
+                game: None,
+                suggestion: None,
+            })))
         }
     }
 }
@@ -609,27 +613,33 @@ impl RealBridgeManager {
     pub async fn create_bridge(&mut self, config: BridgeConfig) -> Result<String> {
         // Validate configuration
         if config.buffer_size == 0 {
-            return Err(SongbirdError::Network {
-                service: "bridge_manager".to_string(),
+            return Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("bridge_manager".to_string()),
                 message: "Invalid buffer size".to_string(),
                 details: Some("Buffer size must be greater than 0".to_string()),
-            });
+                endpoint: None,
+                suggestion: None,
+            })));
         }
 
         if config.timeout.as_secs() == 0 {
-            return Err(SongbirdError::Network {
-                service: "bridge_manager".to_string(),
+            return Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("bridge_manager".to_string()),
                 message: "Invalid timeout".to_string(),
                 details: Some("Timeout must be greater than 0".to_string()),
-            });
+                endpoint: None,
+                suggestion: None,
+            })));
         }
 
         if config.source_address == config.target_address {
-            return Err(SongbirdError::Network {
-                service: "bridge_manager".to_string(),
+            return Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("bridge_manager".to_string()),
                 message: "Source and target addresses cannot be the same".to_string(),
                 details: Some("Use different addresses for source and target".to_string()),
-            });
+                endpoint: None,
+                suggestion: None,
+            })));
         }
 
         let bridge_id = format!(
@@ -658,22 +668,26 @@ impl RealBridgeManager {
         bridges
             .get(bridge_id)
             .cloned()
-            .ok_or_else(|| SongbirdError::Network {
-                service: "bridge_manager".to_string(),
+            .ok_or_else(|| SongbirdError::Network(Box::new(NetworkError {
+                service: Some("bridge_manager".to_string()),
                 message: "Bridge not found".to_string(),
                 details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
-            })
+                endpoint: None,
+                suggestion: None,
+            })))
     }
 
     pub async fn destroy_bridge(&mut self, bridge_id: &str) -> Result<()> {
         let mut bridges = self.bridges.write().await;
         bridges
             .remove(bridge_id)
-            .ok_or_else(|| SongbirdError::Network {
-                service: "bridge_manager".to_string(),
+            .ok_or_else(|| SongbirdError::Network(Box::new(NetworkError {
+                service: Some("bridge_manager".to_string()),
                 message: "Bridge not found".to_string(),
                 details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
-            })?;
+                endpoint: None,
+                suggestion: None,
+            })))?;
 
         Ok(())
     }
@@ -684,11 +698,13 @@ impl RealBridgeManager {
             // Simulate packet processing
             Ok(packet.to_vec())
         } else {
-            Err(SongbirdError::Network {
-                service: "bridge_manager".to_string(),
+            Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("bridge_manager".to_string()),
                 message: "Bridge not found".to_string(),
                 details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
-            })
+                endpoint: None,
+                suggestion: None,
+            })))
         }
     }
 
@@ -719,13 +735,15 @@ impl NatTraversalManager {
             // Simulate NAT traversal logic
             Ok(())
         } else {
-            Err(SongbirdError::Network {
-                service: "nat_traversal".to_string(),
+            Err(SongbirdError::Network(Box::new(songbird_errors::NetworkError {
+                service: Some("nat_traversal".to_string()),
                 message: "One or both players not found".to_string(),
                 details: Some(
                     "Both players must be registered before facilitating connection".to_string(),
                 ),
-            })
+                endpoint: None,
+                suggestion: Some("Register both players before attempting connection".to_string()),
+            })))
         }
     }
 }
@@ -739,10 +757,12 @@ impl ProtocolTranslator {
 
     pub async fn translate_ipx_to_tcp(&self, packet: &[u8]) -> Result<Vec<u8>> {
         if packet.is_empty() {
-            return Err(SongbirdError::Gaming {
+            return Err(SongbirdError::Gaming(Box::new(songbird_errors::GamingError {
                 message: "Empty packet".to_string(),
                 protocol: Some("Cannot translate empty packet".to_string()),
-            });
+                game: None,
+                suggestion: Some("Provide a non-empty packet for translation".to_string()),
+            })));
         }
 
         // Simulate IPX to TCP translation
@@ -754,10 +774,12 @@ impl ProtocolTranslator {
 
     pub async fn translate_directplay_to_udp(&self, packet: &[u8]) -> Result<Vec<u8>> {
         if packet.len() < 4 {
-            return Err(SongbirdError::Gaming {
+            return Err(SongbirdError::Gaming(Box::new(songbird_errors::GamingError {
                 message: "Invalid DirectPlay packet".to_string(),
                 protocol: Some("DirectPlay packets must be at least 4 bytes".to_string()),
-            });
+                game: None,
+                suggestion: Some("Ensure DirectPlay packets are properly formatted".to_string()),
+            })));
         }
 
         // Simulate DirectPlay to UDP translation

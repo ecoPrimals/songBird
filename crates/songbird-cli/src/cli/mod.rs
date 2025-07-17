@@ -20,7 +20,6 @@ use tracing::error;
 // CLI module core
 use self::commands::Commands;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 /// Enhanced CLI Error types with actionable suggestions
 #[derive(Error, Debug)]
@@ -735,8 +734,6 @@ pub mod error_handling {
 
     /// Display suggestions for common errors
     pub fn display_common_solutions() {
-        use crate::cli::ui::*;
-
         println!("\n{}", "Common Solutions:".bright_blue().bold());
         println!(
             "• Check configuration: {}",
@@ -789,7 +786,11 @@ pub async fn execute_start_command(
     print_info(&format!("Starting Songbird orchestrator on port {}", port));
 
     if dashboard {
-        print_info("Dashboard will be available at http://localhost:8080");
+        print_info(&format!(
+            "Dashboard will be available at http://{}:{}",
+            songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS,
+            songbird_config::config::constants::network::DEFAULT_DASHBOARD_PORT
+        ));
     }
 
     // Placeholder for actual implementation

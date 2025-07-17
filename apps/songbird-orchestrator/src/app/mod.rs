@@ -52,7 +52,7 @@ impl SongbirdOrchestrator {
             local_node: LocalNodeConfig {
                 name: "songbird-orchestrator".to_string(),
                 node_type: NodeType::Tower {
-                    location: "localhost".to_string(),
+                    location: config.environment.bind_address.clone(),
                     capabilities: songbird_federation::TowerCapabilities {
                         cpu_cores: 4,
                         memory_gb: 8,
@@ -68,7 +68,7 @@ impl SongbirdOrchestrator {
                 )
                 .parse()?],
                 public_addresses: vec![],
-                location: Some("localhost".to_string()),
+                location: Some(config.environment.bind_address.clone()),
             },
             discovery: DiscoveryConfig {
                 enabled_protocols: vec![DiscoveryProtocol::MDNS, DiscoveryProtocol::UPnP],
@@ -111,7 +111,7 @@ impl SongbirdOrchestrator {
                 .beardog
                 .as_ref()
                 .map(|b| b.endpoint.primary_url.clone())
-                .unwrap_or_else(|| "http://localhost:8000".to_string()),
+                .unwrap_or_else(|| config.environment.beardog_endpoint.clone()),
             api_key: config
                 .beardog
                 .as_ref()

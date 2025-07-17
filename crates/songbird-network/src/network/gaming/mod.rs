@@ -41,7 +41,7 @@ pub use production_lan_manager::{
 };
 pub use protocol_translators::{DirectPlayTranslator, IPXTranslator, NetBIOSTranslator};
 pub use real_bridge_manager::{RealBridgeConfig, RealBridgeManager, RealBridgeSession};
-pub use real_ipx_bridge::RealIPXBridge;
+pub use real_ipx_bridge::{IpxAddress, RealIpxBridge};
 pub use real_protocol_detector::RealProtocolDetector;
 pub use universal_bridge::UniversalGameBridge;
 pub use universal_detector::UniversalGameProtocolDetector;
@@ -53,7 +53,7 @@ use chrono;
 use rand;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use songbird_errors::Result;
+use songbird_errors::{NetworkError, Result};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::net::UdpSocket;
@@ -218,13 +218,13 @@ impl GamingManager {
         let mut sessions = self.lan_sessions.write().await;
 
         let session = sessions.get_mut(session_code).ok_or_else(|| {
-            songbird_errors::SongbirdError::Network {
+            songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                 service: Some("Gaming Manager".to_string()),
                 message: format!("Session not found: {}", session_code),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            }
+            }))
         })?;
 
         // Add player if not already in session
@@ -245,12 +245,14 @@ impl GamingManager {
             .iter()
             .find(|(code, _)| *code == session_code)
             .map(|(_, session)| session.clone())
-            .ok_or_else(|| songbird_errors::SongbirdError::Network {
-                service: Some("Gaming Manager".to_string()),
-                message: format!("Session not found: {}", session_code),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+            .ok_or_else(|| {
+                songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("Gaming Manager".to_string()),
+                    message: format!("Session not found: {}", session_code),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                }))
             })
             .map(Some)
     }
@@ -267,16 +269,15 @@ impl GamingManager {
 
         // Get the session from our storage
         let sessions = self.lan_sessions.read().await;
-        let session =
-            sessions
-                .get(session_code)
-                .ok_or_else(|| songbird_errors::SongbirdError::Network {
-                    service: Some("Gaming Manager".to_string()),
-                    message: format!("Session not found: {}", session_code),
-                    details: None,
-                    endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
-                })?;
+        let session = sessions.get(session_code).ok_or_else(|| {
+            songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                service: Some("Gaming Manager".to_string()),
+                message: format!("Session not found: {}", session_code),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
+            }))
+        })?;
 
         // Use configurable binding address - NO MORE HARDCODING 0.0.0.0!
         let bind_addr = if env_config.bind_address == "0.0.0.0" {
@@ -304,13 +305,14 @@ impl GamingManager {
             tracing::info!("🌉 Starting IPX bridge for session {}", session_code);
 
             // Create IPX bridge with a standard network ID
-            let bridge = RealIPXBridge::bind_ipx_network(0x01000000).await?;
+            let bridge = RealIpxBridge::new("127.0.0.1:0".parse().unwrap(), 50).await?;
 
             // Register all current players
             for player_addr in &session.players {
                 // Parse player address string to SocketAddr for bridge registration
                 if let Ok(socket_addr) = player_addr.parse::<SocketAddr>() {
-                    bridge.register_node(socket_addr).await?;
+                    let ipx_addr = IpxAddress::from_ip(socket_addr.ip());
+                    bridge.register_virtual_node(ipx_addr, socket_addr).await?;
                 }
             }
 

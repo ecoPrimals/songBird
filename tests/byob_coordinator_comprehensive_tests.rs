@@ -1,4 +1,4 @@
-use songbird_lib::biome::{
+use songbird_core::biome::{
     BiomeMetadata, ByobCoordinator, ByobDeploymentRequest, ByobDeploymentStatus, HealthCheckSpec,
     NestGateConfig, OrchestratorConfig, PrimalCoordination, ServiceSpec, ServiceStorageSpec,
     SongbirdBiomeManifest, StorageQuotas, StorageTier, TeamResourceQuota, TeamStorageRequirements,

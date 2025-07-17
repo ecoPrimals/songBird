@@ -6,17 +6,17 @@
 use std::net::IpAddr;
 use std::path::PathBuf;
 
-use songbird_lib::config::{
+use songbird_config::{
     EnvironmentConfig, GamingNetworkConfig, NetworkConfig, PortRange, SecurityConfig,
     SongbirdConfig,
 };
-use songbird_lib::Result;
+use songbird_errors::Result;
 
 #[test]
 fn test_songbird_config_creation() -> Result<()> {
     let config = SongbirdConfig::default();
 
-    assert!(config.network.bind_port > 0);
+    assert!(config.environment.bind_port > 0);
     assert!(!config.environment.log_level.is_empty());
 
     Ok(())
@@ -27,7 +27,7 @@ fn test_songbird_config_network_fields() -> Result<()> {
     let config = SongbirdConfig::default();
 
     // Test network configuration
-    assert!(config.network.bind_port > 0);
+    assert!(config.environment.bind_port > 0);
     assert!(config.network.discovery_port > 0);
     assert!(config.network.health_port > 0);
     assert!(config.network.dashboard_port > 0);
@@ -88,7 +88,7 @@ fn test_songbird_config_security_fields() -> Result<()> {
 async fn test_network_config_creation() -> Result<()> {
     let network_config = NetworkConfig {
         bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
-        bind_port: 8080,
+        orchestrator_port: 8080,
         discovery_port: 8001,
         health_port: 8002,
         dashboard_port: 8003,
@@ -147,7 +147,7 @@ async fn test_config_validation() -> Result<()> {
     let config = SongbirdConfig {
         network: NetworkConfig {
             bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
-            bind_port: 8080,
+            orchestrator_port: 8080,
             ..Default::default()
         },
         ..Default::default()
@@ -198,7 +198,7 @@ fn test_config_file_operations() -> Result<()> {
 
         // Test loading configuration from file
         let loaded_config = SongbirdConfig::from_file(&temp_file)?;
-        assert_eq!(loaded_config.network.bind_port, config.network.bind_port);
+        assert_eq!(loaded_config.environment.bind_port, config.environment.bind_port);
         assert_eq!(
             loaded_config.environment.bind_port,
             config.environment.bind_port
@@ -500,8 +500,8 @@ fn test_config_deserialization() -> Result<()> {
 
     // Verify key fields match
     assert_eq!(
-        deserialized_config.network.bind_port,
-        config.network.bind_port
+        deserialized_config.environment.bind_port,
+        config.environment.bind_port
     );
     assert_eq!(
         deserialized_config.environment.bind_port,
@@ -517,7 +517,7 @@ fn test_config_clone_behavior() -> Result<()> {
     let cloned_config = config.clone();
 
     // Verify clone matches original
-    assert_eq!(cloned_config.network.bind_port, config.network.bind_port);
+    assert_eq!(cloned_config.environment.bind_port, config.environment.bind_port);
     assert_eq!(
         cloned_config.environment.bind_port,
         config.environment.bind_port
@@ -574,4 +574,56 @@ async fn test_gaming_network_config() -> Result<()> {
     assert_eq!(gaming_config.detection_interface, Some("eth0".to_string()));
     assert_eq!(gaming_config.bridge_buffer_size, 65536);
     Ok(())
+}
+
+#[tokio::test]
+async fn test_config_loading_and_validation() {
+    let config = SongbirdConfig::default();
+    
+    // Test the network configuration
+    assert!(config.environment.bind_port > 0);
+    assert!(!config.network.bind_address.to_string().is_empty());
+    
+    // Test serialization roundtrip
+    let serialized = toml::to_string(&config).expect("Failed to serialize config");
+    let deserialized: SongbirdConfig = toml::from_str(&serialized).expect("Failed to deserialize config");
+    
+    assert_eq!(config.environment.bind_port, deserialized.network.bind_port);
+    assert_eq!(config.network.bind_address, deserialized.network.bind_address);
+}
+
+#[tokio::test]
+async fn test_config_serialization() {
+    let mut config = SongbirdConfig::default();
+    config.environment.bind_port = 9000;
+    
+    let serialized = toml::to_string(&config).expect("Failed to serialize config");
+    let loaded_config: SongbirdConfig = toml::from_str(&serialized).expect("Failed to deserialize config");
+    
+    assert_eq!(loaded_config.environment.bind_port, config.environment.bind_port);
+}
+
+#[tokio::test]
+async fn test_config_persistence() {
+    let mut config = SongbirdConfig::default();
+    config.environment.bind_port = 9000;
+    
+    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+    let config_path = temp_dir.path().join("test_config.toml");
+    
+    // Save config
+    config.to_file(&config_path).expect("Failed to save config");
+    
+    // Load config
+    let loaded_config = SongbirdConfig::from_file(&config_path).expect("Failed to load config");
+    
+    assert_eq!(loaded_config.environment.bind_port, config.environment.bind_port);
+}
+
+#[tokio::test]
+async fn test_config_cloning() {
+    let config = SongbirdConfig::default();
+    let cloned_config = config.clone();
+    
+    assert_eq!(cloned_config.environment.bind_port, config.environment.bind_port);
 }

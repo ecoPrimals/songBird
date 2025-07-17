@@ -199,7 +199,7 @@ pub struct BearDogConfig {
 impl Default for BearDogConfig {
     fn default() -> Self {
         Self {
-            endpoint: "http://localhost:8000".to_string(),
+            endpoint: songbird_config::config::constants::network::DEFAULT_BEARDOG_ENDPOINT.to_string(),
             api_key: "your_api_key".to_string(),
             security_level: BearDogSecurityLevel::Internal,
             audit_level: BearDogAuditLevel::Standard,

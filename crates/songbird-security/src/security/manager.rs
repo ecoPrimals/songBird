@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use super::providers::{AuthenticationProvider, AuthorizationProvider};
 use super::types::{Action, AuthToken, Resource, SecurityConfig};
 use super::hardening::{SecurityHardeningManager, validate_production_environment, get_secure_env_var};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{Result, SongbirdError, NetworkError, AuthError};
 
 // ============================================================================
 // SECURITY MANAGER
@@ -87,12 +87,12 @@ impl SecurityManager {
 
         if !self.config.authentication_enabled {
             tracing::error!("SECURITY CRITICAL: Authentication disabled");
-            return Err(SongbirdError::Auth {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "Authentication is disabled".to_string(),
                 severity: Some("medium".to_string()),
                 suggestion: Some("Check security configuration and permissions".to_string()),
                 user: Some("SecurityManager".to_string()),
-            });
+            })));
         }
 
         // Log authentication attempt for security audit
@@ -128,13 +128,13 @@ impl SecurityManager {
             tracing::error!("SECURITY CRITICAL: Authorization disabled - this should only be used in development!");
             let environment = get_secure_env_var("SONGBIRD_ENV", "development")?;
             if environment != "development" {
-                return Err(SongbirdError::Network {
+                return Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                     service: Some("security".to_string()),
                     message: "Authorization cannot be disabled in production".to_string(),
                 severity: Some("medium".to_string()),
                 suggestion: Some("Check security configuration and permissions".to_string()),
                     details: None,
-                });
+                })));
             }
             return Ok(false); // Explicit deny in production
         }
