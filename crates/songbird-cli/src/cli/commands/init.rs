@@ -318,7 +318,7 @@ import json
 from typing import Dict, List, Optional
 
 class SongbirdClient:
-    def __init__(self, base_url: str = "http://localhost:8080"):
+            def __init__(self, base_url: str = "http://127.0.0.1:8080"):
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
     
@@ -358,7 +358,7 @@ if __name__ == "__main__":
         "version": "1.0.0",
         "service_type": "compute",
         "capabilities": ["cpu", "memory"],
-        "endpoints": ["http://localhost:8081"]
+                                        "endpoints": ["http://127.0.0.1:8081"]
     }
     
     try:

@@ -33,14 +33,12 @@ async fn test_zero_trust_network_access() {
                 session_state: SessionState::Active,
             },
             expected_access: true,
-            verification_steps: vec![
-                VerificationStep {
-                    step_name: "device_verification".to_string(),
-                    verification_type: VerificationType::DeviceIdentity,
-                    required: true,
-                    timeout: std::time::Duration::from_secs(30),
-                },
-            ],
+            verification_steps: vec![VerificationStep {
+                step_name: "device_verification".to_string(),
+                verification_type: VerificationType::DeviceIdentity,
+                required: true,
+                timeout: std::time::Duration::from_secs(30),
+            }],
         },
         // Unknown device from external network
         ZeroTrustTestCase {
@@ -57,14 +55,12 @@ async fn test_zero_trust_network_access() {
                 session_state: SessionState::Active,
             },
             expected_access: false,
-            verification_steps: vec![
-                VerificationStep {
-                    step_name: "device_verification".to_string(),
-                    verification_type: VerificationType::DeviceIdentity,
-                    required: true,
-                    timeout: std::time::Duration::from_secs(30),
-                },
-            ],
+            verification_steps: vec![VerificationStep {
+                step_name: "device_verification".to_string(),
+                verification_type: VerificationType::DeviceIdentity,
+                required: true,
+                timeout: std::time::Duration::from_secs(30),
+            }],
         },
         // Medium trust device from internal network
         ZeroTrustTestCase {
@@ -81,14 +77,12 @@ async fn test_zero_trust_network_access() {
                 session_state: SessionState::Active,
             },
             expected_access: true,
-            verification_steps: vec![
-                VerificationStep {
-                    step_name: "device_verification".to_string(),
-                    verification_type: VerificationType::DeviceIdentity,
-                    required: true,
-                    timeout: std::time::Duration::from_secs(30),
-                },
-            ],
+            verification_steps: vec![VerificationStep {
+                step_name: "device_verification".to_string(),
+                verification_type: VerificationType::DeviceIdentity,
+                required: true,
+                timeout: std::time::Duration::from_secs(30),
+            }],
         },
     ];
 
@@ -130,18 +124,20 @@ async fn test_zero_trust_device_verification() {
                 session_state: SessionState::Active,
             },
             expected_access,
-            verification_steps: vec![
-                VerificationStep {
-                    step_name: "device_verification".to_string(),
-                    verification_type: VerificationType::DeviceIdentity,
-                    required: true,
-                    timeout: std::time::Duration::from_secs(30),
-                },
-            ],
+            verification_steps: vec![VerificationStep {
+                step_name: "device_verification".to_string(),
+                verification_type: VerificationType::DeviceIdentity,
+                required: true,
+                timeout: std::time::Duration::from_secs(30),
+            }],
         };
 
         let result = framework.run_zero_trust_test(test_case).await;
-        assert!(result, "Device verification test should pass for {}", device_name);
+        assert!(
+            result,
+            "Device verification test should pass for {}",
+            device_name
+        );
     }
 
     println!("✅ All zero trust device verification tests passed");
@@ -175,18 +171,20 @@ async fn test_zero_trust_behavioral_analysis() {
                 session_state: SessionState::Active,
             },
             expected_access,
-            verification_steps: vec![
-                VerificationStep {
-                    step_name: "behavioral_analysis".to_string(),
-                    verification_type: VerificationType::BehavioralAnalysis,
-                    required: true,
-                    timeout: std::time::Duration::from_secs(60),
-                },
-            ],
+            verification_steps: vec![VerificationStep {
+                step_name: "behavioral_analysis".to_string(),
+                verification_type: VerificationType::BehavioralAnalysis,
+                required: true,
+                timeout: std::time::Duration::from_secs(60),
+            }],
         };
 
         let result = framework.run_zero_trust_test(test_case).await;
-        assert!(result, "Behavioral analysis test should pass for {}", behavior_type);
+        assert!(
+            result,
+            "Behavioral analysis test should pass for {}",
+            behavior_type
+        );
     }
 
     println!("✅ All zero trust behavioral analysis tests passed");
@@ -218,18 +216,20 @@ async fn test_zero_trust_network_location() {
                 session_state: SessionState::Active,
             },
             expected_access,
-            verification_steps: vec![
-                VerificationStep {
-                    step_name: "network_location_verification".to_string(),
-                    verification_type: VerificationType::NetworkLocationVerification,
-                    required: true,
-                    timeout: std::time::Duration::from_secs(30),
-                },
-            ],
+            verification_steps: vec![VerificationStep {
+                step_name: "network_location_verification".to_string(),
+                verification_type: VerificationType::NetworkLocationVerification,
+                required: true,
+                timeout: std::time::Duration::from_secs(30),
+            }],
         };
 
         let result = framework.run_zero_trust_test(test_case).await;
-        assert!(result, "Network location test should pass for {}", location_name);
+        assert!(
+            result,
+            "Network location test should pass for {}",
+            location_name
+        );
     }
 
     println!("✅ All zero trust network location tests passed");
@@ -287,4 +287,4 @@ async fn test_zero_trust_comprehensive_workflow() {
     assert!(result, "Comprehensive zero trust workflow should pass");
 
     println!("✅ Zero trust comprehensive workflow test passed");
-} 
+}

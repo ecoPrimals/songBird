@@ -3,8 +3,8 @@
 //! Tests for the `songbird quick` command functionality
 //! Focuses on one-touch gaming setup and basic configuration
 
-use songbird_lib::config::SongbirdConfig;
-use songbird_lib::errors::{Result, SongbirdError};
+use songbird_config::SongbirdConfig;
+use songbird_errors::{Result, SongbirdError};
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -13,7 +13,7 @@ async fn setup_quick_gaming_environment(config_path: &std::path::Path) -> Result
     let mut config = SongbirdConfig::default();
 
     // Set up gaming-specific configuration
-    config.network.bind_port = 8080;
+    config.network.orchestrator_port = 8080;
     config.network.discovery_port = 8081;
     config.network.federation_port = 8082;
     config.network.health_port = 8083;
@@ -23,11 +23,13 @@ async fn setup_quick_gaming_environment(config_path: &std::path::Path) -> Result
     let config_toml = toml::to_string(&config).map_err(|e| SongbirdError::Configuration {
         field: "config_serialization".to_string(),
         message: format!("Failed to serialize config: {e}"),
+        suggestion: Some("Check configuration file".to_string()),
     })?;
 
     std::fs::write(config_path, config_toml).map_err(|e| SongbirdError::Configuration {
         field: "config_write".to_string(),
         message: format!("Failed to write config: {e}"),
+        suggestion: Some("Check configuration file".to_string()),
     })?;
 
     Ok(())
@@ -37,6 +39,7 @@ async fn configure_quick_discovery(config_path: &std::path::Path) -> Result<()> 
     // Check if config file exists
     if !config_path.exists() {
         return Err(SongbirdError::Configuration {
+        suggestion: Some("Check configuration file".to_string()),
             field: "config_path".to_string(),
             message: "Config file does not exist".to_string(),
         });
@@ -45,12 +48,14 @@ async fn configure_quick_discovery(config_path: &std::path::Path) -> Result<()> 
     // Read existing config and update discovery settings
     let config_content =
         std::fs::read_to_string(config_path).map_err(|e| SongbirdError::Configuration {
+        suggestion: Some("Check configuration file".to_string()),
             field: "config_read".to_string(),
             message: format!("Failed to read config: {e}"),
         })?;
 
     let mut config: SongbirdConfig =
         toml::from_str(&config_content).map_err(|e| SongbirdError::Configuration {
+        suggestion: Some("Check configuration file".to_string()),
             field: "config_parse".to_string(),
             message: format!("Failed to parse config: {e}"),
         })?;
@@ -62,11 +67,13 @@ async fn configure_quick_discovery(config_path: &std::path::Path) -> Result<()> 
     let updated_config = toml::to_string(&config).map_err(|e| SongbirdError::Configuration {
         field: "config_serialize".to_string(),
         message: format!("Failed to serialize updated config: {e}"),
+        suggestion: Some("Check configuration file".to_string()),
     })?;
 
     std::fs::write(config_path, updated_config).map_err(|e| SongbirdError::Configuration {
         field: "config_write".to_string(),
         message: format!("Failed to write updated config: {e}"),
+        suggestion: Some("Check configuration file".to_string()),
     })?;
 
     Ok(())
@@ -76,7 +83,7 @@ async fn setup_basic_networking(config_path: &std::path::Path) -> Result<()> {
     let mut config = SongbirdConfig::default();
 
     // Basic networking configuration
-    config.network.bind_port = 8080;
+    config.network.orchestrator_port = 8080;
     config.network.bind_address = "127.0.0.1".parse().unwrap();
 
     let config_toml = toml::to_string(&config).unwrap();
@@ -102,12 +109,14 @@ async fn apply_security_defaults(config_path: &std::path::Path) -> Result<()> {
 async fn validate_quick_setup(config_path: &std::path::Path) -> Result<()> {
     let config_content =
         std::fs::read_to_string(config_path).map_err(|e| SongbirdError::Configuration {
+        suggestion: Some("Check configuration file".to_string()),
             field: "config_read".to_string(),
             message: format!("Failed to read config: {e}"),
         })?;
 
     let _config: SongbirdConfig =
         toml::from_str(&config_content).map_err(|e| SongbirdError::Configuration {
+        suggestion: Some("Check configuration file".to_string()),
             field: "config_parse".to_string(),
             message: format!("Invalid configuration: {e}"),
         })?;

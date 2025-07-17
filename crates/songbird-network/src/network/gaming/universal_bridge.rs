@@ -5,7 +5,7 @@
 
 use super::protocol_translators::*;
 use super::types::*;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{ProtocolError, Result, SongbirdError};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -85,15 +85,14 @@ impl UniversalGameBridge {
         );
 
         // Get the appropriate translator
-        let translator =
-            self.translators
-                .get(&protocol_class)
-                .ok_or_else(|| SongbirdError::Protocol {
-                    version: None,
-                    suggestion: Some("Check protocol compatibility and version".to_string()),
-                    message: format!("No translator available for protocol: {:?}", protocol_class),
-                    protocol: "universal_bridge".to_string(),
-                })?;
+        let translator = self.translators.get(&protocol_class).ok_or_else(|| {
+            SongbirdError::Protocol(Box::new(ProtocolError {
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
+                message: format!("No translator available for protocol: {:?}", protocol_class),
+                protocol: "universal_bridge".to_string(),
+            }))
+        })?;
 
         // Create virtual network
         let virtual_network = translator.create_virtual_network(&players).await?;
@@ -167,23 +166,25 @@ impl UniversalGameBridge {
         packet: &[u8],
     ) -> Result<InternetPacket> {
         let sessions = self.active_sessions.read().await;
-        let session = sessions
-            .get(session_id)
-            .ok_or_else(|| SongbirdError::Protocol {
+        let session = sessions.get(session_id).ok_or_else(|| {
+            SongbirdError::Protocol(Box::new(ProtocolError {
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
                 message: format!("Session not found: {}", session_id),
                 protocol: "universal_bridge".to_string(),
-            })?;
+            }))
+        })?;
 
         let translator = self
             .translators
             .get(&session.protocol_class)
-            .ok_or_else(|| SongbirdError::Protocol {
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
-                message: format!("No translator for protocol: {:?}", session.protocol_class),
-                protocol: "universal_bridge".to_string(),
+            .ok_or_else(|| {
+                SongbirdError::Protocol(Box::new(ProtocolError {
+                    version: None,
+                    suggestion: Some("Check protocol compatibility and version".to_string()),
+                    message: format!("No translator for protocol: {:?}", session.protocol_class),
+                    protocol: "universal_bridge".to_string(),
+                }))
             })?;
 
         translator.translate_to_internet(packet).await
@@ -196,23 +197,25 @@ impl UniversalGameBridge {
         packet: &InternetPacket,
     ) -> Result<Vec<u8>> {
         let sessions = self.active_sessions.read().await;
-        let session = sessions
-            .get(session_id)
-            .ok_or_else(|| SongbirdError::Protocol {
+        let session = sessions.get(session_id).ok_or_else(|| {
+            SongbirdError::Protocol(Box::new(ProtocolError {
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
                 message: format!("Session not found: {}", session_id),
                 protocol: "universal_bridge".to_string(),
-            })?;
+            }))
+        })?;
 
         let translator = self
             .translators
             .get(&session.protocol_class)
-            .ok_or_else(|| SongbirdError::Protocol {
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
-                message: format!("No translator for protocol: {:?}", session.protocol_class),
-                protocol: "universal_bridge".to_string(),
+            .ok_or_else(|| {
+                SongbirdError::Protocol(Box::new(ProtocolError {
+                    version: None,
+                    suggestion: Some("Check protocol compatibility and version".to_string()),
+                    message: format!("No translator for protocol: {:?}", session.protocol_class),
+                    protocol: "universal_bridge".to_string(),
+                }))
             })?;
 
         translator.translate_from_internet(packet).await
@@ -334,11 +337,13 @@ impl UniversalGameBridge {
         let _session = sessions
             .values()
             .find(|s| s.id == bridge_id)
-            .ok_or_else(|| SongbirdError::Protocol {
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
-                message: format!("Bridge not found: {}", bridge_id),
-                protocol: "universal_bridge".to_string(),
+            .ok_or_else(|| {
+                SongbirdError::Protocol(Box::new(ProtocolError {
+                    version: None,
+                    suggestion: Some("Check protocol compatibility and version".to_string()),
+                    message: format!("Bridge not found: {}", bridge_id),
+                    protocol: "universal_bridge".to_string(),
+                }))
             })?;
 
         // Add player to session (simplified for now)
@@ -398,12 +403,12 @@ impl UniversalGameBridge {
             sessions.remove(&session_id);
             tracing::info!("✅ Bridge stopped: {}", bridge_id);
         } else {
-            return Err(SongbirdError::Protocol {
+            return Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
                 message: format!("Bridge not found: {}", bridge_id),
                 protocol: "universal_bridge".to_string(),
-            });
+            })));
         }
 
         Ok(())
@@ -461,7 +466,7 @@ fn generate_bridge_id() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("Network operation should succeed in production")
+        .unwrap_or_else(|_| Duration::from_secs(0)) // Fallback to 0 if system time is before epoch
         .as_secs();
     format!("{:x}", timestamp % 0xFFFFFF)
 }

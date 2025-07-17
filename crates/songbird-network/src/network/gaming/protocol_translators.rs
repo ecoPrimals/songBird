@@ -5,9 +5,13 @@
 
 use super::types::*;
 use async_trait::async_trait;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{ProtocolError, Result, SongbirdError};
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::Arc;
+use std::time::Instant;
+use tokio::sync::RwLock;
+use tracing::{info, warn};
 
 /// Universal protocol translator trait
 #[async_trait]
@@ -28,19 +32,14 @@ pub trait ProtocolTranslator: Send + Sync {
 /// IPX protocol translator for DOS/Windows 95 era games
 #[derive(Debug)]
 pub struct IPXTranslator {
-    #[allow(dead_code)]
     virtual_networks: HashMap<u32, IPXVirtualNetwork>,
-    #[allow(dead_code)]
     address_mapping: HashMap<String, IpxAddress>,
 }
 
 #[derive(Debug)]
 struct IPXVirtualNetwork {
-    #[allow(dead_code)]
     network_id: u32,
-    #[allow(dead_code)]
     players: HashMap<String, IpxAddress>,
-    #[allow(dead_code)]
     broadcast_enabled: bool,
 }
 
@@ -75,34 +74,48 @@ impl IPXTranslator {
     /// Parse IPX packet header (basic implementation)
     fn parse_ipx_header(&self, packet: &[u8]) -> Result<IPXHeader> {
         if packet.len() < 30 {
-            return Err(SongbirdError::Protocol {
+            return Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 protocol: "IPX".to_string(),
-                message: "IPX packet too short".to_string(),
+                message: "Packet too short for IPX header".to_string(),
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-            });
+            })));
         }
 
+        // Parse IPX header (simplified)
+        let checksum = u16::from_be_bytes([packet[0], packet[1]]);
+        let length = u16::from_be_bytes([packet[2], packet[3]]);
+        let transport_control = packet[4];
+        let packet_type = packet[5];
+        let dest_network = u32::from_be_bytes([packet[6], packet[7], packet[8], packet[9]]);
+        let dest_node = [
+            packet[10], packet[11], packet[12], packet[13], packet[14], packet[15],
+        ];
+        let dest_socket = u16::from_be_bytes([packet[16], packet[17]]);
+        let src_network = u32::from_be_bytes([packet[18], packet[19], packet[20], packet[21]]);
+        let src_node = [
+            packet[22], packet[23], packet[24], packet[25], packet[26], packet[27],
+        ];
+        let src_socket = u16::from_be_bytes([packet[28], packet[29]]);
+
+        let payload = packet[30..].to_vec();
+
         Ok(IPXHeader {
-            checksum: u16::from_be_bytes([packet[0], packet[1]]),
-            length: u16::from_be_bytes([packet[2], packet[3]]),
-            transport_control: packet[4],
-            packet_type: packet[5],
-            dest_network: u32::from_be_bytes([packet[6], packet[7], packet[8], packet[9]]),
-            dest_node: [
-                packet[10], packet[11], packet[12], packet[13], packet[14], packet[15],
-            ],
-            dest_socket: u16::from_be_bytes([packet[16], packet[17]]),
-            src_network: u32::from_be_bytes([packet[18], packet[19], packet[20], packet[21]]),
-            src_node: [
-                packet[22], packet[23], packet[24], packet[25], packet[26], packet[27],
-            ],
-            src_socket: u16::from_be_bytes([packet[28], packet[29]]),
-            payload: packet[30..].to_vec(),
+            checksum,
+            length,
+            transport_control,
+            packet_type,
+            dest_network,
+            dest_node,
+            dest_socket,
+            src_network,
+            src_node,
+            src_socket,
+            payload,
         })
     }
 
-    /// Create IPX packet header
+    /// Create IPX header bytes
     fn create_ipx_header(&self, header: &IPXHeader) -> Vec<u8> {
         let mut packet = Vec::with_capacity(30);
 
@@ -159,12 +172,12 @@ impl ProtocolTranslator for IPXTranslator {
                 ipx_packet.extend_from_slice(&header.payload);
                 Ok(ipx_packet)
             }
-            _ => Err(SongbirdError::Protocol {
+            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 protocol: "IPX".to_string(),
                 message: "IPX only supports UDP translation".to_string(),
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-            }),
+            }))),
         }
     }
 
@@ -204,8 +217,43 @@ impl ProtocolTranslator for IPXTranslator {
 /// DirectPlay protocol translator for Windows 95-XP era games  
 #[derive(Debug)]
 pub struct DirectPlayTranslator {
-    #[allow(dead_code)]
-    _placeholder: u8,
+    /// Active DirectPlay sessions
+    sessions: Arc<RwLock<HashMap<String, DirectPlayInternalSession>>>,
+    /// Connection state tracking
+    connection_state: Arc<RwLock<ConnectionState>>,
+    /// Session creation timestamp
+    created_at: Instant,
+}
+
+/// DirectPlay internal session information
+#[derive(Debug, Clone)]
+struct DirectPlayInternalSession {
+    session_id: String,
+    session_name: String,
+    host_player: String,
+    players: HashMap<String, DirectPlayAddress>,
+    max_players: u32,
+    password_required: bool,
+    created_at: Instant,
+    last_activity: Instant,
+}
+
+/// Connection state for DirectPlay sessions
+#[derive(Debug, Clone)]
+struct ConnectionState {
+    is_connected: bool,
+    connection_id: Option<String>,
+    last_heartbeat: Option<Instant>,
+    metrics: ConnectionMetrics,
+}
+
+/// Connection metrics tracking
+#[derive(Debug, Clone)]
+struct ConnectionMetrics {
+    packets_sent: u64,
+    packets_received: u64,
+    bytes_transferred: u64,
+    connection_duration: std::time::Duration,
 }
 
 impl Default for DirectPlayTranslator {
@@ -216,8 +264,188 @@ impl Default for DirectPlayTranslator {
 
 impl DirectPlayTranslator {
     pub fn new() -> Self {
-        Self { _placeholder: 0 }
+        Self {
+            sessions: Arc::new(RwLock::new(HashMap::new())),
+            connection_state: Arc::new(RwLock::new(ConnectionState {
+                is_connected: false,
+                connection_id: None,
+                last_heartbeat: None,
+                metrics: ConnectionMetrics {
+                    packets_sent: 0,
+                    packets_received: 0,
+                    bytes_transferred: 0,
+                    connection_duration: std::time::Duration::from_secs(0),
+                },
+            })),
+            created_at: Instant::now(),
+        }
     }
+
+    /// Create a new DirectPlay session
+    pub async fn create_session(
+        &self,
+        session_name: String,
+        host_player: String,
+    ) -> Result<String> {
+        let session_id = uuid::Uuid::new_v4().to_string();
+
+        let session = DirectPlayInternalSession {
+            session_id: session_id.clone(),
+            session_name,
+            host_player,
+            players: HashMap::new(),
+            max_players: 8,
+            password_required: false,
+            created_at: Instant::now(),
+            last_activity: Instant::now(),
+        };
+
+        let mut sessions = self.sessions.write().await;
+        sessions.insert(session_id.clone(), session);
+
+        info!("Created DirectPlay session: {}", session_id);
+        Ok(session_id)
+    }
+
+    /// Join a DirectPlay session
+    pub async fn join_session(
+        &self,
+        session_id: &str,
+        player_id: String,
+        address: DirectPlayAddress,
+    ) -> Result<()> {
+        let mut sessions = self.sessions.write().await;
+
+        if let Some(session) = sessions.get_mut(session_id) {
+            session.players.insert(player_id.clone(), address);
+            session.last_activity = Instant::now();
+            info!(
+                "Player {} joined DirectPlay session {}",
+                player_id, session_id
+            );
+            Ok(())
+        } else {
+            Err(SongbirdError::Protocol(Box::new(ProtocolError {
+                protocol: "DirectPlay".to_string(),
+                message: format!("Session not found: {}", session_id),
+                version: None,
+                suggestion: Some("Check session ID and try again".to_string()),
+            })))
+        }
+    }
+
+    /// Get active sessions
+    pub async fn get_active_sessions(&self) -> Vec<DirectPlaySession> {
+        let sessions = self.sessions.read().await;
+        let mut active_sessions = Vec::new();
+
+        for session in sessions.values() {
+            let external_addr = songbird_config::config::constants::external_address()
+                .unwrap_or_else(|| {
+                    format!(
+                        "{}:2300",
+                        songbird_config::config::constants::default_bind_address()
+                    )
+                });
+
+            let host_address = external_addr.parse().unwrap_or_else(|_| {
+                format!(
+                    "{}:2300",
+                    songbird_config::config::constants::default_bind_address()
+                )
+                .parse()
+                .unwrap_or_else(|_| "127.0.0.1:2300".parse().unwrap()) // Safe fallback
+            });
+
+            active_sessions.push(DirectPlaySession {
+                session_name: session.session_name.clone(),
+                session_id: session.session_id.clone(),
+                host_address,
+                current_players: session.players.len() as u8,
+                max_players: session.max_players as u8,
+                password_required: session.password_required,
+            });
+        }
+
+        active_sessions
+    }
+
+    /// Parse DirectPlay packet
+    fn parse_dp_packet(&self, packet: &[u8]) -> Result<DirectPlayPacket> {
+        if packet.len() < 8 {
+            return Err(SongbirdError::Protocol(Box::new(ProtocolError {
+                protocol: "DirectPlay".to_string(),
+                message: "Packet too short for DirectPlay header".to_string(),
+                version: None,
+                suggestion: Some("Check protocol compatibility and version".to_string()),
+            })));
+        }
+
+        let message_type = u32::from_le_bytes([packet[0], packet[1], packet[2], packet[3]]);
+        let message_size = u32::from_le_bytes([packet[4], packet[5], packet[6], packet[7]]);
+
+        let payload = if packet.len() > 8 {
+            packet[8..].to_vec()
+        } else {
+            Vec::new()
+        };
+
+        Ok(DirectPlayPacket {
+            message_type,
+            message_size,
+            payload,
+        })
+    }
+
+    /// Create DirectPlay packet
+    fn create_dp_packet(&self, message_type: u32, payload: &[u8]) -> Vec<u8> {
+        let mut packet = Vec::with_capacity(8 + payload.len());
+        packet.extend_from_slice(&message_type.to_le_bytes());
+        packet.extend_from_slice(&(payload.len() as u32 + 8).to_le_bytes());
+        packet.extend_from_slice(payload);
+        packet
+    }
+
+    /// Update connection metrics
+    async fn update_metrics(&self, bytes_sent: u64, bytes_received: u64) {
+        let mut state = self.connection_state.write().await;
+        if bytes_sent > 0 {
+            state.metrics.packets_sent += 1;
+            state.metrics.bytes_transferred += bytes_sent;
+        }
+        if bytes_received > 0 {
+            state.metrics.packets_received += 1;
+            state.metrics.bytes_transferred += bytes_received;
+        }
+    }
+}
+
+/// DirectPlay packet structure
+#[derive(Debug, Clone)]
+pub struct DirectPlayPacket {
+    /// Message type
+    pub message_type: u32,
+    /// Message size
+    pub message_size: u32,
+    /// Payload data
+    pub payload: Vec<u8>,
+}
+
+/// DirectPlay message types
+#[allow(dead_code)]
+mod dp_message_types {
+    pub const DPMSG_ENUMSESSIONS: u32 = 0x00000001;
+    pub const DPMSG_ENUMSESSIONS_REPLY: u32 = 0x00000002;
+    pub const DPMSG_ENUMPLAYERS: u32 = 0x00000003;
+    pub const DPMSG_ENUMPLAYERS_REPLY: u32 = 0x00000004;
+    pub const DPMSG_CREATEPLAYER: u32 = 0x00000005;
+    pub const DPMSG_CREATEPLAYER_REPLY: u32 = 0x00000006;
+    pub const DPMSG_DELETEPLAYER: u32 = 0x00000007;
+    pub const DPMSG_DELETEPLAYER_REPLY: u32 = 0x00000008;
+    pub const DPMSG_SETPLAYERDATA: u32 = 0x00000009;
+    pub const DPMSG_SETPLAYERDATA_REPLY: u32 = 0x0000000A;
+    pub const DPMSG_PLAYERMESSAGE: u32 = 0x0000000B;
+    pub const DPMSG_SYSTEMMESSAGE: u32 = 0x0000000C;
 }
 
 #[async_trait]
@@ -225,27 +453,66 @@ impl ProtocolTranslator for DirectPlayTranslator {
     async fn translate_to_internet(&self, dp_packet: &[u8]) -> Result<InternetPacket> {
         tracing::debug!("🔄 Translating DirectPlay packet");
 
+        // Parse DirectPlay packet
+        let dp_packet_parsed = self.parse_dp_packet(dp_packet)?;
+
+        // Update metrics
+        self.update_metrics(dp_packet.len() as u64, 0).await;
+
         let port_mappings = songbird_config::config::constants::protocol_port_mappings();
         let directplay_port = port_mappings.get("directplay").copied().unwrap_or(2300);
 
-        Ok(InternetPacket::UDP {
-            src_port: directplay_port,
-            dst_port: directplay_port,
-            payload: dp_packet.to_vec(),
-            virtual_network: None,
-        })
+        // Handle different DirectPlay message types
+        match dp_packet_parsed.message_type {
+            dp_message_types::DPMSG_ENUMSESSIONS => {
+                // Session enumeration request
+                info!("🔍 DirectPlay session enumeration request");
+                Ok(InternetPacket::UDP {
+                    src_port: directplay_port,
+                    dst_port: directplay_port,
+                    payload: dp_packet.to_vec(),
+                    virtual_network: None, // DirectPlay doesn't use virtual network IDs
+                })
+            }
+            dp_message_types::DPMSG_PLAYERMESSAGE => {
+                // Player message - high priority
+                Ok(InternetPacket::UDP {
+                    src_port: directplay_port,
+                    dst_port: directplay_port,
+                    payload: dp_packet.to_vec(),
+                    virtual_network: None,
+                })
+            }
+            _ => {
+                // Other messages - standard handling
+                Ok(InternetPacket::UDP {
+                    src_port: directplay_port,
+                    dst_port: directplay_port,
+                    payload: dp_packet.to_vec(),
+                    virtual_network: None,
+                })
+            }
+        }
     }
 
     async fn translate_from_internet(&self, internet_packet: &InternetPacket) -> Result<Vec<u8>> {
         match internet_packet {
-            InternetPacket::UDP { payload, .. } => Ok(payload.clone()),
-            InternetPacket::TCP { payload, .. } => Ok(payload.clone()),
-            _ => Err(SongbirdError::Protocol {
+            InternetPacket::UDP { payload, .. } => {
+                // Update metrics
+                self.update_metrics(0, payload.len() as u64).await;
+                Ok(payload.clone())
+            }
+            InternetPacket::TCP { payload, .. } => {
+                // Update metrics
+                self.update_metrics(0, payload.len() as u64).await;
+                Ok(payload.clone())
+            }
+            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 protocol: "DirectPlay".to_string(),
                 message: "Unsupported packet type for DirectPlay".to_string(),
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-            }),
+            }))),
         }
     }
 
@@ -253,11 +520,13 @@ impl ProtocolTranslator for DirectPlayTranslator {
         let session_id = uuid::Uuid::new_v4().to_string();
         let host_player = players
             .first()
-            .ok_or_else(|| SongbirdError::Protocol {
-                protocol: "DirectPlay".to_string(),
-                message: "No players specified".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
+            .ok_or_else(|| {
+                SongbirdError::Protocol(Box::new(ProtocolError {
+                    protocol: "DirectPlay".to_string(),
+                    message: "No players specified".to_string(),
+                    version: None,
+                    suggestion: Some("Check protocol compatibility and version".to_string()),
+                }))
             })?
             .player_id
             .clone();
@@ -273,6 +542,12 @@ impl ProtocolTranslator for DirectPlayTranslator {
             );
         }
 
+        // Create session in translator
+        let session_name = format!("Game Session {}", session_id[..8].to_uppercase());
+        if let Err(e) = self.create_session(session_name, host_player.clone()).await {
+            warn!("Failed to create DirectPlay session: {}", e);
+        }
+
         Ok(VirtualNetwork::DirectPlay {
             session_id,
             players: dp_players,
@@ -282,34 +557,56 @@ impl ProtocolTranslator for DirectPlayTranslator {
 
     async fn handle_game_discovery(&self, discovery_packet: &[u8]) -> Result<DiscoveryResponse> {
         // Parse DirectPlay session enumeration request
-        if discovery_packet.windows(5).any(|w| w == b"DPLAY") {
-            let external_addr = songbird_config::config::constants::external_address()
-                .unwrap_or_else(|| "0.0.0.0:2300".to_string());
-
-            let sessions = vec![DirectPlaySession {
-                session_name: "Game Session".to_string(),
-                session_id: uuid::Uuid::new_v4().to_string(),
-                host_address: external_addr.parse().unwrap_or_else(|_| {
-                    format!(
-                        "{}:2300",
-                        songbird_config::config::constants::default_bind_address()
-                    )
-                    .parse()
-                    .expect("Protocol translation should succeed")
-                }),
-                current_players: 1,
-                max_players: 8,
-                password_required: false,
-            }];
-
-            Ok(DiscoveryResponse::DirectPlay { sessions })
+        if discovery_packet.len() >= 8 {
+            match self.parse_dp_packet(discovery_packet) {
+                Ok(dp_packet) => {
+                    if dp_packet.message_type == dp_message_types::DPMSG_ENUMSESSIONS {
+                        // Return active sessions
+                        let sessions = self.get_active_sessions().await;
+                        Ok(DiscoveryResponse::DirectPlay { sessions })
+                    } else {
+                        // Handle other DirectPlay messages
+                        Ok(DiscoveryResponse::DirectPlay { sessions: vec![] })
+                    }
+                }
+                Err(_) => Err(SongbirdError::Protocol(Box::new(ProtocolError {
+                    protocol: "DirectPlay".to_string(),
+                    message: "Invalid DirectPlay discovery packet".to_string(),
+                    version: None,
+                    suggestion: Some("Check protocol compatibility and version".to_string()),
+                }))),
+            }
         } else {
-            Err(SongbirdError::Protocol {
-                protocol: "DirectPlay".to_string(),
-                message: "Invalid DirectPlay discovery packet".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
-            })
+            // Check for DirectPlay signature in small packets
+            if discovery_packet.windows(5).any(|w| w == b"DPLAY") {
+                let external_addr = songbird_config::config::constants::external_address()
+                    .unwrap_or_else(|| "0.0.0.0:2300".to_string());
+
+                let sessions = vec![DirectPlaySession {
+                    session_name: "Game Session".to_string(),
+                    session_id: uuid::Uuid::new_v4().to_string(),
+                    host_address: external_addr.parse().unwrap_or_else(|_| {
+                        format!(
+                            "{}:2300",
+                            songbird_config::config::constants::default_bind_address()
+                        )
+                        .parse()
+                        .unwrap_or_else(|_| "127.0.0.1:2300".parse().unwrap()) // Safe fallback
+                    }),
+                    current_players: 1,
+                    max_players: 8,
+                    password_required: false,
+                }];
+
+                Ok(DiscoveryResponse::DirectPlay { sessions })
+            } else {
+                Err(SongbirdError::Protocol(Box::new(ProtocolError {
+                    protocol: "DirectPlay".to_string(),
+                    message: "Invalid DirectPlay discovery packet".to_string(),
+                    version: None,
+                    suggestion: Some("Check protocol compatibility and version".to_string()),
+                })))
+            }
         }
     }
 }
@@ -317,7 +614,6 @@ impl ProtocolTranslator for DirectPlayTranslator {
 /// NetBIOS translator for game discovery
 #[derive(Debug)]
 pub struct NetBIOSTranslator {
-    #[allow(dead_code)]
     name_table: HashMap<String, Vec<SocketAddr>>,
 }
 
@@ -333,13 +629,22 @@ impl NetBIOSTranslator {
             name_table: HashMap::new(),
         }
     }
+
+    /// Register a NetBIOS name with addresses
+    pub fn register_name(&mut self, name: String, addresses: Vec<SocketAddr>) {
+        self.name_table.insert(name, addresses);
+    }
+
+    /// Look up NetBIOS name
+    pub fn lookup_name(&self, name: &str) -> Option<&Vec<SocketAddr>> {
+        self.name_table.get(name)
+    }
 }
 
 #[async_trait]
 impl ProtocolTranslator for NetBIOSTranslator {
     async fn translate_to_internet(&self, netbios_packet: &[u8]) -> Result<InternetPacket> {
-        tracing::debug!("🔄 Translating NetBIOS packet");
-
+        // NetBIOS over TCP/IP (NBT) uses UDP port 137 for name resolution
         Ok(InternetPacket::UDP {
             src_port: 137,
             dst_port: 137,
@@ -351,83 +656,78 @@ impl ProtocolTranslator for NetBIOSTranslator {
     async fn translate_from_internet(&self, internet_packet: &InternetPacket) -> Result<Vec<u8>> {
         match internet_packet {
             InternetPacket::UDP { payload, .. } => Ok(payload.clone()),
-            _ => Err(SongbirdError::Protocol {
+            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 protocol: "NetBIOS".to_string(),
-                message: "NetBIOS only supports UDP".to_string(),
+                message: "NetBIOS only supports UDP translation".to_string(),
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-            }),
+            }))),
         }
     }
 
     async fn create_virtual_network(&self, players: &[PlayerEndpoint]) -> Result<VirtualNetwork> {
-        let mut udp_players = HashMap::new();
-        for player in players {
-            udp_players.insert(player.player_id.clone(), player.real_address);
+        let mut netbios_names = HashMap::new();
+
+        for (i, player) in players.iter().enumerate() {
+            let computer_name = format!("PLAYER{:02}", i + 1);
+            netbios_names.insert(computer_name, player.real_address);
         }
 
-        let subnet = songbird_config::config::constants::default_subnet();
-        let _gateway = songbird_config::config::constants::default_gateway();
-        let broadcast_ip = if subnet.starts_with("10.0.0") {
-            IpAddr::V4(Ipv4Addr::new(10, 0, 0, 255))
-        } else {
-            IpAddr::V4(Ipv4Addr::new(192, 168, 1, 255))
-        };
-
-        Ok(VirtualNetwork::UDP {
-            subnet,
-            players: udp_players,
-            broadcast_address: broadcast_ip,
+        Ok(VirtualNetwork::NetBIOS {
+            workgroup: "GAMEGROUP".to_string(),
+            computer_names: netbios_names,
         })
     }
 
-    async fn handle_game_discovery(&self, _discovery_packet: &[u8]) -> Result<DiscoveryResponse> {
-        let external_addr = songbird_config::config::constants::external_address()
-            .unwrap_or_else(|| "0.0.0.0:137".to_string());
+    async fn handle_game_discovery(&self, discovery_packet: &[u8]) -> Result<DiscoveryResponse> {
+        // Check for NetBIOS name query
+        if discovery_packet.len() >= 12 && discovery_packet[2] & 0x80 == 0 {
+            // This is a NetBIOS name query
+            let games = self
+                .name_table
+                .keys()
+                .map(|name| LegacyGameInfo {
+                    name: name.clone(),
+                    protocol: "NetBIOS".to_string(),
+                    players: 1,
+                    max_players: 8,
+                    host_address: songbird_config::config::constants::external_address()
+                        .unwrap_or_else(|| "0.0.0.0:137".to_string()),
+                })
+                .collect();
 
-        let game_sessions = vec![NetBIOSGameSession {
-            name: "NetBIOS Game".to_string(),
-            address: external_addr.parse().unwrap_or_else(|_| {
-                format!(
-                    "{}:137",
-                    songbird_config::config::constants::default_bind_address()
-                )
-                .parse()
-                .expect("Protocol translation should succeed")
-            }),
-            players: 1,
-            max_players: 8,
-        }];
-
-        Ok(DiscoveryResponse::NetBIOS { game_sessions })
+            Ok(DiscoveryResponse::LegacyGames { games })
+        } else {
+            Ok(DiscoveryResponse::LegacyGames { games: vec![] })
+        }
     }
 }
 
-/// UDP Broadcast translator for simple broadcast games
+/// UDP protocol translator for modern games
 #[derive(Debug)]
-pub struct UDPBroadcastTranslator;
+pub struct UDPTranslator;
 
-impl Default for UDPBroadcastTranslator {
+impl Default for UDPTranslator {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl UDPBroadcastTranslator {
+impl UDPTranslator {
     pub fn new() -> Self {
         Self
     }
 }
 
 #[async_trait]
-impl ProtocolTranslator for UDPBroadcastTranslator {
+impl ProtocolTranslator for UDPTranslator {
     async fn translate_to_internet(&self, udp_packet: &[u8]) -> Result<InternetPacket> {
-        let gaming_ports = songbird_config::config::constants::default_gaming_ports();
-        let port = gaming_ports.first().copied().unwrap_or(6112);
+        let port_mappings = songbird_config::config::constants::protocol_port_mappings();
+        let udp_port = port_mappings.get("udp").copied().unwrap_or(6112);
 
         Ok(InternetPacket::UDP {
-            src_port: port,
-            dst_port: port,
+            src_port: udp_port,
+            dst_port: udp_port,
             payload: udp_packet.to_vec(),
             virtual_network: None,
         })
@@ -436,12 +736,12 @@ impl ProtocolTranslator for UDPBroadcastTranslator {
     async fn translate_from_internet(&self, internet_packet: &InternetPacket) -> Result<Vec<u8>> {
         match internet_packet {
             InternetPacket::UDP { payload, .. } => Ok(payload.clone()),
-            _ => Err(SongbirdError::Protocol {
+            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 protocol: "UDP".to_string(),
                 message: "UDP translator only supports UDP packets".to_string(),
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-            }),
+            }))),
         }
     }
 
@@ -523,12 +823,12 @@ impl ProtocolTranslator for TCPTranslator {
     async fn translate_from_internet(&self, internet_packet: &InternetPacket) -> Result<Vec<u8>> {
         match internet_packet {
             InternetPacket::TCP { payload, .. } => Ok(payload.clone()),
-            _ => Err(SongbirdError::Protocol {
+            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 protocol: "TCP".to_string(),
                 message: "TCP translator only supports TCP packets".to_string(),
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-            }),
+            }))),
         }
     }
 

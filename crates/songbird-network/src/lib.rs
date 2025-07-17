@@ -1,10 +1,21 @@
 pub mod communication;
+pub mod http_server;
+pub mod management;
 pub mod network;
 pub mod proxy;
 
 // Re-export commonly used types
 pub use communication::*;
-pub use network::*;
+// Re-export management types except for conflicting NetworkConfig
+pub use management::{
+    HealthCheckConfig, LoadBalancingStrategy, NetworkManager as ManagementNetworkManager,
+    RateLimitConfig,
+};
+// Re-export network types except for conflicting NetworkManager
+pub use network::{NetworkConfig as NetworkNetworkConfig, NetworkManager as NetworkNetworkManager};
+
+// Re-export gaming module
+pub use network::gaming;
 
 // Re-export for easier access in examples and external usage
 pub use network::gaming::security_provider;

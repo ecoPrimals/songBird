@@ -33,14 +33,12 @@ async fn test_basic_threat_detection() {
             source: ThreatSource::External,
             target: "test_system".to_string(),
             description: format!("Basic threat detection test for {:?}", threat_type),
-            indicators: vec![
-                ThreatIndicator {
-                    indicator_type: "signature".to_string(),
-                    value: "test_signature".to_string(),
-                    confidence,
-                    timestamp: SystemTime::now(),
-                },
-            ],
+            indicators: vec![ThreatIndicator {
+                indicator_type: "signature".to_string(),
+                value: "test_signature".to_string(),
+                confidence,
+                timestamp: SystemTime::now(),
+            }],
             expected_response: ThreatResponse::Block,
             confidence,
         };
@@ -78,14 +76,12 @@ async fn test_threat_severity_levels() {
             source: ThreatSource::External,
             target: "test_system".to_string(),
             description: format!("Severity level test for {:?}", severity),
-            indicators: vec![
-                ThreatIndicator {
-                    indicator_type: "severity_test".to_string(),
-                    value: "test_indicator".to_string(),
-                    confidence,
-                    timestamp: SystemTime::now(),
-                },
-            ],
+            indicators: vec![ThreatIndicator {
+                indicator_type: "severity_test".to_string(),
+                value: "test_indicator".to_string(),
+                confidence,
+                timestamp: SystemTime::now(),
+            }],
             expected_response: ThreatResponse::Block,
             confidence,
         };
@@ -94,7 +90,11 @@ async fn test_threat_severity_levels() {
         if should_detect {
             assert!(detected, "Should detect {:?} severity threat", severity);
         } else {
-            assert!(!detected, "Should not detect {:?} severity threat", severity);
+            assert!(
+                !detected,
+                "Should not detect {:?} severity threat",
+                severity
+            );
         }
     }
 
@@ -121,14 +121,12 @@ async fn test_threat_source_analysis() {
             source: source.clone(),
             target: "test_system".to_string(),
             description: format!("Source analysis test for {:?}", source),
-            indicators: vec![
-                ThreatIndicator {
-                    indicator_type: "source_test".to_string(),
-                    value: "test_indicator".to_string(),
-                    confidence,
-                    timestamp: SystemTime::now(),
-                },
-            ],
+            indicators: vec![ThreatIndicator {
+                indicator_type: "source_test".to_string(),
+                value: "test_indicator".to_string(),
+                confidence,
+                timestamp: SystemTime::now(),
+            }],
             expected_response: ThreatResponse::Block,
             confidence,
         };
@@ -151,11 +149,11 @@ async fn test_threat_confidence_thresholds() {
 
     // Test different confidence levels
     let confidence_tests = vec![
-        (0.9, true),   // High confidence
-        (0.8, true),   // Medium-high confidence
-        (0.6, true),   // Medium confidence
-        (0.4, false),  // Low confidence
-        (0.2, false),  // Very low confidence
+        (0.9, true),  // High confidence
+        (0.8, true),  // Medium-high confidence
+        (0.6, true),  // Medium confidence
+        (0.4, false), // Low confidence
+        (0.2, false), // Very low confidence
     ];
 
     for (confidence, should_detect) in confidence_tests {
@@ -166,23 +164,29 @@ async fn test_threat_confidence_thresholds() {
             source: ThreatSource::External,
             target: "test_system".to_string(),
             description: format!("Confidence threshold test for {}", confidence),
-            indicators: vec![
-                ThreatIndicator {
-                    indicator_type: "confidence_test".to_string(),
-                    value: "test_indicator".to_string(),
-                    confidence,
-                    timestamp: SystemTime::now(),
-                },
-            ],
+            indicators: vec![ThreatIndicator {
+                indicator_type: "confidence_test".to_string(),
+                value: "test_indicator".to_string(),
+                confidence,
+                timestamp: SystemTime::now(),
+            }],
             expected_response: ThreatResponse::Block,
             confidence,
         };
 
         let detected = framework.run_threat_detection_test(threat_scenario).await;
         if should_detect {
-            assert!(detected, "Should detect threat with confidence {}", confidence);
+            assert!(
+                detected,
+                "Should detect threat with confidence {}",
+                confidence
+            );
         } else {
-            assert!(!detected, "Should not detect threat with confidence {}", confidence);
+            assert!(
+                !detected,
+                "Should not detect threat with confidence {}",
+                confidence
+            );
         }
     }
 
@@ -227,7 +231,10 @@ async fn test_comprehensive_threat_detection() {
     };
 
     let detected = framework.run_threat_detection_test(complex_threat).await;
-    assert!(detected, "Should detect complex threat with multiple indicators");
+    assert!(
+        detected,
+        "Should detect complex threat with multiple indicators"
+    );
 
     println!("✅ Comprehensive threat detection test passed");
-} 
+}

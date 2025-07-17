@@ -1,6 +1,6 @@
 //! Basic Tests for Communication Module
 
-use songbird_lib::communication::*;
+use songbird_network::communication::*;
 use tokio::test;
 
 /// Test ServiceAddress creation

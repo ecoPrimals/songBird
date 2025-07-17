@@ -1,9 +1,9 @@
 use chrono::Utc;
-use songbird_lib::communication::{
+use songbird_errors::Result;
+use songbird_network::communication::{
     CommunicationLayer, CommunicationResponse, HttpCommunication, InMemoryCommunication,
     ServiceAddress, ServiceMessage, WebSocketCommunication,
 };
-use songbird_lib::errors::Result;
 use std::collections::HashMap;
 
 #[tokio::test]

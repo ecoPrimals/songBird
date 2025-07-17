@@ -54,26 +54,39 @@ impl Default for ToadstoolPrimal {
                 },
             ],
             endpoints: PrimalEndpoints {
-                primary: "http://localhost:8082".to_string(),
-                health: "http://localhost:8082/health".to_string(),
-                metrics: Some("http://localhost:8082/metrics".to_string()),
-                admin: Some("http://localhost:8082/admin".to_string()),
-                websocket: Some("ws://localhost:8082/ws".to_string()),
+                primary: songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT
+                    .to_string(),
+                health: format!(
+                    "{}/health",
+                    songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT
+                ),
+                metrics: Some(format!(
+                    "{}/metrics",
+                    songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT
+                )),
+                admin: Some(format!(
+                    "{}/admin",
+                    songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT
+                )),
+                websocket: Some(format!(
+                    "ws://{}:{}/ws",
+                    songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS,
+                    songbird_config::config::constants::network::DEFAULT_TOADSTOOL_PORT
+                )),
                 custom: {
                     let mut map = HashMap::new();
+                    let base_endpoint =
+                        songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT;
                     map.insert(
                         "containers".to_string(),
-                        "http://localhost:8082/containers".to_string(),
+                        format!("{}/containers", base_endpoint),
                     );
                     map.insert(
                         "serverless".to_string(),
-                        "http://localhost:8082/serverless".to_string(),
+                        format!("{}/serverless", base_endpoint),
                     );
-                    map.insert("jobs".to_string(), "http://localhost:8082/jobs".to_string());
-                    map.insert(
-                        "scaling".to_string(),
-                        "http://localhost:8082/scaling".to_string(),
-                    );
+                    map.insert("jobs".to_string(), format!("{}/jobs", base_endpoint));
+                    map.insert("scaling".to_string(), format!("{}/scaling", base_endpoint));
                     map
                 },
             },
@@ -116,26 +129,39 @@ impl ToadstoolPrimal {
                 },
             ],
             endpoints: PrimalEndpoints {
-                primary: "http://localhost:8082".to_string(),
-                health: "http://localhost:8082/health".to_string(),
-                metrics: Some("http://localhost:8082/metrics".to_string()),
-                admin: Some("http://localhost:8082/admin".to_string()),
-                websocket: Some("ws://localhost:8082/ws".to_string()),
+                primary: songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT
+                    .to_string(),
+                health: format!(
+                    "{}/health",
+                    songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT
+                ),
+                metrics: Some(format!(
+                    "{}/metrics",
+                    songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT
+                )),
+                admin: Some(format!(
+                    "{}/admin",
+                    songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT
+                )),
+                websocket: Some(format!(
+                    "ws://{}:{}/ws",
+                    songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS,
+                    songbird_config::config::constants::network::DEFAULT_TOADSTOOL_PORT
+                )),
                 custom: {
                     let mut map = HashMap::new();
+                    let base_endpoint =
+                        songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT;
                     map.insert(
                         "containers".to_string(),
-                        "http://localhost:8082/containers".to_string(),
+                        format!("{}/containers", base_endpoint),
                     );
                     map.insert(
                         "serverless".to_string(),
-                        "http://localhost:8082/serverless".to_string(),
+                        format!("{}/serverless", base_endpoint),
                     );
-                    map.insert("jobs".to_string(), "http://localhost:8082/jobs".to_string());
-                    map.insert(
-                        "scaling".to_string(),
-                        "http://localhost:8082/scaling".to_string(),
-                    );
+                    map.insert("jobs".to_string(), format!("{}/jobs", base_endpoint));
+                    map.insert("scaling".to_string(), format!("{}/scaling", base_endpoint));
                     map
                 },
             },

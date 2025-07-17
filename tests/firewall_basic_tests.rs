@@ -1,6 +1,6 @@
 //! Basic Tests for Firewall Module
 
-use songbird_lib::firewall::*;
+use songbird_security::firewall::*;
 use tokio::test;
 
 /// Test FirewallConfig creation and defaults

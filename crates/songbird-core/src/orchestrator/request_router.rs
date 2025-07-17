@@ -3,10 +3,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::time::{timeout, Duration};
 
-use crate::traits::load_balancer::{LoadBalancer, ServiceInstance};
-use crate::traits::communication::CommunicationLayer;
-use crate::traits::service::{ServiceRequest, ServiceResponse, ResponseStatus};
-use songbird_errors::{Result, SongbirdError};
+use songbird_discovery::traits::load_balancer::{LoadBalancer, ServiceInstance};
+use songbird_discovery::traits::communication::CommunicationLayer;
+use songbird_discovery::traits::service::{ServiceRequest, ServiceResponse, ResponseStatus};
+use songbird_errors::{Result, SongbirdError, ServiceError};
 
 #[derive(Clone)]
 pub struct RequestRouter {
@@ -68,10 +68,10 @@ impl RequestRouter {
         }
 
         if service_instances.is_empty() {
-            return Err(SongbirdError::Service {
+            return Err(songbird_errors::SongbirdError::Service(Box::new(ServiceError {
                 service_id: "unknown".to_string(),
                 message: "No service instances available".to_string(),
-            });
+            })));
         }
 
         // Attempt request with retries
@@ -99,26 +99,26 @@ impl RequestRouter {
                     }
                 }
                 Ok(None) => {
-                    return Err(SongbirdError::Service {
+                    return Err(songbird_errors::SongbirdError::Service(Box::new(ServiceError {
                         service_id: "unknown".to_string(),
                         message: "No healthy service instances available".to_string(),
-                    });
+                    })));
                 }
                 Err(e) => {
-                    return Err(SongbirdError::Service {
+                    return Err(songbird_errors::SongbirdError::Service(Box::new(ServiceError {
                         service_id: "unknown".to_string(),
                         message: format!("Load balancer error: {e}"),
-                    });
+                    })));
                 }
             }
         }
 
-        // All retries failed
+        // All retries failed - return most recent error or default
         Err(last_error.unwrap_or_else(|| {
-            SongbirdError::Service {
+            songbird_errors::SongbirdError::Service(Box::new(ServiceError {
                 service_id: "unknown".to_string(),
                 message: "All retry attempts failed".to_string(),
-            }
+            }))
         }))
     }
 
@@ -127,7 +127,7 @@ impl RequestRouter {
         instance: &ServiceInstance,
         request: &ServiceRequest,
     ) -> Result<ServiceResponse> {
-        use crate::traits::communication::{ServiceAddress, ServiceMessage, MessageType};
+        use songbird_discovery::traits::communication::{ServiceAddress, ServiceMessage, MessageType};
 
         let service_address = ServiceAddress {
             service_id: instance.service_info.id.clone(),
@@ -136,13 +136,22 @@ impl RequestRouter {
                 .map(|e| e.path.clone()),
         };
 
-        // Prepare headers with HTTP routing information
-        let mut headers = request.headers.clone();
+        // Prepare headers with HTTP routing information - optimize by selective cloning
+        let mut headers = std::collections::HashMap::new();
+        
+        // Copy only essential headers from original request
+        for (key, value) in &request.headers {
+            if key.starts_with("x-") || key == "authorization" || key == "content-type" {
+                headers.insert(key.clone(), value.clone());
+            }
+        }
+        
+        // Add routing headers
         headers.insert("x-request-path".to_string(), request.path.clone());
         headers.insert("x-request-method".to_string(), request.method.clone());
         headers.insert("x-target-service".to_string(), instance.service_info.id.clone());
 
-        // Convert ServiceRequest to ServiceMessage for communication layer
+        // Convert ServiceRequest to ServiceMessage for communication layer - optimize cloning
         let mut message = ServiceMessage {
             id: request.id.clone(),
             message_type: MessageType::Request,
@@ -190,9 +199,9 @@ impl RequestRouter {
                 timeout_secs = timeout_duration.as_secs(),
                 "Request timeout"
             );
-            SongbirdError::Service {
+            songbird_errors::SongbirdError::Service(Box::new(ServiceError {
                 service_id: instance.service_info.id.clone(),
-                message: format!("Request timeout after {timeout_duration}"),
+                message: format!("Request timeout after {timeout_duration:?}))"),
             }
         })?
         .map_err(|e| {
@@ -202,9 +211,9 @@ impl RequestRouter {
                 error = %e,
                 "Communication failed"
             );
-            SongbirdError::Service {
+            songbird_errors::SongbirdError::Service(Box::new(ServiceError {
                 service_id: instance.service_info.id.clone(),
-                message: format!("Communication failed: {e}"),
+                message: format!("Communication failed: {e}))"),
             }
         })?;
 

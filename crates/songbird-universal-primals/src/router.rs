@@ -6,7 +6,7 @@
 use crate::discovery::PrimalDiscoveryEngine;
 use crate::{PrimalCapability, PrimalContext, PrimalType};
 use songbird_config::hardcoded_elimination::PrimalConfig;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{Result, ServiceError};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -279,12 +279,14 @@ impl UniversalPrimalRouter {
         let eligible_nodes = self.get_eligible_nodes(&request).await?;
 
         if eligible_nodes.is_empty() {
-            return Err(SongbirdError::Service {
-                service: format!("{:?}", request.primal_type),
-                message: "No eligible primal nodes available".to_string(),
-                status: Some("no_nodes_available".to_string()),
-                suggestion: Some("Check primal node health and registration".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::Service(Box::new(
+                ServiceError {
+                    service: format!("{:?}", request.primal_type),
+                    message: "No eligible primal nodes available".to_string(),
+                    status: Some("no_nodes_available".to_string()),
+                    suggestion: Some("Check primal node health and registration".to_string()),
+                },
+            )));
         }
 
         // Select best node using load balancing strategy
@@ -377,12 +379,14 @@ impl UniversalPrimalRouter {
         request: &RoutingRequest,
     ) -> Result<PrimalNode> {
         if eligible_nodes.is_empty() {
-            return Err(SongbirdError::Service {
-                service: format!("{}", request.primal_type),
-                message: "No eligible nodes available".to_string(),
-                status: Some("no_nodes_available".to_string()),
-                suggestion: Some("Check primal node health and registration".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::Service(Box::new(
+                ServiceError {
+                    service: format!("{}", request.primal_type),
+                    message: "No eligible nodes available".to_string(),
+                    status: Some("no_nodes_available".to_string()),
+                    suggestion: Some("Check primal node health and registration".to_string()),
+                },
+            )));
         }
 
         match self.load_balancer.strategy {

@@ -22,18 +22,20 @@ use songbird_core::load_balancer::{
     HealthBasedLoadBalancer, LatencyOptimizedLoadBalancer, LoadBalancer, LoadBalancerConfig,
     LoadBalancerStrategy as LoadBalancerType, ServiceInstance,
 };
-use songbird_discovery::traits::PluginRegistry;
-use songbird_federation::mcp_handler::McpFederation;
-use songbird_lib::{
+use songbird_core::{
     config::SongbirdConfig,
     network::gaming::{nat_traversal::NatTraversalManager, performance::PerformanceMonitor},
     registry::{CustomHealthCheck, HealthCheckPolicy, HealthCheckType, HealthFailureAction},
     traits::service::ServiceInfo,
 };
+use songbird_discovery::traits::PluginRegistry;
+use songbird_federation::mcp_handler::McpFederation;
 use songbird_network::network::gaming::performance::BenchmarkConfig;
 use songbird_registry::plugin::DynamicPluginRegistry;
 use songbird_registry::scaling::AutoScalingEngine;
 use songbird_registry::scaling::{AutoScalingPolicy, ScalingStrategy, ScalingThreshold};
+use songbird_registry::service::ServiceStatus;
+use songbird_federation::config::{FederationConfig, FederationMode};
 // Note: Using mock storage for testing since NestGateStorage doesn't exist yet
 // use songbird_universal_primals::nestgate::NestGatePrimal;
 
@@ -113,8 +115,7 @@ impl FileSystemStorage {
                     }
                 }
             } else if path.is_dir() {
-                self.collect_files_recursive(&path, base_path, files)
-                    .await?;
+                Box::pin(self.collect_files_recursive(&path, base_path, files)).await?;
             }
         }
 
@@ -152,7 +153,7 @@ impl FileSystemStorage {
             if path.is_file() {
                 tokio::fs::copy(&path, &dest_path).await?;
             } else if path.is_dir() {
-                self.copy_directory_recursive(&path, &dest_path).await?;
+                Box::pin(self.copy_directory_recursive(&path, &dest_path)).await?;
             }
         }
 
@@ -236,7 +237,7 @@ async fn test_advanced_integration_comprehensive() -> Result<()> {
 async fn test_advanced_service_registry() -> Result<()> {
     println!("📋 Testing Advanced Service Registry...");
 
-    let registry = songbird_lib::registry::ServiceRegistry::new().await?;
+    let registry = songbird_core::registry::ServiceRegistry::new().await?;
 
     // Create a test service
     let service_info = ServiceInfo {
@@ -249,7 +250,7 @@ async fn test_advanced_service_registry() -> Result<()> {
         health_check_endpoint: Some("/health".to_string()),
         tags: vec!["gaming".to_string()],
         dependencies: vec![],
-        status: songbird_lib::traits::service::ServiceStatus::Running,
+        status: ServiceStatus::Running,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
         instance_id: uuid::Uuid::new_v4().to_string(),
@@ -325,7 +326,7 @@ async fn test_advanced_service_registry() -> Result<()> {
             scale_factor: 1.0,
         },
         cooldown_period: Duration::from_secs(60),
-        scaling_strategy: songbird_lib::registry::ScalingStrategy::Gaming,
+        scaling_strategy: ScalingStrategy::Gaming,
     };
 
     // Register service with advanced policies
@@ -480,19 +481,21 @@ async fn test_federation_system() -> Result<()> {
     println!("🔗 Testing Federation System...");
 
     // Create federation configuration
-    let federation_config = songbird_lib::federation::config::FederationConfig {
+    let federation_config = FederationConfig {
         cluster_id: Some("test-cluster".to_string()),
         node_id: Some("test-node-1".to_string()),
         cluster_endpoints: vec!["http://127.0.0.1:8080".to_string()],
-        heartbeat_interval: 30,
+        heartbeat_interval: Some(30),
         auto_discovery: true,
         connection_timeout: 5,
         max_retries: 2,
+        discovery_port: 8081,
+        port: 8080,
     };
 
     // Initialize federation
     let federation = McpFederation::new(
-        songbird_lib::federation::config::FederationMode::Standalone,
+        FederationMode::Standalone,
         federation_config,
     );
 
@@ -586,7 +589,7 @@ async fn test_system_integration() -> Result<()> {
     println!("🎯 Testing System Integration...");
 
     // Test that all major components can be initialized together
-    let registry = songbird_lib::registry::ServiceRegistry::new().await?;
+    let registry = songbird_core::registry::ServiceRegistry::new().await?;
     let nat_manager = NatTraversalManager::new();
     let storage = FileSystemStorage::new();
 
@@ -604,7 +607,7 @@ async fn test_system_integration() -> Result<()> {
         health_check_endpoint: Some("/health".to_string()),
         tags: vec!["integration".to_string()],
         dependencies: vec![],
-        status: songbird_lib::traits::service::ServiceStatus::Running,
+        status: ServiceStatus::Running,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
         instance_id: uuid::Uuid::new_v4().to_string(),
@@ -649,7 +652,7 @@ async fn test_system_integration() -> Result<()> {
             scale_factor: 1.0,
         },
         cooldown_period: Duration::from_secs(60),
-        scaling_strategy: songbird_lib::registry::ScalingStrategy::Gaming,
+        scaling_strategy: ScalingStrategy::Gaming,
     };
 
     // Register integrated service
@@ -696,7 +699,7 @@ async fn test_system_integration() -> Result<()> {
 async fn test_performance_under_load() -> Result<()> {
     println!("🚀 Testing Performance Under Load...");
 
-    let registry = songbird_lib::registry::ServiceRegistry::new().await?;
+    let registry = songbird_core::registry::ServiceRegistry::new().await?;
     let storage = FileSystemStorage::new();
 
     // Create multiple services
@@ -714,7 +717,7 @@ async fn test_performance_under_load() -> Result<()> {
             health_check_endpoint: Some("/health".to_string()),
             tags: vec!["load_test".to_string()],
             dependencies: vec![],
-            status: songbird_lib::traits::service::ServiceStatus::Running,
+            status: ServiceStatus::Running,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             instance_id: uuid::Uuid::new_v4().to_string(),
@@ -760,7 +763,7 @@ async fn test_performance_under_load() -> Result<()> {
                 scale_factor: 1.0,
             },
             cooldown_period: Duration::from_secs(60),
-            scaling_strategy: songbird_lib::registry::ScalingStrategy::Gaming,
+            scaling_strategy: ScalingStrategy::Gaming,
         };
 
         registry

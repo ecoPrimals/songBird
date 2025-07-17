@@ -2,9 +2,8 @@
 
 use crate::cli::CliError;
 use colored::{ColoredString, Colorize};
-use console::Term;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use indicatif::{ProgressBar, ProgressStyle};
 use std::fmt::Display;
 use std::time::Duration;
 

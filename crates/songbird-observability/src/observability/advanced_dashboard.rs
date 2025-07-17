@@ -319,7 +319,7 @@ impl AdvancedDashboard {
     }
 
     /// Start real-time monitoring
-    pub async fn start_monitoring(&mut self) -> crate::errors::Result<()> {
+    pub async fn start_monitoring(&mut self) -> songbird_errors::Result<()> {
         // Initialize monitoring components
         self.metrics_collector.start_collection().await?;
         self.analytics_engine.initialize_baseline().await?;
@@ -537,7 +537,7 @@ impl MetricsCollector {
         }
     }
 
-    async fn start_collection(&mut self) -> crate::errors::Result<()> {
+    async fn start_collection(&mut self) -> songbird_errors::Result<()> {
         // Start metrics collection
         Ok(())
     }
@@ -553,7 +553,7 @@ impl PerformanceAnalytics {
         }
     }
 
-    async fn initialize_baseline(&mut self) -> crate::errors::Result<()> {
+    async fn initialize_baseline(&mut self) -> songbird_errors::Result<()> {
         // Initialize performance baseline
         Ok(())
     }
@@ -585,7 +585,7 @@ impl AlertManager {
         }
     }
 
-    async fn activate_monitoring(&mut self) -> crate::errors::Result<()> {
+    async fn activate_monitoring(&mut self) -> songbird_errors::Result<()> {
         // Activate alert monitoring
         Ok(())
     }

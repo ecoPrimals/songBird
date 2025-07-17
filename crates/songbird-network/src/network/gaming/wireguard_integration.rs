@@ -4,7 +4,7 @@
 //! FUTURE MIGRATION: BSTP (BearDog Secure Tunnel Protocol)
 
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::{NetworkError, Result};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -245,13 +245,15 @@ impl WireGuardTunnel {
                     BSTPTunnel { /* Placeholder - references advanced_tunnel_system implementation */ },
                 )
             }
-            Err(e) => Err(songbird_errors::SongbirdError::Network {
-                service: Some("BSTP Upgrade".to_string()),
-                message: format!("Failed to upgrade to BSTP: {}", e),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
-            }),
+            Err(e) => Err(songbird_errors::SongbirdError::Network(Box::new(
+                NetworkError {
+                    service: Some("BSTP Upgrade".to_string()),
+                    message: format!("Failed to upgrade to BSTP: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                },
+            ))),
         }
     }
 
@@ -566,13 +568,15 @@ impl BSTPTunnel {
         // For gaming applications, this is critical for latency
 
         if packet.len() < 32 {
-            return Err(songbird_errors::SongbirdError::Network {
-                service: Some("BSTP".to_string()),
-                message: "Packet too small for zero-copy BSTP encryption".to_string(),
-                details: Some(format!("Need at least 32 bytes, got {}", packet.len())),
-                endpoint: None,
-                suggestion: Some("Check packet size and BSTP configuration".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::Network(Box::new(
+                NetworkError {
+                    service: Some("BSTP".to_string()),
+                    message: "Packet too small for zero-copy BSTP encryption".to_string(),
+                    details: Some(format!("Need at least 32 bytes, got {}", packet.len())),
+                    endpoint: None,
+                    suggestion: Some("Check packet size and BSTP configuration".to_string()),
+                },
+            )));
         }
 
         // Simulate zero-copy encryption by modifying packet headers

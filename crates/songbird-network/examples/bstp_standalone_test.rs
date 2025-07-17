@@ -65,7 +65,11 @@ mod bstp_handshake {
             if self.state != HandshakeState::Initial {
                 return Err(songbird_errors::SongbirdError::Security {
                     message: "Handshake already in progress".to_string(),
-                    context: Some(format!("Current state: {self.state}")),
+                    context: Some(format!("Current state: {:?}", self.state)),
+                    severity: Some("high".to_string()),
+                    suggestion: Some(
+                        "Reset handshake state before starting new handshake".to_string(),
+                    ),
                 });
             }
 
@@ -109,13 +113,17 @@ mod bstp_handshake {
                 songbird_errors::SongbirdError::Security {
                     message: "No session keys available".to_string(),
                     context: Some("Handshake not completed".to_string()),
+                    severity: Some("high".to_string()),
+                    suggestion: Some("Complete handshake before encrypting data".to_string()),
                 }
             })?;
 
             if self.state != HandshakeState::Established {
                 return Err(songbird_errors::SongbirdError::Security {
                     message: "Handshake not established".to_string(),
-                    context: Some(format!("Current state: {self.state}")),
+                    context: Some(format!("Current state: {:?}", self.state)),
+                    severity: Some("high".to_string()),
+                    suggestion: Some("Complete handshake before encrypting data".to_string()),
                 });
             }
 
@@ -129,6 +137,8 @@ mod bstp_handshake {
                 songbird_errors::SongbirdError::Security {
                     message: "Encryption failed".to_string(),
                     context: Some(format!("AES-GCM error: {e}")),
+                    severity: Some("high".to_string()),
+                    suggestion: Some("Check encryption key and nonce validity".to_string()),
                 }
             })?;
 
@@ -147,13 +157,17 @@ mod bstp_handshake {
                 songbird_errors::SongbirdError::Security {
                     message: "No session keys available".to_string(),
                     context: Some("Handshake not completed".to_string()),
+                    severity: Some("high".to_string()),
+                    suggestion: Some("Complete handshake before decrypting data".to_string()),
                 }
             })?;
 
             if self.state != HandshakeState::Established {
                 return Err(songbird_errors::SongbirdError::Security {
                     message: "Handshake not established".to_string(),
-                    context: Some(format!("Current state: {self.state}")),
+                    context: Some(format!("Current state: {:?}", self.state)),
+                    severity: Some("high".to_string()),
+                    suggestion: Some("Complete handshake before decrypting data".to_string()),
                 });
             }
 
@@ -166,6 +180,8 @@ mod bstp_handshake {
                 songbird_errors::SongbirdError::Security {
                     message: "Decryption failed".to_string(),
                     context: Some(format!("AES-GCM error: {e}")),
+                    severity: Some("high".to_string()),
+                    suggestion: Some("Check decryption key and ciphertext validity".to_string()),
                 }
             })?;
 

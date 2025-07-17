@@ -8,6 +8,8 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::{broadcast, RwLock};
 
+use crate::health::HealthCheckPolicy;
+use crate::scaling::AutoScalingPolicy;
 use songbird_discovery::traits::service::{ServiceInfo, UniversalService};
 use songbird_errors::{Result, SongbirdError};
 
@@ -182,6 +184,77 @@ impl ServiceRegistry {
     ) -> Result<()> {
         if let Some(entry) = self.service_entries.write().await.get_mut(service_id) {
             entry.metrics = metrics;
+        }
+        Ok(())
+    }
+
+    pub async fn register_advanced_service(
+        &self,
+        service_info: ServiceInfo,
+        _health_policy: HealthCheckPolicy,
+        _scaling_policy: AutoScalingPolicy,
+    ) -> Result<()> {
+        // For now, just register the service with default policies
+        // In a full implementation, we would store and use the policies
+        let service_id = service_info.service_id.clone();
+
+        // Create service entry with advanced policies
+        let entry = ServiceEntry {
+            service_info: service_info.clone(),
+            instance_count: 1,
+            max_instances: 10,
+            min_instances: 1,
+            last_health_check: None,
+            health_status: ServiceHealthStatus::Unknown,
+            metrics: ServiceMetrics::default(),
+            scaling_state: ScalingState::Stable,
+            lifecycle_state: ServiceLifecycleState::Initializing,
+        };
+
+        self.service_info
+            .write()
+            .await
+            .insert(service_id.clone(), service_info);
+        self.service_entries
+            .write()
+            .await
+            .insert(service_id.clone(), entry);
+
+        // Broadcast event
+        let _ = self
+            .event_broadcaster
+            .send(ServiceEvent::ServiceRegistered {
+                service_id: service_id.clone(),
+                instance_count: 1,
+            });
+
+        tracing::info!(service_id = %service_id, "Advanced service registered successfully");
+        Ok(())
+    }
+
+    pub async fn scale_service(&self, service_id: &str, target_instances: u32) -> Result<()> {
+        if let Some(entry) = self.service_entries.write().await.get_mut(service_id) {
+            entry.instance_count = target_instances;
+            entry.scaling_state = ScalingState::Stable;
+            entry.lifecycle_state = ServiceLifecycleState::Scaling {
+                direction: if target_instances > entry.instance_count {
+                    ScalingDirection::Up
+                } else {
+                    ScalingDirection::Down
+                },
+                target_instances,
+            };
+
+            // Broadcast scaling event
+            let _ = self.event_broadcaster.send(ServiceEvent::ScalingTriggered {
+                service_id: service_id.to_string(),
+                direction: if target_instances > entry.instance_count {
+                    ScalingDirection::Up
+                } else {
+                    ScalingDirection::Down
+                },
+                target_instances,
+            });
         }
         Ok(())
     }

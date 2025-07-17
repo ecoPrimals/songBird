@@ -220,9 +220,11 @@ impl NetworkConfig {
                         "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}",
                         e
                     );
-                                         crate::config::constants::network::DEFAULT_BIND_ADDRESS.parse().unwrap_or_else(|_| {
-                        std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
-                    })
+                    crate::config::constants::network::DEFAULT_BIND_ADDRESS
+                        .parse()
+                        .unwrap_or_else(|_| {
+                            std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
+                        })
                 }),
             orchestrator_port: std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
                 .unwrap_or_else(|_| "8080".to_string())
@@ -300,9 +302,13 @@ impl NetworkConfig {
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
             websocket_port: 8080,
-            metrics_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS.parse().expect("valid IP"),
+            metrics_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
+                .parse()
+                .expect("valid IP"),
             metrics_port: 8004,
-            federation_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS.parse().expect("valid IP"),
+            federation_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
+                .parse()
+                .expect("valid IP"),
             federation_port: 8005,
             cors: CorsConfig::default(),
         }
@@ -532,7 +538,9 @@ impl NetworkConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS.parse().expect("valid IP"),
+            bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
+                .parse()
+                .expect("valid IP"),
             production_bind_address: "0.0.0.0".parse().expect("valid IP"),
             orchestrator_port: 8080,
             discovery_port: 8001,
@@ -557,9 +565,13 @@ impl Default for NetworkConfig {
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
             websocket_port: 8080,
-            metrics_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS.parse().expect("valid IP"),
+            metrics_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
+                .parse()
+                .expect("valid IP"),
             metrics_port: 8004,
-            federation_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS.parse().expect("valid IP"),
+            federation_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
+                .parse()
+                .expect("valid IP"),
             federation_port: 8005,
             cors: CorsConfig::default(),
         }

@@ -1,29 +1,31 @@
-//! Configuration providers for different sources and formats
+//! Configuration providers for Songbird components
+//!
+//! This module provides configuration provider functionality.
 
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use songbird_errors::{Result, SongbirdError};
-use std::path::Path;
+use std::marker::PhantomData;
+use std::path::PathBuf;
 
 /// Configuration format types
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConfigFormat {
     Toml,
-    Yaml,
     Json,
+    Yaml,
 }
 
 /// Configuration provider trait
 #[async_trait]
-pub trait ConfigProvider<T: DeserializeOwned + Send + Sync> {
-    async fn load_config(&self) -> Result<T>;
-    async fn watch_config(&self) -> impl futures_util::Stream<Item = Result<T>> {
-        futures_util::stream::empty()
-    }
+pub trait ConfigProvider<T>: Send + Sync {
+    async fn load(&self) -> Result<T>;
+    async fn save(&self, config: &T) -> Result<()>;
+    fn provider_info(&self) -> ConfigProviderInfo;
 }
 
-/// Provider information
-#[derive(Debug)]
+/// Configuration provider information
+#[derive(Debug, Clone)]
 pub struct ConfigProviderInfo {
     pub name: String,
     pub description: String,
@@ -31,75 +33,122 @@ pub struct ConfigProviderInfo {
 }
 
 /// File-based configuration provider
-pub struct FileConfigProvider {
-    path: std::path::PathBuf,
-    format: ConfigFormat,
+pub struct FileConfigProvider<T> {
+    pub path: PathBuf,
+    pub format: ConfigFormat,
+    pub _phantom: PhantomData<T>,
 }
 
-impl FileConfigProvider {
-    pub fn new<P: AsRef<Path>>(path: P, format: ConfigFormat) -> Self {
+impl<T> FileConfigProvider<T> {
+    pub fn new(path: PathBuf, format: ConfigFormat) -> Self {
         Self {
-            path: path.as_ref().to_path_buf(),
+            path,
             format,
+            _phantom: PhantomData,
         }
+    }
+
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
+    pub fn format(&self) -> &ConfigFormat {
+        &self.format
     }
 }
 
 #[async_trait]
-impl<T: DeserializeOwned + Send + Sync> ConfigProvider<T> for FileConfigProvider {
-    async fn load_config(&self) -> Result<T> {
-        let contents =
+impl<T> ConfigProvider<T> for FileConfigProvider<T>
+where
+    T: DeserializeOwned + serde::Serialize + Send + Sync,
+{
+    async fn load(&self) -> Result<T> {
+        let content =
             tokio::fs::read_to_string(&self.path)
                 .await
                 .map_err(|e| SongbirdError::Config {
-                    field: Some("file_path".to_string()),
-                    message: format!("Failed to read config file {:?}: {}", self.path, e),
-                    context: Some("File reading".to_string()),
-                    suggestion: Some("Check file path and permissions".to_string()),
+                    message: format!("Failed to read config file: {e}"),
+                    field: Some("config_file".to_string()),
+                    context: None,
+                    suggestion: Some("Check if the file exists and is readable".to_string()),
                 })?;
 
-        match self.format {
-            ConfigFormat::Toml => {
-                toml::from_str(&contents).map_err(|e| songbird_errors::SongbirdError::Config {
-                    field: Some("toml_parse".to_string()),
-                    message: format!("Failed to parse TOML config: {e}"),
-                    context: Some("TOML parsing".to_string()),
-                    suggestion: Some("Check TOML syntax and format".to_string()),
-                })
-            }
-            ConfigFormat::Yaml => serde_yaml::from_str(&contents).map_err(|e| {
-                songbird_errors::SongbirdError::Config {
-                    field: Some("yaml_parse".to_string()),
-                    message: format!("Failed to parse YAML config: {e}"),
-                    context: Some("YAML parsing".to_string()),
-                    suggestion: Some("Check YAML syntax and format".to_string()),
-                }
-            }),
-            ConfigFormat::Json => serde_json::from_str(&contents).map_err(|e| {
-                songbird_errors::SongbirdError::Config {
-                    field: Some("json_parse".to_string()),
+        let config: T = match &self.format {
+            ConfigFormat::Toml => toml::from_str(&content).map_err(|e| SongbirdError::Config {
+                message: format!("Failed to parse TOML config: {e}"),
+                field: Some("config_parsing".to_string()),
+                context: None,
+                suggestion: Some("Check TOML syntax".to_string()),
+            })?,
+            ConfigFormat::Json => {
+                serde_json::from_str(&content).map_err(|e| SongbirdError::Config {
                     message: format!("Failed to parse JSON config: {e}"),
-                    context: Some("JSON parsing".to_string()),
-                    suggestion: Some("Check JSON syntax and format".to_string()),
-                }
-            }),
-        }
+                    field: Some("config_parsing".to_string()),
+                    context: None,
+                    suggestion: Some("Check JSON syntax".to_string()),
+                })?
+            }
+            ConfigFormat::Yaml => {
+                serde_yaml::from_str(&content).map_err(|e| SongbirdError::Config {
+                    message: format!("Failed to parse YAML config: {e}"),
+                    field: Some("config_parsing".to_string()),
+                    context: None,
+                    suggestion: Some("Check YAML syntax".to_string()),
+                })?
+            }
+        };
+
+        Ok(config)
     }
-}
 
-/// Environment-based configuration provider  
-pub struct EnvConfigProvider;
+    async fn save(&self, config: &T) -> Result<()> {
+        let content = match &self.format {
+            ConfigFormat::Toml => {
+                toml::to_string_pretty(config).map_err(|e| SongbirdError::Config {
+                    message: format!("Failed to serialize config to TOML: {e}"),
+                    field: Some("config_serialization".to_string()),
+                    context: None,
+                    suggestion: Some("Check if the config structure is valid".to_string()),
+                })?
+            }
+            ConfigFormat::Json => {
+                serde_json::to_string_pretty(config).map_err(|e| SongbirdError::Config {
+                    message: format!("Failed to serialize config to JSON: {e}"),
+                    field: Some("config_serialization".to_string()),
+                    context: None,
+                    suggestion: Some("Check if the config structure is valid".to_string()),
+                })?
+            }
+            ConfigFormat::Yaml => {
+                serde_yaml::to_string(config).map_err(|e| SongbirdError::Config {
+                    message: format!("Failed to serialize config to YAML: {e}"),
+                    field: Some("config_serialization".to_string()),
+                    context: None,
+                    suggestion: Some("Check if the config structure is valid".to_string()),
+                })?
+            }
+        };
 
-#[async_trait]
-impl<T: DeserializeOwned + Send + Sync> ConfigProvider<T> for EnvConfigProvider {
-    async fn load_config(&self) -> Result<T> {
-        // Environment config loaded from env vars - no file reading needed
-        let config = std::env::var("SONGBIRD_CONFIG").unwrap_or_default();
-        serde_json::from_str(&config).map_err(|e| songbird_errors::SongbirdError::Config {
-            field: Some("env_parse".to_string()),
-            message: format!("Failed to parse environment config: {e}"),
-            context: Some("Environment parsing".to_string()),
-            suggestion: Some("Check environment variables".to_string()),
-        })
+        tokio::fs::write(&self.path, content)
+            .await
+            .map_err(|e| SongbirdError::Config {
+                message: format!("Failed to write config file: {e}"),
+                field: Some("config_file".to_string()),
+                context: None,
+                suggestion: Some("Check if you have write permissions for this file".to_string()),
+            })?;
+
+        Ok(())
+    }
+
+    fn provider_info(&self) -> ConfigProviderInfo {
+        ConfigProviderInfo {
+            name: "FileConfigProvider".to_string(),
+            description: format!(
+                "File-based configuration provider for {}",
+                self.path.display()
+            ),
+            format: self.format.clone(),
+        }
     }
 }

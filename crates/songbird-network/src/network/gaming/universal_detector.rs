@@ -6,7 +6,7 @@
 use super::real_protocol_detector::RealProtocolDetector;
 use super::types::*;
 use songbird_config::constants;
-use songbird_errors::Result;
+use songbird_errors::{NetworkError, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -115,13 +115,15 @@ impl UniversalGameProtocolDetector {
 
             Ok(sessions)
         } else {
-            Err(songbird_errors::SongbirdError::Network {
-                service: Some("Universal Detector".to_string()),
-                message: "Real detector not initialized".to_string(),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
-            })
+            Err(songbird_errors::SongbirdError::Network(Box::new(
+                NetworkError {
+                    service: Some("Universal Detector".to_string()),
+                    message: "Real detector not initialized".to_string(),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                },
+            )))
         }
     }
 
@@ -144,7 +146,7 @@ impl UniversalGameProtocolDetector {
             local_ports: vec![6112, 6113, 6114],
             remote_endpoints: vec![format!("{}:6112", constants::default_bind_address())
                 .parse()
-                .expect("valid fallback address")],
+                .unwrap_or_else(|_| "127.0.0.1:6112".parse().unwrap())],
             process_id: Some(1234),
             game_name: Some("StarCraft".to_string()),
             detected_at: SystemTime::now(),
@@ -158,7 +160,7 @@ impl UniversalGameProtocolDetector {
             local_ports: vec![2300, 2301],
             remote_endpoints: vec![format!("{}:2300", constants::default_bind_address())
                 .parse()
-                .expect("valid fallback address")],
+                .unwrap_or_else(|_| "127.0.0.1:2300".parse().unwrap())],
             process_id: Some(5678),
             game_name: Some("Age of Empires II".to_string()),
             detected_at: SystemTime::now(),

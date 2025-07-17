@@ -5,7 +5,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{Result, ServiceError, SongbirdError};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -137,12 +137,12 @@ impl HealthMonitor for DefaultHealthMonitor {
 
             Ok(result)
         } else {
-            Err(SongbirdError::Service {
+            Err(SongbirdError::Service(Box::new(ServiceError {
                 service: service_id.to_string(),
                 message: format!("Service {} is not healthy", service_id),
                 status: Some("unhealthy".to_string()),
                 suggestion: Some("Check service logs and connectivity".to_string()),
-            })
+            })))
         }
     }
 

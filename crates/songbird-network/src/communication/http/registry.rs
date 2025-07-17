@@ -11,7 +11,7 @@ use songbird_errors::Result;
 #[async_trait]
 pub trait ServiceRegistry: Send + Sync {
     async fn get_service_endpoint(&self, service_id: &str) -> Result<Option<String>>;
-    async fn get_service_info(&self, service_id: &str) -> Result<Option<crate::traits::service::ServiceInfo>>;
+    async fn get_service_info(&self, service_id: &str) -> Result<Option<songbird_discovery::traits::service::ServiceInfo>>;
     async fn get_all_endpoints(&self) -> Vec<(String, String)>;
 }
 /// Simple HTTP service registry implementation
@@ -19,7 +19,7 @@ pub struct HttpServiceRegistry {
     /// Map of service_id -> endpoint URL
     service_endpoints: Arc<DashMap<String, String>>,
     /// Map of service_id -> ServiceInfo
-    service_info: Arc<DashMap<String, crate::traits::service::ServiceInfo>>,
+    service_info: Arc<DashMap<String, songbird_discovery::traits::service::ServiceInfo>>,
 impl HttpServiceRegistry {
     pub fn new() -> Self {
         Self {
@@ -36,7 +36,7 @@ impl HttpServiceRegistry {
         );
         self.service_endpoints.insert(service_id, endpoint);
     /// Register service info
-    pub fn register_service_info(&self, service_info: crate::traits::service::ServiceInfo) {
+    pub fn register_service_info(&self, service_info: songbird_discovery::traits::service::ServiceInfo) {
         let service_id = service_info.id.clone();
             service_type = %service_info.service_type,
             "Registering service info"
@@ -55,7 +55,7 @@ impl HttpServiceRegistry {
 impl ServiceRegistry for HttpServiceRegistry {
     async fn get_service_endpoint(&self, service_id: &str) -> Result<Option<String>> {
         Ok(self.service_endpoints.get(service_id).map(|e| e.value().clone()))
-    async fn get_service_info(&self, service_id: &str) -> Result<Option<crate::traits::service::ServiceInfo>> {
+    async fn get_service_info(&self, service_id: &str) -> Result<Option<songbird_discovery::traits::service::ServiceInfo>> {
         Ok(self.service_info.get(service_id).map(|info| info.value().clone()))
     async fn get_all_endpoints(&self) -> Vec<(String, String)> {
 } 

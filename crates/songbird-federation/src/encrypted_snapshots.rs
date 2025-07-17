@@ -255,7 +255,7 @@ impl SnapshotSecurityProvider for ProductionSnapshotSecurityAdapter {
                 .map_err(|e| SongbirdError::Config {
                     field: Some("encryption".to_string()),
                     message: format!("Encryption failed: {e}"),
-                })?;
+                })))?;
 
         // Serialize the encrypted data for storage
         bincode::serialize(&encrypted_data).map_err(|e| SongbirdError::Config {
@@ -270,7 +270,7 @@ impl SnapshotSecurityProvider for ProductionSnapshotSecurityAdapter {
             .map_err(|e| SongbirdError::Config {
                 field: Some("encrypted_data".to_string()),
                 message: format!("Failed to deserialize encrypted data: {e}"),
-            })?;
+            })))?;
 
         // Decrypt using the encryption provider
         self.encryption_user
@@ -278,7 +278,7 @@ impl SnapshotSecurityProvider for ProductionSnapshotSecurityAdapter {
             .map_err(|e| SongbirdError::Config {
                 field: Some("decryption".to_string()),
                 message: format!("Decryption failed: {e}"),
-            })
+            })))
     }
 
     async fn generate_snapshot_key(&self, _snapshot_id: &str) -> Result<Vec<u8>> {
@@ -287,7 +287,7 @@ impl SnapshotSecurityProvider for ProductionSnapshotSecurityAdapter {
             .map_err(|e| SongbirdError::Config {
                 field: Some("key_generation".to_string()),
                 message: format!("Key generation failed: {e}"),
-            })
+            })))
     }
 
     async fn verify_snapshot_access(
@@ -516,10 +516,12 @@ impl EncryptedSnapshotManager for DefaultEncryptedSnapshotManager {
             info!("Restoring snapshot: {}", snapshot_id);
             Ok(())
         } else {
-            Err(SongbirdError::NotFound {
+            Err(SongbirdError::NotFound(Box::new(NotFoundError {
                 resource: "snapshot".to_string(),
                 message: format!("Snapshot {} not found", snapshot_id),
-            })
+                searched_paths: None,
+                suggestion: None,
+            })))
         }
     }
 
@@ -537,10 +539,12 @@ impl EncryptedSnapshotManager for DefaultEncryptedSnapshotManager {
             info!("Deleted snapshot: {}", snapshot_id);
             Ok(())
         } else {
-            Err(SongbirdError::NotFound {
+            Err(SongbirdError::NotFound(Box::new(NotFoundError {
                 resource: "snapshot".to_string(),
                 message: format!("Snapshot {} not found", snapshot_id),
-            })
+                searched_paths: None,
+                suggestion: None,
+            })))
         }
     }
 

@@ -10,10 +10,10 @@
 use std::time::Duration;
 use tokio::time::timeout;
 
-use songbird_lib::errors::Result;
-use songbird_lib::substrate::{
+use songbird_core::substrate::{
     NetworkInterface, OSSubstrate, PathRequest, PathRequirements, PathType, SystemInfo,
 };
+use songbird_errors::Result;
 
 /// Test basic substrate functionality
 #[tokio::test]

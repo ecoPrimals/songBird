@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::str::from_utf8(&original_copy[..25]).unwrap_or("binary")
     );
 
-    let result = bstp_tunnel.encrypt_zero_copy_bstp(&mut zero_copy_data)?;
+    let _result = bstp_tunnel.encrypt_zero_copy_bstp(&mut zero_copy_data)?;
     info!(
         "🔐 After zero-copy encryption: {:?}",
         std::str::from_utf8(&zero_copy_data[..25]).unwrap_or("binary")

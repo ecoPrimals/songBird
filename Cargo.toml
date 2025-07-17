@@ -28,6 +28,14 @@ readme = "README.md"
 keywords = ["gaming", "orchestration", "networking", "distributed", "bridge"]
 categories = ["game-engines", "network-programming", "web-programming"]
 
+[[bin]]
+name = "songbird"
+path = "bin/songbird.rs"
+
+[[bin]]
+name = "gaming_demo"
+path = "bin/gaming_demo.rs"
+
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

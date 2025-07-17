@@ -141,7 +141,7 @@ mod tests {
         monitor
             .register_service("test-service".to_string())
             .await
-            .expect("Health monitoring should succeed");
+            .expect("Failed to register service in test");
 
         assert!(monitor
             .update_service_health("test-service", HealthStatus::Healthy)
@@ -151,8 +151,11 @@ mod tests {
         let health = monitor
             .get_service_health("test-service")
             .await
-            .expect("Health monitoring should succeed");
+            .expect("Failed to get service health in test");
         assert!(health.is_some());
-        assert!(matches!(health.unwrap().status, HealthStatus::Healthy));
+        assert!(matches!(
+            health.expect("Health should be Some in test").status,
+            HealthStatus::Healthy
+        ));
     }
 }

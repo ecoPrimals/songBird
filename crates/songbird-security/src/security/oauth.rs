@@ -3,7 +3,7 @@
 //! Support for OAuth2/OIDC authentication providers
 
 use async_trait::async_trait;
-use hyper::http;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 /// OAuth2 errors
@@ -144,13 +144,10 @@ impl OAuth2Provider for GenericOAuth2Provider {
             "client_id": self.config.client_id,
             "client_secret": self.config.client_secret
         });
+        let params_json = serde_json::to_string(&params)?;
         let response = self
             .client
-            .request(
-                http::Method::POST,
-                &self.config.token_endpoint,
-                Some(serde_json::to_vec(&params)?),
-            )
+            .request("POST", &self.config.token_endpoint, Some(&params_json))
             .await?;
 
         if response.is_success() {
@@ -201,13 +198,10 @@ impl OAuth2Provider for GenericOAuth2Provider {
             "client_secret": self.config.client_secret
         });
 
+        let params_json = serde_json::to_string(&params)?;
         let response = self
             .client
-            .request(
-                http::Method::POST,
-                &self.config.token_endpoint,
-                Some(serde_json::to_vec(&params)?),
-            )
+            .request("POST", &self.config.token_endpoint, Some(&params_json))
             .await?;
 
         if response.is_success() {

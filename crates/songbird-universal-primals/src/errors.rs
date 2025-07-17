@@ -198,14 +198,14 @@ impl From<serde_json::Error> for PrimalError {
 impl From<songbird_errors::SongbirdError> for PrimalError {
     fn from(error: songbird_errors::SongbirdError) -> Self {
         match error {
-            songbird_errors::SongbirdError::Network { message, .. } => {
-                PrimalError::Network(message)
+            songbird_errors::SongbirdError::Network(network_error) => {
+                PrimalError::Network(network_error.message)
             }
             songbird_errors::SongbirdError::Authentication { message, .. } => {
                 PrimalError::Authentication(message)
             }
-            songbird_errors::SongbirdError::Auth { message, .. } => {
-                PrimalError::Authentication(message)
+            songbird_errors::SongbirdError::Auth(auth_error) => {
+                PrimalError::Authentication(auth_error.message)
             }
             songbird_errors::SongbirdError::Configuration { message, .. } => {
                 PrimalError::Configuration(message)
@@ -216,26 +216,26 @@ impl From<songbird_errors::SongbirdError> for PrimalError {
             songbird_errors::SongbirdError::ConfigField { message, .. } => {
                 PrimalError::Configuration(message)
             }
-            songbird_errors::SongbirdError::Validation { message, .. } => {
-                PrimalError::Validation(message)
+            songbird_errors::SongbirdError::Validation(validation_error) => {
+                PrimalError::Validation(validation_error.message)
             }
-            songbird_errors::SongbirdError::NotFound { message, .. } => {
-                PrimalError::NotFound(message)
+            songbird_errors::SongbirdError::NotFound(not_found_error) => {
+                PrimalError::NotFound(not_found_error.message)
             }
-            songbird_errors::SongbirdError::Discovery { message, .. } => {
-                PrimalError::Discovery(message)
+            songbird_errors::SongbirdError::Discovery(discovery_error) => {
+                PrimalError::Discovery(discovery_error.message)
             }
-            songbird_errors::SongbirdError::Service { message, .. } => {
-                PrimalError::ServiceUnavailable(message)
+            songbird_errors::SongbirdError::Service(service_error) => {
+                PrimalError::ServiceUnavailable(service_error.message)
             }
             songbird_errors::SongbirdError::Security { message, .. } => {
                 PrimalError::Authorization(message)
             }
-            songbird_errors::SongbirdError::Protocol { message, .. } => {
-                PrimalError::Protocol(message)
+            songbird_errors::SongbirdError::Protocol(protocol_error) => {
+                PrimalError::Protocol(protocol_error.message)
             }
-            songbird_errors::SongbirdError::RateLimitExceeded { message, .. } => {
-                PrimalError::RateLimit(message)
+            songbird_errors::SongbirdError::RateLimitExceeded(rate_limit_error) => {
+                PrimalError::RateLimit(rate_limit_error.message)
             }
             _ => PrimalError::Custom(error.to_string()),
         }

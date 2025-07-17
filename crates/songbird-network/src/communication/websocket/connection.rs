@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::{mpsc, Mutex};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
-use crate::traits::communication::ServiceAddress;
+use songbird_discovery::traits::communication::ServiceAddress;
 /// Active WebSocket connection
 pub struct WebSocketConnection {
     pub id: String,

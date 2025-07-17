@@ -74,7 +74,7 @@ async fn show_current_scale() -> Result<()> {
 
     println!(
         "Current Gaming Scale: {}",
-        format!("{current_scale}").bright_green()
+        format!("{current_scale:?}").bright_green()
     );
     println!("Description: {}", current_scale.description());
 

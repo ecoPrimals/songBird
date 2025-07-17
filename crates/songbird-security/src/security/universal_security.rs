@@ -460,6 +460,7 @@ impl UniversalSecurityManager {
         let suspicious_patterns = [
             "your computer has been hacked",
             "virus detected on your computer",
+            "microsoft tech support",
             "microsoft technical support",
             "your windows license has expired",
             "suspicious activity detected",
@@ -473,29 +474,15 @@ impl UniversalSecurityManager {
 
         for pattern in &suspicious_patterns {
             if activity_text.contains(pattern) {
-                tracing::error!("Universal security check bypassed - implement proper validation");
-                return Err(SongbirdError::Network {
-                    service: Some("security".to_string()),
-                    message: "Universal security validation not implemented - denying for security"
-                        .to_string(),
-                    details: None,
-                    endpoint: Some("universal_security/validate".to_string()),
-                    suggestion: Some("Implement proper universal security validation".to_string()),
-                });
+                tracing::warn!("Suspicious tech support scam pattern detected: {}", pattern);
+                return Ok(true); // Return true to indicate suspicious activity was detected
             }
         }
 
         // Check for unusual remote access requests
         if activity.connection_type == "remote_access" && !activity.source_trusted {
-            tracing::error!("Universal security check bypassed - implement proper validation");
-            return Err(SongbirdError::Network {
-                service: Some("security".to_string()),
-                message: "Universal security validation not implemented - denying for security"
-                    .to_string(),
-                details: None,
-                endpoint: Some("universal_security/remote_access".to_string()),
-                suggestion: Some("Implement proper remote access validation".to_string()),
-            });
+            tracing::warn!("Suspicious remote access request from untrusted source");
+            return Ok(true); // Return true to indicate suspicious activity was detected
         }
 
         Ok(false)

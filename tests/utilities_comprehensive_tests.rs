@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use songbird_lib::errors::{Result, SongbirdError};
+use songbird_errors::{Result, SongbirdError};
 
 #[test]
 fn test_string_utilities_basic() {
@@ -704,6 +704,8 @@ fn test_utility_error_handling() {
             Err(SongbirdError::Config {
                 field: Some("divisor".to_string()),
                 message: "Division by zero".to_string(),
+                context: Some("test_context".to_string()),
+                suggestion: Some("Use a non-zero divisor".to_string()),
             })
         } else {
             Ok(a / b)

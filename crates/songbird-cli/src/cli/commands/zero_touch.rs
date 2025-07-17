@@ -9,7 +9,7 @@ use serde_json;
 use songbird_config::zero_touch::{
     DeploymentResult, ZeroTouchConfig, ZeroTouchDeployment, ZeroTouchOrchestrator,
 };
-use songbird_errors::Result;
+use songbird_errors::{IoError, Result};
 use std::path::PathBuf;
 use tracing::{error, info};
 use uuid;
@@ -91,12 +91,12 @@ impl ZeroTouchCommand {
             })?;
 
         tokio::fs::write(path, config_yaml).await.map_err(|e| {
-            songbird_errors::SongbirdError::Io {
+            songbird_errors::SongbirdError::Io(Box::new(IoError {
                 message: format!("Failed to write config file {}: {}", path.display(), e),
                 operation: Some("write_config_file".to_string()),
                 path: Some(path.to_string_lossy().to_string()),
                 suggestion: Some("Check file permissions and disk space".to_string()),
-            }
+            }))
         })?;
 
         print_success(&format!("Configuration saved to: {}", path.display()));
@@ -120,12 +120,12 @@ impl ZeroTouchCommand {
         })?;
 
         tokio::fs::write(path, summary_json).await.map_err(|e| {
-            songbird_errors::SongbirdError::Io {
+            songbird_errors::SongbirdError::Io(Box::new(IoError {
                 message: format!("Failed to write summary file: {e}"),
                 operation: Some("write_summary_file".to_string()),
                 path: Some(path.to_string_lossy().to_string()),
                 suggestion: Some("Check file permissions and disk space".to_string()),
-            }
+            }))
         })?;
 
         print_success(&format!("Summary saved to: {}", path.display()));
@@ -138,24 +138,17 @@ impl ZeroTouchCommand {
         );
 
         match error {
-            songbird_errors::SongbirdError::Network {
-                service: _service,
-                message,
-                details: _details,
-                ..
-            } => {
-                print_error(&format!("Network error: {message}"));
+            songbird_errors::SongbirdError::Network(network_error) => {
+                print_error(&format!("Network error: {}", network_error.message));
                 print_info("Troubleshooting:");
                 print_info("  • Check network connectivity");
                 print_info("  • Verify firewall settings");
                 print_info("  • Try running: songbird firewall configure");
             }
-            songbird_errors::SongbirdError::Service {
-                service, message, ..
-            } => {
+            songbird_errors::SongbirdError::Service(service_error) => {
                 print_info("🔧 Service issue detected");
-                print_info(&format!("  Service: {service}"));
-                print_info(&format!("  Error: {message}"));
+                print_info(&format!("  Service: {}", service_error.service));
+                print_info(&format!("  Error: {}", service_error.message));
                 print_info("  Troubleshooting:");
                 print_info("    • Check service configuration");
                 print_info("    • Verify service permissions");
@@ -170,12 +163,8 @@ impl ZeroTouchCommand {
                 print_info("    • Check configuration file syntax");
                 print_info("    • Verify file permissions");
             }
-            songbird_errors::SongbirdError::Deployment {
-                service, message, ..
-            } => {
-                print_error(&format!(
-                    "Deployment error for service {service}: {message}"
-                ));
+            songbird_errors::SongbirdError::Deployment(deployment_error) => {
+                print_error(&format!("Deployment error: {}", deployment_error.message));
                 print_info("  • Check system resources");
                 print_info("  • Verify deployment environment");
                 print_info("  • Review service logs");
@@ -308,14 +297,14 @@ async fn save_songbird_configuration(
             suggestion: Some("Check your configuration values and try again".to_string()),
         })?;
 
-    tokio::fs::write(path, config_yaml)
-        .await
-        .map_err(|e| songbird_errors::SongbirdError::Io {
+    tokio::fs::write(path, config_yaml).await.map_err(|e| {
+        songbird_errors::SongbirdError::Io(Box::new(IoError {
             message: format!("Failed to write config file {}: {}", path.display(), e),
             operation: Some("write_config_file".to_string()),
             path: Some(path.to_string_lossy().to_string()),
             suggestion: Some("Check file permissions and disk space".to_string()),
-        })?;
+        }))
+    })?;
 
     Ok(())
 }
@@ -337,14 +326,14 @@ async fn save_deployment_summary(_result: &DeploymentResult, path: &std::path::P
             suggestion: Some("Check your summary data and try again".to_string()),
         })?;
 
-    tokio::fs::write(path, summary_json)
-        .await
-        .map_err(|e| songbird_errors::SongbirdError::Io {
+    tokio::fs::write(path, summary_json).await.map_err(|e| {
+        songbird_errors::SongbirdError::Io(Box::new(IoError {
             message: format!("Failed to write summary file {}: {}", path.display(), e),
             operation: Some("write_summary_file".to_string()),
             path: Some(path.to_string_lossy().to_string()),
             suggestion: Some("Check file permissions and disk space".to_string()),
-        })?;
+        }))
+    })?;
 
     Ok(())
 }
@@ -378,30 +367,22 @@ async fn suggest_troubleshooting_steps(error: &songbird_errors::SongbirdError) {
     );
 
     match error {
-        songbird_errors::SongbirdError::Network {
-            service: _service,
-            message,
-            details: _details,
-            ..
-        } => {
-            print_error(&format!("Network error: {message}"));
+        songbird_errors::SongbirdError::Network(network_error) => {
+            print_error(&format!("Network error: {}", network_error.message));
             print_info("Troubleshooting:");
             print_info("  • Check network connectivity");
             print_info("  • Verify firewall settings");
             print_info("  • Try running: songbird firewall configure");
         }
-        songbird_errors::SongbirdError::Service {
-            service, message, ..
-        } => {
-            print_error(&format!("Service error for {service}: {message}"));
+        songbird_errors::SongbirdError::Service(service_error) => {
+            print_error(&format!(
+                "Service error for {}: {}",
+                service_error.service, service_error.message
+            ));
             print_info("Check service dependencies and requirements");
         }
-        songbird_errors::SongbirdError::Deployment {
-            service, message, ..
-        } => {
-            print_error(&format!(
-                "Deployment error for service {service}: {message}"
-            ));
+        songbird_errors::SongbirdError::Deployment(deployment_error) => {
+            print_error(&format!("Deployment error: {}", deployment_error.message));
             print_info("  • Check system resources");
             print_info("  • Verify deployment environment");
             print_info("  • Review service logs");

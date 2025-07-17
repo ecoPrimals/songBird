@@ -194,10 +194,10 @@ pub enum Commands {
     /// Web dashboard
     Dashboard {
         /// Port to run dashboard on
-        #[arg(short, long, default_value = "8080")]
+        #[arg(short, long, default_value_t = songbird_config::config::constants::network::DEFAULT_DASHBOARD_PORT)]
         port: u16,
         /// Bind address
-        #[arg(short, long, default_value = "127.0.0.1")]
+        #[arg(short, long, default_value = songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS)]
         bind: String,
     },
 }
@@ -353,7 +353,7 @@ async fn create_default_config(target_dir: &str) -> Result<()> {
 # Generated automatically - modify as needed
 
 [environment]
-bind_address = "127.0.0.1"
+        bind_address = songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
 data_dir = "./.songbird/data"
 log_level = "info"
 
@@ -1509,7 +1509,8 @@ fn get_discovery_config() -> &'static SongbirdDiscoveryConfig {
             multicast_address: "239.255.255.250".to_string(),
             federation_port: 8001,
             service_port: 8002,
-            bind_address: "127.0.0.1".to_string(),
+            bind_address: songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
+                .to_string(),
             announcement_interval_secs: 30,
             response_timeout_secs: 5,
             ping_timeout_secs: 3,

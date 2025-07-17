@@ -1584,7 +1584,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_advanced_threat_detection() {
-        let mut framework = SecurityTestingFramework::new();
+        let framework = SecurityTestingFramework::new();
 
         // Test high-severity malware threat
         let malware_threat = TestThreatScenario {
@@ -1630,10 +1630,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_zero_trust_network_access() {
-        let mut framework = SecurityTestingFramework::new();
+        let framework = SecurityTestingFramework::new();
 
         // Test trusted device from internal network
-        let trusted_access = ZeroTrustTestCase {
+        let _trusted_access = ZeroTrustTestCase {
             test_id: "zt_001".to_string(),
             device_id: "trusted_device_1".to_string(),
             user_id: "john_doe".to_string(),
@@ -1670,7 +1670,7 @@ mod tests {
         );
 
         // Test unknown device from external network
-        let untrusted_access = ZeroTrustTestCase {
+        let _untrusted_access = ZeroTrustTestCase {
             test_id: "zt_002".to_string(),
             device_id: "unknown_device_1".to_string(),
             user_id: "jane_doe".to_string(),
@@ -1706,35 +1706,60 @@ mod tests {
 
     #[tokio::test]
     async fn test_family_protection_scammer_detection() {
-        let mut framework = SecurityTestingFramework::new();
+        use crate::security::universal_security::{
+            ConnectionActivity, ScammerProtectionResult, UniversalSecurityManager,
+        };
+
+        let security_manager = UniversalSecurityManager::new();
+
+        // Enable family protection
+        security_manager
+            .enable_family_protection("test_family")
+            .await
+            .unwrap();
 
         // Test blocking tech support scam
-        let scam_activity = "microsoft tech support calling about virus on computer";
-        let scam_allowed = framework
-            .run_comprehensive_security_tests()
-            .await
-            .unwrap()
-            .compliance_results
-            .iter()
-            .filter(|r| r.passed)
-            .count()
-            > 0;
+        let scam_activity = ConnectionActivity {
+            source_id: "192.168.1.100".to_string(),
+            destination_id: "test_device".to_string(),
+            connection_type: "voice_call".to_string(),
+            description: "microsoft tech support calling about virus on computer".to_string(),
+            source_trusted: false,
+        };
+
+        let scam_result = security_manager
+            .check_scammer_protection(&scam_activity)
+            .await;
+
+        // The scam should be blocked
+        let scam_blocked = match scam_result {
+            Ok(ScammerProtectionResult::Blocked { .. }) => true,
+            Ok(ScammerProtectionResult::Allowed) => false,
+            Err(e) => {
+                eprintln!("Unexpected error in scammer protection: {:?}", e);
+                false
+            }
+        };
+
         assert!(
-            !scam_allowed,
+            scam_blocked,
             "Tech support scam should be blocked by family protection"
         );
 
         // Test allowing legitimate activity
-        let normal_activity = "checking email and social media";
-        let normal_allowed = framework
-            .run_comprehensive_security_tests()
-            .await
-            .unwrap()
-            .compliance_results
-            .iter()
-            .filter(|r| r.passed)
-            .count()
-            > 0;
+        let normal_activity = ConnectionActivity {
+            source_id: "192.168.1.101".to_string(),
+            destination_id: "test_device".to_string(),
+            connection_type: "web_browsing".to_string(),
+            description: "checking email and social media".to_string(),
+            source_trusted: true,
+        };
+
+        let normal_result = security_manager
+            .check_scammer_protection(&normal_activity)
+            .await;
+        let normal_allowed = matches!(normal_result, Ok(ScammerProtectionResult::Allowed));
+
         assert!(normal_allowed, "Normal activity should be allowed");
 
         println!("✅ Family protection scammer detection test successful - Tech support scams blocked, normal activity allowed");
@@ -1742,9 +1767,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_gaming_security_framework() {
-        let mut framework = SecurityTestingFramework::new();
+        let framework = SecurityTestingFramework::new();
 
-        let gaming_test = GamingSecurityTest {
+        let _gaming_test = GamingSecurityTest {
             test_id: "gaming_001".to_string(),
             game_session_id: "session_starcraft_001".to_string(),
             players: vec![
@@ -1796,7 +1821,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_encryption_framework_validation() {
-        let mut framework = SecurityTestingFramework::new();
+        let framework = SecurityTestingFramework::new();
 
         let encryption_strong = framework
             .run_comprehensive_security_tests()
@@ -1836,7 +1861,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_audit_and_compliance() {
-        let mut framework = SecurityTestingFramework::new();
+        let framework = SecurityTestingFramework::new();
 
         let compliance_report = framework.run_comprehensive_security_tests().await.unwrap();
 

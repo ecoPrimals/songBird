@@ -8,7 +8,7 @@ use crate::errors::PrimalResult;
 use crate::router::PrimalHealth;
 use crate::{PrimalCapability, PrimalType};
 use songbird_config::config::hardcoded_elimination::PrimalConfig;
-use songbird_errors::SongbirdError;
+use songbird_errors::NetworkError;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -290,14 +290,16 @@ impl PrimalDiscoveryEngine {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(2))
             .build()
-            .map_err(|e| SongbirdError::Network {
-                service: Some("primal_discovery".to_string()),
-                message: format!("Failed to create HTTP client: {e}"),
-                details: None,
-                endpoint: None,
-                suggestion: Some(
-                    "Check network connectivity and HTTP client configuration".to_string(),
-                ),
+            .map_err(|e| {
+                songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("primal_discovery".to_string()),
+                    message: format!("Failed to create HTTP client: {e}"),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some(
+                        "Check network connectivity and HTTP client configuration".to_string(),
+                    ),
+                }))
             })?;
 
         // Try to fetch primal info
@@ -519,14 +521,16 @@ impl PrimalDiscoveryEngine {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
-            .map_err(|e| SongbirdError::Network {
-                service: Some("connectivity_test".to_string()),
-                message: format!("Failed to create HTTP client: {e}"),
-                details: None,
-                endpoint: None,
-                suggestion: Some(
-                    "Check network connectivity and HTTP client configuration".to_string(),
-                ),
+            .map_err(|e| {
+                songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("connectivity_test".to_string()),
+                    message: format!("Failed to create HTTP client: {e}"),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some(
+                        "Check network connectivity and HTTP client configuration".to_string(),
+                    ),
+                }))
             })?;
 
         let health_url = if endpoint.ends_with("/health") {

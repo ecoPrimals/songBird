@@ -12,7 +12,7 @@
 use crate::config::FederationConfig;
 
 use if_addrs;
-use songbird_errors::SongbirdError;
+use songbird_errors::{NetworkError, SongbirdError};
 use std::net::UdpSocket;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -108,12 +108,14 @@ impl DiscoveryManager {
         let multicast_addr = "224.0.0.251:5353";
         let socket = tokio::net::UdpSocket::bind("0.0.0.0:0")
             .await
-            .map_err(|e| SongbirdError::Network {
-                service: Some("discovery".to_string()),
-                message: format!("Failed to bind mDNS socket: {}", e),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check network permissions".to_string()),
+            .map_err(|e| {
+                songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("discovery".to_string()),
+                    message: format!("Failed to bind mDNS socket: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network permissions".to_string()),
+                }))
             })?;
 
         // Create mDNS query for Songbird federation services
@@ -319,9 +321,9 @@ impl DiscoveryManager {
         debug!("Querying Consul for Songbird federation services");
 
         let consul_endpoints = vec![
-            "http://127.0.0.1:8500",
+            songbird_config::config::constants::network::DEFAULT_CONSUL_ENDPOINT,
             "http://consul.service.consul:8500",
-            "http://localhost:8500",
+            songbird_config::config::constants::network::DEFAULT_CONSUL_ENDPOINT,
         ];
 
         let mut discovered = Vec::new();
@@ -458,9 +460,9 @@ impl DiscoveryManager {
         debug!("Querying etcd for Songbird federation services");
 
         let etcd_endpoints = vec![
-            "http://127.0.0.1:2379",
+            songbird_config::config::constants::network::DEFAULT_ETCD_ENDPOINT,
             "http://etcd.service:2379",
-            "http://localhost:2379",
+            songbird_config::config::constants::network::DEFAULT_ETCD_ENDPOINT,
         ];
 
         let mut discovered = Vec::new();
@@ -793,14 +795,16 @@ impl DiscoveryManager {
             .timeout(std::time::Duration::from_secs(5))
             .send()
             .await
-            .map_err(|e| SongbirdError::Network {
-                service: Some("custom_registry".to_string()),
-                message: format!("Failed to query custom registry {}: {}", registry_url, e),
-                details: None,
-                endpoint: Some("custom_registry/query".to_string()),
-                suggestion: Some(
-                    "Check custom registry connectivity and configuration".to_string(),
-                ),
+            .map_err(|e| {
+                songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("custom_registry".to_string()),
+                    message: format!("Failed to query custom registry {}: {}", registry_url, e),
+                    details: None,
+                    endpoint: Some("custom_registry/query".to_string()),
+                    suggestion: Some(
+                        "Check custom registry connectivity and configuration".to_string(),
+                    ),
+                }))
             })?;
 
         if response.status().is_success() {
@@ -868,12 +872,14 @@ impl DiscoveryManager {
         let mut subnets = Vec::new();
 
         // Get network interfaces
-        let interfaces = if_addrs::get_if_addrs().map_err(|e| SongbirdError::Network {
-            service: Some("discovery".to_string()),
-            message: format!("Failed to get network interfaces: {}", e),
-            details: None,
-            endpoint: None,
-            suggestion: Some("Check network configuration".to_string()),
+        let interfaces = if_addrs::get_if_addrs().map_err(|e| {
+            songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                service: Some("discovery".to_string()),
+                message: format!("Failed to get network interfaces: {}", e),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check network configuration".to_string()),
+            }))
         })?;
 
         for interface in interfaces {

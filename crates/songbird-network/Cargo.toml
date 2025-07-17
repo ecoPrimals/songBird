@@ -4,78 +4,76 @@ version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
-description = "Network protocols and communication for Songbird"
+description = "Network management and communication for Songbird"
 repository = "https://github.com/ecoPrimals/SongBird"
 readme = "../../README.md"
-keywords = ["networking", "protocols", "gaming", "p2p", "distributed"]
+keywords = ["networking", "proxy", "load-balancing", "circuit-breaker", "gaming"]
 categories = ["network-programming", "game-engines", "web-programming"]
 
 [dependencies]
-songbird-errors = { path = "../songbird-errors" }
-songbird-config = { path = "../songbird-config" }
-songbird-discovery = { path = "../songbird-discovery" }
+# Core dependencies
+tokio = { version = "1.0", features = ["full"] }
+tokio-tungstenite = "0.20"
+tokio-stream = "0.1"
+futures = "0.3"
+async-trait = "0.1"
+
+# HTTP and web framework
+axum = { version = "0.6", features = ["ws", "tokio"] }
+tower = "0.4"
+tower-http = { version = "0.3", features = ["trace", "cors"] }
+hyper = { version = "0.14", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }
+http = "0.2"
+
+# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.0", features = ["full"] }
-async-trait = "0.1"
-futures-util = { workspace = true }
-tracing = "0.1"
-anyhow = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
-trust-dns-resolver = "0.23"
-socket2 = { workspace = true }
-pnet = "0.34"
-boringtun = { version = "0.6", optional = true }
-x25519-dalek = { version = "2.0.0-rc.3", optional = true }
-ip_network = "0.4"
-tun = "0.6"
-byteorder = "1.5"
-parking_lot = { workspace = true }
-rand = "0.8"
-axum = "0.7"
-hyper = { version = "1.0", features = ["full"] }
-thiserror = "1.0"
-libc = "0.2"
-sysinfo = "0.30"
-sha2 = { version = "0.10", optional = true }
-aes-gcm = { version = "0.10", optional = true }
 
-[dev-dependencies]
-tracing-subscriber = { workspace = true }
-tokio-test = "0.4"
+# Logging
+tracing = "0.1"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Random number generation
+rand = "0.8"
+
+# Network utilities
+bytes = "1.0"
+pnet = "0.33"
+
+# Cryptography
+ring = "0.16"
+x25519-dalek = "=2.0.0-rc.3"
+boringtun = "0.6"
+aes-gcm = "0.10"
+sha2 = "0.10"
+hex = "0.4"
+
+# Songbird crates
+songbird-config = { path = "../songbird-config" }
+songbird-errors = { path = "../songbird-errors" }
+songbird-discovery = { path = "../songbird-discovery" }
+
+# Network discovery
+mdns = "3.0"
+uuid = "1.0"
+libc = "0.2"
+
+# Performance
+parking_lot = "0.12"
+
+# System utilities
+byteorder = "1.4"
+
+# Time utilities
+chrono = { version = "0.4", features = ["serde"] }
 
 [features]
-default = ["wireguard"]
-# Security providers
-wireguard = ["boringtun", "x25519-dalek"]
-beardog = ["aes-gcm", "sha2"]
+beardog = []
 
-[[example]]
-name = "self_healing_security_demo"
-required-features = []
-
-[[example]]
-name = "test_internet_connectivity"
-required-features = []
-
-[[example]]
-name = "bstp_encryption_test"
-required-features = ["beardog"]
-
-[[example]]
-name = "bstp_security_analysis"
-required-features = ["beardog"]
-
-[[example]]
-name = "bstp_handshake_test"
-required-features = ["beardog"]
-
-[[example]]
-name = "bstp_handshake_simple_test"
-required-features = ["beardog"]
-
-[[example]]
-name = "bstp_standalone_test"
-required-features = ["beardog"]
+[dev-dependencies]
+tokio-test = "0.4"
+tracing-subscriber = "0.3"

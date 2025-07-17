@@ -7,8 +7,7 @@ use crate::network::gaming::types::*;
 use byteorder::{NetworkEndian, ReadBytesExt};
 use rand;
 use serde::{Deserialize, Serialize};
-use songbird_config::constants;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{NetworkError, Result, SongbirdError};
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -53,13 +52,90 @@ struct StunAttribute {
 
 /// NAT traversal manager for gaming sessions
 pub struct NatTraversalManager {
-    #[allow(dead_code)]
     stun_servers: Vec<SocketAddr>,
+    turn_servers: Vec<TurnServer>,
     local_socket: Option<Arc<UdpSocket>>,
     external_address: Option<SocketAddr>,
     nat_type: NatType,
     connection_cache: Arc<TokioRwLock<HashMap<String, ConnectionInfo>>>,
     hole_punch_attempts: Arc<TokioRwLock<HashMap<String, HolePunchAttempt>>>,
+    turn_allocations: Arc<TokioRwLock<HashMap<String, TurnAllocation>>>,
+}
+
+/// TURN server configuration
+#[derive(Debug, Clone)]
+pub struct TurnServer {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub password: String,
+    pub realm: String,
+    pub protocol: TurnProtocol,
+}
+
+/// TURN protocol variants
+#[derive(Debug, Clone)]
+pub enum TurnProtocol {
+    Udp,
+    Tcp,
+    Tls,
+    Dtls,
+}
+
+/// TURN allocation information
+#[derive(Debug, Clone)]
+pub struct TurnAllocation {
+    pub server: TurnServer,
+    pub allocation_id: String,
+    pub relay_address: SocketAddr,
+    pub allocated_at: Instant,
+    pub expires_at: Instant,
+    pub permissions: Vec<SocketAddr>,
+    pub bandwidth_limit: Option<u32>, // Kbps
+    pub bytes_sent: u64,
+    pub bytes_received: u64,
+}
+
+/// TURN message types
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TurnMessageType {
+    Allocate = 0x0003,
+    AllocateResponse = 0x0103,
+    AllocateError = 0x0113,
+    Refresh = 0x0004,
+    RefreshResponse = 0x0104,
+    RefreshError = 0x0114,
+    Send = 0x0006,
+    SendResponse = 0x0106,
+    SendError = 0x0116,
+    Data = 0x0007,
+    CreatePermission = 0x0008,
+    CreatePermissionResponse = 0x0108,
+    CreatePermissionError = 0x0118,
+    ChannelBind = 0x0009,
+    ChannelBindResponse = 0x0109,
+    ChannelBindError = 0x0119,
+}
+
+/// TURN attribute types
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TurnAttributeType {
+    // STUN attributes
+    MappedAddress = 0x0001,
+    Username = 0x0006,
+    MessageIntegrity = 0x0008,
+    ErrorCode = 0x0009,
+    Realm = 0x0014,
+    Nonce = 0x0015,
+    XorMappedAddress = 0x0020,
+
+    // TURN-specific attributes
+    XorRelayedAddress = 0x0016,
+    RequestedTransport = 0x0019,
+    Lifetime = 0x000D,
+    XorPeerAddress = 0x0012,
+    Data = 0x0013,
+    ChannelNumber = 0x000C,
 }
 
 /// Information about a peer connection
@@ -104,9 +180,7 @@ impl NatTraversalManager {
                             bind_address,
                             e
                         );
-                        format!("{}:19302", constants::default_bind_address())
-                            .parse()
-                            .expect("valid fallback STUN address")
+                        "127.0.0.1:19302".parse().unwrap() // Safe fallback
                     }),
                 format!("{}:19303", bind_address)
                     .parse()
@@ -116,16 +190,16 @@ impl NatTraversalManager {
                             bind_address,
                             e
                         );
-                        format!("{}:19303", constants::default_bind_address())
-                            .parse()
-                            .expect("valid fallback STUN address")
+                        "127.0.0.1:19303".parse().unwrap() // Safe fallback
                     }),
             ],
+            turn_servers: vec![], // Placeholder for TURN servers
             local_socket: None,
             external_address: None,
             nat_type: NatType::Unknown,
             connection_cache: Arc::new(TokioRwLock::new(HashMap::new())),
             hole_punch_attempts: Arc::new(TokioRwLock::new(HashMap::new())),
+            turn_allocations: Arc::new(TokioRwLock::new(HashMap::new())),
         }
     }
 
@@ -153,22 +227,24 @@ impl NatTraversalManager {
             format!("{}:{}", env_config.bind_address, port)
         };
 
-        let socket = UdpSocket::bind(&bind_addr)
-            .await
-            .map_err(|e| SongbirdError::Network {
+        let socket = UdpSocket::bind(&bind_addr).await.map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to bind socket to {}: {}", bind_addr, e),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            })?;
+            }))
+        })?;
 
-        let local_addr = socket.local_addr().map_err(|e| SongbirdError::Network {
-            service: Some("NAT Traversal".to_string()),
-            message: format!("Failed to get local address: {}", e),
-            details: None,
-            endpoint: None,
-            suggestion: Some("Check network connectivity and configuration".to_string()),
+        let local_addr = socket.local_addr().map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("Failed to get local address: {}", e),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
+            }))
         })?;
 
         self.local_socket = Some(Arc::new(socket));
@@ -184,16 +260,15 @@ impl NatTraversalManager {
     async fn detect_nat_configuration(&mut self) -> Result<()> {
         info!("🔍 Detecting NAT configuration...");
 
-        let socket = self
-            .local_socket
-            .as_ref()
-            .ok_or_else(|| SongbirdError::Network {
+        let socket = self.local_socket.as_ref().ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
                 message: "Socket not initialized".to_string(),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            })?;
+            }))
+        })?;
 
         // Try multiple STUN servers
         let env_config = songbird_config::config::environment::EnvironmentConfig::default();
@@ -229,12 +304,14 @@ impl NatTraversalManager {
 
         // Fallback: Use local address detection for demo purposes
         warn!("⚠️  All STUN servers failed, falling back to local address detection");
-        let local_addr = socket.local_addr().map_err(|e| SongbirdError::Network {
-            service: Some("NAT Traversal".to_string()),
-            message: format!("Failed to get local address: {}", e),
-            details: None,
-            endpoint: None,
-            suggestion: Some("Check network connectivity and configuration".to_string()),
+        let local_addr = socket.local_addr().map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("Failed to get local address: {}", e),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
+            }))
         })?;
 
         // For demo purposes, assume we're behind NAT if using private IP
@@ -262,22 +339,24 @@ impl NatTraversalManager {
         }
 
         // If that fails, treat as hostname:port and resolve
-        let mut addrs = lookup_host(stun_server_str)
-            .await
-            .map_err(|e| SongbirdError::Network {
+        let mut addrs = lookup_host(stun_server_str).await.map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to resolve STUN server {}: {}", stun_server_str, e),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            })?;
+            }))
+        })?;
 
-        addrs.next().ok_or_else(|| SongbirdError::Network {
-            service: Some("NAT Traversal".to_string()),
-            message: format!("No addresses found for STUN server {}", stun_server_str),
-            details: None,
-            endpoint: None,
-            suggestion: Some("Check network connectivity and configuration".to_string()),
+        addrs.next().ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("No addresses found for STUN server {}", stun_server_str),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
+            }))
         })
     }
 
@@ -310,22 +389,22 @@ impl NatTraversalManager {
                 debug!("📤 STUN request sent to {}", stun_server);
             }
             Ok(Err(e)) => {
-                return Err(SongbirdError::Network {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
                     message: format!("Failed to send STUN request to {}: {}", stun_server, e),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
-                });
+                })));
             }
             Err(_) => {
-                return Err(SongbirdError::Network {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
                     message: format!("STUN request send timeout to {}", stun_server),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
-                });
+                })));
             }
         }
 
@@ -336,7 +415,7 @@ impl NatTraversalManager {
         let (len, from) = match response {
             Ok(Ok(result)) => result,
             Ok(Err(e)) => {
-                return Err(SongbirdError::Network {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
                     message: format!(
                         "Failed to receive STUN response from {}: {}",
@@ -345,21 +424,21 @@ impl NatTraversalManager {
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
-                });
+                })));
             }
             Err(_) => {
-                return Err(SongbirdError::Network {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
                     message: format!("STUN response timeout from {}", stun_server),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
-                });
+                })));
             }
         };
 
         if from != stun_server {
-            return Err(SongbirdError::Network {
+            return Err(SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
                 message: format!(
                     "Response from unexpected server {} (expected {})",
@@ -368,7 +447,7 @@ impl NatTraversalManager {
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            });
+            })));
         }
 
         // Parse response
@@ -407,73 +486,71 @@ impl NatTraversalManager {
     /// Parse STUN message from bytes
     fn parse_stun_message(&self, data: &[u8]) -> Result<StunMessage> {
         if data.len() < 20 {
-            return Err(SongbirdError::Network {
+            return Err(SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
                 message: "STUN message too short".to_string(),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            });
+            })));
         }
 
         let mut cursor = Cursor::new(data);
 
-        let message_type =
-            cursor
-                .read_u16::<NetworkEndian>()
-                .map_err(|e| SongbirdError::Network {
-                    service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to read message type: {}", e),
-                    details: None,
-                    endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
-                })?;
+        let message_type = cursor.read_u16::<NetworkEndian>().map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("Failed to read message type: {}", e),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
+            }))
+        })?;
 
-        let message_length =
-            cursor
-                .read_u16::<NetworkEndian>()
-                .map_err(|e| SongbirdError::Network {
-                    service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to read message length: {}", e),
-                    details: None,
-                    endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
-                })?;
+        let message_length = cursor.read_u16::<NetworkEndian>().map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("Failed to read message length: {}", e),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
+            }))
+        })?;
 
         // Skip magic cookie
-        cursor
-            .read_u32::<NetworkEndian>()
-            .map_err(|e| SongbirdError::Network {
+        cursor.read_u32::<NetworkEndian>().map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to read magic cookie: {}", e),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            })?;
+            }))
+        })?;
 
         // Read transaction ID
         let mut transaction_id = [0u8; 12];
         std::io::Read::read_exact(&mut cursor, &mut transaction_id).map_err(|e| {
-            SongbirdError::Network {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to read transaction ID: {}", e),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            }
+            }))
         })?;
 
         let message_type = match message_type {
             0x0101 => StunMessageType::Response,
             0x0111 => StunMessageType::ErrorResponse,
             _ => {
-                return Err(SongbirdError::Network {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
                     message: format!("Unknown STUN message type: {:#x}", message_type),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
-                });
+                })));
             }
         };
 
@@ -486,41 +563,35 @@ impl NatTraversalManager {
                 break;
             }
 
-            let attr_type =
-                cursor
-                    .read_u16::<NetworkEndian>()
-                    .map_err(|e| SongbirdError::Network {
-                        service: Some("NAT Traversal".to_string()),
-                        message: format!("Failed to read attribute type: {}", e),
-                        details: None,
-                        endpoint: None,
-                        suggestion: Some(
-                            "Check network connectivity and configuration".to_string(),
-                        ),
-                    })?;
+            let attr_type = cursor.read_u16::<NetworkEndian>().map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("NAT Traversal".to_string()),
+                    message: format!("Failed to read attribute type: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                }))
+            })?;
 
-            let attr_length =
-                cursor
-                    .read_u16::<NetworkEndian>()
-                    .map_err(|e| SongbirdError::Network {
-                        service: Some("NAT Traversal".to_string()),
-                        message: format!("Failed to read attribute length: {}", e),
-                        details: None,
-                        endpoint: None,
-                        suggestion: Some(
-                            "Check network connectivity and configuration".to_string(),
-                        ),
-                    })?;
+            let attr_length = cursor.read_u16::<NetworkEndian>().map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("NAT Traversal".to_string()),
+                    message: format!("Failed to read attribute length: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                }))
+            })?;
 
             let mut attr_value = vec![0u8; attr_length as usize];
             std::io::Read::read_exact(&mut cursor, &mut attr_value).map_err(|e| {
-                SongbirdError::Network {
+                SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
                     message: format!("Failed to read attribute value: {}", e),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
-                }
+                }))
             })?;
 
             let attribute_type = match attr_type {
@@ -571,12 +642,14 @@ impl NatTraversalManager {
             }
         }
 
-        let external_address = external_addr.ok_or_else(|| SongbirdError::Network {
-            service: Some("NAT Traversal".to_string()),
-            message: "External address not available".to_string(),
-            details: None,
-            endpoint: None,
-            suggestion: Some("Check network connectivity and configuration".to_string()),
+        let external_address = external_addr.ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "External address not available".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check network connectivity and configuration".to_string()),
+            }))
         })?;
 
         // Simple NAT type detection (could be enhanced)
@@ -663,16 +736,15 @@ impl NatTraversalManager {
             peer_id, peer_external_addr
         );
 
-        let socket = self
-            .local_socket
-            .as_ref()
-            .ok_or_else(|| SongbirdError::Network {
+        let socket = self.local_socket.as_ref().ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
                 message: "Socket not initialized".to_string(),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            })?;
+            }))
+        })?;
 
         // Start hole punching
         let attempt = HolePunchAttempt {
@@ -697,12 +769,16 @@ impl NatTraversalManager {
             socket
                 .send_to(&punch_packet, peer_external_addr)
                 .await
-                .map_err(|e| SongbirdError::Network {
-                    service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to send hole punch packet: {}", e),
-                    details: None,
-                    endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                .map_err(|e| {
+                    SongbirdError::Network(Box::new(NetworkError {
+                        service: Some("NAT Traversal".to_string()),
+                        message: format!("Failed to send hole punch packet: {}", e),
+                        details: None,
+                        endpoint: None,
+                        suggestion: Some(
+                            "Check network connectivity and configuration".to_string(),
+                        ),
+                    }))
                 })?;
 
             // Wait between attempts
@@ -784,15 +860,15 @@ impl NatTraversalManager {
             format!("{}:{}", env_config.bind_address, port)
         };
 
-        let _socket = UdpSocket::bind(&bind_addr)
-            .await
-            .map_err(|e| SongbirdError::Network {
+        let _socket = UdpSocket::bind(&bind_addr).await.map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
                 message: format!("Failed to bind socket to {}: {}", bind_addr, e),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
-            })?;
+            }))
+        })?;
 
         // Use configurable timeout instead of hardcoded 2 seconds
         let _timeout_duration =
@@ -805,50 +881,725 @@ impl NatTraversalManager {
 
         Ok(true)
     }
-}
 
-impl Default for NatTraversalManager {
-    fn default() -> Self {
-        Self::new()
+    /// Add TURN server configuration
+    pub fn add_turn_server(&mut self, turn_server: TurnServer) {
+        info!(
+            "Added TURN server: {}:{}",
+            turn_server.host, turn_server.port
+        );
+        self.turn_servers.push(turn_server);
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    /// Create TURN allocation for NAT traversal
+    pub async fn create_turn_allocation(&self, server_index: usize) -> Result<String> {
+        if server_index >= self.turn_servers.len() {
+            return Err(SongbirdError::Config {
+                field: Some("turn_server_index".to_string()),
+                message: "Invalid TURN server index".to_string(),
+                context: Some("TURN server configuration".to_string()),
+                suggestion: Some("Use a valid TURN server index".to_string()),
+            });
+        }
 
-    #[tokio::test]
-    async fn test_nat_traversal_initialization() {
-        let mut manager = NatTraversalManager::new();
+        let turn_server = &self.turn_servers[server_index];
+        let allocation_id = uuid::Uuid::new_v4().to_string();
 
-        // Should be able to initialize with any available port
-        let result = manager.initialize(None).await;
+        info!(
+            "Creating TURN allocation on server: {}:{}",
+            turn_server.host, turn_server.port
+        );
 
-        // This might fail in test environment without network access
-        // but the code structure should be correct
-        match result {
-            Ok(_) => {
-                assert!(manager.local_socket.is_some());
+        let socket = self.local_socket.as_ref().ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "Socket not initialized".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Initialize NAT traversal manager first".to_string()),
+            }))
+        })?;
+
+        // Create TURN allocation request
+        let transaction_id = self.generate_transaction_id();
+        let allocate_request = self
+            .create_turn_allocate_request(transaction_id, turn_server)
+            .await?;
+
+        // Send allocation request to TURN server
+        let server_addr = format!("{}:{}", turn_server.host, turn_server.port);
+        let turn_addr: SocketAddr = server_addr.parse().map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("Invalid TURN server address: {}", e),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check TURN server configuration".to_string()),
+            }))
+        })?;
+
+        // Send request with timeout
+        let timeout_duration = std::time::Duration::from_secs(10);
+        let send_result = tokio::time::timeout(
+            timeout_duration,
+            socket.send_to(&allocate_request, turn_addr),
+        )
+        .await;
+
+        match send_result {
+            Ok(Ok(_)) => {
+                debug!("TURN allocation request sent to {}", turn_addr);
+            }
+            Ok(Err(e)) => {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("NAT Traversal".to_string()),
+                    message: format!("Failed to send TURN allocation request: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity".to_string()),
+                })));
             }
             Err(_) => {
-                // Expected in test environment
+                return Err(SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("NAT Traversal".to_string()),
+                    message: "TURN allocation request timeout".to_string(),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check TURN server availability".to_string()),
+                })));
             }
         }
+
+        // Wait for response
+        let mut buf = [0u8; 1024];
+        let response = tokio::time::timeout(timeout_duration, socket.recv_from(&mut buf)).await;
+
+        let (len, from) = match response {
+            Ok(Ok(result)) => result,
+            Ok(Err(e)) => {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("NAT Traversal".to_string()),
+                    message: format!("Failed to receive TURN allocation response: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity".to_string()),
+                })));
+            }
+            Err(_) => {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("NAT Traversal".to_string()),
+                    message: "TURN allocation response timeout".to_string(),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check TURN server availability".to_string()),
+                })));
+            }
+        };
+
+        if from != turn_addr {
+            return Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "Response from unexpected server".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check network configuration".to_string()),
+            })));
+        }
+
+        // Parse allocation response
+        let allocation_response =
+            self.parse_turn_allocation_response(&buf[..len], transaction_id)?;
+
+        // Extract relay address from response
+        let relay_address = allocation_response.relay_address.ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "No relay address in TURN allocation response".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check TURN server configuration".to_string()),
+            }))
+        })?;
+
+        // Create allocation record
+        let allocation = TurnAllocation {
+            server: turn_server.clone(),
+            allocation_id: allocation_id.clone(),
+            relay_address,
+            allocated_at: Instant::now(),
+            expires_at: Instant::now() + std::time::Duration::from_secs(600), // 10 minutes default
+            permissions: Vec::new(),
+            bandwidth_limit: None,
+            bytes_sent: 0,
+            bytes_received: 0,
+        };
+
+        // Store allocation
+        let mut allocations = self.turn_allocations.write().await;
+        allocations.insert(allocation_id.clone(), allocation);
+
+        info!(
+            "TURN allocation created successfully: {} -> {}",
+            allocation_id, relay_address
+        );
+        Ok(allocation_id)
     }
 
-    #[test]
-    fn test_stun_message_creation() {
-        let manager = NatTraversalManager::new();
-        let transaction_id = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    /// Create TURN allocation request message
+    async fn create_turn_allocate_request(
+        &self,
+        transaction_id: [u8; 12],
+        turn_server: &TurnServer,
+    ) -> Result<Vec<u8>> {
+        let mut message = Vec::new();
 
-        let request = manager.create_binding_request(transaction_id);
+        // TURN header
+        message.extend_from_slice(&(TurnMessageType::Allocate as u16).to_be_bytes());
+        message.extend_from_slice(&[0x00, 0x00]); // Length placeholder
+        message.extend_from_slice(&[0x21, 0x12, 0xA4, 0x42]); // Magic cookie
+        message.extend_from_slice(&transaction_id);
 
-        assert_eq!(request.len(), 20); // Basic STUN message size
-        assert_eq!(&request[0..2], &[0x00, 0x01]); // Binding request
-        assert_eq!(&request[2..4], &[0x00, 0x00]); // Length = 0
-        assert_eq!(&request[4..8], &[0x21, 0x12, 0xA4, 0x42]); // Magic cookie
-        assert_eq!(&request[8..20], &transaction_id); // Transaction ID
+        // Add REQUESTED-TRANSPORT attribute (UDP = 17)
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::RequestedTransport,
+            &[17, 0, 0, 0],
+        );
+
+        // Add USERNAME attribute
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::Username,
+            turn_server.username.as_bytes(),
+        );
+
+        // Add REALM attribute
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::Realm,
+            turn_server.realm.as_bytes(),
+        );
+
+        // Add NONCE attribute (simplified - in real implementation, get from server)
+        let nonce = format!("nonce-{}", uuid::Uuid::new_v4());
+        self.add_turn_attribute(&mut message, TurnAttributeType::Nonce, nonce.as_bytes());
+
+        // Add LIFETIME attribute (10 minutes)
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::Lifetime,
+            &600u32.to_be_bytes(),
+        );
+
+        // Update message length
+        let message_length = (message.len() - 20) as u16;
+        message[2..4].copy_from_slice(&message_length.to_be_bytes());
+
+        // Add MESSAGE-INTEGRITY attribute (simplified - in real implementation, use HMAC)
+        let integrity_hash = self.calculate_message_integrity(&message, &turn_server.password)?;
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::MessageIntegrity,
+            &integrity_hash,
+        );
+
+        // Update message length again
+        let message_length = (message.len() - 20) as u16;
+        message[2..4].copy_from_slice(&message_length.to_be_bytes());
+
+        Ok(message)
+    }
+
+    /// Add TURN attribute to message
+    fn add_turn_attribute(
+        &self,
+        message: &mut Vec<u8>,
+        attr_type: TurnAttributeType,
+        value: &[u8],
+    ) {
+        message.extend_from_slice(&(attr_type as u16).to_be_bytes());
+        message.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        message.extend_from_slice(value);
+
+        // Add padding to 4-byte boundary
+        let padding = (4 - (value.len() % 4)) % 4;
+        message.extend_from_slice(&vec![0u8; padding]);
+    }
+
+    /// Calculate MESSAGE-INTEGRITY hash (simplified)
+    fn calculate_message_integrity(&self, message: &[u8], password: &str) -> Result<Vec<u8>> {
+        // In a real implementation, this would use HMAC-SHA1
+        // For now, use a simple hash based on message and password
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let mut hasher = DefaultHasher::new();
+        message.hash(&mut hasher);
+        password.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        // Return 20-byte hash (HMAC-SHA1 size)
+        let mut result = Vec::new();
+        result.extend_from_slice(&hash.to_be_bytes());
+        result.extend_from_slice(&hash.to_be_bytes());
+        result.extend_from_slice(&(hash as u32).to_be_bytes());
+        result.truncate(20);
+
+        Ok(result)
+    }
+
+    /// Parse TURN allocation response
+    fn parse_turn_allocation_response(
+        &self,
+        data: &[u8],
+        expected_transaction_id: [u8; 12],
+    ) -> Result<TurnAllocationResponse> {
+        if data.len() < 20 {
+            return Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "TURN response too short".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check TURN server configuration".to_string()),
+            })));
+        }
+
+        let message_type = u16::from_be_bytes([data[0], data[1]]);
+        let message_length = u16::from_be_bytes([data[2], data[3]]);
+        let transaction_id = &data[8..20];
+
+        // Verify transaction ID
+        if transaction_id != expected_transaction_id {
+            return Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "Transaction ID mismatch in TURN response".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check TURN server configuration".to_string()),
+            })));
+        }
+
+        // Check if it's an error response
+        if message_type == TurnMessageType::AllocateError as u16 {
+            return Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "TURN allocation failed".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check TURN server credentials and configuration".to_string()),
+            })));
+        }
+
+        // Parse attributes to find relay address
+        let mut relay_address = None;
+        let mut lifetime = 600; // Default 10 minutes
+        let mut pos = 20;
+
+        while pos < data.len() && pos < 20 + message_length as usize {
+            if pos + 4 > data.len() {
+                break;
+            }
+
+            let attr_type = u16::from_be_bytes([data[pos], data[pos + 1]]);
+            let attr_length = u16::from_be_bytes([data[pos + 2], data[pos + 3]]);
+            pos += 4;
+
+            if pos + attr_length as usize > data.len() {
+                break;
+            }
+
+            match attr_type {
+                0x0016 => {
+                    // XOR-RELAYED-ADDRESS
+                    if attr_length >= 8 {
+                        let family = u16::from_be_bytes([data[pos + 1], data[pos + 2]]);
+                        if family == 0x0001 {
+                            // IPv4
+                            let port = u16::from_be_bytes([data[pos + 2], data[pos + 3]]) ^ 0x2112;
+                            let ip_bytes = [
+                                data[pos + 4] ^ 0x21,
+                                data[pos + 5] ^ 0x12,
+                                data[pos + 6] ^ 0xA4,
+                                data[pos + 7] ^ 0x42,
+                            ];
+                            relay_address = Some(SocketAddr::from((ip_bytes, port)));
+                        }
+                    }
+                }
+                0x000D => {
+                    // LIFETIME
+                    if attr_length >= 4 {
+                        lifetime = u32::from_be_bytes([
+                            data[pos],
+                            data[pos + 1],
+                            data[pos + 2],
+                            data[pos + 3],
+                        ]);
+                    }
+                }
+                _ => {} // Ignore other attributes
+            }
+
+            pos += attr_length as usize;
+            // Skip padding
+            pos += (4 - (attr_length as usize % 4)) % 4;
+        }
+
+        Ok(TurnAllocationResponse {
+            relay_address,
+            lifetime,
+        })
+    }
+
+    /// Send data through TURN relay
+    pub async fn send_through_turn_relay(
+        &self,
+        allocation_id: &str,
+        data: &[u8],
+        peer_address: SocketAddr,
+    ) -> Result<()> {
+        let mut allocations = self.turn_allocations.write().await;
+        let allocation = allocations.get_mut(allocation_id).ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("TURN allocation not found: {}", allocation_id),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Create TURN allocation first".to_string()),
+            }))
+        })?;
+
+        // Check if allocation is still valid
+        if Instant::now() > allocation.expires_at {
+            return Err(SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "TURN allocation expired".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Refresh TURN allocation".to_string()),
+            })));
+        }
+
+        // Check if we have permission for this peer
+        if !allocation.permissions.contains(&peer_address) {
+            self.create_turn_permission(allocation_id, peer_address)
+                .await?;
+        }
+
+        let socket = self.local_socket.as_ref().ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "Socket not initialized".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Initialize NAT traversal manager first".to_string()),
+            }))
+        })?;
+
+        // Create TURN Send indication
+        let transaction_id = self.generate_transaction_id();
+        let send_indication =
+            self.create_turn_send_indication(transaction_id, data, peer_address)?;
+
+        // Send to TURN server
+        let server_addr = format!("{}:{}", allocation.server.host, allocation.server.port);
+        let turn_addr: SocketAddr = server_addr.parse().map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("Invalid TURN server address: {}", e),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check TURN server configuration".to_string()),
+            }))
+        })?;
+
+        socket
+            .send_to(&send_indication, turn_addr)
+            .await
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("NAT Traversal".to_string()),
+                    message: format!("Failed to send data through TURN relay: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity".to_string()),
+                }))
+            })?;
+
+        // Update statistics
+        allocation.bytes_sent += data.len() as u64;
+
+        debug!(
+            "Sent {} bytes through TURN relay to {}",
+            data.len(),
+            peer_address
+        );
+        Ok(())
+    }
+
+    /// Create TURN permission for peer address
+    async fn create_turn_permission(
+        &self,
+        allocation_id: &str,
+        peer_address: SocketAddr,
+    ) -> Result<()> {
+        let mut allocations = self.turn_allocations.write().await;
+        let allocation = allocations.get_mut(allocation_id).ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("TURN allocation not found: {}", allocation_id),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Create TURN allocation first".to_string()),
+            }))
+        })?;
+
+        // Add permission
+        allocation.permissions.push(peer_address);
+
+        info!(
+            "Created TURN permission for {} on allocation {}",
+            peer_address, allocation_id
+        );
+        Ok(())
+    }
+
+    /// Create TURN Send indication
+    fn create_turn_send_indication(
+        &self,
+        transaction_id: [u8; 12],
+        data: &[u8],
+        peer_address: SocketAddr,
+    ) -> Result<Vec<u8>> {
+        let mut message = Vec::new();
+
+        // TURN header
+        message.extend_from_slice(&(TurnMessageType::Send as u16).to_be_bytes());
+        message.extend_from_slice(&[0x00, 0x00]); // Length placeholder
+        message.extend_from_slice(&[0x21, 0x12, 0xA4, 0x42]); // Magic cookie
+        message.extend_from_slice(&transaction_id);
+
+        // Add XOR-PEER-ADDRESS attribute
+        let peer_addr_bytes = self.encode_xor_address(peer_address);
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::XorPeerAddress,
+            &peer_addr_bytes,
+        );
+
+        // Add DATA attribute
+        self.add_turn_attribute(&mut message, TurnAttributeType::Data, data);
+
+        // Update message length
+        let message_length = (message.len() - 20) as u16;
+        message[2..4].copy_from_slice(&message_length.to_be_bytes());
+
+        Ok(message)
+    }
+
+    /// Encode address for XOR attributes
+    fn encode_xor_address(&self, address: SocketAddr) -> Vec<u8> {
+        let mut result = Vec::new();
+
+        result.push(0x00); // Reserved
+        result.push(0x01); // IPv4 family
+
+        // XOR port with magic cookie first 2 bytes
+        let port = address.port() ^ 0x2112;
+        result.extend_from_slice(&port.to_be_bytes());
+
+        // XOR IP address with magic cookie
+        if let SocketAddr::V4(addr) = address {
+            let ip_bytes = addr.ip().octets();
+            result.push(ip_bytes[0] ^ 0x21);
+            result.push(ip_bytes[1] ^ 0x12);
+            result.push(ip_bytes[2] ^ 0xA4);
+            result.push(ip_bytes[3] ^ 0x42);
+        }
+
+        result
+    }
+
+    /// Refresh TURN allocation
+    pub async fn refresh_turn_allocation(&self, allocation_id: &str) -> Result<()> {
+        let allocations = self.turn_allocations.read().await;
+        let allocation = allocations.get(allocation_id).ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("TURN allocation not found: {}", allocation_id),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Create TURN allocation first".to_string()),
+            }))
+        })?;
+
+        let socket = self.local_socket.as_ref().ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: "Socket not initialized".to_string(),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Initialize NAT traversal manager first".to_string()),
+            }))
+        })?;
+
+        // Create refresh request
+        let transaction_id = self.generate_transaction_id();
+        let refresh_request = self
+            .create_turn_refresh_request(transaction_id, &allocation.server)
+            .await?;
+
+        // Send refresh request
+        let server_addr = format!("{}:{}", allocation.server.host, allocation.server.port);
+        let turn_addr: SocketAddr = server_addr.parse().map_err(|e| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("Invalid TURN server address: {}", e),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check TURN server configuration".to_string()),
+            }))
+        })?;
+
+        socket
+            .send_to(&refresh_request, turn_addr)
+            .await
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("NAT Traversal".to_string()),
+                    message: format!("Failed to send TURN refresh request: {}", e),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check network connectivity".to_string()),
+                }))
+            })?;
+
+        // Update expiration time
+        drop(allocations);
+        let mut allocations = self.turn_allocations.write().await;
+        if let Some(allocation) = allocations.get_mut(allocation_id) {
+            allocation.expires_at = Instant::now() + std::time::Duration::from_secs(600);
+        }
+
+        info!("Refreshed TURN allocation: {}", allocation_id);
+        Ok(())
+    }
+
+    /// Create TURN refresh request
+    async fn create_turn_refresh_request(
+        &self,
+        transaction_id: [u8; 12],
+        turn_server: &TurnServer,
+    ) -> Result<Vec<u8>> {
+        let mut message = Vec::new();
+
+        // TURN header
+        message.extend_from_slice(&(TurnMessageType::Refresh as u16).to_be_bytes());
+        message.extend_from_slice(&[0x00, 0x00]); // Length placeholder
+        message.extend_from_slice(&[0x21, 0x12, 0xA4, 0x42]); // Magic cookie
+        message.extend_from_slice(&transaction_id);
+
+        // Add LIFETIME attribute (10 minutes)
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::Lifetime,
+            &600u32.to_be_bytes(),
+        );
+
+        // Add USERNAME attribute
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::Username,
+            turn_server.username.as_bytes(),
+        );
+
+        // Add REALM attribute
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::Realm,
+            turn_server.realm.as_bytes(),
+        );
+
+        // Update message length
+        let message_length = (message.len() - 20) as u16;
+        message[2..4].copy_from_slice(&message_length.to_be_bytes());
+
+        // Add MESSAGE-INTEGRITY attribute
+        let integrity_hash = self.calculate_message_integrity(&message, &turn_server.password)?;
+        self.add_turn_attribute(
+            &mut message,
+            TurnAttributeType::MessageIntegrity,
+            &integrity_hash,
+        );
+
+        // Update message length again
+        let message_length = (message.len() - 20) as u16;
+        message[2..4].copy_from_slice(&message_length.to_be_bytes());
+
+        Ok(message)
+    }
+
+    /// Get TURN allocation statistics
+    pub async fn get_turn_allocation_stats(
+        &self,
+        allocation_id: &str,
+    ) -> Result<TurnAllocationStats> {
+        let allocations = self.turn_allocations.read().await;
+        let allocation = allocations.get(allocation_id).ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
+                service: Some("NAT Traversal".to_string()),
+                message: format!("TURN allocation not found: {}", allocation_id),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Create TURN allocation first".to_string()),
+            }))
+        })?;
+
+        Ok(TurnAllocationStats {
+            allocation_id: allocation.allocation_id.clone(),
+            relay_address: allocation.relay_address,
+            allocated_at: allocation.allocated_at,
+            expires_at: allocation.expires_at,
+            permissions_count: allocation.permissions.len(),
+            bytes_sent: allocation.bytes_sent,
+            bytes_received: allocation.bytes_received,
+            is_expired: Instant::now() > allocation.expires_at,
+        })
+    }
+
+    /// Clean up expired TURN allocations
+    pub async fn cleanup_expired_allocations(&self) -> Result<u32> {
+        let mut allocations = self.turn_allocations.write().await;
+        let now = Instant::now();
+        let initial_count = allocations.len();
+
+        allocations.retain(|_, allocation| now <= allocation.expires_at);
+
+        let cleaned_count = initial_count - allocations.len();
+        if cleaned_count > 0 {
+            info!("Cleaned up {} expired TURN allocations", cleaned_count);
+        }
+
+        Ok(cleaned_count as u32)
     }
 }
 
-// Fix missing timeout import
+/// TURN allocation response
+#[derive(Debug)]
+struct TurnAllocationResponse {
+    relay_address: Option<SocketAddr>,
+    lifetime: u32,
+}
+
+/// TURN allocation statistics
+#[derive(Debug, Clone)]
+pub struct TurnAllocationStats {
+    pub allocation_id: String,
+    pub relay_address: SocketAddr,
+    pub allocated_at: Instant,
+    pub expires_at: Instant,
+    pub permissions_count: usize,
+    pub bytes_sent: u64,
+    pub bytes_received: u64,
+    pub is_expired: bool,
+}
