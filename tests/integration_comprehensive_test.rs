@@ -19,12 +19,11 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 use songbird_core::load_balancer::{
-    HealthBasedLoadBalancer, LatencyOptimizedLoadBalancer, LoadBalancer, LoadBalancerConfig,
+    RoundRobinLoadBalancer, LeastConnectionsLoadBalancer, WeightedRoundRobinLoadBalancer, LoadBalancerConfig,
     LoadBalancerStrategy as LoadBalancerType, ServiceInstance,
 };
+use songbird_config::SongbirdConfig;
 use songbird_core::{
-    config::SongbirdConfig,
-    network::gaming::{nat_traversal::NatTraversalManager, performance::PerformanceMonitor},
     registry::{CustomHealthCheck, HealthCheckPolicy, HealthCheckType, HealthFailureAction},
     traits::service::ServiceInfo,
 };

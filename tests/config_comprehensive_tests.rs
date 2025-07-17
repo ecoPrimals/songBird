@@ -95,7 +95,7 @@ async fn test_network_config_creation() -> Result<()> {
         ..Default::default()
     };
 
-    assert_eq!(network_config.bind_port, 8080);
+    assert_eq!(network_config.orchestrator_port, 8080);
     assert_eq!(
         network_config.bind_address,
         "127.0.0.1".parse::<IpAddr>().unwrap()
@@ -588,7 +588,7 @@ async fn test_config_loading_and_validation() {
     let serialized = toml::to_string(&config).expect("Failed to serialize config");
     let deserialized: SongbirdConfig = toml::from_str(&serialized).expect("Failed to deserialize config");
     
-    assert_eq!(config.environment.bind_port, deserialized.network.bind_port);
+    assert_eq!(config.environment.bind_port, deserialized.network.orchestrator_port);
     assert_eq!(config.network.bind_address, deserialized.network.bind_address);
 }
 

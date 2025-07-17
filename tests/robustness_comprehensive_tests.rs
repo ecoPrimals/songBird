@@ -409,19 +409,19 @@ mod robustness_manager_tests {
     #[tokio::test]
     async fn test_robustness_manager_creation() {
         let manager = RobustnessManager::new(RobustnessConfig::default());
-        let status = manager.get_status().await;
+        let status = manager.get_status().await.unwrap();
 
-        assert_eq!(status.unwrap().circuit_breakers, 0);
-        assert_eq!(status.unwrap().rate_limiters, 0);
+        assert_eq!(status.circuit_breakers, 0);
+        assert_eq!(status.rate_limiters, 0);
     }
 
     #[tokio::test]
     async fn test_robustness_manager_default() {
         let manager = RobustnessManager::default();
-        let status = manager.get_status().await;
+        let status = manager.get_status().await.unwrap();
 
-        assert_eq!(status.unwrap().circuit_breakers, 0);
-        assert_eq!(status.unwrap().rate_limiters, 0);
+        assert_eq!(status.circuit_breakers, 0);
+        assert_eq!(status.rate_limiters, 0);
     }
 
     #[tokio::test]
@@ -487,9 +487,9 @@ mod robustness_manager_tests {
         };
         let manager = RobustnessManager::new(robustness_config);
 
-        let status = manager.get_status().await;
-        assert!(status.unwrap().circuit_breakers > 0);
-        assert!(status.unwrap().rate_limiters > 0);
+        let status = manager.get_status().await.unwrap();
+        assert!(status.circuit_breakers > 0);
+        assert!(status.rate_limiters > 0);
     }
 
     #[tokio::test]
@@ -617,10 +617,10 @@ mod robustness_manager_tests {
         assert_eq!(result.unwrap(), "Success");
 
         // Verify status shows all features are active
-        let status = manager.get_status().await;
-        assert!(status.unwrap().circuit_breakers> 0);
-        assert!(status.unwrap().is_running);
-        assert!(status.unwrap().rate_limiters> 0);
+        let status = manager.get_status().await.unwrap();
+        assert!(status.circuit_breakers> 0);
+        assert!(status.is_running);
+        assert!(status.rate_limiters> 0);
     }
 
     #[tokio::test]
@@ -678,10 +678,10 @@ mod integration_tests {
         assert_eq!(result.unwrap(), "Success");
 
         // Verify status shows all features are active
-        let status = manager.get_status().await;
-        assert!(status.unwrap().circuit_breakers> 0);
-        assert!(status.unwrap().is_running);
-        assert!(status.unwrap().rate_limiters> 0);
+        let status = manager.get_status().await.unwrap();
+        assert!(status.circuit_breakers> 0);
+        assert!(status.is_running);
+        assert!(status.rate_limiters> 0);
     }
 
     #[tokio::test]
