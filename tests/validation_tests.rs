@@ -115,9 +115,9 @@ mod url_validation_tests {
 
         for (url_str, name) in valid_urls {
             match ConfigValidator::validate_url(url_str, name) {
-                Ok(url) => {
-                    // URL parser may normalize URLs (add trailing slash for domains)
-                    assert!(!url.to_string().is_empty());
+                Ok(()) => {
+                    // URL validation successful
+                    assert!(!url_str.is_empty());
                 }
                 Err(e) => panic!("Expected valid URL for {url_str}: {e:?}"),
             }

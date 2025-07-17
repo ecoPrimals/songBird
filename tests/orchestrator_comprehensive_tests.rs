@@ -95,7 +95,7 @@ async fn test_orchestrator_lifecycle() {
 #[test]
 async fn test_orchestrator_config_access() {
     let config = SongbirdConfig {
-        network: songbird_core::config::NetworkConfig {
+        network: songbird_config::config::NetworkConfig {
             bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
             orchestrator_port: 9000,
             ..Default::default()

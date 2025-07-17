@@ -20,7 +20,6 @@ async fn test_health_status_enum() {
             HealthStatus::Healthy => assert_eq!(format!("{status:?}"), "Healthy"),
             HealthStatus::Degraded => assert_eq!(format!("{status:?}"), "Degraded"),
             HealthStatus::Unhealthy => assert_eq!(format!("{status:?}"), "Unhealthy"),
-            HealthStatus::Unknown => assert_eq!(format!("{status:?}"), "Unknown"),
         }
     }
 }
@@ -134,10 +133,7 @@ async fn test_health_check_result_response_times() {
             response_time_ms: 100,
         };
 
-        if let Some(serde_json::Value::Number(stored_time)) = result.details.get("response_time_ms")
-        {
-            assert_eq!(stored_time.as_u64().unwrap(), time);
-        }
+        assert_eq!(result.response_time_ms, time);
     }
 }
 
@@ -167,7 +163,6 @@ async fn test_health_check_result_statuses() {
 
     for result in results {
         assert!(!result.name.is_empty());
-        assert!(result.message.is_some());
-        assert!(!result.message.as_ref().unwrap().is_empty());
+        assert!(!result.message.is_empty());
     }
 }

@@ -4,7 +4,7 @@
 //! Focuses on protocol detection, packet processing, and bridge management
 
 use songbird_config::SongbirdConfig;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{Result, SongbirdError, NetworkError, GamingError};
 use std::net::SocketAddr;
 use std::time::Duration;
 

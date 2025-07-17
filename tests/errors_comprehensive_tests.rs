@@ -288,7 +288,6 @@ fn test_error_categorization() -> Result<()> {
                 provider: "auth".to_string(),
                 message: "Auth".to_string(),
                 suggestion: Some("Check authentication setup".to_string()),
-                suggestion: Some("Check authentication setup".to_string()),
             },
             "security",
         ),
@@ -366,10 +365,13 @@ fn test_error_severity_levels() -> Result<()> {
             "high",
         ),
         (
-            SongbirdError::Validation {
+            SongbirdError::Validation(Box::new(ValidationError {
                 field: "validation".to_string(),
                 message: "Validation".to_string(),
-            },
+                value: None,
+                expected: None,
+                suggestion: None,
+            })),
             "low",
         ),
         (
