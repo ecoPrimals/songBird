@@ -129,7 +129,7 @@ async fn test_health_check_result_response_times() {
             name: "test-service".to_string(),
             status: HealthStatus::Healthy,
             message: "OK".to_string(),
-            response_time_ms: 100,
+            response_time_ms: time,
         };
 
         assert_eq!(result.response_time_ms, time);
