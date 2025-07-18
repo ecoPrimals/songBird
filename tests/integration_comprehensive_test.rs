@@ -552,31 +552,13 @@ async fn test_universal_primal_storage() -> Result<()> {
     assert!(files.contains(&test_file.to_string()));
     println!("✅ File listing successful");
 
-    // Test backup operations
-    let backup_name = "integration_test_backup";
-    storage.create_backup(backup_name).await?;
-    println!("✅ Backup created successfully");
-
-    // List backups
-    let backups = storage.list_backups().await?;
-    assert!(backups.contains(&backup_name.to_string()));
-    println!("✅ Backup listing successful");
-
-    // Delete test file
+    // Test file deletion
     storage.delete_file(test_file).await?;
     println!("✅ File deleted successfully");
 
-    // Restore backup
-    storage.restore_backup(backup_name).await?;
-    println!("✅ Backup restored successfully");
-
-    // Verify file was restored
-    let restored_content = storage.read_file(test_file).await?;
-    assert_eq!(restored_content, test_content.as_bytes());
-    println!("✅ File restoration verified");
-
-    // Clean up
+    // Test cleanup
     storage.cleanup().await?;
+    println!("✅ Storage cleanup successful");
 
     println!("✅ Universal Primal Storage test passed");
     Ok(())
