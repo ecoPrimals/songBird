@@ -45,8 +45,8 @@ struct FileSystemStorage {
 impl FileSystemStorage {
     fn new() -> Self {
         let base_path = std::env::temp_dir()
-            .join("songbird_test_storage")
-            .join(uuid::Uuid::new_v4().to_string());
+            .join("songbird_test")
+            .join(format!("test_{}", uuid::Uuid::new_v4().simple()));
         let backup_path = base_path.join("backups");
 
         Self {
