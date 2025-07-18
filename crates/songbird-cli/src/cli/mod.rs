@@ -270,10 +270,10 @@ impl CliError {
             _ => "⚪",
         };
 
-        let mut output = format!("{} {}", severity_icon, self);
+        let mut output = format!("{severity_icon} {self}");
 
         if let Some(suggestion) = self.get_suggestion() {
-            output.push_str(&format!("\n💡 Suggestion: {}", suggestion));
+            output.push_str(&format!("\n💡 Suggestion: {suggestion}"));
         }
 
         if !self.is_recoverable() {
@@ -783,7 +783,7 @@ pub async fn execute_start_command(
         ));
     }
 
-    print_info(&format!("Starting Songbird orchestrator on port {}", port));
+    print_info(&format!("Starting Songbird orchestrator on port {port}"));
 
     if dashboard {
         print_info(&format!(

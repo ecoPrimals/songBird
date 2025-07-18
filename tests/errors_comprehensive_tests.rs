@@ -81,7 +81,7 @@ fn test_error_debug_formatting() -> Result<()> {
         suggestion: Some("Use a port between 1024 and 65535".to_string()),
     };
 
-    let debug_output = format!("{:?}", error);
+    let debug_output = format!("{error:?}");
     assert!(debug_output.contains("Configuration"));
     assert!(debug_output.contains("port"));
     Ok(())
@@ -197,7 +197,7 @@ fn test_error_chaining() -> Result<()> {
         suggestion: Some("Check API server availability".to_string()),
     }));
     let chained_error =
-        SongbirdError::service_error("service", format!("Service unavailable: {}", root_error));
+        SongbirdError::service_error("service", format!("Service unavailable: {root_error}"));
 
     assert!(chained_error.to_string().contains("Service unavailable"));
     assert!(chained_error.to_string().contains("Connection timeout"));
@@ -471,7 +471,7 @@ fn test_error_performance_impact() -> Result<()> {
 
     // Create many errors to test performance
     for i in 0..1000 {
-        let error = SongbirdError::service_error("perf_test", format!("Error {}", i));
+        let error = SongbirdError::service_error("perf_test", format!("Error {i}"));
         let _ = error.to_string();
     }
 

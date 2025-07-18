@@ -127,7 +127,12 @@ impl RoundRobinLoadBalancer {
         instances.retain(|inst| inst.id != instance_id);
     }
 
-    pub async fn update_instance_health(&self, instance_id: &str, healthy: bool, health_score: f64) {
+    pub async fn update_instance_health(
+        &self,
+        instance_id: &str,
+        healthy: bool,
+        health_score: f64,
+    ) {
         let mut instances = self.instances.write().await;
         if let Some(instance) = instances.iter_mut().find(|inst| inst.id == instance_id) {
             instance.healthy = healthy;

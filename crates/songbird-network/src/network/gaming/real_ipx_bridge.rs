@@ -503,7 +503,8 @@ mod tests {
             0x01, 0x02, 0x03, 0x04, // data
         ];
 
-        let packet = translator.parse_ipx_packet(&test_data)
+        let packet = translator
+            .parse_ipx_packet(&test_data)
             .expect("Test IPX packet should be valid");
         assert_eq!(packet.header.packet_type, 0x00);
         assert_eq!(packet.data, &[0x01, 0x02, 0x03, 0x04]);

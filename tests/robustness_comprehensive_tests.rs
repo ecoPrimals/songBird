@@ -4,13 +4,12 @@
 //! retry mechanisms, rate limiting, and fault tolerance patterns.
 
 use futures_util::future;
+use songbird_core::robustness::RateLimitingConfig;
 use songbird_core::robustness::*;
 use songbird_errors::SongbirdError;
-use songbird_core::robustness::RateLimitingConfig;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::time::sleep;
 
 #[cfg(test)]
 mod circuit_breaker_tests {
@@ -122,9 +121,7 @@ mod circuit_breaker_tests {
             .map(|i| {
                 let manager = manager.clone();
                 tokio::spawn(async move {
-                    let _result = manager
-                        .create_circuit_breaker(format!("circuit-{}", i))
-                        .await;
+                    let _result = manager.create_circuit_breaker(format!("circuit-{i}")).await;
                 })
             })
             .collect();
@@ -390,7 +387,7 @@ mod rate_limiting_tests {
             .map(|i| {
                 let manager = manager.clone();
                 tokio::spawn(async move {
-                    let _result = manager.create_rate_limiter(format!("limiter-{}", i)).await;
+                    let _result = manager.create_rate_limiter(format!("limiter-{i}")).await;
                 })
             })
             .collect();
@@ -469,7 +466,7 @@ mod robustness_manager_tests {
         let manager = RobustnessManager::new(robustness_config);
 
         let status = manager.get_status().await;
-        assert!(status.unwrap().rate_limiters> 0);
+        assert!(status.unwrap().rate_limiters > 0);
     }
 
     #[tokio::test]
@@ -507,7 +504,8 @@ mod robustness_manager_tests {
     #[tokio::test]
     async fn test_robustness_manager_execute_with_circuit_breaker() {
         let cb_config = CircuitBreakerConfig::default();
-        let manager = RobustnessManager::new(RobustnessConfig::default()).with_circuit_breaker(cb_config);
+        let manager =
+            RobustnessManager::new(RobustnessConfig::default()).with_circuit_breaker(cb_config);
 
         let result = manager
             .execute(async { Ok::<i32, SongbirdError>(100) })
@@ -568,7 +566,8 @@ mod robustness_manager_tests {
             strategy: RateLimitStrategy::TokenBucket,
             sliding_window: SlidingWindowConfig::default(),
         };
-        let manager = RobustnessManager::new(RobustnessConfig::default()).with_rate_limiting(rl_config);
+        let manager =
+            RobustnessManager::new(RobustnessConfig::default()).with_rate_limiting(rl_config);
 
         // First execution should succeed
         let result1 = manager.execute(async { Ok::<i32, SongbirdError>(1) }).await;
@@ -618,9 +617,9 @@ mod robustness_manager_tests {
 
         // Verify status shows all features are active
         let status = manager.get_status().await.unwrap();
-        assert!(status.circuit_breakers> 0);
+        assert!(status.circuit_breakers > 0);
         assert!(status.is_running);
-        assert!(status.rate_limiters> 0);
+        assert!(status.rate_limiters > 0);
     }
 
     #[tokio::test]
@@ -679,9 +678,9 @@ mod integration_tests {
 
         // Verify status shows all features are active
         let status = manager.get_status().await.unwrap();
-        assert!(status.circuit_breakers> 0);
+        assert!(status.circuit_breakers > 0);
         assert!(status.is_running);
-        assert!(status.rate_limiters> 0);
+        assert!(status.rate_limiters > 0);
     }
 
     #[tokio::test]

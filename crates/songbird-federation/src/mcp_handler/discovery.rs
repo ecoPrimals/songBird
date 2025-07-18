@@ -111,7 +111,7 @@ impl DiscoveryManager {
             .map_err(|e| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                     service: Some("discovery".to_string()),
-                    message: format!("Failed to bind mDNS socket: {}", e),
+                    message: format!("Failed to bind mDNS socket: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network permissions".to_string()),
@@ -186,7 +186,7 @@ impl DiscoveryManager {
             let common_ports = vec![8080, 8081, 8082, 8083];
 
             for port in common_ports {
-                let endpoint = format!("http://{}:{}", ip, port);
+                let endpoint = format!("http://{ip}:{port}");
                 endpoints.push(endpoint);
             }
         }
@@ -621,13 +621,12 @@ impl DiscoveryManager {
                 std::env::var("KUBERNETES_SERVICE_PORT").unwrap_or_else(|_| "443".to_string());
 
             let url = format!(
-                "https://{}:{}/api/v1/namespaces/default/services",
-                api_server, port
+                "https://{api_server}:{port}/api/v1/namespaces/default/services"
             );
 
             if let Ok(response) = client
                 .get(&url)
-                .header("Authorization", format!("Bearer {}", token))
+                .header("Authorization", format!("Bearer {token}"))
                 .timeout(std::time::Duration::from_secs(10))
                 .send()
                 .await
@@ -647,7 +646,7 @@ impl DiscoveryManager {
                                                 .and_then(|n| n.as_str())
                                             {
                                                 let endpoint =
-                                                    format!("http://{}:{}", name, port_num);
+                                                    format!("http://{name}:{port_num}");
                                                 endpoints.push(endpoint);
                                             }
                                         }
@@ -700,10 +699,9 @@ impl DiscoveryManager {
                                                 if let Some(service_name) =
                                                     spec.get("Name").and_then(|n| n.as_str())
                                                 {
-                                                    let endpoint = format!(
-                                                        "http://{}:{}",
-                                                        service_name, target_port
-                                                    );
+                                                                                    let endpoint = format!(
+                                    "http://{service_name}:{target_port}"
+                                );
                                                     endpoints.push(endpoint);
                                                 }
                                             }
@@ -730,7 +728,7 @@ impl DiscoveryManager {
         // Check if Nomad is available
         if let Ok(nomad_addr) = std::env::var("NOMAD_ADDR") {
             let client = reqwest::Client::new();
-            let url = format!("{}/v1/services", nomad_addr);
+            let url = format!("{nomad_addr}/v1/services");
 
             if let Ok(response) = client
                 .get(&url)
@@ -745,7 +743,7 @@ impl DiscoveryManager {
                                 service.get("Address").and_then(|v| v.as_str()),
                                 service.get("Port").and_then(|v| v.as_u64()),
                             ) {
-                                let endpoint = format!("http://{}:{}", address, port);
+                                let endpoint = format!("http://{address}:{port}");
                                 endpoints.push(endpoint);
                             }
                         }
@@ -788,7 +786,7 @@ impl DiscoveryManager {
         debug!("Querying custom registry: {}", registry_url);
 
         let client = reqwest::Client::new();
-        let url = format!("{}/songbird/services", registry_url);
+        let url = format!("{registry_url}/songbird/services");
 
         let response = client
             .get(&url)
@@ -798,7 +796,7 @@ impl DiscoveryManager {
             .map_err(|e| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                     service: Some("custom_registry".to_string()),
-                    message: format!("Failed to query custom registry {}: {}", registry_url, e),
+                    message: format!("Failed to query custom registry {registry_url}: {e}"),
                     details: None,
                     endpoint: Some("custom_registry/query".to_string()),
                     suggestion: Some(
@@ -875,7 +873,7 @@ impl DiscoveryManager {
         let interfaces = if_addrs::get_if_addrs().map_err(|e| {
             songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                 service: Some("discovery".to_string()),
-                message: format!("Failed to get network interfaces: {}", e),
+                message: format!("Failed to get network interfaces: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network configuration".to_string()),
@@ -884,17 +882,14 @@ impl DiscoveryManager {
 
         for interface in interfaces {
             if !interface.is_loopback() {
-                match interface.ip() {
-                    std::net::IpAddr::V4(ipv4) => {
-                        let subnet = format!(
-                            "{}.{}.{}.0/24",
-                            ipv4.octets()[0],
-                            ipv4.octets()[1],
-                            ipv4.octets()[2]
-                        );
-                        subnets.push(subnet);
-                    }
-                    _ => {} // Skip IPv6 for now
+                if let std::net::IpAddr::V4(ipv4) = interface.ip() {
+                    let subnet = format!(
+                        "{}.{}.{}.0/24",
+                        ipv4.octets()[0],
+                        ipv4.octets()[1],
+                        ipv4.octets()[2]
+                    );
+                    subnets.push(subnet);
                 }
             }
         }
@@ -916,13 +911,13 @@ impl DiscoveryManager {
 
             // Scan first 50 IPs in subnet (to avoid overwhelming the network)
             for i in 1..=50 {
-                let ip = format!("{}.{}", base, i);
+                let ip = format!("{base}.{i}");
 
                 for port in &ports {
-                    let endpoint = format!("http://{}:{}", ip, port);
+                    let endpoint = format!("http://{ip}:{port}");
 
                     // Quick connection test
-                    let addr = format!("{}:{}", ip, port);
+                    let addr = format!("{ip}:{port}");
                     if let Ok(stream) = tokio::time::timeout(
                         Duration::from_millis(100),
                         tokio::net::TcpStream::connect(&addr),
@@ -958,14 +953,12 @@ impl DiscoveryManager {
         ];
 
         for service_url in discovery_services {
-            if let Ok(response) =
+            if let Ok(Ok(resp)) =
                 tokio::time::timeout(Duration::from_secs(2), client.get(service_url).send()).await
             {
-                if let Ok(resp) = response {
-                    if resp.status().is_success() {
-                        if let Ok(text) = resp.text().await {
-                            endpoints.extend(self.parse_discovery_response(&text).await?);
-                        }
+                if resp.status().is_success() {
+                    if let Ok(text) = resp.text().await {
+                        endpoints.extend(self.parse_discovery_response(&text).await?);
                     }
                 }
             }
@@ -997,7 +990,7 @@ impl DiscoveryManager {
     /// Verify that an endpoint is a valid federation endpoint
     async fn verify_federation_endpoint(&self, endpoint: &str) -> Result<bool, SongbirdError> {
         let client = reqwest::Client::new();
-        let health_url = format!("{}/federation/health", endpoint);
+        let health_url = format!("{endpoint}/federation/health");
 
         let response =
             tokio::time::timeout(Duration::from_secs(3), client.get(&health_url).send()).await;

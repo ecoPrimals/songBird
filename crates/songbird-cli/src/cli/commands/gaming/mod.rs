@@ -201,7 +201,7 @@ pub async fn execute_gaming(command: GamingCommand) -> CliResult<()> {
     handle_gaming_command(args)
         .await
         .map_err(|e| crate::cli::CliError::ExecutionError {
-            message: format!("Failed to execute gaming command: {}", e),
+            message: format!("Failed to execute gaming command: {e}"),
             command: Some("gaming".to_string()),
             exit_code: Some(1),
             suggestion: Some("Check your gaming configuration and try again".to_string()),

@@ -127,10 +127,7 @@ impl AutoScalingEngine {
 
     /// Record scaling decision
     pub fn record_scaling_decision(&mut self, service_id: String, decision: ScalingDecision) {
-        let decisions = self
-            .scaling_decisions
-            .entry(service_id)
-            .or_default();
+        let decisions = self.scaling_decisions.entry(service_id).or_default();
         decisions.push(decision);
 
         // Keep only last 50 decisions

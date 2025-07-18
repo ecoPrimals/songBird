@@ -6,18 +6,15 @@
 use std::collections::HashMap;
 
 use songbird_universal_primals::{
-    nestgate::NestGatePrimalClient, toadstool::ToadstoolPrimal,
-    NetworkLocation, PrimalContext, PrimalResult, SecurityLevel,
-    UniversalPrimalRegistry,
+    nestgate::NestGatePrimalClient, toadstool::ToadstoolPrimal, NetworkLocation, PrimalContext,
+    PrimalResult, SecurityLevel, UniversalPrimalRegistry,
 };
 
 /// Create a BearDog primal instance
 ///
 /// This demonstrates how to create and configure a BearDog primal for security services.
 /// BearDog provides advanced threat detection and security automation.
-async fn create_beardog_primal(
-    _context: PrimalContext,
-) -> PrimalResult<String> {
+async fn create_beardog_primal(_context: PrimalContext) -> PrimalResult<String> {
     // For demo purposes, return a placeholder since BearDogPrimal doesn't exist yet
     Ok("BearDog primal placeholder".to_string())
 }
@@ -26,9 +23,7 @@ async fn create_beardog_primal(
 ///
 /// This demonstrates how to create and configure a Squirrel primal for data processing.
 /// Squirrel provides distributed data processing and analytics capabilities.
-async fn create_squirrel_primal(
-    _context: PrimalContext,
-) -> PrimalResult<String> {
+async fn create_squirrel_primal(_context: PrimalContext) -> PrimalResult<String> {
     // For demo purposes, return a placeholder since SquirrelPrimal doesn't exist yet
     Ok("Squirrel primal placeholder".to_string())
 }
@@ -77,29 +72,29 @@ pub async fn demonstrate_universal_primal_usage() -> PrimalResult<()> {
 
     // Test provider composition
     tracing::info!("🔧 Testing provider composition...");
-    
+
     // Simulate security scanning
     tracing::info!("🔒 BearDog: Scanning for threats... (simulated)");
-    
+
     // Simulate network configuration
     tracing::info!("🌐 NestGate: Configuring network routes... (simulated)");
-    
+
     // Simulate container orchestration
     tracing::info!("📦 Toadstool: Orchestrating containers... (simulated)");
-    
+
     // Simulate data processing
     tracing::info!("🐿️ Squirrel: Processing data streams... (simulated)");
 
     // Demonstrate cross-primal coordination
     tracing::info!("🤝 Demonstrating cross-primal coordination...");
-    
+
     // Create second set of primals for load balancing
     let beardog2_placeholder = create_beardog_primal(context.clone()).await?;
     tracing::info!("✅ Created second BearDog primal: {}", beardog2_placeholder);
 
     // Demonstrate failover capabilities
     tracing::info!("⚡ Demonstrating failover capabilities...");
-    
+
     // Simulate primary failure and failover
     tracing::info!("❌ Primary BearDog primal unavailable");
     tracing::info!("🔄 Failing over to secondary BearDog primal");
@@ -107,30 +102,34 @@ pub async fn demonstrate_universal_primal_usage() -> PrimalResult<()> {
 
     // Demonstrate capability discovery
     tracing::info!("🔍 Discovering primal capabilities...");
-    
+
     // Simulate capability queries
     tracing::info!("🔒 BearDog capabilities: Threat detection, Zero-trust authentication, Compliance monitoring");
-    tracing::info!("🌐 NestGate capabilities: Network routing, Load balancing, Protocol translation");
-    tracing::info!("📦 Toadstool capabilities: Container orchestration, Service mesh, Auto-scaling");
+    tracing::info!(
+        "🌐 NestGate capabilities: Network routing, Load balancing, Protocol translation"
+    );
+    tracing::info!(
+        "📦 Toadstool capabilities: Container orchestration, Service mesh, Auto-scaling"
+    );
     tracing::info!("🐿️ Squirrel capabilities: Data processing, Analytics, Machine learning");
 
     // Demonstrate protocol adaptation
     tracing::info!("🔄 Demonstrating protocol adaptation...");
-    
+
     // Simulate protocol translations
     tracing::info!("📡 Adapting protocols for cross-primal communication");
     tracing::info!("✅ Protocol adaptation successful");
 
     // Demonstrate load balancing
     tracing::info!("⚖️ Demonstrating load balancing...");
-    
+
     // Simulate load distribution
     tracing::info!("📊 Distributing load across multiple primal instances");
     tracing::info!("✅ Load balancing active");
 
     // Demonstrate monitoring and health checks
     tracing::info!("📈 Monitoring primal health...");
-    
+
     // Simulate health checks
     tracing::info!("💚 BearDog primal: Healthy");
     tracing::info!("💚 NestGate primal: Healthy");

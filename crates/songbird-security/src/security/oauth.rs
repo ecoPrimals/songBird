@@ -66,7 +66,7 @@ impl Default for OAuth2Config {
         .ok()
                 .or_else(|| Some("https://oauth.example.com/userinfo".to_string())),
             redirect_uri: std::env::var("SONGBIRD_OAUTH_REDIRECT_URI")
-                .unwrap_or_else(|_| format!("http://{}:{}/auth/callback", host, port)),
+                .unwrap_or_else(|_| format!("http://{host}:{port}/auth/callback")),
             scopes: std::env::var("SONGBIRD_OAUTH_SCOPES")
                 .map(|s| s.split(',').map(|scope| scope.trim().to_string()).collect())
                 .unwrap_or_else(|_| vec!["openid".to_string(), "profile".to_string(), "email".to_string()]),
@@ -113,9 +113,8 @@ impl GenericOAuth2Provider {
     pub fn new(config: OAuth2Config) -> Result<Self, OAuth2Error> {
         Ok(Self {
             config,
-            client: songbird_network::communication::HyperHttpClient::new().map_err(|e| {
-                OAuth2Error::Network(format!("Failed to create HTTP client: {}", e))
-            })?,
+            client: songbird_network::communication::HyperHttpClient::new()
+                .map_err(|e| OAuth2Error::Network(format!("Failed to create HTTP client: {e}")))?,
         })
     }
 }
@@ -155,7 +154,7 @@ impl OAuth2Provider for GenericOAuth2Provider {
             Ok(token_response)
         } else {
             let error_text = response.text()?;
-            Err(format!("Token exchange failed: {}", error_text).into())
+            Err(format!("Token exchange failed: {error_text}").into())
         }
     }
     async fn get_user_info(
@@ -209,7 +208,7 @@ impl OAuth2Provider for GenericOAuth2Provider {
             Ok(token_response)
         } else {
             let error_text = response.text()?;
-            Err(format!("Token refresh failed: {}", error_text).into())
+            Err(format!("Token refresh failed: {error_text}").into())
         }
     }
 }

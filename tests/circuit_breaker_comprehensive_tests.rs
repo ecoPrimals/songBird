@@ -4,8 +4,8 @@
 //! including state transitions, failure/success thresholds, timeout behavior,
 //! concurrent access, and edge cases.
 
-use std::time::Duration;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::time::sleep;
 
 use songbird_errors::Result;
@@ -24,16 +24,25 @@ async fn test_circuit_breaker_basic_functionality() -> Result<()> {
     let circuit_breaker = CircuitBreaker::new(config);
 
     // Initially closed
-    assert!(matches!(circuit_breaker.get_state().await, CircuitState::Closed));
+    assert!(matches!(
+        circuit_breaker.get_state().await,
+        CircuitState::Closed
+    ));
 
     // Record failures
     circuit_breaker.record_failure().await;
     circuit_breaker.record_failure().await;
-    assert!(matches!(circuit_breaker.get_state().await, CircuitState::Closed));
+    assert!(matches!(
+        circuit_breaker.get_state().await,
+        CircuitState::Closed
+    ));
 
     // Third failure should open the circuit
     circuit_breaker.record_failure().await;
-    assert!(matches!(circuit_breaker.get_state().await, CircuitState::Open));
+    assert!(matches!(
+        circuit_breaker.get_state().await,
+        CircuitState::Open
+    ));
 
     // Should reject calls when open
     assert!(!circuit_breaker.should_allow_request().await);
@@ -493,7 +502,8 @@ mod statistics_tests {
         assert!(failure_time <= after_failure);
 
         let elapsed_since_failure = chrono::Utc::now() - failure_time;
-        let elapsed_duration = chrono::Duration::from_std(elapsed_since_failure.to_std().unwrap()).unwrap();
+        let elapsed_duration =
+            chrono::Duration::from_std(elapsed_since_failure.to_std().unwrap()).unwrap();
         assert!(elapsed_duration.num_milliseconds() < 100);
     }
 }
@@ -766,7 +776,7 @@ mod concurrent_access_tests {
 
         let stats = cb.get_stats().await;
         assert_eq!(stats.failure_count, 20); // 10 threads * 2 failures
-        // Should be open since we exceeded the threshold
+                                             // Should be open since we exceeded the threshold
         assert_eq!(stats.state, CircuitState::Open);
     }
 

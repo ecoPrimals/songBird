@@ -159,10 +159,9 @@ impl CircuitBreaker {
     /// Get circuit breaker statistics
     pub async fn get_stats(&self) -> CircuitBreakerStats {
         let last_failure_time = self.last_failure_time.read().await.map(|instant| {
-            chrono::Utc::now()
-                - chrono::Duration::from_std(instant.elapsed()).unwrap_or_default()
+            chrono::Utc::now() - chrono::Duration::from_std(instant.elapsed()).unwrap_or_default()
         });
-        
+
         CircuitBreakerStats {
             state: self.get_state().await,
             failure_count: self.failure_count.load(Ordering::Relaxed),

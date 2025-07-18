@@ -413,7 +413,7 @@ impl ZeroTrustMiddleware {
             .await
         {
             use tokio::io::AsyncWriteExt;
-            let log_line = format!("{}\n", audit_record);
+            let log_line = format!("{audit_record}\n");
             let _ = file.write_all(log_line.as_bytes()).await;
         }
     }

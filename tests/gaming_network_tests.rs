@@ -669,7 +669,7 @@ impl RealBridgeManager {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("bridge_manager".to_string()),
                 message: "Bridge not found".to_string(),
-                details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
+                details: Some(format!("Bridge with ID {bridge_id} does not exist")),
                 endpoint: None,
                 suggestion: None,
             }))
@@ -682,7 +682,7 @@ impl RealBridgeManager {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("bridge_manager".to_string()),
                 message: "Bridge not found".to_string(),
-                details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
+                details: Some(format!("Bridge with ID {bridge_id} does not exist")),
                 endpoint: None,
                 suggestion: None,
             }))
@@ -700,7 +700,7 @@ impl RealBridgeManager {
             Err(SongbirdError::Network(Box::new(NetworkError {
                 service: Some("bridge_manager".to_string()),
                 message: "Bridge not found".to_string(),
-                details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
+                details: Some(format!("Bridge with ID {bridge_id} does not exist")),
                 endpoint: None,
                 suggestion: None,
             })))
@@ -715,6 +715,12 @@ impl RealBridgeManager {
 
 pub struct NatTraversalManager {
     endpoints: std::collections::HashMap<String, PlayerEndpoint>,
+}
+
+impl Default for NatTraversalManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NatTraversalManager {
@@ -753,6 +759,12 @@ impl NatTraversalManager {
 }
 
 pub struct ProtocolTranslator;
+
+impl Default for ProtocolTranslator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ProtocolTranslator {
     pub fn new() -> Self {

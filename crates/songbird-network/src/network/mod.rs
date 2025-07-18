@@ -41,7 +41,7 @@ impl Default for NetworkConfig {
                 );
                 "127.0.0.1"
                     .parse()
-                                         .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
             }),
 
             // Configurable timeouts from environment

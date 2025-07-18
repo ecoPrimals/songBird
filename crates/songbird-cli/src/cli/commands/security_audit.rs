@@ -383,9 +383,9 @@ fn output_json_report(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()
     });
 
     match serde_json::to_string_pretty(&report) {
-        Ok(json) => println!("{}", json),
+        Ok(json) => println!("{json}"),
         Err(e) => {
-            eprintln!("Error serializing report to JSON: {}", e);
+            eprintln!("Error serializing report to JSON: {e}");
             println!("{{\"error\": \"Failed to serialize report\"}}");
         }
     }

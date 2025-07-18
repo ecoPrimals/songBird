@@ -210,7 +210,7 @@ pub fn format_percentage(value: f64) -> String {
     } else {
         "red"
     };
-    format!("{:.1}%", percentage).color(color).to_string()
+    format!("{percentage:.1}%").color(color).to_string()
 }
 
 /// Format health status with color coding
@@ -310,11 +310,11 @@ impl Table {
                 .map(|(i, cell)| {
                     let cell_len = cell.len();
                     let width = self.widths.get(i).unwrap_or(&cell_len);
-                    format!("{:width$}", cell, width = width)
+                    format!("{cell:width$}")
                 })
                 .collect::<Vec<_>>()
                 .join(" │ ");
-            println!("{}", row_line);
+            println!("{row_line}");
         }
     }
 }
@@ -383,7 +383,7 @@ pub fn clear_screen() {
 pub fn step(step_num: usize, total: usize, message: &str) {
     println!(
         "{} {}",
-        format!("[{}/{}]", step_num, total).bright_blue().bold(),
+        format!("[{step_num}/{total}]").bright_blue().bold(),
         message
     );
 }

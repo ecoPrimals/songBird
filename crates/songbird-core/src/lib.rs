@@ -79,6 +79,7 @@ pub mod biomeos_integration;
 pub mod load_balancer;
 pub mod orchestrator;
 pub mod performance_optimizer;
+pub mod primal_integration;
 pub mod production_benchmarks;
 pub mod registry;
 pub mod robustness;

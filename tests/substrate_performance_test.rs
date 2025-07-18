@@ -70,7 +70,7 @@ async fn test_substrate_basic_functionality() -> Result<()> {
     let port = substrate.get_available_port().await?;
     assert!(port > 0, "Port should be > 0");
 
-    println!("🔌 Available port: {}", port);
+    println!("🔌 Available port: {port}");
 
     println!("✅ Basic substrate functionality test passed");
     Ok(())
@@ -102,19 +102,19 @@ async fn test_substrate_caching_performance() -> Result<()> {
 
     assert_eq!(path1, path2, "Cached paths should be identical");
 
-    println!("⏱️ First request: {:?}", first_duration);
-    println!("⏱️ Second request: {:?}", second_duration);
+    println!("⏱️ First request: {first_duration:?}");
+    println!("⏱️ Second request: {second_duration:?}");
 
     // Test cache statistics
     let (total_entries, _max_size, utilization, cache_hits, cache_misses) =
         substrate.get_cache_stats().await;
 
     println!("📊 Cache stats:");
-    println!("   Total entries: {}", total_entries);
-    println!("   Max size: {}", _max_size);
+    println!("   Total entries: {total_entries}");
+    println!("   Max size: {_max_size}");
     println!("   Utilization: {:.2}%", utilization * 100.0);
-    println!("   Cache hits: {}", cache_hits);
-    println!("   Cache misses: {}", cache_misses);
+    println!("   Cache hits: {cache_hits}");
+    println!("   Cache misses: {cache_misses}");
 
     assert!(total_entries > 0, "Should have cached entries");
     assert!(cache_hits > 0, "Should have cache hits");
@@ -168,14 +168,14 @@ async fn test_substrate_cache_management() -> Result<()> {
 
     // Check cache before clearing
     let (entries_before, _, _, _, _) = substrate.get_cache_stats().await;
-    println!("📊 Entries before clearing: {}", entries_before);
+    println!("📊 Entries before clearing: {entries_before}");
 
     // Clear cache
     substrate.clear_cache().await;
 
     // Check cache after clearing
     let (entries_after, _, _, _, _) = substrate.get_cache_stats().await;
-    println!("📊 Entries after clearing: {}", entries_after);
+    println!("📊 Entries after clearing: {entries_after}");
 
     assert!(entries_after < entries_before, "Cache should be cleared");
 
@@ -184,7 +184,7 @@ async fn test_substrate_cache_management() -> Result<()> {
 
     // Check cache after warming
     let (entries_warmed, _, utilization, _, _) = substrate.get_cache_stats().await;
-    println!("📊 Entries after warming: {}", entries_warmed);
+    println!("📊 Entries after warming: {entries_warmed}");
     println!("📊 Utilization after warming: {:.2}%", utilization * 100.0);
 
     assert!(entries_warmed > 0, "Cache should be warmed");
@@ -205,7 +205,7 @@ async fn test_substrate_circuit_breaker() -> Result<()> {
         .toadstool_client
         .get_circuit_breaker_status()
         .await;
-    println!("⚡ Circuit breaker status: {:?}", cb_status);
+    println!("⚡ Circuit breaker status: {cb_status:?}");
 
     // Test health check with circuit breaker
     let health_result = substrate.toadstool_client.health_check().await;
@@ -216,7 +216,7 @@ async fn test_substrate_circuit_breaker() -> Result<()> {
             if e.to_string().contains("Circuit breaker is open") {
                 println!("⚠️ Circuit breaker is open (expected behavior)");
             } else {
-                println!("⚠️ Health check failed: {}", e);
+                println!("⚠️ Health check failed: {e}");
             }
         }
     }
@@ -243,7 +243,7 @@ async fn test_substrate_timeout_handling() -> Result<()> {
             );
         }
         Ok(Err(e)) => {
-            println!("⚠️ Operation failed: {}", e);
+            println!("⚠️ Operation failed: {e}");
         }
         Err(_) => {
             println!("⏰ Operation timed out");
@@ -269,7 +269,7 @@ async fn test_substrate_performance_under_load() -> Result<()> {
         let handle = tokio::spawn(async move {
             let path_request = PathRequest {
                 path_type: PathType::Data,
-                service_name: format!("load_test_{}", i),
+                service_name: format!("load_test_{i}"),
                 requirements: PathRequirements::default(),
             };
 
@@ -286,10 +286,7 @@ async fn test_substrate_performance_under_load() -> Result<()> {
         }
     }
 
-    println!(
-        "📊 Load test: {}/10 requests successful",
-        successful_requests
-    );
+    println!("📊 Load test: {successful_requests}/10 requests successful");
     assert!(
         successful_requests > 0,
         "At least some requests should succeed"
@@ -338,9 +335,9 @@ async fn test_substrate_comprehensive_performance() -> Result<()> {
         substrate.get_cache_stats().await;
 
     println!("🏁 Performance test summary:");
-    println!("   Caching operations: {:?}", caching_duration);
-    println!("   Parallel operations: {:?}", parallel_duration);
-    println!("   Cache management: {:?}", cache_management_duration);
+    println!("   Caching operations: {caching_duration:?}");
+    println!("   Parallel operations: {parallel_duration:?}");
+    println!("   Cache management: {cache_management_duration:?}");
     println!("   Total requests: {}", metrics.total_requests);
     println!("   Cache utilization: {:.2}%", utilization * 100.0);
     println!(

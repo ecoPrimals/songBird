@@ -394,7 +394,7 @@ impl HeartbeatManager {
         heartbeat_data: &serde_json::Value,
     ) -> Result<()> {
         let client = reqwest::Client::new();
-        let heartbeat_url = format!("{}/federation/heartbeat", endpoint);
+        let heartbeat_url = format!("{endpoint}/federation/heartbeat");
 
         let response = tokio::time::timeout(
             Duration::from_secs(5),
@@ -422,7 +422,7 @@ impl HeartbeatManager {
             Ok(Err(e)) => Err(songbird_errors::SongbirdError::Network(Box::new(
                 NetworkError {
                     service: Some("federation".to_string()),
-                    message: format!("Failed to send heartbeat: {}", e),
+                    message: format!("Failed to send heartbeat: {e}"),
                     details: None,
                     endpoint: Some(endpoint.to_string()),
                     suggestion: Some("Check network connectivity".to_string()),

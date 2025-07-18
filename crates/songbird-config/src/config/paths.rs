@@ -91,8 +91,14 @@ impl PathConfig {
     pub fn new_fallback() -> Self {
         warn!("🔄 Using fallback path configuration (substrate unavailable)");
 
-        let base_data_dir = Self::get_fallback_data_dir().unwrap();
-        let base_config_dir = Self::get_fallback_config_dir().unwrap();
+        let base_data_dir = Self::get_fallback_data_dir().unwrap_or_else(|_| {
+            warn!("Unable to determine data directory, using /tmp/songbird/data");
+            PathBuf::from("/tmp/songbird/data")
+        });
+        let base_config_dir = Self::get_fallback_config_dir().unwrap_or_else(|_| {
+            warn!("Unable to determine config directory, using /tmp/songbird/config");
+            PathBuf::from("/tmp/songbird/config")
+        });
         let base_log_dir = Self::get_fallback_log_dir();
         let base_cache_dir = Self::get_fallback_cache_dir();
         let base_runtime_dir = Self::get_fallback_runtime_dir();

@@ -7,7 +7,6 @@ use songbird_core::production_benchmarks::{
 };
 use songbird_errors::Result;
 use std::time::Duration;
-use tokio;
 
 #[tokio::test]
 async fn test_run_full_benchmark_suite() -> Result<()> {
@@ -58,10 +57,7 @@ async fn test_quick_production_check() -> Result<()> {
     println!("⚡ Running Quick Production Check...");
 
     // Use a timeout to prevent hanging
-    let result = tokio::time::timeout(
-        Duration::from_secs(30),
-        quick_production_check()
-    ).await;
+    let result = tokio::time::timeout(Duration::from_secs(30), quick_production_check()).await;
 
     match result {
         Ok(Ok(is_production_ready)) => {
@@ -72,11 +68,13 @@ async fn test_quick_production_check() -> Result<()> {
             }
         }
         Ok(Err(e)) => {
-            println!("⚠️  Production check failed: {}", e);
+            println!("⚠️  Production check failed: {e}");
             // Don't fail the test - just log the issue
         }
         Err(_) => {
-            println!("⚠️  Production check timed out (30s) - this is expected in CI/test environments");
+            println!(
+                "⚠️  Production check timed out (30s) - this is expected in CI/test environments"
+            );
             // Don't fail the test - timeouts are expected in test environments
         }
     }
@@ -90,14 +88,14 @@ async fn test_quick_production_check_lightweight() -> Result<()> {
 
     // Create a lightweight config for testing
     let config = BenchmarkConfig {
-        service_instance_count: 2,                         // Minimal instances
-        requests_per_test: 10,                             // Minimal requests  
-        concurrent_workers: 1,                             // Single worker
-        cache_test_data_size: 10,                          // Minimal cache
-        object_pool_iterations: 10,                        // Minimal iterations
-        batch_test_size: 5,                                // Small batch
-        warmup_duration: Duration::from_millis(10),        // Very short warmup
-        test_duration: Duration::from_millis(50),          // Very short test
+        service_instance_count: 2,                  // Minimal instances
+        requests_per_test: 10,                      // Minimal requests
+        concurrent_workers: 1,                      // Single worker
+        cache_test_data_size: 10,                   // Minimal cache
+        object_pool_iterations: 10,                 // Minimal iterations
+        batch_test_size: 5,                         // Small batch
+        warmup_duration: Duration::from_millis(10), // Very short warmup
+        test_duration: Duration::from_millis(50),   // Very short test
     };
 
     let mut runner = BenchmarkRunner::new(config);
@@ -106,8 +104,14 @@ async fn test_quick_production_check_lightweight() -> Result<()> {
 
     if let Ok(results) = result {
         println!("✅ Lightweight benchmark completed successfully");
-        println!("   Load balancer: {:.2}ns avg", results.load_balancer_results.average_selection_time_ns);
-        println!("   Cache access: {:.2}ns avg", results.cache_results.average_access_time_ns);
+        println!(
+            "   Load balancer: {:.2}ns avg",
+            results.load_balancer_results.average_selection_time_ns
+        );
+        println!(
+            "   Cache access: {:.2}ns avg",
+            results.cache_results.average_access_time_ns
+        );
     }
 
     Ok(())
@@ -155,7 +159,7 @@ async fn test_performance_bottleneck_identification() -> Result<()> {
     } else {
         println!("⚠️  Performance bottlenecks identified:");
         for bottleneck in bottlenecks {
-            println!("  - {}", bottleneck);
+            println!("  - {bottleneck}");
         }
     }
 

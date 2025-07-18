@@ -50,7 +50,7 @@ impl ZeroTouchCommand {
 
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).map_err(|e| {
-                songbird_errors::SongbirdError::from(format!("Failed to read user input: {}", e))
+                songbird_errors::SongbirdError::from(format!("Failed to read user input: {e}"))
             })?;
             if !input.trim().to_lowercase().starts_with('y') {
                 print_info("Deployment cancelled.");

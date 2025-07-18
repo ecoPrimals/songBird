@@ -13,11 +13,11 @@ use songbird_config::constants::{
 };
 use songbird_errors::{ExecutionError, Result};
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::interval;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Production performance optimizer configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -172,7 +172,7 @@ impl FastLoadBalancer {
     async fn select_weighted_random(&self) -> Option<String> {
         // Use atomic counter for round-robin style selection to reduce randomness overhead
         let counter = self.round_robin_counter.fetch_add(1, Ordering::Relaxed);
-        
+
         let index = self.performance_index.read().await;
         if index.is_empty() {
             return None;
@@ -297,10 +297,16 @@ impl FastLoadBalancer {
                         latency_factor * 0.7 + health_factor * 0.3
                     }
                     LoadBalancingStrategy::ResourceAware => {
-                        resource_factor * 0.4 + latency_factor * 0.3 + connection_factor * 0.2 + health_factor * 0.1
+                        resource_factor * 0.4
+                            + latency_factor * 0.3
+                            + connection_factor * 0.2
+                            + health_factor * 0.1
                     }
                     LoadBalancingStrategy::FastWeightedRandom => {
-                        latency_factor * 0.25 + resource_factor * 0.25 + connection_factor * 0.25 + health_factor * 0.25
+                        latency_factor * 0.25
+                            + resource_factor * 0.25
+                            + connection_factor * 0.25
+                            + health_factor * 0.25
                     }
                     LoadBalancingStrategy::ConsistentHashing => {
                         health_factor // Simple health-based for consistent hashing
@@ -332,7 +338,7 @@ impl FastLoadBalancer {
                         weighted_instances.push(instance_id.clone());
                     }
                 }
-                
+
                 // Shuffle for better distribution
                 use fastrand::shuffle;
                 shuffle(&mut weighted_instances);
@@ -659,43 +665,49 @@ where
             let pending_items = pending_items.clone();
             let batch_timer = batch_timer.clone();
             let processor_fn = processor_fn.clone();
-            let batch_size = batch_size;
-            let batch_timeout = batch_timeout;
-            
+
             async move {
                 let mut interval = tokio::time::interval(batch_timeout / 4);
                 loop {
                     interval.tick().await;
-                    
+
                     // Check if we should process batches
                     let should_process = {
                         let items = pending_items.lock().await;
                         let timer = batch_timer.lock().await;
-                        
+
                         // Process if batch is full or timeout exceeded
                         let batch_full = items.len() >= batch_size;
-                        let timeout_exceeded = timer.map_or(false, |start| start.elapsed() >= batch_timeout);
-                        
+                        let timeout_exceeded =
+                            timer.is_some_and(|start| start.elapsed() >= batch_timeout);
+
                         batch_full || (timeout_exceeded && !items.is_empty())
                     };
-                    
+
                     if should_process {
                         // Process batch
                         let items_to_process = {
                             let mut items = pending_items.lock().await;
                             let items_len = items.len();
-                            let batch_items = items.drain(..std::cmp::min(items_len, batch_size)).collect::<Vec<_>>();
-                            *batch_timer.lock().await = if items.is_empty() { None } else { Some(tokio::time::Instant::now()) };
+                            let batch_items = items
+                                .drain(..std::cmp::min(items_len, batch_size))
+                                .collect::<Vec<_>>();
+                            *batch_timer.lock().await = if items.is_empty() {
+                                None
+                            } else {
+                                Some(tokio::time::Instant::now())
+                            };
                             batch_items
                         };
-                        
+
                         if !items_to_process.is_empty() {
-                            let (items, senders): (Vec<T>, Vec<_>) = items_to_process.into_iter().unzip();
-                            
+                            let (items, senders): (Vec<T>, Vec<_>) =
+                                items_to_process.into_iter().unzip();
+
                             // Process in parallel chunks for better performance
                             let chunk_size = std::cmp::min(items.len(), 50);
                             let mut all_results = Vec::new();
-                            
+
                             for chunk in items.chunks(chunk_size) {
                                 match processor_fn(chunk.to_vec()) {
                                     Ok(mut results) => {
@@ -709,9 +721,10 @@ where
                                     }
                                 }
                             }
-                            
+
                             // Send results back to corresponding senders
-                            for (sender, result) in senders.into_iter().zip(all_results.into_iter()) {
+                            for (sender, result) in senders.into_iter().zip(all_results.into_iter())
+                            {
                                 let _ = sender.send(Ok(result));
                             }
                         }
