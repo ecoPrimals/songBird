@@ -544,16 +544,23 @@ impl RobustnessManager {
 
         // Create instances unless this is a pure default config (for backward compatibility)
         let default_config = RobustnessConfig::default();
-        let is_pure_default = config.circuit_breaker.service_name == default_config.circuit_breaker.service_name &&
-                              config.circuit_breaker.failure_threshold == default_config.circuit_breaker.failure_threshold &&
-                              config.circuit_breaker.timeout == default_config.circuit_breaker.timeout &&
-                              config.circuit_breaker.success_threshold == default_config.circuit_breaker.success_threshold &&
-                              config.rate_limiting.requests_per_second == default_config.rate_limiting.requests_per_second &&
-                              config.rate_limiting.burst_size == default_config.rate_limiting.burst_size &&
-                              config.rate_limiting.window_size_seconds == default_config.rate_limiting.window_size_seconds &&
-                              config.rate_limiting.enable_distributed == default_config.rate_limiting.enable_distributed &&
-                              config.health_check.interval_seconds == default_config.health_check.interval_seconds &&
-                              config.bulkhead.max_concurrent_requests == default_config.bulkhead.max_concurrent_requests;
+        let is_pure_default = config.circuit_breaker.service_name
+            == default_config.circuit_breaker.service_name
+            && config.circuit_breaker.failure_threshold
+                == default_config.circuit_breaker.failure_threshold
+            && config.circuit_breaker.timeout == default_config.circuit_breaker.timeout
+            && config.circuit_breaker.success_threshold
+                == default_config.circuit_breaker.success_threshold
+            && config.rate_limiting.requests_per_second
+                == default_config.rate_limiting.requests_per_second
+            && config.rate_limiting.burst_size == default_config.rate_limiting.burst_size
+            && config.rate_limiting.window_size_seconds
+                == default_config.rate_limiting.window_size_seconds
+            && config.rate_limiting.enable_distributed
+                == default_config.rate_limiting.enable_distributed
+            && config.health_check.interval_seconds == default_config.health_check.interval_seconds
+            && config.bulkhead.max_concurrent_requests
+                == default_config.bulkhead.max_concurrent_requests;
 
         if !is_pure_default {
             let circuit_breaker = CircuitBreakerInstance {
@@ -1145,7 +1152,7 @@ impl RobustnessManager {
                 let time_since_last_refill = now.duration_since(rate_limiter.last_refill);
 
                 // Token bucket rate limiting: refill tokens based on time passed
-                let tokens_to_add = time_since_last_refill.as_secs_f64() 
+                let tokens_to_add = time_since_last_refill.as_secs_f64()
                     * rate_limiter.config.requests_per_second as f64;
                 rate_limiter.tokens = (rate_limiter.tokens + tokens_to_add)
                     .min(rate_limiter.config.burst_size as f64);
