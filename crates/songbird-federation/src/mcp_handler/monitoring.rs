@@ -388,9 +388,7 @@ impl MonitoringManager {
         let netstat_output = String::from_utf8_lossy(&output.stdout);
         let connection_count = netstat_output
             .lines()
-            .filter(|line| {
-                line.contains(&format!("{host}:{port}")) && line.contains("ESTABLISHED")
-            })
+            .filter(|line| line.contains(&format!("{host}:{port}")) && line.contains("ESTABLISHED"))
             .count() as u32;
 
         Ok(connection_count)
