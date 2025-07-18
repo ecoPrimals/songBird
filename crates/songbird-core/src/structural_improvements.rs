@@ -9,13 +9,13 @@
 //! - Async runtime optimization
 //! - Data structure optimization
 
+use serde::{Deserialize, Serialize};
+use songbird_errors::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{debug, info};
-use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
 
 /// Global structural improvements manager
 pub struct StructuralImprovementsManager {
@@ -815,7 +815,7 @@ impl StructuralImprovementsManager {
     /// Initialize memory pools
     async fn initialize_memory_pools(&self) -> Result<()> {
         let mut pools = self.memory_pools.write().await;
-        
+
         // Pre-allocate small objects
         for _ in 0..self.config.memory_pool_sizes.small_objects {
             pools.small_pool.push(SmallObject {
@@ -850,32 +850,36 @@ impl StructuralImprovementsManager {
             pools.string_pool.push(String::with_capacity(256));
         }
 
-        info!("Memory pools initialized with {} total objects", 
-              pools.small_pool.len() + pools.medium_pool.len() + pools.large_pool.len());
+        info!(
+            "Memory pools initialized with {} total objects",
+            pools.small_pool.len() + pools.medium_pool.len() + pools.large_pool.len()
+        );
         Ok(())
     }
 
     /// Initialize connection pools
     async fn initialize_connection_pools(&self) -> Result<()> {
         let mut manager = self.connection_manager.write().await;
-        
+
         // Initialize HTTP connections
         for i in 0..self.config.connection_pool_sizes.http_pool {
             let _client = reqwest::Client::builder()
                 .timeout(Duration::from_secs(30))
                 .build()
-                .map_err(|e| songbird_errors::SongbirdError::Network(Box::new(
-                    songbird_errors::NetworkError {
-                        service: Some("http_client".to_string()),
-                        message: format!("Failed to create HTTP client: {}", e),
-                        details: None,
-                        endpoint: None,
-                        suggestion: Some("Check network configuration".to_string()),
-                    }
-                )))?;
+                .map_err(|e| {
+                    songbird_errors::SongbirdError::Network(Box::new(
+                        songbird_errors::NetworkError {
+                            service: Some("http_client".to_string()),
+                            message: format!("Failed to create HTTP client: {e}"),
+                            details: None,
+                            endpoint: None,
+                            suggestion: Some("Check network configuration".to_string()),
+                        },
+                    ))
+                })?;
 
             manager.http_connections.push(HttpConnection {
-                id: format!("http-{}", i),
+                id: format!("http-{i}"),
                 endpoint: String::new(), // Placeholder, will be set later
                 in_use: false,
                 created_at: Instant::now(),
@@ -887,7 +891,7 @@ impl StructuralImprovementsManager {
         // Initialize WebSocket connections
         for i in 0..self.config.connection_pool_sizes.websocket_pool {
             manager.websocket_connections.push(WebSocketConnection {
-                id: format!("ws-{}", i),
+                id: format!("ws-{i}"),
                 endpoint: String::new(), // Placeholder, will be set later
                 in_use: false,
                 created_at: Instant::now(),
@@ -903,7 +907,7 @@ impl StructuralImprovementsManager {
     /// Initialize error handling hierarchy
     async fn initialize_error_handling(&self) -> Result<()> {
         let mut error_handler = self.error_handler.write().await;
-        
+
         // Initialize recovery strategies
         error_handler.recovery_strategies.insert(
             "default".to_string(),
@@ -962,11 +966,11 @@ impl StructuralImprovementsManager {
     /// Initialize async runtime optimization
     async fn initialize_async_optimization(&self) -> Result<()> {
         let mut async_optimizer = self.async_optimizer.write().await;
-        
+
         // Initialize worker pool
         for i in 0..self.config.async_runtime.worker_threads {
             async_optimizer.worker_pool.workers.push(Worker {
-                id: format!("worker_{}", i),
+                id: format!("worker_{i}"),
                 current_task: None,
                 task_count: 0,
                 total_processing_time: Duration::from_secs(0),
@@ -979,9 +983,17 @@ impl StructuralImprovementsManager {
 
         // Initialize load balancer - fix borrowing issue
         {
-            let worker_ids: Vec<String> = async_optimizer.worker_pool.workers.iter().map(|w| w.id.clone()).collect();
+            let worker_ids: Vec<String> = async_optimizer
+                .worker_pool
+                .workers
+                .iter()
+                .map(|w| w.id.clone())
+                .collect();
             for worker_id in worker_ids {
-                async_optimizer.load_balancer.worker_loads.insert(worker_id, 0.0);
+                async_optimizer
+                    .load_balancer
+                    .worker_loads
+                    .insert(worker_id, 0.0);
             }
         }
 
@@ -992,7 +1004,7 @@ impl StructuralImprovementsManager {
     /// Initialize data structure optimization
     async fn initialize_data_optimization(&self) -> Result<()> {
         let mut data_optimizer = self.data_optimizer.write().await;
-        
+
         // Initialize cache-optimized structures
         data_optimizer.cache_optimized_structures.insert(
             "default".to_string(),
@@ -1006,21 +1018,21 @@ impl StructuralImprovementsManager {
         );
 
         // Initialize memory layout optimizer
-        data_optimizer.memory_layout.layout_strategies.insert(
-            "default".to_string(),
-            LayoutStrategy::ArrayOfStructs,
-        );
+        data_optimizer
+            .memory_layout
+            .layout_strategies
+            .insert("default".to_string(), LayoutStrategy::ArrayOfStructs);
 
-        data_optimizer.memory_layout.alignment_requirements.insert(
-            "default".to_string(),
-            64,
-        );
+        data_optimizer
+            .memory_layout
+            .alignment_requirements
+            .insert("default".to_string(), 64);
 
         // Initialize prefetch optimizer
-        data_optimizer.prefetch_optimizer.prefetch_strategies.insert(
-            "default".to_string(),
-            PrefetchStrategy::Hardware,
-        );
+        data_optimizer
+            .prefetch_optimizer
+            .prefetch_strategies
+            .insert("default".to_string(), PrefetchStrategy::Hardware);
 
         info!("Data structure optimization initialized");
         Ok(())
@@ -1032,7 +1044,7 @@ impl StructuralImprovementsManager {
         if self.config.enable_resource_tracking {
             let resource_tracker = Arc::clone(&self.resource_tracker);
             let interval = self.config.monitoring_intervals.resource_check;
-            
+
             tokio::spawn(async move {
                 let mut interval_timer = tokio::time::interval(interval);
                 loop {
@@ -1046,7 +1058,7 @@ impl StructuralImprovementsManager {
         if self.config.enable_memory_pooling {
             let memory_pools = Arc::clone(&self.memory_pools);
             let interval = self.config.monitoring_intervals.memory_check;
-            
+
             tokio::spawn(async move {
                 let mut interval_timer = tokio::time::interval(interval);
                 loop {
@@ -1060,7 +1072,7 @@ impl StructuralImprovementsManager {
         if self.config.enable_connection_pooling {
             let connection_manager = Arc::clone(&self.connection_manager);
             let interval = self.config.monitoring_intervals.connection_check;
-            
+
             tokio::spawn(async move {
                 let mut interval_timer = tokio::time::interval(interval);
                 loop {
@@ -1073,7 +1085,7 @@ impl StructuralImprovementsManager {
         // Start performance monitoring
         let performance_monitor = Arc::clone(&self.performance_monitor);
         let interval = self.config.monitoring_intervals.performance_check;
-        
+
         tokio::spawn(async move {
             let mut interval_timer = tokio::time::interval(interval);
             loop {
@@ -1090,7 +1102,7 @@ impl StructuralImprovementsManager {
     async fn resource_monitoring_cycle(resource_tracker: Arc<RwLock<ResourceTracker>>) {
         let mut tracker = resource_tracker.write().await;
         let now = Instant::now();
-        
+
         // Clean up old resources
         let mut to_remove = Vec::new();
         for (id, resource) in &tracker.tracked_resources {
@@ -1098,7 +1110,7 @@ impl StructuralImprovementsManager {
                 to_remove.push(id.clone());
             }
         }
-        
+
         for id in to_remove {
             if let Some(resource) = tracker.tracked_resources.remove(&id) {
                 tracker.total_memory_allocated -= resource.size_bytes;
@@ -1106,43 +1118,43 @@ impl StructuralImprovementsManager {
                 debug!("Cleaned up resource: {}", id);
             }
         }
-        
+
         tracker.last_cleanup = now;
     }
 
     /// Memory monitoring cycle
     async fn memory_monitoring_cycle(memory_pools: Arc<RwLock<MemoryPoolManager>>) {
         let mut pools = memory_pools.write().await;
-        
+
         // Reset unused objects
         for obj in &mut pools.small_pool {
             if !obj.in_use {
                 obj.data = [0; 64];
             }
         }
-        
+
         for obj in &mut pools.medium_pool {
             if !obj.in_use {
                 obj.data = [0; 1024];
             }
         }
-        
+
         for obj in &mut pools.large_pool {
             if !obj.in_use {
                 obj.data.clear();
             }
         }
-        
+
         // Clear unused buffers
         for buffer in &mut pools.buffer_pool {
             buffer.clear();
         }
-        
+
         // Clear unused strings
         for string in &mut pools.string_pool {
             string.clear();
         }
-        
+
         debug!("Memory pools maintenance completed");
     }
 
@@ -1150,28 +1162,28 @@ impl StructuralImprovementsManager {
     async fn connection_monitoring_cycle(connection_manager: Arc<RwLock<ConnectionManager>>) {
         let mut manager = connection_manager.write().await;
         let now = Instant::now();
-        
+
         // Check HTTP connections health
         for conn in &mut manager.http_connections {
             if now.duration_since(conn.last_used) > Duration::from_secs(300) {
                 conn.in_use = false; // Mark as unhealthy
             }
         }
-        
+
         // Check WebSocket connections health
         for conn in &mut manager.websocket_connections {
             if now.duration_since(conn.last_used) > Duration::from_secs(300) {
                 conn.in_use = false; // Mark as unhealthy
             }
         }
-        
+
         debug!("Connection health check completed");
     }
 
     /// Performance monitoring cycle
     async fn performance_monitoring_cycle(performance_monitor: Arc<RwLock<PerformanceMonitor>>) {
         let mut monitor = performance_monitor.write().await;
-        
+
         // Update performance metrics (simplified)
         monitor.cpu_usage = Self::get_cpu_usage();
         monitor.memory_usage = Self::get_memory_usage();
@@ -1179,7 +1191,7 @@ impl StructuralImprovementsManager {
         monitor.latency = Self::get_latency();
         monitor.error_rate = Self::get_error_rate();
         monitor.last_update = Some(Instant::now());
-        
+
         debug!("Performance metrics updated");
     }
 
@@ -1214,13 +1226,19 @@ impl StructuralImprovementsManager {
     }
 
     /// Track a resource
-    pub async fn track_resource(&self, id: String, resource_type: String, owner: String, size_bytes: u64) -> Result<()> {
+    pub async fn track_resource(
+        &self,
+        id: String,
+        resource_type: String,
+        owner: String,
+        size_bytes: u64,
+    ) -> Result<()> {
         if !self.config.enable_resource_tracking {
             return Ok(());
         }
 
         let mut tracker = self.resource_tracker.write().await;
-        
+
         let resource = TrackedResource {
             id: id.clone(),
             resource_type,
@@ -1230,11 +1248,11 @@ impl StructuralImprovementsManager {
             size_bytes,
             metadata: HashMap::new(),
         };
-        
+
         tracker.tracked_resources.insert(id.clone(), resource);
         tracker.resource_count += 1;
         tracker.total_memory_allocated += size_bytes;
-        
+
         debug!("Tracked resource: {} ({} bytes)", id, size_bytes);
         Ok(())
     }
@@ -1246,13 +1264,13 @@ impl StructuralImprovementsManager {
         }
 
         let mut tracker = self.resource_tracker.write().await;
-        
+
         if let Some(resource) = tracker.tracked_resources.remove(id) {
             tracker.resource_count -= 1;
             tracker.total_memory_allocated -= resource.size_bytes;
             debug!("Released resource: {} ({} bytes)", id, resource.size_bytes);
         }
-        
+
         Ok(())
     }
 
@@ -1263,7 +1281,7 @@ impl StructuralImprovementsManager {
         }
 
         let mut manager = self.connection_manager.write().await;
-        
+
         // Try to find an available connection
         let mut found_connection = None;
         for conn in &mut manager.http_connections {
@@ -1286,15 +1304,15 @@ impl StructuralImprovementsManager {
         let _client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
-            .map_err(|e| songbird_errors::SongbirdError::Network(Box::new(
-                songbird_errors::NetworkError {
+            .map_err(|e| {
+                songbird_errors::SongbirdError::Network(Box::new(songbird_errors::NetworkError {
                     service: Some("http_client".to_string()),
-                    message: format!("Failed to create HTTP client: {}", e),
+                    message: format!("Failed to create HTTP client: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network configuration".to_string()),
-                }
-            )))?;
+                }))
+            })?;
 
         let conn = HttpConnection {
             id: uuid::Uuid::new_v4().to_string(),
@@ -1306,7 +1324,7 @@ impl StructuralImprovementsManager {
         };
 
         manager.connection_stats.total_connections_created += 1;
-        
+
         Ok(Some(conn))
     }
 
@@ -1316,13 +1334,18 @@ impl StructuralImprovementsManager {
         let memory_pools = self.memory_pools.read().await;
         let connection_manager = self.connection_manager.read().await;
         let performance_monitor = self.performance_monitor.read().await;
-        
+
         let pool_hit_ratio = if memory_pools.pool_stats.total_allocations > 0 {
-            (memory_pools.pool_stats.small_pool_utilization * memory_pools.pool_stats.total_allocations as f64) +
-            (memory_pools.pool_stats.medium_pool_utilization * memory_pools.pool_stats.total_allocations as f64) +
-            (memory_pools.pool_stats.large_pool_utilization * memory_pools.pool_stats.total_allocations as f64) +
-            (memory_pools.pool_stats.buffer_pool_utilization * memory_pools.pool_stats.total_allocations as f64) +
-            (memory_pools.pool_stats.string_pool_utilization * memory_pools.pool_stats.total_allocations as f64)
+            (memory_pools.pool_stats.small_pool_utilization
+                * memory_pools.pool_stats.total_allocations as f64)
+                + (memory_pools.pool_stats.medium_pool_utilization
+                    * memory_pools.pool_stats.total_allocations as f64)
+                + (memory_pools.pool_stats.large_pool_utilization
+                    * memory_pools.pool_stats.total_allocations as f64)
+                + (memory_pools.pool_stats.buffer_pool_utilization
+                    * memory_pools.pool_stats.total_allocations as f64)
+                + (memory_pools.pool_stats.string_pool_utilization
+                    * memory_pools.pool_stats.total_allocations as f64)
         } else {
             0.0
         };
@@ -1331,8 +1354,13 @@ impl StructuralImprovementsManager {
             resource_count: resource_tracker.resource_count,
             memory_allocated: resource_tracker.total_memory_allocated,
             pool_hit_ratio,
-            connection_count: connection_manager.connection_stats.total_connections_created,
-            average_response_time: connection_manager.connection_stats.average_connection_lifetime.as_millis() as f64,
+            connection_count: connection_manager
+                .connection_stats
+                .total_connections_created,
+            average_response_time: connection_manager
+                .connection_stats
+                .average_connection_lifetime
+                .as_millis() as f64,
             cpu_usage: performance_monitor.cpu_usage,
             memory_usage: performance_monitor.memory_usage,
             throughput: performance_monitor.throughput,
@@ -1341,13 +1369,26 @@ impl StructuralImprovementsManager {
     }
 
     /// Handle error with recovery strategies
-    pub async fn handle_error(&self, error_type: &str, service: &str, error: &str) -> Result<RecoveryResult> {
+    pub async fn handle_error(
+        &self,
+        error_type: &str,
+        service: &str,
+        error: &str,
+    ) -> Result<RecoveryResult> {
         let mut error_handler = self.error_handler.write().await;
-        
+
         // Update error statistics
         error_handler.error_stats.total_errors += 1;
-        *error_handler.error_stats.errors_by_type.entry(error_type.to_string()).or_insert(0) += 1;
-        *error_handler.error_stats.errors_by_service.entry(service.to_string()).or_insert(0) += 1;
+        *error_handler
+            .error_stats
+            .errors_by_type
+            .entry(error_type.to_string())
+            .or_insert(0) += 1;
+        *error_handler
+            .error_stats
+            .errors_by_service
+            .entry(service.to_string())
+            .or_insert(0) += 1;
 
         // Get recovery strategy - fix temporary value issue
         let default_strategy = RecoveryStrategy::Retry {
@@ -1355,13 +1396,17 @@ impl StructuralImprovementsManager {
             base_delay: Duration::from_millis(100),
             max_delay: Duration::from_secs(5),
         };
-        
-        let strategy = error_handler.recovery_strategies.get(error_type)
+
+        let strategy = error_handler
+            .recovery_strategies
+            .get(error_type)
             .unwrap_or(&default_strategy);
 
         // Execute recovery strategy
         let recovery_start = Instant::now();
-        let result = self.execute_recovery_strategy(strategy, service, error).await;
+        let result = self
+            .execute_recovery_strategy(strategy, service, error)
+            .await;
         let recovery_duration = recovery_start.elapsed();
 
         // Update recovery statistics
@@ -1373,10 +1418,14 @@ impl StructuralImprovementsManager {
         }
 
         // Update average recovery time
-        let total_recoveries = error_handler.error_stats.successful_recoveries + error_handler.error_stats.failed_recoveries;
+        let total_recoveries = error_handler.error_stats.successful_recoveries
+            + error_handler.error_stats.failed_recoveries;
         if total_recoveries > 0 {
             error_handler.error_stats.average_recovery_time = Duration::from_nanos(
-                (error_handler.error_stats.average_recovery_time.as_nanos() as u64 * (total_recoveries - 1) + recovery_duration.as_nanos() as u64) / total_recoveries
+                (error_handler.error_stats.average_recovery_time.as_nanos() as u64
+                    * (total_recoveries - 1)
+                    + recovery_duration.as_nanos() as u64)
+                    / total_recoveries,
             );
         }
 
@@ -1384,30 +1433,73 @@ impl StructuralImprovementsManager {
     }
 
     /// Execute recovery strategy
-    async fn execute_recovery_strategy(&self, strategy: &RecoveryStrategy, service: &str, error: &str) -> Result<RecoveryResult> {
+    async fn execute_recovery_strategy(
+        &self,
+        strategy: &RecoveryStrategy,
+        service: &str,
+        error: &str,
+    ) -> Result<RecoveryResult> {
         match strategy {
-            RecoveryStrategy::Retry { max_attempts, base_delay, max_delay } => {
-                self.execute_retry_strategy(*max_attempts, *base_delay, *max_delay, service, error).await
+            RecoveryStrategy::Retry {
+                max_attempts,
+                base_delay,
+                max_delay,
+            } => {
+                self.execute_retry_strategy(*max_attempts, *base_delay, *max_delay, service, error)
+                    .await
             }
-            RecoveryStrategy::CircuitBreaker { failure_threshold, recovery_timeout } => {
-                self.execute_circuit_breaker_strategy(*failure_threshold, *recovery_timeout, service, error).await
+            RecoveryStrategy::CircuitBreaker {
+                failure_threshold,
+                recovery_timeout,
+            } => {
+                self.execute_circuit_breaker_strategy(
+                    *failure_threshold,
+                    *recovery_timeout,
+                    service,
+                    error,
+                )
+                .await
             }
-            RecoveryStrategy::Fallback { fallback_service, fallback_timeout } => {
-                self.execute_fallback_strategy(fallback_service, *fallback_timeout, service, error).await
+            RecoveryStrategy::Fallback {
+                fallback_service,
+                fallback_timeout,
+            } => {
+                self.execute_fallback_strategy(fallback_service, *fallback_timeout, service, error)
+                    .await
             }
-            RecoveryStrategy::Degradation { degraded_functionality, recovery_check_interval } => {
-                self.execute_degradation_strategy(degraded_functionality, *recovery_check_interval, service, error).await
+            RecoveryStrategy::Degradation {
+                degraded_functionality,
+                recovery_check_interval,
+            } => {
+                self.execute_degradation_strategy(
+                    degraded_functionality,
+                    *recovery_check_interval,
+                    service,
+                    error,
+                )
+                .await
             }
-            RecoveryStrategy::Bulkhead { isolation_level, resource_limits } => {
-                self.execute_bulkhead_strategy(isolation_level, resource_limits, service, error).await
+            RecoveryStrategy::Bulkhead {
+                isolation_level,
+                resource_limits,
+            } => {
+                self.execute_bulkhead_strategy(isolation_level, resource_limits, service, error)
+                    .await
             }
         }
     }
 
     /// Execute retry strategy
-    async fn execute_retry_strategy(&self, max_attempts: u32, base_delay: Duration, max_delay: Duration, _service: &str, _error: &str) -> Result<RecoveryResult> {
+    async fn execute_retry_strategy(
+        &self,
+        max_attempts: u32,
+        base_delay: Duration,
+        max_delay: Duration,
+        _service: &str,
+        _error: &str,
+    ) -> Result<RecoveryResult> {
         let mut delay = base_delay;
-        
+
         for attempt in 0..max_attempts {
             if attempt > 0 {
                 tokio::time::sleep(delay).await;
@@ -1432,27 +1524,33 @@ impl StructuralImprovementsManager {
             strategy_used: "retry".to_string(),
             attempts: max_attempts,
             recovery_time: max_delay * max_attempts,
-            message: format!("Retry failed after {} attempts", max_attempts),
+            message: format!("Retry failed after {max_attempts} attempts"),
         })
     }
 
     /// Execute circuit breaker strategy
-    async fn execute_circuit_breaker_strategy(&self, failure_threshold: u32, _recovery_timeout: Duration, service: &str, _error: &str) -> Result<RecoveryResult> {
+    async fn execute_circuit_breaker_strategy(
+        &self,
+        failure_threshold: u32,
+        _recovery_timeout: Duration,
+        service: &str,
+        _error: &str,
+    ) -> Result<RecoveryResult> {
         let mut error_handler = self.error_handler.write().await;
-        
+
         if let Some(circuit_breaker) = error_handler.circuit_breakers.get_mut(service) {
             circuit_breaker.failure_count += 1;
-            
+
             if circuit_breaker.failure_count >= failure_threshold {
                 circuit_breaker.state = CircuitState::Open;
                 circuit_breaker.last_failure = Some(Instant::now());
-                
+
                 return Ok(RecoveryResult {
                     success: false,
                     strategy_used: "circuit_breaker".to_string(),
                     attempts: 1,
                     recovery_time: Duration::from_secs(0),
-                    message: format!("Circuit breaker opened for service {}", service),
+                    message: format!("Circuit breaker opened for service {service}"),
                 });
             }
         }
@@ -1462,56 +1560,74 @@ impl StructuralImprovementsManager {
             strategy_used: "circuit_breaker".to_string(),
             attempts: 1,
             recovery_time: Duration::from_secs(0),
-            message: format!("Circuit breaker monitoring service {}", service),
+            message: format!("Circuit breaker monitoring service {service}"),
         })
     }
 
     /// Execute fallback strategy
-    async fn execute_fallback_strategy(&self, fallback_service: &str, _fallback_timeout: Duration, _service: &str, _error: &str) -> Result<RecoveryResult> {
+    async fn execute_fallback_strategy(
+        &self,
+        fallback_service: &str,
+        _fallback_timeout: Duration,
+        _service: &str,
+        _error: &str,
+    ) -> Result<RecoveryResult> {
         // Simulate fallback to alternative service
         tokio::time::sleep(Duration::from_millis(10)).await;
-        
+
         Ok(RecoveryResult {
             success: true,
             strategy_used: "fallback".to_string(),
             attempts: 1,
             recovery_time: Duration::from_millis(10),
-            message: format!("Fallback to {} successful", fallback_service),
+            message: format!("Fallback to {fallback_service} successful"),
         })
     }
 
     /// Execute degradation strategy
-    async fn execute_degradation_strategy(&self, degraded_functionality: &str, _recovery_check_interval: Duration, _service: &str, _error: &str) -> Result<RecoveryResult> {
+    async fn execute_degradation_strategy(
+        &self,
+        degraded_functionality: &str,
+        _recovery_check_interval: Duration,
+        _service: &str,
+        _error: &str,
+    ) -> Result<RecoveryResult> {
         // Simulate graceful degradation
         tokio::time::sleep(Duration::from_millis(5)).await;
-        
+
         Ok(RecoveryResult {
             success: true,
             strategy_used: "degradation".to_string(),
             attempts: 1,
             recovery_time: Duration::from_millis(5),
-            message: format!("Degraded to {} functionality", degraded_functionality),
+            message: format!("Degraded to {degraded_functionality} functionality"),
         })
     }
 
     /// Execute bulkhead strategy
-    async fn execute_bulkhead_strategy(&self, isolation_level: &str, _resource_limits: &HashMap<String, u64>, _service: &str, _error: &str) -> Result<RecoveryResult> {
+    async fn execute_bulkhead_strategy(
+        &self,
+        isolation_level: &str,
+        _resource_limits: &HashMap<String, u64>,
+        _service: &str,
+        _error: &str,
+    ) -> Result<RecoveryResult> {
         // Simulate bulkhead isolation
         tokio::time::sleep(Duration::from_millis(1)).await;
-        
+
         Ok(RecoveryResult {
             success: true,
             strategy_used: "bulkhead".to_string(),
             attempts: 1,
             recovery_time: Duration::from_millis(1),
-            message: format!("Bulkhead isolation applied at {} level", isolation_level),
+            message: format!("Bulkhead isolation applied at {isolation_level} level"),
         })
     }
 
     /// Schedule task with optimization
     pub async fn schedule_task(&self, task: OptimizedTask) -> Result<String> {
         let mut async_optimizer = self.async_optimizer.write().await;
-        
+
         // Convert to scheduled task
         let scheduled_task = ScheduledTask {
             id: task.id.clone(),
@@ -1522,7 +1638,10 @@ impl StructuralImprovementsManager {
         };
 
         // Add to scheduler
-        async_optimizer.scheduler.tasks.insert(task.id.clone(), scheduled_task.clone());
+        async_optimizer
+            .scheduler
+            .tasks
+            .insert(task.id.clone(), scheduled_task.clone());
 
         // Add to appropriate priority queue - fix moved value issue
         let queued_task = QueuedTask {
@@ -1535,10 +1654,26 @@ impl StructuralImprovementsManager {
         };
 
         match task.priority {
-            0..=33 => async_optimizer.scheduler.priority_queue.low_priority.push(scheduled_task),
-            34..=66 => async_optimizer.scheduler.priority_queue.medium_priority.push(scheduled_task),
-            67..=100 => async_optimizer.scheduler.priority_queue.high_priority.push(scheduled_task),
-            _ => async_optimizer.scheduler.priority_queue.medium_priority.push(scheduled_task),
+            0..=33 => async_optimizer
+                .scheduler
+                .priority_queue
+                .low_priority
+                .push(scheduled_task),
+            34..=66 => async_optimizer
+                .scheduler
+                .priority_queue
+                .medium_priority
+                .push(scheduled_task),
+            67..=100 => async_optimizer
+                .scheduler
+                .priority_queue
+                .high_priority
+                .push(scheduled_task),
+            _ => async_optimizer
+                .scheduler
+                .priority_queue
+                .medium_priority
+                .push(scheduled_task),
         }
 
         async_optimizer.task_queue.pending_tasks.push(queued_task);
@@ -1547,9 +1682,13 @@ impl StructuralImprovementsManager {
     }
 
     /// Optimize data structure
-    pub async fn optimize_data_structure(&self, structure_type: &str, access_pattern: AccessPattern) -> Result<OptimizationResult> {
+    pub async fn optimize_data_structure(
+        &self,
+        structure_type: &str,
+        access_pattern: AccessPattern,
+    ) -> Result<OptimizationResult> {
         let mut data_optimizer = self.data_optimizer.write().await;
-        
+
         // Determine optimization level based on access pattern
         let optimization_level = match access_pattern {
             AccessPattern::Sequential => OptimizationLevel::Basic,
@@ -1568,10 +1707,9 @@ impl StructuralImprovementsManager {
             optimization_level: optimization_level.clone(),
         };
 
-        data_optimizer.cache_optimized_structures.insert(
-            structure_type.to_string(),
-            optimized_structure,
-        );
+        data_optimizer
+            .cache_optimized_structures
+            .insert(structure_type.to_string(), optimized_structure);
 
         // Apply memory layout optimization
         let layout_strategy = match access_pattern {
@@ -1582,10 +1720,10 @@ impl StructuralImprovementsManager {
             AccessPattern::Strided { .. } => LayoutStrategy::ArrayOfStructs,
         };
 
-        data_optimizer.memory_layout.layout_strategies.insert(
-            structure_type.to_string(),
-            layout_strategy,
-        );
+        data_optimizer
+            .memory_layout
+            .layout_strategies
+            .insert(structure_type.to_string(), layout_strategy);
 
         // Apply prefetch optimization
         let prefetch_strategy = match access_pattern {
@@ -1596,18 +1734,18 @@ impl StructuralImprovementsManager {
             AccessPattern::Strided { .. } => PrefetchStrategy::Hardware,
         };
 
-        data_optimizer.prefetch_optimizer.prefetch_strategies.insert(
-            structure_type.to_string(),
-            prefetch_strategy,
-        );
+        data_optimizer
+            .prefetch_optimizer
+            .prefetch_strategies
+            .insert(structure_type.to_string(), prefetch_strategy);
 
         Ok(OptimizationResult {
             structure_type: structure_type.to_string(),
             optimization_applied: true,
             optimization_level,
             performance_improvement: 25.0, // Estimated improvement
-            memory_reduction: 15.0, // Estimated reduction
-            cache_efficiency: 85.0, // Estimated efficiency
+            memory_reduction: 15.0,        // Estimated reduction
+            cache_efficiency: 85.0,        // Estimated efficiency
         })
     }
 }
@@ -1716,16 +1854,16 @@ impl Default for DataStructureConfig {
 }
 
 /// Global instance of the structural improvements manager
-static STRUCTURAL_IMPROVEMENTS: std::sync::OnceLock<StructuralImprovementsManager> = std::sync::OnceLock::new();
+static STRUCTURAL_IMPROVEMENTS: std::sync::OnceLock<StructuralImprovementsManager> =
+    std::sync::OnceLock::new();
 
 /// Get or initialize the global structural improvements manager
 pub fn get_structural_improvements() -> &'static StructuralImprovementsManager {
-    STRUCTURAL_IMPROVEMENTS.get_or_init(|| {
-        StructuralImprovementsManager::new(StructuralConfig::default())
-    })
+    STRUCTURAL_IMPROVEMENTS
+        .get_or_init(|| StructuralImprovementsManager::new(StructuralConfig::default()))
 }
 
 /// Initialize the structural improvements system
 pub async fn initialize_structural_improvements() -> Result<()> {
     get_structural_improvements().initialize().await
-} 
+}

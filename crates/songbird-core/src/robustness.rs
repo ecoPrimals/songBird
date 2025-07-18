@@ -826,7 +826,9 @@ impl RobustnessManager {
 
                     // Calculate next delay with exponential backoff
                     delay = Duration::from_millis(std::cmp::min(
-                        (delay.as_millis() as f64 * self.config.retry.backoff_multiplier.powi(attempt as i32)) as u64,
+                        (delay.as_millis() as f64
+                            * self.config.retry.backoff_multiplier.powi(attempt as i32))
+                            as u64,
                         self.config.retry.max_delay_ms,
                     ));
                 }

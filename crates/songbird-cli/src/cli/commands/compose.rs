@@ -723,9 +723,9 @@ mod tests {
             let result = parse_capabilities(&capability_names);
 
             if should_succeed {
-                assert!(result.is_ok(), "Failed to parse: {}", input);
+                assert!(result.is_ok(), "Failed to parse: {input}");
             } else {
-                assert!(result.is_err(), "Should have failed to parse: {}", input);
+                assert!(result.is_err(), "Should have failed to parse: {input}");
             }
         }
     }

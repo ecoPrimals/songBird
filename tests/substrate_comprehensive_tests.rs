@@ -25,10 +25,7 @@ async fn test_substrate_creation() -> Result<()> {
     // Test basic health check
     let (toadstool_health, biomeos_health) =
         check_substrate_health().await.unwrap_or((false, false));
-    println!(
-        "📊 Health status - Toadstool: {}, BiomeOS: {}",
-        toadstool_health, biomeos_health
-    );
+    println!("📊 Health status - Toadstool: {toadstool_health}, BiomeOS: {biomeos_health}");
 
     // Test metrics retrieval
     let metrics = substrate.get_metrics().await;
@@ -194,7 +191,7 @@ async fn test_substrate_network_operations() -> Result<()> {
         "🌐 Network interface: {} ({})",
         interface.name, interface.ip_address
     );
-    println!("🔌 Available port: {}", port);
+    println!("🔌 Available port: {port}");
 
     println!("✅ Substrate network operations test passed");
     Ok(())
@@ -222,7 +219,7 @@ async fn test_substrate_capabilities() -> Result<()> {
             !combined_caps.is_empty(),
             "Combined capabilities should not be empty"
         );
-        println!("⚡ Combined capabilities: {:?}", combined_caps);
+        println!("⚡ Combined capabilities: {combined_caps:?}");
     }
 
     println!("✅ Substrate capabilities test passed");
@@ -253,13 +250,10 @@ async fn test_substrate_container_operations() -> Result<()> {
                 result.is_object(),
                 "Container operation should return object"
             );
-            println!("📦 Container operation successful: {:?}", result);
+            println!("📦 Container operation successful: {result:?}");
         }
         Err(e) => {
-            println!(
-                "⚠️ Container operation failed (expected in test environment): {}",
-                e
-            );
+            println!("⚠️ Container operation failed (expected in test environment): {e}");
         }
     }
 
@@ -329,7 +323,7 @@ async fn test_substrate_circuit_breaker() -> Result<()> {
         .toadstool_client
         .get_circuit_breaker_status()
         .await;
-    println!("⚡ Circuit breaker status: {:?}", cb_status);
+    println!("⚡ Circuit breaker status: {cb_status:?}");
 
     // Test health check with circuit breaker
     let health_result = substrate.toadstool_client.health_check().await;
@@ -340,7 +334,7 @@ async fn test_substrate_circuit_breaker() -> Result<()> {
             if e.to_string().contains("Circuit breaker is open") {
                 println!("⚠️ Circuit breaker is open");
             } else {
-                println!("⚠️ Health check failed: {}", e);
+                println!("⚠️ Health check failed: {e}");
             }
         }
     }
@@ -426,11 +420,11 @@ async fn test_substrate_performance_metrics() -> Result<()> {
     let (total_entries, _max_size, utilization, cache_hits, cache_misses) =
         substrate.get_cache_stats().await;
     println!("📈 Cache statistics:");
-    println!("   Total entries: {}", total_entries);
-    println!("   Max size: {}", _max_size);
+    println!("   Total entries: {total_entries}");
+    println!("   Max size: {_max_size}");
     println!("   Utilization: {:.2}%", utilization * 100.0);
-    println!("   Cache hits: {}", cache_hits);
-    println!("   Cache misses: {}", cache_misses);
+    println!("   Cache hits: {cache_hits}");
+    println!("   Cache misses: {cache_misses}");
 
     println!("✅ Substrate performance metrics test passed");
     Ok(())
@@ -468,10 +462,7 @@ async fn test_substrate_global_functions() -> Result<()> {
 
     // Test global health check
     let (toadstool_health, biomeos_health) = check_substrate_health().await?;
-    println!(
-        "🌍 Global health - Toadstool: {}, BiomeOS: {}",
-        toadstool_health, biomeos_health
-    );
+    println!("🌍 Global health - Toadstool: {toadstool_health}, BiomeOS: {biomeos_health}");
 
     println!("✅ Substrate global functions test passed");
     Ok(())
@@ -519,7 +510,7 @@ async fn test_substrate_under_load() -> Result<()> {
         let handle = tokio::spawn(async move {
             let path_request = PathRequest {
                 path_type: PathType::Data,
-                service_name: format!("load_test_{}", i),
+                service_name: format!("load_test_{i}"),
                 requirements: PathRequirements::default(),
             };
 
@@ -536,10 +527,7 @@ async fn test_substrate_under_load() -> Result<()> {
         }
     }
 
-    println!(
-        "📊 Load test: {}/20 requests successful",
-        successful_requests
-    );
+    println!("📊 Load test: {successful_requests}/20 requests successful");
     assert!(
         successful_requests > 0,
         "At least some requests should succeed"
@@ -574,7 +562,7 @@ async fn test_substrate_timeout_handling() -> Result<()> {
             );
         }
         Ok(Err(e)) => {
-            println!("⚠️ Operation failed: {}", e);
+            println!("⚠️ Operation failed: {e}");
         }
         Err(_) => {
             println!("⏰ Operation timed out");
@@ -628,7 +616,7 @@ async fn test_substrate_comprehensive_integration() -> Result<()> {
         "   Network interface: {} ({})",
         interface.name, interface.ip_address
     );
-    println!("   Available port: {}", port);
+    println!("   Available port: {port}");
     println!("   Cache utilization: {:.2}%", utilization_warmed * 100.0);
     println!("   Total requests: {}", metrics.total_requests);
 

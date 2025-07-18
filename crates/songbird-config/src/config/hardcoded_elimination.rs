@@ -4,8 +4,8 @@
 
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::time::Duration;
 use std::sync::Arc;
+use std::time::Duration;
 
 /// Central configuration for eliminating hardcoded values
 #[derive(Debug, Clone, Default)]

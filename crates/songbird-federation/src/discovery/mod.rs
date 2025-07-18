@@ -267,7 +267,7 @@ impl DiscoveryEngine {
                 if let Some(host) = url.host_str() {
                     let port = url.port().unwrap_or(8080);
                     if let Ok(socket_addr) =
-                        format!("{}:{}", host, port).parse::<std::net::SocketAddr>()
+                        format!("{host}:{port}").parse::<std::net::SocketAddr>()
                     {
                         addresses.push(NodeAddress {
                             addr: socket_addr,
@@ -374,16 +374,16 @@ impl DiscoveryEngine {
 
         // Extract IP address from response
         let ip_parts: Vec<&str> = response.split(':').collect();
-        let ip_str = ip_parts.get(0).unwrap_or(&"127.0.0.1");
+        let ip_str = ip_parts.first().unwrap_or(&"127.0.0.1");
 
         // Create socket address
-        let socket_addr = format!("{}:8080", ip_str)
+        let socket_addr = format!("{ip_str}:8080")
             .parse::<std::net::SocketAddr>()
             .unwrap_or_else(|_| "127.0.0.1:8080".parse().unwrap());
 
         let node = FederationNode {
             node_id,
-            name: format!("UPnP-{}", ip_str),
+            name: format!("UPnP-{ip_str}"),
             node_type: NodeType::Edge {
                 mobility: MobilityLevel::Stationary,
             },
@@ -422,7 +422,7 @@ impl DiscoveryEngine {
         let server_addr = if server.contains(':') {
             server.to_string()
         } else {
-            format!("{}:3478", server) // Default STUN port
+            format!("{server}:3478") // Default STUN port
         };
 
         // Create STUN binding request
@@ -557,11 +557,11 @@ impl DiscoveryEngine {
 
             // Scan nearby IPs for federation services
             for i in 1..=10 {
-                let test_ip = format!("{}.{}", base_ip, i);
+                let test_ip = format!("{base_ip}.{i}");
 
                 // Test common federation ports
                 for port in [8080, 8081, 8082, 8083] {
-                    let endpoint = format!("http://{}:{}", test_ip, port);
+                    let endpoint = format!("http://{test_ip}:{port}");
 
                     // Quick health check
                     if self.test_federation_endpoint(&endpoint).await {
@@ -579,7 +579,7 @@ impl DiscoveryEngine {
     /// Test if an endpoint is a federation service
     async fn test_federation_endpoint(&self, endpoint: &str) -> bool {
         let client = reqwest::Client::new();
-        let health_url = format!("{}/federation/health", endpoint);
+        let health_url = format!("{endpoint}/federation/health");
 
         match tokio::time::timeout(Duration::from_secs(2), client.get(&health_url).send()).await {
             Ok(Ok(resp)) => resp.status().is_success(),
@@ -595,13 +595,13 @@ impl DiscoveryEngine {
         let url = url::Url::parse(endpoint)?;
         let host = url.host_str().unwrap_or("localhost");
         let port = url.port().unwrap_or(8080);
-        let socket_addr = format!("{}:{}", host, port)
+        let socket_addr = format!("{host}:{port}")
             .parse::<std::net::SocketAddr>()
             .unwrap_or_else(|_| "127.0.0.1:8080".parse().unwrap());
 
         let node = FederationNode {
             node_id,
-            name: format!("Node-{}", host),
+            name: format!("Node-{host}"),
             node_type: NodeType::Edge {
                 mobility: MobilityLevel::Stationary,
             },

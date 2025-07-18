@@ -126,7 +126,7 @@ async fn demo_byob_deployment() -> Result<(), Box<dyn std::error::Error>> {
     coordinator
         .register_team_workspace(team_id.clone(), resource_quota)
         .await
-        .map_err(|e| format!("Failed to register team workspace: {}", e))?;
+        .map_err(|e| format!("Failed to register team workspace: {e}"))?;
     info!("📋 Registered team workspace: {}", team_id);
 
     // Create a sample biome manifest

@@ -338,10 +338,7 @@ impl UniversalSecurityManager {
             .await
             .insert(device_id.to_string(), policy.clone());
 
-        println!(
-            "🔐 Device '{}' registered with universal security:",
-            device_name
-        );
+        println!("🔐 Device '{device_name}' registered with universal security:");
         println!("   🛡️ Security Level: {:?}", policy.security_level);
         println!("   🔒 Encryption: Required");
         println!("   👥 Family Safe: Enabled");
@@ -376,8 +373,8 @@ impl UniversalSecurityManager {
             FriendTrustLevel::Unknown => "Unknown (No Trust)",
         };
 
-        println!("🤝 Friend '{}' added securely:", friend_name);
-        println!("   🛡️ Trust Level: {}", trust_desc);
+        println!("🤝 Friend '{friend_name}' added securely:");
+        println!("   🛡️ Trust Level: {trust_desc}");
         println!("   🔐 Encrypted Communication: Enabled");
         println!("   ✅ Verified Connection: Active");
 
@@ -391,7 +388,7 @@ impl UniversalSecurityManager {
         family_config.family_name = family_name.to_string();
         family_config.protection_level = SecurityLevel::Maximum;
 
-        println!("👨‍👩‍👧‍👦 Family Protection enabled for '{}':", family_name);
+        println!("👨‍👩‍👧‍👦 Family Protection enabled for '{family_name}':");
         println!("   🛡️ Maximum Security Level");
         println!("   🚫 Tech Support Scam Blocking");
         println!("   🔒 Remote Access Protection");
@@ -573,7 +570,7 @@ impl LightweightTunnelCrypto {
             Ok(existing_key.clone())
         } else {
             Err(SongbirdError::Config {
-                message: format!("Session key {} not found", key_id),
+                message: format!("Session key {key_id} not found"),
                 field: Some("key_id".to_string()),
                 context: Some("renew_session_key".to_string()),
                 suggestion: Some(

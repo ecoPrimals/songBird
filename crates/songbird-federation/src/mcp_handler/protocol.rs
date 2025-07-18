@@ -397,7 +397,7 @@ impl ProtocolHandler {
     /// Check health of a specific federation endpoint
     async fn check_endpoint_health(&self, endpoint: &str) -> Result<bool, SongbirdError> {
         let client = reqwest::Client::new();
-        let health_url = format!("{}/health", endpoint);
+        let health_url = format!("{endpoint}/health");
 
         let response =
             tokio::time::timeout(Duration::from_secs(5), client.get(&health_url).send()).await;

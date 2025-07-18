@@ -278,7 +278,7 @@ pub fn secure_encrypt(data: &[u8], key: &[u8]) -> Result<Vec<u8>, Box<dyn std::e
 
     // Serialize the encrypted data for storage/transmission
     bincode::serialize(&encrypted)
-        .map_err(|e| format!("Failed to serialize encrypted data: {}", e).into())
+        .map_err(|e| format!("Failed to serialize encrypted data: {e}").into())
 }
 
 /// Simple utility to replace XOR decryption
@@ -290,7 +290,7 @@ pub fn secure_decrypt(
 
     // Deserialize the encrypted data
     let encrypted: EncryptedData = bincode::deserialize(encrypted_data)
-        .map_err(|e| format!("Failed to deserialize encrypted data: {}", e))?;
+        .map_err(|e| format!("Failed to deserialize encrypted data: {e}"))?;
 
     provider.decrypt(&encrypted, key)
 }

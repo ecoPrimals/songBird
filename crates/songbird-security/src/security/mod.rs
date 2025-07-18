@@ -538,7 +538,7 @@ impl InMemoryAuthProvider {
     ) -> Result<()> {
         if self.users.contains_key(&username) {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                message: format!("User {} already exists", username),
+                message: format!("User {username} already exists"),
                 user: Some("InMemoryAuthProvider".to_string()),
                 provider: Some("InMemoryAuthProvider".to_string()),
                 suggestion: Some("Use a different username".to_string()),
@@ -615,13 +615,13 @@ impl InMemoryAuthProvider {
     /// Hash password (simplified - use proper hashing in production)
     fn hash_password(&self, password: &str) -> Result<String> {
         // In production, use bcrypt or similar
-        Ok(format!("hashed_{}", password))
+        Ok(format!("hashed_{password}"))
     }
 
     /// Verify password hash
     fn verify_password(&self, password: &str, hash: &str) -> bool {
         // In production, use proper password verification
-        format!("hashed_{}", password) == hash
+        format!("hashed_{password}") == hash
     }
 }
 

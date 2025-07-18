@@ -9,10 +9,10 @@ use songbird_errors::{ProtocolError, Result, SongbirdError};
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
+use std::time::Duration;
 use std::time::Instant;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
-use std::time::Duration;
 
 /// Universal protocol translator trait
 #[async_trait]
@@ -347,7 +347,7 @@ impl DirectPlayTranslator {
         } else {
             Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 protocol: "DirectPlay".to_string(),
-                message: format!("Session not found: {}", session_id),
+                message: format!("Session not found: {session_id}"),
                 version: None,
                 suggestion: Some("Check session ID and try again".to_string()),
             })))
@@ -857,7 +857,7 @@ impl ProtocolTranslator for TCPTranslator {
         }
 
         let bind_address = songbird_config::config::constants::default_bind_address();
-        let server_address = format!("{}:0", bind_address)
+        let server_address = format!("{bind_address}:0")
             .parse()
             .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], 0)));
 

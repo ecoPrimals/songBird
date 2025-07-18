@@ -11,8 +11,7 @@
 use chrono;
 use serde::{Deserialize, Serialize};
 use songbird_config::config::constants::benchmarks::{
-    DEFAULT_BENCHMARK_DURATION,
-    DEFAULT_BENCHMARK_MONITORING_INTERVAL,
+    DEFAULT_BENCHMARK_DURATION, DEFAULT_BENCHMARK_MONITORING_INTERVAL,
 };
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -779,14 +778,14 @@ mod tests {
     async fn test_quick_production_check() {
         // Create a lightweight config for testing (not actual production benchmarks)
         let config = BenchmarkConfig {
-            service_instance_count: 2,                         // Minimal instances
-            requests_per_test: 10,                             // Minimal requests
-            concurrent_workers: 1,                             // Single worker
-            cache_test_data_size: 10,                          // Minimal cache
-            object_pool_iterations: 10,                        // Minimal iterations
-            batch_test_size: 5,                                // Small batch
+            service_instance_count: 2,                   // Minimal instances
+            requests_per_test: 10,                       // Minimal requests
+            concurrent_workers: 1,                       // Single worker
+            cache_test_data_size: 10,                    // Minimal cache
+            object_pool_iterations: 10,                  // Minimal iterations
+            batch_test_size: 5,                          // Small batch
             warmup_duration: DEFAULT_BENCHMARK_DURATION, // Very short warmup
-            test_duration: Duration::from_millis(50),          // Very short test - test specific
+            test_duration: Duration::from_millis(50),    // Very short test - test specific
         };
 
         let mut runner = ProductionBenchmarkRunner::new(config);

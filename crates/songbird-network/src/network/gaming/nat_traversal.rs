@@ -181,26 +181,34 @@ impl NatTraversalManager {
         let bind_address = songbird_config::config::constants::default_bind_address();
         Self {
             stun_servers: vec![
-                format!("{bind_address}:19302")
-                    .parse()
-                    .unwrap_or_else(|e| {
-                        tracing::error!(
-                            "Failed to parse STUN server address {}:19302: {}",
-                            bind_address,
-                            e
-                        );
-                        "127.0.0.1:19302".parse().unwrap() // Safe fallback
-                    }),
-                format!("{bind_address}:19303")
-                    .parse()
-                    .unwrap_or_else(|e| {
-                        tracing::error!(
-                            "Failed to parse STUN server address {}:19303: {}",
-                            bind_address,
-                            e
-                        );
-                        "127.0.0.1:19303".parse().unwrap() // Safe fallback
-                    }),
+                format!("{bind_address}:19302").parse().unwrap_or_else(|e| {
+                    tracing::error!(
+                        "Failed to parse STUN server address {}:19302: {}",
+                        bind_address,
+                        e
+                    );
+                    "127.0.0.1:19302".parse().unwrap_or_else(|_| {
+                        warn!("Failed to parse fallback STUN server address");
+                        std::net::SocketAddr::new(
+                            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+                            19302,
+                        )
+                    })
+                }),
+                format!("{bind_address}:19303").parse().unwrap_or_else(|e| {
+                    tracing::error!(
+                        "Failed to parse STUN server address {}:19303: {}",
+                        bind_address,
+                        e
+                    );
+                    "127.0.0.1:19303".parse().unwrap_or_else(|_| {
+                        warn!("Failed to parse fallback STUN server address");
+                        std::net::SocketAddr::new(
+                            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+                            19303,
+                        )
+                    })
+                }),
             ],
             turn_servers: vec![], // Placeholder for TURN servers
             local_socket: None,
@@ -351,7 +359,7 @@ impl NatTraversalManager {
         let mut addrs = lookup_host(stun_server_str).await.map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Failed to resolve STUN server {}: {}", stun_server_str, e),
+                message: format!("Failed to resolve STUN server {stun_server_str}: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -361,7 +369,7 @@ impl NatTraversalManager {
         addrs.next().ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("No addresses found for STUN server {}", stun_server_str),
+                message: format!("No addresses found for STUN server {stun_server_str}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -400,7 +408,7 @@ impl NatTraversalManager {
             Ok(Err(e)) => {
                 return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to send STUN request to {}: {}", stun_server, e),
+                    message: format!("Failed to send STUN request to {stun_server}: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -409,7 +417,7 @@ impl NatTraversalManager {
             Err(_) => {
                 return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("STUN request send timeout to {}", stun_server),
+                    message: format!("STUN request send timeout to {stun_server}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -426,10 +434,7 @@ impl NatTraversalManager {
             Ok(Err(e)) => {
                 return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!(
-                        "Failed to receive STUN response from {}: {}",
-                        stun_server, e
-                    ),
+                    message: format!("Failed to receive STUN response from {stun_server}: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -438,7 +443,7 @@ impl NatTraversalManager {
             Err(_) => {
                 return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("STUN response timeout from {}", stun_server),
+                    message: format!("STUN response timeout from {stun_server}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -449,10 +454,7 @@ impl NatTraversalManager {
         if from != stun_server {
             return Err(SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!(
-                    "Response from unexpected server {} (expected {})",
-                    from, stun_server
-                ),
+                message: format!("Response from unexpected server {from} (expected {stun_server})"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -509,7 +511,7 @@ impl NatTraversalManager {
         let message_type = cursor.read_u16::<NetworkEndian>().map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Failed to read message type: {}", e),
+                message: format!("Failed to read message type: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -519,7 +521,7 @@ impl NatTraversalManager {
         let message_length = cursor.read_u16::<NetworkEndian>().map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Failed to read message length: {}", e),
+                message: format!("Failed to read message length: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -530,7 +532,7 @@ impl NatTraversalManager {
         cursor.read_u32::<NetworkEndian>().map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Failed to read magic cookie: {}", e),
+                message: format!("Failed to read magic cookie: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -542,7 +544,7 @@ impl NatTraversalManager {
         std::io::Read::read_exact(&mut cursor, &mut transaction_id).map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Failed to read transaction ID: {}", e),
+                message: format!("Failed to read transaction ID: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -555,7 +557,7 @@ impl NatTraversalManager {
             _ => {
                 return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("Unknown STUN message type: {:#x}", message_type),
+                    message: format!("Unknown STUN message type: {message_type:#x}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -575,7 +577,7 @@ impl NatTraversalManager {
             let attr_type = cursor.read_u16::<NetworkEndian>().map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to read attribute type: {}", e),
+                    message: format!("Failed to read attribute type: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -585,7 +587,7 @@ impl NatTraversalManager {
             let attr_length = cursor.read_u16::<NetworkEndian>().map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to read attribute length: {}", e),
+                    message: format!("Failed to read attribute length: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -596,7 +598,7 @@ impl NatTraversalManager {
             std::io::Read::read_exact(&mut cursor, &mut attr_value).map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to read attribute value: {}", e),
+                    message: format!("Failed to read attribute value: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -774,14 +776,14 @@ impl NatTraversalManager {
         for i in 0..max_attempts {
             debug!("📡 Hole punch attempt {} to {}", i + 1, peer_external_addr);
 
-            let punch_packet = format!("HOLE_PUNCH:{}", peer_id).as_bytes().to_vec();
+            let punch_packet = format!("HOLE_PUNCH:{peer_id}").as_bytes().to_vec();
             socket
                 .send_to(&punch_packet, peer_external_addr)
                 .await
                 .map_err(|e| {
                     SongbirdError::Network(Box::new(NetworkError {
                         service: Some("NAT Traversal".to_string()),
-                        message: format!("Failed to send hole punch packet: {}", e),
+                        message: format!("Failed to send hole punch packet: {e}"),
                         details: None,
                         endpoint: None,
                         suggestion: Some(
@@ -940,7 +942,7 @@ impl NatTraversalManager {
         let turn_addr: SocketAddr = server_addr.parse().map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Invalid TURN server address: {}", e),
+                message: format!("Invalid TURN server address: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check TURN server configuration".to_string()),
@@ -962,7 +964,7 @@ impl NatTraversalManager {
             Ok(Err(e)) => {
                 return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to send TURN allocation request: {}", e),
+                    message: format!("Failed to send TURN allocation request: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity".to_string()),
@@ -988,7 +990,7 @@ impl NatTraversalManager {
             Ok(Err(e)) => {
                 return Err(SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to receive TURN allocation response: {}", e),
+                    message: format!("Failed to receive TURN allocation response: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity".to_string()),
@@ -1271,7 +1273,7 @@ impl NatTraversalManager {
         let allocation = allocations.get_mut(allocation_id).ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("TURN allocation not found: {}", allocation_id),
+                message: format!("TURN allocation not found: {allocation_id}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Create TURN allocation first".to_string()),
@@ -1315,7 +1317,7 @@ impl NatTraversalManager {
         let turn_addr: SocketAddr = server_addr.parse().map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Invalid TURN server address: {}", e),
+                message: format!("Invalid TURN server address: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check TURN server configuration".to_string()),
@@ -1328,7 +1330,7 @@ impl NatTraversalManager {
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to send data through TURN relay: {}", e),
+                    message: format!("Failed to send data through TURN relay: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity".to_string()),
@@ -1356,7 +1358,7 @@ impl NatTraversalManager {
         let allocation = allocations.get_mut(allocation_id).ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("TURN allocation not found: {}", allocation_id),
+                message: format!("TURN allocation not found: {allocation_id}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Create TURN allocation first".to_string()),
@@ -1435,7 +1437,7 @@ impl NatTraversalManager {
         let allocation = allocations.get(allocation_id).ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("TURN allocation not found: {}", allocation_id),
+                message: format!("TURN allocation not found: {allocation_id}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Create TURN allocation first".to_string()),
@@ -1463,7 +1465,7 @@ impl NatTraversalManager {
         let turn_addr: SocketAddr = server_addr.parse().map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Invalid TURN server address: {}", e),
+                message: format!("Invalid TURN server address: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check TURN server configuration".to_string()),
@@ -1476,7 +1478,7 @@ impl NatTraversalManager {
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("NAT Traversal".to_string()),
-                    message: format!("Failed to send TURN refresh request: {}", e),
+                    message: format!("Failed to send TURN refresh request: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity".to_string()),
@@ -1557,7 +1559,7 @@ impl NatTraversalManager {
         let allocation = allocations.get(allocation_id).ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("TURN allocation not found: {}", allocation_id),
+                message: format!("TURN allocation not found: {allocation_id}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Create TURN allocation first".to_string()),

@@ -72,16 +72,10 @@ fn test_songbird_config_security_fields() -> Result<()> {
 
     // Test security configuration
     // Verify boolean fields exist and have expected types
-    // Check that encryption_enabled field is accessible (boolean check)
-    assert!(
-        config.security.encryption_enabled || !config.security.encryption_enabled,
-        "encryption_enabled field should be accessible"
-    );
-    // Check that tls_enabled field is accessible (boolean check)
-    assert!(
-        config.security.tls_enabled || !config.security.tls_enabled,
-        "tls_enabled field should be accessible"
-    );
+    // Check that encryption_enabled field is accessible (it's a boolean)
+    let _encryption_enabled = config.security.encryption_enabled;
+    // Check that tls_enabled field is accessible (it's a boolean)
+    let _tls_enabled = config.security.tls_enabled;
 
     Ok(())
 }
@@ -161,9 +155,9 @@ async fn test_config_validation() -> Result<()> {
 
     // Test gaming config validation
     let _gaming = &config.network; // .gaming // DISABLED
-                                  // assert!(gaming.cnc_port_range.start < gaming.cnc_port_range.end);
-                                  // assert!(gaming.cnc_port_range.start > 0);
-                                  // assert!(gaming.cnc_port_range.end < 65535);
+                                   // assert!(gaming.cnc_port_range.start < gaming.cnc_port_range.end);
+                                   // assert!(gaming.cnc_port_range.start > 0);
+                                   // assert!(gaming.cnc_port_range.end < 65535);
 
     Ok(())
 }
@@ -277,7 +271,7 @@ fn test_config_port_ranges() -> Result<()> {
 
     // Test gaming port ranges
     let _gaming_config = &config.network; // .gaming // DISABLED
-                                         // assert!(gaming_config.cnc_port_range.start < gaming_config.cnc_port_range.end);
+                                          // assert!(gaming_config.cnc_port_range.start < gaming_config.cnc_port_range.end);
 
     // Test discovery ports
     assert!(!config.network.discovery_ports.is_empty());
@@ -376,16 +370,11 @@ fn test_config_monitoring_settings() -> Result<()> {
 fn test_config_security_settings() -> Result<()> {
     let config = SongbirdConfig::default();
 
-    // Test security settings have valid boolean values
-    assert!(
-        config.environment.enable_encryption == true
-            || config.environment.enable_encryption == false
-    );
-    assert!(config.environment.require_tls == true || config.environment.require_tls == false);
-    assert!(
-        config.security.encryption_enabled == true || config.security.encryption_enabled == false
-    );
-    assert!(config.security.tls_enabled == true || config.security.tls_enabled == false);
+    // Test security settings have valid boolean values (field access test)
+    let _enable_encryption = config.environment.enable_encryption;
+    let _require_tls = config.environment.require_tls;
+    let _encryption_enabled = config.security.encryption_enabled;
+    let _tls_enabled = config.security.tls_enabled;
 
     Ok(())
 }
@@ -432,8 +421,8 @@ fn test_config_cors_settings() -> Result<()> {
     // Test CORS configuration
     let cors = &config.network.cors;
 
-    // CORS should have valid boolean value
-    assert!(cors.enabled == true || cors.enabled == false);
+    // CORS should have valid boolean value (field access test)
+    let _enabled = cors.enabled;
 
     Ok(())
 }

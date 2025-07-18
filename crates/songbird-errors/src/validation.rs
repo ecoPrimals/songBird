@@ -387,7 +387,7 @@ impl ConfigValidator {
                     });
                 }
             }
-            
+
             return Err(SongbirdError::Config {
                 field: Some(name.to_string()),
                 message: format!("File does not exist: {path_str}"),

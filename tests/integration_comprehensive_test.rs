@@ -434,7 +434,7 @@ async fn test_gaming_network_components() -> Result<()> {
 
     // Test NAT type detection
     let nat_type = nat_manager.get_nat_type();
-    println!("📡 NAT Type: {:?}", nat_type);
+    println!("📡 NAT Type: {nat_type:?}");
 
     // Test connection establishment (this will fail in test environment, but we test the API)
     let test_addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
@@ -468,7 +468,7 @@ async fn test_gaming_network_components() -> Result<()> {
 
     // Get current metrics
     let metrics = performance_monitor.get_current_metrics().await;
-    println!("📊 Current metrics: {:?}", metrics);
+    println!("📊 Current metrics: {metrics:?}");
 
     // Note: PerformanceMonitor doesn't have stop_monitoring method
     // The monitoring will stop when the monitor is dropped
@@ -672,7 +672,7 @@ async fn test_system_integration() -> Result<()> {
 
     // Test NAT type detection for gaming services
     let nat_type = nat_manager.get_nat_type();
-    println!("🌐 NAT Type for gaming: {:?}", nat_type);
+    println!("🌐 NAT Type for gaming: {nat_type:?}");
 
     // Test connection status
     let connection_status = nat_manager.get_connection_status().await;
@@ -705,8 +705,8 @@ async fn test_performance_under_load() -> Result<()> {
 
     for i in 0..service_count {
         let service_info = ServiceInfo {
-            service_id: format!("load-test-service-{}", i),
-            name: format!("Load Test Service {}", i),
+            service_id: format!("load-test-service-{i}"),
+            name: format!("Load Test Service {i}"),
             service_type: "load_test".to_string(),
             version: "1.0.0".to_string(),
             description: Some("Load testing service".to_string()),
@@ -778,7 +778,7 @@ async fn test_performance_under_load() -> Result<()> {
         let service = services[i].clone();
 
         let task = tokio::spawn(async move {
-            let filename = format!("load_test_file_{}.json", i);
+            let filename = format!("load_test_file_{i}.json");
             let content = serde_json::to_string_pretty(&service).unwrap();
 
             // Write file

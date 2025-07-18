@@ -41,9 +41,9 @@ async fn test_federation_coordination() -> Result<()> {
 
     // Test gaming configuration access (use available fields)
     let _gaming_config = &_config.network; // .gaming // DISABLED
-                                         // assert!(gaming_config.starcraft_port > 0);
-                                         // assert!(gaming_config.aoe2_port > 0);
-                                         // assert!(gaming_config.cnc_port_range.start < gaming_config.cnc_port_range.end);
+                                           // assert!(gaming_config.starcraft_port > 0);
+                                           // assert!(gaming_config.aoe2_port > 0);
+                                           // assert!(gaming_config.cnc_port_range.start < gaming_config.cnc_port_range.end);
 
     Ok(())
 }

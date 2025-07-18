@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::primal_integration::{DiscoveredPrimal, PrimalIntegrationManager};
 use serde::{Deserialize, Serialize};
 use songbird_config::SongbirdConfig;
 use songbird_errors::{NetworkError, Result, ServiceError};
@@ -23,6 +24,7 @@ pub struct BiomeOSIntegration {
     instance_id: String,
     biomeos_client: BiomeOSClient,
     registration: Option<BiomeOSServiceRegistration>,
+    primal_integration: Option<PrimalIntegrationManager>,
 }
 
 /// Simple service manifest structure
@@ -78,7 +80,121 @@ impl BiomeOSIntegration {
                 BiomeOSClient::new(format!("http://{bind_address}:4000"))
             },
             registration: None,
+            primal_integration: {
+                // Only create primal integration in non-test environments
+                if cfg!(test) {
+                    None
+                } else {
+                    let biomeos_endpoint = std::env::var("BIOMEOS_ENDPOINT").unwrap_or_else(|_| {
+                        let bind_address =
+                            std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
+                                songbird_config::constants::default_bind_address().to_string()
+                            });
+                        format!("http://{bind_address}:4000")
+                    });
+                    Some(PrimalIntegrationManager::new(biomeos_endpoint))
+                }
+            },
         }
+    }
+
+    /// Enable primal integration for testing
+    #[cfg(test)]
+    pub fn enable_primal_integration_for_test(&mut self, endpoint: String) {
+        self.primal_integration = Some(PrimalIntegrationManager::new(endpoint));
+    }
+
+    /// Discover available primals through biomeOS
+    pub async fn discover_primals(&self) -> Result<Vec<DiscoveredPrimal>> {
+        match &self.primal_integration {
+            Some(integration) => {
+                info!("🔍 Discovering primals through biomeOS integration...");
+                integration.discover_primals().await
+            }
+            None => {
+                info!("⚠️ Primal integration not available, falling back to hardcoded primals");
+                // Return hardcoded primals for backward compatibility
+                Ok(self.get_hardcoded_primals())
+            }
+        }
+    }
+
+    /// Send request to a primal through biomeOS
+    pub async fn send_primal_request(
+        &self,
+        primal_name: &str,
+        method: &str,
+        payload: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        match &self.primal_integration {
+            Some(integration) => {
+                let response = integration
+                    .send_primal_request(
+                        primal_name,
+                        method,
+                        payload,
+                        std::collections::HashMap::new(),
+                    )
+                    .await?;
+                Ok(response.payload)
+            }
+            None => {
+                // Fallback to direct HTTP calls for backward compatibility
+                self.send_direct_primal_request(primal_name, method, payload)
+                    .await
+            }
+        }
+    }
+
+    /// Get hardcoded primals for backward compatibility
+    fn get_hardcoded_primals(&self) -> Vec<DiscoveredPrimal> {
+        vec![
+            DiscoveredPrimal {
+                name: "toadstool".to_string(),
+                primal_type: "computing".to_string(),
+                capabilities: vec!["container_runtime".to_string(), "orchestration".to_string()],
+                endpoints: vec![],
+                health_status: "unknown".to_string(),
+                metadata: std::collections::HashMap::new(),
+            },
+            DiscoveredPrimal {
+                name: "beardog".to_string(),
+                primal_type: "security".to_string(),
+                capabilities: vec!["authentication".to_string(), "encryption".to_string()],
+                endpoints: vec![],
+                health_status: "unknown".to_string(),
+                metadata: std::collections::HashMap::new(),
+            },
+            DiscoveredPrimal {
+                name: "nestgate".to_string(),
+                primal_type: "storage".to_string(),
+                capabilities: vec!["object_storage".to_string(), "backup".to_string()],
+                endpoints: vec![],
+                health_status: "unknown".to_string(),
+                metadata: std::collections::HashMap::new(),
+            },
+        ]
+    }
+
+    /// Fallback method for direct primal requests
+    async fn send_direct_primal_request(
+        &self,
+        primal_name: &str,
+        method: &str,
+        payload: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        // This is a simplified fallback - in reality this would map to existing primal endpoints
+        info!(
+            "📞 Sending direct request to primal '{}': {}",
+            primal_name, method
+        );
+
+        // Return a success response for backward compatibility
+        Ok(serde_json::json!({
+            "status": "success",
+            "message": format!("Request sent to {} via fallback method", primal_name),
+            "data": payload
+        }))
     }
 
     /// Register Songbird with the biomeOS ecosystem

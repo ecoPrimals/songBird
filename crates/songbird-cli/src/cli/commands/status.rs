@@ -200,7 +200,7 @@ async fn display_table_status(status: &SystemStatus, detailed: bool) -> CliResul
             service.port.map_or("N/A".to_string(), |p| p.to_string()),
             service
                 .uptime
-                .map_or("N/A".to_string(), |u| format_duration(u)),
+                .map_or("N/A".to_string(), format_duration),
         ]);
     }
 
@@ -321,7 +321,7 @@ async fn display_json_status(status: &SystemStatus, detailed: bool) -> CliResult
     println!(
         "{}",
         serde_json::to_string_pretty(&json_status).map_err(|e| CliError::command_error(
-            &format!("Failed to serialize JSON: {}", e),
+            &format!("Failed to serialize JSON: {e}"),
             Some("status"),
             "Check system status and try again"
         ))?
@@ -360,7 +360,7 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> CliResult
     }))
     .map_err(|e| {
         CliError::command_error(
-            &format!("Failed to serialize YAML: {}", e),
+            &format!("Failed to serialize YAML: {e}"),
             Some("status"),
             "Check system status and try again",
         )
@@ -380,7 +380,7 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> CliResult
         }))
         .map_err(|e| {
             CliError::command_error(
-                &format!("Failed to serialize detailed YAML: {}", e),
+                &format!("Failed to serialize detailed YAML: {e}"),
                 Some("status"),
                 "Check system status and try again",
             )
@@ -389,7 +389,7 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> CliResult
         yaml_status.push_str(&detailed_yaml);
     }
 
-    println!("{}", yaml_status);
+    println!("{yaml_status}");
     Ok(())
 }
 
@@ -430,8 +430,7 @@ async fn display_text_status(status: &SystemStatus, detailed: bool) -> CliResult
 async fn watch_status(detailed: bool, interval: u64, format: OutputFormat) -> CliResult<()> {
     banner("Songbird Status Monitor", Some("Live Updates"));
     print_info(&format!(
-        "Updating every {} seconds (press Ctrl+C to stop)",
-        interval
+        "Updating every {interval} seconds (press Ctrl+C to stop)"
     ));
 
     loop {
@@ -442,7 +441,7 @@ async fn watch_status(detailed: bool, interval: u64, format: OutputFormat) -> Cl
             Ok(()) => {}
             Err(e) => {
                 error_with_suggestions(
-                    &format!("Failed to get status: {}", e),
+                    &format!("Failed to get status: {e}"),
                     &[
                         "Check if the orchestrator is running",
                         "Verify network connectivity",

@@ -303,7 +303,7 @@ impl MonitoringManager {
         let url = if endpoint.starts_with("http://") || endpoint.starts_with("https://") {
             endpoint.to_string()
         } else {
-            format!("http://{}", endpoint)
+            format!("http://{endpoint}")
         };
 
         if let Ok(parsed_url) = url::Url::parse(&url) {
@@ -378,18 +378,18 @@ impl MonitoringManager {
         debug!("Counting connections on Linux for {}:{}", host, port);
 
         let output = tokio::process::Command::new("netstat")
-            .args(&["-tn"])
+            .args(["-tn"])
             .output()
             .await
             .map_err(|e| {
-                SongbirdError::service_error("monitoring", format!("Failed to run netstat: {}", e))
+                SongbirdError::service_error("monitoring", format!("Failed to run netstat: {e}"))
             })?;
 
         let netstat_output = String::from_utf8_lossy(&output.stdout);
         let connection_count = netstat_output
             .lines()
             .filter(|line| {
-                line.contains(&format!("{}:{}", host, port)) && line.contains("ESTABLISHED")
+                line.contains(&format!("{host}:{port}")) && line.contains("ESTABLISHED")
             })
             .count() as u32;
 
@@ -401,17 +401,17 @@ impl MonitoringManager {
         debug!("Counting listening connections on Linux for port {}", port);
 
         let output = tokio::process::Command::new("netstat")
-            .args(&["-tnl"])
+            .args(["-tnl"])
             .output()
             .await
             .map_err(|e| {
-                SongbirdError::service_error("monitoring", format!("Failed to run netstat: {}", e))
+                SongbirdError::service_error("monitoring", format!("Failed to run netstat: {e}"))
             })?;
 
         let netstat_output = String::from_utf8_lossy(&output.stdout);
         let connection_count = netstat_output
             .lines()
-            .filter(|line| line.contains(&format!(":{}", port)) && line.contains("LISTEN"))
+            .filter(|line| line.contains(&format!(":{port}")) && line.contains("LISTEN"))
             .count() as u32;
 
         Ok(connection_count)
@@ -668,7 +668,7 @@ impl MonitoringManager {
 
         let client = reqwest::Client::new();
         let response = client
-            .post(&format!("{}/federation/messages", endpoint))
+            .post(format!("{endpoint}/federation/messages"))
             .json(message)
             .timeout(std::time::Duration::from_secs(5))
             .send()
@@ -676,7 +676,7 @@ impl MonitoringManager {
             .map_err(|e| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                     service: Some("federation".to_string()),
-                    message: format!("Failed to send message to {}: {}", endpoint, e),
+                    message: format!("Failed to send message to {endpoint}: {e}"),
                     details: None,
                     endpoint: Some("federation/messages".to_string()),
                     suggestion: Some(

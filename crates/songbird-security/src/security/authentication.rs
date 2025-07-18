@@ -221,13 +221,13 @@ impl InMemoryAuthenticator {
     /// Hash password (simplified - use proper hashing in production)
     fn hash_password(&self, password: &str) -> Result<String> {
         // In production, use bcrypt, argon2, or similar
-        Ok(format!("hashed_{}", password))
+        Ok(format!("hashed_{password}"))
     }
 
     /// Verify password
     fn verify_password(&self, password: &str, hash: &str) -> bool {
         // In production, use proper password verification
-        format!("hashed_{}", password) == hash
+        format!("hashed_{password}") == hash
     }
 
     /// Verify MFA code (simplified)

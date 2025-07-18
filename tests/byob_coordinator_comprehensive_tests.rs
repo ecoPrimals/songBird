@@ -93,10 +93,10 @@ async fn test_biome_deployment_lifecycle() {
         .unwrap();
     assert!(matches!(
         status,
-        ByobDeploymentStatus::Pending 
-        | ByobDeploymentStatus::Orchestrating 
-        | ByobDeploymentStatus::CoordinatingPrimals 
-        | ByobDeploymentStatus::Running
+        ByobDeploymentStatus::Pending
+            | ByobDeploymentStatus::Orchestrating
+            | ByobDeploymentStatus::CoordinatingPrimals
+            | ByobDeploymentStatus::Running
     ));
 
     // List team deployments
@@ -222,7 +222,7 @@ async fn test_nestgate_storage_provisioning() {
     // assert!(result.is_err());
 
     // For now, just verify the coordinator was created successfully
-    assert!(deployment_id.to_string().len() > 0);
+    assert!(!deployment_id.to_string().is_empty());
 }
 
 #[tokio::test]

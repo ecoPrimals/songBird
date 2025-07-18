@@ -16,8 +16,8 @@ use tracing::{info, warn};
 use songbird_config::config::SongbirdConfig;
 use songbird_discovery::traits::{ServiceInfo, ServiceStatus};
 use songbird_errors::Result;
-use songbird_federation::types::*;
 use songbird_federation::manager::FederationManager;
+use songbird_federation::types::*;
 use songbird_network::network::gaming::{GamingManager, NatTraversalManager, PerformanceMonitor};
 
 /// Advanced Integration Demo
@@ -41,7 +41,7 @@ impl AdvancedIntegrationDemo {
 
         // Initialize core components
         let gaming_manager = GamingManager::new().await?;
-        
+
         // Create a proper FederationConfig for the manager
         let federation_config = FederationConfig {
             local_node: LocalNodeConfig {
@@ -90,7 +90,7 @@ impl AdvancedIntegrationDemo {
                 },
             },
         };
-        
+
         let federation_manager = FederationManager::new(federation_config).await?;
         let mut nat_traversal = NatTraversalManager::new();
         nat_traversal.initialize(None).await?;

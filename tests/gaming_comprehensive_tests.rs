@@ -1,5 +1,6 @@
 use songbird_errors::Result;
 use songbird_network::gaming::production_lan::{ProductionLanConfig, ProductionLanManager};
+use songbird_network::gaming::types::IpxAddress;
 use songbird_network::gaming::{
     BridgeStatus, DetectedGameSession, GameProtocolClass, GameSessionStatus, GamingManager,
     NatType, PlayerEndpoint, VirtualNetwork,
@@ -63,7 +64,7 @@ async fn test_protocol_classes() -> Result<()> {
     ];
 
     for protocol in protocols {
-        assert_eq!(format!("{:?}", protocol).len() > 0, true);
+        assert!(!format!("{protocol:?}").is_empty());
     }
 
     Ok(())
@@ -110,9 +111,27 @@ async fn test_detected_game_session_creation() -> Result<()> {
 
 #[tokio::test]
 async fn test_virtual_network_creation() -> Result<()> {
+    let mut players = std::collections::HashMap::new();
+    players.insert(
+        "player1".to_string(),
+        IpxAddress {
+            network: 0x12345678,
+            node: [0x00, 0x11, 0x22, 0x33, 0x44, 0x55],
+            socket: 6112,
+        },
+    );
+    players.insert(
+        "player2".to_string(),
+        IpxAddress {
+            network: 0x12345678,
+            node: [0x00, 0x11, 0x22, 0x33, 0x44, 0x66],
+            socket: 6112,
+        },
+    );
+
     let network = VirtualNetwork::IPX {
         network_id: 123456,
-        players: std::collections::HashMap::new(),
+        players,
         broadcast_enabled: true,
     };
 
@@ -226,7 +245,7 @@ async fn test_game_session_status_variants() -> Result<()> {
     ];
 
     for status in statuses {
-        assert_eq!(format!("{:?}", status).len() > 0, true);
+        assert!(!format!("{status:?}").is_empty());
     }
 
     Ok(())

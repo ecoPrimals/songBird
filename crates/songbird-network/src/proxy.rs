@@ -233,27 +233,25 @@ impl ConnectionProxy {
 
         // Start the server
         let addr = format!("{}:{}", self.config.bind_address, self.config.port);
-        let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
-            SongbirdError::Communication(format!("Failed to bind to {addr}: {e}"))
-        })?;
+        let listener = tokio::net::TcpListener::bind(&addr)
+            .await
+            .map_err(|e| SongbirdError::Communication(format!("Failed to bind to {addr}: {e}")))?;
 
         tracing::info!("Proxy server listening on {}", addr);
 
         // Serve the application
         tokio::spawn(async move {
             match listener.into_std() {
-                Ok(std_listener) => {
-                    match axum::Server::from_tcp(std_listener) {
-                        Ok(server) => {
-                            if let Err(e) = server.serve(app.into_make_service()).await {
-                                tracing::error!("Proxy server error: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to create axum server from TcpListener: {}", e);
+                Ok(std_listener) => match axum::Server::from_tcp(std_listener) {
+                    Ok(server) => {
+                        if let Err(e) = server.serve(app.into_make_service()).await {
+                            tracing::error!("Proxy server error: {}", e);
                         }
                     }
-                }
+                    Err(e) => {
+                        tracing::error!("Failed to create axum server from TcpListener: {}", e);
+                    }
+                },
                 Err(e) => {
                     tracing::error!("Failed to convert TcpListener to std: {}", e);
                 }
@@ -419,9 +417,7 @@ impl ConnectionProxy {
                 // Update circuit breaker
                 self.record_circuit_breaker_failure(service_name).await;
 
-                Err(SongbirdError::Communication(format!(
-                    "Request failed: {e}"
-                )))
+                Err(SongbirdError::Communication(format!("Request failed: {e}")))
             }
         }
     }

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use songbird_errors::{Result, SongbirdError};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
+use tracing::warn;
 
 /// Network configuration for Songbird orchestrator
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -304,11 +305,21 @@ impl NetworkConfig {
             websocket_port: 8080,
             metrics_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
                 .parse()
-                .expect("valid IP"),
+                .unwrap_or_else(|_| {
+                    warn!("Failed to parse default bind address, using 127.0.0.1");
+                    "127.0.0.1"
+                        .parse()
+                        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+                }),
             metrics_port: 8004,
             federation_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
                 .parse()
-                .expect("valid IP"),
+                .unwrap_or_else(|_| {
+                    warn!("Failed to parse default bind address, using 127.0.0.1");
+                    "127.0.0.1"
+                        .parse()
+                        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+                }),
             federation_port: 8005,
             cors: CorsConfig::default(),
         }
@@ -541,7 +552,10 @@ impl Default for NetworkConfig {
             bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
                 .parse()
                 .expect("valid IP"),
-            production_bind_address: "0.0.0.0".parse().expect("valid IP"),
+            production_bind_address: "0.0.0.0".parse().unwrap_or_else(|_| {
+                warn!("Failed to parse production bind address, using 0.0.0.0");
+                std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
+            }),
             orchestrator_port: 8080,
             discovery_port: 8001,
             gaming_port: 6112,
