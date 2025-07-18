@@ -541,7 +541,7 @@ impl RobustnessManager {
         let mut rate_limiters = HashMap::new();
         let mut bulkheads = HashMap::new();
         let mut health_checkers = HashMap::new();
-        
+
         // Only create instances when not using exact default configuration
         let is_default_config = matches!(
             (
@@ -553,7 +553,7 @@ impl RobustnessManager {
             ),
             ("default_service", 5, 100, 20, 30)
         );
-        
+
         if !is_default_config {
             let circuit_breaker = CircuitBreakerInstance {
                 id: "default".to_string(),
@@ -569,7 +569,7 @@ impl RobustnessManager {
             };
             circuit_breakers.insert("default".to_string(), circuit_breaker);
         }
-        
+
         // Create rate limiter only when not using defaults
         if !is_default_config {
             let rate_limiter = RateLimiterInstance {
@@ -581,7 +581,7 @@ impl RobustnessManager {
             };
             rate_limiters.insert("default".to_string(), rate_limiter);
         }
-        
+
         // Create bulkhead only when not using defaults
         if !is_default_config {
             let bulkhead = BulkheadInstance {
@@ -597,7 +597,7 @@ impl RobustnessManager {
             };
             bulkheads.insert("default".to_string(), bulkhead);
         }
-        
+
         // Create health checker only when not using defaults
         if !is_default_config {
             let health_checker = HealthCheckerInstance {
@@ -614,9 +614,12 @@ impl RobustnessManager {
             };
             health_checkers.insert("default".to_string(), health_checker);
         }
-        
-        let is_running = !circuit_breakers.is_empty() || !rate_limiters.is_empty() || !bulkheads.is_empty() || !health_checkers.is_empty();
-        
+
+        let is_running = !circuit_breakers.is_empty()
+            || !rate_limiters.is_empty()
+            || !bulkheads.is_empty()
+            || !health_checkers.is_empty();
+
         Self {
             config,
             circuit_breakers: Arc::new(RwLock::new(circuit_breakers)),
@@ -1070,7 +1073,7 @@ impl RobustnessManager {
     /// Builder method to add circuit breaker configuration
     pub fn with_circuit_breaker(mut self, config: CircuitBreakerConfig) -> Self {
         self.config.circuit_breaker = config.clone();
-        
+
         // Create a default circuit breaker instance
         let circuit_breaker = CircuitBreakerInstance {
             id: "default".to_string(),
@@ -1084,7 +1087,7 @@ impl RobustnessManager {
             state_change_time: Instant::now(),
             failure_window: Vec::new(),
         };
-        
+
         // Create the circuit breaker immediately using blocking calls
         futures::executor::block_on(async {
             let mut cb_map = self.circuit_breakers.write().await;
@@ -1093,7 +1096,7 @@ impl RobustnessManager {
             let mut running = self.running.write().await;
             *running = true;
         });
-        
+
         self
     }
 
@@ -1106,7 +1109,7 @@ impl RobustnessManager {
     /// Builder method to add rate limiting configuration
     pub fn with_rate_limiting(mut self, config: RateLimitingConfig) -> Self {
         self.config.rate_limiting = config.clone();
-        
+
         // Create a default rate limiter instance
         let rate_limiter = RateLimiterInstance {
             id: "default".to_string(),
@@ -1115,7 +1118,7 @@ impl RobustnessManager {
             last_refill: Instant::now(),
             request_timestamps: Vec::new(),
         };
-        
+
         // Create the rate limiter immediately using blocking calls
         futures::executor::block_on(async {
             let mut rl_map = self.rate_limiters.write().await;
@@ -1124,7 +1127,7 @@ impl RobustnessManager {
             let mut running = self.running.write().await;
             *running = true;
         });
-        
+
         self
     }
 
@@ -1139,24 +1142,28 @@ impl RobustnessManager {
             if let Some(rate_limiter) = rate_limiters.get_mut("default") {
                 let now = std::time::Instant::now();
                 let time_since_last_refill = now.duration_since(rate_limiter.last_refill);
-                
+
                 // Simple token bucket rate limiting
-                if time_since_last_refill.as_secs_f64() < 1.0 / rate_limiter.config.requests_per_second as f64 {
-                    return Err(songbird_errors::SongbirdError::RateLimitExceeded(
-                        Box::new(songbird_errors::RateLimitError {
+                if time_since_last_refill.as_secs_f64()
+                    < 1.0 / rate_limiter.config.requests_per_second as f64
+                {
+                    return Err(songbird_errors::SongbirdError::RateLimitExceeded(Box::new(
+                        songbird_errors::RateLimitError {
                             message: "Rate limit exceeded".to_string(),
                             service: Some("default".to_string()),
                             limit: Some(rate_limiter.config.requests_per_second as u64),
-                            suggestion: Some("Please wait before making another request".to_string()),
-                        })
-                    ));
+                            suggestion: Some(
+                                "Please wait before making another request".to_string(),
+                            ),
+                        },
+                    )));
                 }
-                
+
                 // Update the last refill time
                 rate_limiter.last_refill = now;
             }
         }
-        
+
         operation.await
     }
 
