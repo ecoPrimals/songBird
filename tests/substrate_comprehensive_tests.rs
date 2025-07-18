@@ -9,10 +9,10 @@ use tokio::time::timeout;
 
 use songbird_core::substrate::{
     check_substrate_health, clear_substrate_cache, get_substrate, get_substrate_cache_stats,
-    get_substrate_metrics, initialize_substrate, NetworkInterface, NetworkOperation,
-    NetworkRequest, OSSubstrate, PathRequest, PathRequirements, PathType, SystemInfo,
+    get_substrate_metrics, initialize_substrate, NetworkOperation, NetworkRequest, OSSubstrate,
+    PathRequest, PathRequirements, PathType,
 };
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::Result;
 
 /// Test substrate creation and initialization
 #[tokio::test]
@@ -32,7 +32,8 @@ async fn test_substrate_creation() -> Result<()> {
 
     // Test metrics retrieval
     let metrics = substrate.get_metrics().await;
-    assert!(metrics.total_requests >= 0);
+    // Check that metrics are being tracked (since we haven't made requests, should be 0)
+    assert_eq!(metrics.total_requests, 0);
 
     println!("✅ Substrate creation test passed");
     Ok(())
@@ -54,7 +55,7 @@ async fn test_substrate_caching() -> Result<()> {
 
     // First request (cache miss)
     let path1 = substrate.get_path(path_request.clone()).await?;
-    let (total_entries, max_size, utilization, cache_hits, cache_misses) =
+    let (total_entries, _max_size, utilization, cache_hits, cache_misses) =
         substrate.get_cache_stats().await;
 
     assert!(cache_misses > 0, "Should have cache misses");
@@ -422,11 +423,11 @@ async fn test_substrate_performance_metrics() -> Result<()> {
     println!("   BiomeOS requests: {}", metrics.biomeos_requests);
 
     // Test cache statistics
-    let (total_entries, max_size, utilization, cache_hits, cache_misses) =
+    let (total_entries, _max_size, utilization, cache_hits, cache_misses) =
         substrate.get_cache_stats().await;
     println!("📈 Cache statistics:");
     println!("   Total entries: {}", total_entries);
-    println!("   Max size: {}", max_size);
+    println!("   Max size: {}", _max_size);
     println!("   Utilization: {:.2}%", utilization * 100.0);
     println!("   Cache hits: {}", cache_hits);
     println!("   Cache misses: {}", cache_misses);
@@ -606,7 +607,7 @@ async fn test_substrate_comprehensive_integration() -> Result<()> {
     let port = substrate.get_available_port().await?;
 
     println!("4. Testing cache management...");
-    let (entries_before, _, utilization_before, _, _) = substrate.get_cache_stats().await;
+    let (entries_before, _, _utilization_before, _, _) = substrate.get_cache_stats().await;
     substrate.clear_cache().await;
     let (entries_after, _, _, _, _) = substrate.get_cache_stats().await;
     assert!(entries_after < entries_before, "Cache should be cleared");

@@ -220,7 +220,7 @@ impl GamingManager {
         let session = sessions.get_mut(session_code).ok_or_else(|| {
             songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                 service: Some("Gaming Manager".to_string()),
-                message: format!("Session not found: {}", session_code),
+                message: format!("Session not found: {session_code}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -248,7 +248,7 @@ impl GamingManager {
             .ok_or_else(|| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                     service: Some("Gaming Manager".to_string()),
-                    message: format!("Session not found: {}", session_code),
+                    message: format!("Session not found: {session_code}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -272,7 +272,7 @@ impl GamingManager {
         let session = sessions.get(session_code).ok_or_else(|| {
             songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                 service: Some("Gaming Manager".to_string()),
-                message: format!("Session not found: {}", session_code),
+                message: format!("Session not found: {session_code}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -295,7 +295,7 @@ impl GamingManager {
             &env_config.bind_address
         };
 
-        let _socket = UdpSocket::bind(format!("{}:0", bind_addr))?;
+        let _socket = UdpSocket::bind(format!("{bind_addr}:0"))?;
 
         // For IPX games, create a real bridge
         // Protocol-specific bridge configuration would go here
@@ -305,7 +305,21 @@ impl GamingManager {
             tracing::info!("🌉 Starting IPX bridge for session {}", session_code);
 
             // Create IPX bridge with a standard network ID
-            let bridge = RealIpxBridge::new("127.0.0.1:0".parse().unwrap(), 50).await?;
+            let addr = format!(
+                "{}:0",
+                songbird_config::config::constants::default_bind_address()
+            )
+            .parse()
+            .unwrap_or_else(|_| {
+                tracing::warn!("Failed to parse IPX bridge address, using configurable default");
+                format!(
+                    "{}:0",
+                    songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
+                )
+                .parse()
+                .expect("Default IPX bridge address should be valid")
+            });
+            let bridge = RealIpxBridge::new(addr, 50).await?;
 
             // Register all current players
             for player_addr in &session.players {
@@ -374,7 +388,7 @@ impl GamingManager {
         // Listen for discovery broadcasts - NO MORE HARDCODING!
         let discovery_port = env_config.discovery_ports.first().copied().unwrap_or(6112);
         let bind_addr = if env_config.bind_address == "0.0.0.0" {
-            format!("0.0.0.0:{}", discovery_port)
+            format!("0.0.0.0:{discovery_port}")
         } else {
             format!("{}:{}", env_config.bind_address, discovery_port)
         };

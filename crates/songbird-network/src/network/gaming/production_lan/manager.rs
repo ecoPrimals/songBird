@@ -161,7 +161,7 @@ impl ProductionLanManager {
             .parse()
             .map_err(|e| SongbirdError::Config {
                 field: Some("host_address".to_string()),
-                message: format!("Invalid host address configuration: {}", e),
+                message: format!("Invalid host address configuration: {e}"),
                 context: Some("production_lan_manager".to_string()),
                 suggestion: Some(
                     "Check the bind address and port configuration format".to_string(),
@@ -254,7 +254,7 @@ impl ProductionLanManager {
         sessions.get(session_code).cloned().ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("Production LAN Manager".to_string()),
-                message: format!("Session not found: {}", session_code),
+                message: format!("Session not found: {session_code}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -271,7 +271,7 @@ impl ProductionLanManager {
         } else {
             Err(SongbirdError::Network(Box::new(NetworkError {
                 service: Some("Production LAN Manager".to_string()),
-                message: format!("Session not found: {}", session_code),
+                message: format!("Session not found: {session_code}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),

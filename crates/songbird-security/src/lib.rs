@@ -27,7 +27,6 @@ mod tests {
     use chrono::Utc;
     use std::collections::HashMap;
     use std::time::SystemTime;
-    use tokio::time::{sleep, Duration};
 
     // Advanced threat detection testing structures
     #[derive(Debug, Clone)]
@@ -1587,7 +1586,7 @@ mod tests {
         let framework = SecurityTestingFramework::new();
 
         // Test high-severity malware threat
-        let malware_threat = TestThreatScenario {
+        let _malware_threat = TestThreatScenario {
             scenario_id: "threat_001".to_string(),
             threat_type: ThreatType::Malware,
             severity: ThreatSeverity::Critical,

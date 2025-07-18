@@ -1086,24 +1086,16 @@ impl NetworkManager {
 
     /// Check load balancer health
     async fn check_load_balancer_health(&self) -> HealthStatus {
-        // Check if load balancer is responding
-        // For now, assume healthy if enabled
-        if self.config.load_balancing_enabled {
-            HealthStatus::Healthy
-        } else {
-            HealthStatus::Healthy
-        }
+        // Check load balancer metrics
+        // For now, assume healthy (future implementation could check actual metrics)
+        HealthStatus::Healthy
     }
 
     /// Check connection pool health
     async fn check_connection_pool_health(&self) -> HealthStatus {
         // Check connection pool metrics
-        // For now, assume healthy if enabled
-        if self.config.connection_pooling_enabled {
-            HealthStatus::Healthy
-        } else {
-            HealthStatus::Healthy
-        }
+        // For now, assume healthy (future implementation could check actual metrics)
+        HealthStatus::Healthy
     }
 
     /// Check WebSocket health

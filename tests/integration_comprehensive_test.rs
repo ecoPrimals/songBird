@@ -11,29 +11,24 @@
 
 use anyhow::Result;
 
-use async_trait::async_trait;
 use songbird_network::network::gaming::nat_traversal::NatTraversalManager;
 use songbird_network::network::gaming::performance::PerformanceMonitor;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::timeout;
 
-use songbird_core::load_balancer::{
-    RoundRobinLoadBalancer, LeastConnectionsLoadBalancer, WeightedRoundRobinLoadBalancer, LoadBalancerConfig,
-    LoadBalancerStrategy as LoadBalancerType, ServiceInstance, LoadBalancer,
-};
 use songbird_config::SongbirdConfig;
-use songbird_core::{
-    registry::{CustomHealthCheck, HealthCheckPolicy, HealthCheckType, HealthFailureAction},
+use songbird_core::load_balancer::{
+    LeastConnectionsLoadBalancer, LoadBalancer, LoadBalancerConfig,
+    LoadBalancerStrategy as LoadBalancerType, RoundRobinLoadBalancer, ServiceInstance,
+};
+use songbird_core::registry::{
+    CustomHealthCheck, HealthCheckPolicy, HealthCheckType, HealthFailureAction,
 };
 use songbird_discovery::traits::service::{ServiceInfo, ServiceStatus};
-use songbird_discovery::traits::PluginRegistry;
 use songbird_federation::mcp_handler::McpFederation;
 use songbird_network::network::gaming::performance::BenchmarkConfig;
-use songbird_registry::plugin::DynamicPluginRegistry;
-use songbird_registry::scaling::AutoScalingEngine;
 use songbird_registry::scaling::{AutoScalingPolicy, ScalingStrategy, ScalingThreshold};
 
 use songbird_federation::config::{FederationConfig, FederationMode};
@@ -384,7 +379,7 @@ async fn test_advanced_load_balancing() -> Result<()> {
     ];
 
     // Test Health-Based Load Balancer
-    let health_config = LoadBalancerConfig {
+    let _health_config = LoadBalancerConfig {
         strategy: LoadBalancerType::HealthBased,
         health_check_interval: 10,
         max_retries: 3,
@@ -397,14 +392,16 @@ async fn test_advanced_load_balancing() -> Result<()> {
     // Health-based load balancer will use them directly for selection
 
     // Test instance selection using the LoadBalancer trait
-    let selected = (&health_balancer as &dyn LoadBalancer).select_instance(&instances).await;
+    let selected = (&health_balancer as &dyn LoadBalancer)
+        .select_instance(&instances)
+        .await;
     assert!(
         selected.is_some(),
         "Health-based balancer should select an instance"
     );
 
     // Test Latency-Optimized Load Balancer
-    let latency_config = LoadBalancerConfig {
+    let _latency_config = LoadBalancerConfig {
         strategy: LoadBalancerType::LatencyOptimized,
         health_check_interval: 10,
         max_retries: 3,
@@ -417,7 +414,9 @@ async fn test_advanced_load_balancing() -> Result<()> {
     // Latency-optimized load balancer will use them directly for selection
 
     // Test instance selection using the LoadBalancer trait
-    let selected = (&latency_balancer as &dyn LoadBalancer).select_instance(&instances).await;
+    let selected = (&latency_balancer as &dyn LoadBalancer)
+        .select_instance(&instances)
+        .await;
     assert!(
         selected.is_some(),
         "Latency-optimized balancer should select an instance"
@@ -495,10 +494,7 @@ async fn test_federation_system() -> Result<()> {
     };
 
     // Initialize federation
-    let federation = McpFederation::new(
-        FederationMode::Standalone,
-        federation_config,
-    );
+    let federation = McpFederation::new(FederationMode::Standalone, federation_config);
 
     // Test federation start
     let start_result = timeout(Duration::from_secs(2), federation.start()).await;

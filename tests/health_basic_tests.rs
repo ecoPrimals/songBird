@@ -1,8 +1,7 @@
 //! Basic Tests for Health Module
 
-use chrono::Utc;
 use songbird_observability::health::{HealthCheckResult, HealthStatus};
-use songbird_observability::health::{HealthCheckResult as ObservabilityHealthCheckResult, HealthState, HealthChecker};
+use songbird_observability::health::{HealthChecker, HealthState};
 use std::collections::HashMap;
 use tokio::test;
 

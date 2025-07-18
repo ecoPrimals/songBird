@@ -2,7 +2,10 @@
 //!
 //! This test suite covers basic error types using the actual SongbirdError structure.
 
-use songbird_errors::{Result, SongbirdError, CircuitBreakerError, RetryError, DiscoveryError, NetworkError, GamingError, ValidationError};
+use songbird_errors::{
+    CircuitBreakerError, DiscoveryError, GamingError, NetworkError, Result, RetryError,
+    SongbirdError, ValidationError,
+};
 
 #[tokio::test]
 async fn test_error_creation_and_display() -> Result<()> {

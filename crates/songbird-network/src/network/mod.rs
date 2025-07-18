@@ -41,7 +41,7 @@ impl Default for NetworkConfig {
                 );
                 "127.0.0.1"
                     .parse()
-                    .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+                                         .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
             }),
 
             // Configurable timeouts from environment
@@ -277,7 +277,7 @@ pub mod utils {
 
     /// Check if a host:port combination is reachable
     pub async fn is_reachable(host: &str, port: u16) -> bool {
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         match addr.to_socket_addrs() {
             Ok(mut addrs) => {
                 if let Some(socket_addr) = addrs.next() {
@@ -295,7 +295,7 @@ pub mod utils {
         // Try to connect to a remote address to determine local IP
         let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| {
             SongbirdError::NetworkDetection {
-                message: format!("Failed to create socket: {}", e),
+                message: format!("Failed to create socket: {e}"),
                 interface: None,
                 suggestion: Some("Check network permissions and socket availability".to_string()),
             }
@@ -304,7 +304,7 @@ pub mod utils {
         socket
             .connect("8.8.8.8:80")
             .map_err(|e| SongbirdError::NetworkDetection {
-                message: format!("Failed to connect to determine local IP: {}", e),
+                message: format!("Failed to connect to determine local IP: {e}"),
                 interface: None,
                 suggestion: Some("Check network connectivity and DNS resolution".to_string()),
             })?;
@@ -312,7 +312,7 @@ pub mod utils {
         let local_addr = socket
             .local_addr()
             .map_err(|e| SongbirdError::NetworkDetection {
-                message: format!("Failed to get local address: {}", e),
+                message: format!("Failed to get local address: {e}"),
                 interface: None,
                 suggestion: Some("Check socket binding and network interface status".to_string()),
             })?;
@@ -324,7 +324,7 @@ pub mod utils {
     pub fn validate_ip_address(ip_str: &str) -> Result<IpAddr> {
         ip_str.parse().map_err(|e| SongbirdError::Config {
             field: Some("ip_address".to_string()),
-            message: format!("Invalid IP address '{}': {}", ip_str, e),
+            message: format!("Invalid IP address '{ip_str}': {e}"),
             context: Some("ip_address_validation".to_string()),
             suggestion: Some("Ensure IP address format is valid (e.g., 192.168.1.1)".to_string()),
         })

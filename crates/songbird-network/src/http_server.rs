@@ -137,7 +137,7 @@ where
             let (stream, _) = listener.accept().await.map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("HTTP Server".to_string()),
-                    endpoint: Some(format!("Failed to accept connection: {}", e)),
+                    endpoint: Some(format!("Failed to accept connection: {e}")),
                     suggestion: Some("Check server configuration".to_string()),
                     message: e.to_string(),
                     details: None,

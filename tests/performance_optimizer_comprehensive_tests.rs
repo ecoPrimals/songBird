@@ -137,7 +137,7 @@ mod performance_metrics_tests {
 
     #[test]
     fn test_performance_metrics_field_access() {
-        let mut metrics = PerformanceMetrics {
+        let metrics = PerformanceMetrics {
             total_requests: 100,
             avg_response_time: Duration::from_millis(200),
             requests_per_second: 50.0,

@@ -34,7 +34,6 @@ impl IntegrationManager {
 
     /// Storage operations are handled by the universal primal adapter system
     /// This integration manager only handles primal discovery
-
     /// Add primal discovery endpoint
     pub async fn add_primal_discovery_endpoint(
         &self,

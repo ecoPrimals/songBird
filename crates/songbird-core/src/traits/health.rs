@@ -2,11 +2,11 @@
 //!
 //! Provides health checking capabilities for services
 
-use songbird_errors::{Result, SongbirdError, ServiceError};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_config::constants::health::{DEFAULT_CHECK_INTERVAL, DEFAULT_CHECK_TIMEOUT};
+use songbird_errors::{Result, ServiceError};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -144,12 +144,14 @@ impl HealthMonitor for DefaultHealthMonitor {
 
             Ok(result)
         } else {
-            Err(songbird_errors::SongbirdError::Service(Box::new(ServiceError {
-                service: service_id.to_string(),
-                message: "Service not registered for health monitoring".to_string(),
-                status: Some("unregistered".to_string()),
-                suggestion: Some("Register the service with the health monitor".to_string()),
-            })))
+            Err(songbird_errors::SongbirdError::Service(Box::new(
+                ServiceError {
+                    service: service_id.to_string(),
+                    message: "Service not registered for health monitoring".to_string(),
+                    status: Some("unregistered".to_string()),
+                    suggestion: Some("Register the service with the health monitor".to_string()),
+                },
+            )))
         }
     }
 

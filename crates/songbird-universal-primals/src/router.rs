@@ -4,9 +4,10 @@
 //! with performance optimization, circuit breakers, and failover capabilities.
 
 use crate::discovery::PrimalDiscoveryEngine;
-use crate::{PrimalCapability, PrimalContext, PrimalType};
+use crate::{PrimalCapability, PrimalContext};
 use songbird_config::hardcoded_elimination::PrimalConfig;
 use songbird_errors::{Result, ServiceError};
+use songbird_universal::PrimalType;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};

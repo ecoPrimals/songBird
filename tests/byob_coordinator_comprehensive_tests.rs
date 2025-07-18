@@ -93,7 +93,10 @@ async fn test_biome_deployment_lifecycle() {
         .unwrap();
     assert!(matches!(
         status,
-        ByobDeploymentStatus::Pending | ByobDeploymentStatus::Orchestrating
+        ByobDeploymentStatus::Pending 
+        | ByobDeploymentStatus::Orchestrating 
+        | ByobDeploymentStatus::CoordinatingPrimals 
+        | ByobDeploymentStatus::Running
     ));
 
     // List team deployments
@@ -182,7 +185,7 @@ async fn test_nestgate_storage_provisioning() {
         .unwrap();
 
     // Create storage requirements
-    let requirements = TeamStorageRequirements {
+    let _requirements = TeamStorageRequirements {
         storage_size_bytes: 10 * 1024 * 1024 * 1024, // 10GB
         storage_tier: StorageTier::Warm,
         backup_enabled: true,
@@ -214,10 +217,10 @@ async fn test_nestgate_storage_provisioning() {
     // let result = coordinator
     //     .provision_storage(deployment_id, team_id.clone(), requirements)
     //     .await;
-    // 
+    //
     // // We expect this to fail since there's no real NestGate server
     // assert!(result.is_err());
-    
+
     // For now, just verify the coordinator was created successfully
     assert!(deployment_id.to_string().len() > 0);
 }

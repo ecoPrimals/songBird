@@ -2,10 +2,10 @@
 //!
 //! Universal validation patterns for runtime configuration verification
 
-use songbird_errors::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_errors::Result;
 use std::collections::HashMap;
 
 /// Universal configuration validator trait

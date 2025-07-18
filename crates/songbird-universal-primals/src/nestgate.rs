@@ -13,8 +13,9 @@ use tracing::{debug, info, warn};
 use crate::traits::PrimalHealth;
 use crate::{
     DynamicPortInfo, PrimalCapability, PrimalContext, PrimalDependency, PrimalEndpoints,
-    PrimalProvider, PrimalRequest, PrimalResponse, PrimalResult, PrimalType,
+    PrimalProvider, PrimalRequest, PrimalResponse, PrimalResult,
 };
+use songbird_universal::PrimalType;
 
 /// NestGate Storage Primal Client
 ///
@@ -129,8 +130,7 @@ impl NestGatePrimalClient {
                 "DELETE" => client.delete(&url),
                 _ => {
                     return Err(crate::errors::PrimalError::InvalidRequest(format!(
-                        "Unsupported HTTP method: {}",
-                        method
+                        "Unsupported HTTP method: {method}"
                     )))
                 }
             };
@@ -138,7 +138,7 @@ impl NestGatePrimalClient {
             // Add authentication if available
             if let Some(api_key) = &self.config.api_key {
                 request_builder =
-                    request_builder.header("Authorization", format!("Bearer {}", api_key));
+                    request_builder.header("Authorization", format!("Bearer {api_key}"));
             }
 
             // Add content type for requests with body
@@ -171,16 +171,14 @@ impl NestGatePrimalClient {
                             .await
                             .unwrap_or_else(|_| "Unknown error".to_string());
                         Err(crate::errors::PrimalError::Network(format!(
-                            "NestGate API error {}: {}",
-                            status, error_text
+                            "NestGate API error {status}: {error_text}"
                         )))
                     }
                 }
                 Err(e) => {
                     warn!("NestGate request failed: {}", e);
                     Err(crate::errors::PrimalError::Network(format!(
-                        "NestGate request failed: {}",
-                        e
+                        "NestGate request failed: {e}"
                     )))
                 }
             }
@@ -207,7 +205,7 @@ impl PrimalProvider for NestGatePrimalClient {
     }
 
     fn primal_type(&self) -> PrimalType {
-        PrimalType::Storage
+        PrimalType::NestGate
     }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {
@@ -279,7 +277,7 @@ impl PrimalProvider for NestGatePrimalClient {
                             .get("file_id")
                             .and_then(|v| v.as_str())
                             .unwrap_or("");
-                        (format!("/api/v1/storage/files/{}", file_id), "GET", None)
+                        (format!("/api/v1/storage/files/{file_id}"), "GET", None)
                     }
                     "upload" => {
                         let upload_data = request.payload.get("data").cloned();
@@ -291,7 +289,7 @@ impl PrimalProvider for NestGatePrimalClient {
                             .get("file_id")
                             .and_then(|v| v.as_str())
                             .unwrap_or("");
-                        (format!("/api/v1/storage/files/{}", file_id), "DELETE", None)
+                        (format!("/api/v1/storage/files/{file_id}"), "DELETE", None)
                     }
                     _ => ("/api/v1/storage/status".to_string(), "GET", None),
                 }
@@ -388,8 +386,7 @@ impl PrimalProvider for NestGatePrimalClient {
             }
             Err(e) => {
                 return Err(crate::errors::PrimalError::Configuration(format!(
-                    "Failed to create HTTP client: {}",
-                    e
+                    "Failed to create HTTP client: {e}"
                 )));
             }
         }

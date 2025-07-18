@@ -83,6 +83,7 @@ pub mod production_benchmarks;
 pub mod registry;
 pub mod robustness;
 pub mod scalability;
+pub mod structural_improvements;
 pub mod substrate;
 pub mod traits;
 pub mod zero_touch;

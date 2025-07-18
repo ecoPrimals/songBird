@@ -2,7 +2,6 @@
 //!
 //! Universal resource lifecycle and cleanup patterns
 
-use songbird_errors::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -11,6 +10,7 @@ use songbird_config::constants::resources::{
     DEFAULT_MONITORING_INTERVAL, DEFAULT_TRACKING_INTERVAL,
 };
 use songbird_config::constants::services::DEFAULT_SHUTDOWN_TIMEOUT;
+use songbird_errors::Result;
 use std::collections::HashMap;
 use std::time::Duration;
 

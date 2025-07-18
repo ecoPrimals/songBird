@@ -33,7 +33,7 @@ impl WorkspaceManager {
         // Check if workspace already exists
         if workspaces.contains_key(&team_id) {
             warn!("Team workspace already exists for team: {}", team_id);
-            return Ok(());
+            return Err(format!("Team workspace already exists for team: {}", team_id).into());
         }
 
         // Create new workspace

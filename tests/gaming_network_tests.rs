@@ -4,7 +4,7 @@
 //! Focuses on protocol detection, packet processing, and bridge management
 
 use songbird_config::SongbirdConfig;
-use songbird_errors::{Result, SongbirdError, NetworkError, GamingError};
+use songbird_errors::{GamingError, NetworkError, Result, SongbirdError};
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -665,29 +665,28 @@ impl RealBridgeManager {
 
     pub async fn get_bridge_status(&self, bridge_id: &str) -> Result<BridgeStatus> {
         let bridges = self.bridges.read().await;
-        bridges
-            .get(bridge_id)
-            .cloned()
-            .ok_or_else(|| SongbirdError::Network(Box::new(NetworkError {
+        bridges.get(bridge_id).cloned().ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("bridge_manager".to_string()),
                 message: "Bridge not found".to_string(),
                 details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
                 endpoint: None,
                 suggestion: None,
-            })))
+            }))
+        })
     }
 
     pub async fn destroy_bridge(&mut self, bridge_id: &str) -> Result<()> {
         let mut bridges = self.bridges.write().await;
-        bridges
-            .remove(bridge_id)
-            .ok_or_else(|| SongbirdError::Network(Box::new(NetworkError {
+        bridges.remove(bridge_id).ok_or_else(|| {
+            SongbirdError::Network(Box::new(NetworkError {
                 service: Some("bridge_manager".to_string()),
                 message: "Bridge not found".to_string(),
                 details: Some(format!("Bridge with ID {} does not exist", bridge_id)),
                 endpoint: None,
                 suggestion: None,
-            })))?;
+            }))
+        })?;
 
         Ok(())
     }
@@ -735,15 +734,20 @@ impl NatTraversalManager {
             // Simulate NAT traversal logic
             Ok(())
         } else {
-            Err(SongbirdError::Network(Box::new(songbird_errors::NetworkError {
-                service: Some("nat_traversal".to_string()),
-                message: "One or both players not found".to_string(),
-                details: Some(
-                    "Both players must be registered before facilitating connection".to_string(),
-                ),
-                endpoint: None,
-                suggestion: Some("Register both players before attempting connection".to_string()),
-            })))
+            Err(SongbirdError::Network(Box::new(
+                songbird_errors::NetworkError {
+                    service: Some("nat_traversal".to_string()),
+                    message: "One or both players not found".to_string(),
+                    details: Some(
+                        "Both players must be registered before facilitating connection"
+                            .to_string(),
+                    ),
+                    endpoint: None,
+                    suggestion: Some(
+                        "Register both players before attempting connection".to_string(),
+                    ),
+                },
+            )))
         }
     }
 }
@@ -757,12 +761,14 @@ impl ProtocolTranslator {
 
     pub async fn translate_ipx_to_tcp(&self, packet: &[u8]) -> Result<Vec<u8>> {
         if packet.is_empty() {
-            return Err(SongbirdError::Gaming(Box::new(songbird_errors::GamingError {
-                message: "Empty packet".to_string(),
-                protocol: Some("Cannot translate empty packet".to_string()),
-                game: None,
-                suggestion: Some("Provide a non-empty packet for translation".to_string()),
-            })));
+            return Err(SongbirdError::Gaming(Box::new(
+                songbird_errors::GamingError {
+                    message: "Empty packet".to_string(),
+                    protocol: Some("Cannot translate empty packet".to_string()),
+                    game: None,
+                    suggestion: Some("Provide a non-empty packet for translation".to_string()),
+                },
+            )));
         }
 
         // Simulate IPX to TCP translation
@@ -774,12 +780,16 @@ impl ProtocolTranslator {
 
     pub async fn translate_directplay_to_udp(&self, packet: &[u8]) -> Result<Vec<u8>> {
         if packet.len() < 4 {
-            return Err(SongbirdError::Gaming(Box::new(songbird_errors::GamingError {
-                message: "Invalid DirectPlay packet".to_string(),
-                protocol: Some("DirectPlay packets must be at least 4 bytes".to_string()),
-                game: None,
-                suggestion: Some("Ensure DirectPlay packets are properly formatted".to_string()),
-            })));
+            return Err(SongbirdError::Gaming(Box::new(
+                songbird_errors::GamingError {
+                    message: "Invalid DirectPlay packet".to_string(),
+                    protocol: Some("DirectPlay packets must be at least 4 bytes".to_string()),
+                    game: None,
+                    suggestion: Some(
+                        "Ensure DirectPlay packets are properly formatted".to_string(),
+                    ),
+                },
+            )));
         }
 
         // Simulate DirectPlay to UDP translation

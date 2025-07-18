@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate songbird_security;
 
 // Threat Detection Tests for Songbird Security

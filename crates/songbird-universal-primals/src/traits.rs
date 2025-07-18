@@ -7,6 +7,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::errors::PrimalResult;
 use crate::types::{PrimalRequest, PrimalResponse};
+use songbird_universal::PrimalType;
 
 /// Universal trait that any primal can implement
 #[async_trait]
@@ -154,35 +155,7 @@ pub enum PortStatus {
     Expired,
 }
 
-/// Primal type categories
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PrimalType {
-    /// Security primal (BearDog)
-    Security,
-    /// Storage primal (NestGate)
-    Storage,
-    /// Compute primal (Toadstool)
-    Compute,
-    /// AI primal (Squirrel)
-    AI,
-    /// Network primal
-    Network,
-    /// Custom primal type
-    Custom(String),
-}
-
-impl std::fmt::Display for PrimalType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PrimalType::Security => write!(f, "Security"),
-            PrimalType::Storage => write!(f, "Storage"),
-            PrimalType::Compute => write!(f, "Compute"),
-            PrimalType::AI => write!(f, "AI"),
-            PrimalType::Network => write!(f, "Network"),
-            PrimalType::Custom(name) => write!(f, "Custom({name})"),
-        }
-    }
-}
+// PrimalType is now imported from songbird-universal
 
 /// Universal capabilities that any primal can provide
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -234,19 +234,29 @@ impl ConnectionProxy {
         // Start the server
         let addr = format!("{}:{}", self.config.bind_address, self.config.port);
         let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
-            SongbirdError::Communication(format!("Failed to bind to {}: {}", addr, e))
+            SongbirdError::Communication(format!("Failed to bind to {addr}: {e}"))
         })?;
 
         tracing::info!("Proxy server listening on {}", addr);
 
         // Serve the application
         tokio::spawn(async move {
-            if let Err(e) = axum::Server::from_tcp(listener.into_std().unwrap())
-                .unwrap()
-                .serve(app.into_make_service())
-                .await
-            {
-                tracing::error!("Proxy server error: {}", e);
+            match listener.into_std() {
+                Ok(std_listener) => {
+                    match axum::Server::from_tcp(std_listener) {
+                        Ok(server) => {
+                            if let Err(e) = server.serve(app.into_make_service()).await {
+                                tracing::error!("Proxy server error: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to create axum server from TcpListener: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to convert TcpListener to std: {}", e);
+                }
             }
         });
 
@@ -302,8 +312,7 @@ impl ConnectionProxy {
         // Check circuit breaker
         if self.is_circuit_breaker_open(service_name).await {
             return Err(SongbirdError::Communication(format!(
-                "Circuit breaker open for service: {}",
-                service_name
+                "Circuit breaker open for service: {service_name}"
             )));
         }
 
@@ -315,7 +324,7 @@ impl ConnectionProxy {
             .timeout(Duration::from_secs(self.config.request_timeout))
             .build()
             .map_err(|e| {
-                SongbirdError::Communication(format!("Failed to create HTTP client: {}", e))
+                SongbirdError::Communication(format!("Failed to create HTTP client: {e}"))
             })?;
 
         // Build target URL
@@ -333,7 +342,7 @@ impl ConnectionProxy {
         // Build request
         // Convert axum::http::Method to reqwest::Method by parsing string
         let reqwest_method = reqwest::Method::from_bytes(request.method.as_str().as_bytes())
-            .map_err(|e| SongbirdError::Communication(format!("Invalid HTTP method: {}", e)))?;
+            .map_err(|e| SongbirdError::Communication(format!("Invalid HTTP method: {e}")))?;
         let mut req_builder = client.request(reqwest_method, &target_url);
 
         // Add headers
@@ -370,7 +379,7 @@ impl ConnectionProxy {
                     }
                 }
                 let body = resp.bytes().await.map_err(|e| {
-                    SongbirdError::Communication(format!("Failed to read response body: {}", e))
+                    SongbirdError::Communication(format!("Failed to read response body: {e}"))
                 })?;
 
                 let response_time = start_time.elapsed();
@@ -411,8 +420,7 @@ impl ConnectionProxy {
                 self.record_circuit_breaker_failure(service_name).await;
 
                 Err(SongbirdError::Communication(format!(
-                    "Request failed: {}",
-                    e
+                    "Request failed: {e}"
                 )))
             }
         }
@@ -436,14 +444,14 @@ impl ConnectionProxy {
             services
                 .get(service_name)
                 .ok_or_else(|| SongbirdError::Configuration {
-                    message: format!("Service not found: {}", service_name),
+                    message: format!("Service not found: {service_name}"),
                     suggestion: Some("Check if service is registered".to_string()),
                     field: "service_name".to_string(),
                 })?;
 
         if service_instances.is_empty() {
             return Err(SongbirdError::Configuration {
-                message: format!("No instances available for service: {}", service_name),
+                message: format!("No instances available for service: {service_name}"),
                 suggestion: Some("Check service health and registration".to_string()),
                 field: "service_instances".to_string(),
             });
@@ -592,7 +600,7 @@ async fn proxy_handler(
         });
 
     // Build URI with path
-    let uri_with_path = format!("/{}", path);
+    let uri_with_path = format!("/{path}");
     let reconstructed_uri = uri_with_path
         .parse::<Uri>()
         .unwrap_or_else(|_| Uri::from_static("/"));
@@ -619,7 +627,7 @@ async fn proxy_handler(
     }
 
     // Route the request through the proxy
-    match proxy.route_request(&service, proxy_request).await {
+    match proxy.route_request(service, proxy_request).await {
         Ok(proxy_response) => {
             // Convert ProxyResponse to axum Response
             let mut response_builder =

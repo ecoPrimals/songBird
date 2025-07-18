@@ -2,10 +2,10 @@
 //!
 //! Universal feature toggles and configuration management
 
-use songbird_errors::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_errors::Result;
 use std::collections::HashMap;
 
 /// Universal feature flag provider trait

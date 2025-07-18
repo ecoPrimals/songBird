@@ -857,6 +857,12 @@ impl NoOpSecurityProvider {
     }
 }
 
+impl Default for NoOpSecurityProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl SecurityProvider for NoOpSecurityProvider {
     async fn create_tunnel(

@@ -375,8 +375,8 @@ impl RealBridgeManager {
             host_info: RealHostInfo {
                 host_id: Uuid::new_v4().to_string(),
                 local_address: format!(
-                    "crate::config::constants::default_bind_address():{}",
-                    host_port
+                    "{}:0",
+                    songbird_config::config::constants::default_bind_address()
                 )
                 .parse()
                 .map_err(|_| {
@@ -435,7 +435,7 @@ impl RealBridgeManager {
         let session = sessions.get_mut(&session_code).ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("Real Bridge Manager".to_string()),
-                message: format!("Session not found: {}", session_code),
+                message: format!("Session not found: {session_code}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -447,15 +447,20 @@ impl RealBridgeManager {
         let player_info = RealPlayerInfo {
             player_id: player_id.clone(),
             display_name: player_name,
-            local_address: "0.0.0.0:0".parse().map_err(|_| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("Real Bridge Manager".to_string()),
-                    message: "Failed to parse local IP address".to_string(),
-                    details: None,
-                    endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
-                }))
-            })?,
+            local_address: format!(
+                "{}:0",
+                songbird_config::config::constants::default_bind_address()
+            )
+            .parse()
+            .unwrap_or_else(|_| {
+                tracing::warn!("Failed to parse local player address, using configurable default");
+                format!(
+                    "{}:0",
+                    songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
+                )
+                .parse()
+                .expect("Default local player address should be valid")
+            }),
             external_address: self.nat_manager.get_external_address(),
             nat_type: self.nat_manager.get_nat_type(),
             connection_established: false,
@@ -541,7 +546,21 @@ impl RealBridgeManager {
         );
 
         // Create real IPX bridge
-        let ipx_bridge = RealIpxBridge::new("127.0.0.1:0".parse().unwrap(), 50).await?;
+        let addr = format!(
+            "{}:0",
+            songbird_config::config::constants::default_bind_address()
+        )
+        .parse()
+        .unwrap_or_else(|_| {
+            tracing::warn!("Failed to parse IPX bridge address, using configurable default");
+            format!(
+                "{}:0",
+                songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
+            )
+            .parse()
+            .expect("Default IPX bridge address should be valid")
+        });
+        let ipx_bridge = RealIpxBridge::new(addr, 50).await?;
         ipx_bridge.start_forwarding().await?;
 
         info!(
@@ -799,7 +818,7 @@ impl SocketPool {
                         ),
                     });
                 }
-                format!("0.0.0.0:{}", port)
+                format!("0.0.0.0:{port}")
             } else {
                 format!("{}:{}", env_config.bind_address, port)
             };

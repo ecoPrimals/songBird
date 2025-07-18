@@ -16,7 +16,7 @@ use tracing::{info, warn};
 use songbird_config::config::SongbirdConfig;
 use songbird_discovery::traits::{ServiceInfo, ServiceStatus};
 use songbird_errors::Result;
-use songbird_federation::config::FederationMode;
+use songbird_federation::types::*;
 use songbird_federation::manager::FederationManager;
 use songbird_network::network::gaming::{GamingManager, NatTraversalManager, PerformanceMonitor};
 
@@ -41,7 +41,57 @@ impl AdvancedIntegrationDemo {
 
         // Initialize core components
         let gaming_manager = GamingManager::new().await?;
-        let federation_manager = FederationManager::new(FederationMode::Standalone);
+        
+        // Create a proper FederationConfig for the manager
+        let federation_config = FederationConfig {
+            local_node: LocalNodeConfig {
+                name: "demo-node".to_string(),
+                node_type: NodeType::Tower {
+                    location: "localhost".to_string(),
+                    capabilities: TowerCapabilities {
+                        cpu_cores: 4,
+                        memory_gb: 8,
+                        storage_tb: 1,
+                        gpus: vec![],
+                        network_bandwidth_mbps: 1000,
+                        specializations: vec!["demo".to_string()],
+                    },
+                },
+                listen_addresses: vec!["127.0.0.1:8080".parse()?],
+                public_addresses: vec![],
+                location: Some("localhost".to_string()),
+            },
+            discovery: DiscoveryConfig {
+                enabled_protocols: vec![DiscoveryProtocol::MDNS],
+                intervals: DiscoveryIntervals::default(),
+                max_range: NetworkProximity::Localhost,
+                bootstrap_nodes: vec![],
+            },
+            security: SecurityConfig {
+                enable_beardog: false,
+                required_security_level: "basic".to_string(),
+                trusted_nodes: vec![],
+                session_timeout: std::time::Duration::from_secs(3600),
+            },
+            performance: PerformanceConfig {
+                route_strategy: RouteStrategy::Balanced,
+                monitoring_interval: std::time::Duration::from_secs(30),
+                route_cache_ttl: std::time::Duration::from_secs(300),
+                max_route_hops: 5,
+            },
+            limits: FederationLimits {
+                max_nodes: 10,
+                max_connections: 50,
+                max_route_length: 5,
+                rate_limits: RateLimits {
+                    discovery_per_minute: 30,
+                    route_requests_per_minute: 60,
+                    max_transfer_rate_mbps: 100,
+                },
+            },
+        };
+        
+        let federation_manager = FederationManager::new(federation_config).await?;
         let mut nat_traversal = NatTraversalManager::new();
         nat_traversal.initialize(None).await?;
         let performance_monitor = PerformanceMonitor::new(Default::default())?;

@@ -118,13 +118,16 @@ impl PacketBufferPool {
     }
 }
 
+/// Type alias for the complex packet receiver type
+type PacketReceiver = Arc<RwLock<Option<mpsc::Receiver<(Vec<u8>, SocketAddr)>>>>;
+
 /// Real IPX bridge implementation with zero-copy optimizations
 pub struct RealIpxBridge {
     socket: Arc<UdpSocket>,
     virtual_nodes: Arc<RwLock<HashMap<IpxAddress, SocketAddr>>>,
     packet_translator: IpxPacketTranslator,
     packet_sender: mpsc::Sender<(Vec<u8>, SocketAddr)>,
-    packet_receiver: Arc<RwLock<Option<mpsc::Receiver<(Vec<u8>, SocketAddr)>>>>,
+    packet_receiver: PacketReceiver,
     buffer_pool: Arc<RwLock<PacketBufferPool>>,
 }
 
@@ -133,8 +136,8 @@ impl RealIpxBridge {
         let socket = UdpSocket::bind(bind_address).await.map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("Real IPX Bridge".to_string()),
-                message: format!("Failed to bind UDP socket: {}", e),
-                details: Some(format!("Address: {}", bind_address)),
+                message: format!("Failed to bind UDP socket: {e}"),
+                details: Some(format!("Address: {bind_address}")),
                 endpoint: Some(bind_address.to_string()),
                 suggestion: Some("Check if port is available and address is valid".to_string()),
             }))
@@ -458,6 +461,12 @@ impl IpxPacketTranslator {
     }
 }
 
+impl Default for IpxPacketTranslator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -465,7 +474,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_ipx_bridge_creation() {
-        let bind_addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let bind_addr: SocketAddr = format!(
+            "{}:0",
+            songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
+        )
+        .parse()
+        .expect("Default IPX bridge bind address should be valid");
         let bridge = RealIpxBridge::new(bind_addr, 10).await;
         assert!(bridge.is_ok());
     }
@@ -489,7 +503,8 @@ mod tests {
             0x01, 0x02, 0x03, 0x04, // data
         ];
 
-        let packet = translator.parse_ipx_packet(&test_data).unwrap();
+        let packet = translator.parse_ipx_packet(&test_data)
+            .expect("Test IPX packet should be valid");
         assert_eq!(packet.header.packet_type, 0x00);
         assert_eq!(packet.data, &[0x01, 0x02, 0x03, 0x04]);
     }

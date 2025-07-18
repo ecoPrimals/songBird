@@ -27,6 +27,7 @@ rand = "0.8"
 songbird-errors = { path = "../songbird-errors" }
 songbird-config = { path = "../songbird-config" }
 songbird-discovery = { path = "../songbird-discovery" }
+songbird-universal = { path = "../songbird-universal" }
 
 [dev-dependencies]
 tokio-test = "0.4" 

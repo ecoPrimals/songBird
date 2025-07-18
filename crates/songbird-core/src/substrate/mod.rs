@@ -9,8 +9,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use songbird_errors::{Result, SongbirdError, NetworkError};
 use serde::{Deserialize, Serialize};
+use songbird_errors::{NetworkError, Result, SongbirdError};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -449,7 +449,7 @@ impl OSSubstrate {
     /// Get platform-agnostic path through substrate with optimized caching
     pub async fn get_path(&self, request: PathRequest) -> Result<PathBuf> {
         let start_time = Instant::now();
-        let cache_key = format!("{}_{}", request.service_name, request.path_type.to_string());
+        let cache_key = format!("{}_{}", request.service_name, request.path_type);
 
         // Check optimized cache first
         {
@@ -556,13 +556,15 @@ impl OSSubstrate {
         if let Some(path_str) = response.get("path").and_then(|v| v.as_str()) {
             Ok(PathBuf::from(path_str))
         } else {
-            Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                service: Some("biomeos_substrate".to_string()),
-                message: "Invalid path response from substrate".to_string(),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Check substrate connection and response format".to_string()),
-            })))
+            Err(songbird_errors::SongbirdError::Network(Box::new(
+                NetworkError {
+                    service: Some("biomeos_substrate".to_string()),
+                    message: "Invalid path response from substrate".to_string(),
+                    details: None,
+                    endpoint: None,
+                    suggestion: Some("Check substrate connection and response format".to_string()),
+                },
+            )))
         }
     }
 
@@ -638,13 +640,15 @@ impl OSSubstrate {
 
         let response = self.toadstool_client.request(payload).await?;
 
-        serde_json::from_value(response).map_err(|e| songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-            service: Some("toadstool_substrate".to_string()),
-            message: format!("Failed to parse system info: {e}"),
-            details: None,
-            endpoint: None,
-            suggestion: Some("Check substrate connection and response format".to_string()),
-        })))
+        serde_json::from_value(response).map_err(|e| {
+            songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                service: Some("toadstool_substrate".to_string()),
+                message: format!("Failed to parse system info: {e}"),
+                details: None,
+                endpoint: None,
+                suggestion: Some("Check substrate connection and response format".to_string()),
+            }))
+        })
     }
 
     /// Get fallback system information
@@ -894,13 +898,15 @@ impl ToadstoolClient {
             .pool_max_idle_per_host(CONNECTION_POOL_SIZE)
             .pool_idle_timeout(Duration::from_secs(90))
             .build()
-            .map_err(|e| songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                service: Some("toadstool_client".to_string()),
-                message: format!("Failed to create HTTP client: {e}"),
-                details: None,
+            .map_err(|e| {
+                songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                    service: Some("toadstool_client".to_string()),
+                    message: format!("Failed to create HTTP client: {e}"),
+                    details: None,
                     endpoint: None,
                     suggestion: Some("Check substrate connection and response format".to_string()),
-            })))?;
+                }))
+            })?;
 
         let circuit_breaker = Arc::new(RwLock::new(CircuitBreaker::new(
             CIRCUIT_BREAKER_THRESHOLD,
@@ -923,13 +929,17 @@ impl ToadstoolClient {
         {
             let mut cb = self.circuit_breaker.write().await;
             if !cb.should_allow_request() {
-                return Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("toadstool_substrate".to_string()),
-                    message: "Circuit breaker is open".to_string(),
-                    details: None,
-                    endpoint: None,
-                    suggestion: Some("Check substrate connection and response format".to_string()),
-                })));
+                return Err(songbird_errors::SongbirdError::Network(Box::new(
+                    NetworkError {
+                        service: Some("toadstool_substrate".to_string()),
+                        message: "Circuit breaker is open".to_string(),
+                        details: None,
+                        endpoint: None,
+                        suggestion: Some(
+                            "Check substrate connection and response format".to_string(),
+                        ),
+                    },
+                )));
             }
         }
 
@@ -947,26 +957,34 @@ impl ToadstoolClient {
                     // Record failure
                     let mut cb = self.circuit_breaker.write().await;
                     cb.record_failure();
-                    Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                        service: Some("toadstool_substrate".to_string()),
-                        message: format!("Health check failed with status: {}", resp.status()),
-                        details: None,
-                    endpoint: None,
-                    suggestion: Some("Check substrate connection and response format".to_string()),
-                    })))
+                    Err(songbird_errors::SongbirdError::Network(Box::new(
+                        NetworkError {
+                            service: Some("toadstool_substrate".to_string()),
+                            message: format!("Health check failed with status: {}", resp.status()),
+                            details: None,
+                            endpoint: None,
+                            suggestion: Some(
+                                "Check substrate connection and response format".to_string(),
+                            ),
+                        },
+                    )))
                 }
             }
             Err(e) => {
                 // Record failure
                 let mut cb = self.circuit_breaker.write().await;
                 cb.record_failure();
-                Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("toadstool_substrate".to_string()),
-                    message: format!("Health check failed: {e}"),
-                    details: None,
-                    endpoint: None,
-                    suggestion: Some("Check substrate connection and response format".to_string()),
-                })))
+                Err(songbird_errors::SongbirdError::Network(Box::new(
+                    NetworkError {
+                        service: Some("toadstool_substrate".to_string()),
+                        message: format!("Health check failed: {e}"),
+                        details: None,
+                        endpoint: None,
+                        suggestion: Some(
+                            "Check substrate connection and response format".to_string(),
+                        ),
+                    },
+                )))
             }
         }
     }
@@ -977,13 +995,17 @@ impl ToadstoolClient {
         {
             let mut cb = self.circuit_breaker.write().await;
             if !cb.should_allow_request() {
-                return Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("toadstool_substrate".to_string()),
-                    message: "Circuit breaker is open".to_string(),
-                    details: None,
-                    endpoint: None,
-                    suggestion: Some("Check substrate connection and response format".to_string()),
-                })));
+                return Err(songbird_errors::SongbirdError::Network(Box::new(
+                    NetworkError {
+                        service: Some("toadstool_substrate".to_string()),
+                        message: "Circuit breaker is open".to_string(),
+                        details: None,
+                        endpoint: None,
+                        suggestion: Some(
+                            "Check substrate connection and response format".to_string(),
+                        ),
+                    },
+                )));
             }
         }
 
@@ -997,25 +1019,33 @@ impl ToadstoolClient {
                     let mut cb = self.circuit_breaker.write().await;
                     cb.record_success();
 
-                    resp.json().await.map_err(|e| songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                        service: Some("toadstool_substrate".to_string()),
-                        message: format!("Failed to parse response: {e}"),
-                        details: None,
-                        endpoint: None,
-                        suggestion: Some("Check substrate connection and response format".to_string()),
-                    })))
+                    resp.json().await.map_err(|e| {
+                        songbird_errors::SongbirdError::Network(Box::new(NetworkError {
+                            service: Some("toadstool_substrate".to_string()),
+                            message: format!("Failed to parse response: {e}"),
+                            details: None,
+                            endpoint: None,
+                            suggestion: Some(
+                                "Check substrate connection and response format".to_string(),
+                            ),
+                        }))
+                    })
                 } else {
                     // Record failure
                     let mut cb = self.circuit_breaker.write().await;
                     cb.record_failure();
 
-                    Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                        service: Some("toadstool_substrate".to_string()),
-                        message: format!("Request failed with status: {}", resp.status()),
-                        details: None,
-                    endpoint: None,
-                    suggestion: Some("Check substrate connection and response format".to_string()),
-                    })))
+                    Err(songbird_errors::SongbirdError::Network(Box::new(
+                        NetworkError {
+                            service: Some("toadstool_substrate".to_string()),
+                            message: format!("Request failed with status: {}", resp.status()),
+                            details: None,
+                            endpoint: None,
+                            suggestion: Some(
+                                "Check substrate connection and response format".to_string(),
+                            ),
+                        },
+                    )))
                 }
             }
             Err(e) => {
@@ -1023,13 +1053,17 @@ impl ToadstoolClient {
                 let mut cb = self.circuit_breaker.write().await;
                 cb.record_failure();
 
-                Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("toadstool_substrate".to_string()),
-                    message: format!("Request failed: {e}"),
-                    details: None,
-                    endpoint: None,
-                    suggestion: Some("Check substrate connection and response format".to_string()),
-                })))
+                Err(songbird_errors::SongbirdError::Network(Box::new(
+                    NetworkError {
+                        service: Some("toadstool_substrate".to_string()),
+                        message: format!("Request failed: {e}"),
+                        details: None,
+                        endpoint: None,
+                        suggestion: Some(
+                            "Check substrate connection and response format".to_string(),
+                        ),
+                    },
+                )))
             }
         }
     }
@@ -1060,17 +1094,16 @@ impl ToadstoolClient {
     }
 }
 
-impl PathType {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for PathType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PathType::Data => "data",
-            PathType::Config => "config",
-            PathType::Log => "log",
-            PathType::Cache => "cache",
-            PathType::Runtime => "runtime",
-            PathType::Temp => "temp",
+            PathType::Data => write!(f, "data"),
+            PathType::Config => write!(f, "config"),
+            PathType::Log => write!(f, "log"),
+            PathType::Cache => write!(f, "cache"),
+            PathType::Runtime => write!(f, "runtime"),
+            PathType::Temp => write!(f, "temp"),
         }
-        .to_string()
     }
 }
 

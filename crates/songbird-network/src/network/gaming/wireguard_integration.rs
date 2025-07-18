@@ -100,7 +100,7 @@ impl WireGuardTunnel {
             None, // Static response (for testing)
         )
         .map_err(|e| songbird_errors::SongbirdError::TunnelCreation {
-            message: e.to_string(),
+            message: format!("{e:?}"),
             tunnel_type: Some("wireguard".to_string()),
             endpoint: None,
             suggestion: Some("Check WireGuard configuration and permissions".to_string()),
@@ -136,7 +136,7 @@ impl WireGuardTunnel {
             TunnResult::Err(e) => {
                 error!("❌ Encryption failed: {:?}", e);
                 Err(songbird_errors::SongbirdError::EncryptionFailed {
-                    message: format!("{:?}", e),
+                    message: format!("{e:?}"),
                     algorithm: Some("ChaCha20Poly1305".to_string()),
                     suggestion: Some(
                         "Check encryption key and algorithm configuration".to_string(),
@@ -164,7 +164,7 @@ impl WireGuardTunnel {
             TunnResult::Err(e) => {
                 error!("❌ Decryption failed: {:?}", e);
                 Err(songbird_errors::SongbirdError::DecryptionFailed {
-                    message: format!("{:?}", e),
+                    message: format!("{e:?}"),
                     algorithm: Some("ChaCha20Poly1305".to_string()),
                     suggestion: Some(
                         "Check decryption key and algorithm configuration".to_string(),
@@ -248,7 +248,7 @@ impl WireGuardTunnel {
             Err(e) => Err(songbird_errors::SongbirdError::Network(Box::new(
                 NetworkError {
                     service: Some("BSTP Upgrade".to_string()),
-                    message: format!("Failed to upgrade to BSTP: {}", e),
+                    message: format!("Failed to upgrade to BSTP: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),

@@ -1,11 +1,11 @@
 // Module imports
 //! Communication Traits
 
-use songbird_errors::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
+use songbird_errors::Result;
 use std::collections::HashMap;
 /// Communication layer trait
 #[async_trait]

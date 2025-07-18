@@ -171,8 +171,8 @@ impl PerformanceBenchmarks {
         let total_ops: f64 = results.iter().map(|r| r.operations_per_second).sum();
         let avg_gain: f64 =
             results.iter().map(|r| r.optimization_gain).sum::<f64>() / results.len() as f64;
-        println!("   Total Ops/sec:  {:.0}", total_ops);
-        println!("   Avg Speed Gain: {:.2}x faster", avg_gain);
+        println!("   Total Ops/sec:  {total_ops:.0}");
+        println!("   Avg Speed Gain: {avg_gain:.2}x faster");
         println!("{}", "=".repeat(60));
     }
 }

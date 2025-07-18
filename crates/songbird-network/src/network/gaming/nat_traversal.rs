@@ -52,6 +52,7 @@ struct StunAttribute {
 
 /// NAT traversal manager for gaming sessions
 pub struct NatTraversalManager {
+    #[allow(dead_code)]
     stun_servers: Vec<SocketAddr>,
     turn_servers: Vec<TurnServer>,
     local_socket: Option<Arc<UdpSocket>>,
@@ -97,6 +98,7 @@ pub struct TurnAllocation {
 }
 
 /// TURN message types
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TurnMessageType {
     Allocate = 0x0003,
@@ -118,6 +120,7 @@ enum TurnMessageType {
 }
 
 /// TURN attribute types
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TurnAttributeType {
     // STUN attributes
@@ -164,6 +167,12 @@ struct HolePunchAttempt {
     success: bool,
 }
 
+impl Default for NatTraversalManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NatTraversalManager {
     /// Create new NAT traversal manager
     pub fn new() -> Self {
@@ -172,7 +181,7 @@ impl NatTraversalManager {
         let bind_address = songbird_config::config::constants::default_bind_address();
         Self {
             stun_servers: vec![
-                format!("{}:19302", bind_address)
+                format!("{bind_address}:19302")
                     .parse()
                     .unwrap_or_else(|e| {
                         tracing::error!(
@@ -182,7 +191,7 @@ impl NatTraversalManager {
                         );
                         "127.0.0.1:19302".parse().unwrap() // Safe fallback
                     }),
-                format!("{}:19303", bind_address)
+                format!("{bind_address}:19303")
                     .parse()
                     .unwrap_or_else(|e| {
                         tracing::error!(
@@ -222,7 +231,7 @@ impl NatTraversalManager {
                     suggestion: Some("Check configuration values and network settings".to_string()),
                 });
             }
-            format!("0.0.0.0:{}", port)
+            format!("0.0.0.0:{port}")
         } else {
             format!("{}:{}", env_config.bind_address, port)
         };
@@ -230,7 +239,7 @@ impl NatTraversalManager {
         let socket = UdpSocket::bind(&bind_addr).await.map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Failed to bind socket to {}: {}", bind_addr, e),
+                message: format!("Failed to bind socket to {bind_addr}: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -240,7 +249,7 @@ impl NatTraversalManager {
         let local_addr = socket.local_addr().map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Failed to get local address: {}", e),
+                message: format!("Failed to get local address: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -307,7 +316,7 @@ impl NatTraversalManager {
         let local_addr = socket.local_addr().map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Failed to get local address: {}", e),
+                message: format!("Failed to get local address: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -855,7 +864,7 @@ impl NatTraversalManager {
                     suggestion: Some("Check configuration values and network settings".to_string()),
                 });
             }
-            format!("0.0.0.0:{}", port)
+            format!("0.0.0.0:{port}")
         } else {
             format!("{}:{}", env_config.bind_address, port)
         };
@@ -863,7 +872,7 @@ impl NatTraversalManager {
         let _socket = UdpSocket::bind(&bind_addr).await.map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
                 service: Some("NAT Traversal".to_string()),
-                message: format!("Failed to bind socket to {}: {}", bind_addr, e),
+                message: format!("Failed to bind socket to {bind_addr}: {e}"),
                 details: None,
                 endpoint: None,
                 suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -1588,6 +1597,7 @@ impl NatTraversalManager {
 #[derive(Debug)]
 struct TurnAllocationResponse {
     relay_address: Option<SocketAddr>,
+    #[allow(dead_code)]
     lifetime: u32,
 }
 

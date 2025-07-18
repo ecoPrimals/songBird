@@ -10,9 +10,7 @@
 use std::time::Duration;
 use tokio::time::timeout;
 
-use songbird_core::substrate::{
-    NetworkInterface, OSSubstrate, PathRequest, PathRequirements, PathType, SystemInfo,
-};
+use songbird_core::substrate::{OSSubstrate, PathRequest, PathRequirements, PathType};
 use songbird_errors::Result;
 
 /// Test basic substrate functionality
@@ -108,12 +106,12 @@ async fn test_substrate_caching_performance() -> Result<()> {
     println!("⏱️ Second request: {:?}", second_duration);
 
     // Test cache statistics
-    let (total_entries, max_size, utilization, cache_hits, cache_misses) =
+    let (total_entries, _max_size, utilization, cache_hits, cache_misses) =
         substrate.get_cache_stats().await;
 
     println!("📊 Cache stats:");
     println!("   Total entries: {}", total_entries);
-    println!("   Max size: {}", max_size);
+    println!("   Max size: {}", _max_size);
     println!("   Utilization: {:.2}%", utilization * 100.0);
     println!("   Cache hits: {}", cache_hits);
     println!("   Cache misses: {}", cache_misses);
@@ -336,7 +334,7 @@ async fn test_substrate_comprehensive_performance() -> Result<()> {
 
     // Final metrics
     let metrics = substrate.get_metrics().await;
-    let (total_entries, max_size, utilization, cache_hits, cache_misses) =
+    let (total_entries, _max_size, utilization, cache_hits, cache_misses) =
         substrate.get_cache_stats().await;
 
     println!("🏁 Performance test summary:");

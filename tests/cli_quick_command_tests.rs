@@ -39,7 +39,7 @@ async fn configure_quick_discovery(config_path: &std::path::Path) -> Result<()> 
     // Check if config file exists
     if !config_path.exists() {
         return Err(SongbirdError::Configuration {
-        suggestion: Some("Check configuration file".to_string()),
+            suggestion: Some("Check configuration file".to_string()),
             field: "config_path".to_string(),
             message: "Config file does not exist".to_string(),
         });
@@ -48,14 +48,14 @@ async fn configure_quick_discovery(config_path: &std::path::Path) -> Result<()> 
     // Read existing config and update discovery settings
     let config_content =
         std::fs::read_to_string(config_path).map_err(|e| SongbirdError::Configuration {
-        suggestion: Some("Check configuration file".to_string()),
+            suggestion: Some("Check configuration file".to_string()),
             field: "config_read".to_string(),
             message: format!("Failed to read config: {e}"),
         })?;
 
     let mut config: SongbirdConfig =
         toml::from_str(&config_content).map_err(|e| SongbirdError::Configuration {
-        suggestion: Some("Check configuration file".to_string()),
+            suggestion: Some("Check configuration file".to_string()),
             field: "config_parse".to_string(),
             message: format!("Failed to parse config: {e}"),
         })?;
@@ -109,14 +109,14 @@ async fn apply_security_defaults(config_path: &std::path::Path) -> Result<()> {
 async fn validate_quick_setup(config_path: &std::path::Path) -> Result<()> {
     let config_content =
         std::fs::read_to_string(config_path).map_err(|e| SongbirdError::Configuration {
-        suggestion: Some("Check configuration file".to_string()),
+            suggestion: Some("Check configuration file".to_string()),
             field: "config_read".to_string(),
             message: format!("Failed to read config: {e}"),
         })?;
 
     let _config: SongbirdConfig =
         toml::from_str(&config_content).map_err(|e| SongbirdError::Configuration {
-        suggestion: Some("Check configuration file".to_string()),
+            suggestion: Some("Check configuration file".to_string()),
             field: "config_parse".to_string(),
             message: format!("Invalid configuration: {e}"),
         })?;
