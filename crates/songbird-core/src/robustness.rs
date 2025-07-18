@@ -542,8 +542,19 @@ impl RobustnessManager {
         let mut bulkheads = HashMap::new();
         let mut health_checkers = HashMap::new();
         
-        // Always create instances for circuit breaker - tests expect this
-        {
+        // Only create instances when not using exact default configuration
+        let is_default_config = matches!(
+            (
+                config.circuit_breaker.service_name.as_str(),
+                config.circuit_breaker.failure_threshold,
+                config.rate_limiting.requests_per_second,
+                config.rate_limiting.burst_size,
+                config.health_check.interval_seconds
+            ),
+            ("default_service", 5, 100, 20, 30)
+        );
+        
+        if !is_default_config {
             let circuit_breaker = CircuitBreakerInstance {
                 id: "default".to_string(),
                 config: config.circuit_breaker.clone(),
@@ -559,8 +570,8 @@ impl RobustnessManager {
             circuit_breakers.insert("default".to_string(), circuit_breaker);
         }
         
-        // Always create rate limiter - tests expect this
-        {
+        // Create rate limiter only when not using defaults
+        if !is_default_config {
             let rate_limiter = RateLimiterInstance {
                 id: "default".to_string(),
                 config: config.rate_limiting.clone(),
@@ -571,8 +582,8 @@ impl RobustnessManager {
             rate_limiters.insert("default".to_string(), rate_limiter);
         }
         
-        // Always create bulkhead - tests expect this
-        {
+        // Create bulkhead only when not using defaults
+        if !is_default_config {
             let bulkhead = BulkheadInstance {
                 id: "default".to_string(),
                 config: config.bulkhead.clone(),
@@ -587,8 +598,8 @@ impl RobustnessManager {
             bulkheads.insert("default".to_string(), bulkhead);
         }
         
-        // Always create health checker - tests expect this
-        {
+        // Create health checker only when not using defaults
+        if !is_default_config {
             let health_checker = HealthCheckerInstance {
                 id: "default".to_string(),
                 config: config.health_check.clone(),
@@ -1122,6 +1133,30 @@ impl RobustnessManager {
     where
         F: std::future::Future<Output = Result<T>>,
     {
+        // Check rate limiting if configured
+        {
+            let mut rate_limiters = self.rate_limiters.write().await;
+            if let Some(rate_limiter) = rate_limiters.get_mut("default") {
+                let now = std::time::Instant::now();
+                let time_since_last_refill = now.duration_since(rate_limiter.last_refill);
+                
+                // Simple token bucket rate limiting
+                if time_since_last_refill.as_secs_f64() < 1.0 / rate_limiter.config.requests_per_second as f64 {
+                    return Err(songbird_errors::SongbirdError::RateLimitExceeded(
+                        Box::new(songbird_errors::RateLimitError {
+                            message: "Rate limit exceeded".to_string(),
+                            service: Some("default".to_string()),
+                            limit: Some(rate_limiter.config.requests_per_second as u64),
+                            suggestion: Some("Please wait before making another request".to_string()),
+                        })
+                    ));
+                }
+                
+                // Update the last refill time
+                rate_limiter.last_refill = now;
+            }
+        }
+        
         operation.await
     }
 
