@@ -5,7 +5,6 @@
 
 use songbird_errors::validation::ConfigValidator;
 use songbird_errors::SongbirdError;
-use std::time::Duration;
 use tempfile::TempDir;
 
 #[cfg(test)]
@@ -276,7 +275,7 @@ mod ip_validation_tests {
 
         for ip_str in &valid_ipv6 {
             match ConfigValidator::validate_ip_address(ip_str, "test_ip") {
-                Ok(_ip) => {}, // IP validation passed
+                Ok(_ip) => {} // IP validation passed
                 Err(e) => panic!("Expected valid IPv6 for {ip_str}: {e:?}"),
             }
         }
@@ -324,7 +323,7 @@ mod ip_validation_tests {
 
         for addr_str in &valid_addrs {
             match ConfigValidator::validate_socket_address(addr_str, "test_addr") {
-                Ok(addr) => {
+                Ok(_addr) => {
                     // Port assertion removed as addr type is not SocketAddr
                 }
                 Err(e) => panic!("Expected valid socket address for {addr_str}: {e:?}"),
@@ -371,10 +370,6 @@ mod timeout_validation_tests {
         // Test valid timeout within bounds
         let result = ConfigValidator::validate_timeout(5000, "test_timeout", 1000, 10000);
         assert!(result.is_ok());
-        assert_eq!(
-            result.expect("Test assertion failed"),
-            ()
-        );
     }
 
     #[test]
@@ -445,12 +440,21 @@ mod timeout_validation_tests {
     #[test]
     fn test_validate_health_check_interval() {
         // Valid health check intervals
-        assert!(ConfigValidator::validate_timeout(15000, "health_check_interval", 1000, 300000).is_ok());
-        assert!(ConfigValidator::validate_timeout(60000, "health_check_interval", 1000, 300000).is_ok());
+        assert!(
+            ConfigValidator::validate_timeout(15000, "health_check_interval", 1000, 300000).is_ok()
+        );
+        assert!(
+            ConfigValidator::validate_timeout(60000, "health_check_interval", 1000, 300000).is_ok()
+        );
 
         // Invalid health check intervals
-        assert!(ConfigValidator::validate_timeout(500, "health_check_interval", 1000, 300000).is_err()); // Too low
-        assert!(ConfigValidator::validate_timeout(400000, "health_check_interval", 1000, 300000).is_err());
+        assert!(
+            ConfigValidator::validate_timeout(500, "health_check_interval", 1000, 300000).is_err()
+        ); // Too low
+        assert!(
+            ConfigValidator::validate_timeout(400000, "health_check_interval", 1000, 300000)
+                .is_err()
+        );
         // Too high
     }
 }
@@ -803,8 +807,7 @@ mod file_path_validation_tests {
     fn test_validate_file_path_non_existing_optional() {
         // Test non-existing file with must_exist = false
         // This should fail because parent directory doesn't exist
-        match ConfigValidator::validate_file_path("/non/existing/file.txt", "optional_file")
-        {
+        match ConfigValidator::validate_file_path("/non/existing/file.txt", "optional_file") {
             Err(SongbirdError::Config {
                 field: Some(field),
                 message,
@@ -839,7 +842,7 @@ mod file_path_validation_tests {
         // Test creating missing directory
         let result = ConfigValidator::validate_directory_path(
             new_dir.to_str().expect("Test assertion failed"),
-            "new_dir"
+            "new_dir",
         );
         assert!(result.is_ok());
         assert!(new_dir.exists());
@@ -849,10 +852,7 @@ mod file_path_validation_tests {
     #[test]
     fn test_validate_directory_path_non_existing_no_create() {
         // Test non-existing directory without create permission
-        match ConfigValidator::validate_directory_path(
-            "/non/existing/directory",
-            "missing_dir",
-        ) {
+        match ConfigValidator::validate_directory_path("/non/existing/directory", "missing_dir") {
             Err(SongbirdError::Config {
                 field: Some(field),
                 message,

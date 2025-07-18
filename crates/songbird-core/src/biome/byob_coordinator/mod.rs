@@ -183,7 +183,6 @@ impl ByobCoordinator {
     /// Storage operations are handled by the universal primal adapter system
     /// Storage provisioning, removal, and status checking are managed through
     /// primal discovery and coordination mechanisms
-
     /// Get team workspace
     pub async fn get_team_workspace(
         &self,

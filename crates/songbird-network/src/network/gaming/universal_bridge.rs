@@ -89,7 +89,7 @@ impl UniversalGameBridge {
             SongbirdError::Protocol(Box::new(ProtocolError {
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-                message: format!("No translator available for protocol: {:?}", protocol_class),
+                message: format!("No translator available for protocol: {protocol_class:?}"),
                 protocol: "universal_bridge".to_string(),
             }))
         })?;
@@ -170,7 +170,7 @@ impl UniversalGameBridge {
             SongbirdError::Protocol(Box::new(ProtocolError {
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-                message: format!("Session not found: {}", session_id),
+                message: format!("Session not found: {session_id}"),
                 protocol: "universal_bridge".to_string(),
             }))
         })?;
@@ -201,7 +201,7 @@ impl UniversalGameBridge {
             SongbirdError::Protocol(Box::new(ProtocolError {
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-                message: format!("Session not found: {}", session_id),
+                message: format!("Session not found: {session_id}"),
                 protocol: "universal_bridge".to_string(),
             }))
         })?;
@@ -341,7 +341,7 @@ impl UniversalGameBridge {
                 SongbirdError::Protocol(Box::new(ProtocolError {
                     version: None,
                     suggestion: Some("Check protocol compatibility and version".to_string()),
-                    message: format!("Bridge not found: {}", bridge_id),
+                    message: format!("Bridge not found: {bridge_id}"),
                     protocol: "universal_bridge".to_string(),
                 }))
             })?;
@@ -406,7 +406,7 @@ impl UniversalGameBridge {
             return Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 version: None,
                 suggestion: Some("Check protocol compatibility and version".to_string()),
-                message: format!("Bridge not found: {}", bridge_id),
+                message: format!("Bridge not found: {bridge_id}"),
                 protocol: "universal_bridge".to_string(),
             })));
         }

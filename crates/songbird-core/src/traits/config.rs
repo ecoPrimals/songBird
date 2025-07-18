@@ -4,10 +4,10 @@
 //! Defines the interface for pluggable configuration backends,
 //! supporting file-based, environment, Consul, and other configuration sources.
 
-use songbird_errors::Result;
 use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
+use songbird_errors::Result;
 // Import all concrete config types from the config module
 pub use songbird_config::*;
 /// Configuration provider trait

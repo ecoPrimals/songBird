@@ -298,8 +298,8 @@ impl BatchProcessor {
             batch_queue: Arc::new(RwLock::new(Vec::new())),
             processing_metrics: Arc::new(RwLock::new(BatchMetrics::default())),
             config: BatchConfig {
-                max_batch_size: 50,
-                max_wait_time: Duration::from_millis(100),
+                max_batch_size: 200,
+                max_wait_time: Duration::from_millis(50),
                 enable_adaptive_batching: true,
                 priority_scheduling: true,
             },
@@ -376,28 +376,42 @@ impl BatchProcessor {
         let start_time = Instant::now();
         let batch_size = batch.requests.len();
 
-        // Process requests in batch (parallel execution)
-        let futures: Vec<_> = batch
-            .requests
+        // Process requests in batch (parallel execution with chunking for optimal performance)
+        let chunk_size = std::cmp::min(batch_size, 50); // Process in chunks to avoid overwhelming the system
+        let chunks: Vec<_> = batch.requests.chunks(chunk_size).collect();
+        
+        // Process chunks in parallel
+        let chunk_futures: Vec<_> = chunks
             .into_iter()
-            .map(|request| {
+            .map(|chunk| {
+                let chunk_vec = chunk.to_vec();
                 async move {
-                    // Simulate batch processing
-                    let result = serde_json::json!({
-                        "request_id": request.request_id,
-                        "processed": true,
-                        "batch_processed": true,
-                        "timestamp": Utc::now()
-                    });
+                    let futures: Vec<_> = chunk_vec
+                        .into_iter()
+                        .map(|request| {
+                            async move {
+                                // Simulate optimized batch processing
+                                let result = serde_json::json!({
+                                    "request_id": request.request_id,
+                                    "processed": true,
+                                    "batch_processed": true,
+                                    "timestamp": Utc::now()
+                                });
 
-                    // Send result back
-                    let _ = request.response_sender.send(Ok(result));
+                                // Send result back
+                                let _ = request.response_sender.send(Ok(result));
+                            }
+                        })
+                        .collect();
+
+                    // Execute chunk in parallel
+                    future::join_all(futures).await;
                 }
             })
             .collect();
 
-        // Execute all requests in parallel
-        future::join_all(futures).await;
+        // Execute all chunks in parallel
+        future::join_all(chunk_futures).await;
 
         // Update processing metrics
         let mut metrics = self.processing_metrics.write().await;

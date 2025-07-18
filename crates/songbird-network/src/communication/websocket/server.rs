@@ -110,16 +110,16 @@ impl WebSocketCommunication {
     ) -> Result<()> {
         // Upgrade to WebSocket
         let websocket = accept_async(stream)
-        let connection_id = Uuid::new_v4().to_string();
+        let connection_id: Arc<str> = Arc::from(Uuid::new_v4().to_string());
         let (outgoing_tx, mut outgoing_rx) = mpsc::unbounded_channel();
         // Split websocket for concurrent read/write immediately
         let (mut ws_sink, mut ws_stream) = websocket.split();
         // Create connection object without storing the websocket
         let connection = Arc::new(WebSocketConnection {
-            id: connection_id.clone(), // TODO: Optimize - consider Arc<str>
+            id: Arc::clone(&connection_id), // Using Arc<str> for efficient string sharing
             address: ServiceAddress {
                 service_id: format!("websocket-{}", connection_id),
-                instance_id: Some(connection_id.clone()),
+                instance_id: Some(connection_id.to_string()),
                 endpoint: Some(format!("{}:{}", addr.ip(), addr.port())),
             },
             connected_at: Instant::now(),
@@ -127,7 +127,9 @@ impl WebSocketCommunication {
             message_count: std::sync::atomic::AtomicU64::new(0),
             is_healthy: std::sync::atomic::AtomicBool::new(true),
             outgoing_tx,
-        connections.insert(connection_id.clone(), Arc::clone(&connection));
+        });
+        
+        connections.insert(connection_id.to_string(), Arc::clone(&connection));
         metrics.active_connections.fetch_add(1, Ordering::Relaxed);
         info!("New WebSocket connection: {} from {}", connection_id, addr);
         // Spawn outgoing message handler

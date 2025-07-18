@@ -8,9 +8,10 @@ use tracing::{info, warn};
 use crate::config::UniversalPrimalConfig;
 use crate::errors::{PrimalError, PrimalResult};
 use crate::traits::{
-    DynamicPortInfo, PrimalCapability, PrimalContext, PrimalHealth, PrimalProvider, PrimalType,
+    DynamicPortInfo, PrimalCapability, PrimalContext, PrimalHealth, PrimalProvider,
 };
 use crate::types::{PrimalRequest, PrimalResponse};
+use songbird_universal::PrimalType;
 
 /// Universal Primal Registry
 ///

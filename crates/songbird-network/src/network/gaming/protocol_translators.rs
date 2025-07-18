@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
+use std::time::Duration;
 
 /// Universal protocol translator trait
 #[async_trait]
@@ -29,17 +30,22 @@ pub trait ProtocolTranslator: Send + Sync {
     async fn handle_game_discovery(&self, discovery_packet: &[u8]) -> Result<DiscoveryResponse>;
 }
 
-/// IPX protocol translator for DOS/Windows 95 era games
+/// IPX protocol translator for legacy gaming compatibility
 #[derive(Debug)]
 pub struct IPXTranslator {
+    #[allow(dead_code)]
     virtual_networks: HashMap<u32, IPXVirtualNetwork>,
+    #[allow(dead_code)]
     address_mapping: HashMap<String, IpxAddress>,
 }
 
 #[derive(Debug)]
 struct IPXVirtualNetwork {
+    #[allow(dead_code)]
     network_id: u32,
+    #[allow(dead_code)]
     players: HashMap<String, IpxAddress>,
+    #[allow(dead_code)]
     broadcast_enabled: bool,
 }
 
@@ -214,45 +220,57 @@ impl ProtocolTranslator for IPXTranslator {
     }
 }
 
-/// DirectPlay protocol translator for Windows 95-XP era games  
+/// DirectPlay protocol translator for Microsoft gaming compatibility
 #[derive(Debug)]
 pub struct DirectPlayTranslator {
-    /// Active DirectPlay sessions
     sessions: Arc<RwLock<HashMap<String, DirectPlayInternalSession>>>,
-    /// Connection state tracking
+    #[allow(dead_code)]
     connection_state: Arc<RwLock<ConnectionState>>,
-    /// Session creation timestamp
+    #[allow(dead_code)]
     created_at: Instant,
 }
 
-/// DirectPlay internal session information
 #[derive(Debug, Clone)]
 struct DirectPlayInternalSession {
-    session_id: String,
-    session_name: String,
+    id: String,
+    name: String,
+    #[allow(dead_code)]
     host_player: String,
-    players: HashMap<String, DirectPlayAddress>,
+    players: Vec<DirectPlayPlayer>,
     max_players: u32,
-    password_required: bool,
+    #[allow(dead_code)]
     created_at: Instant,
+    #[allow(dead_code)]
     last_activity: Instant,
 }
 
-/// Connection state for DirectPlay sessions
+#[derive(Debug, Clone)]
+struct DirectPlayPlayer {
+    #[allow(dead_code)]
+    id: String,
+    #[allow(dead_code)]
+    address: DirectPlayAddress,
+}
+
 #[derive(Debug, Clone)]
 struct ConnectionState {
+    #[allow(dead_code)]
     is_connected: bool,
+    #[allow(dead_code)]
     connection_id: Option<String>,
+    #[allow(dead_code)]
     last_heartbeat: Option<Instant>,
+    #[allow(dead_code)]
     metrics: ConnectionMetrics,
 }
 
-/// Connection metrics tracking
 #[derive(Debug, Clone)]
 struct ConnectionMetrics {
-    packets_sent: u64,
-    packets_received: u64,
-    bytes_transferred: u64,
+    bytes_sent: u64,
+    bytes_received: u64,
+    #[allow(dead_code)]
+    latency: Duration,
+    #[allow(dead_code)]
     connection_duration: std::time::Duration,
 }
 
@@ -271,10 +289,10 @@ impl DirectPlayTranslator {
                 connection_id: None,
                 last_heartbeat: None,
                 metrics: ConnectionMetrics {
-                    packets_sent: 0,
-                    packets_received: 0,
-                    bytes_transferred: 0,
-                    connection_duration: std::time::Duration::from_secs(0),
+                    bytes_sent: 0,
+                    bytes_received: 0,
+                    latency: Duration::from_millis(0),
+                    connection_duration: Duration::from_millis(0),
                 },
             })),
             created_at: Instant::now(),
@@ -290,12 +308,11 @@ impl DirectPlayTranslator {
         let session_id = uuid::Uuid::new_v4().to_string();
 
         let session = DirectPlayInternalSession {
-            session_id: session_id.clone(),
-            session_name,
+            id: session_id.clone(),
+            name: session_name,
             host_player,
-            players: HashMap::new(),
+            players: Vec::new(),
             max_players: 8,
-            password_required: false,
             created_at: Instant::now(),
             last_activity: Instant::now(),
         };
@@ -317,7 +334,10 @@ impl DirectPlayTranslator {
         let mut sessions = self.sessions.write().await;
 
         if let Some(session) = sessions.get_mut(session_id) {
-            session.players.insert(player_id.clone(), address);
+            session.players.push(DirectPlayPlayer {
+                id: player_id.clone(),
+                address,
+            });
             session.last_activity = Instant::now();
             info!(
                 "Player {} joined DirectPlay session {}",
@@ -358,12 +378,12 @@ impl DirectPlayTranslator {
             });
 
             active_sessions.push(DirectPlaySession {
-                session_name: session.session_name.clone(),
-                session_id: session.session_id.clone(),
+                session_name: session.name.clone(),
+                session_id: session.id.clone(),
                 host_address,
                 current_players: session.players.len() as u8,
                 max_players: session.max_players as u8,
-                password_required: session.password_required,
+                password_required: false,
             });
         }
 
@@ -397,7 +417,7 @@ impl DirectPlayTranslator {
         })
     }
 
-    /// Create DirectPlay packet
+    #[allow(dead_code)]
     fn create_dp_packet(&self, message_type: u32, payload: &[u8]) -> Vec<u8> {
         let mut packet = Vec::with_capacity(8 + payload.len());
         packet.extend_from_slice(&message_type.to_le_bytes());
@@ -410,12 +430,10 @@ impl DirectPlayTranslator {
     async fn update_metrics(&self, bytes_sent: u64, bytes_received: u64) {
         let mut state = self.connection_state.write().await;
         if bytes_sent > 0 {
-            state.metrics.packets_sent += 1;
-            state.metrics.bytes_transferred += bytes_sent;
+            state.metrics.bytes_sent += bytes_sent;
         }
         if bytes_received > 0 {
-            state.metrics.packets_received += 1;
-            state.metrics.bytes_transferred += bytes_received;
+            state.metrics.bytes_received += bytes_received;
         }
     }
 }

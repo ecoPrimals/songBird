@@ -4,16 +4,13 @@
 //! in real-world scenarios.
 
 use anyhow::Result;
-use songbird_federation::config::FederationMode;
 use songbird_config::SongbirdConfig;
-use songbird_federation::{FederationManager};
-use songbird_federation::config::FederationConfig;
 use songbird_network::gaming::GamingManager;
 // use songbird_core::primal::PrimalManager; // Not available
 
 #[tokio::test]
 async fn test_basic_orchestration() -> Result<()> {
-    let config = SongbirdConfig::default();
+    let _config = SongbirdConfig::default();
 
     // Test that we can create a GamingManager with the correct API
     let gaming_manager = GamingManager::new().await?;
@@ -33,7 +30,7 @@ async fn test_basic_orchestration() -> Result<()> {
 
 #[tokio::test]
 async fn test_federation_coordination() -> Result<()> {
-    let config = SongbirdConfig::default();
+    let _config = SongbirdConfig::default();
 
     // Test creating federation manager with correct API
     // NOTE: Federation manager temporarily disabled due to complex config type requirements
@@ -43,7 +40,7 @@ async fn test_federation_coordination() -> Result<()> {
     // assert!(status.is_ok()); // Should be ok for initialized MCP
 
     // Test gaming configuration access (use available fields)
-    let gaming_config = &config.network; // .gaming // DISABLED
+    let _gaming_config = &_config.network; // .gaming // DISABLED
                                          // assert!(gaming_config.starcraft_port > 0);
                                          // assert!(gaming_config.aoe2_port > 0);
                                          // assert!(gaming_config.cnc_port_range.start < gaming_config.cnc_port_range.end);
@@ -53,7 +50,7 @@ async fn test_federation_coordination() -> Result<()> {
 
 #[tokio::test]
 async fn test_primal_coordination() -> Result<()> {
-    let config = SongbirdConfig::default();
+    let _config = SongbirdConfig::default();
 
     // Test federation manager initialization
     // NOTE: Federation manager temporarily disabled due to complex config type requirements

@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for BearDog primal integration
 pub struct BearDogConfig {
     /// Primary endpoint URL for BearDog services
     pub endpoint: String,

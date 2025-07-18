@@ -931,9 +931,9 @@ impl AiBatchProcessor {
         Self {
             batch_queue: Arc::new(RwLock::new(Vec::new())),
             processing_config: BatchProcessingConfig {
-                max_batch_size: 100,
-                batch_timeout: Duration::from_secs(30),
-                max_concurrent_batches: 10,
+                max_batch_size: 300,
+                batch_timeout: Duration::from_millis(25),
+                max_concurrent_batches: 20,
                 enable_adaptive_batching: true,
                 priority_queue_enabled: true,
             },

@@ -10,6 +10,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use songbird_config::SongbirdConfig;
 use songbird_errors::{NetworkError, Result, ServiceError};
+use songbird_universal::PrimalType;
 use tokio::sync::RwLock;
 use tracing::info;
 
@@ -86,7 +87,7 @@ impl BiomeOSIntegration {
 
         let registration = BiomeOSServiceRegistration {
             service_id: format!("primal-songbird-{}", self.instance_id),
-            primal_type: "songbird".to_string(),
+            primal_type: PrimalType::Songbird,
             biome_id: biome_id.clone(),
             version: env!("CARGO_PKG_VERSION").to_string(),
             api_version: "biomeOS/v1".to_string(),
@@ -234,12 +235,12 @@ impl BiomeOSIntegration {
             }),
             primal_coordination: vec![
                 PrimalCoordinationInfo {
-                    primal_type: "toadstool".to_string(),
+                    primal_type: PrimalType::ToadStool,
                     status: "coordinated".to_string(),
                     endpoints: toadstool_coordination.endpoints,
                 },
                 PrimalCoordinationInfo {
-                    primal_type: "nestgate".to_string(),
+                    primal_type: PrimalType::NestGate,
                     status: "coordinated".to_string(),
                     endpoints: nestgate_coordination.endpoints,
                 },
@@ -717,7 +718,7 @@ impl BiomeOSClient {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeOSServiceRegistration {
     pub service_id: String,
-    pub primal_type: String,
+    pub primal_type: PrimalType,
     pub biome_id: String,
     pub version: String,
     pub api_version: String,
@@ -814,7 +815,7 @@ pub struct BiomeOSByobDeploymentResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalCoordinationInfo {
-    pub primal_type: String,
+    pub primal_type: PrimalType,
     pub status: String,
     pub endpoints: Vec<String>,
 }

@@ -1,0 +1,20 @@
+[package]
+name = "songbird-universal"
+version = "0.1.0"
+edition = "2021"
+description = "Universal types and patterns for Songbird ecosystem integration"
+authors = ["Songbird Team"]
+license = "MIT"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+tokio = { version = "1.0", features = ["full"] }
+thiserror = "1.0"
+tracing = "0.1"
+
+[dev-dependencies]
+tokio-test = "0.4" 

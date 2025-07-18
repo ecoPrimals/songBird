@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate songbird_security;
 
 // Zero Trust Network Access Tests for Songbird Security

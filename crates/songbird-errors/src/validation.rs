@@ -42,9 +42,28 @@ impl ConfigValidator {
         if start >= end {
             return Err(SongbirdError::Config {
                 field: Some("port_range".to_string()),
-                message: format!("Start port {start} must be less than end port {end}"),
+                message: format!("Start port {start} cannot be greater than end port {end}"),
                 context: Some("port_range_validation".to_string()),
                 suggestion: Some("Ensure start port is less than end port".to_string()),
+            });
+        }
+
+        // Validate that neither start nor end port is 0
+        if start == 0 {
+            return Err(SongbirdError::Config {
+                field: Some("port_range".to_string()),
+                message: "Start port cannot be 0".to_string(),
+                context: Some("port_range_validation".to_string()),
+                suggestion: Some("Use a port greater than 0".to_string()),
+            });
+        }
+
+        if end == 0 {
+            return Err(SongbirdError::Config {
+                field: Some("port_range".to_string()),
+                message: "End port cannot be 0".to_string(),
+                context: Some("port_range_validation".to_string()),
+                suggestion: Some("Use a port greater than 0".to_string()),
             });
         }
 
@@ -63,15 +82,15 @@ impl ConfigValidator {
     ///
     /// Returns an error if the URL is malformed
     pub fn validate_url(url_str: &str, name: &str) -> Result<()> {
-        let url = Url::parse(url_str).map_err(|e| SongbirdError::Config {
+        let url = Url::parse(url_str).map_err(|_| SongbirdError::Config {
             field: Some(name.to_string()),
-            message: format!("Invalid URL: {e}"),
+            message: "Invalid URL format".to_string(),
             context: Some("url_validation".to_string()),
             suggestion: Some("Provide a valid URL with proper scheme and host".to_string()),
         })?;
 
         match url.scheme() {
-            "http" | "https" => Ok(()),
+            "http" | "https" | "ws" | "wss" => Ok(()),
             scheme => Err(SongbirdError::Config {
                 field: Some(name.to_string()),
                 message: format!("Unsupported URL scheme: {scheme}"),
@@ -98,9 +117,9 @@ impl ConfigValidator {
 
         match url.scheme() {
             "ws" | "wss" => Ok(()),
-            scheme => Err(SongbirdError::Config {
+            _ => Err(SongbirdError::Config {
                 field: Some(name.to_string()),
-                message: format!("Invalid WebSocket scheme: {scheme}"),
+                message: "Expected WebSocket URL".to_string(),
                 context: Some("websocket_scheme_validation".to_string()),
                 suggestion: Some("Use ws:// or wss:// scheme for WebSocket URLs".to_string()),
             }),
@@ -124,9 +143,9 @@ impl ConfigValidator {
 
         match url.scheme() {
             "http" | "https" => Ok(()),
-            scheme => Err(SongbirdError::Config {
+            _ => Err(SongbirdError::Config {
                 field: Some(name.to_string()),
-                message: format!("Invalid HTTP scheme: {scheme}"),
+                message: "Expected HTTP/HTTPS URL".to_string(),
                 context: Some("http_scheme_validation".to_string()),
                 suggestion: Some("Use http:// or https:// scheme for HTTP URLs".to_string()),
             }),
@@ -141,9 +160,9 @@ impl ConfigValidator {
     pub fn validate_ip_address(ip_str: &str, name: &str) -> Result<()> {
         ip_str
             .parse::<std::net::IpAddr>()
-            .map_err(|e| SongbirdError::Config {
+            .map_err(|_| SongbirdError::Config {
                 field: Some(name.to_string()),
-                message: format!("Invalid IP address: {e}"),
+                message: "Invalid IP address format".to_string(),
                 context: Some("ip_address_validation".to_string()),
                 suggestion: Some("Provide a valid IPv4 or IPv6 address".to_string()),
             })?;
@@ -158,9 +177,9 @@ impl ConfigValidator {
     pub fn validate_socket_address(addr_str: &str, name: &str) -> Result<()> {
         addr_str
             .parse::<std::net::SocketAddr>()
-            .map_err(|e| SongbirdError::Config {
+            .map_err(|_| SongbirdError::Config {
                 field: Some(name.to_string()),
-                message: format!("Invalid socket address: {e}"),
+                message: "Invalid socket address format".to_string(),
                 context: Some("socket_address_validation".to_string()),
                 suggestion: Some("Provide a valid socket address in format IP:PORT".to_string()),
             })?;
@@ -185,7 +204,7 @@ impl ConfigValidator {
         if timeout_ms > max_ms {
             return Err(SongbirdError::Config {
                 field: Some(name.to_string()),
-                message: format!("Timeout {timeout_ms}ms is above maximum {max_ms}ms"),
+                message: format!("Timeout {timeout_ms}ms exceeds maximum {max_ms}ms"),
                 context: Some("timeout_validation".to_string()),
                 suggestion: Some(format!("Use a timeout between {min_ms}ms and {max_ms}ms")),
             });
@@ -220,21 +239,12 @@ impl ConfigValidator {
     ///
     /// Returns an error if the retry configuration is invalid
     pub fn validate_retry_config(max_retries: u32, retry_delay_ms: u64) -> Result<()> {
-        if max_retries == 0 {
-            return Err(SongbirdError::Config {
-                field: Some("max_retries".to_string()),
-                message: "Max retries cannot be 0".to_string(),
-                context: Some("retry_validation".to_string()),
-                suggestion: Some("Use at least 1 retry attempt".to_string()),
-            });
-        }
-
         if max_retries > 10 {
             return Err(SongbirdError::Config {
                 field: Some("max_retries".to_string()),
-                message: format!("Max retries {max_retries} is too high"),
+                message: format!("Max retries {max_retries} exceeds reasonable limit"),
                 context: Some("retry_validation".to_string()),
-                suggestion: Some("Use between 1 and 10 retry attempts".to_string()),
+                suggestion: Some("Use between 0 and 10 retry attempts".to_string()),
             });
         }
 
@@ -275,12 +285,12 @@ impl ConfigValidator {
     ///
     /// Returns an error if the memory limit is invalid
     pub fn validate_memory_limit(limit_mb: u64, name: &str) -> Result<()> {
-        if limit_mb < 128 {
+        if limit_mb < 64 {
             return Err(SongbirdError::Config {
                 field: Some(name.to_string()),
-                message: format!("Memory limit {limit_mb}MB is too low"),
+                message: "Memory limit cannot be less than 64 MB".to_string(),
                 context: Some("memory_limit_validation".to_string()),
-                suggestion: Some("Use at least 128MB".to_string()),
+                suggestion: Some("Use at least 64MB".to_string()),
             });
         }
 
@@ -300,18 +310,18 @@ impl ConfigValidator {
         if size < 1024 {
             return Err(SongbirdError::Config {
                 field: Some(name.to_string()),
-                message: format!("Buffer size {size} is too small"),
+                message: format!("Buffer size {size} below minimum"),
                 context: Some("buffer_size_validation".to_string()),
                 suggestion: Some("Use at least 1024 bytes".to_string()),
             });
         }
 
-        if size > 64 * 1024 * 1024 {
+        if size > 65536 {
             return Err(SongbirdError::Config {
                 field: Some(name.to_string()),
-                message: format!("Buffer size {size} is too large"),
+                message: format!("Buffer size {size} exceeds maximum"),
                 context: Some("buffer_size_validation".to_string()),
-                suggestion: Some("Use at most 64MB".to_string()),
+                suggestion: Some("Use at most 64KB".to_string()),
             });
         }
 
@@ -344,19 +354,14 @@ impl ConfigValidator {
         if rate <= 0.0 {
             return Err(SongbirdError::Config {
                 field: Some(name.to_string()),
-                message: format!("Rate limit {rate} must be positive"),
+                message: "Rate limit must be positive".to_string(),
                 context: Some("rate_limit_validation".to_string()),
                 suggestion: Some("Use a positive rate limit value".to_string()),
             });
         }
 
         if rate > 100_000.0 {
-            return Err(SongbirdError::Config {
-                field: Some(name.to_string()),
-                message: format!("Rate limit {rate} is too high"),
-                context: Some("rate_limit_validation".to_string()),
-                suggestion: Some("Use a rate limit below 100,000 requests per second".to_string()),
-            });
+            warn!("Rate limit {rate} is very high, ensure system can handle this load");
         }
 
         Ok(())
@@ -371,6 +376,18 @@ impl ConfigValidator {
         let path = Path::new(path_str);
 
         if !path.exists() {
+            // Check if parent directory exists
+            if let Some(parent) = path.parent() {
+                if !parent.exists() {
+                    return Err(SongbirdError::Config {
+                        field: Some(name.to_string()),
+                        message: format!("Parent directory does not exist: {}", parent.display()),
+                        context: Some("file_path_validation".to_string()),
+                        suggestion: Some("Ensure the parent directory exists".to_string()),
+                    });
+                }
+            }
+            
             return Err(SongbirdError::Config {
                 field: Some(name.to_string()),
                 message: format!("File does not exist: {path_str}"),
@@ -410,7 +427,15 @@ impl ConfigValidator {
             }
         }
 
-        if path.exists() && !path.is_dir() {
+        if !path.exists() {
+            // Try to create the directory
+            std::fs::create_dir_all(path).map_err(|e| SongbirdError::Config {
+                field: Some(name.to_string()),
+                message: format!("Could not create directory: {e}"),
+                context: Some("directory_path_validation".to_string()),
+                suggestion: Some("Check write permissions for the directory path".to_string()),
+            })?;
+        } else if !path.is_dir() {
             return Err(SongbirdError::Config {
                 field: Some(name.to_string()),
                 message: format!("Path is not a directory: {path_str}"),

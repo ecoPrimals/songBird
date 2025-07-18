@@ -12,6 +12,7 @@ members = [
     "crates/songbird-cli",
     "crates/songbird-errors",
     "crates/songbird-universal-primals",
+    "crates/songbird-universal",
     "apps/songbird-orchestrator"
 ]
 

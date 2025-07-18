@@ -1,9 +1,9 @@
+use songbird_errors::Result;
 use songbird_network::gaming::production_lan::{ProductionLanConfig, ProductionLanManager};
 use songbird_network::gaming::{
     BridgeStatus, DetectedGameSession, GameProtocolClass, GameSessionStatus, GamingManager,
     NatType, PlayerEndpoint, VirtualNetwork,
 };
-use songbird_errors::Result;
 use std::time::Duration;
 
 #[tokio::test]

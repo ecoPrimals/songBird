@@ -6,9 +6,10 @@
 
 use crate::errors::PrimalResult;
 use crate::router::PrimalHealth;
-use crate::{PrimalCapability, PrimalType};
+use crate::PrimalCapability;
 use songbird_config::config::hardcoded_elimination::PrimalConfig;
 use songbird_errors::NetworkError;
+use songbird_universal::PrimalType;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -343,13 +344,13 @@ impl PrimalDiscoveryEngine {
             .get("type")
             .and_then(|t| t.as_str())
             .map(|t| match t {
-                "security" => PrimalType::Security,
-                "storage" => PrimalType::Storage,
-                "compute" => PrimalType::Compute,
-                "ai" => PrimalType::AI,
-                _ => PrimalType::Storage,
+                "security" => PrimalType::BearDog,
+                "storage" => PrimalType::NestGate,
+                "compute" => PrimalType::ToadStool,
+                "ai" => PrimalType::Squirrel,
+                _ => PrimalType::NestGate,
             })
-            .unwrap_or(PrimalType::Storage);
+            .unwrap_or(PrimalType::NestGate);
 
         let capabilities = info
             .get("capabilities")
@@ -400,32 +401,36 @@ impl PrimalDiscoveryEngine {
         method: DiscoveryMethod,
     ) -> DiscoveredPrimal {
         let primal_type = if endpoint.contains("8443") {
-            PrimalType::Security
+            PrimalType::BearDog
         } else if endpoint.contains("storage") {
-            PrimalType::Storage
+            PrimalType::NestGate
         } else if endpoint.contains("compute") {
-            PrimalType::Compute
+            PrimalType::ToadStool
         } else if endpoint.contains("ai") {
-            PrimalType::AI
+            PrimalType::Squirrel
         } else {
-            PrimalType::Storage
+            PrimalType::NestGate
         };
 
         let capabilities = match primal_type {
-            PrimalType::Security => vec![PrimalCapability::Encryption {
+            PrimalType::BearDog => vec![PrimalCapability::Encryption {
                 algorithms: vec!["AES256".to_string()],
             }],
-            PrimalType::Storage => vec![PrimalCapability::FileSystem { supports_zfs: true }],
-            PrimalType::Compute => vec![PrimalCapability::ContainerRuntime {
+            PrimalType::NestGate => vec![PrimalCapability::FileSystem { supports_zfs: true }],
+            PrimalType::ToadStool => vec![PrimalCapability::ContainerRuntime {
                 orchestrators: vec!["kubernetes".to_string()],
             }],
-            PrimalType::AI => vec![PrimalCapability::ModelInference {
+            PrimalType::Squirrel => vec![PrimalCapability::ModelInference {
                 models: vec!["llm".to_string()],
             }],
-            PrimalType::Network => vec![PrimalCapability::ServiceDiscovery {
+            PrimalType::Songbird => vec![PrimalCapability::ServiceDiscovery {
                 protocols: vec!["dns".to_string()],
             }],
-            PrimalType::Custom(_) => vec![PrimalCapability::Custom {
+            PrimalType::BiomeOS => vec![PrimalCapability::Custom {
+                name: "orchestration".to_string(),
+                attributes: std::collections::HashMap::new(),
+            }],
+            PrimalType::Unknown(_) => vec![PrimalCapability::Custom {
                 name: "custom".to_string(),
                 attributes: std::collections::HashMap::new(),
             }],
@@ -453,40 +458,44 @@ impl PrimalDiscoveryEngine {
             (
                 "beardog-security",
                 "https://127.0.0.1:8443",
-                PrimalType::Security,
+                PrimalType::BearDog,
             ),
             (
                 "nestgate-storage",
                 "http://127.0.0.1:8080/storage",
-                PrimalType::Storage,
+                PrimalType::NestGate,
             ),
             (
                 "toadstool-compute",
                 "http://127.0.0.1:8083",
-                PrimalType::Compute,
+                PrimalType::ToadStool,
             ),
-            ("squirrel-ai", "http://127.0.0.1:8084", PrimalType::AI),
+            ("squirrel-ai", "http://127.0.0.1:8084", PrimalType::Squirrel),
         ];
 
         for (name, endpoint, primal_type) in services {
             if let Ok(true) = self.test_endpoint_connectivity(endpoint).await {
                 let capabilities = match primal_type {
-                    PrimalType::Security => vec![PrimalCapability::Encryption {
+                    PrimalType::BearDog => vec![PrimalCapability::Encryption {
                         algorithms: vec!["AES256".to_string()],
                     }],
-                    PrimalType::Storage => {
+                    PrimalType::NestGate => {
                         vec![PrimalCapability::FileSystem { supports_zfs: true }]
                     }
-                    PrimalType::Compute => vec![PrimalCapability::ContainerRuntime {
+                    PrimalType::ToadStool => vec![PrimalCapability::ContainerRuntime {
                         orchestrators: vec!["kubernetes".to_string()],
                     }],
-                    PrimalType::AI => vec![PrimalCapability::ModelInference {
+                    PrimalType::Squirrel => vec![PrimalCapability::ModelInference {
                         models: vec!["llm".to_string()],
                     }],
-                    PrimalType::Network => vec![PrimalCapability::ServiceDiscovery {
+                    PrimalType::Songbird => vec![PrimalCapability::ServiceDiscovery {
                         protocols: vec!["dns".to_string()],
                     }],
-                    PrimalType::Custom(_) => vec![PrimalCapability::Custom {
+                    PrimalType::BiomeOS => vec![PrimalCapability::Custom {
+                        name: "orchestration".to_string(),
+                        attributes: std::collections::HashMap::new(),
+                    }],
+                    PrimalType::Unknown(_) => vec![PrimalCapability::Custom {
                         name: "custom".to_string(),
                         attributes: std::collections::HashMap::new(),
                     }],
@@ -693,22 +702,22 @@ impl PrimalDiscoveryEngine {
             (
                 "beardog-security",
                 replace::beardog_endpoint(),
-                PrimalType::Security,
+                PrimalType::BearDog,
             ),
             (
                 "nestgate-storage",
                 replace::nestgate_endpoint(),
-                PrimalType::Storage,
+                PrimalType::NestGate,
             ),
             (
                 "toadstool-compute",
                 replace::format_endpoint("toadstool", None),
-                PrimalType::Compute,
+                PrimalType::ToadStool,
             ),
             (
                 "squirrel-ai",
                 replace::format_endpoint("squirrel", None),
-                PrimalType::AI,
+                PrimalType::Squirrel,
             ),
         ];
 
@@ -722,7 +731,7 @@ impl PrimalDiscoveryEngine {
                     let node = PrimalNode {
                         id: uuid::Uuid::new_v4().to_string(),
                         name: name.to_string(),
-                        endpoint: endpoint.clone(),
+                        endpoint: endpoint.to_string(),
                         primal_type: primal_type_clone.clone(),
                         capabilities: self.get_primal_capabilities(&primal_type_clone).await?,
                         health_status: PrimalHealth::Healthy,
@@ -756,20 +765,24 @@ impl PrimalDiscoveryEngine {
         primal_type: &PrimalType,
     ) -> PrimalResult<Vec<PrimalCapability>> {
         let capabilities = match primal_type {
-            PrimalType::Security => vec![PrimalCapability::Encryption {
+            PrimalType::BearDog => vec![PrimalCapability::Encryption {
                 algorithms: vec!["AES256".to_string()],
             }],
-            PrimalType::Storage => vec![PrimalCapability::FileSystem { supports_zfs: true }],
-            PrimalType::Compute => vec![PrimalCapability::ContainerRuntime {
+            PrimalType::NestGate => vec![PrimalCapability::FileSystem { supports_zfs: true }],
+            PrimalType::ToadStool => vec![PrimalCapability::ContainerRuntime {
                 orchestrators: vec!["kubernetes".to_string()],
             }],
-            PrimalType::AI => vec![PrimalCapability::ModelInference {
+            PrimalType::Squirrel => vec![PrimalCapability::ModelInference {
                 models: vec!["llm".to_string()],
             }],
-            PrimalType::Network => vec![PrimalCapability::ServiceDiscovery {
+            PrimalType::Songbird => vec![PrimalCapability::ServiceDiscovery {
                 protocols: vec!["dns".to_string()],
             }],
-            PrimalType::Custom(_) => vec![PrimalCapability::Custom {
+            PrimalType::BiomeOS => vec![PrimalCapability::Custom {
+                name: "orchestration".to_string(),
+                attributes: std::collections::HashMap::new(),
+            }],
+            PrimalType::Unknown(_) => vec![PrimalCapability::Custom {
                 name: "custom".to_string(),
                 attributes: std::collections::HashMap::new(),
             }],
@@ -790,7 +803,7 @@ impl PrimalDiscoveryEngine {
                 id: uuid::Uuid::new_v4().to_string(),
                 name: "discovered-node".to_string(),
                 endpoint: endpoint.to_string(),
-                primal_type: PrimalType::Storage, // Default type
+                primal_type: PrimalType::NestGate, // Default type
                 capabilities: vec![PrimalCapability::FileSystem {
                     supports_zfs: false,
                 }],

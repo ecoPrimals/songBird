@@ -17,6 +17,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::interval;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Production performance optimizer configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +86,8 @@ pub struct FastLoadBalancer {
     strategy: LoadBalancingStrategy,
     /// Selection cache for sub-millisecond responses
     selection_cache: Arc<RwLock<LruCache<String, String>>>,
+    /// Atomic counter for round-robin optimization
+    round_robin_counter: AtomicUsize,
 }
 
 #[derive(Debug, Clone)]
@@ -106,7 +109,7 @@ struct InstanceMetrics {
     pub _last_measured: Instant,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LoadBalancingStrategy {
     /// O(1) weighted random selection with precomputed probabilities
     FastWeightedRandom,
@@ -126,11 +129,17 @@ impl FastLoadBalancer {
             instance_metrics: Arc::new(RwLock::new(HashMap::new())),
             strategy,
             selection_cache: Arc::new(RwLock::new(LruCache::new(cache_size))),
+            round_robin_counter: AtomicUsize::new(0),
         }
     }
 
     /// O(log n) instance selection with performance optimization
     pub async fn select_instance(&self, request_key: &str) -> Option<String> {
+        // For high-throughput scenarios, skip caching to reduce lock contention
+        if self.strategy == LoadBalancingStrategy::FastWeightedRandom {
+            return self.select_weighted_random().await;
+        }
+
         // Check cache for recent selection - avoid cloning by using reference
         {
             let mut cache_guard = self.selection_cache.write().await;
@@ -148,10 +157,12 @@ impl FastLoadBalancer {
             }
         };
 
-        // Cache the selection - avoid cloning by using reference
+        // Cache the selection only for non-random strategies
         if let Some(ref instance_id) = selected {
-            let mut cache_guard = self.selection_cache.write().await;
-            cache_guard.put(request_key.to_string(), instance_id.to_string());
+            if !matches!(self.strategy, LoadBalancingStrategy::FastWeightedRandom) {
+                let mut cache_guard = self.selection_cache.write().await;
+                cache_guard.put(request_key.to_string(), instance_id.to_string());
+            }
         }
 
         selected
@@ -159,27 +170,32 @@ impl FastLoadBalancer {
 
     /// O(1) weighted random selection using precomputed distribution
     async fn select_weighted_random(&self) -> Option<String> {
-        let instances = self.healthy_instances.read().await;
-        if instances.is_empty() {
-            return None;
-        }
-
-        // Use precomputed performance index for O(1) selection
+        // Use atomic counter for round-robin style selection to reduce randomness overhead
+        let counter = self.round_robin_counter.fetch_add(1, Ordering::Relaxed);
+        
         let index = self.performance_index.read().await;
         if index.is_empty() {
             return None;
         }
 
-        let random_idx = fastrand::usize(..index.len());
-        Some(index[random_idx].clone())
+        // Use atomic counter modulo for better performance than random
+        let selected_idx = counter % index.len();
+        Some(index[selected_idx].clone())
     }
 
     /// O(log n) latency-optimized selection using BTreeMap
     async fn select_latency_optimized(&self) -> Option<String> {
+        // First check performance index for pre-sorted results
+        let index = self.performance_index.read().await;
+        if !index.is_empty() {
+            // Use first item from pre-sorted index for best latency
+            return Some(index[0].clone());
+        }
+
+        // Fallback to traditional method if index is empty
         let metrics = self.instance_metrics.read().await;
         let instances = self.healthy_instances.read().await;
 
-        // Find instance with best latency using BTreeMap for O(log n)
         instances
             .values()
             .min_by_key(|instance| {
@@ -193,6 +209,16 @@ impl FastLoadBalancer {
 
     /// O(log n) resource-aware selection with adaptive weighting
     async fn select_resource_aware(&self) -> Option<String> {
+        // First check performance index for pre-computed results
+        let index = self.performance_index.read().await;
+        if !index.is_empty() {
+            // Select from top 10% of pre-sorted instances for better distribution
+            let top_candidates = std::cmp::max(1, index.len() / 10);
+            let random_idx = fastrand::usize(..top_candidates);
+            return Some(index[random_idx].clone());
+        }
+
+        // Fallback to traditional method if index is empty
         let metrics = self.instance_metrics.read().await;
         let instances = self.healthy_instances.read().await;
 
@@ -249,30 +275,73 @@ impl FastLoadBalancer {
         let instances = self.healthy_instances.read().await;
         let metrics = self.instance_metrics.read().await;
 
-        let mut weighted_instances = Vec::new();
-
-        for instance in instances.values() {
-            let weight = if let Some(metric) = metrics.get(&instance.id) {
-                // Higher weight for better performing instances
-                let performance_factor = 1.0 / (metric.avg_response_time.as_millis() as f64 + 1.0);
-                let health_factor = instance.health_score;
-                let resource_factor = 1.0 - ((metric.cpu_usage + metric.memory_usage) / 200.0);
-
-                instance.weight * performance_factor * health_factor * resource_factor.max(0.1)
-            } else {
-                instance.weight
-            };
-
-            // Add multiple entries based on weight for random selection
-            let entries = (weight * 100.0) as usize;
-            for _ in 0..entries.max(1) {
-                weighted_instances.push(instance.id.clone());
-            }
+        if instances.is_empty() {
+            *self.performance_index.write().await = Vec::new();
+            return;
         }
 
-        // Shuffle for better distribution
-        use fastrand::shuffle;
-        shuffle(&mut weighted_instances);
+        // Build weighted instances with improved scoring
+        let mut weighted_instances = Vec::new();
+        let mut instance_scores: Vec<(String, f64)> = Vec::new();
+
+        for instance in instances.values() {
+            let performance_score = if let Some(metric) = metrics.get(&instance.id) {
+                // Improved composite scoring based on strategy
+                let latency_factor = 1.0 / (metric.avg_response_time.as_millis() as f64 + 1.0);
+                let resource_factor = 1.0 - ((metric.cpu_usage + metric.memory_usage) / 200.0);
+                let connection_factor = 1.0 / (metric.connections as f64 + 1.0);
+                let health_factor = instance.health_score;
+
+                let composite_score = match self.strategy {
+                    LoadBalancingStrategy::LatencyOptimized => {
+                        latency_factor * 0.7 + health_factor * 0.3
+                    }
+                    LoadBalancingStrategy::ResourceAware => {
+                        resource_factor * 0.4 + latency_factor * 0.3 + connection_factor * 0.2 + health_factor * 0.1
+                    }
+                    LoadBalancingStrategy::FastWeightedRandom => {
+                        latency_factor * 0.25 + resource_factor * 0.25 + connection_factor * 0.25 + health_factor * 0.25
+                    }
+                    LoadBalancingStrategy::ConsistentHashing => {
+                        health_factor // Simple health-based for consistent hashing
+                    }
+                };
+
+                instance.weight * composite_score
+            } else {
+                instance.weight * instance.health_score
+            };
+
+            instance_scores.push((instance.id.clone(), performance_score));
+        }
+
+        // Sort by performance score (descending - best first)
+        instance_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Build the final index optimized for the strategy
+        match self.strategy {
+            LoadBalancingStrategy::LatencyOptimized | LoadBalancingStrategy::ResourceAware => {
+                // For these strategies, keep sorted order
+                weighted_instances = instance_scores.into_iter().map(|(id, _)| id).collect();
+            }
+            LoadBalancingStrategy::FastWeightedRandom => {
+                // For random selection, create weighted distribution
+                for (instance_id, score) in instance_scores {
+                    let entries = (score * 50.0) as usize; // Reduced multiplier for better memory efficiency
+                    for _ in 0..entries.max(1) {
+                        weighted_instances.push(instance_id.clone());
+                    }
+                }
+                
+                // Shuffle for better distribution
+                use fastrand::shuffle;
+                shuffle(&mut weighted_instances);
+            }
+            LoadBalancingStrategy::ConsistentHashing => {
+                // For consistent hashing, maintain order by ID for deterministic results
+                weighted_instances = instance_scores.into_iter().map(|(id, _)| id).collect();
+            }
+        }
 
         *self.performance_index.write().await = weighted_instances;
     }
@@ -566,8 +635,8 @@ pub struct AsyncBatchProcessor<T, R> {
 
 impl<T, R> AsyncBatchProcessor<T, R>
 where
-    T: Send + 'static,
-    R: Send + 'static,
+    T: Send + 'static + Clone,
+    R: Send + 'static + Clone,
 {
     pub fn new<F>(batch_size: usize, batch_timeout: Duration, processor: F) -> Self
     where
@@ -588,18 +657,64 @@ where
         // Start batch processing task
         tokio::spawn({
             let pending_items = pending_items.clone();
-            let _batch_timer = batch_timer.clone();
-            let _processor_fn = processor_fn.clone();
-            let _batch_size = batch_size;
-            // Use batch_timeout directly without redundant binding
+            let batch_timer = batch_timer.clone();
+            let processor_fn = processor_fn.clone();
+            let batch_size = batch_size;
+            let batch_timeout = batch_timeout;
+            
             async move {
-                // Implement the batch processing logic here directly
+                let mut interval = tokio::time::interval(batch_timeout / 4);
                 loop {
-                    tokio::time::sleep(batch_timeout).await;
-                    // Process pending items if any
-                    let mut items = pending_items.lock().await;
-                    if !items.is_empty() {
-                        items.clear(); // Simple processing for now
+                    interval.tick().await;
+                    
+                    // Check if we should process batches
+                    let should_process = {
+                        let items = pending_items.lock().await;
+                        let timer = batch_timer.lock().await;
+                        
+                        // Process if batch is full or timeout exceeded
+                        let batch_full = items.len() >= batch_size;
+                        let timeout_exceeded = timer.map_or(false, |start| start.elapsed() >= batch_timeout);
+                        
+                        batch_full || (timeout_exceeded && !items.is_empty())
+                    };
+                    
+                    if should_process {
+                        // Process batch
+                        let items_to_process = {
+                            let mut items = pending_items.lock().await;
+                            let items_len = items.len();
+                            let batch_items = items.drain(..std::cmp::min(items_len, batch_size)).collect::<Vec<_>>();
+                            *batch_timer.lock().await = if items.is_empty() { None } else { Some(tokio::time::Instant::now()) };
+                            batch_items
+                        };
+                        
+                        if !items_to_process.is_empty() {
+                            let (items, senders): (Vec<T>, Vec<_>) = items_to_process.into_iter().unzip();
+                            
+                            // Process in parallel chunks for better performance
+                            let chunk_size = std::cmp::min(items.len(), 50);
+                            let mut all_results = Vec::new();
+                            
+                            for chunk in items.chunks(chunk_size) {
+                                match processor_fn(chunk.to_vec()) {
+                                    Ok(mut results) => {
+                                        all_results.append(&mut results);
+                                    }
+                                    Err(error) => {
+                                        for sender in senders {
+                                            let _ = sender.send(Err(error.clone()));
+                                        }
+                                        return; // Early return on error
+                                    }
+                                }
+                            }
+                            
+                            // Send results back to corresponding senders
+                            for (sender, result) in senders.into_iter().zip(all_results.into_iter()) {
+                                let _ = sender.send(Ok(result));
+                            }
+                        }
                     }
                 }
             }
@@ -862,8 +977,8 @@ impl ProductionPerformanceOptimizer {
         processor: F,
     ) -> Arc<AsyncBatchProcessor<T, R>>
     where
-        T: Send + 'static,
-        R: Send + 'static,
+        T: Send + 'static + Clone,
+        R: Send + 'static + Clone,
         F: Fn(Vec<T>) -> Result<Vec<R>> + Send + Sync + 'static,
     {
         let batch_processor = Arc::new(AsyncBatchProcessor::new(

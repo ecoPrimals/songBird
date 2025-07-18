@@ -786,7 +786,6 @@ mod tests {
         let metrics = metrics.unwrap();
         assert!(metrics.cpu_usage >= 0.0);
         assert!(metrics.memory_usage >= 0.0);
-        assert!(metrics.uptime_seconds >= 0);
     }
 
     #[tokio::test]

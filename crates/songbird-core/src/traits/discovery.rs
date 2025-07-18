@@ -2,13 +2,13 @@
 //!
 //! Supporting static configuration, Songbird native, Kubernetes, and other discovery mechanisms.
 
-use songbird_errors::Result;
-use songbird_discovery::traits::service::ServiceInfo;
 use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use songbird_config::constants::health::DEFAULT_CHECK_INTERVAL;
 use songbird_config::constants::network::{DEFAULT_CONNECTION_TIMEOUT, DEFAULT_RETRY_DELAY};
+use songbird_discovery::traits::service::ServiceInfo;
+use songbird_errors::Result;
 use std::collections::HashMap;
 use std::pin::Pin;
 

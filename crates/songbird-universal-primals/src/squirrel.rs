@@ -10,9 +10,10 @@ use tracing::{debug, error, info, warn};
 use crate::errors::PrimalError;
 use crate::traits::{
     DynamicPortInfo, PrimalCapability, PrimalContext, PrimalDependency, PrimalEndpoints,
-    PrimalHealth, PrimalProvider, PrimalType,
+    PrimalHealth, PrimalProvider,
 };
 use crate::types::{PrimalRequest, PrimalResponse, PrimalResponseType};
+use songbird_universal::PrimalType;
 
 /// Squirrel AI Primal - Advanced AI coordination and MCP (Model Context Protocol) integration
 #[derive(Debug, Clone)]
@@ -62,12 +63,12 @@ impl Default for SquirrelPrimal {
                     let mut map = HashMap::new();
                     let base_endpoint =
                         songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT;
-                    map.insert("mcp".to_string(), format!("{}/mcp", base_endpoint));
+                    map.insert("mcp".to_string(), format!("{base_endpoint}/mcp"));
                     map.insert(
                         "inference".to_string(),
-                        format!("{}/inference", base_endpoint),
+                        format!("{base_endpoint}/inference"),
                     );
-                    map.insert("agents".to_string(), format!("{}/agents", base_endpoint));
+                    map.insert("agents".to_string(), format!("{base_endpoint}/agents"));
                     map
                 },
             },
@@ -118,12 +119,12 @@ impl SquirrelPrimal {
                     let mut map = HashMap::new();
                     let base_endpoint =
                         songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT;
-                    map.insert("mcp".to_string(), format!("{}/mcp", base_endpoint));
+                    map.insert("mcp".to_string(), format!("{base_endpoint}/mcp"));
                     map.insert(
                         "inference".to_string(),
-                        format!("{}/inference", base_endpoint),
+                        format!("{base_endpoint}/inference"),
                     );
-                    map.insert("agents".to_string(), format!("{}/agents", base_endpoint));
+                    map.insert("agents".to_string(), format!("{base_endpoint}/agents"));
                     map
                 },
             },
@@ -330,7 +331,7 @@ impl PrimalProvider for SquirrelPrimal {
     }
 
     fn primal_type(&self) -> PrimalType {
-        PrimalType::AI
+        PrimalType::Squirrel
     }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {

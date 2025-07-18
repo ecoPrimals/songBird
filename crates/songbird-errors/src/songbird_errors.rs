@@ -1035,7 +1035,7 @@ impl fmt::Display for RetryError {
 // From implementations for seamless error conversion
 impl From<std::string::String> for SongbirdError {
     fn from(message: String) -> Self {
-        SongbirdError::Generic(message)
+        SongbirdError::Communication(message)
     }
 }
 
@@ -1047,7 +1047,7 @@ impl From<url::ParseError> for SongbirdError {
 
 impl From<&str> for SongbirdError {
     fn from(message: &str) -> Self {
-        SongbirdError::Generic(message.to_string())
+        SongbirdError::Communication(message.to_string())
     }
 }
 
@@ -1089,7 +1089,7 @@ impl From<serde_json::Error> for SongbirdError {
     fn from(err: serde_json::Error) -> Self {
         Self::Network(Box::new(NetworkError {
             service: None,
-            message: format!("JSON serialization error: {err}"),
+            message: format!("json_parser error: {err}"),
             details: None,
             endpoint: None,
             suggestion: Some("Check JSON format and data types".to_string()),
@@ -1275,12 +1275,14 @@ mod tests {
     #[test]
     fn test_from_str() {
         let error: SongbirdError = "Test error".into();
+        assert!(matches!(error, SongbirdError::Communication(_)));
         assert!(error.to_string().contains("Test error"));
     }
 
     #[test]
     fn test_from_string() {
         let error: SongbirdError = "Test error".to_string().into();
+        assert!(matches!(error, SongbirdError::Communication(_)));
         assert!(error.to_string().contains("Test error"));
     }
 
@@ -1312,7 +1314,7 @@ mod tests {
     fn test_from_json_error() {
         let json_error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
         let error: SongbirdError = json_error.into();
-        assert!(error.to_string().contains("JSON serialization error"));
+        assert!(error.to_string().contains("json_parser error"));
         assert!(error
             .to_string()
             .contains("Check JSON format and data types"));

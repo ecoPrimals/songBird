@@ -503,9 +503,9 @@ impl GamingAutoConfig {
         for path in starcraft_paths {
             if std::path::Path::new(path).exists() {
                 // Check which version
-                if std::path::Path::new(&format!("{}/StarCraft_BW.exe", path)).exists() {
+                if std::path::Path::new(&format!("{path}/StarCraft_BW.exe")).exists() {
                     games.push("StarCraft: Brood War".to_string());
-                } else if std::path::Path::new(&format!("{}/StarCraft.exe", path)).exists() {
+                } else if std::path::Path::new(&format!("{path}/StarCraft.exe")).exists() {
                     games.push("StarCraft: Original".to_string());
                 }
             }
@@ -534,11 +534,11 @@ impl GamingAutoConfig {
 
         for path in aoe_paths {
             if std::path::Path::new(path).exists() {
-                if std::path::Path::new(&format!("{}/AoE2DE_s.exe", path)).exists() {
+                if std::path::Path::new(&format!("{path}/AoE2DE_s.exe")).exists() {
                     games.push("Age of Empires II: Definitive Edition".to_string());
-                } else if std::path::Path::new(&format!("{}/empires2.exe", path)).exists() {
-                    games.push("Age of Empires II: The Conquerors".to_string());
-                } else if std::path::Path::new(&format!("{}/Empires.exe", path)).exists() {
+                } else if std::path::Path::new(&format!("{path}/empires2.exe")).exists() {
+                    games.push("Age of Empires II: The Age of Kings".to_string());
+                } else if std::path::Path::new(&format!("{path}/Empires.exe")).exists() {
                     games.push("Age of Empires".to_string());
                 }
             }
@@ -571,9 +571,9 @@ impl GamingAutoConfig {
 
         for path in diablo_paths {
             if std::path::Path::new(path).exists() {
-                if std::path::Path::new(&format!("{}/Diablo II.exe", path)).exists() {
+                if std::path::Path::new(&format!("{path}/Diablo II.exe")).exists() {
                     games.push("Diablo II".to_string());
-                } else if std::path::Path::new(&format!("{}/Diablo.exe", path)).exists() {
+                } else if std::path::Path::new(&format!("{path}/Diablo.exe")).exists() {
                     games.push("Diablo".to_string());
                 }
             }

@@ -3,7 +3,7 @@
 //! Provides load balancing functionality for service requests
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -94,8 +94,9 @@ pub trait LoadBalancer: Send + Sync {
     async fn get_stats(&self) -> LoadBalancerStats;
 }
 
-/// Round robin load balancer
+/// Round-robin load balancer
 pub struct RoundRobinLoadBalancer {
+    instances: Arc<RwLock<Vec<ServiceInstance>>>,
     current_index: Arc<RwLock<usize>>,
     stats: Arc<RwLock<LoadBalancerStats>>,
 }
@@ -110,8 +111,27 @@ impl RoundRobinLoadBalancer {
     /// Create a new round robin load balancer
     pub fn new() -> Self {
         Self {
+            instances: Arc::new(RwLock::new(Vec::new())),
             current_index: Arc::new(RwLock::new(0)),
             stats: Arc::new(RwLock::new(LoadBalancerStats::default())),
+        }
+    }
+
+    pub async fn add_instance(&self, instance: ServiceInstance) {
+        let mut instances = self.instances.write().await;
+        instances.push(instance);
+    }
+
+    pub async fn remove_instance(&self, instance_id: &str) {
+        let mut instances = self.instances.write().await;
+        instances.retain(|inst| inst.id != instance_id);
+    }
+
+    pub async fn update_instance_health(&self, instance_id: &str, healthy: bool, health_score: f64) {
+        let mut instances = self.instances.write().await;
+        if let Some(instance) = instances.iter_mut().find(|inst| inst.id == instance_id) {
+            instance.healthy = healthy;
+            instance.health_score = health_score;
         }
     }
 }

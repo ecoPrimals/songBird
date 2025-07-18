@@ -1173,7 +1173,7 @@ mod tests {
     fn test_beardog_config_creation() {
         let config = BearDogConfig::default();
 
-        assert_eq!(config.endpoint, "http://localhost:8000");
+        assert_eq!(config.endpoint, "https://localhost:8443");
         assert_eq!(config.api_key, "your_api_key");
         assert_eq!(config.security_level, BearDogSecurityLevel::Internal);
         assert_eq!(config.audit_level, BearDogAuditLevel::Standard);
@@ -1309,7 +1309,7 @@ mod tests {
         assert_eq!(config.max_login_attempts, 3);
 
         // BearDog config
-        assert_eq!(config.beardog.endpoint, "http://localhost:8000");
+        assert_eq!(config.beardog.endpoint, "https://localhost:8443");
         assert_eq!(
             config.beardog.security_level,
             BearDogSecurityLevel::Internal

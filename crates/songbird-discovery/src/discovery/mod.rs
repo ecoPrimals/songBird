@@ -194,7 +194,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to register service: {}", e),
+                    message: format!("Failed to register service: {e}"),
                     service: Some(service.id.clone()),
                     timeout: None,
                     suggestion: Some(
@@ -223,7 +223,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
         );
         let response = self.client.put(&url).send().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to deregister service: {}", e),
+                message: format!("Failed to deregister service: {e}"),
                 service: Some(service_id.to_string()),
                 timeout: None,
                 suggestion: Some("Check consul connection and service configuration".to_string()),
@@ -252,7 +252,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
 
         let response = self.client.get(&url).send().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to query services: {}", e),
+                message: format!("Failed to query services: {e}"),
                 service: None,
                 timeout: None,
                 suggestion: Some("Check consul connection and query parameters".to_string()),
@@ -270,7 +270,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
 
         let services_data: serde_json::Value = response.json().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to parse Consul response: {}", e),
+                message: format!("Failed to parse Consul response: {e}"),
                 service: None,
                 timeout: None,
                 suggestion: Some("Check consul response format and parsing logic".to_string()),
@@ -296,7 +296,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
                                 .parse::<SocketAddr>()
                                 .map_err(|e| {
                                     SongbirdError::Discovery(Box::new(DiscoveryError {
-                                        message: format!("Invalid service address: {}", e),
+                                        message: format!("Invalid service address: {e}"),
                                         service: Some(id.to_string()),
                                         timeout: None,
                                         suggestion: Some(
@@ -356,7 +356,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
                             .parse::<SocketAddr>()
                             .map_err(|e| {
                                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                                    message: format!("Invalid service address: {}", e),
+                                    message: format!("Invalid service address: {e}"),
                                     service: Some(id.to_string()),
                                     timeout: None,
                                     suggestion: Some(
@@ -387,7 +387,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
         let url = format!("{}/v1/health/service/{}", self.consul_url, service_id);
         let response = self.client.get(&url).send().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to check service health: {}", e),
+                message: format!("Failed to check service health: {e}"),
                 service: Some(service_id.to_string()),
                 timeout: None,
                 suggestion: Some("Check network connectivity and service availability".to_string()),
@@ -416,7 +416,7 @@ impl KubernetesServiceDiscovery {
             .build()
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to create HTTP client: {}", e),
+                    message: format!("Failed to create HTTP client: {e}"),
                     service: Some("kubernetes".to_string()),
                     timeout: None,
                     suggestion: Some("Check Kubernetes service account configuration".to_string()),
@@ -480,7 +480,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .await
                 .map_err(|e| {
                     SongbirdError::Discovery(Box::new(DiscoveryError {
-                        message: format!("Failed to read service account token: {}", e),
+                        message: format!("Failed to read service account token: {e}"),
                         service: Some("kubernetes".to_string()),
                         timeout: None,
                         suggestion: Some(
@@ -498,14 +498,14 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         let response = self
             .client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .header("Content-Type", "application/json")
             .json(&service_def)
             .send()
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to register service in Kubernetes: {}", e),
+                    message: format!("Failed to register service in Kubernetes: {e}"),
                     service: Some(service.name.clone()),
                     timeout: None,
                     suggestion: Some(
@@ -526,7 +526,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Kubernetes API error: {}", error_text),
+                message: format!("Kubernetes API error: {error_text}"),
                 service: Some(service.name),
                 timeout: None,
                 suggestion: Some("Check service definition and cluster permissions".to_string()),
@@ -547,7 +547,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .await
                 .map_err(|e| {
                     SongbirdError::Discovery(Box::new(DiscoveryError {
-                        message: format!("Failed to read service account token: {}", e),
+                        message: format!("Failed to read service account token: {e}"),
                         service: Some("kubernetes".to_string()),
                         timeout: None,
                         suggestion: Some(
@@ -565,12 +565,12 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         let response = self
             .client
             .delete(&url)
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to deregister service from Kubernetes: {}", e),
+                    message: format!("Failed to deregister service from Kubernetes: {e}"),
                     service: Some(service_id.to_string()),
                     timeout: None,
                     suggestion: Some(
@@ -591,7 +591,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Kubernetes API error: {}", error_text),
+                message: format!("Kubernetes API error: {error_text}"),
                 service: Some(service_id.to_string()),
                 timeout: None,
                 suggestion: Some("Check service definition and cluster permissions".to_string()),
@@ -606,7 +606,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .await
                 .map_err(|e| {
                     SongbirdError::Discovery(Box::new(DiscoveryError {
-                        message: format!("Failed to read service account token: {}", e),
+                        message: format!("Failed to read service account token: {e}"),
                         service: Some("kubernetes".to_string()),
                         timeout: None,
                         suggestion: Some(
@@ -636,7 +636,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to discover services: {}", e),
+                    message: format!("Failed to discover services: {e}"),
                     service: None,
                     timeout: None,
                     suggestion: Some(
@@ -658,7 +658,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
 
         let services_data: serde_json::Value = response.json().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to parse Kubernetes response: {}", e),
+                message: format!("Failed to parse Kubernetes response: {e}"),
                 service: None,
                 timeout: None,
                 suggestion: Some("Check Kubernetes response format and parsing logic".to_string()),
@@ -680,7 +680,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                                     .parse::<SocketAddr>()
                                     .map_err(|e| {
                                         SongbirdError::Discovery(Box::new(DiscoveryError {
-                                        message: format!("Invalid service address: {}", e),
+                                        message: format!("Invalid service address: {e}"),
                                         service: Some(_name.to_string()),
                                         timeout: None,
                                         suggestion: Some(
@@ -720,7 +720,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                                         let socket_addr = format!("{cluster_ip}:{port_num}")
                                             .parse::<SocketAddr>()
                                             .map_err(|e| SongbirdError::Discovery(Box::new(DiscoveryError {
-                                                message: format!("Invalid service address: {}", e),
+                                                message: format!("Invalid service address: {e}"),
                                                 service: Some(name.to_string()),
                                                 timeout: None,
                                                 suggestion: Some("Check service address format and port configuration".to_string()),
@@ -754,7 +754,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .await
                 .map_err(|e| {
                     SongbirdError::Discovery(Box::new(DiscoveryError {
-                        message: format!("Failed to read service account token: {}", e),
+                        message: format!("Failed to read service account token: {e}"),
                         service: Some("kubernetes".to_string()),
                         timeout: None,
                         suggestion: Some(
@@ -776,7 +776,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to check service health: {}", e),
+                    message: format!("Failed to check service health: {e}"),
                     service: Some(service_id.to_string()),
                     timeout: None,
                     suggestion: Some(

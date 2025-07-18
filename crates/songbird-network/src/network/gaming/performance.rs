@@ -573,7 +573,7 @@ impl PerformanceMonitor {
         let addr = if endpoint.contains(':') {
             endpoint.to_string()
         } else {
-            format!("{}:80", endpoint) // Default HTTP port
+            format!("{endpoint}:80") // Default HTTP port
         };
 
         // Measure TCP connection time as latency proxy

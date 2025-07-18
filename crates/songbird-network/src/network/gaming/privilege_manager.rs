@@ -355,7 +355,7 @@ impl PrivilegeManager {
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("Gaming Privilege Manager".to_string()),
-                    message: format!("Command execution failed: {}", e),
+                    message: format!("Command execution failed: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -380,7 +380,7 @@ impl PrivilegeManager {
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("Gaming Privilege Manager".to_string()),
-                    message: format!("Sudo execution failed: {}", e),
+                    message: format!("Sudo execution failed: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -405,7 +405,7 @@ impl PrivilegeManager {
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("Gaming Privilege Manager".to_string()),
-                    message: format!("Pkexec execution failed: {}", e),
+                    message: format!("Pkexec execution failed: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),
@@ -449,7 +449,7 @@ impl PrivilegeManager {
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
                     service: Some("Gaming Privilege Manager".to_string()),
-                    message: format!("Systemd service execution failed: {}", e),
+                    message: format!("Systemd service execution failed: {e}"),
                     details: None,
                     endpoint: None,
                     suggestion: Some("Check network connectivity and configuration".to_string()),

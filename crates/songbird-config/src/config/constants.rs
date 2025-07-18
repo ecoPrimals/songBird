@@ -105,8 +105,8 @@ pub mod performance {
     pub const DEFAULT_CACHE_SIZE: usize = 10000;
     pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(300);
 
-    pub const DEFAULT_BATCH_SIZE: usize = 100;
-    pub const DEFAULT_BATCH_TIMEOUT: Duration = Duration::from_millis(100);
+    pub const DEFAULT_BATCH_SIZE: usize = 200;
+    pub const DEFAULT_BATCH_TIMEOUT: Duration = Duration::from_millis(50);
 
     pub const DEFAULT_WARMUP_DURATION: Duration = Duration::from_secs(10);
     pub const DEFAULT_STEP_DURATION: Duration = Duration::from_millis(500);

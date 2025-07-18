@@ -2,11 +2,11 @@
 //!
 //! Universal event hooks and extensibility patterns
 
-use songbird_errors::Result;
-use songbird_discovery::traits::service::{ServiceInfo, ServiceRequest, ServiceResponse};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_discovery::traits::service::{ServiceInfo, ServiceRequest, ServiceResponse};
+use songbird_errors::Result;
 use std::collections::HashMap;
 
 /// Universal event hook trait

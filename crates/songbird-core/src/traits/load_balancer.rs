@@ -2,10 +2,10 @@
 //!
 //! Provides load balancing capabilities for service requests
 
-use songbird_errors::Result;
-use songbird_discovery::traits::service::{ServiceInfo, ServiceRequest};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use songbird_discovery::traits::service::{ServiceInfo, ServiceRequest};
+use songbird_errors::Result;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

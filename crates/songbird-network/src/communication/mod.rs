@@ -110,7 +110,7 @@ impl CommunicationLayer for HttpCommunication {
         message: ServiceMessage,
     ) -> Result<CommunicationResponse> {
         // Check circuit breaker
-        if !self.circuit_breaker.should_allow_request() {
+        if !self.circuit_breaker.should_allow_request().await {
             return Err(SongbirdError::Communication(
                 "Circuit breaker is open, request rejected".to_string(),
             ));
@@ -136,7 +136,7 @@ impl CommunicationLayer for HttpCommunication {
                 }
 
                 // Record success
-                self.circuit_breaker.record_success();
+                self.circuit_breaker.record_success().await;
 
                 Ok(CommunicationResponse {
                     id: message.id,
@@ -151,7 +151,7 @@ impl CommunicationLayer for HttpCommunication {
             }
             Err(e) => {
                 // Record failure
-                self.circuit_breaker.record_failure();
+                self.circuit_breaker.record_failure().await;
 
                 Err(SongbirdError::Communication(format!(
                     "HTTP request failed: {e}"
@@ -250,7 +250,7 @@ impl CommunicationLayer for WebSocketCommunication {
         message: ServiceMessage,
     ) -> Result<CommunicationResponse> {
         // Check circuit breaker
-        if !self.circuit_breaker.should_allow_request() {
+        if !self.circuit_breaker.should_allow_request().await {
             return Err(SongbirdError::Communication(
                 "Circuit breaker is open, request rejected".to_string(),
             ));
@@ -276,7 +276,7 @@ impl CommunicationLayer for WebSocketCommunication {
         }
 
         // Record success
-        self.circuit_breaker.record_success();
+        self.circuit_breaker.record_success().await;
 
         tracing::info!(
             "WebSocket message sent to {}: {}",

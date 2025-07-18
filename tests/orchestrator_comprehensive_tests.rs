@@ -203,7 +203,10 @@ async fn test_orchestrator_different_configs() {
             retrieved_config.network.bind_address,
             config.network.bind_address
         );
-        assert_eq!(retrieved_config.network.orchestrator_port, config.network.orchestrator_port);
+        assert_eq!(
+            retrieved_config.network.orchestrator_port,
+            config.network.orchestrator_port
+        );
     }
 }
 

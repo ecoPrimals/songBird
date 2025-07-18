@@ -10,9 +10,10 @@ use tracing::{debug, error, info, warn};
 use crate::errors::PrimalResult;
 use crate::traits::{
     DynamicPortInfo, PrimalCapability, PrimalContext, PrimalDependency, PrimalEndpoints,
-    PrimalHealth, PrimalProvider, PrimalType,
+    PrimalHealth, PrimalProvider,
 };
 use crate::types::{PrimalRequest, PrimalResponse, PrimalResponseType};
+use songbird_universal::PrimalType;
 
 /// Toadstool Compute Primal - Advanced compute orchestration and serverless execution
 #[derive(Debug, Clone)]
@@ -79,14 +80,14 @@ impl Default for ToadstoolPrimal {
                         songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT;
                     map.insert(
                         "containers".to_string(),
-                        format!("{}/containers", base_endpoint),
+                        format!("{base_endpoint}/containers"),
                     );
                     map.insert(
                         "serverless".to_string(),
-                        format!("{}/serverless", base_endpoint),
+                        format!("{base_endpoint}/serverless"),
                     );
-                    map.insert("jobs".to_string(), format!("{}/jobs", base_endpoint));
-                    map.insert("scaling".to_string(), format!("{}/scaling", base_endpoint));
+                    map.insert("jobs".to_string(), format!("{base_endpoint}/jobs"));
+                    map.insert("scaling".to_string(), format!("{base_endpoint}/scaling"));
                     map
                 },
             },
@@ -154,14 +155,14 @@ impl ToadstoolPrimal {
                         songbird_config::config::constants::network::DEFAULT_TOADSTOOL_ENDPOINT;
                     map.insert(
                         "containers".to_string(),
-                        format!("{}/containers", base_endpoint),
+                        format!("{base_endpoint}/containers"),
                     );
                     map.insert(
                         "serverless".to_string(),
-                        format!("{}/serverless", base_endpoint),
+                        format!("{base_endpoint}/serverless"),
                     );
-                    map.insert("jobs".to_string(), format!("{}/jobs", base_endpoint));
-                    map.insert("scaling".to_string(), format!("{}/scaling", base_endpoint));
+                    map.insert("jobs".to_string(), format!("{base_endpoint}/jobs"));
+                    map.insert("scaling".to_string(), format!("{base_endpoint}/scaling"));
                     map
                 },
             },
@@ -473,7 +474,7 @@ impl PrimalProvider for ToadstoolPrimal {
     }
 
     fn primal_type(&self) -> PrimalType {
-        PrimalType::Compute
+        PrimalType::ToadStool
     }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {

@@ -139,7 +139,7 @@ impl HealthMonitor for DefaultHealthMonitor {
         } else {
             Err(SongbirdError::Service(Box::new(ServiceError {
                 service: service_id.to_string(),
-                message: format!("Service {} is not healthy", service_id),
+                message: format!("Service {service_id} is not healthy"),
                 status: Some("unhealthy".to_string()),
                 suggestion: Some("Check service logs and connectivity".to_string()),
             })))

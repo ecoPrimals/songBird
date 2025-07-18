@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 // use tracing::info;
 
 /// Comprehensive robustness configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RobustnessConfig {
     /// Circuit breaker configuration
     pub circuit_breaker: CircuitBreakerConfig,
@@ -32,18 +32,6 @@ pub struct RobustnessConfig {
     pub bulkhead: BulkheadConfig,
     /// Health check configuration
     pub health_check: HealthCheckConfig,
-}
-
-impl Default for RobustnessConfig {
-    fn default() -> Self {
-        Self {
-            circuit_breaker: CircuitBreakerConfig::default(),
-            retry: RetryConfig::default(),
-            rate_limiting: RateLimitingConfig::default(),
-            bulkhead: BulkheadConfig::default(),
-            health_check: HealthCheckConfig::default(),
-        }
-    }
 }
 
 /// Circuit breaker configuration
@@ -756,7 +744,7 @@ impl RobustnessManager {
             return Err(songbird_errors::SongbirdError::CircuitBreakerOpen(
                 Box::new(CircuitBreakerError {
                     service: id.to_string(),
-                    message: format!("Circuit breaker is open for service: {}", id),
+                    message: format!("Circuit breaker is open for service: {id}"),
                     failure_count: None,
                     suggestion: Some(
                         "Wait for circuit to close automatically or check service health"
@@ -820,8 +808,8 @@ impl RobustnessManager {
         for attempt in 0..=self.config.retry.max_retries {
             if attempt > 0 {
                 // Apply jitter if enabled
-                let actual_delay = if self.config.retry.enable_jitter {
-                    let jitter = delay.as_millis() as f64 * self.config.retry.jitter_percentage;
+                let actual_delay = if self.config.retry.base_delay_ms > 0 {
+                    let jitter = delay.as_millis() as f64 * 0.1; // Using a fixed jitter percentage
                     let jitter_amount = (rand::random::<f64>() - 0.5) * jitter;
                     Duration::from_millis((delay.as_millis() as f64 + jitter_amount) as u64)
                 } else {
@@ -838,7 +826,7 @@ impl RobustnessManager {
 
                     // Calculate next delay with exponential backoff
                     delay = Duration::from_millis(std::cmp::min(
-                        (delay.as_millis() as f64 * self.config.retry.backoff_multiplier) as u64,
+                        (delay.as_millis() as f64 * self.config.retry.backoff_multiplier.powi(attempt as i32)) as u64,
                         self.config.retry.max_delay_ms,
                     ));
                 }

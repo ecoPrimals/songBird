@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::time::Duration;
+use std::sync::Arc;
 
 /// Central configuration for eliminating hardcoded values
 #[derive(Debug, Clone, Default)]
@@ -49,10 +50,10 @@ pub struct NetworkConfig {
     pub production_bind_address: IpAddr,
     pub stun_servers: Vec<String>,
     pub port_ranges: HashMap<String, (u16, u16)>,
-    pub orchestrator_endpoint: String,
-    pub gaming_endpoint: String,
-    pub federation_endpoint: String,
-    pub dashboard_endpoint: String,
+    pub orchestrator_endpoint: Arc<str>,
+    pub gaming_endpoint: Arc<str>,
+    pub federation_endpoint: Arc<str>,
+    pub dashboard_endpoint: Arc<str>,
 }
 
 #[derive(Debug, Clone)]
@@ -75,10 +76,10 @@ pub struct PerformanceConfig {
 
 #[derive(Debug, Clone)]
 pub struct PrimalConfig {
-    pub beardog_endpoint: String,
-    pub nestgate_endpoint: String,
-    pub toadstool_endpoint: String,
-    pub squirrel_endpoint: String,
+    pub beardog_endpoint: Arc<str>,
+    pub nestgate_endpoint: Arc<str>,
+    pub toadstool_endpoint: Arc<str>,
+    pub squirrel_endpoint: Arc<str>,
     pub discovery_endpoints: Vec<String>,
     pub base_port: u16,
     pub port_range: (u16, u16),
@@ -161,10 +162,10 @@ impl Default for NetworkConfig {
                 ranges.insert("primals".to_string(), (8080, 8090));
                 ranges
             },
-            orchestrator_endpoint: format!("http://{bind_ip}:{orchestrator_port}"),
-            gaming_endpoint: format!("http://{bind_ip}:{gaming_port}"),
-            federation_endpoint: format!("http://{bind_ip}:{federation_port}"),
-            dashboard_endpoint: format!("http://{bind_ip}:{dashboard_port}"),
+            orchestrator_endpoint: Arc::from(format!("http://{bind_ip}:{orchestrator_port}")),
+            gaming_endpoint: Arc::from(format!("http://{bind_ip}:{gaming_port}")),
+            federation_endpoint: Arc::from(format!("http://{bind_ip}:{federation_port}")),
+            dashboard_endpoint: Arc::from(format!("http://{bind_ip}:{dashboard_port}")),
         }
     }
 }
@@ -233,22 +234,22 @@ impl Default for PrimalConfig {
             .unwrap_or(8080);
 
         Self {
-            beardog_endpoint: env_or_default(
+            beardog_endpoint: Arc::from(env_or_default(
                 "SONGBIRD_BEARDOG_ENDPOINT",
                 &format!("https://{base_ip}:8443"),
-            ),
-            nestgate_endpoint: env_or_default(
+            )),
+            nestgate_endpoint: Arc::from(env_or_default(
                 "SONGBIRD_NESTGATE_ENDPOINT",
                 &format!("http://{base_ip}:{base_port}/storage"),
-            ),
-            toadstool_endpoint: env_or_default(
+            )),
+            toadstool_endpoint: Arc::from(env_or_default(
                 "SONGBIRD_TOADSTOOL_ENDPOINT",
                 &format!("http://{base_ip}:8082"),
-            ),
-            squirrel_endpoint: env_or_default(
+            )),
+            squirrel_endpoint: Arc::from(env_or_default(
                 "SONGBIRD_SQUIRREL_ENDPOINT",
                 &format!("http://{base_ip}:8083"),
-            ),
+            )),
             discovery_endpoints: vec![
                 env_or_default(
                     "SONGBIRD_DISCOVERY_ENDPOINT_1",
@@ -317,6 +318,7 @@ pub fn get_config() -> &'static HardcodingEliminationConfig {
 /// Convenience functions for replacing hardcoded values
 pub mod replace {
     use super::{get_config, Duration, IpAddr};
+    use std::sync::Arc;
 
     /// Replace hardcoded "127.0.0.1"
     #[must_use]
@@ -326,26 +328,26 @@ pub mod replace {
 
     /// Replace hardcoded "localhost:8080"
     #[must_use]
-    pub fn orchestrator_endpoint() -> String {
-        get_config().network.orchestrator_endpoint.clone()
+    pub fn orchestrator_endpoint() -> Arc<str> {
+        Arc::clone(&get_config().network.orchestrator_endpoint)
     }
 
     /// Replace hardcoded "localhost:8081"
     #[must_use]
-    pub fn gaming_endpoint() -> String {
-        get_config().network.gaming_endpoint.clone()
+    pub fn gaming_endpoint() -> Arc<str> {
+        Arc::clone(&get_config().network.gaming_endpoint)
     }
 
     /// Replace hardcoded "localhost:8443"
     #[must_use]
-    pub fn beardog_endpoint() -> String {
-        get_config().primals.beardog_endpoint.clone()
+    pub fn beardog_endpoint() -> Arc<str> {
+        Arc::clone(&get_config().primals.beardog_endpoint)
     }
 
     /// Replace hardcoded "localhost:8080/storage"
     #[must_use]
-    pub fn nestgate_endpoint() -> String {
-        get_config().primals.nestgate_endpoint.clone()
+    pub fn nestgate_endpoint() -> Arc<str> {
+        Arc::clone(&get_config().primals.nestgate_endpoint)
     }
 
     /// Replace hardcoded `Duration::from_secs(30)`
@@ -414,7 +416,7 @@ pub mod replace {
 
     /// Format endpoint with configurable IP and port
     #[must_use]
-    pub fn format_endpoint(service: &str, port_override: Option<u16>) -> String {
+    pub fn format_endpoint(service: &str, port_override: Option<u16>) -> Arc<str> {
         let config = get_config();
         let ip = if std::env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default() == "production" {
             config.network.production_bind_address
@@ -431,7 +433,7 @@ pub mod replace {
         });
 
         let protocol = if port == 8443 { "https" } else { "http" };
-        format!("{protocol}://{ip}:{port}")
+        Arc::from(format!("{protocol}://{ip}:{port}"))
     }
 
     /// Format service endpoint with path

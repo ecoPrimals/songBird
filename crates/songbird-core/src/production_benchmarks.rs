@@ -8,15 +8,11 @@
 //! - Real-world scenario simulation
 //! - Production readiness assessment
 
-use chrono::Utc;
+use chrono;
 use serde::{Deserialize, Serialize};
-use songbird_config::constants::{
-    benchmarks::{
-        DEFAULT_BENCHMARK_MICRO_INTERVAL, DEFAULT_BENCHMARK_MONITORING_INTERVAL,
-        DEFAULT_SHORT_TEST_DURATION, DEFAULT_SHORT_WARMUP_DURATION, DEFAULT_TEST_DURATION,
-        DEFAULT_WARMUP_DURATION,
-    },
-    DEFAULT_CACHE_TTL, DEFAULT_METRICS_INTERVAL,
+use songbird_config::config::constants::benchmarks::{
+    DEFAULT_BENCHMARK_DURATION,
+    DEFAULT_BENCHMARK_MONITORING_INTERVAL,
 };
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -58,8 +54,8 @@ impl Default for BenchmarkConfig {
             cache_test_data_size: 10000,
             object_pool_iterations: 50000,
             batch_test_size: 10000,
-            warmup_duration: DEFAULT_WARMUP_DURATION,
-            test_duration: DEFAULT_TEST_DURATION,
+            warmup_duration: DEFAULT_BENCHMARK_DURATION,
+            test_duration: DEFAULT_BENCHMARK_DURATION,
         }
     }
 }
@@ -331,8 +327,8 @@ impl ProductionBenchmarkRunner {
         let cache_config = CacheConfig {
             max_size: self.config.cache_test_data_size,
             max_memory_mb: 64,
-            ttl: DEFAULT_CACHE_TTL,
-            frequency_window: DEFAULT_METRICS_INTERVAL,
+            ttl: DEFAULT_BENCHMARK_DURATION,
+            frequency_window: DEFAULT_BENCHMARK_MONITORING_INTERVAL,
             adaptive_threshold: 0.8,
         };
 
@@ -473,8 +469,8 @@ impl ProductionBenchmarkRunner {
             .performance_optimizer
             .create_batch_processor(
                 "benchmark_processor".to_string(),
-                50,
-                DEFAULT_BENCHMARK_MICRO_INTERVAL,
+                200,
+                Duration::from_millis(25),
                 |items: Vec<i32>| -> Result<Vec<String>> {
                     // Simulate processing work (non-blocking)
                     // Changed from std::thread::sleep to avoid blocking
@@ -759,8 +755,8 @@ pub async fn quick_production_check() -> Result<bool> {
         cache_test_data_size: 1000,
         object_pool_iterations: 5000,
         batch_test_size: 1000,
-        warmup_duration: DEFAULT_SHORT_WARMUP_DURATION,
-        test_duration: DEFAULT_SHORT_TEST_DURATION,
+        warmup_duration: DEFAULT_BENCHMARK_DURATION,
+        test_duration: DEFAULT_BENCHMARK_DURATION,
     };
 
     let mut runner = ProductionBenchmarkRunner::new(config);
@@ -789,7 +785,7 @@ mod tests {
             cache_test_data_size: 10,                          // Minimal cache
             object_pool_iterations: 10,                        // Minimal iterations
             batch_test_size: 5,                                // Small batch
-            warmup_duration: DEFAULT_BENCHMARK_MICRO_INTERVAL, // Very short warmup
+            warmup_duration: DEFAULT_BENCHMARK_DURATION, // Very short warmup
             test_duration: Duration::from_millis(50),          // Very short test - test specific
         };
 

@@ -130,7 +130,7 @@ impl AutoScalingEngine {
         let decisions = self
             .scaling_decisions
             .entry(service_id)
-            .or_insert_with(Vec::new);
+            .or_default();
         decisions.push(decision);
 
         // Keep only last 50 decisions
