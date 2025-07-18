@@ -620,9 +620,7 @@ impl DiscoveryManager {
             let port =
                 std::env::var("KUBERNETES_SERVICE_PORT").unwrap_or_else(|_| "443".to_string());
 
-            let url = format!(
-                "https://{api_server}:{port}/api/v1/namespaces/default/services"
-            );
+            let url = format!("https://{api_server}:{port}/api/v1/namespaces/default/services");
 
             if let Ok(response) = client
                 .get(&url)
@@ -645,8 +643,7 @@ impl DiscoveryManager {
                                                 .and_then(|m| m.get("name"))
                                                 .and_then(|n| n.as_str())
                                             {
-                                                let endpoint =
-                                                    format!("http://{name}:{port_num}");
+                                                let endpoint = format!("http://{name}:{port_num}");
                                                 endpoints.push(endpoint);
                                             }
                                         }
@@ -699,9 +696,9 @@ impl DiscoveryManager {
                                                 if let Some(service_name) =
                                                     spec.get("Name").and_then(|n| n.as_str())
                                                 {
-                                                                                    let endpoint = format!(
-                                    "http://{service_name}:{target_port}"
-                                );
+                                                    let endpoint = format!(
+                                                        "http://{service_name}:{target_port}"
+                                                    );
                                                     endpoints.push(endpoint);
                                                 }
                                             }

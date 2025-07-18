@@ -198,9 +198,7 @@ async fn display_table_status(status: &SystemStatus, detailed: bool) -> CliResul
             format_health_status(&service.status),
             format_health_status(&service.health),
             service.port.map_or("N/A".to_string(), |p| p.to_string()),
-            service
-                .uptime
-                .map_or("N/A".to_string(), format_duration),
+            service.uptime.map_or("N/A".to_string(), format_duration),
         ]);
     }
 
