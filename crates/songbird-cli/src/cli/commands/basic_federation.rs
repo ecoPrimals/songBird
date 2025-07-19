@@ -36,6 +36,11 @@ pub async fn handle_basic_federation_command(command: BasicFederationCommands) -
     }
 }
 
+/// Handle federation command - wrapper for compatibility
+pub async fn handle_federation_command(command: BasicFederationCommands) -> Result<()> {
+    handle_basic_federation_command(command).await
+}
+
 async fn connect_friend(address: &str, name: &str, trust: &str) -> Result<()> {
     println!("{}", "🤝 SongBird Friend Federation".bright_cyan().bold());
     println!("{}", "=============================".bright_cyan());

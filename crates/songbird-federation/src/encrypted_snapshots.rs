@@ -520,7 +520,7 @@ impl EncryptedSnapshotManager for DefaultEncryptedSnapshotManager {
                 resource: "snapshot".to_string(),
                 message: format!("Snapshot {} not found", snapshot_id),
                 searched_paths: None,
-                suggestion: None,
+                
             })))
         }
     }
@@ -543,7 +543,7 @@ impl EncryptedSnapshotManager for DefaultEncryptedSnapshotManager {
                 resource: "snapshot".to_string(),
                 message: format!("Snapshot {} not found", snapshot_id),
                 searched_paths: None,
-                suggestion: None,
+                
             })))
         }
     }

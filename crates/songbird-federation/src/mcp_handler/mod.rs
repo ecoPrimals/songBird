@@ -333,7 +333,7 @@ impl McpFederation {
         self.config = new_config.clone();
 
         // Update configuration in all managers
-        self.discovery.update_config(new_config.clone()).await?;
+        self.discovery.set_config(new_config.clone());
         self.heartbeat.update_config(new_config.clone()).await?;
 
         {
@@ -355,8 +355,11 @@ impl McpFederation {
         self.discovery.auto_detect().await
     }
 
-    /// Validate discovered endpoints
-    pub async fn validate_endpoints(&self, endpoints: &[String]) -> Vec<String> {
+    /// Validate a list of endpoints and ensure they support federation
+    pub async fn validate_endpoints(
+        &self,
+        endpoints: Vec<String>,
+    ) -> Result<Vec<String>, SongbirdError> {
         self.discovery.validate_endpoints(endpoints).await
     }
 

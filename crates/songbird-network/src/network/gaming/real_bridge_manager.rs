@@ -1,8 +1,10 @@
-//! Real Bridge Manager for Internet Gaming Sessions
+//! Real Universal Gaming Bridge Manager
 //!
-//! This module coordinates all real bridge components to enable actual
-//! internet gaming sessions with real socket-based networking.
+//! Advanced gaming bridge manager that creates real virtual networks
+//! for legacy games, supporting complex multi-game scenarios and
+//! tournament-style setups.
 
+use super::nat_traversal::types::{NatTraversalConfig, NatType, StunServerConfig};
 use super::{
     nat_traversal::NatTraversalManager,
     production_lan_manager::DetectedProtocol,
@@ -36,15 +38,6 @@ pub struct RealBridgeConfig {
     pub session_management: SessionManagementConfig,
     /// Performance tuning
     pub performance: PerformanceConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NatTraversalConfig {
-    pub enabled: bool,
-    pub stun_servers: Vec<String>,
-    pub hole_punch_attempts: u32,
-    pub hole_punch_interval_ms: u64,
-    pub connection_timeout_seconds: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,15 +78,32 @@ impl Default for RealBridgeConfig {
     fn default() -> Self {
         Self {
             nat_traversal: NatTraversalConfig {
-                enabled: true,
                 stun_servers: vec![
-                    "stun.l.google.com:19302".to_string(),
-                    "stun1.l.google.com:19302".to_string(),
-                    "stun.stunprotocol.org:3478".to_string(),
+                    StunServerConfig {
+                        address: "stun.l.google.com".to_string(),
+                        port: 19302,
+                        timeout_ms: 5000,
+                        retries: 3,
+                    },
+                    StunServerConfig {
+                        address: "stun1.l.google.com".to_string(),
+                        port: 19302,
+                        timeout_ms: 5000,
+                        retries: 3,
+                    },
+                    StunServerConfig {
+                        address: "stun.stunprotocol.org".to_string(),
+                        port: 3478,
+                        timeout_ms: 5000,
+                        retries: 3,
+                    },
                 ],
+                turn_servers: vec![],
                 hole_punch_attempts: 10,
-                hole_punch_interval_ms: 100,
-                connection_timeout_seconds: 30,
+                hole_punch_timeout_ms: 100,
+                discovery_timeout_ms: 30000,
+                enable_upnp: true,
+                enable_nat_pmp: true,
             },
             socket_config: SocketConfig {
                 base_port_range: (7000, 8000),
@@ -282,8 +292,8 @@ impl RealBridgeManager {
         protocol_detector.initialize().await?;
 
         // Initialize NAT traversal
-        let mut nat_manager = NatTraversalManager::new();
-        nat_manager.initialize(None).await?;
+        let mut nat_manager = NatTraversalManager::new(NatTraversalConfig::default());
+        nat_manager.initialize("0.0.0.0:0".parse().unwrap()).await?;
 
         // Initialize socket pool
         let socket_pool = SocketPool::new(config.socket_config.base_port_range);
@@ -336,10 +346,8 @@ impl RealBridgeManager {
 
         if detected_protocols.is_empty() {
             return Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: game_name.clone(),
+                protocol: Some(game_name.clone()),
                 message: "No gaming protocol detected on specified port".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
             })));
         }
 
@@ -381,13 +389,10 @@ impl RealBridgeManager {
                 .parse()
                 .map_err(|_| {
                     SongbirdError::Network(Box::new(NetworkError {
-                        service: Some("Real Bridge Manager".to_string()),
                         message: "Failed to parse local IP address".to_string(),
-                        details: None,
                         endpoint: None,
-                        suggestion: Some(
-                            "Check network connectivity and configuration".to_string(),
-                        ),
+                        port: None,
+                        protocol: None,
                     }))
                 })?,
                 external_address: nat_info.external_address,
@@ -434,11 +439,10 @@ impl RealBridgeManager {
         let mut sessions = self.active_sessions.write().await;
         let session = sessions.get_mut(&session_code).ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
-                service: Some("Real Bridge Manager".to_string()),
                 message: format!("Session not found: {session_code}"),
-                details: None,
                 endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+                port: None,
+                protocol: None,
             }))
         })?;
 
@@ -506,10 +510,8 @@ impl RealBridgeManager {
             .get(&session.protocol_class)
             .ok_or_else(|| {
                 SongbirdError::Protocol(Box::new(ProtocolError {
-                    protocol: session.protocol_class.to_string(),
+                    protocol: Some(session.protocol_class.to_string()),
                     message: "No translator available for protocol".to_string(),
-                    version: None,
-                    suggestion: Some("Check protocol compatibility and version".to_string()),
                 }))
             })?;
 
@@ -782,11 +784,10 @@ impl SocketPool {
                 Ok(self.next_port - 1)
             }
             Err(_) => Err(SongbirdError::Network(Box::new(NetworkError {
-                service: Some("Real Bridge Manager".to_string()),
                 message: "Failed to bind to UDP port".to_string(),
-                details: None,
                 endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+                port: None,
+                protocol: None,
             }))),
         }
     }
@@ -834,11 +835,10 @@ impl SocketPool {
         }
 
         Err(SongbirdError::Network(Box::new(NetworkError {
-            service: Some("Real Bridge Manager".to_string()),
             message: "No available TCP ports".to_string(),
-            details: None,
             endpoint: None,
-            suggestion: Some("Check network connectivity and configuration".to_string()),
+            port: None,
+            protocol: None,
         })))
     }
 

@@ -34,11 +34,7 @@ impl Default for ZeroTrustConfig {
         Self {
             enforce_authentication: true,
             enforce_authorization: true,
-            exempt_paths: vec![
-                "/health".to_string(),
-                "/metrics".to_string(),
-                "/ready".to_string(),
-            ],
+            exempt_paths: vec![],
             max_auth_attempts: 5,
             auth_attempt_window: 300, // 5 minutes
             audit_all_requests: true,
@@ -433,7 +429,7 @@ impl ZeroTrustMiddleware {
                 message: "Invalid authorization header".to_string(),
                 context: Some("bearer_token".to_string()),
                 severity: Some("medium".to_string()),
-                suggestion: Some("Ensure authorization header contains valid UTF-8".to_string()),
+                suggestion: Some("Check security configuration".to_string()),
             })?;
 
             if auth_str.starts_with("Bearer ") {
@@ -444,7 +440,7 @@ impl ZeroTrustMiddleware {
                             message: "Malformed Bearer token".to_string(),
                             context: Some("authentication".to_string()),
                             severity: Some("medium".to_string()),
-                            suggestion: Some("Provide a valid Bearer token format".to_string()),
+                            suggestion: Some("Check security configuration".to_string()),
                         })?;
                 return Ok(Credentials::Token(token.to_string()));
             }
@@ -457,7 +453,7 @@ impl ZeroTrustMiddleware {
                             message: "Malformed Basic auth".to_string(),
                             context: Some("authentication".to_string()),
                             severity: Some("medium".to_string()),
-                            suggestion: Some("Provide a valid Basic auth format".to_string()),
+                            suggestion: Some("Check security configuration".to_string()),
                         })?;
                 // Simplified basic auth parsing
                 return Ok(Credentials::Token(encoded.to_string()));
@@ -467,7 +463,7 @@ impl ZeroTrustMiddleware {
         Err(SongbirdError::Security {
             message: "No valid credentials found".to_string(),
             context: Some("authentication".to_string()),
-            severity: Some("high".to_string()),
+            severity: Some("medium".to_string()),
             suggestion: Some(
                 "Provide valid authorization header with Bearer or Basic auth".to_string(),
             ),

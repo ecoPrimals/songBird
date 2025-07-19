@@ -1,3 +1,4 @@
+use crate::network::gaming::nat_traversal::types::NatType;
 /// Production LAN Gaming Session Types
 ///
 /// This module defines all data structures related to gaming sessions,

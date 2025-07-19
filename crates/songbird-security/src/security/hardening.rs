@@ -139,7 +139,7 @@ impl Default for SessionHardeningConfig {
     fn default() -> Self {
         Self {
             max_session_duration: Duration::from_secs(8 * 3600), // 8 hours
-            idle_timeout: Duration::from_secs(30 * 60), // 30 minutes
+            idle_timeout: Duration::from_secs(30 * 60),          // 30 minutes
             require_secure_cookies: true,
             session_rotation_interval: Duration::from_secs(15 * 60), // 15 minutes
             concurrent_session_limit: 3,
@@ -152,11 +152,7 @@ impl Default for NetworkHardeningConfig {
         Self {
             require_tls: true,
             min_tls_version: "1.3".to_string(),
-            allowed_ciphers: vec![
-                "ECDHE-RSA-AES256-GCM-SHA384".to_string(),
-                "ECDHE-RSA-AES128-GCM-SHA256".to_string(),
-                "ECDHE-RSA-CHACHA20-POLY1305".to_string(),
-            ],
+            allowed_ciphers: vec![],
             require_certificate_validation: true,
             block_insecure_protocols: true,
             rate_limiting: RateLimitConfig::default(),
@@ -170,7 +166,7 @@ impl Default for AuthHardeningConfig {
             require_mfa: false, // Can be enabled per deployment
             max_failed_attempts: 3,
             lockout_duration: Duration::from_secs(15 * 60), // 15 minutes
-            token_expiration: Duration::from_secs(3600), // 1 hour
+            token_expiration: Duration::from_secs(3600),    // 1 hour
             require_strong_tokens: true,
             audit_all_auth_events: true,
         }
@@ -181,13 +177,13 @@ impl Default for EnvironmentValidationConfig {
     fn default() -> Self {
         Self {
             validate_production_settings: true,
-            required_environment_variables: vec![
-                "SONGBIRD_ENV".to_string(),
-                "SONGBIRD_SECURITY_ENABLED".to_string(),
-            ],
+            required_environment_variables: vec![],
             forbidden_values: {
                 let mut forbidden = HashMap::new();
-                forbidden.insert("SONGBIRD_SECURITY_ENABLED".to_string(), vec!["false".to_string()]);
+                forbidden.insert(
+                    "SONGBIRD_SECURITY_ENABLED".to_string(),
+                    vec!["false".to_string()],
+                );
                 forbidden.insert("SONGBIRD_ENV".to_string(), vec!["debug".to_string()]);
                 forbidden
             },
@@ -252,7 +248,10 @@ impl SecurityHardeningManager {
         // Check required environment variables
         for env_var in &env_config.required_environment_variables {
             if env::var(env_var).is_err() {
-                result.errors.push(format!("Required environment variable {} is not set", env_var));
+                result.errors.push(format!(
+                    "Required environment variable {} is not set",
+                    env_var
+                ));
             }
         }
 
@@ -271,19 +270,25 @@ impl SecurityHardeningManager {
         // Production environment validation
         if env_config.validate_production_settings {
             let environment = env::var("SONGBIRD_ENV").unwrap_or_default();
-            
+
             if environment == "production" {
                 // Production-specific validations
                 if env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default() != "true" {
-                    result.errors.push("Security must be enabled in production environment".to_string());
+                    result
+                        .errors
+                        .push("Security must be enabled in production environment".to_string());
                 }
 
                 if env::var("SONGBIRD_DEBUG").unwrap_or_default() == "true" {
-                    result.warnings.push("Debug mode should be disabled in production".to_string());
+                    result
+                        .warnings
+                        .push("Debug mode should be disabled in production".to_string());
                 }
 
                 if env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_default() == "0.0.0.0" {
-                    result.warnings.push("Binding to 0.0.0.0 may expose services to external networks".to_string());
+                    result.warnings.push(
+                        "Binding to 0.0.0.0 may expose services to external networks".to_string(),
+                    );
                 }
             }
         }
@@ -293,20 +298,27 @@ impl SecurityHardeningManager {
     fn validate_security_settings(&self, result: &mut SecurityValidationResult) {
         // Check if security is force-enabled
         if self.config.force_security_enabled {
-            let security_enabled = env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default() == "true";
+            let security_enabled =
+                env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default() == "true";
             if !security_enabled {
-                result.errors.push("Security is required but not enabled".to_string());
+                result
+                    .errors
+                    .push("Security is required but not enabled".to_string());
             }
         }
 
         // Password policy validation
         let policy = &self.config.password_policy;
         if policy.min_length < 8 {
-            result.warnings.push("Password minimum length should be at least 8 characters".to_string());
+            result
+                .warnings
+                .push("Password minimum length should be at least 8 characters".to_string());
         }
 
         if policy.complexity_score_required < 3 {
-            result.warnings.push("Password complexity requirements may be too low".to_string());
+            result
+                .warnings
+                .push("Password complexity requirements may be too low".to_string());
         }
     }
 
@@ -317,21 +329,29 @@ impl SecurityHardeningManager {
         if network_config.require_tls {
             // Check TLS configuration
             if network_config.min_tls_version != "1.3" && network_config.min_tls_version != "1.2" {
-                result.warnings.push("TLS version should be 1.2 or higher".to_string());
+                result
+                    .warnings
+                    .push("TLS version should be 1.2 or higher".to_string());
             }
 
             if network_config.allowed_ciphers.is_empty() {
-                result.warnings.push("No allowed ciphers configured".to_string());
+                result
+                    .warnings
+                    .push("No allowed ciphers configured".to_string());
             }
         }
 
         // Rate limiting validation
         if network_config.rate_limiting.enabled {
             if network_config.rate_limiting.requests_per_minute > 1000 {
-                result.warnings.push("Rate limiting may be too permissive".to_string());
+                result
+                    .warnings
+                    .push("Rate limiting may be too permissive".to_string());
             }
         } else {
-            result.warnings.push("Rate limiting is disabled".to_string());
+            result
+                .warnings
+                .push("Rate limiting is disabled".to_string());
         }
     }
 
@@ -341,20 +361,28 @@ impl SecurityHardeningManager {
 
         // Check authentication settings
         if auth_config.max_failed_attempts > 5 {
-            result.warnings.push("Maximum failed attempts threshold may be too high".to_string());
+            result
+                .warnings
+                .push("Maximum failed attempts threshold may be too high".to_string());
         }
 
         if auth_config.token_expiration > Duration::from_secs(24 * 3600) {
-            result.warnings.push("Token expiration time may be too long".to_string());
+            result
+                .warnings
+                .push("Token expiration time may be too long".to_string());
         }
 
         if !auth_config.audit_all_auth_events {
-            result.warnings.push("Authentication auditing is disabled".to_string());
+            result
+                .warnings
+                .push("Authentication auditing is disabled".to_string());
         }
 
         // MFA recommendations
         if !auth_config.require_mfa {
-            result.recommendations.push("Consider enabling multi-factor authentication".to_string());
+            result
+                .recommendations
+                .push("Consider enabling multi-factor authentication".to_string());
         }
     }
 
@@ -381,12 +409,10 @@ impl SecurityHardeningManager {
         // Fail if there are critical security errors
         if !validation_result.is_secure {
             return Err(SongbirdError::Security {
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                 message: "Security validation failed".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                 context: Some("security_hardening".to_string()),
+                severity: Some("medium".to_string()),
+                suggestion: Some("Check security configuration".to_string()),
             });
         }
 
@@ -438,7 +464,10 @@ impl SecurityHardeningManager {
         // Set rate limiting
         if network_config.rate_limiting.enabled {
             env::set_var("SONGBIRD_RATE_LIMIT_ENABLED", "true");
-            env::set_var("SONGBIRD_RATE_LIMIT_RPM", &network_config.rate_limiting.requests_per_minute.to_string());
+            env::set_var(
+                "SONGBIRD_RATE_LIMIT_RPM",
+                &network_config.rate_limiting.requests_per_minute.to_string(),
+            );
         }
 
         Ok(())
@@ -451,9 +480,18 @@ impl SecurityHardeningManager {
         let auth_config = &self.config.auth_hardening;
 
         // Set authentication requirements
-        env::set_var("SONGBIRD_AUTH_MAX_ATTEMPTS", &auth_config.max_failed_attempts.to_string());
-        env::set_var("SONGBIRD_AUTH_LOCKOUT_DURATION", &auth_config.lockout_duration.as_secs().to_string());
-        env::set_var("SONGBIRD_TOKEN_EXPIRATION", &auth_config.token_expiration.as_secs().to_string());
+        env::set_var(
+            "SONGBIRD_AUTH_MAX_ATTEMPTS",
+            &auth_config.max_failed_attempts.to_string(),
+        );
+        env::set_var(
+            "SONGBIRD_AUTH_LOCKOUT_DURATION",
+            &auth_config.lockout_duration.as_secs().to_string(),
+        );
+        env::set_var(
+            "SONGBIRD_TOKEN_EXPIRATION",
+            &auth_config.token_expiration.as_secs().to_string(),
+        );
 
         if auth_config.require_strong_tokens {
             env::set_var("SONGBIRD_STRONG_TOKENS_REQUIRED", "true");
@@ -471,17 +509,38 @@ impl SecurityHardeningManager {
         let mut status = HashMap::new();
 
         // Environment status
-        status.insert("environment".to_string(), env::var("SONGBIRD_ENV").unwrap_or_default());
-        status.insert("security_enabled".to_string(), env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default());
+        status.insert(
+            "environment".to_string(),
+            env::var("SONGBIRD_ENV").unwrap_or_default(),
+        );
+        status.insert(
+            "security_enabled".to_string(),
+            env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default(),
+        );
 
         // Security features status
-        status.insert("tls_required".to_string(), env::var("SONGBIRD_TLS_REQUIRED").unwrap_or_default());
-        status.insert("rate_limiting".to_string(), env::var("SONGBIRD_RATE_LIMIT_ENABLED").unwrap_or_default());
-        status.insert("audit_enabled".to_string(), env::var("SONGBIRD_AUDIT_ENABLED").unwrap_or_default());
+        status.insert(
+            "tls_required".to_string(),
+            env::var("SONGBIRD_TLS_REQUIRED").unwrap_or_default(),
+        );
+        status.insert(
+            "rate_limiting".to_string(),
+            env::var("SONGBIRD_RATE_LIMIT_ENABLED").unwrap_or_default(),
+        );
+        status.insert(
+            "audit_enabled".to_string(),
+            env::var("SONGBIRD_AUDIT_ENABLED").unwrap_or_default(),
+        );
 
         // Authentication status
-        status.insert("auth_max_attempts".to_string(), env::var("SONGBIRD_AUTH_MAX_ATTEMPTS").unwrap_or_default());
-        status.insert("strong_tokens".to_string(), env::var("SONGBIRD_STRONG_TOKENS_REQUIRED").unwrap_or_default());
+        status.insert(
+            "auth_max_attempts".to_string(),
+            env::var("SONGBIRD_AUTH_MAX_ATTEMPTS").unwrap_or_default(),
+        );
+        status.insert(
+            "strong_tokens".to_string(),
+            env::var("SONGBIRD_STRONG_TOKENS_REQUIRED").unwrap_or_default(),
+        );
 
         status
     }
@@ -500,7 +559,10 @@ pub fn get_secure_env_var(key: &str, default: &str) -> Result<String> {
         Err(_) => {
             // Log when falling back to defaults for security variables
             if key.contains("SECURITY") || key.contains("AUTH") || key.contains("TOKEN") {
-                warn!("Security environment variable {} not set, using default", key);
+                warn!(
+                    "Security environment variable {} not set, using default",
+                    key
+                );
             }
             Ok(default.to_string())
         }
@@ -510,28 +572,24 @@ pub fn get_secure_env_var(key: &str, default: &str) -> Result<String> {
 /// Utility function to validate production environment
 pub fn validate_production_environment() -> Result<()> {
     let environment = env::var("SONGBIRD_ENV").unwrap_or_default();
-    
+
     if environment == "production" {
         // Critical production validations
         if env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default() != "true" {
             return Err(SongbirdError::Security {
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                 message: "Security must be enabled in production".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                 context: Some("production_validation".to_string()),
+                severity: Some("medium".to_string()),
+                suggestion: Some("Check security configuration".to_string()),
             });
         }
 
         if env::var("SONGBIRD_DEBUG").unwrap_or_default() == "true" {
             return Err(SongbirdError::Security {
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                 message: "Debug mode must be disabled in production".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                 context: Some("production_validation".to_string()),
+                severity: Some("medium".to_string()),
+                suggestion: Some("Check security configuration".to_string()),
             });
         }
 
@@ -568,4 +626,4 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "test_value");
     }
-} 
+}

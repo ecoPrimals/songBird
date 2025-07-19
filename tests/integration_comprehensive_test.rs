@@ -118,6 +118,7 @@ impl FileSystemStorage {
         Ok(())
     }
 
+    #[allow(dead_code)]
     async fn create_backup(&self, backup_name: &str) -> Result<()> {
         let backup_dir = self.backup_path.join(backup_name);
         tokio::fs::create_dir_all(&backup_dir).await?;
@@ -156,6 +157,7 @@ impl FileSystemStorage {
         Ok(())
     }
 
+    #[allow(dead_code)]
     async fn list_backups(&self) -> Result<Vec<String>> {
         if !self.backup_path.exists() {
             return Ok(Vec::new());
@@ -755,9 +757,9 @@ async fn test_performance_under_load() -> Result<()> {
     // Test concurrent file operations
     let mut tasks = Vec::new();
 
-    for i in 0..service_count {
+    for (i, service) in services.iter().enumerate().take(service_count) {
         let storage_clone = storage.clone();
-        let service = services[i].clone();
+        let service = service.clone();
 
         let task = tokio::spawn(async move {
             let filename = format!("load_test_file_{i}.json");

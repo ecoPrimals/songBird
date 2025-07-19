@@ -95,7 +95,6 @@ impl ZeroTouchCommand {
                 message: format!("Failed to write config file {}: {}", path.display(), e),
                 operation: Some("write_config_file".to_string()),
                 path: Some(path.to_string_lossy().to_string()),
-                suggestion: Some("Check file permissions and disk space".to_string()),
             }))
         })?;
 
@@ -121,10 +120,9 @@ impl ZeroTouchCommand {
 
         tokio::fs::write(path, summary_json).await.map_err(|e| {
             songbird_errors::SongbirdError::Io(Box::new(IoError {
-                message: format!("Failed to write summary file: {e}"),
+                message: format!("Failed to write summary file {}: {}", path.display(), e),
                 operation: Some("write_summary_file".to_string()),
                 path: Some(path.to_string_lossy().to_string()),
-                suggestion: Some("Check file permissions and disk space".to_string()),
             }))
         })?;
 
@@ -302,7 +300,6 @@ async fn save_songbird_configuration(
             message: format!("Failed to write config file {}: {}", path.display(), e),
             operation: Some("write_config_file".to_string()),
             path: Some(path.to_string_lossy().to_string()),
-            suggestion: Some("Check file permissions and disk space".to_string()),
         }))
     })?;
 
@@ -331,7 +328,6 @@ async fn save_deployment_summary(_result: &DeploymentResult, path: &std::path::P
             message: format!("Failed to write summary file {}: {}", path.display(), e),
             operation: Some("write_summary_file".to_string()),
             path: Some(path.to_string_lossy().to_string()),
-            suggestion: Some("Check file permissions and disk space".to_string()),
         }))
     })?;
 

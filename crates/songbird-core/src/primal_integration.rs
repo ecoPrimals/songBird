@@ -56,11 +56,10 @@ impl PrimalIntegrationManager {
             Err(e) => {
                 error!("❌ Failed to discover primals: {}", e);
                 Err(SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("biomeOS".to_string()),
-                    message: format!("Failed to discover primals from biomeOS: {e}"),
-                    details: Some("primal_discovery".to_string()),
-                    endpoint: None,
-                    suggestion: Some("Check biomeOS connection and primal registry".to_string()),
+                    message: "Primal Integration - Failed to connect to primal service".to_string(),
+                    endpoint: Some(self.biomeos_client.endpoint.clone()),
+                    port: None,
+                    protocol: Some("HTTP".to_string()),
                 })))
             }
         }
@@ -135,11 +134,10 @@ impl PrimalIntegrationManager {
                     primal_name, e
                 );
                 Err(SongbirdError::Network(Box::new(NetworkError {
-                    service: Some(primal_name.to_string()),
-                    message: format!("Failed to send request to primal '{primal_name}': {e}"),
-                    details: Some("primal_request".to_string()),
-                    endpoint: None,
-                    suggestion: Some("Check primal availability and request format".to_string()),
+                    message: "Primal Integration - Failed to connect to primal service".to_string(),
+                    endpoint: Some(self.biomeos_client.endpoint.clone()),
+                    port: None,
+                    protocol: Some("HTTP".to_string()),
                 })))
             }
         }
@@ -163,6 +161,50 @@ impl PrimalIntegrationManager {
         }
 
         Ok(health_status)
+    }
+
+    /// Initialize the primal integration manager
+    pub async fn initialize(&mut self) -> Result<()> {
+        info!("🚀 Initializing primal integration manager...");
+        
+        // Discover available primals
+        match self.discover_primals().await {
+            Ok(primals) => {
+                info!("✅ Successfully initialized with {} primals", primals.len());
+                Ok(())
+            }
+            Err(e) => {
+                warn!("⚠️ Failed to discover primals during initialization: {}", e);
+                // Don't fail initialization if discovery fails
+                Ok(())
+            }
+        }
+    }
+
+    /// Stop the primal integration manager
+    pub async fn stop(&mut self) -> Result<()> {
+        info!("🛑 Stopping primal integration manager...");
+        
+        // Clear discovered primals
+        {
+            let mut discovered = self.discovered_primals.write().await;
+            discovered.clear();
+        }
+        
+        // Clear primal services
+        {
+            let mut services = self.primal_services.write().await;
+            services.clear();
+        }
+        
+        info!("✅ Primal integration manager stopped");
+        Ok(())
+    }
+
+    /// Get count of active primals
+    pub async fn get_active_primal_count(&self) -> usize {
+        let discovered = self.discovered_primals.read().await;
+        discovered.len()
     }
 }
 
@@ -309,11 +351,10 @@ impl From<serde_json::Error> for BiomeOSError {
 impl From<BiomeOSError> for SongbirdError {
     fn from(error: BiomeOSError) -> Self {
         SongbirdError::Network(Box::new(NetworkError {
-            service: Some("biomeOS".to_string()),
-            message: error.to_string(),
-            details: Some("biomeos_integration".to_string()),
-            endpoint: None,
-            suggestion: Some("Check biomeOS connection and configuration".to_string()),
+            message: "Primal Integration - biomeOS communication failure".to_string(),
+            endpoint: Some("biomeOS".to_string()),
+            port: None,
+            protocol: Some("HTTP".to_string()),
         }))
     }
 }

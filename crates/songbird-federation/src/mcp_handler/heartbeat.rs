@@ -338,13 +338,10 @@ impl HeartbeatManager {
         } else {
             Err(songbird_errors::SongbirdError::Network(Box::new(
                 NetworkError {
-                    service: Some("federation".to_string()),
                     message: "All heartbeat attempts failed".to_string(),
-                    details: None,
                     endpoint: None,
-                    suggestion: Some(
-                        "Check network connectivity and endpoint configuration".to_string(),
-                    ),
+                    port: None,
+                    protocol: None,
                 },
             )))
         }
@@ -410,33 +407,28 @@ impl HeartbeatManager {
                 } else {
                     Err(songbird_errors::SongbirdError::Network(Box::new(
                         NetworkError {
-                            service: Some("federation".to_string()),
                             message: format!("Heartbeat failed with status: {}", resp.status()),
-                            details: None,
                             endpoint: Some(endpoint.to_string()),
-                            suggestion: Some("Check federation endpoint health".to_string()),
+                            port: None,
+                            protocol: None,
                         },
                     )))
                 }
             }
             Ok(Err(e)) => Err(songbird_errors::SongbirdError::Network(Box::new(
                 NetworkError {
-                    service: Some("federation".to_string()),
                     message: format!("Failed to send heartbeat: {e}"),
-                    details: None,
                     endpoint: Some(endpoint.to_string()),
-                    suggestion: Some("Check network connectivity".to_string()),
+                    port: None,
+                    protocol: None,
                 },
             ))),
             Err(_) => Err(songbird_errors::SongbirdError::Network(Box::new(
                 NetworkError {
-                    service: Some("federation".to_string()),
                     message: "Heartbeat request timed out".to_string(),
-                    details: None,
                     endpoint: Some(endpoint.to_string()),
-                    suggestion: Some(
-                        "Check network connectivity and endpoint responsiveness".to_string(),
-                    ),
+                    port: None,
+                    protocol: None,
                 },
             ))),
         }

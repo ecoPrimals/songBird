@@ -365,13 +365,18 @@ async fn test_substrate_error_handling() -> Result<()> {
 
     // Test network operation fallback
     let invalid_request = NetworkRequest {
-        operation: NetworkOperation::ConfigureFirewall,
-        target: "invalid_target".to_string(),
-        parameters: HashMap::new(),
+        operation_type: "ConfigureFirewall".to_string(),
+        payload: serde_json::json!({
+            "target": "invalid_target",
+            "parameters": {}
+        }),
     };
 
     let fallback_result = substrate.network_operation(invalid_request).await?;
-    assert!(fallback_result.is_object(), "Fallback should return object");
+    assert!(
+        fallback_result.data.is_object(),
+        "Fallback should return object"
+    );
 
     // Check fallback metrics
     let metrics = substrate.get_metrics().await;

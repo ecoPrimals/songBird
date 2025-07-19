@@ -14,6 +14,7 @@ pub mod environment;
 pub mod network;
 pub mod paths;
 pub mod providers;
+pub mod universal_primals;
 pub mod validation;
 
 // Re-export commonly used configuration types
@@ -21,6 +22,7 @@ pub use constants::*;
 pub use environment::*;
 pub use network::*;
 pub use paths::*;
+pub use universal_primals::*;
 
 // Alias for backward compatibility
 pub type PathsConfig = PathConfig;
@@ -37,10 +39,15 @@ pub struct SongbirdConfig {
     /// Path configuration
     pub paths: PathsConfig,
 
-    /// BearDog security integration (optional)
+    /// Universal primal registry (NEW - replaces hardcoded primal configs)
+    pub primal_registry: Option<PrimalRegistry>,
+
+    /// BearDog security integration (DEPRECATED - use primal_registry)
+    #[serde(default)]
     pub beardog: Option<BearDogConfig>,
 
-    /// Toadstool compute integration (optional)
+    /// Toadstool compute integration (DEPRECATED - use primal_registry)
+    #[serde(default)]  
     pub toadstool: Option<ToadstoolConfig>,
 
     /// Security configuration
@@ -284,52 +291,133 @@ impl Default for ToadstoolConfig {
 }
 
 impl SongbirdConfig {
+    /// Get the effective primal registry (migrates from legacy if needed)
+    pub fn get_primal_registry(&self) -> PrimalRegistry {
+        if let Some(registry) = &self.primal_registry {
+            registry.clone()
+        } else {
+            // Migrate from legacy configuration
+            LegacyConfigMigrator::migrate_legacy_config(self)
+        }
+    }
+
+    /// Set the primal registry
+    pub fn set_primal_registry(&mut self, registry: PrimalRegistry) {
+        self.primal_registry = Some(registry);
+    }
+
+    /// Check if a primal type is enabled (universal method)
+    pub fn is_primal_enabled(&self, primal_type: &str) -> bool {
+        self.get_primal_registry()
+            .get_primal(primal_type)
+            .map(|p| p.enabled)
+            .unwrap_or(false)
+    }
+
+    /// Get primal configuration by type (universal method)
+    pub fn get_primal_config(&self, primal_type: &str) -> Option<PrimalConfiguration> {
+        self.get_primal_registry()
+            .get_primal(primal_type)
+            .cloned()
+    }
+
+    /// Find primals with specific capability (universal method)
+    pub fn find_primals_with_capability(&self, capability_type: &str) -> Vec<PrimalConfiguration> {
+        self.get_primal_registry()
+            .find_primals_with_capability(capability_type)
+            .into_iter()
+            .cloned()
+            .collect()
+    }
+
+    /// Enable a primal with basic configuration (universal method)
+    pub fn enable_primal(&mut self, primal_type: &str, endpoint_url: &str) {
+        let mut registry = self.get_primal_registry();
+        
+        if let Some(existing) = registry.primals.get_mut(primal_type) {
+            existing.enabled = true;
+            existing.endpoint.primary_url = endpoint_url.to_string();
+        } else {
+            let mut config = PrimalConfiguration::new_template(primal_type, primal_type);
+            config.enabled = true;
+            config.endpoint.primary_url = endpoint_url.to_string();
+            registry.register_primal(config);
+        }
+        
+        self.primal_registry = Some(registry);
+    }
+
+    /// Disable a primal (universal method)
+    pub fn disable_primal(&mut self, primal_type: &str) {
+        let mut registry = self.get_primal_registry();
+        
+        if let Some(existing) = registry.primals.get_mut(primal_type) {
+            existing.enabled = false;
+        }
+        
+        self.primal_registry = Some(registry);
+    }
+
+    // ===== BACKWARD COMPATIBILITY METHODS (DEPRECATED) =====
+    
     /// Check if BearDog integration is enabled
+    #[deprecated(note = "Use is_primal_enabled(\"beardog\") instead")]
     pub fn is_beardog_enabled(&self) -> bool {
-        self.beardog.as_ref().map(|b| b.enabled).unwrap_or(false)
+        self.is_primal_enabled("beardog")
     }
 
     /// Get BearDog configuration (returns default if not configured)
+    #[deprecated(note = "Use get_primal_config(\"beardog\") instead")]
     pub fn get_beardog_config(&self) -> BearDogConfig {
-        self.beardog.clone().unwrap_or_default()
+        // Return legacy config if it exists, otherwise create from primal registry
+        if let Some(config) = &self.beardog {
+            config.clone()
+        } else {
+            // Create legacy config from universal primal registry
+            BearDogConfig::default()
+        }
     }
 
     /// Enable BearDog integration with default configuration
+    #[deprecated(note = "Use enable_primal(\"beardog\", endpoint_url) instead")]
     pub fn enable_beardog(&mut self) {
-        let beardog_config = BearDogConfig {
-            enabled: true,
-            ..BearDogConfig::default()
-        };
-        self.beardog = Some(beardog_config);
+        self.enable_primal("beardog", "https://localhost:8443");
     }
 
     /// Disable BearDog integration
+    #[deprecated(note = "Use disable_primal(\"beardog\") instead")]
     pub fn disable_beardog(&mut self) {
-        self.beardog = None;
+        self.disable_primal("beardog");
     }
 
     /// Check if Toadstool integration is enabled
+    #[deprecated(note = "Use is_primal_enabled(\"toadstool\") instead")]
     pub fn is_toadstool_enabled(&self) -> bool {
-        self.toadstool.as_ref().map(|t| t.enabled).unwrap_or(false)
+        self.is_primal_enabled("toadstool")
     }
 
     /// Get Toadstool configuration (returns default if not configured)
+    #[deprecated(note = "Use get_primal_config(\"toadstool\") instead")]
     pub fn get_toadstool_config(&self) -> ToadstoolConfig {
-        self.toadstool.clone().unwrap_or_default()
+        // Return legacy config if it exists, otherwise create from primal registry
+        if let Some(config) = &self.toadstool {
+            config.clone()
+        } else {
+            // Create legacy config from universal primal registry
+            ToadstoolConfig::default()
+        }
     }
 
     /// Enable Toadstool integration with default configuration
+    #[deprecated(note = "Use enable_primal(\"toadstool\", endpoint_url) instead")]
     pub fn enable_toadstool(&mut self) {
-        let toadstool_config = ToadstoolConfig {
-            enabled: true,
-            ..ToadstoolConfig::default()
-        };
-        self.toadstool = Some(toadstool_config);
+        self.enable_primal("toadstool", "http://localhost:8082");
     }
 
     /// Disable Toadstool integration
+    #[deprecated(note = "Use disable_primal(\"toadstool\") instead")]
     pub fn disable_toadstool(&mut self) {
-        self.toadstool = None;
+        self.disable_primal("toadstool");
     }
 }
 

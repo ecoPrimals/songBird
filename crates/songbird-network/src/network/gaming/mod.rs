@@ -21,12 +21,15 @@ pub mod wireguard_integration;
 // Re-export core types directly from types module
 pub use types::{
     BridgeStatus, DetectedGameSession, DiscoveryMethod, GameProtocolClass, GameSession,
-    GameSessionId, GameSessionStatus, NatType, PlayerEndpoint, ProtocolSignature, VirtualNetwork,
+    GameSessionId, GameSessionStatus, PlayerEndpoint, ProtocolSignature, VirtualNetwork,
 };
+
+// Re-export NatType from nat_traversal
+pub use nat_traversal::types::NatType;
 
 // Re-export main components
 pub use auto_config::{
-    BeardogIntegration, GamingAutoConfig, OneTouchConfig, SecurityValidator, SetupState,
+    GamingAutoConfig, OneTouchConfig, SecurityValidator, SetupState,
 };
 pub use nat_traversal::NatTraversalManager;
 pub use performance::{
@@ -219,11 +222,10 @@ impl GamingManager {
 
         let session = sessions.get_mut(session_code).ok_or_else(|| {
             songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                service: Some("Gaming Manager".to_string()),
-                message: format!("Session not found: {session_code}"),
-                details: None,
+                message: format!("Gaming Manager - Session not found: {session_code}"),
                 endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+                port: None,
+                protocol: None,
             }))
         })?;
 
@@ -247,11 +249,10 @@ impl GamingManager {
             .map(|(_, session)| session.clone())
             .ok_or_else(|| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("Gaming Manager".to_string()),
-                    message: format!("Session not found: {session_code}"),
-                    details: None,
+                    message: format!("Gaming Manager - Session not found: {session_code}"),
                     endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: None,
                 }))
             })
             .map(Some)
@@ -271,11 +272,10 @@ impl GamingManager {
         let sessions = self.lan_sessions.read().await;
         let session = sessions.get(session_code).ok_or_else(|| {
             songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                service: Some("Gaming Manager".to_string()),
-                message: format!("Session not found: {session_code}"),
-                details: None,
+                message: format!("Gaming Manager - Session not found: {session_code}"),
                 endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+                port: None,
+                protocol: None,
             }))
         })?;
 

@@ -81,10 +81,8 @@ impl IPXTranslator {
     fn parse_ipx_header(&self, packet: &[u8]) -> Result<IPXHeader> {
         if packet.len() < 30 {
             return Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: "IPX".to_string(),
+                protocol: Some("IPX".to_string()),
                 message: "Packet too short for IPX header".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
             })));
         }
 
@@ -179,10 +177,8 @@ impl ProtocolTranslator for IPXTranslator {
                 Ok(ipx_packet)
             }
             _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: "IPX".to_string(),
+                protocol: Some("IPX".to_string()),
                 message: "IPX only supports UDP translation".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
             }))),
         }
     }
@@ -346,10 +342,8 @@ impl DirectPlayTranslator {
             Ok(())
         } else {
             Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: "DirectPlay".to_string(),
+                protocol: Some("DirectPlay".to_string()),
                 message: format!("Session not found: {session_id}"),
-                version: None,
-                suggestion: Some("Check session ID and try again".to_string()),
             })))
         }
     }
@@ -394,10 +388,8 @@ impl DirectPlayTranslator {
     fn parse_dp_packet(&self, packet: &[u8]) -> Result<DirectPlayPacket> {
         if packet.len() < 8 {
             return Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: "DirectPlay".to_string(),
+                protocol: Some("DirectPlay".to_string()),
                 message: "Packet too short for DirectPlay header".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
             })));
         }
 
@@ -526,10 +518,8 @@ impl ProtocolTranslator for DirectPlayTranslator {
                 Ok(payload.clone())
             }
             _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: "DirectPlay".to_string(),
+                protocol: Some("DirectPlay".to_string()),
                 message: "Unsupported packet type for DirectPlay".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
             }))),
         }
     }
@@ -540,10 +530,8 @@ impl ProtocolTranslator for DirectPlayTranslator {
             .first()
             .ok_or_else(|| {
                 SongbirdError::Protocol(Box::new(ProtocolError {
-                    protocol: "DirectPlay".to_string(),
+                    protocol: Some("DirectPlay".to_string()),
                     message: "No players specified".to_string(),
-                    version: None,
-                    suggestion: Some("Check protocol compatibility and version".to_string()),
                 }))
             })?
             .player_id
@@ -588,10 +576,8 @@ impl ProtocolTranslator for DirectPlayTranslator {
                     }
                 }
                 Err(_) => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                    protocol: "DirectPlay".to_string(),
+                    protocol: Some("DirectPlay".to_string()),
                     message: "Invalid DirectPlay discovery packet".to_string(),
-                    version: None,
-                    suggestion: Some("Check protocol compatibility and version".to_string()),
                 }))),
             }
         } else {
@@ -619,10 +605,8 @@ impl ProtocolTranslator for DirectPlayTranslator {
                 Ok(DiscoveryResponse::DirectPlay { sessions })
             } else {
                 Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                    protocol: "DirectPlay".to_string(),
+                    protocol: Some("DirectPlay".to_string()),
                     message: "Invalid DirectPlay discovery packet".to_string(),
-                    version: None,
-                    suggestion: Some("Check protocol compatibility and version".to_string()),
                 })))
             }
         }
@@ -675,10 +659,8 @@ impl ProtocolTranslator for NetBIOSTranslator {
         match internet_packet {
             InternetPacket::UDP { payload, .. } => Ok(payload.clone()),
             _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: "NetBIOS".to_string(),
+                protocol: Some("NetBIOS".to_string()),
                 message: "NetBIOS only supports UDP translation".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
             }))),
         }
     }
@@ -755,10 +737,8 @@ impl ProtocolTranslator for UDPTranslator {
         match internet_packet {
             InternetPacket::UDP { payload, .. } => Ok(payload.clone()),
             _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: "UDP".to_string(),
+                protocol: Some("UDP".to_string()),
                 message: "UDP translator only supports UDP packets".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
             }))),
         }
     }
@@ -842,10 +822,8 @@ impl ProtocolTranslator for TCPTranslator {
         match internet_packet {
             InternetPacket::TCP { payload, .. } => Ok(payload.clone()),
             _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: "TCP".to_string(),
+                protocol: Some("TCP".to_string()),
                 message: "TCP translator only supports TCP packets".to_string(),
-                version: None,
-                suggestion: Some("Check protocol compatibility and version".to_string()),
             }))),
         }
     }

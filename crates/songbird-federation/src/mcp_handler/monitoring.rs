@@ -673,13 +673,10 @@ impl MonitoringManager {
             .await
             .map_err(|e| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("federation".to_string()),
                     message: format!("Failed to send message to {endpoint}: {e}"),
-                    details: None,
                     endpoint: Some("federation/messages".to_string()),
-                    suggestion: Some(
-                        "Check network connectivity and federation endpoint".to_string(),
-                    ),
+                    port: None,
+                    protocol: None,
                 }))
             })?;
 

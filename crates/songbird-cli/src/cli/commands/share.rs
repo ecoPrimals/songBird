@@ -565,9 +565,13 @@ fn detect_available_storage() -> Option<f64> {
 
         let path_cstr = CString::new(path.to_string_lossy().as_bytes()).ok()?;
         let mut statfs = MaybeUninit::<libc::statvfs>::uninit();
-        let result = unsafe { libc::statvfs(path_cstr.as_ptr(), statfs.as_mut_ptr()) };
 
+        // SAFETY: statvfs is a standard POSIX system call that fills the provided buffer
+        // with filesystem statistics. The buffer is properly initialized as MaybeUninit
+        // and we check the return value before using the data.
+        let result = unsafe { libc::statvfs(path_cstr.as_ptr(), statfs.as_mut_ptr()) };
         if result == 0 {
+            // SAFETY: statvfs succeeded (result == 0), so the buffer is now properly initialized
             let statfs = unsafe { statfs.assume_init() };
             let available_bytes = statfs.f_bavail.saturating_mul(statfs.f_frsize);
             return Some(available_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
@@ -592,6 +596,9 @@ fn detect_available_storage() -> Option<f64> {
         let mut free_bytes: u64 = 0;
         let mut total_bytes: u64 = 0;
         // Call GetDiskFreeSpaceEx
+        // SAFETY: GetDiskFreeSpaceExW is a standard Windows API that safely writes
+        // to the provided output parameters. The wide_path is properly null-terminated
+        // and we check the return value before using the output data.
         unsafe {
             let result = winapi::um::fileapi::GetDiskFreeSpaceExW(
                 wide_path.as_ptr(),

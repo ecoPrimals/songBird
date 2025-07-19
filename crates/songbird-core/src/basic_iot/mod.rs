@@ -10,7 +10,7 @@
 //! This provides production-grade "universal connector" functionality.
 //! For enterprise IoT orchestration, use SongBird + Toadstool.
 
-use songbird_errors::Result;
+use songbird_errors::{NetworkError, Result};
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
@@ -194,6 +194,8 @@ impl IoTManager {
                 return Err(songbird_errors::SongbirdError::Config {
                     field: Some("iot_bind_address".to_string()),
                     message: "IoT discovery binding to 0.0.0.0 requires explicit approval via SONGBIRD_IOT_BIND_ALL_APPROVED=true".to_string(),
+                    suggestion: Some("Set SONGBIRD_IOT_BIND_ALL_APPROVED=true environment variable or use specific bind address".to_string()),
+                    context: Some("IoT discovery security binding validation".to_string()),
                 });
             }
             "0.0.0.0:0"
@@ -238,10 +240,11 @@ impl IoTManager {
                 let _permit = sem.acquire().await.map_err(|e| {
                     tracing::error!("IoT semaphore acquisition failed: {}", e);
                     songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                        service: "IoT Discovery".to_string(),
-                        message: format!("Semaphore acquisition failed: {e}))"),
-                        details: None,
-                    }
+                        message: format!("Semaphore acquisition failed: {e}"),
+                        endpoint: None,
+                        port: None,
+                        protocol: Some("IoT Discovery".to_string()),
+                    }))
                 })?;
                 Self::scan_device_ports(ip, &config).await
             }));
@@ -436,6 +439,8 @@ impl IoTManager {
             .map_err(|_| songbird_errors::SongbirdError::Config {
                 field: Some("address".to_string()),
                 message: "Invalid IP address".to_string(),
+                suggestion: Some("Provide a valid IPv4 address format (e.g., 192.168.1.1)".to_string()),
+                context: Some("IoT device address parsing".to_string()),
             })?;
 
         // Try common ports to detect device type
@@ -470,6 +475,8 @@ impl IoTManager {
                 .ok_or_else(|| songbird_errors::SongbirdError::Config {
                     field: Some("device".to_string()),
                     message: format!("Device '{device_name}' not found"),
+                    suggestion: Some("Check device name and ensure device is registered".to_string()),
+                    context: Some("IoT device lookup".to_string()),
                 })?;
 
         // Route command based on detected protocol
@@ -489,6 +496,8 @@ impl IoTManager {
             _ => Err(songbird_errors::SongbirdError::Config {
                 field: Some("protocol".to_string()),
                 message: format!("Protocol not supported for device {device_name}"),
+                suggestion: Some("Use HTTP, MQTT, SNMP, or custom protocol".to_string()),
+                context: Some("IoT protocol routing".to_string()),
             }),
         }
     }
@@ -515,6 +524,8 @@ impl IoTManager {
             _ => Err(songbird_errors::SongbirdError::Config {
                 field: Some("command".to_string()),
                 message: format!("Command '{command}' not supported for HTTP device"),
+                suggestion: Some("Use 'status', 'scan' (for scanners), or 'print' (for printers)".to_string()),
+                context: Some("IoT HTTP command routing".to_string()),
             }),
         }
     }
@@ -527,6 +538,8 @@ impl IoTManager {
             _ => Err(songbird_errors::SongbirdError::Config {
                 field: Some("command".to_string()),
                 message: format!("Command '{command}' not supported for IPP device"),
+                suggestion: Some("Use 'print' or 'status' for IPP printers".to_string()),
+                context: Some("IoT IPP command routing".to_string()),
             }),
         }
     }
@@ -546,6 +559,8 @@ impl IoTManager {
             _ => Err(songbird_errors::SongbirdError::Config {
                 field: Some("command".to_string()),
                 message: format!("Command '{command}' not supported for SNMP device"),
+                suggestion: Some("Use 'status' for SNMP device queries".to_string()),
+                context: Some("IoT SNMP command routing".to_string()),
             }),
         }
     }

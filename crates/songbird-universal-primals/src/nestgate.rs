@@ -205,7 +205,7 @@ impl PrimalProvider for NestGatePrimalClient {
     }
 
     fn primal_type(&self) -> PrimalType {
-        PrimalType::NestGate
+        PrimalType::new("nestgate")
     }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {

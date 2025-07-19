@@ -38,6 +38,11 @@ pub async fn handle_basic_iot_command(command: BasicIoTCommands) -> Result<()> {
     }
 }
 
+/// Handle IoT command - wrapper for compatibility
+pub async fn handle_iot_command(command: BasicIoTCommands) -> Result<()> {
+    handle_basic_iot_command(command).await
+}
+
 async fn discover_devices(device_type: &str, detailed: bool) -> Result<()> {
     println!(
         "{}",

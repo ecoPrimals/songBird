@@ -288,7 +288,9 @@ pub struct ToadstoolEndpoint {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum OrchestratorStatus {
     Initializing,
+    Starting,
     Running,
+    Stopping,
     Stopped,
     Failed,
 }

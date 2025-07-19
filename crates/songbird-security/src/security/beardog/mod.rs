@@ -11,8 +11,11 @@ use std::time::SystemTime;
 
 use songbird_errors::Result;
 
+// Re-export common authentication types and traits
+pub use crate::security::*;
+
 // Re-export NodeId type for compatibility
-pub type NodeId = String;
+// pub type NodeId = String; // Removed duplicate - already defined in core/types.rs
 
 // ============================================================================
 // BEARDOG SECURITY PROVIDER INTEGRATION
@@ -199,7 +202,8 @@ pub struct BearDogConfig {
 impl Default for BearDogConfig {
     fn default() -> Self {
         Self {
-            endpoint: songbird_config::config::constants::network::DEFAULT_BEARDOG_ENDPOINT.to_string(),
+            endpoint: songbird_config::config::constants::network::DEFAULT_BEARDOG_ENDPOINT
+                .to_string(),
             api_key: "your_api_key".to_string(),
             security_level: BearDogSecurityLevel::Internal,
             audit_level: BearDogAuditLevel::Standard,

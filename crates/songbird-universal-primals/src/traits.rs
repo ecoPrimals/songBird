@@ -219,6 +219,12 @@ pub enum PrimalCapability {
         compression: Vec<String>,
     },
 
+    /// Backup and restore capabilities
+    BackupRestore {
+        /// Whether incremental backups are supported
+        incremental: bool,
+    },
+
     // Compute capabilities (Toadstool)
     /// Container runtime support
     ContainerRuntime {
@@ -295,6 +301,18 @@ pub enum PrimalCapability {
         protocols: Vec<String>,
     },
 
+    // OS/Orchestration capabilities (biomeOS)
+    /// Orchestration capabilities
+    Orchestration {
+        /// List of supported primals for orchestration
+        primals: Vec<String>,
+    },
+    /// Manifest management
+    Manifests {
+        /// Supported manifest formats
+        formats: Vec<String>,
+    },
+
     // Generic capabilities
     /// Custom capability
     Custom {
@@ -352,6 +370,10 @@ impl Hash for PrimalCapability {
                 "DataArchiving".hash(state);
                 compression.hash(state);
             }
+            PrimalCapability::BackupRestore { incremental } => {
+                "BackupRestore".hash(state);
+                incremental.hash(state);
+            }
             PrimalCapability::ContainerRuntime { orchestrators } => {
                 "ContainerRuntime".hash(state);
                 orchestrators.hash(state);
@@ -407,6 +429,14 @@ impl Hash for PrimalCapability {
             PrimalCapability::VpnServices { protocols } => {
                 "VpnServices".hash(state);
                 protocols.hash(state);
+            }
+            PrimalCapability::Orchestration { primals } => {
+                "Orchestration".hash(state);
+                primals.hash(state);
+            }
+            PrimalCapability::Manifests { formats } => {
+                "Manifests".hash(state);
+                formats.hash(state);
             }
             PrimalCapability::Custom {
                 name,

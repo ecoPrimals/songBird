@@ -119,11 +119,12 @@ impl PrivilegeManager {
                 return Ok(());
             } else {
                 return Err(SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("Gaming Privilege Manager".to_string()),
-                    message: "No suitable privilege escalation method found".to_string(),
-                    details: None,
+                    message:
+                        "Gaming Privilege Manager - No suitable privilege escalation method found"
+                            .to_string(),
                     endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: None,
                 })));
             }
         }
@@ -262,6 +263,8 @@ impl PrivilegeManager {
     fn is_running_as_root(&self) -> bool {
         #[cfg(unix)]
         {
+            // SAFETY: geteuid() is a standard POSIX system call that returns the effective user ID
+            // and has no side effects. It's safe to call from any context.
             unsafe { libc::geteuid() == 0 }
         }
         #[cfg(not(unix))]
@@ -354,11 +357,10 @@ impl PrivilegeManager {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("Gaming Privilege Manager".to_string()),
-                    message: format!("Command execution failed: {e}"),
-                    details: None,
+                    message: format!("Gaming Privilege Manager - Command execution failed: {e}"),
                     endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: None,
                 }))
             })?;
 
@@ -379,15 +381,26 @@ impl PrivilegeManager {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("Gaming Privilege Manager".to_string()),
-                    message: format!("Sudo execution failed: {e}"),
-                    details: None,
+                    message: format!("Gaming Privilege Manager - Sudo execution failed: {e}"),
                     endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: None,
                 }))
             })?;
 
-        Ok(output)
+        if output.status.success() {
+            Ok(output)
+        } else {
+            Err(SongbirdError::Network(Box::new(NetworkError {
+                message: format!(
+                    "Gaming Privilege Manager - Sudo execution failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ),
+                endpoint: None,
+                port: None,
+                protocol: None,
+            })))
+        }
     }
 
     async fn execute_pkexec_command(
@@ -404,11 +417,10 @@ impl PrivilegeManager {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("Gaming Privilege Manager".to_string()),
-                    message: format!("Pkexec execution failed: {e}"),
-                    details: None,
+                    message: format!("Gaming Privilege Manager - Pkexec execution failed: {e}"),
                     endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: None,
                 }))
             })?;
 
@@ -422,7 +434,32 @@ impl PrivilegeManager {
     ) -> Result<std::process::Output> {
         // For capabilities, we assume the binary already has the required caps set
         // This is the most secure approach as it doesn't require runtime privilege escalation
-        self.execute_direct_command(_command, _args).await
+        let output = AsyncCommand::new(_command)
+            .args(_args)
+            .output()
+            .await
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    message: format!("Gaming Privilege Manager - Capabilities setting failed: {e}"),
+                    endpoint: None,
+                    port: None,
+                    protocol: None,
+                }))
+            })?;
+
+        if output.status.success() {
+            Ok(output)
+        } else {
+            Err(SongbirdError::Network(Box::new(NetworkError {
+                message: format!(
+                    "Gaming Privilege Manager - Capabilities setting failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ),
+                endpoint: None,
+                port: None,
+                protocol: None,
+            })))
+        }
     }
 
     async fn execute_setuid_command(
@@ -431,7 +468,32 @@ impl PrivilegeManager {
         _args: &[&str],
     ) -> Result<std::process::Output> {
         // For setuid, the binary should already have the setuid bit set
-        self.execute_direct_command(_command, _args).await
+        let output = AsyncCommand::new(_command)
+            .args(_args)
+            .output()
+            .await
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    message: format!("Gaming Privilege Manager - Setuid execution failed: {e}"),
+                    endpoint: None,
+                    port: None,
+                    protocol: None,
+                }))
+            })?;
+
+        if output.status.success() {
+            Ok(output)
+        } else {
+            Err(SongbirdError::Network(Box::new(NetworkError {
+                message: format!(
+                    "Gaming Privilege Manager - Setuid execution failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ),
+                endpoint: None,
+                port: None,
+                protocol: None,
+            })))
+        }
     }
 
     async fn execute_systemd_service(
@@ -448,11 +510,12 @@ impl PrivilegeManager {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("Gaming Privilege Manager".to_string()),
-                    message: format!("Systemd service execution failed: {e}"),
-                    details: None,
+                    message: format!(
+                        "Gaming Privilege Manager - Systemd service execution failed: {e}"
+                    ),
                     endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: None,
                 }))
             })?;
 
@@ -482,9 +545,12 @@ pub async fn can_capture_packets() -> bool {
         match std::net::UdpSocket::bind("0.0.0.0:0") {
             Ok(_) => {
                 // Try to create a raw socket
+                // SAFETY: socket() is a standard POSIX system call. We properly check the return value
+                // and close the socket if successfully created. Raw sockets require elevated privileges.
                 unsafe {
                     let sockfd = libc::socket(libc::AF_PACKET, libc::SOCK_RAW, 0);
                     if sockfd >= 0 {
+                        // SAFETY: close() is called on a valid file descriptor returned by socket()
                         libc::close(sockfd);
                         return true;
                     }

@@ -474,7 +474,7 @@ impl PrimalProvider for ToadstoolPrimal {
     }
 
     fn primal_type(&self) -> PrimalType {
-        PrimalType::ToadStool
+        PrimalType::new("toadstool")
     }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {

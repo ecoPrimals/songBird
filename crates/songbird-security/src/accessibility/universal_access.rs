@@ -368,7 +368,7 @@ impl UniversalHelpSystem {
         // Context-aware help
         context_help.insert(
             "gaming".to_string(),
-            "Gaming helps you play old games with friends over the internet.".to_string(),
+            "Gaming features help you play games online securely".to_string(),
         );
         context_help.insert(
             "iot".to_string(),
@@ -376,30 +376,30 @@ impl UniversalHelpSystem {
                 .to_string(),
         );
         context_help.insert(
-            "backup".to_string(),
-            "Backup keeps your files safe by storing copies with trusted friends.".to_string(),
+            "security".to_string(),
+            "Security features protect your data and privacy".to_string(),
         );
 
         // Quick guides by skill level
         quick_guides.insert(
             UserSkillLevel::Beginner,
-            "Click the big buttons. Everything is automatic and safe.".to_string(),
+            "Follow the setup wizard to get started".to_string(),
         );
         quick_guides.insert(
             UserSkillLevel::Basic,
-            "Use the simple menus. Help is always available.".to_string(),
+            "Use the configuration panel to customize settings".to_string(),
         );
         quick_guides.insert(
             UserSkillLevel::Intermediate,
-            "Use either the interface or basic commands.".to_string(),
+            "Advanced features are available for power users".to_string(),
         );
         quick_guides.insert(
             UserSkillLevel::Advanced,
-            "Use CLI commands or advanced interface features.".to_string(),
+            "You can customize everything to your needs".to_string(),
         );
         quick_guides.insert(
             UserSkillLevel::Expert,
-            "Full CLI, API, and configuration access available.".to_string(),
+            "You have full control over the system".to_string(),
         );
 
         Self {

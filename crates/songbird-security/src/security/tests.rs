@@ -16,7 +16,7 @@ mod tests {
     #[test]
     fn test_auth_token_creation() {
         let token = AuthToken::new(
-            "test_user".to_string(),
+
             SubjectType::User,
             Duration::from_secs(3600),
             vec!["read".to_string(), "write".to_string()],
@@ -64,8 +64,8 @@ mod tests {
 
         // Add a user
         provider.add_user(
-            "testuser".to_string(),
-            "TestPass123!".to_string(),
+
+
             vec!["read".to_string(), "write".to_string()],
         ).expect("Failed to add user");
 
@@ -213,7 +213,7 @@ mod tests {
 
         // Create a token that will expire quickly
         let short_lived_token = AuthToken::new(
-            "testuser".to_string(),
+
             SubjectType::User,
             Duration::from_millis(100),
             vec!["read".to_string()],
@@ -535,7 +535,7 @@ mod tests {
     #[test]
     fn test_auth_token_expiration() {
         let token = AuthToken::new(
-            "test_user".to_string(),
+
             SubjectType::User,
             Duration::from_secs(0), // Immediate expiration
             vec!["read".to_string()],

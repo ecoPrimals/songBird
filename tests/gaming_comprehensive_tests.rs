@@ -77,13 +77,13 @@ async fn test_player_endpoint_creation() -> Result<()> {
         display_name: "Test Player".to_string(),
         real_address: "192.168.1.100:6112".parse().unwrap(),
         virtual_address: Some("10.0.0.1".parse().unwrap()),
-        nat_type: NatType::None,
+        nat_type: NatType::Unknown,
     };
 
     assert_eq!(endpoint.player_id, "player1");
     assert_eq!(endpoint.display_name, "Test Player");
     // Don't compare NatType directly as it doesn't implement PartialEq
-    assert!(matches!(endpoint.nat_type, NatType::None));
+    assert!(matches!(endpoint.nat_type, NatType::Unknown));
 
     Ok(())
 }
