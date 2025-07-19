@@ -32,6 +32,11 @@ pub async fn execute_firewall(command: &FirewallCommands) -> Result<(), CliError
         FirewallCommands::Config { action } => execute_firewall_config(action).await,
     }
 }
+
+/// Handle firewall command - wrapper for compatibility
+pub async fn handle_firewall_command(command: &FirewallCommands) -> Result<(), CliError> {
+    execute_firewall(command).await
+}
 /// Execute the firewall configuration wizard
 async fn execute_firewall_wizard(
     _config_path: &Option<PathBuf>,

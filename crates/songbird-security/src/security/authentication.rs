@@ -196,9 +196,7 @@ impl InMemoryAuthenticator {
         } else {
             Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "User not found".to_string(),
-                user: Some("InMemoryAuthenticator".to_string()),
                 provider: Some("InMemoryAuthenticator".to_string()),
-                suggestion: Some("Check the username or register a new account".to_string()),
             })))
         }
     }
@@ -211,9 +209,7 @@ impl InMemoryAuthenticator {
         } else {
             Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "User not found".to_string(),
-                user: Some("InMemoryAuthenticator".to_string()),
                 provider: Some("InMemoryAuthenticator".to_string()),
-                suggestion: Some("Check the username or register a new account".to_string()),
             })))
         }
     }
@@ -329,9 +325,7 @@ impl InMemoryAuthenticator {
             _ => {
                 return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                     message: "MFA only supported with username/password".to_string(),
-                    user: Some("InMemoryAuthenticator".to_string()),
                     provider: Some("InMemoryAuthenticator".to_string()),
-                    suggestion: Some("Use username/password credentials for MFA".to_string()),
                 })))
             }
         };
@@ -371,17 +365,13 @@ impl InMemoryAuthenticator {
             } else {
                 Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                     message: "MFA not configured for user".to_string(),
-                    user: Some("InMemoryAuthenticator".to_string()),
                     provider: Some("InMemoryAuthenticator".to_string()),
-                    suggestion: Some("Enable MFA for this user first".to_string()),
                 })))
             }
         } else {
             Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "User not found".to_string(),
-                user: Some("InMemoryAuthenticator".to_string()),
                 provider: Some("InMemoryAuthenticator".to_string()),
-                suggestion: Some("Check the username or register a new account".to_string()),
             })))
         }
     }
@@ -508,11 +498,7 @@ impl Authenticator for InMemoryAuthenticator {
                     _ => {
                         return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                             message: "MFA only supported with username/password".to_string(),
-                            user: Some("InMemoryAuthenticator".to_string()),
                             provider: Some("InMemoryAuthenticator".to_string()),
-                            suggestion: Some(
-                                "Use username/password credentials for MFA".to_string(),
-                            ),
                         })))
                     }
                 };
@@ -575,9 +561,7 @@ impl Authenticator for InMemoryAuthenticator {
             if session.is_expired() {
                 Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                     message: "Session expired".to_string(),
-                    user: Some("InMemoryAuthenticator".to_string()),
                     provider: Some("InMemoryAuthenticator".to_string()),
-                    suggestion: Some("Please re-authenticate to get a new session".to_string()),
                 })))
             } else {
                 Ok(session.clone())
@@ -585,9 +569,7 @@ impl Authenticator for InMemoryAuthenticator {
         } else {
             Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "Session not found".to_string(),
-                user: Some("InMemoryAuthenticator".to_string()),
                 provider: Some("InMemoryAuthenticator".to_string()),
-                suggestion: Some("Please provide a valid session ID".to_string()),
             })))
         }
     }
@@ -616,9 +598,7 @@ impl Authenticator for InMemoryAuthenticator {
 
         Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
             message: "User not found".to_string(),
-            user: Some("InMemoryAuthenticator".to_string()),
             provider: Some("InMemoryAuthenticator".to_string()),
-            suggestion: Some("Check the user ID or register a new account".to_string()),
         })))
     }
 }
@@ -634,7 +614,6 @@ mod tests {
     #[test]
     fn test_auth_session_creation() {
         let session = AuthSession::new(
-            "user123".to_string(),
             Duration::from_secs(3600),
             vec!["read".to_string(), "write".to_string()],
         );
@@ -706,11 +685,7 @@ mod tests {
 
     #[test]
     fn test_session_permissions() {
-        let mut session = AuthSession::new(
-            "user123".to_string(),
-            Duration::from_secs(3600),
-            vec!["read".to_string()],
-        );
+        let mut session = AuthSession::new(Duration::from_secs(3600), vec!["read".to_string()]);
 
         assert!(session.has_permission("read"));
         assert!(!session.has_permission("write"));

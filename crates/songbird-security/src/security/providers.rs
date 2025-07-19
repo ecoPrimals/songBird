@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use crate::security::types::{
     Action, AuthToken, Permission, PermissionEffect, Resource, SecurityConfig, SubjectType,
 };
-use songbird_errors::{Result, SongbirdError, AuthError};
+use songbird_errors::{AuthError, Result, SongbirdError};
 
 // ============================================================================
 // PROVIDER TRAITS
@@ -118,34 +118,28 @@ impl InMemoryAuthProvider {
         if password.len() < policy.min_length as usize {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: format!("Password must be at least {} characters", policy.min_length),
-                user: None,
+                provider: Some("PasswordPolicy".to_string()),
             })));
         }
 
         if policy.require_uppercase && !password.chars().any(|c| c.is_uppercase()) {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                provider: Some("SecurityProvider".to_string()),
                 message: "Password must contain at least one uppercase letter".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
-                user: None,
             })));
         }
 
         if policy.require_lowercase && !password.chars().any(|c| c.is_lowercase()) {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                provider: Some("SecurityProvider".to_string()),
                 message: "Password must contain at least one lowercase letter".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
-                user: None,
             })));
         }
 
         if policy.require_numbers && !password.chars().any(|c| c.is_numeric()) {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                provider: Some("SecurityProvider".to_string()),
                 message: "Password must contain at least one number".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
-                user: None,
             })));
         }
 
@@ -155,10 +149,8 @@ impl InMemoryAuthProvider {
                 .any(|c| !c.is_alphanumeric() && !c.is_whitespace())
         {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                provider: Some("SecurityProvider".to_string()),
                 message: "Password must contain at least one special character".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
-                user: None,
             })));
         }
 
@@ -192,10 +184,8 @@ impl AuthenticationProvider for InMemoryAuthProvider {
         }
 
         Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+            provider: Some("SecurityProvider".to_string()),
             message: "Invalid credentials".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
-            user: Some(username.to_string()),
         })))
     }
 
@@ -210,10 +200,8 @@ impl AuthenticationProvider for InMemoryAuthProvider {
         let username = token.split('_').nth(1).unwrap_or("unknown");
 
         Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+            provider: Some("SecurityProvider".to_string()),
             message: "Invalid or expired token".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
-            user: Some(username.to_string()),
         })))
     }
 

@@ -554,7 +554,7 @@ impl LightweightTunnelCrypto {
                     message: "Session key is not renewable".to_string(),
                     field: Some("auto_renewable".to_string()),
                     context: Some("renew_session_key".to_string()),
-                    suggestion: Some("Enable auto-renewal for this session key".to_string()),
+                    suggestion: Some("Create a new renewable session key".to_string()),
                 });
             }
 
@@ -670,7 +670,7 @@ impl LightweightTunnelCrypto {
                     .to_string(),
                 field: Some("beardog_interface".to_string()),
                 context: Some("beardog_heavy_encrypt".to_string()),
-                suggestion: Some("Configure and connect BearDog crypto interface".to_string()),
+                suggestion: Some("Configure BearDog interface for heavy encryption".to_string()),
             }),
         }
     }

@@ -5,42 +5,38 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 // uuid re-exported by other modules
 
-/// Universal primal types - extensible for future primals
+/// **UNIVERSAL PRIMAL TYPE** - Dynamic, extensible primal identification
+/// 
+/// **PURE UNIVERSAL EXTENSIBILITY**
+/// 
+/// This supports ANY primal without hardcoding or code changes.
+/// New primals can be added through configuration only.
+///
+/// ## Universal Architecture Benefits:
+/// - **Zero Code Changes**: Add new primals via configuration only
+/// - **Infinite Extensibility**: Supports any primal name or type  
+/// - **Clean Architecture**: No hardcoded assumptions
+/// - **Future-Proof**: New ecosystems can use this without modifications
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PrimalType {
-    #[serde(rename = "toadstool")]
-    ToadStool,
-    #[serde(rename = "songbird")]
-    Songbird,
-    #[serde(rename = "beardog")]
-    BearDog,
-    #[serde(rename = "nestgate")]
-    NestGate,
-    #[serde(rename = "squirrel")]
-    Squirrel,
-    #[serde(rename = "biomeos")]
-    BiomeOS,
-    /// Future primals can be added here
-    #[serde(untagged)]
-    Unknown(String),
+pub struct PrimalType {
+    /// The primal type identifier (e.g., "beardog", "toadstool", "custom-ai", etc.)
+    pub name: String,
 }
 
 impl PrimalType {
-    pub fn as_str(&self) -> &str {
-        match self {
-            PrimalType::ToadStool => "toadstool",
-            PrimalType::Songbird => "songbird",
-            PrimalType::BearDog => "beardog",
-            PrimalType::NestGate => "nestgate",
-            PrimalType::Squirrel => "squirrel",
-            PrimalType::BiomeOS => "biomeos",
-            PrimalType::Unknown(name) => name,
-        }
+    /// Create a new primal type
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
     }
 
-    pub fn from_string(s: &str) -> Self {
-        s.parse()
-            .unwrap_or_else(|_| PrimalType::Unknown(s.to_string()))
+    /// Get the primal type name
+    pub fn as_str(&self) -> &str {
+        &self.name
+    }
+
+    /// Create from string (universal constructor)
+    pub fn from_string(s: impl Into<String>) -> Self {
+        Self { name: s.into() }
     }
 }
 
@@ -48,21 +44,25 @@ impl std::str::FromStr for PrimalType {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "toadstool" => PrimalType::ToadStool,
-            "songbird" => PrimalType::Songbird,
-            "beardog" => PrimalType::BearDog,
-            "nestgate" => PrimalType::NestGate,
-            "squirrel" => PrimalType::Squirrel,
-            "biomeos" => PrimalType::BiomeOS,
-            other => PrimalType::Unknown(other.to_string()),
-        })
+        Ok(Self::new(s))
     }
 }
 
 impl std::fmt::Display for PrimalType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
+        write!(f, "{}", self.name)
+    }
+}
+
+impl From<String> for PrimalType {
+    fn from(name: String) -> Self {
+        Self::new(name)
+    }
+}
+
+impl From<&str> for PrimalType {
+    fn from(name: &str) -> Self {
+        Self::new(name)
     }
 }
 

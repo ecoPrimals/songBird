@@ -1,27 +1,27 @@
 //! Production Benchmarks
 //!
-//! Comprehensive benchmarking suite for production workload validation including:
-//! - Load balancer performance tests (O(log n) vs O(n) comparison)
-//! - Cache performance with various access patterns
-//! - Memory allocation and object pool efficiency
-//! - Async batching throughput measurement
-//! - Real-world scenario simulation
-//! - Production readiness assessment
+//! Comprehensive benchmarking suite for production workloads.
+//! Tests all major components under realistic conditions.
 
-use chrono;
-use serde::{Deserialize, Serialize};
-use songbird_config::config::constants::benchmarks::{
-    DEFAULT_BENCHMARK_DURATION, DEFAULT_BENCHMARK_MONITORING_INTERVAL,
-};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use tokio::time::timeout;
+use tracing::{debug, info, warn};
 
-use crate::load_balancer::{
-    LoadBalancerConfig, LoadBalancerManager, LoadBalancerStrategy, ServiceInstance,
+use songbird_config::constants::{
+    DEFAULT_BENCHMARK_ITERATIONS, DEFAULT_BENCHMARK_TIMEOUT, DEFAULT_EVALUATION_TIMEOUT,
 };
-use crate::performance_optimizer::*;
 use songbird_errors::{ExecutionError, Result};
+
+use crate::benchmarks::*;
+use crate::biome::*;
+use crate::biomeos_integration::*;
+use crate::load_balancer::*;
+use crate::orchestrator::*;
+use crate::performance::*;
+use crate::registry::*;
+use crate::substrate::*;
+use crate::zero_touch::*;
 
 /// Production benchmark suite configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -728,8 +728,6 @@ impl ProductionBenchmarkRunner {
                 songbird_errors::SongbirdError::ExecutionFailed(Box::new(ExecutionError {
                     message: "Benchmark execution failed".to_string(),
                     command: Some("benchmark".to_string()),
-                    exit_code: Some(1),
-                    suggestion: Some("Check system resources and try again".to_string()),
                 }))
             })
         } else {
@@ -737,8 +735,6 @@ impl ProductionBenchmarkRunner {
                 ExecutionError {
                     message: "Benchmark execution failed".to_string(),
                     command: Some("benchmark".to_string()),
-                    exit_code: Some(1),
-                    suggestion: Some("Check benchmark configuration".to_string()),
                 },
             )))
         }

@@ -163,20 +163,46 @@ async fn test_config_validation() -> Result<()> {
 }
 
 #[test]
-fn test_songbird_config_beardog_integration() -> Result<()> {
+fn test_songbird_config_universal_primal_integration() -> Result<()> {
     let mut config = SongbirdConfig::default();
 
-    // Test BearDog integration
-    assert!(!config.is_beardog_enabled());
+    // Test universal primal integration (replaces old BearDog-specific test)
+    assert!(!config.is_primal_enabled("beardog"));
 
-    config.enable_beardog();
-    assert!(config.is_beardog_enabled());
+    // Enable BearDog through universal primal system
+    config.enable_primal("beardog", "https://beardog.example.com:8443");
+    assert!(config.is_primal_enabled("beardog"));
 
-    let beardog_config = config.get_beardog_config();
-    assert!(beardog_config.enabled);
+    // Verify primal configuration
+    let beardog_config = config.get_primal_config("beardog");
+    assert!(beardog_config.is_some());
+    let beardog = beardog_config.unwrap();
+    assert!(beardog.enabled);
+    assert_eq!(beardog.primal_type, "beardog");
+    assert_eq!(beardog.endpoint.primary_url, "https://beardog.example.com:8443");
 
-    config.disable_beardog();
-    assert!(!config.is_beardog_enabled());
+    // Test capability-based primal discovery (universal feature)
+    let security_primals = config.find_primals_with_capability("security");
+    assert!(security_primals.len() >= 1, "Should find at least one security primal");
+    
+    // Test multiple primals (universal extensibility)
+    config.enable_primal("toadstool", "http://toadstool.example.com:8080");
+    config.enable_primal("phoenix-ai", "https://phoenix.example.com:8888");
+    
+    assert!(config.is_primal_enabled("toadstool"));
+    assert!(config.is_primal_enabled("phoenix-ai"));
+    
+    // Verify primal registry contains all enabled primals
+    let registry = config.get_primal_registry();
+    assert!(registry.primals.len() >= 3, "Should have at least 3 primals registered");
+
+    // Disable a primal
+    config.disable_primal("beardog");
+    assert!(!config.is_primal_enabled("beardog"));
+
+    // Verify other primals are still enabled
+    assert!(config.is_primal_enabled("toadstool"));
+    assert!(config.is_primal_enabled("phoenix-ai"));
 
     Ok(())
 }

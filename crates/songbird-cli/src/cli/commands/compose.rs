@@ -19,7 +19,7 @@ pub struct ComposeArgs {
     pub command: ComposeCommand,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, Clone)]
 pub enum ComposeCommand {
     /// List available plugins
     List {

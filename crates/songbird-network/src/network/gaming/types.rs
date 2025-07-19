@@ -6,6 +6,9 @@ use std::fmt;
 use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, SystemTime};
 
+// Import NatType from nat_traversal module to avoid duplication
+use crate::network::gaming::nat_traversal::NatType;
+
 /// Unique identifier for a gaming session
 pub type GameSessionId = String;
 
@@ -208,18 +211,6 @@ pub struct PlayerEndpoint {
     pub real_address: SocketAddr,
     pub virtual_address: Option<IpAddr>,
     pub nat_type: NatType,
-}
-
-/// NAT type detection
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum NatType {
-    None,
-    Open,
-    FullCone,
-    RestrictedCone,
-    PortRestrictedCone,
-    Symmetric,
-    Unknown,
 }
 
 /// Raw network packet

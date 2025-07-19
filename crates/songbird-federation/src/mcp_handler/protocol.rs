@@ -135,11 +135,10 @@ impl ProtocolHandler {
             .build()
             .map_err(|e| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("federation".to_string()),
                     message: format!("Failed to create HTTP client: {e}"),
-                    details: None,
                     endpoint: Some("federation/register".to_string()),
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: None,
                 }))
             })?;
 
@@ -150,11 +149,10 @@ impl ProtocolHandler {
             .await
             .map_err(|e| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("federation".to_string()),
                     message: format!("Request failed: {e}"),
-                    details: None,
                     endpoint: Some("federation/register".to_string()),
-                    suggestion: Some("Check network connectivity and cluster endpoint".to_string()),
+                    port: None,
+                    protocol: None,
                 }))
             })?;
 
@@ -166,11 +164,10 @@ impl ProtocolHandler {
         } else {
             Err(songbird_errors::SongbirdError::Network(Box::new(
                 NetworkError {
-                    service: Some("federation".to_string()),
                     message: format!("Request failed with status: {}", response.status()),
-                    details: None,
                     endpoint: Some("federation/register".to_string()),
-                    suggestion: Some("Check the cluster endpoint and try again".to_string()),
+                    port: None,
+                    protocol: None,
                 },
             )))
         }
@@ -187,11 +184,10 @@ impl ProtocolHandler {
             .build()
             .map_err(|e| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("federation".to_string()),
                     message: format!("Failed to create HTTP client: {e}"),
-                    details: None,
                     endpoint: Some("federation/request".to_string()),
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: None,
                 }))
             })?;
 
@@ -202,13 +198,10 @@ impl ProtocolHandler {
             .await
             .map_err(|e| {
                 songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("federation".to_string()),
                     message: format!("Request failed: {e}"),
-                    details: None,
                     endpoint: Some("federation/request".to_string()),
-                    suggestion: Some(
-                        "Check network connectivity and federation endpoint".to_string(),
-                    ),
+                    port: None,
+                    protocol: None,
                 }))
             })?;
 
@@ -220,11 +213,10 @@ impl ProtocolHandler {
         } else {
             Err(songbird_errors::SongbirdError::Network(Box::new(
                 NetworkError {
-                    service: Some("federation".to_string()),
                     message: format!("Request failed with status: {}", response.status()),
-                    details: None,
                     endpoint: Some("federation/request".to_string()),
-                    suggestion: Some("Check the federation endpoint and try again".to_string()),
+                    port: None,
+                    protocol: None,
                 },
             )))
         }
@@ -508,13 +500,10 @@ impl ProtocolHandler {
                 .build()
                 .map_err(|e| {
                     songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                        service: Some("federation".to_string()),
                         message: format!("Failed to create HTTP client: {e}"),
-                        details: None,
                         endpoint: Some("federation/unregister".to_string()),
-                        suggestion: Some(
-                            "Check network connectivity and configuration".to_string(),
-                        ),
+                        port: None,
+                        protocol: None,
                     }))
                 })?;
 
@@ -525,13 +514,10 @@ impl ProtocolHandler {
                 .await
                 .map_err(|e| {
                     songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                        service: Some("federation".to_string()),
                         message: format!("Failed to send unregistration: {e}"),
-                        details: None,
                         endpoint: Some("federation/unregister".to_string()),
-                        suggestion: Some(
-                            "Check network connectivity and federation endpoint".to_string(),
-                        ),
+                        port: None,
+                        protocol: None,
                     }))
                 })?;
         }

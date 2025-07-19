@@ -230,8 +230,13 @@ fn detect_available_storage() -> Option<f64> {
 
         let path_cstr = CString::new(path.to_string_lossy().as_bytes()).ok()?;
         let mut statfs = MaybeUninit::<libc::statvfs>::uninit();
+
+        // SAFETY: statvfs is a standard POSIX system call that fills the provided buffer
+        // with filesystem statistics. The buffer is properly initialized as MaybeUninit
+        // and we check the return value before using the data.
         let result = unsafe { libc::statvfs(path_cstr.as_ptr(), statfs.as_mut_ptr()) };
         if result == 0 {
+            // SAFETY: statvfs succeeded (result == 0), so the buffer is now properly initialized
             let statfs = unsafe { statfs.assume_init() };
             let available_bytes = statfs.f_bavail.saturating_mul(statfs.f_frsize);
             return Some(available_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
@@ -255,6 +260,9 @@ fn detect_available_storage() -> Option<f64> {
         let mut free_bytes: u64 = 0;
         let mut total_bytes: u64 = 0;
         // Call GetDiskFreeSpaceEx
+        // SAFETY: GetDiskFreeSpaceExW is a standard Windows API that safely writes
+        // to the provided output parameters. The wide_path is properly null-terminated
+        // and we check the return value before using the output data.
         unsafe {
             let result = winapi::um::fileapi::GetDiskFreeSpaceExW(
                 wide_path.as_ptr(),
@@ -800,16 +808,54 @@ async fn execute_quick_zero_touch() -> CliResult<()> {
     println!("🔐 Connecting to beardog...");
     println!("📋 Fetching enterprise configuration...");
 
-    // Create auto-config with beardog
+    // Create universal primal registry for BearDog
+    use songbird_config::config::{PrimalRegistry, PrimalConfiguration, PrimalEndpoint, PrimalAuthentication, AuthenticationMethod, PrimalCapability};
+    
+    let mut registry = PrimalRegistry::new();
+    let mut beardog_config = PrimalConfiguration::new_template("beardog", "BearDog Security");
+    beardog_config.enabled = true;
+    beardog_config.endpoint = PrimalEndpoint {
+        primary_url: endpoint.clone(),
+        fallback_urls: vec![],
+        use_tls: endpoint.starts_with("https"),
+        custom_headers: std::collections::HashMap::new(),
+        load_balancing: songbird_config::config::LoadBalancingStrategy::RoundRobin,
+    };
+    beardog_config.authentication = PrimalAuthentication {
+        method: AuthenticationMethod::ApiKey,
+        credentials: {
+            let mut creds = std::collections::HashMap::new();
+            creds.insert("api_key".to_string(), serde_json::Value::String(token));
+            creds
+        },
+        token_refresh: None,
+    };
+    beardog_config.capabilities = vec![
+        PrimalCapability {
+            capability_type: "security".to_string(),
+            version: "1.0".to_string(),
+            parameters: std::collections::HashMap::new(),
+            qos_metrics: songbird_config::config::QosMetrics::default(),
+        },
+        PrimalCapability {
+            capability_type: "auto_configuration".to_string(),
+            version: "1.0".to_string(),
+            parameters: std::collections::HashMap::new(),
+            qos_metrics: songbird_config::config::QosMetrics::default(),
+        },
+    ];
+    registry.register_primal(beardog_config);
+
+    // Create auto-config with universal primal registry
     let mut auto_config = GamingAutoConfig::new()
         .await
         .map_err(|e| CliError::Gaming {
             message: format!("Setup failed: {e}"),
             protocol: None,
-            game: Some("beardog_setup".to_string()),
-            suggestion: Some("Check beardog configuration and connectivity".to_string()),
+            game: Some("primal_setup".to_string()),
+            suggestion: Some("Check primal configuration and connectivity".to_string()),
         })?
-        .with_beardog(endpoint.clone(), token);
+        .with_primal_registry(registry);
 
     // Perform zero-touch setup
     match auto_config.zero_touch_setup().await {

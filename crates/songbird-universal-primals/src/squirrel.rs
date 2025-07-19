@@ -331,7 +331,7 @@ impl PrimalProvider for SquirrelPrimal {
     }
 
     fn primal_type(&self) -> PrimalType {
-        PrimalType::Squirrel
+        PrimalType::new("squirrel")
     }
 
     fn capabilities(&self) -> Vec<PrimalCapability> {

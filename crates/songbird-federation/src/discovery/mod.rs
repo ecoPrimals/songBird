@@ -86,7 +86,7 @@ impl DiscoveryEngine {
                 .query_mdns_service(&interface.broadcast_ip, "_songbird._tcp.local")
                 .await?;
             for service in services {
-                if let Ok(node) = self.create_federation_node_from_service(service).await {
+                if let Ok(node) = self.create_federation_node_from_service(&service).await {
                     nodes.push(node);
                 }
             }
@@ -154,8 +154,8 @@ impl DiscoveryEngine {
         service_name: &str,
     ) -> Result<Vec<ServiceInfo>> {
         debug!(
-            "Querying mDNS for service: {} on {}",
-            service_name, broadcast_addr
+            "Querying mDNS for service_name, broadcast_addr: {:?}",
+            (service_name, broadcast_addr)
         );
 
         let mut services = Vec::new();
@@ -188,7 +188,7 @@ impl DiscoveryEngine {
                 warn!("mDNS receive error: {}", e);
             }
             Err(_) => {
-                debug!("mDNS query timeout for service: {}", service_name);
+                debug!("mDNS query timeout for {}", service_name);
             }
         }
 
@@ -256,7 +256,7 @@ impl DiscoveryEngine {
     /// Create federation node from service info
     async fn create_federation_node_from_service(
         &self,
-        service: ServiceInfo,
+        service: &ServiceInfo,
     ) -> Result<FederationNode> {
         let node_id = uuid::Uuid::new_v4();
 
@@ -293,7 +293,10 @@ impl DiscoveryEngine {
             }
         } else {
             NodeType::Tower {
-                location: service.location.unwrap_or_else(|| "unknown".to_string()),
+                location: service
+                    .location
+                    .clone()
+                    .unwrap_or_else(|| "unknown".to_string()),
                 capabilities: TowerCapabilities {
                     cpu_cores: 4,
                     memory_gb: 8,

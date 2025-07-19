@@ -443,11 +443,10 @@ impl RealProtocolDetector {
         }
 
         Err(SongbirdError::Network(Box::new(NetworkError {
-            service: Some("Protocol Detector".to_string()),
-            details: Some("No suitable network interface found".to_string()),
-            message: "No suitable network interface found".to_string(),
+            message: format!("Protocol Detector - No suitable network interface found"),
             endpoint: None,
-            suggestion: Some("Check network connectivity and configuration".to_string()),
+            port: None,
+            protocol: None,
         })))
     }
 
@@ -462,11 +461,10 @@ impl RealProtocolDetector {
         }
 
         Err(SongbirdError::Network(Box::new(NetworkError {
-            service: Some("Protocol Detector".to_string()),
-            details: Some("No suitable network interface found".to_string()),
-            message: "No suitable network interface found".to_string(),
+            message: format!("Protocol Detector - No suitable network interface found"),
             endpoint: None,
-            suggestion: Some("Check network connectivity and configuration".to_string()),
+            port: None,
+            protocol: None,
         })))
     }
 
@@ -580,13 +578,10 @@ impl RealProtocolDetectorCapture {
                 .find(|iface| iface.is_up() && !iface.is_loopback())
                 .ok_or_else(|| {
                     SongbirdError::Network(Box::new(NetworkError {
-                        service: Some("Protocol Detector".to_string()),
-                        details: Some("No suitable network interface found".to_string()),
-                        message: "No suitable network interface found".to_string(),
+                        message: format!("Protocol Detector - No suitable network interface found"),
                         endpoint: None,
-                        suggestion: Some(
-                            "Check network connectivity and configuration".to_string(),
-                        ),
+                        port: None,
+                        protocol: None,
                     }))
                 })?;
 

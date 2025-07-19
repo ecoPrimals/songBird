@@ -1,0 +1,270 @@
+# Songbird Universal Primal Configuration Example
+# 
+# This configuration demonstrates the NEW universal primal registry system
+# that replaces hardcoded primal-specific configurations (BearDog, Toadstool, etc.)
+# with a flexible, extensible approach supporting any primal type.
+#
+# Benefits:
+# - Zero code changes to add new primals
+# - Auto-discovery of primals on the network
+# - Capability-based primal matching
+# - Backward compatibility with legacy configurations
+
+[network]
+bind_address = "127.0.0.1"
+orchestrator_port = 8080
+gaming_port = 6112
+dashboard_port = 3000
+
+[environment]
+prefix = "SONGBIRD_"
+use_defaults = true
+bind_address = "127.0.0.1"
+
+[paths]
+data_dir = "data"
+config_dir = "config"
+log_dir = "logs"
+
+[security]
+encryption_enabled = true
+tls_enabled = false
+
+# =============================================================================
+# UNIVERSAL PRIMAL REGISTRY - The Future of Primal Configuration
+# =============================================================================
+
+[primal_registry]
+# Auto-discovery settings - find primals automatically on the network
+[primal_registry.auto_discovery]
+enabled = true
+discovery_interval = "5m"
+discovery_timeout = "10s"
+discovery_methods = ["environment", "config_file", "mdns", "network_scan"]
+scan_ranges = ["127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16"]
+scan_ports = [8080, 8081, 8082, 8083, 8443, 3000, 5000]
+
+# Default template for unknown primals discovered on the network
+[primal_registry.default_template]
+default_connection_timeout = "30s"
+default_request_timeout = "60s"
+default_auth_method = "none"
+default_capabilities = ["basic"]
+
+# BearDog Security Primal Configuration
+[[primal_registry.primals]]
+primal_type = "beardog"
+display_name = "BearDog Security"
+enabled = true
+
+[primal_registry.primals.endpoint]
+primary_url = "https://beardog.internal:8443"
+fallback_urls = ["https://beardog-backup.internal:8443"]
+use_tls = true
+load_balancing = "health_based"
+
+[primal_registry.primals.authentication]
+method = "mutual_tls"
+credentials = { cert_path = "/etc/ssl/certs/beardog.crt", key_path = "/etc/ssl/private/beardog.key" }
+
+[primal_registry.primals.connection_settings]
+connection_timeout = "30s"
+request_timeout = "60s"
+max_retries = 3
+keep_alive = true
+
+[primal_registry.primals.connection_settings.backoff_strategy]
+type = "exponential"
+initial = "100ms"
+max = "60s"
+
+[primal_registry.primals.connection_settings.connection_pool]
+max_connections = 10
+min_idle = 2
+idle_timeout = "5m"
+max_lifetime = "1h"
+
+[primal_registry.primals.health_check]
+enabled = true
+interval = "30s"
+endpoint_path = "/health"
+expected_status_codes = [200]
+timeout = "10s"
+failure_threshold = 3
+
+# BearDog Security Capabilities
+[[primal_registry.primals.capabilities]]
+capability_type = "security"
+version = "2.0"
+[primal_registry.primals.capabilities.parameters]
+encryption_algorithms = ["ChaCha20-Poly1305", "AES-256-GCM"]
+key_sizes = [256, 384, 512]
+supports_hardware_security = true
+gaming_optimized = true
+
+[primal_registry.primals.capabilities.qos_metrics]
+latency_ms = 2.5
+throughput_ops_sec = 10000.0
+availability = 0.999
+reliability = 0.995
+
+# NestGate Storage Primal Configuration  
+[[primal_registry.primals]]
+primal_type = "nestgate"
+display_name = "NestGate Storage"
+enabled = true
+
+[primal_registry.primals.endpoint]
+primary_url = "http://nestgate.internal:8080"
+fallback_urls = ["http://nestgate-replica.internal:8080"]
+use_tls = false
+load_balancing = "least_connections"
+
+[primal_registry.primals.authentication]
+method = "api_key"
+credentials = { api_key = "${NESTGATE_API_KEY}" }
+
+# NestGate Storage Capabilities
+[[primal_registry.primals.capabilities]]
+capability_type = "storage"
+version = "1.5"
+[primal_registry.primals.capabilities.parameters]
+storage_types = ["block", "object", "file"]
+max_object_size = "5GB"
+supports_encryption = true
+supports_compression = true
+supports_deduplication = true
+
+[primal_registry.primals.capabilities.qos_metrics]
+latency_ms = 15.0
+throughput_ops_sec = 5000.0
+availability = 0.995
+reliability = 0.99
+
+# Toadstool Compute Primal Configuration
+[[primal_registry.primals]]
+primal_type = "toadstool"
+display_name = "Toadstool Compute"
+enabled = true
+
+[primal_registry.primals.endpoint]
+primary_url = "http://toadstool.internal:8082"
+use_tls = false
+
+[primal_registry.primals.authentication]
+method = "oauth2"
+credentials = { client_id = "${TOADSTOOL_CLIENT_ID}", client_secret = "${TOADSTOOL_CLIENT_SECRET}" }
+
+# Toadstool Compute Capabilities
+[[primal_registry.primals.capabilities]]
+capability_type = "compute"
+version = "3.0"
+[primal_registry.primals.capabilities.parameters]
+supported_runtimes = ["docker", "containerd", "wasm"]
+max_cpu_cores = 32
+max_memory_gb = 128
+supports_gpu = true
+supports_auto_scaling = true
+
+[primal_registry.primals.capabilities.qos_metrics]
+latency_ms = 100.0
+throughput_ops_sec = 1000.0
+availability = 0.99
+reliability = 0.98
+
+# Squirrel Analytics Primal Configuration (NEW - no code changes needed!)
+[[primal_registry.primals]]
+primal_type = "squirrel"
+display_name = "Squirrel Analytics"
+enabled = true
+
+[primal_registry.primals.endpoint]
+primary_url = "http://squirrel.internal:8083"
+use_tls = false
+
+[primal_registry.primals.authentication]
+method = "none"
+
+# Squirrel Analytics Capabilities
+[[primal_registry.primals.capabilities]]
+capability_type = "analytics"
+version = "1.0"
+[primal_registry.primals.capabilities.parameters]
+supports_real_time = true
+supports_batch = true
+data_retention_days = 90
+max_query_complexity = "high"
+
+[primal_registry.primals.capabilities.qos_metrics]
+latency_ms = 250.0
+throughput_ops_sec = 2000.0
+availability = 0.98
+reliability = 0.97
+
+# Hypothetical Future Primal - Phoenix AI (shows extensibility!)
+[[primal_registry.primals]]
+primal_type = "phoenix"
+display_name = "Phoenix AI Assistant"
+enabled = false  # Discovered but not yet enabled
+
+[primal_registry.primals.endpoint]
+primary_url = "https://phoenix.ai.internal:8444"
+use_tls = true
+
+[primal_registry.primals.authentication]
+method = "api_key"
+credentials = { api_key = "${PHOENIX_API_KEY}" }
+
+# Phoenix AI Capabilities
+[[primal_registry.primals.capabilities]]
+capability_type = "ai_assistance"
+version = "4.0"
+[primal_registry.primals.capabilities.parameters]
+models = ["gpt-4", "claude-3", "custom-gaming-ai"]
+supports_real_time = true
+supports_voice = true
+gaming_context_aware = true
+
+[primal_registry.primals.capabilities.qos_metrics]
+latency_ms = 500.0
+throughput_ops_sec = 100.0
+availability = 0.995
+reliability = 0.99
+
+# Capability Compatibility Matrix
+[primal_registry.compatibility_matrix]
+
+# Service requirements mapping
+[primal_registry.compatibility_matrix.service_requirements]
+gaming = ["security", "storage"]
+development = ["compute", "analytics"]
+production = ["security", "storage", "compute"]
+
+# Fallback strategies
+[primal_registry.compatibility_matrix.fallback_strategies]
+security = "fail"  # Security is critical, no fallback
+storage = "alternative"  # Can use alternative storage
+compute = "degrade"  # Can degrade compute capability
+analytics = "mock_mode"  # Analytics can run in mock mode
+
+# =============================================================================
+# LEGACY PRIMAL CONFIGURATIONS (DEPRECATED - for backward compatibility only)
+# =============================================================================
+
+# These configurations are maintained for backward compatibility but are deprecated.
+# New deployments should use the universal primal_registry above.
+# The system will automatically migrate these to the universal registry.
+
+[beardog]
+enabled = false  # Disabled - using primal_registry instead
+[beardog.endpoint]
+primary_url = "https://localhost:8443"
+connection_timeout_secs = 30
+verify_tls = true
+
+[toadstool]
+enabled = false  # Disabled - using primal_registry instead
+[toadstool.endpoint]  
+primary_url = "http://localhost:8082"
+connection_timeout_secs = 30
+verify_tls = false 

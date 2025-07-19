@@ -257,7 +257,7 @@ mod ip_validation_tests {
 
         for ip_str in &valid_ipv4 {
             match ConfigValidator::validate_ip_address(ip_str, "test_ip") {
-                Ok(_) => assert!(true),
+                Ok(_) => {} // Valid IP address
                 Err(e) => panic!("Expected valid IPv4 for {ip_str}: {e:?}"),
             }
         }

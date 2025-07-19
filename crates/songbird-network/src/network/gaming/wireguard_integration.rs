@@ -245,13 +245,12 @@ impl WireGuardTunnel {
                     BSTPTunnel { /* Placeholder - references advanced_tunnel_system implementation */ },
                 )
             }
-            Err(e) => Err(songbird_errors::SongbirdError::Network(Box::new(
+            Err(_e) => Err(songbird_errors::SongbirdError::Network(Box::new(
                 NetworkError {
-                    service: Some("BSTP Upgrade".to_string()),
-                    message: format!("Failed to upgrade to BSTP: {e}"),
-                    details: None,
+                    message: format!("BSTP Upgrade - Network connectivity issue"),
                     endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: Some("BSTP".to_string()),
                 },
             ))),
         }
@@ -570,11 +569,10 @@ impl BSTPTunnel {
         if packet.len() < 32 {
             return Err(songbird_errors::SongbirdError::Network(Box::new(
                 NetworkError {
-                    service: Some("BSTP".to_string()),
-                    message: "Packet too small for zero-copy BSTP encryption".to_string(),
-                    details: Some(format!("Need at least 32 bytes, got {}", packet.len())),
+                    message: format!("BSTP - Need at least 32 bytes, got {}", packet.len()),
                     endpoint: None,
-                    suggestion: Some("Check packet size and BSTP configuration".to_string()),
+                    port: None,
+                    protocol: Some("BSTP".to_string()),
                 },
             )));
         }

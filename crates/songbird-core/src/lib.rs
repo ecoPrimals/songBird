@@ -69,22 +69,29 @@
 //! - Service discovery
 //! - Health monitoring
 //! - Rollback capabilities
+//!
+//! ## Robustness and Performance
+//!
+//! The robustness layer implements circuit breakers, retry logic, and fault tolerance:
+//! - Circuit breaker pattern for fault isolation
+//! - Exponential backoff retry strategies
+//! - Health check and recovery mechanisms
 
 #![allow(dead_code)]
 
-// pub mod api; // Temporarily commented out due to missing axum dependency
+pub mod api;
 pub mod benchmarks;
 pub mod biome;
-pub mod biomeos_integration;
+pub mod biomeos;
 pub mod load_balancer;
 pub mod orchestrator;
-pub mod performance_optimizer;
-pub mod primal_integration;
-pub mod production_benchmarks;
+pub mod performance;
 pub mod registry;
-pub mod robustness;
-pub mod scalability;
 pub mod structural_improvements;
 pub mod substrate;
 pub mod traits;
+pub mod primal_integration;
+pub mod robustness;
 pub mod zero_touch;
+pub mod basic_iot;
+pub mod scalability;

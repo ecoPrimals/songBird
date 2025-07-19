@@ -106,6 +106,11 @@ pub async fn execute_internet_command(command: &InternetCommands) -> crate::cli:
         InternetCommands::Config { action } => execute_internet_config(action).await,
     }
 }
+
+/// Handle internet command - wrapper for compatibility
+pub async fn handle_internet_command(command: &InternetCommands) -> crate::cli::CliResult<()> {
+    execute_internet_command(command).await
+}
 /// Execute the internet connection wizard
 async fn execute_internet_wizard(
     _config: Option<&PathBuf>,

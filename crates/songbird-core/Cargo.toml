@@ -14,6 +14,7 @@ categories = ["game-engines", "network-programming", "concurrency"]
 songbird-errors = { path = "../songbird-errors" }
 songbird-config = { path = "../songbird-config" }
 songbird-discovery = { path = "../songbird-discovery" }
+songbird-network = { path = "../songbird-network" }
 songbird-observability = { path = "../songbird-observability" }
 songbird-registry = { path = "../songbird-registry" }
 songbird-universal = { path = "../songbird-universal" }
@@ -34,3 +35,12 @@ fastrand = "2.0"
 rand = "0.8"
 reqwest = { workspace = true, features = ["json"] }
 serde_yaml = "0.9.34"
+axum = "0.7"
+tokio-stream = "0.1"
+tower-http = { version = "0.4", features = ["cors", "trace"] }
+async-stream = "0.3"
+md5 = "0.7"
+
+[dev-dependencies]
+axum-test = "15.7.1"
+tokio-test = "0.4"

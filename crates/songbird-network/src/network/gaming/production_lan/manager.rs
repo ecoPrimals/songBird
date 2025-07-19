@@ -1,4 +1,5 @@
 use super::{HealthMonitor, ProductionGameSession, ProductionLanConfig, SessionMetrics};
+use crate::network::gaming::nat_traversal::types::NatType;
 use crate::network::gaming::types::*;
 /// Production LAN Gaming Manager - Clean Implementation
 ///
@@ -59,16 +60,27 @@ impl ProductionLanManager {
                 field: Some("discovery_ports".to_string()),
                 message: "At least one discovery port must be specified".to_string(),
                 context: Some("network_configuration".to_string()),
-                suggestion: Some("Check configuration values and network settings".to_string()),
+                suggestion: Some(
+                    "Add at least one discovery port to the configuration".to_string(),
+                ),
             });
         }
 
         if config.security.max_players_per_session == 0 {
             return Err(SongbirdError::Config {
                 field: Some("max_players_per_session".to_string()),
-                message: "Maximum players per session must be greater than 0".to_string(),
-                context: Some("network_configuration".to_string()),
-                suggestion: Some("Check configuration values and network settings".to_string()),
+                message: "Max players per session must be greater than 0".to_string(),
+                context: Some("security_configuration".to_string()),
+                suggestion: Some("Set max_players_per_session to a positive value".to_string()),
+            });
+        }
+
+        if config.security.session_timeout_seconds == 0 {
+            return Err(SongbirdError::Config {
+                field: Some("session_timeout_seconds".to_string()),
+                message: "Session timeout must be greater than 0".to_string(),
+                context: Some("security_configuration".to_string()),
+                suggestion: Some("Set session_timeout_seconds to a positive value".to_string()),
             });
         }
 
@@ -78,7 +90,7 @@ impl ProductionLanManager {
                 field: Some("game_port_range".to_string()),
                 message: "Invalid game port range".to_string(),
                 context: Some("network_configuration".to_string()),
-                suggestion: Some("Check configuration values and network settings".to_string()),
+                suggestion: Some("Ensure min_port < max_port".to_string()),
             });
         }
 
@@ -188,7 +200,7 @@ impl ProductionLanManager {
             network_info: super::NetworkInfo {
                 primary_interface: "eth0".to_string(),
                 available_ports: vec![8000],
-                nat_type: NatType::Open,
+                nat_type: NatType::FullCone,
                 bandwidth_estimate: None,
                 latency_estimate: None,
             },
@@ -253,11 +265,10 @@ impl ProductionLanManager {
         let sessions = self.sessions.read().await;
         sessions.get(session_code).cloned().ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
-                service: Some("Production LAN Manager".to_string()),
-                message: format!("Session not found: {session_code}"),
-                details: None,
+                message: format!("Production LAN Manager - Session not found: {session_code}"),
+                port: None,
                 endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+                protocol: None,
             }))
         })
     }
@@ -270,11 +281,10 @@ impl ProductionLanManager {
             Ok(())
         } else {
             Err(SongbirdError::Network(Box::new(NetworkError {
-                service: Some("Production LAN Manager".to_string()),
-                message: format!("Session not found: {session_code}"),
-                details: None,
+                message: format!("Production LAN Manager - Session not found: {session_code}"),
+                port: None,
                 endpoint: None,
-                suggestion: Some("Check network connectivity and configuration".to_string()),
+                protocol: None,
             })))
         }
     }

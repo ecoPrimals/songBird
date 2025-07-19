@@ -242,14 +242,19 @@ impl ConnectionProxy {
         // Serve the application
         tokio::spawn(async move {
             match listener.into_std() {
-                Ok(std_listener) => match axum::Server::from_tcp(std_listener) {
-                    Ok(server) => {
-                        if let Err(e) = server.serve(app.into_make_service()).await {
-                            tracing::error!("Proxy server error: {}", e);
+                Ok(std_listener) => match std_listener.set_nonblocking(true) {
+                    Ok(()) => match tokio::net::TcpListener::from_std(std_listener) {
+                        Ok(listener) => {
+                            if let Err(e) = axum::serve(listener, app).await {
+                                tracing::error!("Proxy server error: {}", e);
+                            }
                         }
-                    }
+                        Err(e) => {
+                            tracing::error!("Failed to create async listener: {}", e);
+                        }
+                    },
                     Err(e) => {
-                        tracing::error!("Failed to create axum server from TcpListener: {}", e);
+                        tracing::error!("Failed to set non-blocking: {}", e);
                     }
                 },
                 Err(e) => {

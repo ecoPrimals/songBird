@@ -18,8 +18,6 @@ async fn test_error_creation_and_display() -> Result<()> {
     let open_error = SongbirdError::CircuitBreakerOpen(Box::new(CircuitBreakerError {
         service: "test-service".to_string(),
         message: "Circuit breaker is open for test-service".to_string(),
-        failure_count: Some(5),
-        suggestion: Some("Check service health and restart if needed".to_string()),
     }));
 
     let failure_error = SongbirdError::CircuitBreakerFailure {
@@ -30,10 +28,8 @@ async fn test_error_creation_and_display() -> Result<()> {
 
     // Test retry exhausted error
     let retry_error = SongbirdError::RetryExhausted(Box::new(RetryError {
-        attempts: 3,
         message: "Connection failed".to_string(),
-        duration: Some("30s".to_string()),
-        suggestion: Some("Check network connectivity and retry strategy".to_string()),
+        attempts: Some(3),
     }));
 
     // Test discovery error
@@ -136,7 +132,12 @@ async fn test_error_constructors() -> Result<()> {
     assert!(service_error.to_string().contains("test-service"));
     assert!(service_error.to_string().contains("Test failed"));
 
-    let health_error = SongbirdError::health_check_failed("db-service", "Timeout");
+    let health_error = SongbirdError::Service(Box::new(ServiceError {
+        service: "db-service".to_string(),
+        message: "Health check failed: Timeout".to_string(),
+        status: Some("unhealthy".to_string()),
+        suggestion: Some("Check service connectivity and response time".to_string()),
+    }));
     assert!(health_error.to_string().contains("db-service"));
     assert!(health_error.to_string().contains("Health check failed"));
 

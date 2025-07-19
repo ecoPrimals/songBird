@@ -135,11 +135,13 @@ impl RealIpxBridge {
     pub async fn new(bind_address: SocketAddr, buffer_pool_size: usize) -> Result<Self> {
         let socket = UdpSocket::bind(bind_address).await.map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
-                service: Some("Real IPX Bridge".to_string()),
-                message: format!("Failed to bind UDP socket: {e}"),
-                details: Some(format!("Address: {bind_address}")),
+                message: format!(
+                    "Real IPX Bridge - Failed to bind to address {}: {}",
+                    bind_address, e
+                ),
                 endpoint: Some(bind_address.to_string()),
-                suggestion: Some("Check if port is available and address is valid".to_string()),
+                port: Some(bind_address.port()),
+                protocol: None,
             }))
         })?;
 
@@ -184,11 +186,10 @@ impl RealIpxBridge {
             let mut recv_lock = self.packet_receiver.write().await;
             recv_lock.take().ok_or_else(|| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("Real IPX Bridge".to_string()),
                     message: "Packet receiver already taken".to_string(),
-                    details: None,
                     endpoint: None,
-                    suggestion: Some("Check network connectivity and configuration".to_string()),
+                    port: None,
+                    protocol: None,
                 }))
             })?
         };
@@ -399,11 +400,10 @@ impl IpxPacketTranslator {
     pub fn parse_ipx_packet<'a>(&self, data: &'a [u8]) -> Result<IpxPacket<'a>> {
         if data.len() < 30 {
             return Err(SongbirdError::Network(Box::new(NetworkError {
-                service: Some("IPX Parser".to_string()),
-                message: "IPX packet too short".to_string(),
-                details: Some(format!("Need at least 30 bytes, got {}", data.len())),
+                message: format!("IPX Parser - Need at least 30 bytes, got {}", data.len()),
                 endpoint: None,
-                suggestion: Some("Check packet format and network configuration".to_string()),
+                port: None,
+                protocol: Some("IPX".to_string()),
             })));
         }
 

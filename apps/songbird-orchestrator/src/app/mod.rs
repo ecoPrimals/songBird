@@ -14,7 +14,7 @@ use songbird_federation::{
 use songbird_network::gaming::GamingManager;
 use songbird_observability::ObservabilityManager;
 use songbird_security::{
-    BearDogAuditLevel, BearDogComplianceMode, BearDogConfig, BearDogSecurityIntegration,
+    BearDogAuditLevel, BearDogComplianceMode, BearDogConfig, UniversalSecurityIntegration,
     BearDogSecurityLevel,
 };
 use std::collections::HashMap;
@@ -31,7 +31,7 @@ pub struct SongbirdOrchestrator {
     gaming_manager: Arc<GamingManager>,
     federation_manager: Arc<FederationManager>,
     observability_manager: Arc<ObservabilityManager>,
-    security_integration: Arc<BearDogSecurityIntegration>,
+    security_integration: Arc<UniversalSecurityIntegration>,
     shutdown_signal: tokio::sync::broadcast::Receiver<()>,
     shutdown_sender: tokio::sync::broadcast::Sender<()>,
 }
@@ -77,7 +77,7 @@ impl SongbirdOrchestrator {
                 bootstrap_nodes: vec![],
             },
             security: FedSecurityConfig {
-                enable_beardog: config.is_beardog_enabled(),
+                enable_beardog: config.is_primal_enabled("beardog"),
                 required_security_level: "internal".to_string(),
                 trusted_nodes: vec![],
                 session_timeout: Duration::from_secs(3600),
@@ -105,25 +105,53 @@ impl SongbirdOrchestrator {
         // Initialize observability manager (no parameters)
         let observability_manager = Arc::new(ObservabilityManager::new());
 
-        // Initialize real BearDog security integration (replacing basic SecurityManager)
-        let beardog_config = BearDogConfig {
-            endpoint: config
-                .beardog
-                .as_ref()
-                .map(|b| b.endpoint.primary_url.clone())
-                .unwrap_or_else(|| config.environment.beardog_endpoint.clone()),
-            api_key: config
-                .beardog
-                .as_ref()
-                .and_then(|b| b.authentication.api_key.clone())
-                .unwrap_or_else(|| "development_key".to_string()),
-            security_level: BearDogSecurityLevel::Internal,
-            audit_level: BearDogAuditLevel::Standard,
-            compliance_mode: BearDogComplianceMode::Standard,
-            metadata: HashMap::new(),
+        // Initialize universal security integration using primal registry
+        let security_integration = if let Some(security_primal) = config.find_primals_with_capability("security").into_iter().next() {
+            info!("🔐 Initializing universal security integration with {}", security_primal.display_name);
+            Arc::new(UniversalSecurityIntegration::new(security_primal).await?)
+        } else {
+            // Fallback: create a basic security primal configuration if none configured
+            warn!("⚠️  No security primal configured, creating basic BearDog integration");
+            use songbird_config::config::{PrimalConfiguration, PrimalEndpoint, PrimalAuthentication, AuthenticationMethod, PrimalCapability, QosMetrics, LoadBalancingStrategy};
+            
+            let mut beardog_primal = PrimalConfiguration::new_template("beardog", "BearDog Security (Fallback)");
+            beardog_primal.enabled = true;
+            beardog_primal.endpoint = PrimalEndpoint {
+                primary_url: config
+                    .beardog
+                    .as_ref()
+                    .map(|b| b.endpoint.primary_url.clone())
+                    .unwrap_or_else(|| config.environment.beardog_endpoint.clone()),
+                fallback_urls: vec![],
+                use_tls: true,
+                custom_headers: HashMap::new(),
+                load_balancing: LoadBalancingStrategy::RoundRobin,
+            };
+            beardog_primal.authentication = PrimalAuthentication {
+                method: AuthenticationMethod::ApiKey,
+                credentials: {
+                    let mut creds = HashMap::new();
+                    let api_key = config
+                        .beardog
+                        .as_ref()
+                        .and_then(|b| b.authentication.api_key.clone())
+                        .unwrap_or_else(|| "development_key".to_string());
+                    creds.insert("api_key".to_string(), serde_json::Value::String(api_key));
+                    creds
+                },
+                token_refresh: None,
+            };
+            beardog_primal.capabilities = vec![
+                PrimalCapability {
+                    capability_type: "security".to_string(),
+                    version: "1.0".to_string(),
+                    parameters: HashMap::new(),
+                    qos_metrics: QosMetrics::default(),
+                },
+            ];
+            
+            Arc::new(UniversalSecurityIntegration::new(beardog_primal).await?)
         };
-
-        let security_integration = Arc::new(BearDogSecurityIntegration::new(beardog_config).await?);
 
         Ok(Self {
             _config: config,
@@ -148,7 +176,7 @@ impl SongbirdOrchestrator {
     }
 
     /// Get security integration reference
-    pub fn security_integration(&self) -> &Arc<BearDogSecurityIntegration> {
+    pub fn security_integration(&self) -> &Arc<UniversalSecurityIntegration> {
         &self.security_integration
     }
 

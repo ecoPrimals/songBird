@@ -67,12 +67,10 @@ impl SecurityManager {
         
         if !validation_result.is_secure {
             return Err(SongbirdError::Security {
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                 message: "Security validation failed during initialization".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                 context: Some("security_manager_init".to_string()),
+            severity: Some("medium".to_string()),
+            suggestion: Some("Check security configuration".to_string()),
             });
         }
 
@@ -89,9 +87,6 @@ impl SecurityManager {
             tracing::error!("SECURITY CRITICAL: Authentication disabled");
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                 message: "Authentication is disabled".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
-                user: Some("SecurityManager".to_string()),
             })));
         }
 
@@ -131,8 +126,6 @@ impl SecurityManager {
                 return Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
                     service: Some("security".to_string()),
                     message: "Authorization cannot be disabled in production".to_string(),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                     details: None,
                 })));
             }
@@ -187,8 +180,6 @@ impl SecurityManager {
         
         if !validation_result.is_secure {
             return Err(SongbirdError::Security {
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration and permissions".to_string()),
                 message: format!("Security validation failed: {:?}", validation_result.errors),
                 context: Some("security_validation".to_string()),
             });

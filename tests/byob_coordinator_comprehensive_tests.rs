@@ -262,8 +262,10 @@ async fn test_deployment_cleanup() {
 
 #[tokio::test]
 async fn test_configured_port_usage() {
-    let mut config = OrchestratorConfig::default();
-    config.default_port = Some(9090);
+    let config = OrchestratorConfig {
+        default_port: Some(9090),
+        ..Default::default()
+    };
 
     let coordinator = ByobCoordinator::new(config);
 
