@@ -41,7 +41,7 @@ impl CircuitBreakerInstance {
     /// Check if a request is allowed through the circuit breaker
     pub fn allow_request(&mut self) -> Result<()> {
         self.total_requests += 1;
-        
+
         match self.state {
             CircuitBreakerState::Closed => Ok(()),
             CircuitBreakerState::Open => {
@@ -65,7 +65,7 @@ impl CircuitBreakerInstance {
     /// Record a successful request
     pub fn record_success(&mut self) {
         self.last_success_time = Some(Instant::now());
-        
+
         match self.state {
             CircuitBreakerState::Closed => {
                 // Reset failure count on success
@@ -89,10 +89,10 @@ impl CircuitBreakerInstance {
         let now = Instant::now();
         self.last_failure_time = Some(now);
         self.failure_window.push(now);
-        
+
         // Clean old failures outside the time window
         self.clean_failure_window();
-        
+
         self.failure_count = self.failure_window.len() as u32;
 
         match self.state {
@@ -146,10 +146,9 @@ impl CircuitBreakerInstance {
     fn clean_failure_window(&mut self) {
         let now = Instant::now();
         let window_duration = self.config.timeout;
-        
-        self.failure_window.retain(|&failure_time| {
-            now.duration_since(failure_time) < window_duration
-        });
+
+        self.failure_window
+            .retain(|&failure_time| now.duration_since(failure_time) < window_duration);
     }
 
     /// Get the current failure rate
@@ -169,4 +168,4 @@ impl CircuitBreakerInstance {
             CircuitBreakerState::Open => self.should_attempt_reset(),
         }
     }
-} 
+}

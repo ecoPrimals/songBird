@@ -105,9 +105,7 @@ impl KubernetesServiceDiscovery {
         let ports = spec["ports"].as_array()?;
         let port = ports.first()?["port"].as_u64()? as u16;
 
-        let address = format!("{}:{}", cluster_ip, port)
-            .parse::<SocketAddr>()
-            .ok()?;
+        let address = format!("{cluster_ip}:{port}").parse::<SocketAddr>().ok()?;
 
         // Extract labels as tags
         let tags = metadata["labels"]
@@ -162,14 +160,14 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         let response = self
             .client
             .post(&url)
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .header("Content-Type", "application/json")
             .json(&service_def)
             .send()
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to register service with Kubernetes: {}", e),
+                    message: format!("Failed to register service with Kubernetes: {e}"),
                     service: Some(service.name.clone()),
                     timeout: None,
                     suggestion: Some("Check Kubernetes API connectivity and RBAC".to_string()),
@@ -188,7 +186,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Kubernetes service registration failed: {}", error_text),
+                message: format!("Kubernetes service registration failed: {error_text}"),
                 service: Some(service.name),
                 timeout: None,
                 suggestion: Some("Check service definition and RBAC permissions".to_string()),
@@ -216,12 +214,12 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         let response = self
             .client
             .delete(&url)
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to deregister service from Kubernetes: {}", e),
+                    message: format!("Failed to deregister service from Kubernetes: {e}"),
                     service: Some(service_id.to_string()),
                     timeout: None,
                     suggestion: Some("Check Kubernetes API connectivity".to_string()),
@@ -240,7 +238,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Kubernetes service deregistration failed: {}", error_text),
+                message: format!("Kubernetes service deregistration failed: {error_text}"),
                 service: Some(service_id.to_string()),
                 timeout: None,
                 suggestion: Some("Check if service exists and RBAC permissions".to_string()),
@@ -267,12 +265,12 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         let response = self
             .client
             .get(&url)
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to discover services from Kubernetes: {}", e),
+                    message: format!("Failed to discover services from Kubernetes: {e}"),
                     service: service_name.map(String::from),
                     timeout: None,
                     suggestion: Some("Check Kubernetes API connectivity and RBAC".to_string()),
@@ -285,7 +283,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Kubernetes service discovery failed: {}", error_text),
+                message: format!("Kubernetes service discovery failed: {error_text}"),
                 service: service_name.map(String::from),
                 timeout: None,
                 suggestion: Some("Check namespace and RBAC permissions".to_string()),
@@ -294,7 +292,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
 
         let k8s_response: Value = response.json().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to parse Kubernetes response: {}", e),
+                message: format!("Failed to parse Kubernetes response: {e}"),
                 service: service_name.map(String::from),
                 timeout: None,
                 suggestion: Some("Check Kubernetes API version compatibility".to_string()),
@@ -306,12 +304,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
             vec![k8s_response]
         } else {
             // Service list response
-            k8s_response["items"]
-                .as_array()
-                .unwrap_or(&vec![])
-                .iter()
-                .cloned()
-                .collect()
+            k8s_response["items"].as_array().unwrap_or(&vec![]).to_vec()
         };
 
         let parsed_services: Vec<ServiceInstance> = services
@@ -341,12 +334,12 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         let response = self
             .client
             .get(&endpoints_url)
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to check service endpoints in Kubernetes: {}", e),
+                    message: format!("Failed to check service endpoints in Kubernetes: {e}"),
                     service: Some(service_id.to_string()),
                     timeout: None,
                     suggestion: Some("Check Kubernetes API connectivity".to_string()),
@@ -374,7 +367,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
             .any(|subset| {
                 subset["addresses"]
                     .as_array()
-                    .map_or(false, |addrs| !addrs.is_empty())
+                    .is_some_and(|addrs| !addrs.is_empty())
             });
 
         tracing::debug!(

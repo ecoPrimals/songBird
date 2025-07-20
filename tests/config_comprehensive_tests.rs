@@ -179,22 +179,31 @@ fn test_songbird_config_universal_primal_integration() -> Result<()> {
     let beardog = beardog_config.unwrap();
     assert!(beardog.enabled);
     assert_eq!(beardog.primal_type, "beardog");
-    assert_eq!(beardog.endpoint.primary_url, "https://beardog.example.com:8443");
+    assert_eq!(
+        beardog.endpoint.primary_url,
+        "https://beardog.example.com:8443"
+    );
 
     // Test capability-based primal discovery (universal feature)
     let security_primals = config.find_primals_with_capability("security");
-    assert!(security_primals.len() >= 1, "Should find at least one security primal");
-    
+    assert!(
+        !security_primals.is_empty(),
+        "Should find at least one security primal"
+    );
+
     // Test multiple primals (universal extensibility)
     config.enable_primal("toadstool", "http://toadstool.example.com:8080");
     config.enable_primal("phoenix-ai", "https://phoenix.example.com:8888");
-    
+
     assert!(config.is_primal_enabled("toadstool"));
     assert!(config.is_primal_enabled("phoenix-ai"));
-    
+
     // Verify primal registry contains all enabled primals
     let registry = config.get_primal_registry();
-    assert!(registry.primals.len() >= 3, "Should have at least 3 primals registered");
+    assert!(
+        registry.primals.len() >= 3,
+        "Should have at least 3 primals registered"
+    );
 
     // Disable a primal
     config.disable_primal("beardog");

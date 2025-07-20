@@ -149,7 +149,7 @@ pub struct NatTraversalSession {
 }
 
 /// NAT traversal statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default)]
 pub struct NatTraversalStats {
     pub total_sessions: u64,
     pub active_sessions: u64,
@@ -163,25 +163,6 @@ pub struct NatTraversalStats {
     pub turn_allocations: u64,
     pub upnp_mappings: u64,
     pub nat_pmp_mappings: u64,
-}
-
-impl Default for NatTraversalStats {
-    fn default() -> Self {
-        Self {
-            total_sessions: 0,
-            active_sessions: 0,
-            active_connections: 0,
-            successful_connections: 0,
-            failed_connections: 0,
-            hole_punch_successes: 0,
-            hole_punch_failures: 0,
-            stun_requests: 0,
-            stun_responses: 0,
-            turn_allocations: 0,
-            upnp_mappings: 0,
-            nat_pmp_mappings: 0,
-        }
-    }
 }
 
 /// Port mapping entry

@@ -231,7 +231,7 @@ fn extract_docker_container_endpoint(container: &serde_json::Value) -> Option<St
     // Try to get network settings
     if let Some(network_settings) = container.get("NetworkSettings") {
         if let Some(networks) = network_settings.get("Networks").and_then(|v| v.as_object()) {
-            for (network_name, network_info) in networks {
+            for (_network_name, network_info) in networks {
                 if let Some(ip_address) = network_info.get("IPAddress").and_then(|v| v.as_str()) {
                     if !ip_address.is_empty() {
                         // Try common ports

@@ -6,6 +6,15 @@
 //! - Memory optimization with object pooling
 //! - Async batching and pipeline optimization
 //! - Real-time performance monitoring and auto-tuning
+//! - Zero-cost abstractions with 100% memory safety
+//!
+//! ## Core Principle: FAST AND SAFE, NEVER FAST OR SAFE
+//!
+//! Every optimization follows Rust's fundamental philosophy:
+//! - Maximum performance through zero-cost abstractions
+//! - 100% memory safety maintained at all times
+//! - No undefined behavior possible
+//! - Compile-time guarantees for runtime performance
 //!
 //! ## Refactored Architecture
 //!
@@ -17,6 +26,7 @@
 //! - `batch_processor` - AsyncBatchProcessor for pipeline optimization
 //! - `monitor` - PerformanceMonitor for real-time monitoring
 //! - `optimizer` - Main ProductionPerformanceOptimizer coordinator
+//! - `zero_cost_optimizations` - Zero-cost abstractions with maximum safety
 
 pub mod batch_processor;
 pub mod cache;
@@ -25,6 +35,7 @@ pub mod load_balancer;
 pub mod monitor;
 pub mod object_pool;
 pub mod optimizer;
+pub mod zero_cost_optimizations;
 
 // Re-export main types for backward compatibility
 pub use config::{
@@ -49,6 +60,12 @@ pub use monitor::{MetricUpdate, PerformanceMonitor, SystemMetrics};
 
 pub use optimizer::{
     ComponentHealth, ComprehensiveMetrics, HealthCheckResult, ProductionPerformanceOptimizer,
+};
+
+// Export zero-cost optimization utilities
+pub use zero_cost_optimizations::{
+    demonstrate_zero_cost_performance, FixedCircularBuffer, LockFreeCounter,
+    PerformanceMeasurement, SafeBufferPool, SafeStringInterner,
 };
 
 // Legacy compatibility - Re-export the main optimizer as the original name

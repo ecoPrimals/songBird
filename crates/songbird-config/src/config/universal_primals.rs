@@ -29,13 +29,13 @@ use std::time::Duration;
 pub struct PrimalRegistry {
     /// Registered primals by their type identifier
     pub primals: HashMap<String, PrimalConfiguration>,
-    
+
     /// Auto-discovery settings
     pub auto_discovery: AutoDiscoveryConfig,
-    
+
     /// Default configuration template for unknown primals
     pub default_template: PrimalConfigurationTemplate,
-    
+
     /// Capability compatibility matrix
     pub compatibility_matrix: CompatibilityMatrix,
 }
@@ -45,34 +45,34 @@ pub struct PrimalRegistry {
 pub struct PrimalConfiguration {
     /// Primal type identifier (e.g., "beardog", "nestgate", "toadstool", "squirrel")
     pub primal_type: String,
-    
+
     /// Human-readable name
     pub display_name: String,
-    
+
     /// Whether this primal is enabled
     pub enabled: bool,
-    
+
     /// Primary endpoint configuration
     pub endpoint: PrimalEndpoint,
-    
+
     /// Authentication configuration
     pub authentication: PrimalAuthentication,
-    
+
     /// Declared capabilities of this primal
     pub capabilities: Vec<PrimalCapability>,
-    
+
     /// Primal-specific configuration (arbitrary key-value pairs)
     pub specific_config: HashMap<String, serde_json::Value>,
-    
+
     /// Connection and timeout settings
     pub connection_settings: ConnectionSettings,
-    
+
     /// Health check configuration
     pub health_check: HealthCheckConfig,
-    
+
     /// Last successful connection timestamp
     pub last_seen: Option<chrono::DateTime<chrono::Utc>>,
-    
+
     /// Discovery metadata
     pub discovery_metadata: DiscoveryMetadata,
 }
@@ -82,16 +82,16 @@ pub struct PrimalConfiguration {
 pub struct PrimalEndpoint {
     /// Primary URL for this primal
     pub primary_url: String,
-    
+
     /// Fallback URLs for redundancy
     pub fallback_urls: Vec<String>,
-    
+
     /// Whether to use TLS
     pub use_tls: bool,
-    
+
     /// Custom headers for requests
     pub custom_headers: HashMap<String, String>,
-    
+
     /// Load balancing strategy for multiple endpoints
     pub load_balancing: LoadBalancingStrategy,
 }
@@ -101,10 +101,10 @@ pub struct PrimalEndpoint {
 pub struct PrimalAuthentication {
     /// Authentication method
     pub method: AuthenticationMethod,
-    
+
     /// Credentials (implementation specific)
     pub credentials: HashMap<String, serde_json::Value>,
-    
+
     /// Token refresh settings
     pub token_refresh: Option<TokenRefreshConfig>,
 }
@@ -130,29 +130,29 @@ pub enum AuthenticationMethod {
 pub struct PrimalCapability {
     /// Capability identifier (e.g., "security", "storage", "compute", "gaming")
     pub capability_type: String,
-    
+
     /// Capability version
     pub version: String,
-    
+
     /// Capability-specific parameters
     pub parameters: HashMap<String, serde_json::Value>,
-    
+
     /// Quality of service metrics
     pub qos_metrics: QosMetrics,
 }
 
 /// Quality of service metrics for capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct QosMetrics {
     /// Expected latency in milliseconds
     pub latency_ms: Option<f64>,
-    
+
     /// Throughput in operations per second
     pub throughput_ops_sec: Option<f64>,
-    
+
     /// Availability percentage (0.0 to 1.0)
     pub availability: Option<f64>,
-    
+
     /// Reliability score (0.0 to 1.0)
     pub reliability: Option<f64>,
 }
@@ -162,19 +162,19 @@ pub struct QosMetrics {
 pub struct ConnectionSettings {
     /// Connection timeout
     pub connection_timeout: Duration,
-    
+
     /// Request timeout
     pub request_timeout: Duration,
-    
+
     /// Maximum retry attempts
     pub max_retries: u32,
-    
+
     /// Retry backoff strategy
     pub backoff_strategy: BackoffStrategy,
-    
+
     /// Keep-alive settings
     pub keep_alive: bool,
-    
+
     /// Connection pooling settings
     pub connection_pool: ConnectionPoolConfig,
 }
@@ -184,19 +184,19 @@ pub struct ConnectionSettings {
 pub struct HealthCheckConfig {
     /// Enable health checks
     pub enabled: bool,
-    
+
     /// Health check interval
     pub interval: Duration,
-    
+
     /// Health check endpoint path
     pub endpoint_path: String,
-    
+
     /// Expected HTTP status codes for healthy response
     pub expected_status_codes: Vec<u16>,
-    
+
     /// Health check timeout
     pub timeout: Duration,
-    
+
     /// Number of consecutive failures before marking unhealthy
     pub failure_threshold: u32,
 }
@@ -206,19 +206,19 @@ pub struct HealthCheckConfig {
 pub struct AutoDiscoveryConfig {
     /// Enable automatic primal discovery
     pub enabled: bool,
-    
+
     /// Discovery methods to use
     pub discovery_methods: Vec<DiscoveryMethod>,
-    
+
     /// Discovery interval
     pub discovery_interval: Duration,
-    
+
     /// Network ranges to scan for primals
     pub scan_ranges: Vec<String>,
-    
+
     /// Ports to scan for primal services
     pub scan_ports: Vec<u16>,
-    
+
     /// Discovery timeout per method
     pub discovery_timeout: Duration,
 }
@@ -248,16 +248,16 @@ pub enum DiscoveryMethod {
 pub struct PrimalConfigurationTemplate {
     /// Default connection timeout
     pub default_connection_timeout: Duration,
-    
+
     /// Default request timeout
     pub default_request_timeout: Duration,
-    
+
     /// Default authentication method
     pub default_auth_method: AuthenticationMethod,
-    
+
     /// Default health check settings
     pub default_health_check: HealthCheckConfig,
-    
+
     /// Default capabilities to assume
     pub default_capabilities: Vec<String>,
 }
@@ -267,10 +267,10 @@ pub struct PrimalConfigurationTemplate {
 pub struct CompatibilityMatrix {
     /// Capability requirements per service type
     pub service_requirements: HashMap<String, Vec<String>>,
-    
+
     /// Capability compatibility rules
     pub compatibility_rules: HashMap<String, CompatibilityRule>,
-    
+
     /// Fallback strategies when requirements aren't met
     pub fallback_strategies: HashMap<String, FallbackStrategy>,
 }
@@ -280,13 +280,13 @@ pub struct CompatibilityMatrix {
 pub struct CompatibilityRule {
     /// Required capabilities
     pub required: Vec<String>,
-    
+
     /// Optional capabilities
     pub optional: Vec<String>,
-    
+
     /// Mutually exclusive capabilities
     pub mutually_exclusive: Vec<Vec<String>>,
-    
+
     /// Minimum quality requirements
     pub min_quality: QosMetrics,
 }
@@ -330,7 +330,10 @@ pub enum BackoffStrategy {
     /// Exponential backoff
     Exponential { initial: Duration, max: Duration },
     /// Linear backoff
-    Linear { initial: Duration, increment: Duration },
+    Linear {
+        initial: Duration,
+        increment: Duration,
+    },
 }
 
 /// Connection pool configuration
@@ -338,13 +341,13 @@ pub enum BackoffStrategy {
 pub struct ConnectionPoolConfig {
     /// Maximum number of connections in pool
     pub max_connections: u32,
-    
+
     /// Minimum idle connections
     pub min_idle: u32,
-    
+
     /// Connection idle timeout
     pub idle_timeout: Duration,
-    
+
     /// Maximum connection lifetime
     pub max_lifetime: Duration,
 }
@@ -354,10 +357,10 @@ pub struct ConnectionPoolConfig {
 pub struct TokenRefreshConfig {
     /// Refresh threshold (refresh when token expires in this time)
     pub refresh_threshold: Duration,
-    
+
     /// Refresh endpoint
     pub refresh_endpoint: String,
-    
+
     /// Refresh method (GET, POST, etc.)
     pub refresh_method: String,
 }
@@ -367,13 +370,13 @@ pub struct TokenRefreshConfig {
 pub struct DiscoveryMetadata {
     /// How this primal was discovered
     pub discovery_method: DiscoveryMethod,
-    
+
     /// When it was discovered
     pub discovered_at: chrono::DateTime<chrono::Utc>,
-    
+
     /// Discovery confidence score (0.0 to 1.0)
     pub confidence_score: f64,
-    
+
     /// Additional discovery data
     pub additional_data: HashMap<String, serde_json::Value>,
 }
@@ -456,22 +459,22 @@ impl PrimalRegistry {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Register a new primal configuration
     pub fn register_primal(&mut self, config: PrimalConfiguration) {
         self.primals.insert(config.primal_type.clone(), config);
     }
-    
+
     /// Get primal configuration by type
     pub fn get_primal(&self, primal_type: &str) -> Option<&PrimalConfiguration> {
         self.primals.get(primal_type)
     }
-    
+
     /// Get all enabled primals
     pub fn get_enabled_primals(&self) -> Vec<&PrimalConfiguration> {
         self.primals.values().filter(|p| p.enabled).collect()
     }
-    
+
     /// Find primals with specific capability
     pub fn find_primals_with_capability(&self, capability_type: &str) -> Vec<&PrimalConfiguration> {
         self.primals
@@ -479,17 +482,19 @@ impl PrimalRegistry {
             .filter(|p| p.enabled && p.has_capability(capability_type))
             .collect()
     }
-    
+
     /// Create primal configuration from legacy hardcoded config
-    pub fn from_legacy_beardog_config(beardog_config: &super::BearDogConfig) -> PrimalConfiguration {
+    pub fn from_legacy_beardog_config(
+        beardog_config: &super::BearDogConfig,
+    ) -> PrimalConfiguration {
         let mut config = PrimalConfiguration::new_template("beardog", "BearDog Security");
-        
+
         config.enabled = beardog_config.enabled;
         config.endpoint.primary_url = beardog_config.endpoint.primary_url.clone();
         config.endpoint.use_tls = beardog_config.endpoint.verify_tls;
-        config.connection_settings.connection_timeout = 
+        config.connection_settings.connection_timeout =
             Duration::from_secs(beardog_config.endpoint.connection_timeout_secs);
-        
+
         // Add security capability
         config.capabilities.push(PrimalCapability {
             capability_type: "security".to_string(),
@@ -497,20 +502,22 @@ impl PrimalRegistry {
             parameters: HashMap::new(),
             qos_metrics: QosMetrics::default(),
         });
-        
+
         config
     }
-    
+
     /// Create primal configuration from legacy toadstool config
-    pub fn from_legacy_toadstool_config(toadstool_config: &super::ToadstoolConfig) -> PrimalConfiguration {
+    pub fn from_legacy_toadstool_config(
+        toadstool_config: &super::ToadstoolConfig,
+    ) -> PrimalConfiguration {
         let mut config = PrimalConfiguration::new_template("toadstool", "Toadstool Compute");
-        
+
         config.enabled = toadstool_config.enabled;
         config.endpoint.primary_url = toadstool_config.endpoint.primary_url.clone();
         config.endpoint.use_tls = toadstool_config.endpoint.verify_tls;
-        config.connection_settings.connection_timeout = 
+        config.connection_settings.connection_timeout =
             Duration::from_secs(toadstool_config.endpoint.connection_timeout_secs);
-        
+
         // Add compute capability
         config.capabilities.push(PrimalCapability {
             capability_type: "compute".to_string(),
@@ -518,7 +525,7 @@ impl PrimalRegistry {
             parameters: HashMap::new(),
             qos_metrics: QosMetrics::default(),
         });
-        
+
         config
     }
 }
@@ -540,15 +547,19 @@ impl PrimalConfiguration {
             discovery_metadata: DiscoveryMetadata::default(),
         }
     }
-    
+
     /// Check if this primal has a specific capability
     pub fn has_capability(&self, capability_type: &str) -> bool {
-        self.capabilities.iter().any(|c| c.capability_type == capability_type)
+        self.capabilities
+            .iter()
+            .any(|c| c.capability_type == capability_type)
     }
-    
+
     /// Get capability configuration
     pub fn get_capability(&self, capability_type: &str) -> Option<&PrimalCapability> {
-        self.capabilities.iter().find(|c| c.capability_type == capability_type)
+        self.capabilities
+            .iter()
+            .find(|c| c.capability_type == capability_type)
     }
 }
 
@@ -574,17 +585,6 @@ impl Default for PrimalAuthentication {
     }
 }
 
-impl Default for QosMetrics {
-    fn default() -> Self {
-        Self {
-            latency_ms: None,
-            throughput_ops_sec: None,
-            availability: None,
-            reliability: None,
-        }
-    }
-}
-
 impl Default for DiscoveryMetadata {
     fn default() -> Self {
         Self {
@@ -603,22 +603,22 @@ impl LegacyConfigMigrator {
     /// Migrate legacy songbird config to universal primal registry
     pub fn migrate_legacy_config(legacy_config: &super::SongbirdConfig) -> PrimalRegistry {
         let mut registry = PrimalRegistry::new();
-        
+
         // Migrate BearDog configuration
         if let Some(beardog_config) = &legacy_config.beardog {
             let primal_config = PrimalRegistry::from_legacy_beardog_config(beardog_config);
             registry.register_primal(primal_config);
         }
-        
+
         // Migrate Toadstool configuration
         if let Some(toadstool_config) = &legacy_config.toadstool {
             let primal_config = PrimalRegistry::from_legacy_toadstool_config(toadstool_config);
             registry.register_primal(primal_config);
         }
-        
+
         // Auto-discover additional primals from environment
         registry.auto_discovery.enabled = true;
-        
+
         registry
     }
-} 
+}

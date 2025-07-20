@@ -49,12 +49,14 @@ impl BulkheadInstance {
 
         // Wait for permit with timeout
         self.queued_requests += 1;
-        let start_time = Instant::now();
+        let _start_time = Instant::now();
 
         match tokio::time::timeout(
             self.config.queue_timeout,
             self.semaphore.clone().acquire_owned(),
-        ).await {
+        )
+        .await
+        {
             Ok(Ok(permit)) => {
                 self.queued_requests -= 1;
                 self.active_requests += 1;
@@ -124,4 +126,4 @@ pub enum BulkheadError {
     QueueFull,
     QueueTimeout,
     SemaphoreError,
-} 
+}

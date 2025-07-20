@@ -80,18 +80,19 @@
 #![allow(dead_code)]
 
 pub mod api;
+pub mod basic_iot;
 pub mod benchmarks;
 pub mod biome;
 pub mod biomeos;
 pub mod load_balancer;
 pub mod orchestrator;
 pub mod performance;
+pub mod primal_integration;
+pub mod production_benchmarks;
 pub mod registry;
+pub mod robustness;
+pub mod scalability;
 pub mod structural_improvements;
 pub mod substrate;
 pub mod traits;
-pub mod primal_integration;
-pub mod robustness;
 pub mod zero_touch;
-pub mod basic_iot;
-pub mod scalability;

@@ -4,7 +4,7 @@
 
 use songbird_errors::{
     CircuitBreakerError, DiscoveryError, GamingError, NetworkError, Result, RetryError,
-    SongbirdError, ValidationError,
+    ServiceError, SongbirdError, ValidationError,
 };
 
 #[tokio::test]
@@ -40,39 +40,33 @@ async fn test_error_creation_and_display() -> Result<()> {
         suggestion: Some("Check service configuration and network connectivity".to_string()),
     }));
 
-    // Test network error
+    // Test network error - using actual fields
     let network_error = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("test-service".to_string()),
         message: "Connection timeout".to_string(),
-        details: Some("Host unreachable".to_string()),
         endpoint: Some("192.168.1.100:8080".to_string()),
-        suggestion: Some("Check network connectivity and endpoint configuration".to_string()),
+        port: Some(8080),
+        protocol: Some("HTTP".to_string()),
     }));
 
-    // Test second network error
-    let config_error = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("test-service".to_string()),
+    // Test network error (alternative)
+    let network_error2 = SongbirdError::Network(Box::new(NetworkError {
         message: "Service unavailable".to_string(),
-        details: Some("Under maintenance".to_string()),
-        endpoint: Some("api.example.com:443".to_string()),
-        suggestion: Some("Check service status and try again later".to_string()),
+        endpoint: Some("service.example.com".to_string()),
+        port: Some(443),
+        protocol: Some("HTTPS".to_string()),
     }));
 
-    // Test gaming error
+    // Test gaming error - using actual fields
     let gaming_error = SongbirdError::Gaming(Box::new(GamingError {
         message: "Protocol mismatch".to_string(),
-        protocol: Some("UDP".to_string()),
-        game: Some("Counter-Strike".to_string()),
-        suggestion: Some("Check protocol compatibility and game settings".to_string()),
+        game: Some("StarCraft".to_string()),
     }));
 
-    // Test validation error
+    // Test validation error - using actual fields
     let validation_error = SongbirdError::Validation(Box::new(ValidationError {
-        field: "username".to_string(),
-        message: "Too short".to_string(),
-        value: Some("ab".to_string()),
+        message: "Username too short".to_string(),
+        field: Some("username".to_string()),
         expected: Some("minimum 3 characters".to_string()),
-        suggestion: Some("Use a username with at least 3 characters".to_string()),
     }));
 
     // Test security error
@@ -98,7 +92,7 @@ async fn test_error_creation_and_display() -> Result<()> {
         retry_error,
         discovery_error,
         network_error,
-        config_error,
+        network_error2,
         gaming_error,
         validation_error,
         security_error,
@@ -141,7 +135,7 @@ async fn test_error_constructors() -> Result<()> {
     assert!(health_error.to_string().contains("db-service"));
     assert!(health_error.to_string().contains("Health check failed"));
 
-    let config_error = SongbirdError::configuration_error("Invalid config".to_string());
+    let config_error = SongbirdError::config("Invalid config".to_string());
     assert!(config_error.to_string().contains("Invalid config"));
 
     Ok(())
@@ -167,22 +161,20 @@ async fn test_error_fields() -> Result<()> {
     assert!(discovery_without_service.to_string().contains("Not found"));
 
     let network_with_details = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("web".to_string()),
-        message: "Failed".to_string(),
-        details: Some("Connection refused".to_string()),
-        endpoint: None,
-        suggestion: None,
+        message: "Failed - Connection refused".to_string(),
+        endpoint: Some("web.example.com:80".to_string()),
+        port: Some(80),
+        protocol: Some("HTTP".to_string()),
     }));
     assert!(network_with_details
         .to_string()
         .contains("Connection refused"));
 
     let network_without_details = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("web".to_string()),
         message: "Failed".to_string(),
-        details: None,
-        endpoint: None,
-        suggestion: None,
+        endpoint: Some("web.example.com".to_string()),
+        port: None,
+        protocol: None,
     }));
     assert!(!network_without_details
         .to_string()

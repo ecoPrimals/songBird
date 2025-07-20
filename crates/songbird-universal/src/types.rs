@@ -6,9 +6,9 @@ use std::collections::HashMap;
 // uuid re-exported by other modules
 
 /// **UNIVERSAL PRIMAL TYPE** - Dynamic, extensible primal identification
-/// 
+///
 /// **PURE UNIVERSAL EXTENSIBILITY**
-/// 
+///
 /// This supports ANY primal without hardcoding or code changes.
 /// New primals can be added through configuration only.
 ///

@@ -51,10 +51,7 @@ impl ServiceHandle {
     pub async fn health_check(&self) -> Result<serde_json::Value> {
         let service = self.service.read().await;
         let health = service.health_check().await.map_err(|e| {
-            SongbirdError::service_error(
-                &self.info.service_id,
-                format!("Health check failed: {}", e),
-            )
+            SongbirdError::service_error(&self.info.service_id, format!("Health check failed: {e}"))
         })?;
         serde_json::to_value(health)
             .map_err(|e| SongbirdError::service_error(&self.info.service_id, e.to_string()))

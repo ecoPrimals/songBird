@@ -7,6 +7,7 @@
 //!
 //! - **Universal Primal Integration**: Works with any Primal in the ecosystem
 //! - **Automatic Discovery**: Discover and connect to available Primals
+//! - **Ecosystem Discovery**: Connect to real primals at ../beardog, ../nestgate, etc.
 //! - **Capability Matching**: Match services to Primal capabilities
 //! - **Protocol Adaptation**: Adapt between different Primal protocols
 //! - **BearDog Integration**: Enhanced security through BearDog coordination
@@ -18,10 +19,11 @@
 //!
 //! The universal-primals crate provides coordination with:
 //!
-//! - **BearDog**: Security and authentication services
-//! - **NestGate**: Network gateway and routing services
-//! - **Toadstool**: Container orchestration and management
-//! - **Squirrel**: Data processing and analytics services
+//! - **BearDog**: Security and authentication services (../beardog)
+//! - **NestGate**: Network gateway and routing services (../nestgate)
+//! - **Toadstool**: Container orchestration and management (../toadstool)
+//! - **Squirrel**: Data processing and analytics services (../squirrel)
+//! - **biomeOS**: Universal OS and coordination (../biomeOS)
 //! - **Custom Primals**: User-defined Primal implementations
 //!
 //! ## Usage
@@ -29,7 +31,7 @@
 //! ```rust,no_run
 //! use songbird_universal_primals::{
 //!     registry::UniversalPrimalRegistry,
-//!     discovery::PrimalDiscovery,
+//!     discovery::{discover_ecosystem_primals, EcosystemDiscovery},
 //!     beardog::BearDogPrimal,
 //!     config::UniversalPrimalConfig,
 //! };
@@ -39,8 +41,9 @@
 //!     // Initialize universal primal registry
 //!     let registry = UniversalPrimalRegistry::new();
 //!     
-//!     // Create BearDog primal
-//!     let beardog = BearDogPrimal::new();
+//!     // Discover real ecosystem primals
+//!     let discovered_primals = discover_ecosystem_primals().await?;
+//!     println!("Found {} ecosystem primals", discovered_primals.len());
 //!     
 //!     // Create configuration
 //!     let config = UniversalPrimalConfig::default();

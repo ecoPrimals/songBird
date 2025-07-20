@@ -57,7 +57,7 @@ impl ConsulServiceDiscovery {
 
         let address = consul_service["Address"].as_str()?;
         let port = consul_service["Port"].as_u64()?;
-        let socket_addr = format!("{}:{}", address, port).parse::<SocketAddr>().ok()?;
+        let socket_addr = format!("{address}:{port}").parse::<SocketAddr>().ok()?;
 
         let tags: Vec<String> = consul_service["Tags"]
             .as_array()?
@@ -101,7 +101,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
             .await
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to register service with Consul: {}", e),
+                    message: format!("Failed to register service with Consul: {e}"),
                     service: Some(service.name.clone()),
                     timeout: None,
                     suggestion: Some("Check Consul connectivity and configuration".to_string()),
@@ -120,7 +120,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Consul registration failed: {}", error_text),
+                message: format!("Consul registration failed: {error_text}"),
                 service: Some(service.name),
                 timeout: None,
                 suggestion: Some("Check service configuration and Consul ACLs".to_string()),
@@ -138,7 +138,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
 
         let response = self.client.put(&url).send().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to deregister service from Consul: {}", e),
+                message: format!("Failed to deregister service from Consul: {e}"),
                 service: Some(service_id.to_string()),
                 timeout: None,
                 suggestion: Some("Check Consul connectivity".to_string()),
@@ -157,7 +157,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Consul deregistration failed: {}", error_text),
+                message: format!("Consul deregistration failed: {error_text}"),
                 service: Some(service_id.to_string()),
                 timeout: None,
                 suggestion: Some("Check if service exists and Consul ACLs".to_string()),
@@ -175,7 +175,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
 
         let response = self.client.get(&url).send().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to discover services from Consul: {}", e),
+                message: format!("Failed to discover services from Consul: {e}"),
                 service: service_name.map(String::from),
                 timeout: None,
                 suggestion: Some("Check Consul connectivity".to_string()),
@@ -188,7 +188,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Consul discovery failed: {}", error_text),
+                message: format!("Consul discovery failed: {error_text}"),
                 service: service_name.map(String::from),
                 timeout: None,
                 suggestion: Some("Check Consul query and ACLs".to_string()),
@@ -197,7 +197,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
 
         let consul_response: Value = response.json().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to parse Consul response: {}", e),
+                message: format!("Failed to parse Consul response: {e}"),
                 service: service_name.map(String::from),
                 timeout: None,
                 suggestion: Some("Check Consul API version compatibility".to_string()),
@@ -243,7 +243,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
 
         let response = self.client.get(&url).send().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to check service health in Consul: {}", e),
+                message: format!("Failed to check service health in Consul: {e}"),
                 service: Some(service_id.to_string()),
                 timeout: None,
                 suggestion: Some("Check Consul connectivity".to_string()),

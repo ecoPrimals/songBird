@@ -244,7 +244,7 @@ impl NatTraversalManager {
                 }) => {
                     let connection_info = ConnectionInfo {
                         peer_id: peer_id.to_string(),
-                        local_addr: local_addr,
+                        local_addr,
                         public_addr: target_addr,
                         public_address: target_addr,
                         private_address: None,
@@ -268,7 +268,7 @@ impl NatTraversalManager {
 
                     return Ok(ConnectionResult::Success {
                         connection_type: ConnectionType::HolePunch,
-                        local_addr: local_addr,
+                        local_addr,
                         remote_addr: target_addr,
                         latency: duration,
                     });

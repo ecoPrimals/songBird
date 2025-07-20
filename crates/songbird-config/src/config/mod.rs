@@ -27,6 +27,25 @@ pub use universal_primals::*;
 // Alias for backward compatibility
 pub type PathsConfig = PathConfig;
 
+/// Quality of service requirements for configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct QosRequirements {
+    /// Expected latency in milliseconds
+    pub latency_ms: Option<f64>,
+
+    /// Throughput in operations per second
+    pub throughput_ops_sec: Option<f64>,
+
+    /// Availability percentage (0.0 to 1.0)
+    pub availability: Option<f64>,
+
+    /// Reliability score (0.0 to 1.0)
+    pub reliability: Option<f64>,
+
+    /// Maximum acceptable error rate (0.0 to 1.0)
+    pub max_error_rate: Option<f64>,
+}
+
 /// Main configuration structure for Songbird Orchestrator
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SongbirdConfig {
@@ -47,7 +66,7 @@ pub struct SongbirdConfig {
     pub beardog: Option<BearDogConfig>,
 
     /// Toadstool compute integration (DEPRECATED - use primal_registry)
-    #[serde(default)]  
+    #[serde(default)]
     pub toadstool: Option<ToadstoolConfig>,
 
     /// Security configuration
@@ -316,9 +335,7 @@ impl SongbirdConfig {
 
     /// Get primal configuration by type (universal method)
     pub fn get_primal_config(&self, primal_type: &str) -> Option<PrimalConfiguration> {
-        self.get_primal_registry()
-            .get_primal(primal_type)
-            .cloned()
+        self.get_primal_registry().get_primal(primal_type).cloned()
     }
 
     /// Find primals with specific capability (universal method)
@@ -333,7 +350,7 @@ impl SongbirdConfig {
     /// Enable a primal with basic configuration (universal method)
     pub fn enable_primal(&mut self, primal_type: &str, endpoint_url: &str) {
         let mut registry = self.get_primal_registry();
-        
+
         if let Some(existing) = registry.primals.get_mut(primal_type) {
             existing.enabled = true;
             existing.endpoint.primary_url = endpoint_url.to_string();
@@ -341,25 +358,72 @@ impl SongbirdConfig {
             let mut config = PrimalConfiguration::new_template(primal_type, primal_type);
             config.enabled = true;
             config.endpoint.primary_url = endpoint_url.to_string();
+
+            // Add default capabilities based on known primal types
+            config.capabilities = Self::get_default_capabilities_for_primal_type(primal_type);
+
             registry.register_primal(config);
         }
-        
+
         self.primal_registry = Some(registry);
+    }
+
+    /// Get default capabilities for known primal types
+    fn get_default_capabilities_for_primal_type(primal_type: &str) -> Vec<PrimalCapability> {
+        match primal_type.to_lowercase().as_str() {
+            "beardog" => vec![PrimalCapability {
+                capability_type: "security".to_string(),
+                version: "1.0".to_string(),
+                parameters: std::collections::HashMap::new(),
+                qos_metrics: QosMetrics::default(),
+            }],
+            "toadstool" => vec![PrimalCapability {
+                capability_type: "compute".to_string(),
+                version: "1.0".to_string(),
+                parameters: std::collections::HashMap::new(),
+                qos_metrics: QosMetrics::default(),
+            }],
+            "nestgate" => vec![PrimalCapability {
+                capability_type: "storage".to_string(),
+                version: "1.0".to_string(),
+                parameters: std::collections::HashMap::new(),
+                qos_metrics: QosMetrics::default(),
+            }],
+            "phoenix-ai" | "phoenix_ai" => vec![PrimalCapability {
+                capability_type: "ai".to_string(),
+                version: "1.0".to_string(),
+                parameters: std::collections::HashMap::new(),
+                qos_metrics: QosMetrics::default(),
+            }],
+            "squirrel" => vec![PrimalCapability {
+                capability_type: "messaging".to_string(),
+                version: "1.0".to_string(),
+                parameters: std::collections::HashMap::new(),
+                qos_metrics: QosMetrics::default(),
+            }],
+            // Default: basic capability for unknown primals
+            _ => vec![PrimalCapability {
+                capability_type: "basic".to_string(),
+                version: "1.0".to_string(),
+                parameters: std::collections::HashMap::new(),
+                qos_metrics: QosMetrics::default(),
+            }],
+        }
     }
 
     /// Disable a primal (universal method)
     pub fn disable_primal(&mut self, primal_type: &str) {
         let mut registry = self.get_primal_registry();
-        
+
         if let Some(existing) = registry.primals.get_mut(primal_type) {
             existing.enabled = false;
         }
-        
+
         self.primal_registry = Some(registry);
     }
 
     // ===== BACKWARD COMPATIBILITY METHODS (DEPRECATED) =====
-    
+
     /// Check if BearDog integration is enabled
     #[deprecated(note = "Use is_primal_enabled(\"beardog\") instead")]
     pub fn is_beardog_enabled(&self) -> bool {
@@ -381,7 +445,7 @@ impl SongbirdConfig {
     /// Enable BearDog integration with default configuration
     #[deprecated(note = "Use enable_primal(\"beardog\", endpoint_url) instead")]
     pub fn enable_beardog(&mut self) {
-        self.enable_primal("beardog", "https://localhost:8443");
+        self.enable_primal("beardog", &crate::config::constants::default_beardog_endpoint());
     }
 
     /// Disable BearDog integration
@@ -411,7 +475,7 @@ impl SongbirdConfig {
     /// Enable Toadstool integration with default configuration
     #[deprecated(note = "Use enable_primal(\"toadstool\", endpoint_url) instead")]
     pub fn enable_toadstool(&mut self) {
-        self.enable_primal("toadstool", "http://localhost:8082");
+        self.enable_primal("toadstool", &crate::config::constants::default_toadstool_endpoint());
     }
 
     /// Disable Toadstool integration

@@ -6,9 +6,10 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 use crate::security::types::{
-    Action, AuthToken, Permission, PermissionEffect, Resource, SecurityConfig, SubjectType,
+    Action, AuthToken, PassphrasePolicy, PasswordValidationStrategy, Permission, PermissionEffect,
+    Resource, SecurityConfig, SubjectType, TraditionalPasswordPolicy,
 };
-use songbird_errors::{AuthError, Result, SongbirdError};
+use songbird_errors::{AuthError, Result};
 
 // ============================================================================
 // PROVIDER TRAITS
@@ -115,46 +116,288 @@ impl InMemoryAuthProvider {
     fn validate_password(&self, password: &str) -> Result<()> {
         let policy = &self.config.password_policy;
 
-        if password.len() < policy.min_length as usize {
+        match policy.validation_strategy {
+            PasswordValidationStrategy::Passphrase => {
+                if let Some(ref passphrase_policy) = policy.passphrase_policy {
+                    self.validate_passphrase(password, passphrase_policy)
+                } else {
+                    Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                        message: "Passphrase policy not configured".to_string(),
+                        provider: Some("PasswordValidator".to_string()),
+                    })))
+                }
+            }
+            PasswordValidationStrategy::Traditional => {
+                if let Some(ref traditional_policy) = policy.traditional_policy {
+                    self.validate_traditional_password(password, traditional_policy)
+                } else {
+                    Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                        message: "Traditional password policy not configured".to_string(),
+                        provider: Some("PasswordValidator".to_string()),
+                    })))
+                }
+            }
+            PasswordValidationStrategy::Flexible => {
+                // Try passphrase first (preferred), fall back to traditional
+                if let Some(ref passphrase_policy) = policy.passphrase_policy {
+                    if self
+                        .validate_passphrase(password, passphrase_policy)
+                        .is_ok()
+                    {
+                        return Ok(());
+                    }
+                }
+                if let Some(ref traditional_policy) = policy.traditional_policy {
+                    self.validate_traditional_password(password, traditional_policy)
+                } else {
+                    Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                        message: "No valid password policy configured for flexible validation"
+                            .to_string(),
+                        provider: Some("PasswordValidator".to_string()),
+                    })))
+                }
+            }
+            PasswordValidationStrategy::Custom => {
+                // Custom validation defers to security authority (e.g., BearDog primal)
+                // This is minimal fallback validation for when external security system is unavailable
+                if password.len() >= 8 && !password.trim().is_empty() {
+                    tracing::info!("Using minimal fallback password validation - recommend integrating with BearDog primal");
+                    Ok(())
+                } else {
+                    Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                        message: "Password too short (minimum 8 characters). For comprehensive password policies, integrate with BearDog primal.".to_string(),
+                        provider: Some("Songbird-Fallback-Validator".to_string()),
+                    })))
+                }
+            }
+        }
+    }
+
+    /// Validate XKCD-style passphrase (simple validation for standalone mode)
+    fn validate_passphrase(&self, passphrase: &str, policy: &PassphrasePolicy) -> Result<()> {
+        let trimmed = passphrase.trim();
+
+        // Simple word-based validation (space-separated words)
+        let words: Vec<&str> = trimmed.split_whitespace().collect();
+
+        // Validate word count
+        if words.len() < policy.min_words as usize {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                message: format!("Password must be at least {} characters", policy.min_length),
-                provider: Some("PasswordPolicy".to_string()),
+                message: format!(
+                    "Passphrase must have at least {} words (found {}). Example: 'correct horse battery staple'",
+                    policy.min_words, words.len()
+                ),
+                provider: Some("SimplePassphraseValidator".to_string()),
             })));
         }
 
-        if policy.require_uppercase && !password.chars().any(|c| c.is_uppercase()) {
+        if words.len() > policy.max_words as usize {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                provider: Some("SecurityProvider".to_string()),
-                message: "Password must contain at least one uppercase letter".to_string(),
+                message: format!(
+                    "Passphrase must have at most {} words (found {}). Consider shortening it",
+                    policy.max_words,
+                    words.len()
+                ),
+                provider: Some("SimplePassphraseValidator".to_string()),
             })));
         }
 
-        if policy.require_lowercase && !password.chars().any(|c| c.is_lowercase()) {
+        // Check total length
+        if trimmed.len() < policy.min_total_length as usize {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                provider: Some("SecurityProvider".to_string()),
-                message: "Password must contain at least one lowercase letter".to_string(),
+                message: format!(
+                    "Passphrase must be at least {} characters long (found {})",
+                    policy.min_total_length,
+                    trimmed.len()
+                ),
+                provider: Some("SimplePassphraseValidator".to_string()),
             })));
         }
 
-        if policy.require_numbers && !password.chars().any(|c| c.is_numeric()) {
+        // Check for numbers if required
+        if policy.require_number && !passphrase.chars().any(|c| c.is_numeric()) {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                provider: Some("SecurityProvider".to_string()),
-                message: "Password must contain at least one number".to_string(),
+                message: "Passphrase must contain at least one number".to_string(),
+                provider: Some("SimplePassphraseValidator".to_string()),
             })));
         }
 
-        if policy.require_special_chars
-            && !password
-                .chars()
-                .any(|c| !c.is_alphanumeric() && !c.is_whitespace())
-        {
+        // Check for uppercase if required
+        if policy.require_uppercase && !passphrase.chars().any(|c| c.is_uppercase()) {
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                provider: Some("SecurityProvider".to_string()),
-                message: "Password must contain at least one special character".to_string(),
+                message: "Passphrase must contain at least one uppercase letter".to_string(),
+                provider: Some("SimplePassphraseValidator".to_string()),
+            })));
+        }
+
+        // Check against common passwords if enabled
+        if policy.check_common_passwords {
+            if self.is_common_password(passphrase) {
+                return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                    message: "This passphrase is too common. Please choose a more unique combination of words".to_string(),
+                    provider: Some("SimplePassphraseValidator".to_string()),
+                })));
+            }
+        }
+
+        // Basic entropy check (simplified - in production, use proper entropy calculation)
+        let entropy = self.calculate_passphrase_entropy(&words);
+        if entropy < policy.min_entropy_bits {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                message: format!(
+                    "Passphrase doesn't have enough entropy (estimated {:.1} bits, need {:.1}). Consider using less common words",
+                    entropy, policy.min_entropy_bits
+                ),
+                provider: Some("SimplePassphraseValidator".to_string()),
             })));
         }
 
         Ok(())
+    }
+
+    /// Validate traditional complex password
+    fn validate_traditional_password(
+        &self,
+        password: &str,
+        policy: &TraditionalPasswordPolicy,
+    ) -> Result<()> {
+        // Length check
+        if password.len() < policy.min_length as usize {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                message: format!("Password must be at least {} characters", policy.min_length),
+                provider: Some("TraditionalPasswordValidator".to_string()),
+            })));
+        }
+
+        // Character category checks
+        let mut categories_met = 0;
+        let mut missing_categories = Vec::new();
+
+        if policy.require_uppercase {
+            if password.chars().any(|c| c.is_uppercase()) {
+                categories_met += 1;
+            } else {
+                missing_categories.push("uppercase letter");
+            }
+        }
+
+        if policy.require_lowercase {
+            if password.chars().any(|c| c.is_lowercase()) {
+                categories_met += 1;
+            } else {
+                missing_categories.push("lowercase letter");
+            }
+        }
+
+        if policy.require_numbers {
+            if password.chars().any(|c| c.is_numeric()) {
+                categories_met += 1;
+            } else {
+                missing_categories.push("number");
+            }
+        }
+
+        if policy.require_special_chars {
+            if password
+                .chars()
+                .any(|c| !c.is_alphanumeric() && !c.is_whitespace())
+            {
+                categories_met += 1;
+            } else {
+                missing_categories.push("special character");
+            }
+        }
+
+        // Check minimum categories requirement
+        if categories_met < policy.min_character_categories {
+            let missing_str = if missing_categories.is_empty() {
+                format!(
+                    "more character variety (need {} categories)",
+                    policy.min_character_categories
+                )
+            } else {
+                format!("at least one: {}", missing_categories.join(", "))
+            };
+
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                message: format!("Password must contain {}", missing_str),
+                provider: Some("TraditionalPasswordValidator".to_string()),
+            })));
+        }
+
+        Ok(())
+    }
+
+    /// Check if password is in common password list (simplified implementation)
+    fn is_common_password(&self, password: &str) -> bool {
+        let common_passwords = [
+            "password",
+            "123456",
+            "password123",
+            "admin",
+            "qwerty",
+            "letmein",
+            "welcome",
+            "monkey",
+            "dragon",
+            "sunshine",
+            "princess",
+            "football",
+            "baseball",
+            "superman",
+            "batman",
+            // Common passphrases from breaches
+            "correct horse battery staple", // The famous XKCD example itself!
+            "the quick brown fox",
+            "to be or not to be",
+            "mary had a little lamb",
+            "twinkle twinkle little star",
+        ];
+
+        let normalized = password.to_lowercase();
+        common_passwords
+            .iter()
+            .any(|&common| normalized.contains(common))
+    }
+
+    /// Calculate estimated entropy for a passphrase (simplified)
+    fn calculate_passphrase_entropy(&self, words: &[&str]) -> f64 {
+        // Simplified entropy calculation
+        // In production, use proper entropy calculation considering:
+        // - Dictionary size
+        // - Word frequency
+        // - Markov chain analysis
+        // - Actual randomness vs. predictable patterns
+
+        let avg_word_length: f64 =
+            words.iter().map(|w| w.len()).sum::<usize>() as f64 / words.len() as f64;
+
+        // Rough estimate: each word contributes ~10-15 bits depending on length and commonality
+        let base_entropy_per_word = if avg_word_length > 6.0 { 13.0 } else { 10.0 };
+
+        // Longer passphrases get bonus entropy
+        let word_count_bonus = if words.len() > 4 {
+            (words.len() - 4) as f64 * 2.0
+        } else {
+            0.0
+        };
+
+        // Mixed case or numbers add slight entropy bonus
+        let complexity_bonus = words
+            .iter()
+            .map(|word| {
+                let mut bonus = 0.0;
+                if word.chars().any(|c| c.is_uppercase()) {
+                    bonus += 1.0;
+                }
+                if word.chars().any(|c| c.is_numeric()) {
+                    bonus += 1.0;
+                }
+                bonus
+            })
+            .sum::<f64>();
+
+        (words.len() as f64 * base_entropy_per_word) + word_count_bonus + complexity_bonus
     }
 
     fn hash_password(&self, password: &str) -> Result<String> {
@@ -197,7 +440,7 @@ impl AuthenticationProvider for InMemoryAuthProvider {
         }
 
         // Try to extract username from token for better error message
-        let username = token.split('_').nth(1).unwrap_or("unknown");
+        let _username = token.split('_').nth(1).unwrap_or("unknown");
 
         Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
             provider: Some("SecurityProvider".to_string()),

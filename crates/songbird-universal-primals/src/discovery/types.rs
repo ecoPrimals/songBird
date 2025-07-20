@@ -54,16 +54,20 @@ pub struct DiscoveredPrimal {
 pub enum DiscoveryMethod {
     /// Network scanning discovery
     NetworkScan,
-    /// Service registry based discovery
+    /// Service registry discovery
     ServiceRegistry,
-    /// UDP broadcast discovery
+    /// Broadcast discovery
     Broadcast,
-    /// Direct connection discovery
-    DirectConnection,
-    /// Federation network discovery
+    /// Federation discovery
     Federation,
-    /// Manual registration
+    /// Filesystem-based discovery (scans ../beardog, ../nestgate, etc.)
+    Filesystem,
+    /// Manual configuration
     Manual,
+    /// MDNS discovery
+    Mdns,
+    /// DNS-SD discovery
+    DnsSD,
 }
 
 /// Discovery result containing multiple primals
@@ -79,7 +83,7 @@ pub struct DiscoveryResult {
     pub metadata: HashMap<String, String>,
 }
 
-/// Discovery configuration for different methods
+/// Discovery configuration settings
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
     /// Enable network scanning
@@ -90,16 +94,14 @@ pub struct DiscoveryConfig {
     pub enable_broadcast: bool,
     /// Enable federation discovery
     pub enable_federation: bool,
-    /// Timeout for discovery operations
-    pub discovery_timeout: std::time::Duration,
-    /// Network scan IP ranges
-    pub scan_ranges: Vec<String>,
-    /// Service registry endpoints
-    pub registry_endpoints: Vec<String>,
-    /// Broadcast ports to scan
-    pub broadcast_ports: Vec<u16>,
-    /// Federation endpoints
-    pub federation_endpoints: Vec<String>,
+    /// Enable ecosystem discovery (connects to real primals at ../beardog, etc.)
+    pub enable_ecosystem_discovery: bool,
+    /// Maximum discovery timeout in seconds
+    pub discovery_timeout_secs: u64,
+    /// Maximum number of concurrent discovery operations
+    pub max_concurrent_operations: usize,
+    /// Network scan port ranges
+    pub network_scan_port_ranges: Vec<(u16, u16)>,
 }
 
 /// Statistics about discovery operations
@@ -261,20 +263,13 @@ impl Default for DiscoveryConfig {
             enable_service_registry: true,
             enable_broadcast: true,
             enable_federation: true,
-            discovery_timeout: std::time::Duration::from_secs(30),
-            scan_ranges: vec![
-                "127.0.0.1/32".to_string(),
-                "10.0.0.0/24".to_string(),
-                "192.168.1.0/24".to_string(),
-            ],
-            registry_endpoints: vec![
-                "http://localhost:8500".to_string(), // Consul
-                "http://localhost:2379".to_string(), // etcd
-            ],
-            broadcast_ports: vec![8080, 8081, 8082, 8083, 8084, 8085],
-            federation_endpoints: vec![
-                "http://localhost:9090".to_string(),
-                "http://localhost:9091".to_string(),
+            enable_ecosystem_discovery: true, // Enable by default
+            discovery_timeout_secs: 30,
+            max_concurrent_operations: 20,
+            network_scan_port_ranges: vec![
+                (8000, 8100),   // Common HTTP ports
+                (9000, 9100),   // Alternative HTTP ports  
+                (3000, 3100),   // Development ports
             ],
         }
     }
@@ -322,9 +317,11 @@ impl std::fmt::Display for DiscoveryMethod {
             DiscoveryMethod::NetworkScan => write!(f, "network_scan"),
             DiscoveryMethod::ServiceRegistry => write!(f, "service_registry"),
             DiscoveryMethod::Broadcast => write!(f, "broadcast"),
-            DiscoveryMethod::DirectConnection => write!(f, "direct_connection"),
             DiscoveryMethod::Federation => write!(f, "federation"),
+            DiscoveryMethod::Filesystem => write!(f, "filesystem"),
             DiscoveryMethod::Manual => write!(f, "manual"),
+            DiscoveryMethod::Mdns => write!(f, "mdns"),
+            DiscoveryMethod::DnsSD => write!(f, "dns_sd"),
         }
     }
 }

@@ -200,8 +200,6 @@ async fn test_gaming_protocol_equality() -> Result<()> {
 #[tokio::test]
 async fn test_nat_type_variants() -> Result<()> {
     let nat_types = vec![
-        NatType::None,
-        NatType::Open,
         NatType::FullCone,
         NatType::RestrictedCone,
         NatType::PortRestrictedCone,

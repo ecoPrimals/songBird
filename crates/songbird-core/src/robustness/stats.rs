@@ -70,4 +70,4 @@ pub struct RobustnessStatus {
     pub rate_limit_stats: std::collections::HashMap<String, RateLimitStats>,
     pub bulkhead_stats: std::collections::HashMap<String, BulkheadStats>,
     pub health_check_stats: std::collections::HashMap<String, HealthCheckStats>,
-} 
+}

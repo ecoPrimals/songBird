@@ -6,7 +6,10 @@ use super::config::RobustnessConfig;
 use super::error_types::{CircuitBreakerState, HealthStatus, RetryableError};
 use super::health_checker::HealthCheckerInstance;
 use super::rate_limiter::RateLimiterInstance;
-use super::stats::{BulkheadStats, CircuitBreakerStats, HealthCheckStats, RateLimitStats, RetryStats, RobustnessStatus};
+use super::stats::{
+    BulkheadStats, CircuitBreakerStats, HealthCheckStats, RateLimitStats, RetryStats,
+    RobustnessStatus,
+};
 use songbird_errors::{Result, SongbirdError};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -50,7 +53,8 @@ impl RobustnessManager {
 
         // Always create rate limiter when using new()
         {
-            let rate_limiter = RateLimiterInstance::new("default".to_string(), config.rate_limiting.clone());
+            let rate_limiter =
+                RateLimiterInstance::new("default".to_string(), config.rate_limiting.clone());
             rate_limiters.insert("default".to_string(), rate_limiter);
         }
 
@@ -62,7 +66,8 @@ impl RobustnessManager {
 
         // Always create health checker when using new()
         {
-            let health_checker = HealthCheckerInstance::new("default".to_string(), config.health_check.clone());
+            let health_checker =
+                HealthCheckerInstance::new("default".to_string(), config.health_check.clone());
             health_checkers.insert("default".to_string(), health_checker);
         }
 
@@ -121,9 +126,12 @@ impl RobustnessManager {
             let mut limiters = self.rate_limiters.write().await;
             if let Some(limiter) = limiters.get_mut(service_name) {
                 if !limiter.allow_request() {
-                    return Err(SongbirdError::rate_limit_error(
-                        format!("Rate limit exceeded for {}: {}/{}", service_name, limiter.get_current_rate(), limiter.config.requests_per_window),
-                    ));
+                    return Err(SongbirdError::rate_limit_error(format!(
+                        "Rate limit exceeded for {}: {}/{}",
+                        service_name,
+                        limiter.get_current_rate(),
+                        limiter.config.requests_per_window
+                    )));
                 }
             } else {
                 return Err(SongbirdError::config_field(
@@ -148,14 +156,16 @@ impl RobustnessManager {
                 match bulkhead.try_acquire_permit().await {
                     Ok(permit) => permit,
                     Err(BulkheadError::QueueFull) => {
-                        return Err(SongbirdError::resource_exhausted_error(
-                            format!("Bulkhead queue full: {}/{}", bulkhead.queued_requests, bulkhead.config.max_queue_size),
-                        ));
+                        return Err(SongbirdError::resource_exhausted_error(format!(
+                            "Bulkhead queue full: {}/{}",
+                            bulkhead.queued_requests, bulkhead.config.max_queue_size
+                        )));
                     }
                     Err(BulkheadError::QueueTimeout) => {
-                        return Err(SongbirdError::io_error(
-                            format!("Bulkhead queue wait timeout: {}ms", bulkhead.config.queue_timeout.as_millis()),
-                        ));
+                        return Err(SongbirdError::io_error(format!(
+                            "Bulkhead queue wait timeout: {}ms",
+                            bulkhead.config.queue_timeout.as_millis()
+                        )));
                     }
                     Err(BulkheadError::SemaphoreError) => {
                         return Err(SongbirdError::io_error(
@@ -181,11 +191,7 @@ impl RobustnessManager {
     }
 
     /// Execute a request with comprehensive robustness patterns
-    pub async fn execute_with_robustness<F, T>(
-        &self,
-        service_name: &str,
-        operation: F,
-    ) -> Result<T>
+    pub async fn execute_with_robustness<F, T>(&self, service_name: &str, operation: F) -> Result<T>
     where
         F: std::future::Future<Output = Result<T>> + Clone,
     {
@@ -199,7 +205,11 @@ impl RobustnessManager {
     }
 
     /// Perform a health check
-    pub async fn health_check<F, Fut>(&self, service_name: &str, check_fn: F) -> Result<HealthStatus>
+    pub async fn health_check<F, Fut>(
+        &self,
+        service_name: &str,
+        check_fn: F,
+    ) -> Result<HealthStatus>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = bool>,
@@ -216,14 +226,22 @@ impl RobustnessManager {
     }
 
     /// Register a new circuit breaker
-    pub async fn register_circuit_breaker(&self, id: String, config: super::config::CircuitBreakerConfig) {
+    pub async fn register_circuit_breaker(
+        &self,
+        id: String,
+        config: super::config::CircuitBreakerConfig,
+    ) {
         let breaker = CircuitBreakerInstance::new(id.clone(), config);
         let mut breakers = self.circuit_breakers.write().await;
         breakers.insert(id, breaker);
     }
 
     /// Register a new rate limiter
-    pub async fn register_rate_limiter(&self, id: String, config: super::config::RateLimitingConfig) {
+    pub async fn register_rate_limiter(
+        &self,
+        id: String,
+        config: super::config::RateLimitingConfig,
+    ) {
         let limiter = RateLimiterInstance::new(id.clone(), config);
         let mut limiters = self.rate_limiters.write().await;
         limiters.insert(id, limiter);
@@ -237,7 +255,11 @@ impl RobustnessManager {
     }
 
     /// Register a new health checker
-    pub async fn register_health_checker(&self, id: String, config: super::config::HealthCheckConfig) {
+    pub async fn register_health_checker(
+        &self,
+        id: String,
+        config: super::config::HealthCheckConfig,
+    ) {
         let checker = HealthCheckerInstance::new(id.clone(), config);
         let mut checkers = self.health_checkers.write().await;
         checkers.insert(id, checker);
@@ -279,8 +301,8 @@ impl RobustnessManager {
                     (
                         id.clone(),
                         RateLimitStats {
-                            total_requests: 0, // Would need to track this
-                            allowed_requests: 0, // Would need to track this
+                            total_requests: 0,    // Would need to track this
+                            allowed_requests: 0,  // Would need to track this
                             rejected_requests: 0, // Would need to track this
                             current_rate: limiter.get_current_rate(),
                             burst_capacity: limiter.config.burst_size,
@@ -340,7 +362,10 @@ impl RobustnessManager {
     }
 
     /// Builder pattern methods
-    pub fn with_circuit_breaker_config(mut self, config: super::config::CircuitBreakerConfig) -> Self {
+    pub fn with_circuit_breaker_config(
+        mut self,
+        config: super::config::CircuitBreakerConfig,
+    ) -> Self {
         self.config.circuit_breaker = config;
         self
     }
@@ -360,4 +385,4 @@ impl Default for RobustnessManager {
     fn default() -> Self {
         Self::new(RobustnessConfig::default())
     }
-} 
+}

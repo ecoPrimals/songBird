@@ -2,7 +2,7 @@ pub mod accessibility;
 pub mod firewall;
 pub mod security;
 
-// Universal security integration for any primal with security capabilities  
+// Universal security integration for any primal with security capabilities
 pub mod universal_security_integration;
 
 // Test-related modules

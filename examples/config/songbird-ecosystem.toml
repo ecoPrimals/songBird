@@ -1,0 +1,132 @@
+# Songbird Ecosystem Configuration
+# Demonstrates standalone + network effects architecture
+
+[metadata]
+name = "songbird-ecosystem-node"
+version = "1.0.0"
+description = "Songbird with full ecosystem integration"
+
+[songbird]
+# Core Songbird configuration (standalone operation)
+mode = "standalone-with-ecosystem"
+bind_address = "127.0.0.1"
+orchestrator_port = 8080
+enable_discovery = true
+
+[discovery]
+# Auto-discover other primals for network effects
+auto_discovery = true
+scan_timeout_seconds = 30
+discovery_methods = ["network_scan", "service_registry", "broadcast"]
+
+# Network ranges to scan for other primals
+scan_ranges = ["127.0.0.1", "192.168.1.0/24", "10.0.0.0/24"]
+scan_ports = [8080, 8081, 8082, 8083, 8084, 8085, 9090, 9091, 9092]
+
+# Well-known primal endpoints (if available)
+[discovery.well_known]
+toadstool = "http://localhost:8082"
+nestgate = "http://localhost:8081" 
+squirrel = "http://localhost:8084"
+beardog = "https://localhost:8443"
+biomeos = "http://localhost:8085"
+
+# Other Songbird instances for clustering
+[discovery.federation]
+enable_songbird_federation = true
+cluster_name = "songbird-cluster-1"
+federation_ports = [8080, 8081, 8082]
+
+# Capability-based routing preferences
+[routing]
+# When multiple primals can handle a capability, prefer:
+compute_preference = ["toadstool", "local"] # Prefer Toadstool for CPU/metal, fallback to local
+storage_preference = ["nestgate", "local"]  # Prefer NestGate for storage, fallback to local
+ai_preference = ["squirrel", "local"]       # Prefer Squirrel for AI, fallback to local
+security_preference = ["beardog", "local"]  # Prefer BearDog for security, fallback to local
+
+# Load balancing for network effects
+load_balancing = "latency_based"  # Route to lowest latency primal
+circuit_breaker = true            # Enable circuit breakers for failed primals
+max_retries = 3                   # Max retries before falling back to local
+
+[capabilities]
+# Songbird's own capabilities (standalone mode)
+[capabilities.networking]
+service_discovery = ["mdns", "consul", "custom"]
+load_balancing = ["round_robin", "least_connections", "latency_based"]
+circuit_breaking = true
+federation = true
+
+[capabilities.orchestration]
+service_management = true
+health_monitoring = true
+auto_scaling = true
+zero_touch_deployment = true
+
+[capabilities.gaming]
+protocol_detection = ["starcraft", "age_of_empires", "quake"]
+universal_bridge = true
+nat_traversal = true
+stun_support = true
+
+# Integration with ecosystem primals
+[integrations]
+
+# Toadstool integration (compute/metal)
+[integrations.toadstool]
+enabled = true
+capabilities_requested = ["container_runtime", "native_execution", "gpu_acceleration"]
+prefer_for = ["high_cpu", "metal_access", "gpu_workloads"]
+connection_timeout = "30s"
+health_check_interval = "15s"
+
+# NestGate integration (storage/network)
+[integrations.nestgate]
+enabled = true
+capabilities_requested = ["file_system", "object_storage", "network_routing"]
+prefer_for = ["file_storage", "network_gateway", "vpn"]
+connection_timeout = "30s"
+health_check_interval = "15s"
+
+# Squirrel integration (AI/analytics)
+[integrations.squirrel]
+enabled = true
+capabilities_requested = ["model_inference", "agent_framework", "analytics"]
+prefer_for = ["ai_inference", "data_analysis", "mcp_agents"]
+connection_timeout = "60s"  # AI operations may take longer
+health_check_interval = "30s"
+
+# BearDog integration (security)
+[integrations.beardog]
+enabled = true
+capabilities_requested = ["encryption", "authentication", "threat_detection"]
+prefer_for = ["security", "encryption", "auth"]
+connection_timeout = "30s"
+health_check_interval = "10s"
+require_tls = true
+
+# Other Songbird instances (clustering)
+[integrations.songbird_federation]
+enabled = true
+capabilities_requested = ["service_discovery", "load_balancing", "orchestration"]
+prefer_for = ["federation", "clustering", "distributed_orchestration"]
+connection_timeout = "30s"
+health_check_interval = "15s"
+
+# Fallback behavior when ecosystem is unavailable
+[fallback]
+mode = "graceful_degradation"
+local_capabilities = ["basic_orchestration", "service_discovery", "load_balancing"]
+cache_ecosystem_data = true
+cache_duration = "5m"
+retry_interval = "30s"
+
+# Performance and scaling
+[performance]
+max_concurrent_primal_requests = 100
+connection_pool_size = 20
+request_timeout = "60s"
+enable_request_batching = true
+batch_size = 10
+batch_timeout = "100ms" 

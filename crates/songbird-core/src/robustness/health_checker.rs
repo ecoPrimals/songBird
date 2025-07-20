@@ -46,10 +46,7 @@ impl HealthCheckerInstance {
         self.last_check_time = Some(start_time);
 
         // Execute the health check with timeout
-        let check_result = tokio::time::timeout(
-            self.config.check_timeout,
-            check_fn(),
-        ).await;
+        let check_result = tokio::time::timeout(self.config.check_timeout, check_fn()).await;
 
         let duration = start_time.elapsed();
         self.last_check_duration = Some(duration);
@@ -61,7 +58,7 @@ impl HealthCheckerInstance {
 
         self.record_check_result(is_healthy);
         self.update_health_status();
-        
+
         self.health_status.clone()
     }
 
@@ -146,4 +143,4 @@ impl HealthCheckerInstance {
         self.failed_checks = 0;
         self.health_status = HealthStatus::Unknown;
     }
-} 
+}

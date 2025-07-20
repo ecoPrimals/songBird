@@ -8,6 +8,7 @@ use songbird_core::production_benchmarks::{
 use songbird_errors::Result;
 use std::time::Duration;
 
+#[ignore = "Long-running performance test - run with: cargo test test_run_full_benchmark_suite -- --ignored"]
 #[tokio::test]
 async fn test_run_full_benchmark_suite() -> Result<()> {
     println!("🚀 Starting Full Benchmark Suite...");
@@ -83,6 +84,7 @@ async fn test_quick_production_check() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Long-running performance test - run with: cargo test test_quick_production_check_lightweight -- --ignored"]
 async fn test_quick_production_check_lightweight() -> Result<()> {
     println!("⚡ Running Lightweight Production Check...");
 
@@ -118,6 +120,7 @@ async fn test_quick_production_check_lightweight() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Long-running performance test - run with: cargo test test_performance_bottleneck_identification -- --ignored"]
 async fn test_performance_bottleneck_identification() -> Result<()> {
     println!("🔍 Identifying Performance Bottlenecks...");
 

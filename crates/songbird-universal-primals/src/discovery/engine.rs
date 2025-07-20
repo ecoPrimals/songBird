@@ -51,6 +51,26 @@ impl PrimalDiscoveryEngine {
         // Start all discovery methods concurrently
         let mut all_primals = Vec::new();
 
+        // 0. Ecosystem discovery (NEW - connects to real primals at ../beardog, etc.)
+        if self.discovery_config.enable_ecosystem_discovery {
+            match self.start_ecosystem_discovery().await {
+                Ok(primals) => {
+                    self.discovery_stats
+                        .record_attempt(DiscoveryMethod::Filesystem, true);
+                    let primal_count = primals.len();
+                    self.discovery_stats
+                        .record_discovered_primals(primal_count as u64);
+                    all_primals.extend(primals);
+                    info!("🌌 Ecosystem discovery found {} real primals", primal_count);
+                }
+                Err(e) => {
+                    self.discovery_stats
+                        .record_attempt(DiscoveryMethod::Filesystem, false);
+                    warn!("Ecosystem discovery failed: {}", e);
+                }
+            }
+        }
+
         // 1. Network scan discovery
         if self.discovery_config.enable_network_scan {
             match self.start_network_scan_discovery().await {
@@ -133,6 +153,24 @@ impl PrimalDiscoveryEngine {
             self.discovered_primals.len()
         );
         Ok(())
+    }
+
+    /// Start ecosystem discovery (connects to real primals at ../beardog, etc.)
+    async fn start_ecosystem_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
+        debug!("🌌 Starting ecosystem primal discovery...");
+        
+        use super::ecosystem::{EcosystemDiscovery, EcosystemDiscoveryConfig};
+        
+        let ecosystem_config = EcosystemDiscoveryConfig {
+            ecosystem_base_path: "../".to_string(),
+            health_check_timeout_ms: 5000,
+            max_concurrent_discoveries: 10,
+            enable_filesystem_discovery: true,
+            enable_network_discovery: true,
+        };
+        
+        let ecosystem_discovery = EcosystemDiscovery::new(ecosystem_config);
+        ecosystem_discovery.discover_ecosystem_primals().await
     }
 
     /// Start network scan discovery
@@ -255,7 +293,7 @@ impl PrimalDiscoveryEngine {
         endpoint: &str,
         primal_type: &songbird_universal::PrimalType,
     ) -> bool {
-        let key = format!("{}:{}", endpoint, primal_type);
+        let key = format!("{endpoint}:{primal_type}");
         self.discovered_primals.remove(&key).is_some()
     }
 
@@ -308,8 +346,10 @@ impl PrimalDiscoveryEngine {
 
     /// Get summary of discovered primals
     pub fn get_discovery_summary(&self) -> DiscoverySummary {
-        let mut summary = DiscoverySummary::default();
-        summary.total_primals = self.discovered_primals.len();
+        let mut summary = DiscoverySummary {
+            total_primals: self.discovered_primals.len(),
+            ..Default::default()
+        };
 
         for primal in self.discovered_primals.values() {
             match primal.primal_type.as_str() {
@@ -339,17 +379,27 @@ impl PrimalDiscoveryEngine {
 }
 
 /// Summary of discovery results
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DiscoverySummary {
+    /// Total number of discovered primals
     pub total_primals: usize,
+    /// Number of healthy/responsive primals
     pub healthy_count: usize,
+    /// Number of BearDog security primals found
     pub beardog_count: usize,
+    /// Number of NestGate storage primals found
     pub nestgate_count: usize,
+    /// Number of ToadStool compute primals found
     pub toadstool_count: usize,
+    /// Number of Squirrel AI primals found
     pub squirrel_count: usize,
+    /// Number of Songbird orchestrator primals found
     pub songbird_count: usize,
+    /// Number of BiomeOS universal primals found
     pub biomeos_count: usize,
+    /// Number of unidentified/unknown primal types found
     pub unknown_count: usize,
+    /// Count of primals by discovery method used
     pub by_discovery_method: HashMap<DiscoveryMethod, usize>,
 }
 

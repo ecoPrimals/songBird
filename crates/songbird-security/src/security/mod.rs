@@ -24,7 +24,7 @@ pub use beardog::*;
 pub use encryption::*;
 pub use hardening::*;
 pub use oauth::*;
-pub use providers::*;
+// Note: providers are available via specific imports rather than glob
 pub use types::*;
 pub use universal_security::*;
 pub use zero_trust_middleware::ZeroTrustMiddleware;

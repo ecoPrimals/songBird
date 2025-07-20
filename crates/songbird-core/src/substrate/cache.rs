@@ -209,6 +209,11 @@ impl OptimizedSubstrateCache {
             has_system_info: self.system_info.is_some(),
         }
     }
+
+    /// Get cache statistics (alias for compatibility)
+    pub fn get_stats(&self) -> CacheStats {
+        self.stats()
+    }
 }
 
 /// Cache statistics

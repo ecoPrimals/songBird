@@ -22,23 +22,23 @@
 //! - `manager` - Main coordinator for all patterns
 //! - `utils` - Utility functions for common operations
 
+pub mod bulkhead;
+pub mod circuit_breaker;
 pub mod config;
 pub mod error_types;
-pub mod stats;
-pub mod circuit_breaker;
-pub mod rate_limiter;
-pub mod bulkhead;
 pub mod health_checker;
 pub mod manager;
+pub mod rate_limiter;
+pub mod stats;
 pub mod utils;
 
 // Re-export all public types for backward compatibility and convenience
+pub use bulkhead::*;
+pub use circuit_breaker::*;
 pub use config::*;
 pub use error_types::*;
-pub use stats::*;
-pub use circuit_breaker::*;
-pub use rate_limiter::*;
-pub use bulkhead::*;
 pub use health_checker::*;
 pub use manager::*;
-pub use utils::*; 
+pub use rate_limiter::*;
+pub use stats::*;
+pub use utils::*;
