@@ -204,7 +204,7 @@ where
     /// Intelligent eviction based on access patterns and performance
     async fn adaptive_eviction(&self) {
         let mut cache = self.cache.write().await;
-        let patterns = self.access_patterns.read().await;
+        let _patterns = self.access_patterns.read().await;
         let mut metrics = self.metrics.write().await;
 
         // Find candidates for eviction based on:
@@ -212,7 +212,7 @@ where
         // 2. Old last access time
         // 3. Large size (if memory pressure)
 
-        let mut eviction_candidates: Vec<String> = Vec::new();
+        let _eviction_candidates: Vec<String> = Vec::new();
 
         // Simple eviction strategy for this implementation
         // In production, this would be more sophisticated
@@ -282,7 +282,7 @@ where
     }
 
     /// Prefetch predictions based on access patterns
-    pub async fn predict_next_keys(&self, current_key: &K, limit: usize) -> Vec<K> {
+    pub async fn predict_next_keys(&self, _current_key: &K, limit: usize) -> Vec<K> {
         // Simple prediction: return most frequently accessed keys
         // In production, this would use more sophisticated ML algorithms
         self.get_hot_keys(limit).await

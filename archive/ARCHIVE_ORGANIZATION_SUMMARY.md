@@ -38,6 +38,21 @@ This document explains the documentation cleanup and archival process performed 
 - `PHASE_2_3_*.md` - Development phases completed
 - `UNIVERSAL_PRIMAL_*.md` - Universal Primal integration completed
 - `FINAL_TECHNICAL_DEBT_SUMMARY.md` - Technical debt eliminated
+
+### **Root-Level Cleanup (`archive/root-level-cleanup-2025-01/`)** - **NEW!**
+
+**Archived Documents:**
+- `PURE_RUST_TRANSITION_SUMMARY.md` - Pure Rust testing infrastructure transition completed
+- `TESTING_IMPROVEMENTS_SUMMARY.md` - Test suite enhancement completed
+- `DOCUMENTATION_CLEANUP_COMPLETE.md` - Documentation reorganization completed
+- `fix_discovery_errors_v2.py` - Legacy discovery fix script (superseded by Rust)
+- `fix_discovery_v3.py` - Legacy discovery fix script (superseded by Rust)
+- `fix_network_errors_v2.py` - Legacy network fix script (superseded by Rust)
+
+**File Relocations:**
+- `lib.rs` → `src/lib.rs` - Moved to standard Rust project structure
+
+**Reason for Archival**: Root directory cleanup for professional presentation. All archived work represents completed phases now integrated into standard workflow.
 - `IMPLEMENTATION_SUMMARY.md` - Implementation completed
 - `BEARDOG_SECURITY_INTEGRATION_COMPLETE.md` - Security integration completed
 - `ADVANCED_FEATURES_SUMMARY.md` - All features implemented

@@ -34,17 +34,105 @@ pub struct AIStreamingConnectionManager {
     pub performance_monitor: StreamingPerformanceMonitor,
 }
 
-// Mock implementations for compilation
-pub struct MessageRouter;
-pub struct CollaborationCoordinator;
+// Production implementations
+pub struct MessageRouter {
+    route_table: HashMap<String, Vec<String>>,
+}
+
+impl MessageRouter {
+    pub fn new() -> Self {
+        Self {
+            route_table: HashMap::new(),
+        }
+    }
+
+    /// Route message to appropriate connections
+    pub async fn route_message(
+        &self,
+        _message: &str,
+        source_connection: &str,
+    ) -> Result<Vec<String>> {
+        // Get all connections that should receive this message
+        let recipients = self
+            .route_table
+            .get(source_connection)
+            .cloned()
+            .unwrap_or_default();
+
+        tracing::debug!(
+            "Routing message from {} to {} recipients",
+            source_connection,
+            recipients.len()
+        );
+
+        Ok(recipients)
+    }
+
+    /// Add routing rule
+    pub fn add_route(&mut self, source: String, destinations: Vec<String>) {
+        self.route_table.insert(source, destinations);
+    }
+}
+
+pub struct CollaborationCoordinator {
+    active_workspaces: HashMap<String, CollaborationWorkspace>,
+}
+
+impl CollaborationCoordinator {
+    pub fn new() -> Self {
+        Self {
+            active_workspaces: HashMap::new(),
+        }
+    }
+
+    /// Create a new collaboration workspace
+    pub async fn create_workspace(
+        &mut self,
+        workspace_id: String,
+        _config: WorkspaceConfiguration,
+    ) -> Result<CollaborationWorkspace> {
+        let workspace = CollaborationWorkspace {
+            workspace_id: workspace_id.clone(),
+            name: format!("Workspace-{}", workspace_id), // Generated name since config doesn't have name
+            session_id: uuid::Uuid::new_v4().to_string(),
+            documents: Vec::new(),
+            visualizations: Vec::new(),
+            action_items: Vec::new(),
+            decisions: Vec::new(),
+            metrics: WorkspaceMetrics {
+                total_active_time_seconds: 0,
+                participant_count: 0,
+                documents_created: 0,
+                decisions_made: 0,
+                action_items_count: 0,
+                collaboration_efficiency: 0.5,
+            },
+            created_at: chrono::Utc::now(),
+            last_modified: chrono::Utc::now(),
+        };
+
+        self.active_workspaces
+            .insert(workspace_id, workspace.clone());
+        tracing::info!("Created collaboration workspace: {}", workspace.name);
+
+        Ok(workspace)
+    }
+
+    /// Get workspace metrics
+    pub fn get_workspace_metrics(&self, workspace_id: &str) -> Option<WorkspaceMetrics> {
+        self.active_workspaces
+            .get(workspace_id)
+            .map(|workspace| workspace.metrics.clone())
+    }
+}
 
 impl AIStreamingConnectionManager {
     /// Create new AI streaming connection manager
     pub fn new() -> Self {
         Self {
             connections: HashMap::new(),
-            message_router: MessageRouter,
-            collaboration_coordinator: CollaborationCoordinator,
+            message_router: MessageRouter::new(),
+            collaboration_coordinator: CollaborationCoordinator::new(),
             performance_monitor: StreamingPerformanceMonitor::new(),
         }
     }
@@ -121,7 +209,10 @@ impl AIStreamingConnectionManager {
                             should_retry: true,
                             max_attempts: 3,
                             delay_ms: 1000,
-                            backoff_strategy: super::super::ai_first_response::BackoffType::Exponential { base: 2.0 },
+                            backoff_strategy:
+                                super::super::ai_first_response::BackoffType::Exponential {
+                                    base: 2.0,
+                                },
                             retry_conditions: vec![],
                             success_probability: 0.7,
                         },

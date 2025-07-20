@@ -166,7 +166,7 @@ impl PrimalIntegrationManager {
     /// Initialize the primal integration manager
     pub async fn initialize(&mut self) -> Result<()> {
         info!("🚀 Initializing primal integration manager...");
-        
+
         // Discover available primals
         match self.discover_primals().await {
             Ok(primals) => {
@@ -184,19 +184,19 @@ impl PrimalIntegrationManager {
     /// Stop the primal integration manager
     pub async fn stop(&mut self) -> Result<()> {
         info!("🛑 Stopping primal integration manager...");
-        
+
         // Clear discovered primals
         {
             let mut discovered = self.discovered_primals.write().await;
             discovered.clear();
         }
-        
+
         // Clear primal services
         {
             let mut services = self.primal_services.write().await;
             services.clear();
         }
-        
+
         info!("✅ Primal integration manager stopped");
         Ok(())
     }
@@ -349,7 +349,7 @@ impl From<serde_json::Error> for BiomeOSError {
 }
 
 impl From<BiomeOSError> for SongbirdError {
-    fn from(error: BiomeOSError) -> Self {
+    fn from(_error: BiomeOSError) -> Self {
         SongbirdError::Network(Box::new(NetworkError {
             message: "Primal Integration - biomeOS communication failure".to_string(),
             endpoint: Some("biomeOS".to_string()),

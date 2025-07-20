@@ -3,25 +3,12 @@
 //! Comprehensive benchmarking suite for production workloads.
 //! Tests all major components under realistic conditions.
 
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-use tokio::time::timeout;
-use tracing::{debug, info, warn};
-
-use songbird_config::constants::{
-    DEFAULT_BENCHMARK_ITERATIONS, DEFAULT_BENCHMARK_TIMEOUT, DEFAULT_EVALUATION_TIMEOUT,
-};
+use serde::{Deserialize, Serialize};
 use songbird_errors::{ExecutionError, Result};
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
-use crate::benchmarks::*;
-use crate::biome::*;
-use crate::biomeos_integration::*;
-use crate::load_balancer::*;
-use crate::orchestrator::*;
 use crate::performance::*;
-use crate::registry::*;
-use crate::substrate::*;
-use crate::zero_touch::*;
 
 /// Production benchmark suite configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,8 +40,8 @@ impl Default for BenchmarkConfig {
             cache_test_data_size: 10000,
             object_pool_iterations: 50000,
             batch_test_size: 10000,
-            warmup_duration: DEFAULT_BENCHMARK_DURATION,
-            test_duration: DEFAULT_BENCHMARK_DURATION,
+            warmup_duration: Duration::from_secs(60),
+            test_duration: Duration::from_secs(60),
         }
     }
 }
@@ -147,7 +134,7 @@ impl ProductionBenchmarkRunner {
                 message_pool: 10000,
                 request_pool: 20000,
             },
-            monitoring_interval: DEFAULT_BENCHMARK_MONITORING_INTERVAL,
+            monitoring_interval: Duration::from_secs(5),
             auto_tuning_sensitivity: 0.8,
         };
 
@@ -201,7 +188,7 @@ impl ProductionBenchmarkRunner {
             production_readiness_assessment,
         };
 
-        *self.results.write().await = Some(results.clone());
+        *self.results.write().unwrap() = Some(results.clone());
 
         self.print_benchmark_summary(&results);
 
@@ -215,7 +202,7 @@ impl ProductionBenchmarkRunner {
         // Warmup load balancer
         if let Some(lb) = self.performance_optimizer.get_load_balancer() {
             for i in 0..1000 {
-                let _ = lb.select_instance(&format!("warmup-{i}")).await;
+                let _ = lb.select_instance(Some(&format!("warmup-{i}"))).await;
             }
         }
 
@@ -233,20 +220,12 @@ impl ProductionBenchmarkRunner {
         // Create test service instances (pre-allocated for performance)
         let mut instances = Vec::with_capacity(self.config.service_instance_count);
         for i in 0..self.config.service_instance_count {
-            instances.push(ServiceInstance {
+            instances.push(ServiceInstanceMeta {
                 id: format!("service-{i}"),
-                address: format!("192.168.1.{}", i % 255 + 1),
-                port: 8080 + (i % 1000) as u16,
-                weight: 1 + (i % 5) as u32,
-                healthy: true,
+                endpoint: format!("192.168.1.{}:8080", i % 255 + 1),
+                weight: 1.0 + (i % 5) as f64,
                 health_score: 1.0,
-                avg_response_time: 0.0,
-                cpu_usage: 0.0,
-                memory_usage: 0.0,
-                gpu_usage: None,
-                gpu_memory_usage: None,
-                active_connections: 0,
-                last_updated: chrono::Utc::now(),
+                last_updated: Instant::now(),
             });
         }
 
@@ -258,7 +237,7 @@ impl ProductionBenchmarkRunner {
         if let Some(fast_lb) = self.performance_optimizer.get_load_balancer() {
             for i in 0..self.config.requests_per_test {
                 let selection_start = Instant::now();
-                let _ = fast_lb.select_instance(&format!("request-{i}")).await;
+                let _ = fast_lb.select_instance(Some(&format!("request-{i}"))).await;
                 selection_times.push(selection_start.elapsed().as_nanos() as u64);
                 fast_selections += 1;
             }
@@ -268,18 +247,14 @@ impl ProductionBenchmarkRunner {
         let fast_ops_per_second = fast_selections as f64 / fast_duration.as_secs_f64();
 
         // Benchmark standard algorithm
-        let standard_config = LoadBalancerConfig {
-            strategy: LoadBalancerStrategy::RoundRobin,
-            health_check_interval: 30,
-            max_retries: 3,
-            timeout_seconds: 30,
-        };
-
-        let standard_lb = LoadBalancerManager::new(standard_config);
+        let standard_lb = FastLoadBalancer::new(
+            LoadBalancingStrategy::WeightedRoundRobin,
+            1000, // Cache size
+        );
         let standard_instance_count = std::cmp::min(100, instances.len());
         for instance in &instances[..standard_instance_count] {
             // Use smaller set for O(n) comparison
-            standard_lb.add_instance(instance.clone()).await?;
+            standard_lb.add_instance(instance.clone()).await;
         }
 
         let standard_start = Instant::now();
@@ -287,7 +262,7 @@ impl ProductionBenchmarkRunner {
 
         for _i in 0..self.config.requests_per_test / 10 {
             // Scale down for fairness
-            if (standard_lb.select_instance().await).is_some() {
+            if (standard_lb.select_instance(None).await).is_some() {
                 standard_selections += 1;
             }
         }
@@ -323,25 +298,22 @@ impl ProductionBenchmarkRunner {
     async fn benchmark_cache(&mut self) -> Result<CacheBenchmark> {
         println!("🧠 Benchmarking Cache Performance...");
 
-        let cache_config = CacheConfig {
+        let _cache_config = CacheConfig {
             max_size: self.config.cache_test_data_size,
             max_memory_mb: 64,
-            ttl: DEFAULT_BENCHMARK_DURATION,
-            frequency_window: DEFAULT_BENCHMARK_MONITORING_INTERVAL,
+            ttl: Duration::from_secs(60),
+            frequency_window: Duration::from_secs(5),
             adaptive_threshold: 0.8,
         };
 
-        let cache = self
-            .performance_optimizer
-            .create_adaptive_cache::<String, String>("benchmark_cache".to_string(), cache_config)
-            .await;
+        let cache = self.performance_optimizer.create_cache::<String, String>();
 
         // Benchmark PUT operations
         let put_start = Instant::now();
         for i in 0..self.config.cache_test_data_size {
             let key = format!("key-{i}");
             let value = format!("value-{}-{}", i, "x".repeat(100)); // ~100 byte values
-            cache.put(key, value, 120).await;
+            cache.put(key, value, Some(120)).await;
         }
         let put_duration = put_start.elapsed();
         let put_ops_per_second =
@@ -407,17 +379,12 @@ impl ProductionBenchmarkRunner {
     async fn benchmark_object_pool(&mut self) -> Result<ObjectPoolBenchmark> {
         println!("🏊 Benchmarking Object Pool Performance...");
 
-        let pool = self
-            .performance_optimizer
-            .create_object_pool(
-                "benchmark_pool".to_string(),
-                || Vec::<u8>::with_capacity(1024),
-                1000,
-            )
-            .await;
+        let pool = self.performance_optimizer.get_byte_pool();
 
-        // Preload pool
-        pool.preload(500).await;
+        // Pre-populate pool by getting and dropping objects
+        for _ in 0..500 {
+            let _obj = pool.get().await;
+        }
 
         let start = Instant::now();
         let mut acquire_times = Vec::new();
@@ -426,7 +393,7 @@ impl ProductionBenchmarkRunner {
         let mut handles = Vec::new();
         for _i in 0..self.config.object_pool_iterations {
             let acquire_start = Instant::now();
-            let obj = pool.acquire().await;
+            let obj = pool.get().await;
             acquire_times.push(acquire_start.elapsed().as_nanos() as u64);
 
             // Use the object briefly
@@ -464,22 +431,17 @@ impl ProductionBenchmarkRunner {
     async fn benchmark_batch_processing(&mut self) -> Result<BatchProcessingBenchmark> {
         println!("📦 Benchmarking Batch Processing Performance...");
 
-        let processor = self
-            .performance_optimizer
-            .create_batch_processor(
-                "benchmark_processor".to_string(),
-                200,
-                Duration::from_millis(25),
-                |items: Vec<i32>| -> Result<Vec<String>> {
-                    // Simulate processing work (non-blocking)
-                    // Changed from std::thread::sleep to avoid blocking
-                    Ok(items
-                        .into_iter()
-                        .map(|i| format!("processed-{i}"))
-                        .collect())
-                },
-            )
-            .await;
+        let processor = Arc::new(self.performance_optimizer.create_batch_processor(
+            200,
+            |items: Vec<i32>| -> std::result::Result<Vec<String>, String> {
+                // Simulate processing work (non-blocking)
+                // Changed from std::thread::sleep to avoid blocking
+                Ok(items
+                    .into_iter()
+                    .map(|i| format!("processed-{i}"))
+                    .collect())
+            },
+        ));
 
         let start = Instant::now();
         let mut handles = Vec::new();
@@ -487,7 +449,7 @@ impl ProductionBenchmarkRunner {
         // Submit items for processing
         for i in 0..self.config.batch_test_size {
             let processor_clone = processor.clone();
-            let handle = tokio::spawn(async move { processor_clone.process(i as i32).await });
+            let handle = tokio::spawn(async move { processor_clone.submit(i as i32).await });
             handles.push(handle);
         }
 
@@ -723,7 +685,7 @@ impl ProductionBenchmarkRunner {
 
     /// Export results to JSON for CI/CD integration
     pub async fn export_results_json(&self) -> Result<String> {
-        if let Some(ref results) = *self.results.read().await {
+        if let Some(ref results) = *self.results.read().unwrap() {
             serde_json::to_string_pretty(results).map_err(|_e| {
                 songbird_errors::SongbirdError::ExecutionFailed(Box::new(ExecutionError {
                     message: "Benchmark execution failed".to_string(),
@@ -750,8 +712,8 @@ pub async fn quick_production_check() -> Result<bool> {
         cache_test_data_size: 1000,
         object_pool_iterations: 5000,
         batch_test_size: 1000,
-        warmup_duration: DEFAULT_BENCHMARK_DURATION,
-        test_duration: DEFAULT_BENCHMARK_DURATION,
+        warmup_duration: Duration::from_secs(60),
+        test_duration: Duration::from_secs(60),
     };
 
     let mut runner = ProductionBenchmarkRunner::new(config);
@@ -774,14 +736,14 @@ mod tests {
     async fn test_quick_production_check() {
         // Create a lightweight config for testing (not actual production benchmarks)
         let config = BenchmarkConfig {
-            service_instance_count: 2,                   // Minimal instances
-            requests_per_test: 10,                       // Minimal requests
-            concurrent_workers: 1,                       // Single worker
-            cache_test_data_size: 10,                    // Minimal cache
-            object_pool_iterations: 10,                  // Minimal iterations
-            batch_test_size: 5,                          // Small batch
-            warmup_duration: DEFAULT_BENCHMARK_DURATION, // Very short warmup
-            test_duration: Duration::from_millis(50),    // Very short test - test specific
+            service_instance_count: 2,                // Minimal instances
+            requests_per_test: 10,                    // Minimal requests
+            concurrent_workers: 1,                    // Single worker
+            cache_test_data_size: 10,                 // Minimal cache
+            object_pool_iterations: 10,               // Minimal iterations
+            batch_test_size: 5,                       // Small batch
+            warmup_duration: Duration::from_secs(60), // Very short warmup
+            test_duration: Duration::from_millis(50), // Very short test - test specific
         };
 
         let mut runner = ProductionBenchmarkRunner::new(config);

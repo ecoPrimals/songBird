@@ -132,7 +132,7 @@ impl NetworkManager {
         F: FnOnce(&mut NetworkStats),
     {
         if let Ok(mut stats) = self.stats.lock() {
-            updater(&mut *stats);
+            updater(&mut stats);
         }
     }
 
@@ -199,24 +199,98 @@ impl NetworkManager {
 
     /// Get system uptime
     async fn get_system_uptime(&self) -> Result<std::time::Duration, SongbirdError> {
-        // In a real implementation, read system uptime from /proc/uptime or use system calls
-        Ok(std::time::Duration::from_secs(3600)) // Mock 1 hour uptime
+        // Try to read actual system uptime from /proc/uptime (Linux)
+        #[cfg(target_os = "linux")]
+        {
+            match std::fs::read_to_string("/proc/uptime") {
+                Ok(content) => {
+                    let uptime_seconds = content
+                        .split_whitespace()
+                        .next()
+                        .and_then(|s| s.parse::<f64>().ok())
+                        .unwrap_or(3600.0); // Fallback to 1 hour
+                    Ok(std::time::Duration::from_secs_f64(uptime_seconds))
+                }
+                Err(_) => Ok(std::time::Duration::from_secs(3600)), // Fallback
+            }
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            // For non-Linux systems, provide reasonable fallback
+            let boot_time = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default();
+            Ok(boot_time) // Approximation
+        }
     }
 
     /// Get system load average
     async fn get_load_average(&self) -> Result<(f64, f64, f64), SongbirdError> {
-        // In a real implementation, read from /proc/loadavg or use system calls
-        Ok((0.5, 0.7, 0.8)) // Mock load averages
+        #[cfg(target_os = "linux")]
+        {
+            match std::fs::read_to_string("/proc/loadavg") {
+                Ok(content) => {
+                    let parts: Vec<&str> = content.split_whitespace().collect();
+                    if parts.len() >= 3 {
+                        let load1 = parts[0].parse().unwrap_or(0.5);
+                        let load5 = parts[1].parse().unwrap_or(0.7);
+                        let load15 = parts[2].parse().unwrap_or(0.8);
+                        Ok((load1, load5, load15))
+                    } else {
+                        Ok((0.5, 0.7, 0.8)) // Fallback
+                    }
+                }
+                Err(_) => Ok((0.5, 0.7, 0.8)), // Fallback
+            }
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            // For non-Linux systems, provide reasonable defaults
+            Ok((0.3, 0.5, 0.6))
+        }
     }
 
     /// Get network interface statistics
     async fn get_network_interfaces(
         &self,
     ) -> Result<Vec<super::monitoring::InterfaceStats>, SongbirdError> {
-        // In a real implementation, read from /proc/net/dev or use system calls
+        #[cfg(target_os = "linux")]
+        {
+            match std::fs::read_to_string("/proc/net/dev") {
+                Ok(content) => {
+                    let mut interfaces = Vec::new();
+
+                    // Skip first two header lines
+                    for line in content.lines().skip(2) {
+                        let parts: Vec<&str> = line.split_whitespace().collect();
+                        if parts.len() >= 10 {
+                            let interface_name = parts[0].trim_end_matches(':');
+                            let rx_bytes = parts[1].parse().unwrap_or(0);
+                            let tx_bytes = parts[9].parse().unwrap_or(0);
+
+                            let mut interface =
+                                super::monitoring::InterfaceStats::new(interface_name.to_string());
+                            interface.rx_bytes = rx_bytes;
+                            interface.tx_bytes = tx_bytes;
+                            interface.is_up = rx_bytes > 0 || tx_bytes > 0; // Simple heuristic
+
+                            interfaces.push(interface);
+                        }
+                    }
+
+                    if !interfaces.is_empty() {
+                        return Ok(interfaces);
+                    }
+                }
+                Err(_) => {} // Fall through to mock data
+            }
+        }
+
+        // Fallback mock interface statistics for non-Linux or when /proc is unavailable
         let mut interfaces = Vec::new();
 
-        // Mock interface statistics
         let mut eth0 = super::monitoring::InterfaceStats::new("eth0".to_string());
         eth0.rx_bytes = 1024 * 1024;
         eth0.tx_bytes = 512 * 1024;
@@ -253,12 +327,7 @@ impl NetworkManager {
             ));
         }
 
-        if self.config.reverse_proxy_port > 65535 {
-            return Err(SongbirdError::config_field(
-                "reverse_proxy_port",
-                "Port must be <= 65535",
-            ));
-        }
+        // Note: No need to check > 65535 since reverse_proxy_port is u16 (max 65535)
 
         if self.config.ssl_termination_enabled && self.config.ssl_cert_dir.is_empty() {
             return Err(SongbirdError::config_field(

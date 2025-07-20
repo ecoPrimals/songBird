@@ -25,11 +25,10 @@ fn test_songbird_error_types() -> Result<()> {
             suggestion: Some("Check configuration file".to_string()),
         },
         SongbirdError::Network(Box::new(NetworkError {
-            service: Some("test_service".to_string()),
-            message: "Network error".to_string(),
-            details: None,
-            endpoint: None,
-            suggestion: Some("Check network connectivity".to_string()),
+            message: "Test network error".to_string(),
+            endpoint: Some("http://test.example".to_string()),
+            port: Some(8080),
+            protocol: Some("test_service".to_string()),
         })),
         SongbirdError::service_error("database", "Database error".to_string()),
         SongbirdError::Authentication {
@@ -38,17 +37,13 @@ fn test_songbird_error_types() -> Result<()> {
             suggestion: Some("Check authentication credentials".to_string()),
         },
         SongbirdError::Validation(Box::new(ValidationError {
-            field: "username".to_string(),
+            field: Some("username".to_string()),
             message: "Validation error".to_string(),
-            value: Some("invalid_user".to_string()),
             expected: Some("valid username".to_string()),
-            suggestion: Some("Use only alphanumeric characters".to_string()),
         })),
         SongbirdError::NotFound(Box::new(NotFoundError {
-            resource: "user".to_string(),
+            resource: Some("user".to_string()),
             message: "Not found".to_string(),
-            searched_paths: Some(vec!["users".to_string(), "admin".to_string()]),
-            suggestion: Some("Check if the user exists".to_string()),
         })),
     ];
 
@@ -62,11 +57,10 @@ fn test_songbird_error_types() -> Result<()> {
 #[test]
 fn test_error_display_formatting() -> Result<()> {
     let error = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("api".to_string()),
         message: "Connection refused".to_string(),
-        details: Some("timeout after 30s".to_string()),
-        endpoint: None,
-        suggestion: Some("Check network connectivity".to_string()),
+        endpoint: Some("192.168.1.100:8080".to_string()),
+        port: Some(8080),
+        protocol: Some("http".to_string()),
     }));
 
     assert!(error.to_string().contains("Connection refused"));
@@ -90,11 +84,9 @@ fn test_error_debug_formatting() -> Result<()> {
 #[test]
 fn test_validation_error_creation() -> Result<()> {
     let validation_error = SongbirdError::Validation(Box::new(ValidationError {
-        field: "email".to_string(),
+        field: Some("email".to_string()),
         message: "Invalid email format".to_string(),
-        value: Some("invalid@email".to_string()),
         expected: Some("valid email format".to_string()),
-        suggestion: Some("Use a valid email address".to_string()),
     }));
 
     assert!(validation_error.to_string().contains("email"));
@@ -102,13 +94,12 @@ fn test_validation_error_creation() -> Result<()> {
         .to_string()
         .contains("Invalid email format"));
 
-    let network_error = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("smtp".to_string()),
+    let network_error = NetworkError {
         message: "Mail server unreachable".to_string(),
-        details: None,
         endpoint: Some("smtp.example.com".to_string()),
-        suggestion: Some("Check SMTP server configuration".to_string()),
-    }));
+        port: None,
+        protocol: Some("smtp".to_string()),
+    };
 
     assert!(network_error.to_string().contains("smtp"));
     assert!(network_error
@@ -121,11 +112,9 @@ fn test_validation_error_creation() -> Result<()> {
 #[test]
 fn test_validation_error_without_value() -> Result<()> {
     let validation_error = SongbirdError::Validation(Box::new(ValidationError {
-        field: "password".to_string(),
+        field: Some("password".to_string()),
         message: "Password too weak".to_string(),
-        value: Some("weak".to_string()),
         expected: Some("strong password".to_string()),
-        suggestion: Some("Use at least 8 characters with numbers and symbols".to_string()),
     }));
 
     assert!(validation_error.to_string().contains("Password too weak"));
@@ -190,11 +179,10 @@ fn test_error_propagation() -> Result<()> {
 #[test]
 fn test_error_chaining() -> Result<()> {
     let root_error = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("api".to_string()),
         message: "Connection timeout".to_string(),
-        details: None,
         endpoint: Some("api.example.com".to_string()),
-        suggestion: Some("Check API server availability".to_string()),
+        port: None,
+        protocol: Some("http".to_string()),
     }));
     let chained_error =
         SongbirdError::service_error("service", format!("Service unavailable: {root_error}"));
@@ -209,25 +197,19 @@ fn test_error_chaining() -> Result<()> {
 fn test_multiple_validation_errors() -> Result<()> {
     let validation_errors = vec![
         SongbirdError::Validation(Box::new(ValidationError {
-            field: "username".to_string(),
+            field: Some("username".to_string()),
             message: "Username is required".to_string(),
-            value: None,
             expected: Some("valid username".to_string()),
-            suggestion: Some("Provide a username".to_string()),
         })),
         SongbirdError::Validation(Box::new(ValidationError {
-            field: "password".to_string(),
+            field: Some("password".to_string()),
             message: "Password is required".to_string(),
-            value: None,
             expected: Some("valid password".to_string()),
-            suggestion: Some("Provide a password".to_string()),
         })),
         SongbirdError::Validation(Box::new(ValidationError {
-            field: "email".to_string(),
+            field: Some("email".to_string()),
             message: "Email is invalid".to_string(),
-            value: Some("invalid-email".to_string()),
             expected: Some("valid email format".to_string()),
-            suggestion: Some("Use a valid email address".to_string()),
         })),
     ];
 
@@ -271,11 +253,10 @@ fn test_error_categorization() -> Result<()> {
         ),
         (
             SongbirdError::Network(Box::new(NetworkError {
-                service: Some("network".to_string()),
                 message: "Network".to_string(),
-                details: None,
                 endpoint: None,
-                suggestion: Some("Check network connectivity".to_string()),
+                port: None,
+                protocol: Some("test_service".to_string()),
             })),
             "network",
         ),
@@ -293,20 +274,16 @@ fn test_error_categorization() -> Result<()> {
         ),
         (
             SongbirdError::Validation(Box::new(ValidationError {
-                field: "validation".to_string(),
+                field: Some("validation".to_string()),
                 message: "Validation".to_string(),
-                value: Some("invalid".to_string()),
                 expected: Some("valid data".to_string()),
-                suggestion: Some("Check input validation".to_string()),
             })),
             "client",
         ),
         (
             SongbirdError::NotFound(Box::new(NotFoundError {
-                resource: "resource".to_string(),
+                resource: Some("resource".to_string()),
                 message: "Not found".to_string(),
-                searched_paths: None,
-                suggestion: Some("Check if the resource exists".to_string()),
             })),
             "client",
         ),
@@ -344,11 +321,10 @@ fn test_error_severity_levels() -> Result<()> {
         ),
         (
             SongbirdError::Network(Box::new(NetworkError {
-                service: Some("network".to_string()),
                 message: "Network".to_string(),
-                details: None,
                 endpoint: None,
-                suggestion: Some("Check network connectivity".to_string()),
+                port: None,
+                protocol: Some("test_service".to_string()),
             })),
             "medium",
         ),
@@ -366,20 +342,16 @@ fn test_error_severity_levels() -> Result<()> {
         ),
         (
             SongbirdError::Validation(Box::new(ValidationError {
-                field: "validation".to_string(),
+                field: Some("validation".to_string()),
                 message: "Validation".to_string(),
-                value: None,
                 expected: None,
-                suggestion: None,
             })),
             "low",
         ),
         (
             SongbirdError::NotFound(Box::new(NotFoundError {
-                resource: "resource".to_string(),
+                resource: Some("resource".to_string()),
                 message: "Not found".to_string(),
-                searched_paths: None,
-                suggestion: None,
             })),
             "low",
         ),
@@ -411,11 +383,10 @@ fn test_error_recovery_suggestions() -> Result<()> {
 #[test]
 fn test_error_logging_format() -> Result<()> {
     let error = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("test".to_string()),
         message: "Connection refused to 192.168.1.100:8080".to_string(),
-        details: Some("Additional context".to_string()),
         endpoint: Some("192.168.1.100:8080".to_string()),
-        suggestion: None,
+        port: Some(8080),
+        protocol: Some("http".to_string()),
     }));
 
     let log_format = error.to_string();
@@ -434,18 +405,16 @@ fn test_error_metrics_collection() -> Result<()> {
             suggestion: Some("Check configuration file".to_string()),
         },
         SongbirdError::Network(Box::new(NetworkError {
-            service: Some("network1".to_string()),
             message: "Network 1".to_string(),
-            details: None,
             endpoint: None,
-            suggestion: None,
+            port: None,
+            protocol: Some("test_service".to_string()),
         })),
         SongbirdError::Network(Box::new(NetworkError {
-            service: Some("network2".to_string()),
             message: "Network 2".to_string(),
-            details: None,
             endpoint: None,
-            suggestion: None,
+            port: None,
+            protocol: Some("test_service".to_string()),
         })),
         SongbirdError::service_error("database", "Database 1".to_string()),
         SongbirdError::Configuration {
@@ -485,7 +454,7 @@ fn test_error_performance_impact() -> Result<()> {
 
 #[test]
 fn test_error_memory_usage() -> Result<()> {
-    let error = SongbirdError::configuration_error("Simple error".to_string());
+    let error = SongbirdError::config("Simple error".to_string());
     let error_size = std::mem::size_of_val(&error);
 
     // Error should not be too large (very generous threshold)
@@ -497,11 +466,10 @@ fn test_error_memory_usage() -> Result<()> {
 #[test]
 fn test_error_thread_safety() -> Result<()> {
     let error = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("test".to_string()),
         message: "Thread safety test".to_string(),
-        details: Some("Additional details".to_string()),
         endpoint: None,
-        suggestion: None,
+        port: None,
+        protocol: None,
     }));
 
     // Clone error for thread safety test
@@ -547,11 +515,10 @@ async fn test_configuration_error_creation() -> Result<()> {
 #[tokio::test]
 async fn test_network_error_creation() -> Result<()> {
     let error = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("api".to_string()),
         message: "Connection refused".to_string(),
-        details: Some("timeout".to_string()),
         endpoint: None,
-        suggestion: None,
+        port: None,
+        protocol: None,
     }));
 
     assert!(error.to_string().contains("Connection refused"));
@@ -590,9 +557,7 @@ async fn test_auth_error_creation() -> Result<()> {
 async fn test_gaming_error_creation() -> Result<()> {
     let error = SongbirdError::Gaming(Box::new(GamingError {
         message: "Failed to create bridge".to_string(),
-        protocol: Some("StarCraft".to_string()),
-        game: None,
-        suggestion: None,
+        game: Some("StarCraft".to_string()),
     }));
 
     assert!(error.to_string().contains("Failed to create bridge"));
@@ -626,10 +591,8 @@ async fn test_service_error_creation() -> Result<()> {
 #[tokio::test]
 async fn test_not_found_error_creation() -> Result<()> {
     let error = SongbirdError::NotFound(Box::new(NotFoundError {
-        resource: "user".to_string(),
+        resource: Some("user".to_string()),
         message: "User not found".to_string(),
-        searched_paths: None,
-        suggestion: None,
     }));
 
     assert!(error.to_string().contains("User not found"));
@@ -649,11 +612,10 @@ async fn test_simple_error_pattern() -> Result<()> {
 #[tokio::test]
 async fn test_network_error_pattern() -> Result<()> {
     let error = SongbirdError::Network(Box::new(NetworkError {
-        service: Some("http".to_string()),
         message: "Network timeout".to_string(),
-        details: Some("after 30 seconds".to_string()),
         endpoint: None,
-        suggestion: None,
+        port: None,
+        protocol: None,
     }));
 
     assert!(error.to_string().contains("Network timeout"));

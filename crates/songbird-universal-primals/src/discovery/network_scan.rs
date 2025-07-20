@@ -7,7 +7,10 @@ use std::time::Duration;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use super::parsing::{discover_capabilities_from_service, extract_metadata_from_info, infer_primal_type_from_capabilities};
+use super::parsing::{
+    discover_capabilities_from_service, extract_metadata_from_info,
+    infer_primal_type_from_capabilities,
+};
 use super::types::{DiscoveredPrimal, DiscoveryMethod};
 
 /// Perform comprehensive network scan for primals
@@ -55,7 +58,7 @@ pub async fn scan_network_range(
     if ip_range == "127.0.0.1" || !ip_range.contains("/") {
         let ip = ip_range.split("/").next().unwrap_or(ip_range);
         for &port in ports {
-            let endpoint = format!("http://{}:{}", ip, port);
+            let endpoint = format!("http://{ip}:{port}");
             if let Ok(primal) = probe_primal_endpoint(&endpoint).await {
                 discovered_primals.push(primal);
             }
@@ -72,9 +75,9 @@ pub async fn scan_network_range(
 
         // Scan first 10 IPs in the range for performance
         for i in 1..=10 {
-            let ip = format!("{}.{}", base, i);
+            let ip = format!("{base}.{i}");
             for &port in ports {
-                let endpoint = format!("http://{}:{}", ip, port);
+                let endpoint = format!("http://{ip}:{port}");
                 if let Ok(primal) = probe_primal_endpoint(&endpoint).await {
                     discovered_primals.push(primal);
                 }
@@ -99,7 +102,7 @@ pub async fn probe_primal_endpoint(endpoint: &str) -> PrimalResult<DiscoveredPri
         .build()
         .map_err(|e| {
             songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                message: format!("Failed to create HTTP client: {}", e),
+                message: format!("Failed to create HTTP client: {e}"),
                 endpoint: Some(endpoint.to_string()),
                 port: extract_port_from_endpoint(endpoint),
                 protocol: Some("HTTP".to_string()),
@@ -136,8 +139,7 @@ pub async fn probe_primal_endpoint(endpoint: &str) -> PrimalResult<DiscoveredPri
     }
 
     Err(crate::errors::PrimalError::Network(format!(
-        "Endpoint {} is not a primal service",
-        endpoint
+        "Endpoint {endpoint} is not a primal service"
     )))
 }
 
@@ -148,10 +150,7 @@ pub async fn test_endpoint_connectivity(endpoint: &str) -> PrimalResult<bool> {
         .build()
         .map_err(|e| {
             songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                message: format!(
-                    "Universal Primals Discovery - connectivity test failed: {}",
-                    e
-                ),
+                message: format!("Universal Primals Discovery - connectivity test failed: {e}"),
                 endpoint: None,
                 port: None,
                 protocol: Some("HTTP".to_string()),
@@ -266,7 +265,7 @@ pub async fn scan_for_primal_type(primal_type: PrimalType) -> PrimalResult<Vec<D
 
     // Scan localhost with specific ports
     for &port in &ports {
-        let endpoint = format!("http://127.0.0.1:{}", port);
+        let endpoint = format!("http://127.0.0.1:{port}");
         if let Ok(primal) = probe_primal_endpoint(&endpoint).await {
             if primal.primal_type.as_str() == primal_type.as_str() {
                 discovered_primals.push(primal);

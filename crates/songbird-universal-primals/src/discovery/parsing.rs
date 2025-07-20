@@ -10,7 +10,10 @@ use songbird_universal::PrimalType;
 use std::collections::HashMap;
 
 /// Discover capabilities by probing service endpoints and analyzing responses
-pub fn discover_capabilities_from_service(endpoint: &str, service_info: &serde_json::Value) -> Vec<PrimalCapability> {
+pub fn discover_capabilities_from_service(
+    endpoint: &str,
+    service_info: &serde_json::Value,
+) -> Vec<PrimalCapability> {
     let mut discovered_capabilities = Vec::new();
 
     // Security capability detection
@@ -18,7 +21,7 @@ pub fn discover_capabilities_from_service(endpoint: &str, service_info: &serde_j
         discovered_capabilities.extend(detect_security_capabilities(service_info));
     }
 
-    // Compute capability detection  
+    // Compute capability detection
     if has_compute_endpoints(endpoint, service_info) {
         discovered_capabilities.extend(detect_compute_capabilities(service_info));
     }
@@ -117,7 +120,7 @@ fn detect_compute_capabilities(service_info: &serde_json::Value) -> Vec<PrimalCa
     capabilities
 }
 
-/// Detect storage capabilities 
+/// Detect storage capabilities
 fn detect_storage_capabilities(service_info: &serde_json::Value) -> Vec<PrimalCapability> {
     let mut capabilities = Vec::new();
 
@@ -194,27 +197,27 @@ fn has_security_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> 
     if let Some(endpoints) = service_info.get("endpoints") {
         if let Some(endpoint_list) = endpoints.as_array() {
             return endpoint_list.iter().any(|e| {
-                e.as_str().map_or(false, |s| {
+                e.as_str().is_some_and(|s| {
                     s.contains("/auth") || s.contains("/security") || s.contains("/encrypt")
                 })
             });
         }
     }
-    
+
     // Check service description for security keywords
     if let Some(description) = service_info.get("description").and_then(|d| d.as_str()) {
-        return description.to_lowercase().contains("security") 
+        return description.to_lowercase().contains("security")
             || description.to_lowercase().contains("auth")
             || description.to_lowercase().contains("encrypt");
     }
-    
+
     false
 }
 
 fn has_compute_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> bool {
     if let Some(description) = service_info.get("description").and_then(|d| d.as_str()) {
         let desc_lower = description.to_lowercase();
-        return desc_lower.contains("compute") 
+        return desc_lower.contains("compute")
             || desc_lower.contains("container")
             || desc_lower.contains("execution")
             || desc_lower.contains("runtime");
@@ -225,7 +228,7 @@ fn has_compute_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> b
 fn has_storage_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> bool {
     if let Some(description) = service_info.get("description").and_then(|d| d.as_str()) {
         let desc_lower = description.to_lowercase();
-        return desc_lower.contains("storage") 
+        return desc_lower.contains("storage")
             || desc_lower.contains("filesystem")
             || desc_lower.contains("backup")
             || desc_lower.contains("volume");
@@ -236,7 +239,7 @@ fn has_storage_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> b
 fn has_network_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> bool {
     if let Some(description) = service_info.get("description").and_then(|d| d.as_str()) {
         let desc_lower = description.to_lowercase();
-        return desc_lower.contains("network") 
+        return desc_lower.contains("network")
             || desc_lower.contains("routing")
             || desc_lower.contains("discovery")
             || desc_lower.contains("mesh");
@@ -247,7 +250,7 @@ fn has_network_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> b
 fn has_ai_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> bool {
     if let Some(description) = service_info.get("description").and_then(|d| d.as_str()) {
         let desc_lower = description.to_lowercase();
-        return desc_lower.contains("ai") 
+        return desc_lower.contains("ai")
             || desc_lower.contains("ml")
             || desc_lower.contains("model")
             || desc_lower.contains("inference")
@@ -259,7 +262,7 @@ fn has_ai_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> bool {
 fn has_orchestration_endpoints(_endpoint: &str, service_info: &serde_json::Value) -> bool {
     if let Some(description) = service_info.get("description").and_then(|d| d.as_str()) {
         let desc_lower = description.to_lowercase();
-        return desc_lower.contains("orchestration") 
+        return desc_lower.contains("orchestration")
             || desc_lower.contains("manifest")
             || desc_lower.contains("deployment")
             || desc_lower.contains("coordinator");
@@ -270,21 +273,28 @@ fn has_orchestration_endpoints(_endpoint: &str, service_info: &serde_json::Value
 // ===== SPECIFIC CAPABILITY DETECTION =====
 
 fn has_auth_endpoints(service_info: &serde_json::Value) -> bool {
-    service_info.get("features")
+    service_info
+        .get("features")
         .and_then(|f| f.get("authentication"))
         .and_then(|a| a.as_bool())
         .unwrap_or(false)
 }
 
 fn detect_auth_methods(service_info: &serde_json::Value) -> Vec<String> {
-    service_info.get("auth_methods")
+    service_info
+        .get("auth_methods")
         .and_then(|m| m.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
         .unwrap_or_else(|| vec!["basic".to_string()])
 }
 
 fn has_encryption_support(service_info: &serde_json::Value) -> bool {
-    service_info.get("features")
+    service_info
+        .get("features")
         .and_then(|f| f.get("encryption"))
         .and_then(|e| e.as_bool())
         .unwrap_or(false)
@@ -392,11 +402,11 @@ fn detect_managed_primals(_service_info: &serde_json::Value) -> Vec<String> {
 
 fn extract_generic_attributes(service_info: &serde_json::Value) -> HashMap<String, String> {
     let mut attributes = HashMap::new();
-    
+
     if let Some(version) = service_info.get("version").and_then(|v| v.as_str()) {
         attributes.insert("version".to_string(), version.to_string());
     }
-    
+
     attributes.insert("type".to_string(), "generic_service".to_string());
     attributes
 }
@@ -439,38 +449,35 @@ pub fn extract_metadata_from_info(info: &serde_json::Value) -> HashMap<String, S
 pub fn infer_primal_type_from_capabilities(capabilities: &[PrimalCapability]) -> PrimalType {
     // Generate a type name based on primary capabilities
     let mut capability_types = Vec::new();
-    
+
     for capability in capabilities {
         match capability {
-            PrimalCapability::Authentication { .. } | 
-            PrimalCapability::Encryption { .. } |
-            PrimalCapability::KeyManagement { .. } |
-            PrimalCapability::ThreatDetection { .. } => {
+            PrimalCapability::Authentication { .. }
+            | PrimalCapability::Encryption { .. }
+            | PrimalCapability::KeyManagement { .. }
+            | PrimalCapability::ThreatDetection { .. } => {
                 if !capability_types.contains(&"security") {
                     capability_types.push("security");
                 }
             }
-            PrimalCapability::ContainerRuntime { .. } |
-            PrimalCapability::ServerlessExecution { .. } |
-            PrimalCapability::GpuAcceleration { .. } => {
+            PrimalCapability::ContainerRuntime { .. }
+            | PrimalCapability::ServerlessExecution { .. }
+            | PrimalCapability::GpuAcceleration { .. } => {
                 if !capability_types.contains(&"compute") {
                     capability_types.push("compute");
                 }
             }
-            PrimalCapability::FileSystem { .. } |
-            PrimalCapability::ObjectStorage { .. } => {
+            PrimalCapability::FileSystem { .. } | PrimalCapability::ObjectStorage { .. } => {
                 if !capability_types.contains(&"storage") {
                     capability_types.push("storage");
                 }
             }
-            PrimalCapability::ServiceDiscovery { .. } |
-            PrimalCapability::LoadBalancing { .. } => {
+            PrimalCapability::ServiceDiscovery { .. } | PrimalCapability::LoadBalancing { .. } => {
                 if !capability_types.contains(&"network") {
                     capability_types.push("network");
                 }
             }
-            PrimalCapability::ModelInference { .. } |
-            PrimalCapability::AgentFramework { .. } => {
+            PrimalCapability::ModelInference { .. } | PrimalCapability::AgentFramework { .. } => {
                 if !capability_types.contains(&"ai") {
                     capability_types.push("ai");
                 }
@@ -488,7 +495,7 @@ pub fn infer_primal_type_from_capabilities(capabilities: &[PrimalCapability]) ->
             _ => {}
         }
     }
-    
+
     // Create a descriptive name based on capabilities
     if capability_types.is_empty() {
         PrimalType::new("unknown-service")
@@ -514,7 +521,10 @@ pub fn get_default_capabilities_for_type(primal_type: &PrimalType) -> Vec<Primal
     }
 
     // Compute-related names
-    if type_name.contains("compute") || type_name.contains("container") || type_name.contains("runtime") {
+    if type_name.contains("compute")
+        || type_name.contains("container")
+        || type_name.contains("runtime")
+    {
         capabilities.extend(get_default_compute_capabilities());
     }
 
@@ -524,7 +534,8 @@ pub fn get_default_capabilities_for_type(primal_type: &PrimalType) -> Vec<Primal
     }
 
     // Network-related names
-    if type_name.contains("network") || type_name.contains("mesh") || type_name.contains("routing") {
+    if type_name.contains("network") || type_name.contains("mesh") || type_name.contains("routing")
+    {
         capabilities.extend(get_default_network_capabilities());
     }
 
@@ -561,39 +572,31 @@ fn get_default_security_capabilities() -> Vec<PrimalCapability> {
 }
 
 fn get_default_compute_capabilities() -> Vec<PrimalCapability> {
-    vec![
-        PrimalCapability::ContainerRuntime {
-            orchestrators: vec!["kubernetes".to_string()],
-        },
-    ]
+    vec![PrimalCapability::ContainerRuntime {
+        orchestrators: vec!["kubernetes".to_string()],
+    }]
 }
 
 fn get_default_storage_capabilities() -> Vec<PrimalCapability> {
-    vec![
-        PrimalCapability::FileSystem { supports_zfs: false },
-    ]
+    vec![PrimalCapability::FileSystem {
+        supports_zfs: false,
+    }]
 }
 
 fn get_default_network_capabilities() -> Vec<PrimalCapability> {
-    vec![
-        PrimalCapability::ServiceDiscovery {
-            protocols: vec!["http".to_string()],
-        },
-    ]
+    vec![PrimalCapability::ServiceDiscovery {
+        protocols: vec!["http".to_string()],
+    }]
 }
 
 fn get_default_ai_capabilities() -> Vec<PrimalCapability> {
-    vec![
-        PrimalCapability::ModelInference {
-            models: vec!["generic".to_string()],
-        },
-    ]
+    vec![PrimalCapability::ModelInference {
+        models: vec!["generic".to_string()],
+    }]
 }
 
 fn get_default_orchestration_capabilities() -> Vec<PrimalCapability> {
-    vec![
-        PrimalCapability::Orchestration {
-            primals: vec!["universal".to_string()],
-        },
-    ]
+    vec![PrimalCapability::Orchestration {
+        primals: vec!["universal".to_string()],
+    }]
 }

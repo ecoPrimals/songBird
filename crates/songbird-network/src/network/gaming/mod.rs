@@ -28,9 +28,7 @@ pub use types::{
 pub use nat_traversal::types::NatType;
 
 // Re-export main components
-pub use auto_config::{
-    GamingAutoConfig, OneTouchConfig, SecurityValidator, SetupState,
-};
+pub use auto_config::{GamingAutoConfig, OneTouchConfig, SecurityValidator, SetupState};
 pub use nat_traversal::NatTraversalManager;
 pub use performance::{
     BenchmarkConfig, BenchmarkResults, GamingPerformanceMetrics, PerformanceMonitor,

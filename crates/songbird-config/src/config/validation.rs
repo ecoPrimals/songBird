@@ -117,7 +117,7 @@ impl crate::config::SongbirdConfig {
                 .map(|e| format!("{}: {}", e.field, e.message))
                 .collect();
 
-            return Err(SongbirdError::security_error(&format!(
+            return Err(SongbirdError::security_error(format!(
                 "Critical security validation failures: {}",
                 error_messages.join(", ")
             )));
@@ -589,16 +589,14 @@ impl crate::config::SongbirdConfig {
         use url::Url;
 
         let url = Url::parse(endpoint).map_err(|e| {
-            SongbirdError::validation_error(&format!(
-                "Invalid URL format for endpoint '{}': {}",
-                endpoint, e
+            SongbirdError::validation_error(format!(
+                "Invalid URL format for endpoint '{endpoint}': {e}"
             ))
         })?;
 
         if !matches!(url.scheme(), "http" | "https") {
-            return Err(SongbirdError::validation_error(&format!(
-                "Only HTTP and HTTPS schemes are supported for endpoint '{}'. Found: {}",
-                endpoint,
+            return Err(SongbirdError::validation_error(format!(
+                "Only HTTP and HTTPS schemes are supported for endpoint '{endpoint}'. Found: {}",
                 url.scheme()
             )));
         }

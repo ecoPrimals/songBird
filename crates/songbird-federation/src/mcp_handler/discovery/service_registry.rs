@@ -2,7 +2,7 @@
 
 use songbird_errors::SongbirdError;
 use std::time::Duration;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Discover federation endpoints via service registries
 pub async fn discover_via_service_registry() -> Result<Vec<String>, SongbirdError> {

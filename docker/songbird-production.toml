@@ -36,11 +36,11 @@ base_url = "https://songbird.example.com"
 health_endpoint = "/health"
 metrics_endpoint = "/metrics"
 
-# Service endpoints - all configurable
-orchestrator_endpoint = "https://0.0.0.0:8080"
-gaming_endpoint = "https://0.0.0.0:8081"
-federation_endpoint = "https://0.0.0.0:8082"
-dashboard_endpoint = "https://0.0.0.0:3000"
+# Service endpoints - environment configurable
+orchestrator_endpoint = "${SONGBIRD_ORCHESTRATOR_ENDPOINT:-https://0.0.0.0:8080}"
+gaming_endpoint = "${SONGBIRD_GAMING_ENDPOINT:-https://0.0.0.0:8081}"
+federation_endpoint = "${SONGBIRD_FEDERATION_ENDPOINT:-https://0.0.0.0:8082}"
+dashboard_endpoint = "${SONGBIRD_DASHBOARD_ENDPOINT:-https://0.0.0.0:3000}"
 
 [timeouts]
 # All timeout values configurable

@@ -337,4 +337,4 @@ impl Default for DeepHealthCheckConfig {
             max_cpu_usage_percentage: 95.0,
         }
     }
-} 
+}

@@ -81,7 +81,7 @@ impl StunClient {
 
         // Receive response
         let mut buffer = vec![0u8; 1024];
-        let len = match timeout(Duration::from_secs(5), self.socket.recv_from(&mut buffer)).await {
+        let len = match timeout(self.timeout_duration, self.socket.recv_from(&mut buffer)).await {
             Ok(Ok((len, _))) => {
                 if len < 20 {
                     return Err(SongbirdError::network_error(format!(

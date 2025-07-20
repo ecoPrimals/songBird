@@ -16,6 +16,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 async-trait = "0.1"
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 base64 = "0.22"
 thiserror = "1.0"
@@ -30,4 +31,8 @@ songbird-discovery = { path = "../songbird-discovery" }
 songbird-universal = { path = "../songbird-universal" }
 
 [dev-dependencies]
-tokio-test = "0.4" 
+tokio-test = "0.4"
+
+[[example]]
+name = "ecosystem_standalone_demo"
+path = "../../examples/ecosystem_standalone_demo.rs" 

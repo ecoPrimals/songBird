@@ -212,7 +212,9 @@ impl IoTManager {
         })?;
 
         let local_addr = socket.local_addr().map_err(|e| {
-            songbird_errors::SongbirdError::Communication(format!("Failed to get local address: {e}"))
+            songbird_errors::SongbirdError::Communication(format!(
+                "Failed to get local address: {e}"
+            ))
         })?;
 
         match local_addr.ip() {
@@ -439,7 +441,9 @@ impl IoTManager {
             .map_err(|_| songbird_errors::SongbirdError::Config {
                 field: Some("address".to_string()),
                 message: "Invalid IP address".to_string(),
-                suggestion: Some("Provide a valid IPv4 address format (e.g., 192.168.1.1)".to_string()),
+                suggestion: Some(
+                    "Provide a valid IPv4 address format (e.g., 192.168.1.1)".to_string(),
+                ),
                 context: Some("IoT device address parsing".to_string()),
             })?;
 
@@ -475,7 +479,9 @@ impl IoTManager {
                 .ok_or_else(|| songbird_errors::SongbirdError::Config {
                     field: Some("device".to_string()),
                     message: format!("Device '{device_name}' not found"),
-                    suggestion: Some("Check device name and ensure device is registered".to_string()),
+                    suggestion: Some(
+                        "Check device name and ensure device is registered".to_string(),
+                    ),
                     context: Some("IoT device lookup".to_string()),
                 })?;
 
@@ -524,7 +530,9 @@ impl IoTManager {
             _ => Err(songbird_errors::SongbirdError::Config {
                 field: Some("command".to_string()),
                 message: format!("Command '{command}' not supported for HTTP device"),
-                suggestion: Some("Use 'status', 'scan' (for scanners), or 'print' (for printers)".to_string()),
+                suggestion: Some(
+                    "Use 'status', 'scan' (for scanners), or 'print' (for printers)".to_string(),
+                ),
                 context: Some("IoT HTTP command routing".to_string()),
             }),
         }

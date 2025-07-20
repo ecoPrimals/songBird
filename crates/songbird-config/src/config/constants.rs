@@ -694,3 +694,57 @@ pub const DEFAULT_BIND_ADDRESS: &str = "DEPRECATED";
 
 #[deprecated(note = "Use development_bind_address() instead")]
 pub const DEVELOPMENT_BIND_ADDRESS: &str = "DEPRECATED";
+
+// Default ports for various services (avoiding conflict with network module)
+pub const DEFAULT_ORCHESTRATOR_PORT_CONST: u16 = 8080;
+pub const DEFAULT_BEARDOG_PORT_CONST: u16 = 8443;
+pub const DEFAULT_TOADSTOOL_PORT_CONST: u16 = 8082;
+pub const DEFAULT_SQUIRREL_PORT_CONST: u16 = 8084;
+pub const DEFAULT_BIOMEOS_PORT_CONST: u16 = 4000;
+pub const DEFAULT_CONSUL_PORT_CONST: u16 = 8500;
+pub const DEFAULT_ETCD_PORT_CONST: u16 = 2379;
+
+// Environment-configurable service endpoints
+pub fn default_beardog_endpoint() -> String {
+    std::env::var("SONGBIRD_BEARDOG_ENDPOINT")
+        .unwrap_or_else(|_| format!("https://{}:{}", DEFAULT_LOCALHOST, DEFAULT_BEARDOG_PORT_CONST))
+}
+
+pub fn default_nestgate_endpoint() -> String {
+    std::env::var("SONGBIRD_NESTGATE_ENDPOINT")
+        .unwrap_or_else(|_| format!("http://{}:{}", DEFAULT_LOCALHOST, DEFAULT_ORCHESTRATOR_PORT_CONST))
+}
+
+pub fn default_toadstool_endpoint() -> String {
+    std::env::var("SONGBIRD_TOADSTOOL_ENDPOINT")
+        .unwrap_or_else(|_| format!("http://{}:{}", DEFAULT_LOCALHOST, DEFAULT_TOADSTOOL_PORT_CONST))
+}
+
+pub fn default_squirrel_endpoint() -> String {
+    std::env::var("SONGBIRD_SQUIRREL_ENDPOINT")
+        .unwrap_or_else(|_| format!("http://{}:{}", DEFAULT_LOCALHOST, DEFAULT_SQUIRREL_PORT_CONST))
+}
+
+pub fn default_biomeos_endpoint() -> String {
+    std::env::var("SONGBIRD_BIOMEOS_ENDPOINT")
+        .unwrap_or_else(|_| format!("http://{}:{}", DEFAULT_LOCALHOST, DEFAULT_BIOMEOS_PORT_CONST))
+}
+
+pub fn default_consul_endpoint() -> String {
+    std::env::var("SONGBIRD_CONSUL_ENDPOINT")
+        .unwrap_or_else(|_| format!("http://{}:{}", DEFAULT_LOCALHOST, DEFAULT_CONSUL_PORT_CONST))
+}
+
+pub fn default_etcd_endpoint() -> String {
+    std::env::var("SONGBIRD_ETCD_ENDPOINT")
+        .unwrap_or_else(|_| format!("http://{}:{}", DEFAULT_LOCALHOST, DEFAULT_ETCD_PORT_CONST))
+}
+
+// Legacy constants for backward compatibility
+pub const DEFAULT_BEARDOG_ENDPOINT: &str = "https://localhost:8443";
+pub const DEFAULT_NESTGATE_ENDPOINT: &str = "http://localhost:8080";
+pub const DEFAULT_TOADSTOOL_ENDPOINT: &str = "http://localhost:8082";
+pub const DEFAULT_SQUIRREL_ENDPOINT: &str = "http://localhost:8084";
+pub const DEFAULT_BIOMEOS_ENDPOINT: &str = "http://localhost:4000";
+pub const DEFAULT_CONSUL_ENDPOINT: &str = "http://localhost:8500";
+pub const DEFAULT_ETCD_ENDPOINT: &str = "http://localhost:2379";

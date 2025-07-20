@@ -101,7 +101,7 @@ impl ServiceDiscovery for StaticServiceDiscovery {
             "Discovered {} services{}",
             filtered_services.len(),
             match service_name {
-                Some(name) => format!(" for '{}'", name),
+                Some(name) => format!(" for '{name}'"),
                 None => String::new(),
             }
         );

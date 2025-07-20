@@ -614,6 +614,7 @@ mod tests {
     #[test]
     fn test_auth_session_creation() {
         let session = AuthSession::new(
+            "user123".to_string(),
             Duration::from_secs(3600),
             vec!["read".to_string(), "write".to_string()],
         );
@@ -685,7 +686,11 @@ mod tests {
 
     #[test]
     fn test_session_permissions() {
-        let mut session = AuthSession::new(Duration::from_secs(3600), vec!["read".to_string()]);
+        let mut session = AuthSession::new(
+            "testuser".to_string(),
+            Duration::from_secs(3600),
+            vec!["read".to_string()],
+        );
 
         assert!(session.has_permission("read"));
         assert!(!session.has_permission("write"));

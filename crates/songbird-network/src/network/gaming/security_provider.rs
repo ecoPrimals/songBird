@@ -4,7 +4,7 @@
 //!
 //! This module implements automatic detection and seamless switching between
 //! WireGuard (standalone) and any universal primal with security capabilities.
-//! 
+//!
 //! Replaced hardcoded BearDog integration with universal primal system:
 //! - Works perfectly with WireGuard alone
 //! - Automatically detects ANY primal with "security" capability
@@ -14,8 +14,8 @@
 
 use crate::network::gaming::wireguard_integration::GamingTunnelManager;
 use async_trait::async_trait;
+use songbird_config::config::{PrimalConfiguration, PrimalRegistry};
 use songbird_errors::{NetworkError, Result};
-use songbird_config::config::{PrimalRegistry, PrimalConfiguration};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
@@ -42,7 +42,7 @@ pub trait SecurityProvider: Send + Sync {
 
     /// Get provider name for logging
     fn provider_name(&self) -> &str;
-    
+
     /// Get the primal type this provider represents (None for WireGuard)
     fn primal_type(&self) -> Option<&str>;
 }
@@ -69,9 +69,9 @@ pub trait SecureTunnel: Send + Sync {
 /// Security levels in order of preference
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SecurityLevel {
-    Standard,   // WireGuard
-    Enhanced,   // Any primal with security capability
-    Maximum,    // Future: Multiple primals or quantum-resistant
+    Standard, // WireGuard
+    Enhanced, // Any primal with security capability
+    Maximum,  // Future: Multiple primals or quantum-resistant
 }
 
 /// Tunnel types - now extensible for any primal
@@ -96,7 +96,7 @@ pub struct UniversalSecurityManager {
 
     /// Available providers in priority order
     providers: Vec<Box<dyn SecurityProvider>>,
-    
+
     /// Universal primal registry for security primal detection
     primal_registry: Option<PrimalRegistry>,
 
@@ -134,7 +134,7 @@ impl UniversalSecurityManager {
         // Add universal primal security providers if registry is available
         if let Some(ref registry) = primal_registry {
             let security_primals = registry.find_primals_with_capability("security");
-            
+
             for primal in security_primals {
                 if primal.enabled {
                     match Self::create_primal_security_provider(primal).await {
@@ -143,7 +143,10 @@ impl UniversalSecurityManager {
                             providers.push(provider);
                         }
                         Err(e) => {
-                            warn!("⚠️ Failed to initialize {} security provider: {}", primal.display_name, e);
+                            warn!(
+                                "⚠️ Failed to initialize {} security provider: {}",
+                                primal.display_name, e
+                            );
                         }
                     }
                 }
@@ -186,30 +189,43 @@ impl UniversalSecurityManager {
     }
 
     /// Create primal-based security provider using capability matching instead of name matching
-    async fn create_primal_security_provider(primal: &PrimalConfiguration) -> Result<Box<dyn SecurityProvider>> {
+    async fn create_primal_security_provider(
+        primal: &PrimalConfiguration,
+    ) -> Result<Box<dyn SecurityProvider>> {
         // **CAPABILITY-BASED SELECTION** instead of hardcoded names
-        
+
         // Check if this primal has security capabilities
         if !primal.has_capability("security") {
-            warn!("Primal {} lacks security capability, falling back to WireGuard", primal.display_name);
-            return Ok(Box::new(UniversalPrimalSecurityProvider::new(primal.clone()).await?));
+            warn!(
+                "Primal {} lacks security capability, falling back to WireGuard",
+                primal.display_name
+            );
+            return Ok(Box::new(
+                UniversalPrimalSecurityProvider::new(primal.clone()).await?,
+            ));
         }
 
         // Check for specific security features through capabilities
         let has_encryption = primal.has_capability("encryption");
         let has_authentication = primal.has_capability("authentication");
-        
+
         // For primals with advanced crypto capabilities (like BearDog), try specialized provider
         if has_encryption && has_authentication && primal.primal_type == "beardog" {
             #[cfg(feature = "beardog")]
             {
                 match BSTPSecurityProvider::new().await {
                     Ok(provider) => {
-                        info!("🔐 Using specialized BSTP provider for {} with encryption+auth", primal.display_name);
+                        info!(
+                            "🔐 Using specialized BSTP provider for {} with encryption+auth",
+                            primal.display_name
+                        );
                         return Ok(Box::new(provider) as Box<dyn SecurityProvider>);
                     }
                     Err(e) => {
-                        warn!("BSTP provider initialization failed for {}: {}", primal.display_name, e);
+                        warn!(
+                            "BSTP provider initialization failed for {}: {}",
+                            primal.display_name, e
+                        );
                         // Fall through to universal provider
                     }
                 }
@@ -219,7 +235,9 @@ impl UniversalSecurityManager {
         // Universal provider works with any primal that has security capability
         info!("🛡️ Using universal security provider for {} (capabilities: security=✓, encryption={}, auth={})", 
               primal.display_name, has_encryption, has_authentication);
-        Ok(Box::new(UniversalPrimalSecurityProvider::new(primal.clone()).await?))
+        Ok(Box::new(
+            UniversalPrimalSecurityProvider::new(primal.clone()).await?,
+        ))
     }
 
     /// Create tunnel with self-healing capabilities
@@ -241,9 +259,12 @@ impl UniversalSecurityManager {
         {
             let mut stats = self.upgrade_stats.write().await;
             stats.total_tunnels += 1;
-            
+
             if let Some(primal_type) = provider.primal_type() {
-                *stats.by_primal_type.entry(primal_type.to_string()).or_insert(0) += 1;
+                *stats
+                    .by_primal_type
+                    .entry(primal_type.to_string())
+                    .or_insert(0) += 1;
             }
         }
 
@@ -273,7 +294,7 @@ impl UniversalSecurityManager {
             let mut last_check = self.last_check.write().await;
             *last_check = now;
         }
-        
+
         // Refresh providers from primal registry if available
         if let Some(ref registry) = self.primal_registry {
             self.refresh_primal_providers(registry).await?;
@@ -326,29 +347,33 @@ impl UniversalSecurityManager {
     /// Refresh primal providers based on updated registry
     async fn refresh_primal_providers(&self, registry: &PrimalRegistry) -> Result<()> {
         let security_primals = registry.find_primals_with_capability("security");
-        
+
         // Check for new primals that aren't in our current provider list
         for primal in security_primals {
             if primal.enabled {
-                let already_have_provider = self.providers.iter().any(|p| {
-                    p.primal_type().map_or(false, |pt| pt == primal.primal_type)
-                });
-                
+                let already_have_provider = self
+                    .providers
+                    .iter()
+                    .any(|p| p.primal_type().map_or(false, |pt| pt == primal.primal_type));
+
                 if !already_have_provider {
-                                         match Self::create_primal_security_provider(primal).await {
+                    match Self::create_primal_security_provider(primal).await {
                         Ok(_provider) => {
                             info!("🔐 Added new security provider: {}", primal.display_name);
                             // Note: In a real implementation, we'd need to make providers mutable
                             // or use Arc<RwLock<Vec<...>>> for dynamic provider updates
                         }
                         Err(e) => {
-                            warn!("⚠️ Failed to add new security provider {}: {}", primal.display_name, e);
+                            warn!(
+                                "⚠️ Failed to add new security provider {}: {}",
+                                primal.display_name, e
+                            );
                         }
                     }
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -371,16 +396,16 @@ impl UniversalSecurityManager {
             SecurityLevel::Enhanced | SecurityLevel::Maximum => {
                 // Try to recreate the best primal provider
                 for provider in providers {
-                    if provider.is_available().await 
-                        && provider.security_level() == best_level 
-                        && provider.provider_name() == best_provider_name 
+                    if provider.is_available().await
+                        && provider.security_level() == best_level
+                        && provider.provider_name() == best_provider_name
                     {
                         // For simplicity, fall back to WireGuard for now
                         // In a real implementation, we'd clone or recreate the exact provider
                         break;
                     }
                 }
-                
+
                 // Fallback to WireGuard
                 match WireGuardSecurityProvider::new().await {
                     Ok(provider) => Box::new(provider),
@@ -439,7 +464,7 @@ struct UniversalPrimalSecurityProvider {
 impl UniversalPrimalSecurityProvider {
     async fn new(primal_config: PrimalConfiguration) -> Result<Self> {
         let provider_name = format!("{} Security", primal_config.display_name);
-        
+
         Ok(Self {
             primal_config,
             provider_name,
@@ -454,14 +479,19 @@ impl SecurityProvider for UniversalPrimalSecurityProvider {
         session_id: String,
         _peer_info: PeerInfo,
     ) -> Result<Box<dyn SecureTunnel>> {
-        info!("🔐 Creating universal primal tunnel with {} security", self.primal_config.display_name);
+        info!(
+            "🔐 Creating universal primal tunnel with {} security",
+            self.primal_config.display_name
+        );
 
-        let tunnel = UniversalPrimalTunnelWrapper::new(
-            session_id.clone(), 
-            self.primal_config.clone()
-        ).await?;
-        
-        info!("🔒 Created {} tunnel for session: {}", self.primal_config.primal_type, session_id);
+        let tunnel =
+            UniversalPrimalTunnelWrapper::new(session_id.clone(), self.primal_config.clone())
+                .await?;
+
+        info!(
+            "🔒 Created {} tunnel for session: {}",
+            self.primal_config.primal_type, session_id
+        );
 
         Ok(Box::new(tunnel) as Box<dyn SecureTunnel>)
     }
@@ -494,7 +524,7 @@ impl SecurityProvider for UniversalPrimalSecurityProvider {
     fn provider_name(&self) -> &str {
         &self.provider_name
     }
-    
+
     fn primal_type(&self) -> Option<&str> {
         Some(&self.primal_config.primal_type)
     }
@@ -510,10 +540,13 @@ struct UniversalPrimalTunnelWrapper {
 impl UniversalPrimalTunnelWrapper {
     async fn new(session_id: String, primal_config: PrimalConfiguration) -> Result<Self> {
         let primal_type = primal_config.primal_type.clone();
-        
+
         // Universal primal initialization
         // In a real implementation, this would use the primal's actual API
-        info!("🤝 Initializing {} tunnel for session: {}", primal_config.display_name, session_id);
+        info!(
+            "🤝 Initializing {} tunnel for session: {}",
+            primal_config.display_name, session_id
+        );
 
         Ok(Self {
             session_id,
@@ -527,13 +560,13 @@ impl UniversalPrimalTunnelWrapper {
         // Universal encryption implementation
         // This would use the primal's actual encryption API in a real system
         let mut encrypted = Vec::new();
-        
+
         // Simple XOR encryption for simulation (real implementation would use primal's crypto)
         let key = self.session_id.as_bytes();
         for (i, &byte) in data.iter().enumerate() {
             encrypted.push(byte ^ key[i % key.len()]);
         }
-        
+
         Ok(encrypted)
     }
 
@@ -620,7 +653,7 @@ impl SecurityProvider for WireGuardSecurityProvider {
     fn provider_name(&self) -> &str {
         "WireGuard"
     }
-    
+
     fn primal_type(&self) -> Option<&str> {
         None // WireGuard is not a primal
     }
@@ -710,6 +743,7 @@ impl BSTPSecurityProvider {
                 message: "BearDog not available".to_string(),
                 context: Some("Set BEARDOG_AVAILABLE=true to simulate".to_string()),
                 severity: Some("error".to_string()),
+                suggestion: Some("Enable BearDog integration or use alternative security provider".to_string()),
             })
         }
     }
@@ -743,7 +777,7 @@ impl SecurityProvider for BSTPSecurityProvider {
     fn provider_name(&self) -> &str {
         "Legacy BSTP"
     }
-    
+
     fn primal_type(&self) -> Option<&str> {
         Some("beardog")
     }
@@ -765,7 +799,10 @@ impl BSTPTunnelWrapper {
         let _greeting = handshake_manager.start_handshake()?;
 
         // Simplified handshake for legacy compatibility
-        info!("🤝 Legacy BSTP handshake completed for session: {}", session_id);
+        info!(
+            "🤝 Legacy BSTP handshake completed for session: {}",
+            session_id
+        );
 
         Ok(Self {
             session_id,
@@ -864,7 +901,7 @@ impl SecurityProvider for NoOpSecurityProvider {
     fn provider_name(&self) -> &'static str {
         "NoOp"
     }
-    
+
     fn primal_type(&self) -> Option<&str> {
         None
     }

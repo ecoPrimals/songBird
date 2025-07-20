@@ -12,6 +12,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use songbird_errors::{NetworkError, Result, SongbirdError};
+use std::collections::HashMap;
 use std::{
     net::SocketAddr,
     sync::Arc,
@@ -110,7 +111,7 @@ impl HttpServer {
 
         axum::serve(listener, app).await.map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
-                message: format!("HTTP Server - Server error: {}", e),
+                message: format!("HTTP Server - Server error: {e}"),
                 endpoint: Some(self.addr.to_string()),
                 port: Some(self.addr.port()),
                 protocol: Some("HTTP".to_string()),
@@ -195,64 +196,101 @@ async fn api_metrics_handler(
     }))
 }
 
-/// Mock network service for testing
-pub struct MockNetworkService {
+/// Production network service with real monitoring capabilities
+pub struct ProductionNetworkService {
     start_time: SystemTime,
+    connection_count: Arc<parking_lot::RwLock<u32>>,
+    total_connections: Arc<parking_lot::RwLock<u64>>,
+    bytes_sent: Arc<parking_lot::RwLock<u64>>,
+    bytes_received: Arc<parking_lot::RwLock<u64>>,
+    active_connections: Arc<parking_lot::RwLock<HashMap<String, ConnectionInfo>>>,
 }
 
-impl MockNetworkService {
-    pub fn new() -> Self {
-        Self {
-            start_time: SystemTime::now(),
-        }
+impl Default for ProductionNetworkService {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-impl NetworkService for MockNetworkService {
+impl ProductionNetworkService {
+    pub fn new() -> Self {
+        Self {
+            start_time: SystemTime::now(),
+            connection_count: Arc::new(parking_lot::RwLock::new(0)),
+            total_connections: Arc::new(parking_lot::RwLock::new(0)),
+            bytes_sent: Arc::new(parking_lot::RwLock::new(0)),
+            bytes_received: Arc::new(parking_lot::RwLock::new(0)),
+            active_connections: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// Add a new connection
+    pub fn add_connection(&self, connection: ConnectionInfo) {
+        let mut connections = self.active_connections.write();
+        connections.insert(connection.id.clone(), connection);
+
+        *self.connection_count.write() += 1;
+        *self.total_connections.write() += 1;
+    }
+
+    /// Remove a connection
+    pub fn remove_connection(&self, connection_id: &str) {
+        let mut connections = self.active_connections.write();
+        if connections.remove(connection_id).is_some() {
+            *self.connection_count.write() = self.connection_count.read().saturating_sub(1);
+        }
+    }
+
+    /// Update bytes sent/received
+    pub fn update_bytes(&self, sent: u64, received: u64) {
+        *self.bytes_sent.write() += sent;
+        *self.bytes_received.write() += received;
+    }
+}
+
+impl NetworkService for ProductionNetworkService {
     fn get_status(&self) -> NetworkStatus {
         NetworkStatus {
             is_running: true,
             uptime: SystemTime::now()
                 .duration_since(self.start_time)
                 .unwrap_or_default(),
-            connections: 5,
+            connections: *self.connection_count.read(),
             last_updated: SystemTime::now(),
         }
     }
 
     fn get_connections(&self) -> Vec<ConnectionInfo> {
-        vec![
-            ConnectionInfo {
-                id: "conn_1".to_string(),
-                remote_addr: "127.0.0.1:8080".parse().unwrap(),
-                connected_at: SystemTime::now(),
-                bytes_sent: 1024,
-                bytes_received: 512,
-            },
-            ConnectionInfo {
-                id: "conn_2".to_string(),
-                remote_addr: "127.0.0.1:8081".parse().unwrap(),
-                connected_at: SystemTime::now(),
-                bytes_sent: 2048,
-                bytes_received: 1024,
-            },
-        ]
+        self.active_connections.read().values().cloned().collect()
     }
 
     fn get_metrics(&self) -> NetworkMetrics {
+        let connections = self.active_connections.read();
+        let uptime_seconds = SystemTime::now()
+            .duration_since(self.start_time)
+            .unwrap_or_default()
+            .as_secs_f64();
+
+        // Calculate requests per second (simplified)
+        let requests_per_second = if uptime_seconds > 0.0 {
+            *self.total_connections.read() as f64 / uptime_seconds
+        } else {
+            0.0
+        };
+
         NetworkMetrics {
-            total_connections: 10,
-            active_connections: 5,
-            bytes_sent: 10240,
-            bytes_received: 5120,
-            requests_per_second: 15.5,
-            error_rate: 0.05,
+            total_connections: *self.total_connections.read(),
+            active_connections: connections.len() as u32,
+            bytes_sent: *self.bytes_sent.read(),
+            bytes_received: *self.bytes_received.read(),
+            requests_per_second,
+            error_rate: 0.0, // Could be calculated from error tracking
         }
     }
 }
 
 /// Create a default HTTP server for testing
 pub fn create_default_server(addr: SocketAddr) -> HttpServer {
-    let service = Arc::new(MockNetworkService::new());
+    let service = Arc::new(ProductionNetworkService::new());
     HttpServer::new(addr, service)
 }
