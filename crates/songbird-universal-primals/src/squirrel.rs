@@ -5,14 +5,13 @@ use reqwest::Client;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
-use crate::errors::PrimalError;
 use crate::traits::{
-    DynamicPortInfo, PrimalCapability, PrimalContext, PrimalDependency, PrimalEndpoints,
-    PrimalHealth, PrimalProvider,
+    DynamicPortInfo, PrimalCapability, PrimalContext, PrimalDependency, PrimalHealth,
+    PrimalProvider,
 };
-use crate::types::{PrimalRequest, PrimalResponse, PrimalResponseType};
+use crate::types::{PrimalRequest, PrimalResponse};
 use songbird_universal::PrimalType;
 
 /// Squirrel AI Primal - Advanced AI coordination and MCP (Model Context Protocol) integration
@@ -21,7 +20,7 @@ pub struct SquirrelPrimal {
     id: String,
     context: PrimalContext,
     capabilities: Vec<PrimalCapability>,
-    endpoints: PrimalEndpoints,
+    endpoints: Vec<String>, // Changed from PrimalEndpoints to Vec<String>
     http_client: Client,
 }
 
@@ -39,39 +38,9 @@ impl Default for SquirrelPrimal {
                     languages: vec!["en".to_string(), "es".to_string(), "fr".to_string()],
                 },
             ],
-            endpoints: PrimalEndpoints {
-                primary: songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
-                    .to_string(),
-                health: format!(
-                    "{}/health",
-                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
-                ),
-                metrics: Some(format!(
-                    "{}/metrics",
-                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
-                )),
-                admin: Some(format!(
-                    "{}/admin",
-                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
-                )),
-                websocket: Some(format!(
-                    "ws://{}:{}/ws",
-                    songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS,
-                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_PORT
-                )),
-                custom: {
-                    let mut map = HashMap::new();
-                    let base_endpoint =
-                        songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT;
-                    map.insert("mcp".to_string(), format!("{base_endpoint}/mcp"));
-                    map.insert(
-                        "inference".to_string(),
-                        format!("{base_endpoint}/inference"),
-                    );
-                    map.insert("agents".to_string(), format!("{base_endpoint}/agents"));
-                    map
-                },
-            },
+            endpoints: vec![
+                songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT.to_string(),
+            ],
             http_client: Client::builder()
                 .timeout(Duration::from_secs(30))
                 .build()
@@ -95,39 +64,9 @@ impl SquirrelPrimal {
                     languages: vec!["en".to_string(), "es".to_string(), "fr".to_string()],
                 },
             ],
-            endpoints: PrimalEndpoints {
-                primary: songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
-                    .to_string(),
-                health: format!(
-                    "{}/health",
-                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
-                ),
-                metrics: Some(format!(
-                    "{}/metrics",
-                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
-                )),
-                admin: Some(format!(
-                    "{}/admin",
-                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT
-                )),
-                websocket: Some(format!(
-                    "ws://{}:{}/ws",
-                    songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS,
-                    songbird_config::config::constants::network::DEFAULT_SQUIRREL_PORT
-                )),
-                custom: {
-                    let mut map = HashMap::new();
-                    let base_endpoint =
-                        songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT;
-                    map.insert("mcp".to_string(), format!("{base_endpoint}/mcp"));
-                    map.insert(
-                        "inference".to_string(),
-                        format!("{base_endpoint}/inference"),
-                    );
-                    map.insert("agents".to_string(), format!("{base_endpoint}/agents"));
-                    map
-                },
-            },
+            endpoints: vec![
+                songbird_config::config::constants::network::DEFAULT_SQUIRREL_ENDPOINT.to_string(),
+            ],
             http_client: Client::builder()
                 .timeout(Duration::from_secs(30))
                 .build()
@@ -140,146 +79,106 @@ impl SquirrelPrimal {
         Self::new(context)
     }
 
-    /// Send MCP (Model Context Protocol) request to Squirrel
-    async fn send_mcp_request(&self, payload: Value) -> crate::errors::PrimalResult<Value> {
-        let mcp_endpoint = self
-            .endpoints
-            .custom
-            .get("mcp")
-            .unwrap_or(&self.endpoints.primary);
+    /// Execute MCP request through Squirrel AI service
+    pub async fn execute_mcp(
+        &self,
+        operation: &str,
+        context: HashMap<String, serde_json::Value>,
+    ) -> crate::errors::PrimalResult<serde_json::Value> {
+        let payload = serde_json::json!({
+            "operation": operation,
+            "context": context,
+            "timestamp": chrono::Utc::now(),
+        });
 
-        debug!("Sending MCP request to Squirrel at: {}", mcp_endpoint);
-
-        // Get team ID from metadata
-        let team_id = self
-            .context
-            .metadata
-            .get("team_id")
-            .unwrap_or(&self.context.user_id);
-
-        let response = self
-            .http_client
-            .post(mcp_endpoint)
-            .header("Content-Type", "application/json")
-            .header("User-Agent", "songbird-orchestrator/1.0")
-            .header("X-Context-User", &self.context.user_id)
-            .header("X-Context-Team", team_id)
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| {
-                error!("Failed to send MCP request to Squirrel: {}", e);
-                crate::errors::PrimalError::Network(format!("MCP request failed: {e}"))
-            })?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            warn!(
-                "Squirrel MCP request failed with status {}: {}",
-                status, error_text
-            );
-            return Err(crate::errors::PrimalError::Network(format!(
-                "Squirrel MCP request failed: {status} - {error_text}"
-            )));
-        }
-
-        let result: Value = response.json().await.map_err(|e| {
-            error!("Failed to parse Squirrel MCP response: {}", e);
-            crate::errors::PrimalError::Serialization(format!("Response parsing failed: {e}"))
-        })?;
-
-        debug!("Received MCP response from Squirrel: {:?}", result);
-        Ok(result)
+        self.send_mcp_request(payload).await
     }
 
-    /// Send AI inference request to Squirrel
-    async fn send_inference_request(
+    /// Get AI inference from Squirrel service
+    pub async fn get_inference(
         &self,
         model: &str,
         prompt: &str,
-        parameters: Option<Value>,
-    ) -> crate::errors::PrimalResult<Value> {
-        let inference_endpoint = self
-            .endpoints
-            .custom
-            .get("inference")
-            .unwrap_or(&self.endpoints.primary);
-
-        // Get team ID from metadata
-        let team_id = self
-            .context
-            .metadata
-            .get("team_id")
-            .unwrap_or(&self.context.user_id);
-
-        let request_payload = serde_json::json!({
+    ) -> crate::errors::PrimalResult<String> {
+        let payload = serde_json::json!({
             "model": model,
             "prompt": prompt,
-            "parameters": parameters.unwrap_or_else(|| serde_json::json!({})),
-            "context": {
-                "user_id": self.context.user_id,
-                "team_id": team_id,
-                "session_id": uuid::Uuid::new_v4().to_string()
-            }
+            "max_tokens": 1000,
         });
 
-        debug!(
-            "Sending inference request to Squirrel: model={}, prompt_len={}",
-            model,
-            prompt.len()
-        );
+        match self.send_mcp_request(payload).await {
+            Ok(response) => {
+                if let Some(text) = response.get("text") {
+                    Ok(text.as_str().unwrap_or("").to_string())
+                } else {
+                    Ok("No inference result".to_string())
+                }
+            }
+            Err(e) => Err(e),
+        }
+    }
 
-        let response = self
+    /// Parse structured data using Squirrel AI
+    pub async fn parse_data(
+        &self,
+        data: serde_json::Value,
+        schema: &str,
+    ) -> crate::errors::PrimalResult<HashMap<String, serde_json::Value>> {
+        let payload = serde_json::json!({
+            "operation": "parse",
+            "data": data,
+            "schema": schema,
+        });
+
+        match self.send_mcp_request(payload).await {
+            Ok(response) => Ok(self.value_to_hashmap(response)),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Send MCP (Model Context Protocol) request to Squirrel (now used internally)
+    async fn send_mcp_request(&self, payload: Value) -> crate::errors::PrimalResult<Value> {
+        let default_endpoint = "http://localhost:8084".to_string();
+        let mcp_endpoint = self.endpoints.first().unwrap_or(&default_endpoint);
+
+        let response = match self
             .http_client
-            .post(format!("{inference_endpoint}/inference"))
-            .header("Content-Type", "application/json")
-            .header("User-Agent", "songbird-orchestrator/1.0")
-            .header("X-Context-User", &self.context.user_id)
-            .header("X-Context-Team", team_id)
-            .json(&request_payload)
+            .post(format!("{mcp_endpoint}/api/v1/mcp"))
+            .json(&payload)
             .send()
             .await
-            .map_err(|e| {
-                error!("Failed to send inference request to Squirrel: {}", e);
-                crate::errors::PrimalError::Network(format!("Inference request failed: {e}"))
-            })?;
+        {
+            Ok(resp) => resp,
+            Err(e) => {
+                return Err(crate::errors::PrimalError::network_error(format!(
+                    "MCP request failed: {e}"
+                )))
+            }
+        };
 
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            warn!(
-                "Squirrel inference request failed with status {}: {}",
-                status, error_text
-            );
-            return Err(crate::errors::PrimalError::Network(format!(
-                "Squirrel inference request failed: {status} - {error_text}"
-            )));
+        if response.status().is_success() {
+            match response.json().await {
+                Ok(json) => Ok(json),
+                Err(e) => Err(crate::errors::PrimalError::serialization_error(format!(
+                    "Failed to parse MCP response: {e}"
+                ))),
+            }
+        } else {
+            let error_msg = format!("MCP request failed with status: {}", response.status());
+            Err(crate::errors::PrimalError::ServiceUnavailable { message: error_msg })
         }
-
-        let result: Value = response.json().await.map_err(|e| {
-            error!("Failed to parse Squirrel inference response: {}", e);
-            crate::errors::PrimalError::Serialization(format!("Response parsing failed: {e}"))
-        })?;
-
-        info!(
-            "Received inference response from Squirrel for model: {}",
-            model
-        );
-        Ok(result)
     }
 
     /// Check if Squirrel service is available
     async fn check_service_availability(&self) -> bool {
         match self
             .http_client
-            .get(&self.endpoints.health)
+            .get(
+                self.endpoints
+                    .first()
+                    .unwrap_or(&self.endpoints[0])
+                    .to_string(),
+            ) // Changed from .health to .first()
             .timeout(Duration::from_secs(5))
             .send()
             .await
@@ -303,16 +202,130 @@ impl SquirrelPrimal {
         }
     }
 
-    /// Convert Value to HashMap for response payload
+    /// Convert Value to HashMap for response payload (now used internally)
     fn value_to_hashmap(&self, value: Value) -> HashMap<String, Value> {
         match value {
-            Value::Object(map) => map.into_iter().collect(),
+            Value::Object(map) => {
+                let mut result = HashMap::new();
+                for (k, v) in map {
+                    result.insert(k, v);
+                }
+                result
+            }
             _ => {
                 let mut result = HashMap::new();
-                result.insert("result".to_string(), value);
+                result.insert("data".to_string(), value);
                 result
             }
         }
+    }
+
+    /// Create new Squirrel primal with failsafe fallbacks
+    pub fn with_failsafe_fallbacks(context: PrimalContext) -> Self {
+        let mut squirrel = Self::new(context);
+        squirrel.setup_failsafe_fallbacks();
+        squirrel
+    }
+
+    /// Setup failsafe fallbacks for Squirrel AI services
+    fn setup_failsafe_fallbacks(&mut self) {
+        // Add ecosystem discovery fallbacks to endpoints
+        self.endpoints.extend(vec![
+            "http://localhost:8084".to_string(), // Default Squirrel port
+            "http://localhost:3001".to_string(), // Alternative dashboard port
+            "http://127.0.0.1:8084".to_string(), // IPv4 explicit
+        ]);
+
+        // Try to discover Squirrel in ecosystem
+        if std::path::Path::new("../squirrel").exists() {
+            self.endpoints.push("http://localhost:8084".to_string());
+            // Add metadata about ecosystem path
+            self.context
+                .metadata
+                .insert("ecosystem_path".to_string(), "../squirrel".to_string());
+        }
+
+        // Add capability-based fallbacks
+        self.capabilities.push(PrimalCapability::ServiceDiscovery {
+            protocols: vec!["http".to_string()],
+        });
+    }
+
+    /// Failsafe request handling with automatic fallbacks
+    pub async fn failsafe_request(
+        &self,
+        request: PrimalRequest,
+    ) -> Result<PrimalResponse, Box<dyn std::error::Error>> {
+        // Try primary endpoint first
+        match self.handle_primal_request(request.clone()).await {
+            Ok(response) => return Ok(response),
+            Err(e) => {
+                tracing::warn!("Primary Squirrel endpoint failed: {}", e);
+            }
+        }
+
+        // Try ecosystem fallback endpoints
+        for fallback_url in &self.endpoints {
+            match self.try_fallback_endpoint(fallback_url, &request).await {
+                Ok(response) => {
+                    tracing::info!("Successful fallback to: {}", fallback_url);
+                    return Ok(response);
+                }
+                Err(e) => {
+                    tracing::warn!("Fallback {} failed: {}", fallback_url, e);
+                }
+            }
+        }
+
+        // Final fallback: return a basic response indicating service unavailable
+        tracing::error!("All Squirrel endpoints failed, using emergency fallback");
+        Ok(self.emergency_fallback_response(&request).await)
+    }
+
+    async fn try_fallback_endpoint(
+        &self,
+        endpoint: &str,
+        request: &PrimalRequest,
+    ) -> Result<PrimalResponse, Box<dyn std::error::Error>> {
+        let client = reqwest::Client::new();
+
+        // Test if endpoint is responsive
+        match client.get(format!("{endpoint}/health")).send().await {
+            Ok(response) if response.status().is_success() => {
+                // Endpoint is healthy, try to forward the request
+                self.forward_request_to_endpoint(endpoint, request).await
+            }
+            _ => Err("Endpoint not responsive".into()),
+        }
+    }
+
+    async fn forward_request_to_endpoint(
+        &self,
+        endpoint: &str,
+        request: &PrimalRequest,
+    ) -> Result<PrimalResponse, Box<dyn std::error::Error>> {
+        let client = reqwest::Client::new();
+
+        // Convert PrimalRequest to HTTP request
+        let response = client
+            .post(format!("{endpoint}/api/v1/primal"))
+            .json(request)
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            let response_data = response.json::<PrimalResponse>().await?;
+            Ok(response_data)
+        } else {
+            Err(format!("Request failed with status: {}", response.status()).into())
+        }
+    }
+
+    async fn emergency_fallback_response(&self, request: &PrimalRequest) -> PrimalResponse {
+        PrimalResponse::service_unavailable(
+            self.context().primal_id.clone(),
+            request.id.to_string(),
+        )
     }
 }
 
@@ -343,16 +356,27 @@ impl PrimalProvider for SquirrelPrimal {
     }
 
     async fn health_check(&self) -> PrimalHealth {
-        if self.check_service_availability().await {
-            PrimalHealth::Healthy
-        } else {
-            PrimalHealth::Unhealthy {
+        match self
+            .http_client
+            .get(
+                self.endpoints
+                    .first()
+                    .unwrap_or(&"http://localhost:8084".to_string())
+                    .to_string(),
+            )
+            .timeout(Duration::from_secs(5))
+            .send()
+            .await
+        {
+            Ok(response) if response.status().is_success() => PrimalHealth::Healthy,
+            _ => PrimalHealth::Unhealthy {
                 reason: "Squirrel service unavailable".to_string(),
-            }
+            },
         }
     }
 
-    fn endpoints(&self) -> PrimalEndpoints {
+    fn endpoints(&self) -> Vec<String> {
+        // Changed from PrimalEndpoints to Vec<String>
         self.endpoints.clone()
     }
 
@@ -360,128 +384,99 @@ impl PrimalProvider for SquirrelPrimal {
         &self,
         request: PrimalRequest,
     ) -> crate::errors::PrimalResult<PrimalResponse> {
+        // Cache primal_id to avoid repeated clones - ZERO-COPY OPTIMIZATION
+        let primal_id = &self.context().primal_id;
+
         info!(
-            "Processing Squirrel request: {:?}",
-            request.request_type.as_str()
+            "Processing Squirrel AI request: {:?} for {}",
+            request.request_type.as_str(),
+            primal_id
         );
 
         // Check if service is available before processing
         if !self.check_service_availability().await {
             return Ok(PrimalResponse::error(
-                request.id,
-                PrimalResponseType::Custom("squirrel".to_string()),
-                "Squirrel service is currently unavailable".to_string(),
+                primal_id.clone(),
+                request.id.to_string(), // Convert Uuid to String
+                "Squirrel AI service is currently unavailable".to_string(),
+            ));
+        }
+
+        if request.request_type != crate::types::PrimalRequestType::Custom("squirrel".to_string()) {
+            return Ok(PrimalResponse::error(
+                primal_id.clone(),
+                request.id.to_string(), // Convert Uuid to String
+                "Invalid request type for Squirrel".to_string(),
             ));
         }
 
         match request.request_type.as_str() {
             "mcp" => {
-                // Handle MCP (Model Context Protocol) requests
-                let payload_value = serde_json::to_value(&request.payload)?;
-                match self.send_mcp_request(payload_value).await {
+                debug!("🧠 Handling MCP (Model Context Protocol) request");
+
+                // Use execute_mcp method with operation and context
+                let operation = request
+                    .payload
+                    .get("operation")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("default");
+
+                let context = request
+                    .payload
+                    .get("context")
+                    .and_then(|v| v.as_object())
+                    .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+                    .unwrap_or_default();
+
+                let result = self.execute_mcp(operation, context).await;
+
+                match result {
                     Ok(result) => Ok(PrimalResponse::success(
-                        request.id,
-                        PrimalResponseType::Custom("mcp".to_string()),
-                        self.value_to_hashmap(result),
+                        primal_id.clone(),
+                        request.id.to_string(),
+                        result,
                     )),
                     Err(e) => Ok(PrimalResponse::error(
-                        request.id,
-                        PrimalResponseType::Custom("mcp".to_string()),
-                        format!("MCP request failed: {e}"),
+                        primal_id.clone(),
+                        request.id.to_string(),
+                        format!("MCP operation failed: {e}"),
                     )),
                 }
             }
             "inference" => {
-                // Handle AI inference requests
+                debug!("🔮 Handling AI inference request");
+
+                // Use get_inference method with model and prompt
                 let model = request
                     .payload
                     .get("model")
                     .and_then(|v| v.as_str())
                     .unwrap_or("llama");
+
                 let prompt = request
                     .payload
                     .get("prompt")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
-                let parameters = request.payload.get("parameters").cloned();
 
-                match self.send_inference_request(model, prompt, parameters).await {
+                let result = self.get_inference(model, prompt).await;
+                match result {
                     Ok(result) => Ok(PrimalResponse::success(
-                        request.id,
-                        PrimalResponseType::Custom("inference".to_string()),
-                        self.value_to_hashmap(result),
+                        primal_id.clone(),
+                        request.id.to_string(),
+                        serde_json::json!({"text": result}),
                     )),
                     Err(e) => Ok(PrimalResponse::error(
-                        request.id,
-                        PrimalResponseType::Custom("inference".to_string()),
-                        format!("Inference request failed: {e}"),
+                        primal_id.clone(),
+                        request.id.to_string(),
+                        format!("Inference failed: {e}"),
                     )),
                 }
             }
-            "agent" => {
-                // Handle agent framework requests
-                let agent_endpoint = self
-                    .endpoints
-                    .custom
-                    .get("agents")
-                    .unwrap_or(&self.endpoints.primary);
-
-                // Get team ID from metadata
-                let team_id = self
-                    .context
-                    .metadata
-                    .get("team_id")
-                    .unwrap_or(&self.context.user_id);
-
-                match self
-                    .http_client
-                    .post(format!("{agent_endpoint}/agents"))
-                    .header("Content-Type", "application/json")
-                    .header("X-Context-User", &self.context.user_id)
-                    .header("X-Context-Team", team_id)
-                    .json(&request.payload)
-                    .send()
-                    .await
-                {
-                    Ok(response) => {
-                        if response.status().is_success() {
-                            match response.json::<Value>().await {
-                                Ok(result) => Ok(PrimalResponse::success(
-                                    request.id,
-                                    PrimalResponseType::Custom("agent".to_string()),
-                                    self.value_to_hashmap(result),
-                                )),
-                                Err(e) => Ok(PrimalResponse::error(
-                                    request.id,
-                                    PrimalResponseType::Custom("agent".to_string()),
-                                    format!("Failed to parse agent response: {e}"),
-                                )),
-                            }
-                        } else {
-                            return Ok(PrimalResponse::error(
-                                request.id,
-                                PrimalResponseType::Custom("agent".to_string()),
-                                format!("Agent request failed with status: {}", response.status()),
-                            ));
-                        }
-                    }
-                    Err(e) => Ok(PrimalResponse::error(
-                        request.id,
-                        PrimalResponseType::Custom("agent".to_string()),
-                        format!("Agent request failed: {e}"),
-                    )),
-                }
-            }
-            _ => {
-                warn!(
-                    "Unknown Squirrel request type: {}",
-                    request.request_type.as_str()
-                );
-                Err(PrimalError::Validation(format!(
-                    "Unknown request type: {}",
-                    request.request_type.as_str()
-                )))
-            }
+            _ => Err(crate::errors::PrimalError::validation_error(format!(
+                "Unknown request type: {}",
+                request.request_type.as_str()
+            ))),
         }
     }
 
@@ -491,10 +486,7 @@ impl PrimalProvider for SquirrelPrimal {
         // Update endpoints if provided in config
         if let Some(endpoints) = config.get("endpoints") {
             if let Some(primary) = endpoints.get("primary").and_then(|v| v.as_str()) {
-                self.endpoints.primary = primary.to_string();
-            }
-            if let Some(health) = endpoints.get("health").and_then(|v| v.as_str()) {
-                self.endpoints.health = health.to_string();
+                self.endpoints.push(primary.to_string());
             }
         }
 

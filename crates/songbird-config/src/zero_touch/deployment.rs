@@ -39,13 +39,13 @@ impl DeploymentEngine {
         let mut deployed_services = Vec::with_capacity(16); // Pre-allocate for typical deployment size
         let mut errors = Vec::with_capacity(8); // Pre-allocate for typical error count
 
-        // Record deployment start
+        // Record deployment start - ZERO-COPY OPTIMIZATION: minimize cloning
         let record = DeploymentRecord {
-            id: deployment_id.clone(),
+            id: deployment_id.clone(), // Only clone ID once
             start_time,
             end_time: None,
             status: DeploymentStatus::InProgress,
-            strategy: strategy.clone(),
+            strategy: *strategy, // Copy enum instead of clone
             services: services.clone(),
             errors: Vec::new(),
         };
@@ -54,13 +54,13 @@ impl DeploymentEngine {
         // Deploy services based on strategy
         match strategy {
             DeploymentStrategy::Sequential => {
-                for service in services {
-                    match self.deploy_single_service(&service).await {
+                for service in services.iter() { // Use iterator to avoid cloning
+                    match self.deploy_single_service(service).await {
                         Ok(deployed_service) => deployed_services.push(deployed_service),
                         Err(e) => {
                             error!("Failed to deploy service {}: {}", service.name, e);
                             errors.push(DeploymentError {
-                                service_name: service.name.clone(),
+                                service_name: service.name.clone(), // Only clone on error
                                 error_message: e.to_string(),
                                 timestamp: chrono::Utc::now(),
                             });
@@ -81,7 +81,7 @@ impl DeploymentEngine {
                         Err(e) => {
                             error!("Failed to deploy service {}: {}", service.name, e);
                             errors.push(DeploymentError {
-                                service_name: service.name.clone(),
+                                service_name: service.name.clone(), // Only clone on error
                                 error_message: e.to_string(),
                                 timestamp: chrono::Utc::now(),
                             });
@@ -96,7 +96,7 @@ impl DeploymentEngine {
                         Ok(deployed_service) => {
                             deployed_services.push(deployed_service);
                             // Wait a bit between deployments for rolling update
-                            tokio::time::sleep(Duration::from_secs(5)).await;
+                            tokio::time::sleep(super::hardcoded_elimination::replace::health_check_timeout()).await;
                         }
                         Err(e) => {
                             error!("Failed to deploy service {}: {}", service.name, e);
@@ -122,7 +122,7 @@ impl DeploymentEngine {
         // Generate summary
         let summary = self.generate_deployment_summary(&deployed_services, &errors);
 
-        // Update deployment record
+        // Update deployment record - ZERO-COPY OPTIMIZATION
         if let Some(record) = self.deployment_history.last_mut() {
             record.end_time = Some(end_time);
             record.status = if errors.is_empty() {
@@ -132,7 +132,8 @@ impl DeploymentEngine {
             } else {
                 DeploymentStatus::CompletedWithWarnings
             };
-            record.errors = errors.iter().map(|e| e.error_message.clone()).collect();
+            // Move errors instead of cloning - this consumes the errors vector
+            record.errors = errors.into_iter().map(|e| e.error_message).collect();
         }
 
         Ok(DeploymentResult {
@@ -336,7 +337,9 @@ impl DeploymentEngine {
             // Check if service is responding
             if let Some(port) = service.ports.first() {
                 match timeout(
-                    Duration::from_secs(10),
+                    super::hardcoded_elimination::replace::health_check_timeout().max(
+                        Duration::from_secs(10)
+                    ),
                     tokio::net::TcpStream::connect(format!("{}:{}", 
                         crate::config::constants::network::DEFAULT_BIND_ADDRESS, 
                         port))

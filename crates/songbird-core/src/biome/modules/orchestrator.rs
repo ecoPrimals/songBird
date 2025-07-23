@@ -11,6 +11,7 @@ use super::types::{
     SongbirdOrchestrator,
 };
 use chrono::Utc;
+use songbird_config::get_default_bind_address;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
@@ -257,12 +258,8 @@ impl SongbirdOrchestrator {
     /// Discover service via Consul
     async fn discover_via_consul(&self, primal_name: &str) -> Option<String> {
         // Consul service discovery
-        let consul_url = std::env::var("CONSUL_HTTP_ADDR").unwrap_or_else(|_| {
-            format!(
-                "http://{}:8500",
-                songbird_config::environment::get_default_bind_address()
-            )
-        });
+        let consul_url = std::env::var("CONSUL_HTTP_ADDR")
+            .unwrap_or_else(|_| format!("http://{}:8500", get_default_bind_address()));
 
         let service_name = format!("primal-{primal_name}");
         let _consul_query = format!("{consul_url}/v1/health/service/{service_name}");
@@ -283,12 +280,8 @@ impl SongbirdOrchestrator {
     /// Discover service via etcd
     async fn discover_via_etcd(&self, primal_name: &str) -> Option<String> {
         // etcd key-value store discovery
-        let _etcd_url = std::env::var("ETCD_ENDPOINTS").unwrap_or_else(|_| {
-            format!(
-                "http://{}:2379",
-                songbird_config::environment::get_default_bind_address()
-            )
-        });
+        let _etcd_url = std::env::var("ETCD_ENDPOINTS")
+            .unwrap_or_else(|_| format!("http://{}:2379", get_default_bind_address()));
 
         let _service_key = format!("/songbird/primals/{primal_name}/endpoint");
 

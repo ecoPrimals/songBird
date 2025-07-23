@@ -133,7 +133,7 @@ where
 
     /// Remove entry from cache
     pub async fn remove(&self, key: &K) -> Option<V> {
-        let mut cache = self.cache.write().await;
+        let cache = self.cache.write().await;
         let mut metrics = self.metrics.write().await;
         let mut patterns = self.access_patterns.write().await;
 
@@ -203,7 +203,7 @@ where
 
     /// Intelligent eviction based on access patterns and performance
     async fn adaptive_eviction(&self) {
-        let mut cache = self.cache.write().await;
+        let cache = self.cache.write().await;
         let _patterns = self.access_patterns.read().await;
         let mut metrics = self.metrics.write().await;
 
@@ -216,7 +216,7 @@ where
 
         // Simple eviction strategy for this implementation
         // In production, this would be more sophisticated
-        if cache.len() > 0 {
+        if !cache.is_empty() {
             // Remove least recently used items
             let eviction_count = (cache.len() as f64 * 0.1).ceil() as usize; // Evict 10%
 

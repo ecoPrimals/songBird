@@ -2,10 +2,8 @@
 
 use super::config::CircuitBreakerConfig;
 use super::error_types::CircuitBreakerState;
-use songbird_errors::{CircuitBreakerError, Result, SongbirdError};
-use std::sync::Arc;
+use songbird_errors::{Result, SongbirdError};
 use std::time::Instant;
-use tokio::sync::RwLock;
 
 /// Circuit breaker instance
 #[derive(Debug)]

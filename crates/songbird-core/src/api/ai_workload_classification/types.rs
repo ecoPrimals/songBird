@@ -1,12 +1,38 @@
 //! Core types and enums for AI workload classification
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Types of workloads that can be classified
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WorkloadType {
+    /// Generic fallback workload type
+    Generic,
+
+    /// Standard general-purpose workload
+    Standard,
+
+    /// Web service workloads (API endpoints, HTTP services)
+    WebService,
+
+    /// Gaming workloads (real-time gaming, multiplayer)
+    Gaming,
+
+    /// Machine learning workloads (training, inference)
+    MachineLearning,
+
+    /// Compute-intensive workloads (calculations, processing)
+    Compute,
+
+    /// Storage workloads (data management, backup)
+    Storage,
+
+    /// Security workloads (authentication, encryption)
+    Security,
+
+    /// Streaming workloads (media, data streaming)
+    Streaming,
+
     /// Real-time interactive requests requiring immediate response
     RealTimeInteractive {
         /// Expected response time in milliseconds
@@ -26,65 +52,7 @@ pub enum WorkloadType {
     /// AI/ML computation workloads
     AIComputation {
         /// Type of AI computation
-        computation_type: AIComputationType,
-        /// Model complexity level
-        complexity_level: ComplexityLevel,
-    },
-
-    /// Stream processing workloads
-    StreamProcessing {
-        /// Expected throughput (events per second)
-        expected_throughput_eps: f64,
-        /// Stream processing pattern
-        processing_pattern: String,
-    },
-
-    /// CRUD operations (Create, Read, Update, Delete)
-    CrudOperation {
-        /// Operation type
-        operation_type: CrudOperationType,
-        /// Data size estimate
-        data_size_bytes: u64,
-    },
-
-    /// Analytics and reporting workloads
-    Analytics {
-        /// Analytics type
-        analytics_type: AnalyticsType,
-        /// Data processing scope
-        scope: AnalyticsScope,
-    },
-
-    /// File operation workloads
-    FileOperation {
-        /// Operation type
-        operation_type: FileOperationType,
-        /// File information
-        file_info: FileInfo,
-    },
-
-    /// Security operation workloads
-    SecurityOperation {
-        /// Operation type
-        operation_type: SecurityOperationType,
-        /// Security level required
-        security_level: SecurityLevel,
-    },
-
-    /// Network operation workloads
-    NetworkOperation {
-        /// Operation type
-        operation_type: NetworkOperationType,
-        /// Network requirements
-        network_requirements: NetworkRequirements,
-    },
-
-    /// Unknown or unclassified workloads
-    Unknown {
-        /// Classification hints
-        hints: Vec<String>,
-        /// Confidence in unknown classification
-        unknown_confidence: f64,
+        computation_type: String,
     },
 }
 
@@ -97,134 +65,196 @@ pub enum BatchPriority {
     Critical,
 }
 
-/// Types of AI computations
+/// Resource priority levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AIComputationType {
-    Inference,
-    Training,
-    FineTuning,
-    FeatureExtraction,
-    Embedding,
-    Classification,
-    Regression,
-    Clustering,
-}
-
-/// Complexity levels for AI computations
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ComplexityLevel {
+pub enum ResourcePriority {
     Low,
     Medium,
     High,
-    ExtraHigh,
+    Critical,
 }
 
-/// CRUD operation types
+/// Workload request structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CrudOperationType {
-    Create,
-    Read,
-    ReadMany,
-    Update,
-    UpdateMany,
-    Delete,
-    DeleteMany,
-    BulkInsert,
-    Search,
-    Aggregate,
+pub struct WorkloadRequest {
+    pub id: String,
+    pub workload_type: String,
+    pub metadata: HashMap<String, serde_json::Value>,
+    pub payload: serde_json::Value,
 }
 
-/// Analytics types
+/// Resource requirements for a workload
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AnalyticsType {
-    RealTimeAnalytics,
-    BatchAnalytics,
-    Reporting,
-    DataMining,
-    MachineLearning,
+pub struct ResourceRequirements {
+    pub cpu_cores: u32,
+    pub memory_mb: u64,
+    pub storage_mb: u64,
+    pub network_bandwidth_mbps: u32,
+    pub priority: ResourcePriority,
 }
 
-/// Analytics processing scope
+impl Default for ResourceRequirements {
+    fn default() -> Self {
+        Self {
+            cpu_cores: 2,
+            memory_mb: 2048,
+            storage_mb: 5120,
+            network_bandwidth_mbps: 100,
+            priority: ResourcePriority::Medium,
+        }
+    }
+}
+
+/// Performance prediction data
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AnalyticsScope {
+pub struct PerformancePrediction {
+    pub expected_latency_ms: u64,
+    pub expected_throughput_rps: f64,
+    pub expected_reliability: f64,
+    pub confidence_score: f64,
+}
+
+impl Default for PerformancePrediction {
+    fn default() -> Self {
+        Self {
+            expected_latency_ms: 100,
+            expected_throughput_rps: 1000.0,
+            expected_reliability: 0.95,
+            confidence_score: 0.7,
+        }
+    }
+}
+
+/// Risk assessment for a workload
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RiskAssessment {
+    pub overall_risk_score: f64,
+    pub risk_factors: Vec<String>,
+    pub mitigation_strategies: Vec<String>,
+    pub confidence: f64,
+}
+
+impl Default for RiskAssessment {
+    fn default() -> Self {
+        Self {
+            overall_risk_score: 0.3,
+            risk_factors: vec![],
+            mitigation_strategies: vec!["Apply standard security policies".to_string()],
+            confidence: 0.8,
+        }
+    }
+}
+
+/// Complete workload classification result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkloadClassification {
+    pub workload_type: WorkloadType,
+    pub confidence_score: f64,
+    pub resource_requirements: ResourceRequirements,
+    pub performance_prediction: PerformancePrediction,
+    pub risk_assessment: RiskAssessment,
+}
+
+impl Default for WorkloadClassification {
+    fn default() -> Self {
+        Self {
+            workload_type: WorkloadType::Generic,
+            confidence_score: 0.5,
+            resource_requirements: ResourceRequirements::default(),
+            performance_prediction: PerformancePrediction::default(),
+            risk_assessment: RiskAssessment::default(),
+        }
+    }
+}
+
+// Stub types that were missing and causing compilation errors
+// These would be implemented by Squirrel, so we just provide basic placeholders
+
+/// Model size classification (stub for Squirrel delegation)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ModelSize {
     Small,
     Medium,
     Large,
     ExtraLarge,
 }
 
-/// File operation types
+/// LLM Operation types (stub for Squirrel delegation)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum FileOperationType {
-    Read,
-    Write,
-    Append,
-    Delete,
-    Copy,
-    Move,
-    Compress,
-    Decompress,
-    Index,
+pub enum LLMOperation {
+    Training,
+    FineTuning,
+    Inference,
 }
 
-/// File information for operations
+/// Computer Vision model types (stub for Squirrel delegation)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FileInfo {
-    pub size_bytes: u64,
-    pub file_type: String,
-    pub compression_ratio: Option<f64>,
-    pub is_binary: bool,
-    pub encoding: Option<String>,
+pub enum CVModelType {
+    ObjectDetection,
+    ImageClassification,
+    Segmentation,
 }
 
-/// Security operation types
+/// Service mesh operation types (stub for Squirrel delegation)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ServiceMeshOperationType {
+    ServiceDiscovery,
+    LoadBalancing,
+    CircuitBreaking,
+    HealthChecking,
+    ConfigurationManagement,
+    SecurityPolicyEnforcement,
+    MetricsCollection,
+    TrafficRouting,
+}
+
+/// Service mesh scope (stub for Squirrel delegation)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ServiceMeshScope {
+    Service,
+    Namespace,
+    Cluster,
+}
+
+/// Operation criticality levels (stub for Squirrel delegation)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum OperationCriticality {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+/// Workflow types (stub for Squirrel delegation)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum WorkflowType {
+    Sequential,
+    Parallel,
+    Pipeline,
+    MapReduce,
+}
+
+/// Risk types (stub for Squirrel delegation)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum RiskType {
+    ResourceExhaustion,
+    NetworkSecurity,
+    ModelSecurity,
+    SystemStability,
+    ComplexityRisk,
+    PerformanceDegradation,
+    ThreatPattern,
+    ResourceConstraint,
+    UnknownBehavior,
+}
+
+/// Security operation types (already exists, keeping for compatibility)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SecurityOperationType {
     Authentication,
     Authorization,
     Encryption,
-    Decryption,
-    Signing,
-    Verification,
-    AuditLogging,
     ThreatDetection,
+    AuditLogging,
     Compliance,
-    KeyGeneration,
-}
-
-/// Security levels
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SecurityLevel {
-    Basic,
-    Standard,
-    High,
-    Critical,
-}
-
-/// Network operation types
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum NetworkOperationType {
-    HttpRequest,
-    HttpsRequest,
-    WebSocketMessage,
-    TcpConnection,
-    UdpMessage,
-    FileTransfer,
-    Streaming,
-    P2PMessage,
-    DatabaseConnection,
-    CacheAccess,
-}
-
-/// Network requirements for operations
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkRequirements {
-    pub bandwidth_mbps: f64,
-    pub latency_ms: f64,
-    pub reliability: f64,
-    pub connection_count: u32,
-    pub data_transfer_gb: f64,
-    pub protocol: String,
-    pub encryption_required: bool,
-    pub qos_class: String,
 }

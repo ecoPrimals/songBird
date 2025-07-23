@@ -88,3 +88,13 @@ dirs = "5.0"
 
 # === ANTI-MONOLITH WORKSPACE COMPLETE ===
 
+[profile.bench]
+opt-level = 3
+debug = false
+lto = true
+codegen-units = 1
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+

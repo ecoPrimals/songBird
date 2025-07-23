@@ -337,17 +337,37 @@ GET /api/federation/status
 
 ## 🔒 **SECURITY & AUTHENTICATION API**
 
-### **Universal Security Integration**
+### **🐕 Capability-Based BearDog Security Integration**
 
-#### **`UniversalSecurityIntegration::authenticate()`**
-**Purpose**: Universal authentication across any primal type
+Songbird integrates with BearDog as the primary security primal using capability-based discovery with intelligent failsafe fallbacks.
+
+#### **Architecture: Songbird + BearDog = WireGuard Obsolete**
+- **🐕 BearDog Available**: Advanced security (BSTP protocol, ML threat detection, enterprise auth)
+- **🔒 BearDog Unavailable**: Automatic failsafe fallback to basic security (WireGuard, standard encryption)
+- **🎼 Songbird Role**: Orchestration, capability discovery, fallback coordination
+
+#### **`BearDogSecurityIntegration::authenticate()`**
+**Purpose**: Capability-based authentication with automatic failover
 
 **Rust Usage**:
 ```rust
-use songbird_security::UniversalSecurityIntegration;
+use songbird_security::beardog::BearDogSecurityIntegration;
+use songbird_universal_primals::registry::UniversalPrimalRegistry;
 
-let security = UniversalSecurityIntegration::new(security_primal_config).await?;
-let authenticated = security.authenticate("user123", "credentials").await?;
+// Create with capability-based discovery
+let primal_registry = UniversalPrimalRegistry::new().await?;
+let security = BearDogSecurityIntegration::new(
+    Arc::new(primal_registry),
+    SecurityConfig::default()
+).await?;
+
+// Authentication automatically uses BearDog if available, fallback if not
+let auth_result = security.authenticate("user123", "password").await?;
+
+match auth_result.provider {
+    AuthProvider::BearDog => println!("✅ BearDog enterprise security active"),
+    AuthProvider::Fallback => println!("⚠️  Using fallback security (BearDog unavailable)"),
+}
 ```
 
 **HTTP API**:
@@ -355,21 +375,115 @@ let authenticated = security.authenticate("user123", "credentials").await?;
 POST /api/security/authenticate
 {
   "username": "user123",
-  "credentials": "...",
-  "primal_type": "beardog"
+  "password": "secure_password",
+  "prefer_beardog": true
 }
 ```
 
-#### **`SecurityIntegration::create_secure_tunnel()`**
-**Purpose**: Establish encrypted communication tunnels
+**Response**:
+```json
+{
+  "authenticated": true,
+  "token": "...",
+  "provider": "beardog",
+  "capabilities": [
+    "enterprise_auth",
+    "ml_threat_detection",
+    "compliance_audit"
+  ],
+  "fallback_available": true,
+  "expires_at": "2025-01-20T12:00:00Z"
+}
+```
+
+#### **`BearDogSecurityIntegration::encrypt_with_fallback()`**
+**Purpose**: Encryption with BearDog's advanced algorithms or secure fallback
+
+**Rust Usage**:
+```rust
+let encrypted_data = security.encrypt(&sensitive_data).await?;
+
+// Check which encryption was used
+if encrypted_data.provider == EncryptionProvider::BearDog {
+    println!("🔐 BearDog genetic encryption active");
+} else {
+    println!("🔒 Fallback encryption (ChaCha20Poly1305) used");
+}
+```
 
 **HTTP API**:
 ```http
-POST /api/security/tunnel
+POST /api/security/encrypt
+{
+  "data": "base64_encoded_data",
+  "encryption_level": "maximum",
+  "prefer_beardog": true
+}
+```
+
+#### **`WireGuardFallbackProvider::create_secure_tunnel()`**
+**Purpose**: Failsafe VPN tunneling when BearDog is unavailable
+
+**HTTP API**:
+```http
+POST /api/security/tunnel/failsafe
 {
   "remote_endpoint": "https://remote-service.example.com:8443",
-  "encryption_level": "maximum",
-  "tunnel_type": "beardog_secure"
+  "tunnel_type": "wireguard_fallback",
+  "note": "Used only when BearDog BSTP is unavailable"
+}
+```
+
+**Response**:
+```json
+{
+  "tunnel_created": true,
+  "tunnel_type": "wireguard_fallback",
+  "endpoint": "10.0.0.1:51820",
+  "public_key": "...",
+  "note": "This is a failsafe fallback. BearDog BSTP provides superior security when available."
+}
+```
+
+#### **`SecurityCapabilities::discover_security_primals()`**
+**Purpose**: Dynamic discovery of security capabilities in the ecosystem
+
+**HTTP API**:
+```http
+GET /api/security/capabilities
+```
+
+**Response**:
+```json
+{
+  "available_providers": [
+    {
+      "primal_type": "beardog",
+      "status": "online",
+      "capabilities": [
+        "enterprise_authentication",
+        "bstp_protocol",
+        "ml_threat_detection",
+        "genetic_encryption",
+        "compliance_audit"
+      ],
+      "endpoint": "https://beardog.local:8443",
+      "discovery_method": "mdns"
+    }
+  ],
+  "fallback_providers": [
+    {
+      "provider_type": "wireguard_fallback",
+      "status": "ready",
+      "capabilities": [
+        "basic_vpn",
+        "peer_authentication",
+        "standard_encryption"
+      ]
+    }
+  ],
+  "recommendation": "BearDog available - using enterprise security",
+  "architecture_note": "Songbird + BearDog make WireGuard obsolete"
 }
 ```
 

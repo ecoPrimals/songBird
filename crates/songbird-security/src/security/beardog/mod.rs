@@ -7,7 +7,9 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::SystemTime;
+use tokio::sync::RwLock;
 
 use songbird_errors::Result;
 
@@ -155,29 +157,29 @@ pub struct BearDogSecurityEvent {
     pub details: HashMap<String, String>,
 }
 
-/// Encrypted data with BearDog
+/// Encrypted data with BearDog security
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogEncryptedData {
-    pub data: Vec<u8>,
-    pub algorithm: String,
+    pub ciphertext: Vec<u8>,
     pub key_id: String,
+    pub algorithm: String,
+    pub metadata: HashMap<String, String>,
 }
 
-/// Time period for compliance reports
+/// Time period for compliance reporting
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogTimePeriod {
-    pub start: DateTime<Utc>,
-    pub end: DateTime<Utc>,
+    pub start_date: DateTime<Utc>,
+    pub end_date: DateTime<Utc>,
 }
 
 /// Compliance report from BearDog
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogComplianceReport {
+    pub report_id: String,
     pub period: BearDogTimePeriod,
-    pub encryption_operations: u64,
-    pub key_rotations: u64,
-    pub access_violations: u64,
-    pub compliance_score: f64,
+    pub compliance_level: f32,
+    pub violations: Vec<String>,
     pub recommendations: Vec<String>,
 }
 
@@ -188,27 +190,25 @@ pub struct BearDogRotationPolicy {
     pub auto_rotate: bool,
 }
 
+/// Node identifier type
+pub type NodeId = String;
+
 /// BearDog configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogConfig {
     pub endpoint: String,
     pub api_key: String,
-    pub security_level: BearDogSecurityLevel,
-    pub audit_level: BearDogAuditLevel,
-    pub compliance_mode: BearDogComplianceMode,
-    pub metadata: HashMap<String, String>,
+    pub timeout_seconds: u64,
+    pub enabled: bool,
 }
 
 impl Default for BearDogConfig {
     fn default() -> Self {
         Self {
-            endpoint: songbird_config::config::constants::network::DEFAULT_BEARDOG_ENDPOINT
-                .to_string(),
-            api_key: "your_api_key".to_string(),
-            security_level: BearDogSecurityLevel::Internal,
-            audit_level: BearDogAuditLevel::Standard,
-            compliance_mode: BearDogComplianceMode::Standard,
-            metadata: HashMap::new(),
+            endpoint: String::new(),
+            api_key: String::new(),
+            timeout_seconds: 30,
+            enabled: false,
         }
     }
 }
@@ -282,4 +282,567 @@ pub enum BearDogComplianceMode {
     FIPS140,
     SOC2,
     GDPR,
+}
+
+// ============================================================================
+// CONCRETE BEARDOG SECURITY PROVIDER IMPLEMENTATION
+// ============================================================================
+
+/// Production BearDog Security Provider Implementation
+///
+/// This provides a concrete implementation of the BearDogSecurityProvider trait
+/// that can be used when BearDog is available. It handles actual BearDog API calls.
+pub struct ProductionBearDogProvider {
+    client: Arc<RwLock<reqwest::Client>>,
+    config: BearDogConfig,
+    base_url: String,
+    api_key: String,
+}
+
+impl ProductionBearDogProvider {
+    /// Create a new production BearDog provider
+    pub async fn new(config: BearDogConfig) -> Result<Self> {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Failed to create BearDog HTTP client: {}",
+                    e
+                ))
+            })?;
+
+        // Default BearDog endpoints - config fields are String not Option<String>
+        let base_url = if config.endpoint.is_empty() {
+            "https://localhost:9443".to_string()
+        } else {
+            config.endpoint.clone()
+        };
+
+        let api_key = if config.api_key.is_empty() {
+            std::env::var("BEARDOG_API_KEY").unwrap_or_default()
+        } else {
+            config.api_key.clone()
+        };
+
+        if api_key.is_empty() {
+            return Err(songbird_errors::SongbirdError::security_error(
+                "BearDog API key not configured - set BEARDOG_API_KEY environment variable",
+            ));
+        }
+
+        Ok(Self {
+            client: Arc::new(RwLock::new(client)),
+            config,
+            base_url,
+            api_key,
+        })
+    }
+
+    /// Check if BearDog service is available
+    pub async fn is_available(&self) -> bool {
+        let client = self.client.read().await;
+        let health_url = format!("{}/api/v1/health", self.base_url);
+
+        match client
+            .get(&health_url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await
+        {
+            Ok(response) => response.status().is_success(),
+            Err(_) => false,
+        }
+    }
+}
+
+#[async_trait]
+impl BearDogSecurityProvider for ProductionBearDogProvider {
+    async fn encrypt(
+        &self,
+        data: &[u8],
+        context: &BearDogSecurityContext,
+    ) -> Result<BearDogEncryptedData> {
+        let client = self.client.read().await;
+        let url = format!("{}/api/v1/crypto/encrypt", self.base_url);
+
+        let request_payload = serde_json::json!({
+            "data": base64::encode(data),
+            "security_level": context.security_level,
+            "use_bstp": context.use_bstp,
+            "metadata": context.metadata,
+        });
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_payload)
+            .send()
+            .await
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "BearDog encrypt request failed: {}",
+                    e
+                ))
+            })?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Failed to parse BearDog encrypt response: {}",
+                    e
+                ))
+            })?;
+
+            let encrypted_data = result
+                .get("encrypted_data")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    songbird_errors::SongbirdError::security_error(
+                        "Invalid BearDog encrypt response format",
+                    )
+                })?;
+
+            let key_id = result
+                .get("key_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("default")
+                .to_string();
+
+            Ok(BearDogEncryptedData {
+                ciphertext: base64::decode(encrypted_data).map_err(|e| {
+                    songbird_errors::SongbirdError::security_error(format!(
+                        "Invalid base64 in BearDog response: {}",
+                        e
+                    ))
+                })?,
+                key_id,
+                algorithm: "aes-256-gcm".to_string(),
+                metadata: HashMap::new(),
+            })
+        } else {
+            Err(songbird_errors::SongbirdError::security_error(format!(
+                "BearDog encryption failed: {}",
+                response.status()
+            )))
+        }
+    }
+
+    async fn decrypt(
+        &self,
+        encrypted: &BearDogEncryptedData,
+        context: &BearDogSecurityContext,
+    ) -> Result<Vec<u8>> {
+        let client = self.client.read().await;
+        let url = format!("{}/api/v1/crypto/decrypt", self.base_url);
+
+        let request_payload = serde_json::json!({
+            "encrypted_data": base64::encode(&encrypted.ciphertext),
+            "key_id": encrypted.key_id,
+            "algorithm": encrypted.algorithm,
+            "security_level": context.security_level,
+            "metadata": encrypted.metadata,
+        });
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_payload)
+            .send()
+            .await
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "BearDog decrypt request failed: {}",
+                    e
+                ))
+            })?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Failed to parse BearDog decrypt response: {}",
+                    e
+                ))
+            })?;
+
+            let plaintext = result
+                .get("plaintext")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    songbird_errors::SongbirdError::security_error(
+                        "Invalid BearDog decrypt response format",
+                    )
+                })?;
+
+            base64::decode(plaintext).map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Invalid base64 in BearDog decrypt response: {}",
+                    e
+                ))
+            })
+        } else {
+            Err(songbird_errors::SongbirdError::security_error(format!(
+                "BearDog decryption failed: {}",
+                response.status()
+            )))
+        }
+    }
+
+    async fn derive_key(&self, key_id: &str, context: &BearDogKeyContext) -> Result<Vec<u8>> {
+        let client = self.client.read().await;
+        let url = format!("{}/api/v1/keys/derive", self.base_url);
+
+        let request_payload = serde_json::json!({
+            "key_id": key_id,
+            "key_purpose": context.key_purpose,
+            "access_policy": context.access_policy,
+            "metadata": context.metadata,
+        });
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_payload)
+            .send()
+            .await
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "BearDog key derivation request failed: {}",
+                    e
+                ))
+            })?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Failed to parse BearDog key derivation response: {}",
+                    e
+                ))
+            })?;
+
+            let derived_key = result
+                .get("derived_key")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    songbird_errors::SongbirdError::security_error(
+                        "Invalid BearDog key derivation response format",
+                    )
+                })?;
+
+            base64::decode(derived_key).map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Invalid base64 in BearDog key derivation response: {}",
+                    e
+                ))
+            })
+        } else {
+            Err(songbird_errors::SongbirdError::security_error(format!(
+                "BearDog key derivation failed: {}",
+                response.status()
+            )))
+        }
+    }
+
+    async fn generate_key(&self, key_spec: &BearDogKeySpec) -> Result<BearDogKeyHandle> {
+        let client = self.client.read().await;
+        let url = format!("{}/api/v1/keys/generate", self.base_url);
+
+        let request_payload = serde_json::json!({
+            "algorithm": key_spec.algorithm,
+            "key_size": key_spec.key_size,
+            "purpose": key_spec.purpose,
+            "rotation_policy": key_spec.rotation_policy,
+        });
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_payload)
+            .send()
+            .await
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "BearDog key generation request failed: {}",
+                    e
+                ))
+            })?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Failed to parse BearDog key generation response: {}",
+                    e
+                ))
+            })?;
+
+            Ok(BearDogKeyHandle {
+                key_id: result
+                    .get("key_id")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        songbird_errors::SongbirdError::security_error(
+                            "No key_id in BearDog key generation response",
+                        )
+                    })?
+                    .to_string(),
+                algorithm: key_spec.algorithm.clone(),
+                created_at: SystemTime::now(),
+            })
+        } else {
+            Err(songbird_errors::SongbirdError::security_error(format!(
+                "BearDog key generation failed: {}",
+                response.status()
+            )))
+        }
+    }
+
+    async fn verify_access(
+        &self,
+        principal: &BearDogPrincipal,
+        resource: &BearDogResource,
+        action: &BearDogAction,
+    ) -> Result<bool> {
+        let client = self.client.read().await;
+        let url = format!("{}/api/v1/access/verify", self.base_url);
+
+        let request_payload = serde_json::json!({
+            "principal": {
+                "id": principal.id,
+                "type": principal.principal_type,
+                "attributes": principal.attributes,
+            },
+            "resource": {
+                "id": resource.id,
+                "type": resource.resource_type,
+                "owner": resource.owner,
+                "attributes": resource.attributes,
+            },
+            "action": {
+                "name": action.name,
+                "attributes": action.attributes,
+            },
+        });
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_payload)
+            .send()
+            .await
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "BearDog access verification request failed: {}",
+                    e
+                ))
+            })?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Failed to parse BearDog access verification response: {}",
+                    e
+                ))
+            })?;
+
+            Ok(result
+                .get("allowed")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false))
+        } else {
+            // On failure, deny access by default (secure default)
+            Ok(false)
+        }
+    }
+
+    async fn establish_secure_channel(&self, peer_id: &NodeId) -> Result<BearDogSecureChannel> {
+        let client = self.client.read().await;
+        let url = format!("{}/api/v1/channels/establish", self.base_url);
+
+        let request_payload = serde_json::json!({
+            "peer_id": peer_id,
+            "channel_type": "BSTP",
+        });
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_payload)
+            .send()
+            .await
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "BearDog secure channel establishment request failed: {}",
+                    e
+                ))
+            })?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Failed to parse BearDog channel response: {}",
+                    e
+                ))
+            })?;
+
+            let channel_id = result
+                .get("channel_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    songbird_errors::SongbirdError::security_error(
+                        "No channel_id in BearDog channel response",
+                    )
+                })?
+                .to_string();
+
+            let encryption_key_b64 = result
+                .get("encryption_key")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    songbird_errors::SongbirdError::security_error(
+                        "No encryption_key in BearDog channel response",
+                    )
+                })?;
+
+            let encryption_key = base64::decode(encryption_key_b64).map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Invalid base64 encryption key from BearDog: {}",
+                    e
+                ))
+            })?;
+
+            Ok(BearDogSecureChannel {
+                channel_id,
+                peer_id: peer_id.clone(),
+                established_at: Utc::now(),
+                encryption_key,
+            })
+        } else {
+            Err(songbird_errors::SongbirdError::security_error(format!(
+                "BearDog secure channel establishment failed: {}",
+                response.status()
+            )))
+        }
+    }
+
+    async fn log_security_event(&self, event: &BearDogSecurityEvent) -> Result<()> {
+        let client = self.client.read().await;
+        let url = format!("{}/api/v1/audit/log", self.base_url);
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(event)
+            .send()
+            .await
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "BearDog audit logging request failed: {}",
+                    e
+                ))
+            })?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(songbird_errors::SongbirdError::security_error(format!(
+                "BearDog audit logging failed: {}",
+                response.status()
+            )))
+        }
+    }
+
+    async fn rotate_key(&self, key_id: &str) -> Result<BearDogKeyHandle> {
+        let client = self.client.read().await;
+        let url = format!("{}/api/v1/keys/{}/rotate", self.base_url, key_id);
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "BearDog key rotation request failed: {}",
+                    e
+                ))
+            })?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Failed to parse BearDog key rotation response: {}",
+                    e
+                ))
+            })?;
+
+            Ok(BearDogKeyHandle {
+                key_id: result
+                    .get("new_key_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(key_id)
+                    .to_string(),
+                algorithm: result
+                    .get("algorithm")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("aes-256-gcm")
+                    .to_string(),
+                created_at: SystemTime::now(),
+            })
+        } else {
+            Err(songbird_errors::SongbirdError::security_error(format!(
+                "BearDog key rotation failed: {}",
+                response.status()
+            )))
+        }
+    }
+
+    async fn get_compliance_report(
+        &self,
+        period: &BearDogTimePeriod,
+    ) -> Result<BearDogComplianceReport> {
+        let client = self.client.read().await;
+        let url = format!("{}/api/v1/compliance/report", self.base_url);
+
+        let request_payload = serde_json::json!({
+            "start_date": period.start_date,
+            "end_date": period.end_date,
+        });
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_payload)
+            .send()
+            .await
+            .map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "BearDog compliance report request failed: {}",
+                    e
+                ))
+            })?;
+
+        if response.status().is_success() {
+            let report: BearDogComplianceReport = response.json().await.map_err(|e| {
+                songbird_errors::SongbirdError::security_error(format!(
+                    "Failed to parse BearDog compliance report: {}",
+                    e
+                ))
+            })?;
+            Ok(report)
+        } else {
+            Err(songbird_errors::SongbirdError::security_error(format!(
+                "BearDog compliance report failed: {}",
+                response.status()
+            )))
+        }
+    }
 }

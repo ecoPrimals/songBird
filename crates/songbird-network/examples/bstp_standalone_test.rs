@@ -179,7 +179,7 @@ mod bstp_handshake {
             let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| {
                 songbird_errors::SongbirdError::Security {
                     message: "Decryption failed".to_string(),
-                    context: Some(format!("AES-GCM error: {e}")),
+                    context: Some("AES-GCM error: {e}".to_string()),
                     severity: Some("high".to_string()),
                     suggestion: Some("Check decryption key and ciphertext validity".to_string()),
                 }

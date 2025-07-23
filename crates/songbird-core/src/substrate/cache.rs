@@ -166,7 +166,7 @@ impl OptimizedSubstrateCache {
         for (key, entry) in &self.capabilities {
             if entry.last_accessed < oldest_time {
                 oldest_time = entry.last_accessed;
-                oldest_key = Some(format!("cap_{}", key));
+                oldest_key = Some(format!("cap_{key}"));
             }
         }
 

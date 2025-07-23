@@ -2,14 +2,24 @@
 
 ## Overview
 
-Songbird is a universal network orchestration platform designed to be AI-friendly. This document provides comprehensive API documentation optimized for AI agents and programmatic usage.
+Songbird is a universal network orchestration platform designed to be AI-friendly with capability-based primal integration. This document provides comprehensive API documentation optimized for AI agents and programmatic usage.
+
+**🐕 Security Architecture**: Songbird leverages BearDog as the primary security primal with automatic failsafe fallbacks. When BearDog is available, you get enterprise-grade security with ML threat detection and genetic encryption. When unavailable, Songbird automatically falls back to secure WireGuard-based protection.
 
 ## Authentication
 
-All API endpoints support:
-- API Key authentication via `X-API-Key` header
+All API endpoints support capability-based authentication:
+- **🐕 BearDog Authentication**: Enterprise-grade auth with ML-based threat detection (preferred)
+- **🔒 Fallback Authentication**: Secure fallback when BearDog unavailable
+- API Key authentication via `X-API-Key` header  
 - Bearer token authentication via `Authorization: Bearer <token>`
 - Environment variable authentication via `SONGBIRD_API_KEY`
+
+### Dynamic Security Discovery
+```http
+GET /api/v1/security/capabilities
+```
+Returns available security providers and their capabilities, allowing AI agents to adapt their security strategy based on the available ecosystem.
 
 ## Base URLs
 

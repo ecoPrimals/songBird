@@ -48,6 +48,8 @@ curl http://localhost:8080/api/health
   "overall_health": "healthy",
   "components": {
     "gaming_bridge": {"status": "healthy"},
+    "security_integration": {"status": "healthy", "provider": "beardog"},
+    "fallback_security": {"status": "ready"},
     "federation": {"status": "healthy"},
     "primals": {"status": "healthy"}
   }
@@ -70,6 +72,107 @@ curl -X POST http://localhost:8080/api/gaming/setup \
 ```
 
 **🎉 Congratulations! Songbird is running locally.**
+
+---
+
+## 🔒 **SECURITY CONFIGURATION**
+
+### **🐕 BearDog Integration Setup**
+
+Songbird uses capability-based discovery to integrate with BearDog as the primary security primal.
+
+#### **Automatic Discovery** (Recommended)
+```toml
+# songbird.toml
+[security]
+auto_discovery = true
+prefer_beardog = true
+fallback_enabled = true
+
+[primal_registry]
+auto_discovery = true
+[[primal_registry.primals]]
+primal_type = "beardog"
+enabled = true
+# endpoint will be auto-discovered via mDNS
+```
+
+#### **Manual BearDog Configuration**
+```toml
+# songbird.toml
+[[primal_registry.primals]]
+primal_type = "beardog"
+display_name = "BearDog Security Service"
+enabled = true
+endpoint = { primary_url = "https://beardog.local:8443" }
+capabilities = [
+  "enterprise_authentication",
+  "bstp_protocol", 
+  "ml_threat_detection",
+  "genetic_encryption",
+  "compliance_audit"
+]
+```
+
+#### **Security Status Verification**
+```bash
+# Check security capabilities
+curl http://localhost:8080/api/security/capabilities
+
+# Expected response:
+{
+  "available_providers": [
+    {
+      "primal_type": "beardog",
+      "status": "online",
+      "capabilities": ["enterprise_authentication", "bstp_protocol"],
+      "endpoint": "https://beardog.local:8443"
+    }
+  ],
+  "fallback_providers": [
+    {
+      "provider_type": "wireguard_fallback", 
+      "status": "ready",
+      "capabilities": ["basic_vpn", "standard_encryption"]
+    }
+  ],
+  "recommendation": "BearDog available - using enterprise security"
+}
+```
+
+### **🔒 Failsafe Configuration**
+
+Songbird ensures gaming and federation services never fail due to security unavailability:
+
+```toml
+# songbird.toml
+[security.fallback]
+enabled = true
+provider = "wireguard"
+encryption = "chacha20poly1305"
+fallback_timeout_ms = 5000
+
+[security.beardog]
+discovery_timeout_ms = 2000
+health_check_interval_secs = 30
+auto_retry = true
+```
+
+#### **Test Failsafe Behavior**
+```bash
+# Simulate BearDog unavailable
+curl -X POST http://localhost:8080/api/security/test-failsafe
+
+# Expected response:
+{
+  "test_result": "success",
+  "primary_available": false,
+  "fallback_activated": true,
+  "fallback_provider": "wireguard",
+  "security_maintained": true,
+  "note": "Gaming and federation services remain fully functional"
+}
+```
 
 ---
 

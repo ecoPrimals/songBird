@@ -1,16 +1,15 @@
 //! Main NetworkDiscoveryEngine coordinator - FRAGO Implementation for BearDog integration
 
-use std::time::Duration;
 use tracing::{debug, info, warn};
 
-use super::super::beardog_integration::{NetworkEvent, PeerCapabilities};
-use super::types::DiscoveryConfig;
-use super::upnp::UPnPClient;
-use super::stun::STUNClient;
-use super::turn::TURNClient;
 use super::peer_registry::PeerRegistry;
+use super::stun::STUNClient;
 use super::topology::TopologyMapper;
+use super::turn::TURNClient;
+use super::types::{DiscoveryConfig, NetworkEvent};
+use super::upnp::UPnPClient;
 use songbird_errors::Result;
+use songbird_universal_primals::PrimalCapability;
 
 /// NetworkDiscoveryEngine - Exact FRAGO specification for BearDog integration
 pub struct NetworkDiscoveryEngine {
@@ -26,7 +25,7 @@ impl NetworkDiscoveryEngine {
     /// Create new NetworkDiscoveryEngine with configuration
     pub fn new(config: DiscoveryConfig) -> Self {
         info!("Initializing NetworkDiscoveryEngine with FRAGO specification");
-        
+
         Self {
             upnp_client: UPnPClient::new(&config),
             stun_client: STUNClient::new(&config),
@@ -38,7 +37,7 @@ impl NetworkDiscoveryEngine {
     }
 
     /// Start comprehensive peer discovery (FRAGO sub-10ms requirement)
-    pub async fn discover_peers(&self) -> Result<Vec<PeerCapabilities>> {
+    pub async fn discover_peers(&self) -> Result<Vec<Vec<PrimalCapability>>> {
         info!("🎯 Starting FRAGO-compliant peer discovery for sub-10ms gaming");
         let mut all_peers = Vec::new();
 
@@ -80,11 +79,45 @@ impl NetworkDiscoveryEngine {
 
         // Filter for gaming-optimized peers if required
         if self.config.gaming_optimized {
-            all_peers.retain(|peer| peer.gaming_optimized && peer.latency_ms <= 10);
-            debug!("🎮 Filtered to {} gaming-optimized peers (≤10ms)", all_peers.len());
+            all_peers.retain(|peer_caps| {
+                // Check if peer has gaming optimization
+                let has_gaming = peer_caps.iter().any(|cap| {
+                    if let PrimalCapability::Custom { name, properties } = cap {
+                        name == "Gaming"
+                            && properties
+                                .iter()
+                                .any(|(k, v)| k == "optimized" && v == "true")
+                    } else {
+                        false
+                    }
+                });
+
+                // Check latency constraint
+                let low_latency = peer_caps.iter().any(|cap| {
+                    if let PrimalCapability::Custom { name, properties } = cap {
+                        name == "NetworkConnectivity"
+                            && properties
+                                .iter()
+                                .find(|(k, _)| k == "latency_ms")
+                                .and_then(|(_, v)| v.parse::<f32>().ok())
+                                .is_some_and(|l| l <= 10.0)
+                    } else {
+                        false
+                    }
+                });
+
+                has_gaming && low_latency
+            });
+            debug!(
+                "🎮 Filtered to {} gaming-optimized peers (≤10ms)",
+                all_peers.len()
+            );
         }
 
-        info!("🎯 Discovery complete: {} total peers found", all_peers.len());
+        info!(
+            "🎯 Discovery complete: {} total peers found",
+            all_peers.len()
+        );
         Ok(all_peers)
     }
 
@@ -114,13 +147,13 @@ impl NetworkDiscoveryEngine {
     /// Stop discovery engine
     pub async fn stop(&self) -> Result<()> {
         info!("🛑 Stopping NetworkDiscoveryEngine");
-        
+
         // Cleanup all peers
         self.peer_registry.clear_all_peers().await;
-        
+
         // Clear measurement history
         self.topology_mapper.clear_measurement_history().await;
-        
+
         info!("✅ NetworkDiscoveryEngine stopped");
         Ok(())
     }
@@ -155,42 +188,54 @@ impl NetworkDiscoveryEngine {
         debug!("Handling network event: {:?}", event);
 
         match event {
-            NetworkEvent::PeerDiscovered { peer_id, address, capabilities } => {
+            NetworkEvent::PeerDiscovered {
+                peer_id,
+                address,
+                capabilities,
+            } => {
                 let peer = super::types::DiscoveredPeer::new(
                     peer_id.clone(),
                     address,
                     super::types::PeerType::Unknown,
                     super::types::DiscoveryMethod::Manual,
                 );
-                
+
                 self.peer_registry.register_peer(peer, capabilities).await?;
-                
+
                 // Add to topology
-                self.topology_mapper.add_node(
-                    peer_id,
-                    address,
-                    super::types::PeerType::Unknown,
-                    PeerCapabilities {
-                        protocol_support: vec!["BSTP".to_string()],
-                        bandwidth_mbps: 100,
-                        latency_ms: 5,
-                        gaming_optimized: true,
-                        security_level: super::super::beardog_integration::SecurityLevel::Gaming,
-                    },
-                ).await?;
+                self.topology_mapper
+                    .add_node(
+                        peer_id,
+                        address,
+                        super::types::PeerType::Unknown,
+                        vec![
+                            PrimalCapability::NetworkRouting {
+                                protocols: vec!["BSTP".to_string()],
+                            },
+                            PrimalCapability::Custom {
+                                name: "Gaming".to_string(),
+                                properties: [("optimized".to_string(), "true".to_string())]
+                                    .to_vec(),
+                            },
+                        ],
+                    )
+                    .await?;
             }
             NetworkEvent::PeerDisconnected { peer_id } => {
                 self.peer_registry.remove_peer(&peer_id).await?;
                 self.topology_mapper.remove_node(&peer_id).await?;
             }
-            NetworkEvent::LatencyMeasurement { source, target, latency_ms } => {
+            NetworkEvent::LatencyMeasurement {
+                source,
+                target,
+                latency_ms,
+            } => {
                 let measurement = super::types::NetworkMeasurement::new(
-                    source,
-                    target,
-                    latency_ms,
-                    100, // Default bandwidth
+                    source, target, latency_ms, 100, // Default bandwidth
                 );
-                self.topology_mapper.update_with_measurement(measurement).await?;
+                self.topology_mapper
+                    .update_with_measurement(measurement)
+                    .await?;
             }
         }
 
@@ -204,14 +249,17 @@ impl NetworkDiscoveryEngine {
 
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(cleanup_interval);
-            
+
             loop {
                 interval.tick().await;
                 registry.cleanup_expired_peers().await;
             }
         });
 
-        debug!("Started peer cleanup task with interval: {:?}", cleanup_interval);
+        debug!(
+            "Started peer cleanup task with interval: {:?}",
+            cleanup_interval
+        );
     }
 
     /// Start discovery coordination task
@@ -221,17 +269,20 @@ impl NetworkDiscoveryEngine {
 
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(discovery_interval);
-            
+
             loop {
                 interval.tick().await;
-                
+
                 if let Err(e) = engine.perform_periodic_discovery().await {
                     warn!("Periodic discovery failed: {}", e);
                 }
             }
         });
 
-        debug!("Started discovery coordination with interval: {:?}", discovery_interval);
+        debug!(
+            "Started discovery coordination with interval: {:?}",
+            discovery_interval
+        );
     }
 
     /// Perform periodic discovery updates
@@ -240,11 +291,14 @@ impl NetworkDiscoveryEngine {
 
         // Rediscover peers periodically
         let peers = self.discover_peers().await?;
-        
+
         // Update topology with discovered peers
         self.topology_mapper.discover_topology().await?;
-        
-        debug!("Periodic discovery update completed with {} peers", peers.len());
+
+        debug!(
+            "Periodic discovery update completed with {} peers",
+            peers.len()
+        );
         Ok(())
     }
 
@@ -340,4 +394,4 @@ pub struct DiscoveryTestResults {
     pub turn_working: bool,
     pub working_stun_servers: Vec<String>,
     pub working_turn_servers: Vec<String>,
-} 
+}

@@ -81,6 +81,12 @@ pub struct AccessPattern {
     pub prediction_accuracy: f32,
 }
 
+impl Default for AccessPattern {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AccessPattern {
     pub fn new() -> Self {
         Self {

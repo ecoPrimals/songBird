@@ -22,12 +22,12 @@ songbird-core = { path = "../songbird-core" }
 songbird-errors = { path = "../songbird-errors" }
 songbird-network = { path = "../songbird-network" }
 songbird-security = { path = "../songbird-security" }
+songbird-universal = { path = "../songbird-universal" }
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 uuid = { version = "1.0", features = ["v4"] }
 
-# System monitoring dependencies
-sysinfo = "0.29"
+# System monitoring now handled via capability adapters from songbird-core
 
 # Network dependencies
 socket2 = "0.5"

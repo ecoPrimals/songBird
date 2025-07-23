@@ -154,34 +154,33 @@ async fn load_config_from_file(config_path: &str) -> Result<SongbirdConfig> {
 fn merge_environment_variables(config: &mut SongbirdConfig) {
     // Network configuration
     if let Ok(bind_address) = std::env::var("SONGBIRD_BIND_ADDRESS") {
-        if let Ok(addr) = bind_address.parse::<std::net::IpAddr>() {
-            config.network.bind_address = addr;
-        }
+        config.network.bind_address = bind_address;
     }
     if let Ok(bind_port) = std::env::var("SONGBIRD_ORCHESTRATOR_PORT") {
         if let Ok(port_num) = bind_port.parse::<u16>() {
-            config.network.orchestrator_port = port_num;
+            // Set the port range to use the orchestrator port
+            config.network.port_range.start = port_num;
+            config.network.port_range.end = port_num + 100; // Give a reasonable range
         }
     }
 
     // Security configuration
     if let Ok(enable_tls) = std::env::var("SONGBIRD_ENABLE_TLS") {
-        config.security.tls_enabled = enable_tls.parse().unwrap_or(config.security.tls_enabled);
+        let tls_enabled = enable_tls
+            .parse()
+            .unwrap_or(config.security.encryption.in_transit);
+        config.security.encryption.in_transit = tls_enabled;
     }
     if let Ok(enable_encryption) = std::env::var("SONGBIRD_ENABLE_ENCRYPTION") {
-        config.security.encryption_enabled = enable_encryption
+        let encryption_enabled = enable_encryption
             .parse()
-            .unwrap_or(config.security.encryption_enabled);
+            .unwrap_or(config.security.encryption.at_rest);
+        config.security.encryption.at_rest = encryption_enabled;
     }
 
-    // Environment configuration
-    if let Ok(bind_address) = std::env::var("SONGBIRD_ENV_BIND_ADDRESS") {
-        config.environment.bind_address = bind_address;
-    }
-    if let Ok(bind_port) = std::env::var("SONGBIRD_ENV_BIND_PORT") {
-        if let Ok(port_num) = bind_port.parse::<u16>() {
-            config.environment.bind_port = port_num;
-        }
+    // Environment configuration (environment is a string field)
+    if let Ok(environment_name) = std::env::var("SONGBIRD_ENVIRONMENT") {
+        config.environment = environment_name;
     }
 
     // BearDog configuration - handle Option type properly
@@ -192,10 +191,15 @@ fn merge_environment_variables(config: &mut SongbirdConfig) {
 
     // Custom configuration - handle Value type properly
     if let Ok(custom_config) = std::env::var("SONGBIRD_CUSTOM_CONFIG") {
-        config.custom.insert(
-            "environment_override".to_string(),
-            serde_json::Value::String(custom_config),
-        );
+        if config.custom.is_none() {
+            config.custom = Some(std::collections::HashMap::new());
+        }
+        if let Some(ref mut custom_map) = config.custom {
+            custom_map.insert(
+                "environment_override".to_string(),
+                serde_json::Value::String(custom_config),
+            );
+        }
     }
 }
 

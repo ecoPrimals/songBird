@@ -1,6 +1,7 @@
-//! Path configuration for Songbird components
+//! Path configuration for Songbird - Zero hardcoded paths
 //!
-//! This module provides path management functionality for Songbird.
+//! This module provides path configuration with environment-based defaults.
+//! All paths are configurable via environment variables.
 
 use songbird_errors::{Result, SongbirdError};
 // use crate::substrate::{PathRequest, PathRequirements, PathType};
@@ -8,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
+
+use crate::config::constants::{get_cache_dir, get_config_dir, get_data_dir, get_log_dir};
 
 /// Platform-agnostic path configuration using OS substrate
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,7 +46,20 @@ pub struct ServiceDataDirs {
 
 impl Default for PathConfig {
     fn default() -> Self {
-        Self::new_fallback()
+        Self {
+            log_dir: PathBuf::from(get_log_dir()),
+            cache_dir: PathBuf::from(get_cache_dir()),
+            data_dir: PathBuf::from(get_data_dir()),
+            config_dir: PathBuf::from(get_config_dir()),
+            runtime_dir: std::env::temp_dir(),
+            service_data_dirs: ServiceDataDirs {
+                orchestrator: PathBuf::from(get_config_dir()).join("orchestrator"),
+                federation: PathBuf::from(get_config_dir()).join("federation"),
+                metrics: PathBuf::from(get_config_dir()).join("metrics"),
+                discovery: PathBuf::from(get_config_dir()).join("discovery"),
+                registry: PathBuf::from(get_config_dir()).join("registry"),
+            },
+        }
     }
 }
 
@@ -66,12 +82,13 @@ impl PathConfig {
         let cache_dir = home_dir.join(".cache").join("songbird");
         let runtime_dir = std::env::temp_dir().join("songbird");
 
+        // ZERO-COPY OPTIMIZATION: Use config_dir reference to avoid repeated cloning
         let service_data_dirs = ServiceDataDirs {
-            orchestrator: config_dir.clone().join("orchestrator"),
-            federation: config_dir.clone().join("federation"),
-            metrics: config_dir.clone().join("metrics"),
-            discovery: config_dir.clone().join("discovery"),
-            registry: config_dir.clone().join("registry"),
+            orchestrator: config_dir.join("orchestrator"),
+            federation: config_dir.join("federation"),
+            metrics: config_dir.join("metrics"),
+            discovery: config_dir.join("discovery"),
+            registry: config_dir.join("registry"),
         };
 
         let paths = PathConfig {
@@ -222,7 +239,7 @@ impl PathConfig {
             return PathBuf::from(log_dir);
         }
 
-        PathBuf::from(crate::config::constants::paths::DEFAULT_LOG_DIR)
+        PathBuf::from(get_log_dir())
     }
 
     /// Get fallback cache directory when substrate is unavailable
@@ -231,7 +248,7 @@ impl PathConfig {
             return PathBuf::from(cache_dir);
         }
 
-        PathBuf::from(crate::config::constants::paths::DEFAULT_CACHE_DIR)
+        PathBuf::from(get_cache_dir())
     }
 
     /// Get fallback runtime directory when substrate is unavailable
@@ -240,7 +257,7 @@ impl PathConfig {
             return PathBuf::from(runtime_dir);
         }
 
-        PathBuf::from(crate::config::constants::paths::DEFAULT_TEMP_DIR)
+        PathBuf::from(crate::config::constants::get_temp_dir())
     }
 
     /// Create all necessary directories

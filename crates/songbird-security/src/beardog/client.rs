@@ -92,13 +92,33 @@ impl BearDogClient {
                 }
                 Err(e) => {
                     debug!("⚠️ Genetic authentication error: {}", e);
-                    // Fallback to basic authentication
-                    Ok(credentials == "valid_password")
+                    // Fallback to basic authentication with secure defaults
+                    let expected_password = std::env::var("SONGBIRD_BEARDOG_PASSWORD")
+                        .unwrap_or_else(|_| {
+                            tracing::error!("🚨 CRITICAL: SONGBIRD_BEARDOG_PASSWORD not set!");
+                            tracing::error!("🚨 BearDog authentication using insecure development fallback!");
+                            tracing::error!("🚨 PRODUCTION DEPLOYMENT WILL FAIL - Set proper BearDog credentials!");
+                            
+                            // Generate cryptographically random development password
+                            use rand::{thread_rng, Rng};
+                            let random_suffix: u64 = thread_rng().gen();
+                            format!("DEV_INSECURE_BEARDOG_{:016x}", random_suffix)
+                        });
+                    Ok(credentials == expected_password)
                 }
             }
         } else {
-            // Basic authentication without genetics
-            Ok(credentials == "valid_password")
+            // Basic authentication without genetics - also needs secure defaults
+            let expected_password = std::env::var("SONGBIRD_BEARDOG_PASSWORD")
+                .unwrap_or_else(|_| {
+                    tracing::error!("🚨 CRITICAL: SONGBIRD_BEARDOG_PASSWORD not set!");
+                    tracing::error!("🚨 Using insecure development default - NEVER use in production!");
+                    
+                    use rand::{thread_rng, Rng};
+                    let random_suffix: u64 = thread_rng().gen();
+                    format!("DEV_INSECURE_BEARDOG_{:016x}", random_suffix)
+                });
+            Ok(credentials == expected_password)
         }
     }
 

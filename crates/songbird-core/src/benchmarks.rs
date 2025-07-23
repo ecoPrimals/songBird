@@ -90,8 +90,8 @@ impl CoreBenchmarkSuite {
             iterations,
             total_duration,
             avg_duration: total_duration / iterations as u32,
-            min_duration: *durations.iter().min().unwrap(),
-            max_duration: *durations.iter().max().unwrap(),
+            min_duration: durations.iter().min().copied().unwrap_or(Duration::ZERO),
+            max_duration: durations.iter().max().copied().unwrap_or(Duration::ZERO),
             throughput_per_second: iterations as f64 / total_duration.as_secs_f64(),
             memory_usage_mb: self.get_memory_usage(),
             cpu_usage_percent: self.get_cpu_usage(),
@@ -144,8 +144,8 @@ impl CoreBenchmarkSuite {
             iterations,
             total_duration,
             avg_duration: total_duration / iterations as u32,
-            min_duration: *durations.iter().min().unwrap(),
-            max_duration: *durations.iter().max().unwrap(),
+            min_duration: durations.iter().min().copied().unwrap_or(Duration::ZERO),
+            max_duration: durations.iter().max().copied().unwrap_or(Duration::ZERO),
             throughput_per_second: iterations as f64 / total_duration.as_secs_f64(),
             memory_usage_mb: self.get_memory_usage(),
             cpu_usage_percent: self.get_cpu_usage(),
@@ -190,8 +190,8 @@ impl CoreBenchmarkSuite {
             iterations,
             total_duration,
             avg_duration: total_duration / iterations as u32,
-            min_duration: *durations.iter().min().unwrap(),
-            max_duration: *durations.iter().max().unwrap(),
+            min_duration: durations.iter().min().copied().unwrap_or(Duration::ZERO),
+            max_duration: durations.iter().max().copied().unwrap_or(Duration::ZERO),
             throughput_per_second: iterations as f64 / total_duration.as_secs_f64(),
             memory_usage_mb: self.get_memory_usage(),
             cpu_usage_percent: self.get_cpu_usage(),
@@ -322,14 +322,19 @@ impl CoreBenchmarkSuite {
 
 impl SystemInfo {
     fn collect() -> Self {
+        use sysinfo::System;
+
+        let mut system = System::new_all();
+        system.refresh_all();
+
         Self {
             cpu_cores: std::thread::available_parallelism()
                 .map(|p| p.get())
                 .unwrap_or(1),
-            total_memory_mb: 8192,     // Placeholder - would use system APIs
-            available_memory_mb: 4096, // Placeholder - would use system APIs
+            total_memory_mb: system.total_memory() / 1024 / 1024,
+            available_memory_mb: system.available_memory() / 1024 / 1024,
             os_type: std::env::consts::OS.to_string(),
-            rust_version: "1.70.0".to_string(), // Placeholder
+            rust_version: env!("CARGO_PKG_RUST_VERSION").to_string(),
         }
     }
 }

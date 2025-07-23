@@ -7,9 +7,9 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-use super::super::beardog_integration::PeerCapabilities;
-use super::types::{NetworkTopology, NetworkMeasurement, NetworkNode, NetworkConnection, PeerType};
+use super::types::{NetworkConnection, NetworkMeasurement, NetworkNode, NetworkTopology, PeerType};
 use songbird_errors::Result;
+use songbird_universal_primals::PrimalCapability;
 
 /// Network topology mapper
 pub struct TopologyMapper {
@@ -27,31 +27,49 @@ impl TopologyMapper {
             update_interval,
         }
     }
+}
 
+impl Default for TopologyMapper {
     /// Create with default update interval
-    pub fn default() -> Self {
+    fn default() -> Self {
         Self::new(Duration::from_secs(10))
     }
+}
 
+impl TopologyMapper {
     /// Add node to topology
-    pub async fn add_node(&self, node_id: String, address: SocketAddr, node_type: PeerType, capabilities: PeerCapabilities) -> Result<()> {
+    pub async fn add_node(
+        &self,
+        node_id: String,
+        address: SocketAddr,
+        node_type: PeerType,
+        capabilities: Vec<PrimalCapability>,
+    ) -> Result<()> {
         let node = NetworkNode::new(node_id.clone(), address, node_type, capabilities);
-        
+
         let mut topology = self.topology.write().await;
         topology.add_node(node);
-        
+
         debug!("Added node to topology: {}", node_id);
         Ok(())
     }
 
     /// Add connection to topology
-    pub async fn add_connection(&self, from_node: String, to_node: String, latency_ms: u32) -> Result<()> {
+    pub async fn add_connection(
+        &self,
+        from_node: String,
+        to_node: String,
+        latency_ms: u32,
+    ) -> Result<()> {
         let connection = NetworkConnection::new(from_node.clone(), to_node.clone(), latency_ms);
-        
+
         let mut topology = self.topology.write().await;
         topology.add_connection(connection);
-        
-        debug!("Added connection to topology: {} -> {} ({}ms)", from_node, to_node, latency_ms);
+
+        debug!(
+            "Added connection to topology: {} -> {} ({}ms)",
+            from_node, to_node, latency_ms
+        );
         Ok(())
     }
 
@@ -61,7 +79,7 @@ impl TopologyMapper {
         {
             let mut history = self.measurement_history.write().await;
             history.push(measurement.clone());
-            
+
             // Keep only recent measurements (last 1000)
             if history.len() > 1000 {
                 history.remove(0);
@@ -71,10 +89,10 @@ impl TopologyMapper {
         // Update topology connections based on measurement
         // Find nodes by address and update their connection
         let mut topology = self.topology.write().await;
-        
+
         let source_node_id = self.find_node_by_address(&topology, measurement.source);
         let target_node_id = self.find_node_by_address(&topology, measurement.target);
-        
+
         if let (Some(source_id), Some(target_id)) = (source_node_id, target_node_id) {
             let connection = NetworkConnection::new(source_id, target_id, measurement.latency_ms);
             topology.add_connection(connection);
@@ -84,7 +102,11 @@ impl TopologyMapper {
     }
 
     /// Find node ID by address
-    fn find_node_by_address(&self, topology: &NetworkTopology, address: SocketAddr) -> Option<String> {
+    fn find_node_by_address(
+        &self,
+        topology: &NetworkTopology,
+        address: SocketAddr,
+    ) -> Option<String> {
         topology
             .nodes
             .iter()
@@ -134,11 +156,11 @@ impl TopologyMapper {
     /// Get shortest path between nodes
     pub async fn get_shortest_path(&self, from_node: &str, to_node: &str) -> Option<Vec<String>> {
         let topology = self.topology.read().await;
-        
+
         // Simple implementation using breadth-first search
         let mut queue = std::collections::VecDeque::new();
         let mut visited = std::collections::HashSet::new();
-        let mut parent = HashMap::new();
+        let mut parent: HashMap<String, String> = HashMap::new();
 
         queue.push_back(from_node.to_string());
         visited.insert(from_node.to_string());
@@ -148,14 +170,14 @@ impl TopologyMapper {
                 // Reconstruct path
                 let mut path = Vec::new();
                 let mut node = to_node.to_string();
-                
+
                 while let Some(p) = parent.get(&node) {
                     path.push(node.clone());
                     node = p.clone();
                 }
                 path.push(from_node.to_string());
                 path.reverse();
-                
+
                 return Some(path);
             }
 
@@ -185,28 +207,28 @@ impl TopologyMapper {
     /// Measure network latency between addresses
     pub async fn measure_latency(&self, source: SocketAddr, target: SocketAddr) -> Result<u32> {
         let start = Instant::now();
-        
+
         // Create a simple UDP ping
         let socket = tokio::net::UdpSocket::bind("0.0.0.0:0").await?;
         let ping_data = b"PING";
-        
+
         // Send ping
         socket.send_to(ping_data, target).await?;
-        
+
         // Wait for response or timeout
         let mut buffer = [0u8; 1024];
         match tokio::time::timeout(Duration::from_secs(2), socket.recv_from(&mut buffer)).await {
             Ok(Ok(_)) => {
                 let latency_ms = start.elapsed().as_millis() as u32;
-                
+
                 // Store measurement
                 let measurement = NetworkMeasurement::new(source, target, latency_ms, 0);
                 self.update_with_measurement(measurement).await?;
-                
+
                 Ok(latency_ms)
             }
             _ => Err(songbird_errors::SongbirdError::network_error(
-                "Latency measurement timed out"
+                "Latency measurement timed out",
             )),
         }
     }
@@ -214,7 +236,7 @@ impl TopologyMapper {
     /// Discover network topology automatically
     pub async fn discover_topology(&self) -> Result<()> {
         info!("Starting automatic topology discovery");
-        
+
         let topology = self.topology.read().await;
         let nodes: Vec<_> = topology.nodes.values().cloned().collect();
         drop(topology);
@@ -224,20 +246,16 @@ impl TopologyMapper {
             for j in (i + 1)..nodes.len() {
                 let source = nodes[i].address;
                 let target = nodes[j].address;
-                
+
                 if let Ok(latency) = self.measure_latency(source, target).await {
-                    let _ = self.add_connection(
-                        nodes[i].node_id.clone(),
-                        nodes[j].node_id.clone(),
-                        latency,
-                    ).await;
-                    
+                    let _ = self
+                        .add_connection(nodes[i].node_id.clone(), nodes[j].node_id.clone(), latency)
+                        .await;
+
                     // Also add reverse connection
-                    let _ = self.add_connection(
-                        nodes[j].node_id.clone(),
-                        nodes[i].node_id.clone(),
-                        latency,
-                    ).await;
+                    let _ = self
+                        .add_connection(nodes[j].node_id.clone(), nodes[i].node_id.clone(), latency)
+                        .await;
                 }
             }
         }
@@ -265,36 +283,41 @@ impl TopologyMapper {
 
         tokio::spawn(async move {
             let mut interval_timer = tokio::time::interval(interval);
-            
+
             loop {
                 interval_timer.tick().await;
-                
+
                 // Update topology timestamp
                 {
                     let mut topo = topology.write().await;
                     topo.last_updated = Instant::now();
                 }
-                
+
                 debug!("Topology periodic update completed");
             }
         });
 
-        info!("Started periodic topology updates every {:?}", self.update_interval);
+        info!(
+            "Started periodic topology updates every {:?}",
+            self.update_interval
+        );
         Ok(())
     }
 
     /// Remove node from topology
     pub async fn remove_node(&self, node_id: &str) -> Result<()> {
         let mut topology = self.topology.write().await;
-        
+
         // Remove the node
         topology.nodes.remove(node_id);
-        
+
         // Remove all connections involving this node
-        topology.connections.retain(|c| c.from_node != node_id && c.to_node != node_id);
-        
+        topology
+            .connections
+            .retain(|c| c.from_node != node_id && c.to_node != node_id);
+
         topology.last_updated = Instant::now();
-        
+
         debug!("Removed node from topology: {}", node_id);
         Ok(())
     }
@@ -303,9 +326,9 @@ impl TopologyMapper {
     pub async fn get_network_diameter(&self) -> Option<usize> {
         let topology = self.topology.read().await;
         let nodes: Vec<_> = topology.nodes.keys().collect();
-        
+
         let mut max_path_length = 0;
-        
+
         for &from_node in &nodes {
             for &to_node in &nodes {
                 if from_node != to_node {
@@ -315,7 +338,7 @@ impl TopologyMapper {
                 }
             }
         }
-        
+
         if max_path_length > 0 {
             Some(max_path_length)
         } else {
@@ -333,4 +356,4 @@ pub struct TopologyStatistics {
     pub avg_latency: f64,
     pub node_types: HashMap<String, usize>,
     pub last_updated: Instant,
-} 
+}

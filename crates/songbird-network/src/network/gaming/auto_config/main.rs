@@ -18,7 +18,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::network::gaming::PrivilegeManager;
 use serde::{Deserialize, Serialize};
-use songbird_config::config::{PrimalConfiguration, PrimalRegistry};
+use songbird_config::universal_primals::{PrimalConfiguration, PrimalRegistry};
 use songbird_errors::Result;
 use tokio::time::sleep;
 use tracing::{info, warn};
@@ -233,7 +233,7 @@ impl GamingAutoConfig {
                     configuration: Some(serde_json::json!({
                         "primal_type": primal.primal_type,
                         "endpoint": endpoint_url,
-                        "capabilities": primal.capabilities.iter().map(|cap| format!("{:?}", cap)).collect::<Vec<_>>(),
+                        "capabilities": primal.capabilities.iter().map(|cap| format!("{cap:?}")).collect::<Vec<_>>(),
                         "auto_configured": true
                     })),
                     next_steps: vec!["Gaming network ready".to_string()],
@@ -261,7 +261,7 @@ impl GamingAutoConfig {
     async fn test_primal_connectivity(&self, endpoint: &str) -> Result<bool> {
         // Simple connectivity test
         match reqwest::Client::new()
-            .get(format!("{}/health", endpoint))
+            .get(format!("{endpoint}/health"))
             .timeout(Duration::from_secs(5))
             .send()
             .await
@@ -339,7 +339,7 @@ impl GamingAutoConfig {
         // Create a basic configuration for the specified game
         let mut config = OneTouchConfig {
             success: true,
-            message: format!("Configuration optimized for {game_name}"),
+            message: "Configuration optimized for {game_name}".to_string(),
             configuration: Some(serde_json::json!({
                 "game": game_name,
                 "optimized": true,

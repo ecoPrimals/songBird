@@ -1,649 +1,307 @@
-//! Encrypted Snapshots Module
+//! Encrypted Snapshots with Universal Security Integration
 //!
-//! Federation snapshots with built-in encryption and BearDog integration
+//! This module provides encrypted snapshot functionality using the universal
+//! capability adapter system for security primal discovery and routing.
 
-use songbird_errors::{Result, SongbirdError};
-use crate::security::encryption::ProductionEncryptionProvider;
-
-use crate::security::{
-    BearDogEncryptedData, BearDogKeyPurpose, BearDogKeySpec, BearDogRotationPolicy,
-    BearDogSecurityContext, BearDogSecurityLevel, BearDogSecurityProvider,
-};
-
-// Re-export the NodeId from security module
-pub use crate::security::NodeId;
-
-use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use songbird_universal::capabilities::UniversalCapabilityAdapter;
+use songbird_config::config::constants::get_primal_endpoint;
 use std::collections::HashMap;
+use tracing::{debug, info, warn, error};
 
-use tokio::sync::RwLock;
-use uuid::Uuid;
-
-use tracing::info;
-
-use bincode;
-
-// Placeholder types for missing dependencies
-pub type TrustLevel = String;
-
-// use tokio::io::{AsyncReadExt, AsyncWriteExt}; // Unused imports
-
-// ============================================================================
-// CORE SNAPSHOT TYPES
-// ============================================================================
-
-/// Encrypted snapshot containing service state
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EncryptedSnapshot {
-    pub id: String,
-    pub service_id: String,
-    pub version: u64,
-    pub encrypted_data: Vec<u8>,
-    pub metadata: SnapshotMetadata,
-    pub created_at: DateTime<Utc>,
-    pub access_control: AccessControlList,
+/// Encrypted snapshots manager with universal security capabilities
+pub struct EncryptedSnapshotManager {
+    /// Universal capability adapter for security primal discovery
+    capability_adapter: UniversalCapabilityAdapter,
+    
+    /// Active security clients for encryption operations
+    security_clients: HashMap<String, Box<dyn SecurityClient>>,
+    
+    /// Last security capability refresh
+    last_security_refresh: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-/// Snapshot metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SnapshotMetadata {
-    pub snapshot_type: SnapshotType,
-    pub size_bytes: u64,
-    pub checksum: String,
-    pub encryption_algorithm: String,
-    pub compression: Option<CompressionType>,
-    pub tags: HashMap<String, String>,
-    pub name: String,
-    pub original_size_bytes: u64,
-    pub version: String,
-    pub expires_at: Option<DateTime<Utc>>,
+/// Universal security client trait
+pub trait SecurityClient: Send + Sync {
+    async fn encrypt(&self, data: &[u8], context: &EncryptionContext) -> Result<Vec<u8>, SnapshotError>;
+    async fn decrypt(&self, data: &[u8], context: &EncryptionContext) -> Result<Vec<u8>, SnapshotError>;
+    async fn generate_key(&self, key_spec: &KeySpec) -> Result<String, SnapshotError>;
+    async fn health_check(&self) -> Result<bool, SnapshotError>;
+    fn endpoint(&self) -> &str;
 }
 
-/// Snapshot type enumeration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SnapshotType {
-    Full,
-    Incremental,
-    Differential,
-    // New variants expected by tests
-    Database {
-        schema_version: String,
-        table_count: u32,
-    },
-    MLModel {
-        model_type: String,
-        framework: String,
-    },
-    Custom {
-        custom_type: String,
-        metadata: HashMap<String, String>,
-    },
+/// Generic HTTP security client for universal integration
+pub struct HttpSecurityClient {
+    endpoint: String,
+    client: reqwest::Client,
+    primal_type: String,
 }
 
-/// Access control list for snapshots
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AccessControlList {
-    pub owner: NodeId,
-    pub access_entries: Vec<NodeAccessEntry>,
-    pub default_access: AccessType,
-    // New fields expected by tests
-    pub read_access: Vec<String>,
-    pub write_access: Vec<String>,
-    pub public_read: bool,
-    pub access_expires_at: Option<DateTime<Utc>>,
-}
-
-/// Node access entry
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NodeAccessEntry {
-    pub node_id: NodeId,
-    pub access_type: AccessType,
-    pub granted_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
-}
-
-/// Access type enumeration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AccessType {
-    Read,
-    Write,
-    Admin,
-    None,
-}
-
-/// Storage preferences for snapshots
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StoragePreferences {
-    pub performance_tier: PerformanceTier,
-    pub retention_days: u32,
-    pub compression_enabled: bool,
-    pub encryption_required: bool,
-    // New fields expected by tests
-    pub preferred_nodes: Vec<String>,
-    pub excluded_nodes: Vec<String>,
-    pub geographic_region: Option<String>,
-    pub preferred_institutions: Vec<String>,
-    pub min_storage_trust: TrustLevel,
-    pub replication_factor: u32,
-}
-
-/// Performance tier for storage
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PerformanceTier {
-    Hot,
-    Warm,
-    Cold,
-    Archive,
-}
-
-/// Snapshot request
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SnapshotRequest {
-    pub service_id: String,
-    pub request_type: SnapshotRequestType,
-    pub filters: Option<SnapshotFilters>,
-    pub storage_preferences: StoragePreferences,
-}
-
-/// Snapshot request type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SnapshotRequestType {
-    Create,
-    Restore,
-    List,
-    Delete,
-}
-
-/// Snapshot filters
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SnapshotFilters {
-    pub start_date: Option<DateTime<Utc>>,
-    pub end_date: Option<DateTime<Utc>>,
-    pub snapshot_types: Option<Vec<SnapshotType>>,
-    pub tags: Option<HashMap<String, String>>,
-    // New fields expected by tests
-    pub created_after: Option<DateTime<Utc>>,
-    pub created_before: Option<DateTime<Utc>>,
-    pub min_size_bytes: Option<u64>,
-    pub max_size_bytes: Option<u64>,
-}
-
-/// Compression type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CompressionType {
-    None,
-    Gzip,
-    Zstd,
-    Lz4,
-}
-
-/// Snapshot distribution statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SnapshotDistributionStats {
-    pub total_snapshots: u64,
-    pub total_size_bytes: u64,
-    pub nodes_with_copies: Vec<NodeId>,
-    pub last_updated: DateTime<Utc>,
-}
-
-// ============================================================================
-// SNAPSHOT SECURITY PROVIDER TRAIT
-// ============================================================================
-
-/// Security provider for snapshot encryption/decryption
-#[async_trait]
-pub trait SnapshotSecurityProvider: Send + Sync {
-    /// Encrypt snapshot data
-    async fn encrypt_snapshot(&self, data: &[u8], key: &[u8]) -> Result<Vec<u8>>;
-
-    /// Decrypt snapshot data  
-    async fn decrypt_snapshot(&self, encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>>;
-
-    /// Generate snapshot key
-    async fn generate_snapshot_key(&self, snapshot_id: &str) -> Result<Vec<u8>>;
-
-    /// Verify access permissions
-    async fn verify_snapshot_access(
-        &self,
-        node_id: &NodeId,
-        snapshot_id: &str,
-        access_type: &AccessType,
-    ) -> Result<bool>;
-}
-
-/// Snapshot security context
-#[derive(Debug, Clone)]
-pub struct SnapshotSecurityContext {
-    pub snapshot_id: String,
-    pub node_id: NodeId,
-    pub timestamp: DateTime<Utc>,
-    pub access_type: AccessType,
-}
-
-// ============================================================================
-// PRODUCTION SECURITY ADAPTER
-// ============================================================================
-
-/// Production snapshot security adapter using built-in encryption
-pub struct ProductionSnapshotSecurityAdapter {
-    encryption_user: ProductionEncryptionProvider,
-}
-
-impl Default for ProductionSnapshotSecurityAdapter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ProductionSnapshotSecurityAdapter {
-    pub fn new() -> Self {
-        let encryption_config = crate::security::encryption::EncryptionConfig::default();
+impl HttpSecurityClient {
+    pub fn new(endpoint: String, primal_type: String) -> Self {
         Self {
-            encryption_user: ProductionEncryptionProvider::new(encryption_config),
+            endpoint,
+            client: reqwest::Client::new(),
+            primal_type,
         }
     }
 }
 
-#[async_trait]
-impl SnapshotSecurityProvider for ProductionSnapshotSecurityAdapter {
-    async fn encrypt_snapshot(&self, data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
-        let encrypted_data =
-            self.encryption_user
-                .encrypt(data, key)
-                .map_err(|e| SongbirdError::Config {
-                    field: Some("encryption".to_string()),
-                    message: format!("Encryption failed: {e}"),
-                })))?;
-
-        // Serialize the encrypted data for storage
-        bincode::serialize(&encrypted_data).map_err(|e| SongbirdError::Config {
-            field: Some("serialization".to_string()),
-            message: format!("Failed to serialize encrypted data: {e}"),
-        })
-    }
-
-    async fn decrypt_snapshot(&self, encrypted_data: &[u8], key: &[u8]) -> Result<Vec<u8>> {
-        // Deserialize the encrypted data
-        let encrypted: crate::security::EncryptedData = bincode::deserialize(encrypted_data)
-            .map_err(|e| SongbirdError::Config {
-                field: Some("encrypted_data".to_string()),
-                message: format!("Failed to deserialize encrypted data: {e}"),
-            })))?;
-
-        // Decrypt using the encryption provider
-        self.encryption_user
-            .decrypt(&encrypted, key)
-            .map_err(|e| SongbirdError::Config {
-                field: Some("decryption".to_string()),
-                message: format!("Decryption failed: {e}"),
-            })))
-    }
-
-    async fn generate_snapshot_key(&self, _snapshot_id: &str) -> Result<Vec<u8>> {
-        self.encryption_user
-            .generate_key()
-            .map_err(|e| SongbirdError::Config {
-                field: Some("key_generation".to_string()),
-                message: format!("Key generation failed: {e}"),
-            })))
-    }
-
-    async fn verify_snapshot_access(
-        &self,
-        _node_id: &NodeId,
-        _snapshot_id: &str,
-        _access_type: &AccessType,
-    ) -> Result<bool> {
-        // Default allow for production adapter
-        Ok(true)
-    }
-}
-
-// ============================================================================
-// BEARDOG SECURITY ADAPTER
-// ============================================================================
-
-/// BearDog snapshot security adapter
-pub struct BearDogSnapshotSecurityAdapter<T: BearDogSecurityProvider> {
-    beardog_user: T,
-}
-
-impl<T: BearDogSecurityProvider> BearDogSnapshotSecurityAdapter<T> {
-    pub fn new(user: T) -> Self {
-        Self { beardog_user: user }
-    }
-}
-
-#[async_trait]
-impl<T: BearDogSecurityProvider> SnapshotSecurityProvider for BearDogSnapshotSecurityAdapter<T> {
-    async fn encrypt_snapshot(&self, data: &[u8], _key: &[u8]) -> Result<Vec<u8>> {
-        let _context = BearDogSecurityContext {
-            operation_id: "snapshot_encrypt".to_string(),
-            node_id: "0.0.0.0".to_string(),
-            timestamp: chrono::Utc::now(),
-            security_level: BearDogSecurityLevel::Confidential,
-            metadata: HashMap::new(),
-        };
-
-        let encrypted = self.beardog_user.encrypt(data, &_context).await?;
-        Ok(encrypted.ciphertext)
-    }
-
-    async fn decrypt_snapshot(&self, encrypted_data: &[u8], _key: &[u8]) -> Result<Vec<u8>> {
-        let _context = BearDogSecurityContext {
-            operation_id: "snapshot_decrypt".to_string(),
-            node_id: "0.0.0.0".to_string(),
-            timestamp: chrono::Utc::now(),
-            security_level: BearDogSecurityLevel::Confidential,
-            metadata: HashMap::new(),
-        };
-
-        let encrypted_data_struct = BearDogEncryptedData {
-            algorithm: "AES-256-GCM".to_string(),
-            nonce: vec![],
-            ciphertext: encrypted_data.to_vec(),
-            salt: None,
-            key_handle: None,
-        };
-
-        self.beardog_user
-            .decrypt(&encrypted_data_struct, &_context)
-            .await
-    }
-
-    async fn generate_snapshot_key(&self, _snapshot_id: &str) -> Result<Vec<u8>> {
-        let key_spec = BearDogKeySpec {
-            algorithm: "AES-256".to_string(),
-            key_size: 256,
-            purpose: BearDogKeyPurpose::DataEncryption,
-            rotation_policy: BearDogRotationPolicy {
-                interval_days: 30,
-                auto_rotate: true,
-            },
-        };
-
-        let key_handle = self.beardog_user.generate_key(&key_spec).await?;
-        Ok(key_handle.id.into_bytes())
-    }
-
-    async fn verify_snapshot_access(
-        &self,
-        node_id: &NodeId,
-        snapshot_id: &str,
-        access_type: &AccessType,
-    ) -> Result<bool> {
-        // Create BearDog principal, resource, and action
-        let principal = crate::security::BearDogPrincipal {
-            id: node_id.clone(),
-            principal_type: crate::security::BearDogPrincipalType::Node,
-            attributes: HashMap::new(),
-        };
-
-        let resource = crate::security::BearDogResource {
-            id: snapshot_id.to_string(),
-            resource_type: "snapshot".to_string(),
-            owner: "system".to_string(),
-            attributes: HashMap::new(),
-        };
-
-        let action = crate::security::BearDogAction {
-            name: match access_type {
-                AccessType::Read => "read",
-                AccessType::Write => "write",
-                AccessType::Admin => "admin",
-                AccessType::None => return Ok(false),
-            }
-            .to_string(),
-            attributes: HashMap::new(),
-        };
-
-        self.beardog_user
-            .verify_access(&principal, &resource, &action)
-            .await
-    }
-}
-
-// ============================================================================
-// ENCRYPTED SNAPSHOT MANAGER TRAIT
-// ============================================================================
-
-/// Encrypted snapshot manager interface
-#[async_trait]
-pub trait EncryptedSnapshotManager: Send + Sync {
-    /// Create encrypted snapshot
-    async fn create_snapshot(&self, request: SnapshotRequest) -> Result<EncryptedSnapshot>;
-
-    /// Restore from encrypted snapshot
-    async fn restore_snapshot(&self, snapshot_id: &str, target_service: &str) -> Result<()>;
-
-    /// List available snapshots
-    async fn list_snapshots(
-        &self,
-        filters: Option<SnapshotFilters>,
-    ) -> Result<Vec<EncryptedSnapshot>>;
-
-    /// Delete snapshot
-    async fn delete_snapshot(&self, snapshot_id: &str) -> Result<()>;
-
-    /// Get snapshot statistics
-    async fn get_snapshot_stats(&self) -> Result<SnapshotDistributionStats>;
-}
-
-// ============================================================================
-// DEFAULT IMPLEMENTATION WITH PRODUCTION SECURITY
-// ============================================================================
-
-/// Default encrypted snapshot manager using production security
-pub struct DefaultEncryptedSnapshotManager {
-    security_user: ProductionSnapshotSecurityAdapter,
-    snapshots: RwLock<HashMap<String, EncryptedSnapshot>>,
-}
-
-impl Default for DefaultEncryptedSnapshotManager {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl DefaultEncryptedSnapshotManager {
-    pub fn new() -> Self {
-        Self {
-            security_user: ProductionSnapshotSecurityAdapter::new(),
-            snapshots: RwLock::new(HashMap::new()),
-        }
-    }
-}
-
-#[async_trait]
-impl EncryptedSnapshotManager for DefaultEncryptedSnapshotManager {
-    async fn create_snapshot(&self, request: SnapshotRequest) -> Result<EncryptedSnapshot> {
-        let snapshot_id = Uuid::new_v4().to_string();
-        let now = Utc::now();
-
-        // Create snapshot data from request
-        let snapshot_data = self.create_snapshot_data(&request).await?;
-
-        let key = self
-            .security_user
-            .generate_snapshot_key(&snapshot_id)
-            .await?;
-        let encrypted_data = self
-            .security_user
-            .encrypt_snapshot(&snapshot_data, &key)
-            .await?;
-
-        let snapshot = EncryptedSnapshot {
-            id: snapshot_id.clone(),
-            service_id: request.service_id,
-            version: 1,
-            encrypted_data,
-            metadata: SnapshotMetadata {
-                snapshot_type: SnapshotType::Full,
-                size_bytes: snapshot_data.len() as u64,
-                checksum: self.calculate_checksum(&snapshot_data),
-                encryption_algorithm: "AES-256-GCM".to_string(),
-                compression: Some(CompressionType::Gzip),
-                tags: HashMap::new(),
-                name: String::new(),
-                original_size_bytes: 0,
-                version: String::new(),
-                expires_at: None,
-            },
-            created_at: now,
-            access_control: AccessControlList {
-                owner: crate::config::constants::node_id(),
-                access_entries: vec![],
-                default_access: AccessType::Read,
-                read_access: Vec::new(),
-                write_access: Vec::new(),
-                public_read: false,
-                access_expires_at: None,
-            },
-        };
-
-        self.snapshots
-            .write()
-            .await
-            .insert(snapshot_id, snapshot.clone());
-        Ok(snapshot)
-    }
-
-    async fn restore_snapshot(&self, snapshot_id: &str, _target_service: &str) -> Result<()> {
-        let snapshots = self.snapshots.read().await;
-        if snapshots.contains_key(snapshot_id) {
-            info!("Restoring snapshot: {}", snapshot_id);
-            Ok(())
-        } else {
-            Err(SongbirdError::NotFound(Box::new(NotFoundError {
-                resource: "snapshot".to_string(),
-                message: format!("Snapshot {} not found", snapshot_id),
-                searched_paths: None,
-                
-            })))
-        }
-    }
-
-    async fn list_snapshots(
-        &self,
-        _filters: Option<SnapshotFilters>,
-    ) -> Result<Vec<EncryptedSnapshot>> {
-        let snapshots = self.snapshots.read().await;
-        Ok(snapshots.values().cloned().collect())
-    }
-
-    async fn delete_snapshot(&self, snapshot_id: &str) -> Result<()> {
-        let mut snapshots = self.snapshots.write().await;
-        if snapshots.remove(snapshot_id).is_some() {
-            info!("Deleted snapshot: {}", snapshot_id);
-            Ok(())
-        } else {
-            Err(SongbirdError::NotFound(Box::new(NotFoundError {
-                resource: "snapshot".to_string(),
-                message: format!("Snapshot {} not found", snapshot_id),
-                searched_paths: None,
-                
-            })))
-        }
-    }
-
-    async fn get_snapshot_stats(&self) -> Result<SnapshotDistributionStats> {
-        let snapshots = self.snapshots.read().await;
-        Ok(SnapshotDistributionStats {
-            total_snapshots: snapshots.len() as u64,
-            total_size_bytes: snapshots.values().map(|s| s.metadata.size_bytes).sum(),
-            nodes_with_copies: vec![crate::config::constants::node_id()],
-            last_updated: Utc::now(),
-        })
-    }
-}
-
-impl DefaultEncryptedSnapshotManager {
-    /// Create snapshot data from request
-    async fn create_snapshot_data(&self, request: &SnapshotRequest) -> Result<Vec<u8>> {
-        let mut snapshot = Vec::new();
-
-        // Include service metadata
-        let service_metadata = serde_json::json!({
-            "service_id": request.service_id,
-            "request_type": format!("{request.request_type}"),
-            "timestamp": chrono::Utc::now(),
-            "preferences": {
-                "performance_tier": format!("{request.storage_preferences.performance_tier}"),
-                "retention_days": request.storage_preferences.retention_days,
-                "compression_enabled": request.storage_preferences.compression_enabled,
-                "encryption_required": request.storage_preferences.encryption_required,
-            }
+impl SecurityClient for HttpSecurityClient {
+    async fn encrypt(&self, data: &[u8], context: &EncryptionContext) -> Result<Vec<u8>, SnapshotError> {
+        debug!("🔐 Encrypting data using {} security primal", self.primal_type);
+        
+        let request = serde_json::json!({
+            "action": "encrypt",
+            "data": base64::encode(data),
+            "context": context,
         });
-
-        let metadata_bytes = serde_json::to_vec(&service_metadata)?;
-        snapshot.extend_from_slice(&metadata_bytes);
-
-        // Include system state placeholder
-        let system_state = serde_json::json!({
-            "node_id": crate::config::constants::node_id(),
-            "timestamp": chrono::Utc::now(),
-            "active_services": vec!["gaming", "federation", "discovery"],
-            "system_metrics": {
-                "cpu_usage": 0.0,
-                "memory_usage": 0.0,
-                "network_connections": 0,
-            }
+        
+        let response = self.client
+            .post(&format!("{}/api/crypto/encrypt", self.endpoint))
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| SnapshotError::SecurityError(e.to_string()))?;
+            
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await
+                .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+                
+            let encrypted_b64 = result.get("encrypted_data")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| SnapshotError::ParseError("Missing encrypted_data field".to_string()))?;
+                
+            let encrypted = base64::decode(encrypted_b64)
+                .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+                
+            debug!("✅ Data encrypted successfully using {}", self.primal_type);
+            Ok(encrypted)
+        } else {
+            let error_msg = format!("Encryption failed with status: {}", response.status());
+            error!("❌ {} encryption failed: {}", self.primal_type, error_msg);
+            Err(SnapshotError::SecurityError(error_msg))
+        }
+    }
+    
+    async fn decrypt(&self, data: &[u8], context: &EncryptionContext) -> Result<Vec<u8>, SnapshotError> {
+        debug!("🔓 Decrypting data using {} security primal", self.primal_type);
+        
+        let request = serde_json::json!({
+            "action": "decrypt",
+            "encrypted_data": base64::encode(data),
+            "context": context,
         });
-
-        let state_bytes = serde_json::to_vec(&system_state)?;
-        snapshot.extend_from_slice(&state_bytes);
-
-        Ok(snapshot)
+        
+        let response = self.client
+            .post(&format!("{}/api/crypto/decrypt", self.endpoint))
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| SnapshotError::SecurityError(e.to_string()))?;
+            
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await
+                .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+                
+            let decrypted_b64 = result.get("decrypted_data")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| SnapshotError::ParseError("Missing decrypted_data field".to_string()))?;
+                
+            let decrypted = base64::decode(decrypted_b64)
+                .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+                
+            debug!("✅ Data decrypted successfully using {}", self.primal_type);
+            Ok(decrypted)
+        } else {
+            let error_msg = format!("Decryption failed with status: {}", response.status());
+            error!("❌ {} decryption failed: {}", self.primal_type, error_msg);
+            Err(SnapshotError::SecurityError(error_msg))
+        }
     }
-
-    /// Calculate checksum for data integrity
-    fn calculate_checksum(&self, data: &[u8]) -> String {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = DefaultHasher::new();
-        data.hash(&mut hasher);
-        format!("{hasher.finish(}"))
+    
+    async fn generate_key(&self, key_spec: &KeySpec) -> Result<String, SnapshotError> {
+        debug!("🔑 Generating key using {} security primal", self.primal_type);
+        
+        let request = serde_json::json!({
+            "action": "generate_key",
+            "key_spec": key_spec,
+        });
+        
+        let response = self.client
+            .post(&format!("{}/api/crypto/generate_key", self.endpoint))
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| SnapshotError::SecurityError(e.to_string()))?;
+            
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await
+                .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+                
+            let key_handle = result.get("key_handle")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| SnapshotError::ParseError("Missing key_handle field".to_string()))?;
+                
+            debug!("✅ Key generated successfully using {}", self.primal_type);
+            Ok(key_handle.to_string())
+        } else {
+            let error_msg = format!("Key generation failed with status: {}", response.status());
+            error!("❌ {} key generation failed: {}", self.primal_type, error_msg);
+            Err(SnapshotError::SecurityError(error_msg))
+        }
+    }
+    
+    async fn health_check(&self) -> Result<bool, SnapshotError> {
+        match self.client.get(&format!("{}/health", self.endpoint)).send().await {
+            Ok(response) => Ok(response.status().is_success()),
+            Err(_) => Ok(false),
+        }
+    }
+    
+    fn endpoint(&self) -> &str {
+        &self.endpoint
     }
 }
 
-// Helper structs for the snapshot system
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct NodeInfo {
-    pub node_id: String,
-    pub address: std::net::SocketAddr,
-    pub status: String,
+impl EncryptedSnapshotManager {
+    /// Create new encrypted snapshot manager with universal security discovery
+    pub async fn new() -> Result<Self, SnapshotError> {
+        info!("🚀 Initializing Encrypted Snapshot Manager with universal security system");
+        
+        let discovery_config = songbird_universal::capabilities::DiscoveryConfig::default();
+        let capability_adapter = UniversalCapabilityAdapter::new(discovery_config);
+        
+        let mut manager = Self {
+            capability_adapter,
+            security_clients: HashMap::new(),
+            last_security_refresh: None,
+        };
+        
+        // Discover security primals (replaces hardcoded beardog_user)
+        manager.refresh_security_capabilities().await?;
+        
+        info!("✅ Encrypted Snapshot Manager initialized with {} security endpoints", 
+              manager.security_clients.len());
+        
+        Ok(manager)
+    }
+    
+    /// Refresh security capabilities discovery
+    async fn refresh_security_capabilities(&mut self) -> Result<(), SnapshotError> {
+        info!("🔍 Discovering security capability primals...");
+        
+        // Find all primals with security capabilities
+        let security_primals = self.capability_adapter.find_capability_providers("security").await;
+        
+        self.security_clients.clear();
+        
+        for primal_name in security_primals {
+            let endpoint = get_primal_endpoint(&primal_name);
+            debug!("Found security primal: {} at {}", primal_name, endpoint);
+            
+            // Create client for this primal
+            let client = HttpSecurityClient::new(endpoint.clone(), primal_name.clone());
+            
+            // Test connectivity
+            if client.health_check().await.unwrap_or(false) {
+                self.security_clients.insert(primal_name.clone(), Box::new(client));
+                info!("✅ Connected to security primal: {}", primal_name);
+            } else {
+                warn!("⚠️ Could not connect to security primal: {}", primal_name);
+            }
+        }
+        
+        // Fallback: Try traditional beardog if no security primals found
+        if self.security_clients.is_empty() {
+            info!("🔄 No security primals discovered, trying beardog fallback...");
+            
+            let beardog_endpoint = get_primal_endpoint("beardog");
+            let beardog_client = HttpSecurityClient::new(beardog_endpoint.clone(), "beardog".to_string());
+            
+            if beardog_client.health_check().await.unwrap_or(false) {
+                self.security_clients.insert("beardog".to_string(), Box::new(beardog_client));
+                info!("✅ Connected to beardog security fallback");
+            }
+        }
+        
+        self.last_security_refresh = Some(chrono::Utc::now());
+        
+        if self.security_clients.is_empty() {
+            warn!("⚠️ No security capabilities available - encryption operations will fail");
+            return Err(SnapshotError::SecurityError("No security capabilities available".to_string()));
+        }
+        
+        Ok(())
+    }
+    
+    /// Get the best available security client
+    async fn get_security_client(&self) -> Option<&Box<dyn SecurityClient>> {
+        // Return the first healthy client
+        for (primal_name, client) in &self.security_clients {
+            if client.health_check().await.unwrap_or(false) {
+                debug!("Using security client: {}", primal_name);
+                return Some(client);
+            }
+        }
+        None
+    }
+    
+    /// Encrypt data using universal security capabilities (replaces beardog_user.encrypt)
+    pub async fn encrypt(&self, data: &[u8], context: &EncryptionContext) -> Result<Vec<u8>, SnapshotError> {
+        debug!("🔐 Encrypting data using universal security capabilities");
+        
+        if let Some(security_client) = self.get_security_client().await {
+            return security_client.encrypt(data, context).await;
+        }
+        
+        Err(SnapshotError::SecurityError("No security capabilities available for encryption".to_string()))
+    }
+    
+    /// Generate key using universal security capabilities (replaces beardog_user.generate_key)
+    pub async fn generate_key(&self, key_spec: &KeySpec) -> Result<String, SnapshotError> {
+        debug!("🔑 Generating key using universal security capabilities");
+        
+        if let Some(security_client) = self.get_security_client().await {
+            return security_client.generate_key(key_spec).await;
+        }
+        
+        Err(SnapshotError::SecurityError("No security capabilities available for key generation".to_string()))
+    }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ServiceInfo {
-    pub service_id: String,
-    pub service_type: String,
-    pub endpoint: String,
-    pub status: String,
+/// Error types for snapshot operations
+#[derive(Debug)]
+pub enum SnapshotError {
+    SecurityError(String),
+    ParseError(String),
+    NetworkError(String),
+    CapabilityNotFound(String),
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct PlayerInfo {
-    pub player_id: String,
-    pub display_name: String,
-    pub address: std::net::SocketAddr,
-    pub status: String,
+impl std::fmt::Display for SnapshotError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SnapshotError::SecurityError(msg) => write!(f, "Security error: {}", msg),
+            SnapshotError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            SnapshotError::NetworkError(msg) => write!(f, "Network error: {}", msg),
+            SnapshotError::CapabilityNotFound(cap) => write!(f, "Capability not found: {}", cap),
+        }
+    }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TunnelInfo {
-    pub tunnel_id: String,
-    pub tunnel_type: String,
-    pub endpoints: Vec<std::net::SocketAddr>,
-    pub status: String,
+impl std::error::Error for SnapshotError {}
+
+// Placeholder types for compilation
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct EncryptionContext {
+    pub algorithm: String,
+    pub key_id: Option<String>,
+    pub metadata: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct GamingState {
-    pub active_sessions: u32,
-    pub total_players: u32,
-    pub protocols_in_use: Vec<String>,
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct KeySpec {
+    pub algorithm: String,
+    pub key_size: u32,
+    pub purpose: String,
 }

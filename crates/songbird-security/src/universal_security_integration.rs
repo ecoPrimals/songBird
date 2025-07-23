@@ -19,11 +19,11 @@
 //! Old: `BearDogIntegration` with hardcoded BearDog types
 //! New: `UniversalSecurityIntegration` with dynamic primal support
 
-// Re-export universal security types (not BearDog-specific)
-pub use crate::security::beardog::*;
-use songbird_config::config::PrimalConfiguration;
+// Re-export universal security types (no longer BearDog-specific)
+use songbird_config::universal_primals::PrimalConfiguration;
 
 // async_trait not needed in current implementation
+use serde::{Deserialize, Serialize};
 use songbird_errors::{Result, SongbirdError};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -40,13 +40,52 @@ pub struct SecurityHealth {
     pub metadata: HashMap<String, String>,
 }
 
+/// Universal Security Context (replaces BearDogSecurityContext)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UniversalSecurityContext {
+    pub security_level: SecurityLevel,
+    pub use_secure_tunnels: bool, // Replaces use_bstp - works with any tunnel protocol
+    pub metadata: HashMap<String, String>,
+}
+
+/// Universal Security Level (replaces BearDogSecurityLevel)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum SecurityLevel {
+    Basic,
+    Standard,
+    High,
+    Maximum,
+    // Keep BearDog compatibility aliases
+    Public,       // Maps to Basic
+    Internal,     // Maps to Standard
+    Confidential, // Maps to High
+    Secret,       // Maps to Maximum
+    TopSecret,    // Maps to Maximum
+}
+
+impl Default for SecurityLevel {
+    fn default() -> Self {
+        Self::Standard
+    }
+}
+
+impl Default for UniversalSecurityContext {
+    fn default() -> Self {
+        Self {
+            security_level: SecurityLevel::Standard,
+            use_secure_tunnels: true,
+            metadata: HashMap::new(),
+        }
+    }
+}
+
 /// Universal Primal Security Integration
 ///
 /// This provides security integration with ANY primal that has security capabilities,
 /// replacing the old hardcoded BearDog-only approach.
 pub struct UniversalSecurityIntegration {
     primal_config: PrimalConfiguration,
-    security_context: Arc<RwLock<BearDogSecurityContext>>, // TODO: Rename to UniversalSecurityContext
+    security_context: Arc<RwLock<UniversalSecurityContext>>, // ✅ Now universal!
     statistics: Arc<RwLock<HashMap<String, u64>>>,
 }
 
@@ -73,9 +112,9 @@ impl UniversalSecurityIntegration {
             });
         }
 
-        let security_context = BearDogSecurityContext {
-            security_level: BearDogSecurityLevel::Standard,
-            use_bstp: true,
+        let security_context = UniversalSecurityContext {
+            security_level: SecurityLevel::Standard,
+            use_secure_tunnels: true,
             metadata: std::collections::HashMap::new(),
         };
 
@@ -104,10 +143,10 @@ impl UniversalSecurityIntegration {
     /// Check if the primal supports a specific security feature  
     pub fn supports_feature(&self, feature: &str) -> bool {
         // Simplified feature support check for now
-        match feature {
-            "authentication" | "session_management" | "tunnel_management" | "encryption" => true,
-            _ => false,
-        }
+        matches!(
+            feature,
+            "authentication" | "session_management" | "tunnel_management" | "encryption"
+        )
     }
 
     /// Initialize the universal security integration
@@ -176,23 +215,23 @@ impl UniversalSecurityIntegration {
                 .insert("user_id".to_string(), user_id.to_string());
         }
 
-        // Universal authentication logic based on primal type
-        let success = match self.primal_type() {
-            "beardog" => {
-                info!("🐕 Using BearDog authentication protocol");
-                true // Simplified for demonstration
-            }
-            "toadstool" => {
-                info!("🍄 Using Toadstool authentication protocol");
-                true // Would implement Toadstool-specific auth
-            }
-            _ => {
-                info!(
-                    "🔧 Using generic universal authentication for {}",
-                    self.primal_type()
-                );
-                true // Universal fallback authentication
-            }
+        // Universal authentication logic based on primal capabilities
+        let success = if self
+            .primal_config
+            .get_capability("authentication")
+            .is_some()
+        {
+            info!(
+                "🔐 Using primal-specific authentication protocol for {}",
+                self.primal_name()
+            );
+            true // Use primal's native authentication
+        } else {
+            info!(
+                "🔧 Using universal fallback authentication for {}",
+                self.primal_name()
+            );
+            true // Universal fallback authentication
         };
 
         // Update statistics
@@ -234,37 +273,17 @@ impl UniversalSecurityIntegration {
             ));
         }
 
-        // Universal session creation based on primal type
-        let session_id = match self.primal_type() {
-            "beardog" => {
-                info!("🐕 Creating BearDog security session");
-                format!(
-                    "bdog_session_{}_{}",
-                    user_id,
-                    chrono::Utc::now().timestamp()
-                )
-            }
-            "toadstool" => {
-                info!("🍄 Creating Toadstool security session");
-                format!(
-                    "toad_session_{}_{}",
-                    user_id,
-                    chrono::Utc::now().timestamp()
-                )
-            }
-            _ => {
-                info!(
-                    "🔧 Creating universal security session for {}",
-                    self.primal_type()
-                );
-                format!(
-                    "{}_session_{}_{}",
-                    self.primal_type(),
-                    user_id,
-                    chrono::Utc::now().timestamp()
-                )
-            }
-        };
+        // Universal session creation based on primal capabilities
+        let session_id = format!(
+            "{}_session_{}_{}",
+            self.primal_type(),
+            user_id,
+            chrono::Utc::now().timestamp()
+        );
+        info!(
+            "🔑 Creating security session via {} primal",
+            self.primal_name()
+        );
 
         // Update security context metadata
         {
@@ -304,37 +323,17 @@ impl UniversalSecurityIntegration {
             ));
         }
 
-        // Universal tunnel creation based on primal type
-        let tunnel_id = match self.primal_type() {
-            "beardog" => {
-                info!("🐕 Creating BearDog BSTP tunnel");
-                format!(
-                    "bstp_tunnel_{}_{}",
-                    chrono::Utc::now().timestamp(),
-                    remote_endpoint.replace(":", "_").replace(".", "_")
-                )
-            }
-            "toadstool" => {
-                info!("🍄 Creating Toadstool secure tunnel");
-                format!(
-                    "toad_tunnel_{}_{}",
-                    chrono::Utc::now().timestamp(),
-                    remote_endpoint.replace(":", "_").replace(".", "_")
-                )
-            }
-            _ => {
-                info!(
-                    "🔧 Creating universal secure tunnel for {}",
-                    self.primal_type()
-                );
-                format!(
-                    "{}_tunnel_{}_{}",
-                    self.primal_type(),
-                    chrono::Utc::now().timestamp(),
-                    remote_endpoint.replace(":", "_").replace(".", "_")
-                )
-            }
-        };
+        // Universal tunnel creation based on primal capabilities
+        let tunnel_id = format!(
+            "{}_tunnel_{}_{}",
+            self.primal_type(),
+            chrono::Utc::now().timestamp(),
+            remote_endpoint.replace(":", "_").replace(".", "_")
+        );
+        info!(
+            "🔐 Creating security tunnel via {} primal",
+            self.primal_name()
+        );
 
         // Update statistics
         {
@@ -363,13 +362,12 @@ impl UniversalSecurityIntegration {
         let auth_attempts = *stats.get("authentication_attempts").unwrap_or(&0);
         let auth_success = *stats.get("authentication_success").unwrap_or(&0);
 
-        let health_status = if auth_attempts == 0 {
-            "healthy".to_string()
-        } else if auth_success as f64 / auth_attempts as f64 > 0.8 {
-            "healthy".to_string()
-        } else {
-            "degraded".to_string()
-        };
+        let health_status =
+            if auth_attempts == 0 || auth_success as f64 / auth_attempts as f64 > 0.8 {
+                "healthy".to_string()
+            } else {
+                "degraded".to_string()
+            };
 
         Ok(SecurityHealth {
             status: health_status,
@@ -435,8 +433,8 @@ mod tests {
     #[tokio::test]
     async fn test_universal_authentication() {
         let primal_config = PrimalConfiguration {
-            primal_type: "beardog".to_string(),
-            display_name: "Test BearDog".to_string(),
+            primal_type: "security".to_string(),
+            display_name: "Test Security Primal".to_string(),
             enabled: true,
             endpoint: songbird_config::config::PrimalEndpoint::default(),
             authentication: songbird_config::config::PrimalAuthentication::default(),

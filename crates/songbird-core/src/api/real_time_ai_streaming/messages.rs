@@ -175,15 +175,10 @@ pub enum AIStreamingMessage {
 }
 
 /// Message format preferences for connections
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum MessageFormat {
+    #[default]
     JSON,
     MessagePack,
     Protobuf,
-}
-
-impl Default for MessageFormat {
-    fn default() -> Self {
-        MessageFormat::JSON
-    }
 }

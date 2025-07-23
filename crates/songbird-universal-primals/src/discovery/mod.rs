@@ -14,14 +14,15 @@
 //! - `parsing` - Capability parsing and metadata extraction utilities
 //! - `ecosystem` - Real ecosystem primal discovery (connects to ../beardog, etc.)
 
+pub mod ecosystem;
 pub mod engine;
 pub mod legacy;
 pub mod network_scan;
 pub mod parsing;
 pub mod types;
-pub mod ecosystem;
 
 // Re-export main types for backward compatibility
+pub use ecosystem::{create_universal_context, EcosystemDiscovery, EcosystemDiscoveryConfig};
 pub use engine::{DiscoverySummary, PrimalDiscoveryEngine};
 pub use legacy::{
     discover_from_well_known_locations, get_configured_service_endpoints,
@@ -39,22 +40,27 @@ pub use parsing::{
 pub use types::{
     DiscoveredPrimal, DiscoveryConfig, DiscoveryMethod, DiscoveryResult, DiscoveryStats, PrimalNode,
 };
-pub use ecosystem::{EcosystemDiscovery, EcosystemDiscoveryConfig, create_universal_context};
 
 // Legacy compatibility exports
 use crate::errors::PrimalResult;
 
 /// Legacy function for backward compatibility - creates and starts discovery engine
-pub async fn discover_universal_primals() -> PrimalResult<Vec<crate::discovery::types::DiscoveredPrimal>> {
+pub async fn discover_universal_primals(
+) -> PrimalResult<Vec<crate::discovery::types::DiscoveredPrimal>> {
     use songbird_config::config::hardcoded_elimination::PrimalConfig;
-    
+
     let mut engine = PrimalDiscoveryEngine::new(PrimalConfig::default());
     engine.start_discovery().await?;
-    Ok(engine.get_discovered_primals().into_iter().cloned().collect())
+    Ok(engine
+        .get_discovered_primals()
+        .into_iter()
+        .cloned()
+        .collect())
 }
 
 /// Discover ecosystem primals using the new ecosystem discovery system
-pub async fn discover_ecosystem_primals() -> PrimalResult<Vec<crate::discovery::types::DiscoveredPrimal>> {
+pub async fn discover_ecosystem_primals(
+) -> PrimalResult<Vec<crate::discovery::types::DiscoveredPrimal>> {
     let ecosystem_discovery = EcosystemDiscovery::new(EcosystemDiscoveryConfig::default());
     ecosystem_discovery.discover_ecosystem_primals().await
 }

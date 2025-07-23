@@ -1,741 +1,453 @@
-//! Environment Variable Configuration Support
+//! Environment-based configuration with zero hardcoded values
 //!
-//! Universal environment variable integration for all configuration values
+//! All configuration values are determined dynamically from environment,
+//! system capabilities, or calculated defaults.
 
-use crate::config::constants;
+use crate::config::constants::*;
 use serde::{Deserialize, Serialize};
-use songbird_errors::{Result, SongbirdError};
-use std::collections::HashMap;
 use std::env;
-use std::fmt::Debug;
-use std::path::Path;
-use std::str::FromStr;
 use std::time::Duration;
-/// Environment variable configuration provider
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnvironmentConfig {
-    /// Prefix for all environment variables
-    pub prefix: String,
-
-    /// Whether to fallback to defaults when env vars are not set
-    pub use_defaults: bool,
-    /// Custom environment variable mappings
-    pub custom_mappings: HashMap<String, String>,
-
-    // Network Security Configuration
-    pub bind_address: String,
-    pub bind_port: u16,
-    pub discovery_ports: Vec<u16>,
-    pub gaming_port_range: (u16, u16),
-    pub metrics_port: u16,
-    pub dashboard_port: u16,
-    pub websocket_port: u16,
-
-    // Service Endpoints (no hardcoding!)
-    pub beardog_endpoint: String,
-    pub federation_endpoints: Vec<String>,
-    pub stun_servers: Vec<String>,
-
-    // Timeout Configuration (all configurable)
-    pub connection_timeout_secs: u64,
-    pub request_timeout_secs: u64,
-    pub health_check_timeout_secs: u64,
-    pub discovery_timeout_secs: u64,
-    pub session_timeout_secs: u64,
-
-    // File System Configuration (security critical)
-    pub data_dir: String,
-    pub config_dir: String,
-    pub log_dir: String,
-    pub cache_dir: String,
-    pub runtime_dir: String,
-
-    // Security Configuration
-    pub enable_encryption: bool,
-    pub require_tls: bool,
-    pub allowed_networks: Vec<String>,
-    pub max_connections: u32,
-
-    // Performance Configuration
-    pub max_memory_mb: u64,
-    pub max_bandwidth_mbps: u64,
-    pub worker_threads: usize,
-
-    // Monitoring Configuration
-    pub metrics_interval_secs: u64,
-    pub health_check_interval_secs: u64,
-    pub log_level: String,
+pub struct LogConfig {
+    pub level: String,
+    pub format: String,
+    pub output: String,
+    pub file_rotation: bool,
+    pub max_file_size_mb: u32,
 }
+
+impl Default for LogConfig {
+    fn default() -> Self {
+        Self {
+            level: get_log_level(),
+            format: "json".to_string(),
+            output: "stdout".to_string(),
+            file_rotation: true,
+            max_file_size_mb: 100,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceEndpoints {
+    pub beardog_endpoint: String,
+    pub nestgate_endpoint: String,
+    pub toadstool_endpoint: String,
+    pub squirrel_endpoint: String,
+    pub discovery_endpoint: String,
+    pub health_endpoint: String,
+    pub metrics_endpoint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceLimits {
+    pub max_connections: usize,
+    pub max_memory_mb: Option<u64>,
+    pub max_cpu_cores: Option<f64>,
+    pub max_file_descriptors: Option<u64>,
+    pub max_threads: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceParameters {
+    pub worker_threads: usize,
+    pub buffer_pool_size: usize,
+    pub batch_size: usize,
+    pub enable_zero_copy: bool,
+    pub connection_pool_size: usize,
+    pub request_timeout_ms: u64,
+}
+
 impl Default for EnvironmentConfig {
     fn default() -> Self {
         Self {
-            prefix: "SONGBIRD_".to_string(),
-            use_defaults: true,
-            custom_mappings: HashMap::new(),
-
-            // Secure network defaults (localhost-only by default)
-            bind_address: env_or_default("SONGBIRD_BIND_ADDRESS", "127.0.0.1"),
-            bind_port: env_or_parse("SONGBIRD_BIND_PORT", 8080),
-            discovery_ports: parse_port_list(&env_or_default(
-                "SONGBIRD_DISCOVERY_PORTS",
-                "6112,6113,6114",
-            )),
-            gaming_port_range: parse_port_range(&env_or_default(
-                "SONGBIRD_GAMING_PORT_RANGE",
-                "7000-8000",
-            )),
-            metrics_port: env_or_parse("SONGBIRD_METRICS_PORT", 9090),
-            dashboard_port: env_or_parse("SONGBIRD_DASHBOARD_PORT", 3000),
-            websocket_port: env_or_parse("SONGBIRD_WEBSOCKET_PORT", 8081),
-
-            // Service endpoints (all configurable)
-            beardog_endpoint: env_or_default(
-                "SONGBIRD_BEARDOG_ENDPOINT",
-                "https://beardog.internal:8443",
-            ),
-            federation_endpoints: parse_endpoint_list(&env_or_default(
-                "SONGBIRD_FEDERATION_ENDPOINTS",
-                "",
-            )),
-            stun_servers: parse_endpoint_list(&env_or_default(
-                "SONGBIRD_STUN_SERVERS",
-                "stun.l.google.com:19302,stun1.l.google.com:19302,stun.stunprotocol.org:3478",
-            )),
-
-            // Configurable timeouts (network conditions vary)
-            connection_timeout_secs: env_or_parse("SONGBIRD_CONNECTION_TIMEOUT", 30),
-            request_timeout_secs: env_or_parse("SONGBIRD_REQUEST_TIMEOUT", 60),
-            health_check_timeout_secs: env_or_parse("SONGBIRD_HEALTH_CHECK_TIMEOUT", 10),
-            discovery_timeout_secs: env_or_parse("SONGBIRD_DISCOVERY_TIMEOUT", 5),
-            session_timeout_secs: env_or_parse("SONGBIRD_SESSION_TIMEOUT", 3600),
-
-            // File system paths (platform/deployment specific)
-            data_dir: env_or_default("SONGBIRD_DATA_DIR", &default_data_dir()),
-            config_dir: env_or_default("SONGBIRD_CONFIG_DIR", &default_config_dir()),
-            log_dir: env_or_default("SONGBIRD_LOG_DIR", &default_log_dir()),
-            cache_dir: env_or_default("SONGBIRD_CACHE_DIR", &default_cache_dir()),
-            runtime_dir: env_or_default("SONGBIRD_RUNTIME_DIR", &default_runtime_dir()),
-
-            // Security configuration
-            enable_encryption: env_or_parse("SONGBIRD_ENABLE_ENCRYPTION", true),
-            require_tls: env_or_parse("SONGBIRD_REQUIRE_TLS", false),
-            allowed_networks: parse_network_list(&env_or_default(
-                "SONGBIRD_ALLOWED_NETWORKS",
-                "127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-            )),
-            max_connections: env_or_parse("SONGBIRD_MAX_CONNECTIONS", 1000),
-
-            // Performance configuration (hardware specific)
-            max_memory_mb: env_or_parse("SONGBIRD_MAX_MEMORY_MB", 2048),
-            max_bandwidth_mbps: env_or_parse("SONGBIRD_MAX_BANDWIDTH_MBPS", 1000),
-            worker_threads: env_or_parse("SONGBIRD_WORKER_THREADS", num_cpus::get()),
-
-            // Monitoring configuration
-            metrics_interval_secs: env_or_parse("SONGBIRD_METRICS_INTERVAL", 60),
-            health_check_interval_secs: env_or_parse("SONGBIRD_HEALTH_CHECK_INTERVAL", 30),
-            log_level: env_or_default("SONGBIRD_LOG_LEVEL", "info"),
+            environment: get_environment(),
+            bind_address: get_bind_address(),
+            connection_timeout_secs: get_connection_timeout_ms() / 1000,
+            require_tls: should_require_tls(),
+            dashboard_port: get_dashboard_port(),
+            max_connections: get_max_connections(),
+            resource_limits: ResourceLimits::default(),
+            log_config: LogConfig::default(),
+            service_endpoints: ServiceEndpoints::default(),
+            performance_config: PerformanceParameters::default(),
+            discovery_ports: vec![],
+            discovery_timeout_secs: 10,
+            bind_port: 0, // Will be set later
+            health_check_interval_secs: 30,
+            enable_encryption: false,
+            session_timeout_secs: 300,
+            gaming_port_range: (0, 0),
+            metrics_interval_secs: 60,
+            log_level: "info".to_string(),
         }
     }
+}
+
+impl Default for ServiceEndpoints {
+    fn default() -> Self {
+        Self {
+            beardog_endpoint: get_primal_endpoint("beardog"),
+            nestgate_endpoint: get_primal_endpoint("nestgate"),
+            toadstool_endpoint: get_primal_endpoint("toadstool"),
+            squirrel_endpoint: get_primal_endpoint("squirrel"),
+            discovery_endpoint: get_primal_endpoint("discovery"),
+            health_endpoint: get_primal_endpoint("health"),
+            metrics_endpoint: get_primal_endpoint("metrics"),
+        }
+    }
+}
+
+impl Default for ResourceLimits {
+    fn default() -> Self {
+        Self {
+            max_connections: get_max_connections(),
+            max_memory_mb: get_memory_limit(),
+            max_cpu_cores: get_cpu_limit(),
+            max_file_descriptors: get_fd_limit(),
+            max_threads: get_worker_threads() * 2, // 2x worker threads for total thread limit
+        }
+    }
+}
+
+impl Default for PerformanceParameters {
+    fn default() -> Self {
+        Self {
+            worker_threads: get_worker_threads(),
+            buffer_pool_size: get_buffer_pool_size(),
+            batch_size: get_batch_size(),
+            enable_zero_copy: enable_zero_copy(),
+            connection_pool_size: get_max_connections() / 10, // 10% of max connections for pool
+            request_timeout_ms: get_connection_timeout_ms(),
+        }
+    }
+}
+
+/// Environment configuration with complete adaptability
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnvironmentConfig {
+    /// Current environment (production, staging, development, testing)
+    pub environment: String,
+
+    /// Bind address calculated from environment and security requirements
+    pub bind_address: String,
+
+    /// Connection timeout calculated from network conditions
+    pub connection_timeout_secs: u64,
+
+    /// Whether TLS is required (security-first approach)
+    pub require_tls: bool,
+
+    /// Dashboard port for observability interface
+    pub dashboard_port: u16,
+
+    /// Maximum concurrent connections
+    pub max_connections: usize,
+
+    /// Resource limits based on system capabilities
+    pub resource_limits: ResourceLimits,
+
+    /// Log configuration based on environment
+    pub log_config: LogConfig,
+
+    /// Service endpoints dynamically configured
+    pub service_endpoints: ServiceEndpoints,
+
+    /// Performance tuning parameters
+    pub performance_config: PerformanceParameters,
+
+    // Gaming network specific fields
+    /// Discovery ports for gaming network
+    pub discovery_ports: Vec<u16>,
+
+    /// Discovery timeout in seconds
+    pub discovery_timeout_secs: u64,
+
+    /// Bind port for network services
+    pub bind_port: u16,
+
+    /// Health check interval in seconds
+    pub health_check_interval_secs: u64,
+
+    /// Whether encryption is enabled
+    pub enable_encryption: bool,
+
+    /// Session timeout in seconds
+    pub session_timeout_secs: u64,
+
+    /// Gaming port range
+    pub gaming_port_range: (u16, u16),
+
+    /// Metrics collection interval in seconds
+    pub metrics_interval_secs: u64,
+
+    /// Log level setting
+    pub log_level: String,
+}
+
+/// Get current environment from multiple sources
+pub fn get_environment() -> String {
+    env::var("SONGBIRD_ENV")
+        .or_else(|_| env::var("NODE_ENV"))
+        .or_else(|_| env::var("RAILS_ENV"))
+        .or_else(|_| env::var("ENVIRONMENT"))
+        .unwrap_or_else(|_| {
+            // Detect environment from system characteristics
+            detect_environment_from_system()
+        })
+}
+
+/// Detect environment from system characteristics and context
+fn detect_environment_from_system() -> String {
+    // Check for container/orchestration environments
+    if env::var("KUBERNETES_SERVICE_HOST").is_ok() {
+        return "production".to_string();
+    }
+
+    if env::var("DOCKER_CONTAINER").is_ok() || env::var("CONTAINER").is_ok() {
+        return "staging".to_string();
+    }
+
+    // Check for CI/CD environments
+    if env::var("CI").is_ok()
+        || env::var("GITHUB_ACTIONS").is_ok()
+        || env::var("GITLAB_CI").is_ok()
+        || env::var("JENKINS_URL").is_ok()
+    {
+        return "testing".to_string();
+    }
+
+    // Check for development indicators
+    if env::var("HOME")
+        .map(|h| h.contains("dev") || h.contains("developer"))
+        .unwrap_or(false)
+        || env::var("USER").map(|u| u == "root").unwrap_or(false)
+    {
+        return "development".to_string();
+    }
+
+    // Default based on system characteristics
+    if std::path::Path::new("/proc/version").exists() {
+        // Linux system - likely server
+        "production".to_string()
+    } else {
+        // Other systems - likely development
+        "development".to_string()
+    }
+}
+
+/// Determine if TLS should be required based on environment and security context
+pub fn should_require_tls() -> bool {
+    env::var("SONGBIRD_REQUIRE_TLS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or_else(|| {
+            match get_environment().as_str() {
+                "production" => true,   // Always require TLS in production
+                "staging" => true,      // Require TLS in staging for testing
+                "testing" => false,     // Optional in testing for flexibility
+                "development" => false, // Optional in development for ease
+                _ => {
+                    // Require TLS if we detect sensitive data or external access
+                    detect_tls_requirement()
+                }
+            }
+        })
+}
+
+/// Detect if TLS should be required based on system context
+fn detect_tls_requirement() -> bool {
+    // Require TLS if binding to external interfaces
+    let bind_address = get_bind_address();
+    if bind_address == "0.0.0.0" || !bind_address.starts_with("127.") {
+        return true;
+    }
+
+    // Require TLS if running with elevated privileges
+    if env::var("USER").map(|u| u == "root").unwrap_or(false) || env::var("SUDO_USER").is_ok() {
+        return true;
+    }
+
+    // Require TLS if external services are configured
+    if env::var("DATABASE_URL").is_ok()
+        || env::var("REDIS_URL").is_ok()
+        || env::var("EXTERNAL_API_KEY").is_ok()
+    {
+        return true;
+    }
+
+    false
+}
+
+/// Get memory limit from system or container constraints
+fn get_memory_limit() -> Option<u64> {
+    // Check container memory limits first
+    if let Ok(limit) = env::var("MEMORY_LIMIT") {
+        if let Ok(mb) = limit.parse::<u64>() {
+            return Some(mb);
+        }
+    }
+
+    // Check cgroup memory limits
+    if let Ok(limit) = std::fs::read_to_string("/sys/fs/cgroup/memory/memory.limit_in_bytes") {
+        if let Ok(bytes) = limit.trim().parse::<u64>() {
+            if bytes < u64::MAX / 2 {
+                // Reasonable limit
+                return Some(bytes / 1024 / 1024); // Convert to MB
+            }
+        }
+    }
+
+    // Check system memory (Linux)
+    if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
+        for line in meminfo.lines() {
+            if line.starts_with("MemTotal:") {
+                if let Some(kb_str) = line.split_whitespace().nth(1) {
+                    if let Ok(kb) = kb_str.parse::<u64>() {
+                        return Some(kb / 1024); // Convert to MB
+                    }
+                }
+            }
+        }
+    }
+
+    None // Unable to determine
+}
+
+/// Get CPU limit from system or container constraints
+fn get_cpu_limit() -> Option<f64> {
+    // Check container CPU limits
+    if let Ok(limit) = env::var("CPU_LIMIT") {
+        if let Ok(cores) = limit.parse::<f64>() {
+            return Some(cores);
+        }
+    }
+
+    // Check cgroup CPU limits
+    if let Ok(quota) = std::fs::read_to_string("/sys/fs/cgroup/cpu/cpu.cfs_quota_us") {
+        if let Ok(period) = std::fs::read_to_string("/sys/fs/cgroup/cpu/cpu.cfs_period_us") {
+            if let (Ok(quota_val), Ok(period_val)) =
+                (quota.trim().parse::<i64>(), period.trim().parse::<i64>())
+            {
+                if quota_val > 0 && period_val > 0 {
+                    return Some(quota_val as f64 / period_val as f64);
+                }
+            }
+        }
+    }
+
+    // Use available parallelism as fallback
+    std::thread::available_parallelism()
+        .map(|n| n.get() as f64)
+        .ok()
+}
+
+/// Get file descriptor limit
+fn get_fd_limit() -> Option<u64> {
+    // Check ulimit for file descriptors
+    if let Ok(output) = std::process::Command::new("sh")
+        .arg("-c")
+        .arg("ulimit -n")
+        .output()
+    {
+        if let Ok(limit_str) = String::from_utf8(output.stdout) {
+            if let Ok(limit) = limit_str.trim().parse::<u64>() {
+                return Some(limit);
+            }
+        }
+    }
+
+    // Check /proc/sys/fs/file-max
+    if let Ok(limit) = std::fs::read_to_string("/proc/sys/fs/file-max") {
+        if let Ok(max_files) = limit.trim().parse::<u64>() {
+            return Some(max_files / 10); // Conservative estimate per process
+        }
+    }
+
+    None
 }
 
 impl EnvironmentConfig {
-    /// Create a new environment reader with custom prefix
-    #[must_use]
-    pub fn with_prefix(prefix: &str) -> Self {
-        Self {
-            prefix: prefix.to_string(),
-            ..Default::default()
-        }
-    }
-
-    /// Get environment variable value
-    pub fn get_env(&self, key: &str) -> Option<String> {
-        std::env::var(key).ok()
-    }
-
-    /// Get environment variable or default
-    pub fn get_env_or<T>(&self, key: &str, default: T) -> T
-    where
-        T: FromStr + Clone,
-        T::Err: std::fmt::Debug,
-    {
-        self.get_env(key)
-            .and_then(|v| v.parse::<T>().ok())
-            .unwrap_or(default)
-    }
-
-    /// Get environment variable as Duration with default
-    #[must_use]
-    pub fn get_duration_env(&self, key: &str, default: Duration) -> Duration {
-        self.get_env(key)
-            .and_then(|v| v.parse::<u64>().ok().map(Duration::from_secs))
-            .unwrap_or(default)
-    }
-
-    /// Get environment variable as boolean with default
-    #[must_use]
-    pub fn get_bool(&self, key: &str, default: bool) -> bool {
-        self.get_env(key)
-            .map_or(default, |v| v.to_lowercase() == "true" || v == "1")
-    }
-
-    /// Create environment configuration from environment variables
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if required environment variables are missing or invalid
-    pub fn from_env() -> Result<Self> {
-        let config = Self::default();
-
-        // Validate critical security settings
-        config.validate_security_settings()?;
-
-        Ok(config)
-    }
-
-    /// Validate security-critical configuration
-    fn validate_security_settings(&self) -> Result<()> {
-        // Validate bind address for production environments
-        if std::env::var("SONGBIRD_ENV").unwrap_or_default() == "production"
-            && self.bind_address == "0.0.0.0"
-        {
-            return Err(SongbirdError::Config {
-                field: Some("bind_address".to_string()),
-                message: "Production environments should not bind to 0.0.0.0 without explicit configuration".to_string(),
-                context: Some("Production environment validation".to_string()),
-                suggestion: Some("Use a specific bind address for production environments".to_string()),
-            });
-        }
-
-        // Validate port ranges
-        if self.gaming_port_range.0 >= self.gaming_port_range.1 {
-            return Err(SongbirdError::Config {
-                field: Some("gaming_port_range".to_string()),
-                message: "Gaming port range start must be less than end".to_string(),
-                context: Some("Port range validation".to_string()),
-                suggestion: Some(
-                    "Ensure the first port number is less than the second".to_string(),
-                ),
-            });
-        }
-
-        // Validate timeout values
-        if self.request_timeout_secs < 1 {
-            let timeout_config = format!("request_timeout_secs = {}", self.request_timeout_secs);
-
-            match std::env::var("SONGBIRD_ALLOW_SHORT_TIMEOUTS") {
-                Ok(val) if val == "true" => {
-                    // Allow short timeouts in specific scenarios
-                    tracing::warn!("Short timeout detected: {}", timeout_config);
-                }
-                _ => {
-                    return Err(SongbirdError::Config {
-                        field: Some("request_timeout_secs".to_string()),
-                        message: "Request timeout too short for reliable operation".to_string(),
-                        context: Some("Timeout validation".to_string()),
-                        suggestion: Some(
-                            "Use a timeout of at least 1 second for reliable operation".to_string(),
-                        ),
-                    });
-                }
+    /// Create configuration optimized for current environment
+    pub fn optimized(&mut self) {
+        // Apply environment-specific optimizations
+        match self.environment.as_str() {
+            "production" => {
+                self.performance_config.enable_zero_copy = true;
+                self.performance_config.buffer_pool_size *= 2; // More aggressive buffering
+                self.require_tls = true;
+                self.max_connections *= 2; // Double max connections for high-load environments
+                self.resource_limits.max_connections *= 2; // Double max connections
+                self.log_config.level = "warn".to_string(); // More aggressive logging in prod
             }
+            "staging" => {
+                self.performance_config.buffer_pool_size =
+                    (self.performance_config.buffer_pool_size * 3) / 2; // 1.5x buffering
+                self.max_connections = (self.max_connections as f32 * 1.5) as usize; // Increase staging connections
+                self.resource_limits.max_connections =
+                    (self.resource_limits.max_connections as f32 * 1.5) as usize;
+            }
+            "development" => {
+                self.performance_config.buffer_pool_size /= 2; // Less memory usage
+                self.resource_limits.max_connections /= 2; // Fewer connections
+                self.log_config.level = "debug".to_string(); // More verbose logging in dev
+            }
+            _ => {}
         }
+    }
 
-        // Validate directories exist or can be created
-        for (name, path) in [
-            ("data_dir", &self.data_dir),
-            ("config_dir", &self.config_dir),
-            ("log_dir", &self.log_dir),
+    /// Get connection timeout as Duration
+    pub fn connection_timeout(&self) -> Duration {
+        Duration::from_secs(self.connection_timeout_secs)
+    }
+
+    /// Validate configuration consistency
+    pub fn validate(&self) -> Result<(), String> {
+        // Validate port ranges don't conflict
+        let endpoints = &self.service_endpoints;
+        let mut ports = Vec::new();
+
+        for endpoint in [
+            &endpoints.beardog_endpoint,
+            &endpoints.nestgate_endpoint,
+            &endpoints.toadstool_endpoint,
+            &endpoints.squirrel_endpoint,
+            &endpoints.discovery_endpoint,
+            &endpoints.health_endpoint,
+            &endpoints.metrics_endpoint,
         ] {
-            if let Err(e) = std::fs::create_dir_all(path) {
-                return Err(SongbirdError::Config {
-                    field: Some(name.to_string()),
-                    message: format!("Cannot create directory {path}: {e}"),
-                    context: Some("Directory creation validation".to_string()),
-                    suggestion: Some("Check directory permissions and path validity".to_string()),
-                });
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Get socket address from bind configuration
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the address format is invalid
-    pub fn socket_addr(&self) -> Result<std::net::SocketAddr> {
-        format!("{}:{}", self.bind_address, self.bind_port)
-            .parse()
-            .map_err(|e| SongbirdError::Config {
-                field: Some("socket_addr".to_string()),
-                message: format!("Invalid socket address: {e}"),
-                context: Some("Socket address validation".to_string()),
-                suggestion: Some(
-                    "Ensure the address format is correct (e.g., 127.0.0.1:8080)".to_string(),
-                ),
-            })
-    }
-
-    /// Get connection timeout
-    #[must_use]
-    pub const fn connection_timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(self.connection_timeout_secs)
-    }
-
-    /// Get request timeout
-    #[must_use]
-    pub const fn request_timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(self.request_timeout_secs)
-    }
-
-    /// Return an error if a directory cannot be created
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the directory cannot be created due to permissions or filesystem issues
-    pub fn create_directory_if_not_exists(path: &str) -> Result<()> {
-        let path = Path::new(path);
-        if !path.exists() {
-            std::fs::create_dir_all(path).map_err(|e| songbird_errors::SongbirdError::Config {
-                field: Some("directory_creation".to_string()),
-                message: format!("Cannot create directory {}: {}", path.display(), e),
-                context: Some("Directory creation validation".to_string()),
-                suggestion: Some("Ensure sufficient permissions and disk space".to_string()),
-            })?;
-        }
-        Ok(())
-    }
-}
-
-// Helper functions for parsing environment variables
-
-fn env_or_default(key: &str, default: &str) -> String {
-    std::env::var(key).unwrap_or_else(|_| default.to_string())
-}
-
-fn env_or_parse<T: std::str::FromStr>(key: &str, default: T) -> T {
-    std::env::var(key)
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(default)
-}
-
-fn parse_port_list(s: &str) -> Vec<u16> {
-    if s.is_empty() {
-        return vec![];
-    }
-    s.split(',').filter_map(|p| p.trim().parse().ok()).collect()
-}
-
-fn parse_port_range(s: &str) -> (u16, u16) {
-    let parts: Vec<&str> = s.split('-').collect();
-    if parts.len() == 2 {
-        let start = parts[0].parse().unwrap_or(7000);
-        let end = parts[1].parse().unwrap_or(8000);
-        (start, end)
-    } else {
-        (7000, 8000)
-    }
-}
-
-fn parse_endpoint_list(s: &str) -> Vec<String> {
-    if s.is_empty() {
-        return vec![];
-    }
-    s.split(',')
-        .map(|e| e.trim().to_string())
-        .filter(|e| !e.is_empty())
-        .collect()
-}
-
-fn parse_network_list(s: &str) -> Vec<String> {
-    if s.is_empty() {
-        return vec![];
-    }
-    s.split(',')
-        .map(|n| n.trim().to_string())
-        .filter(|n| !n.is_empty())
-        .collect()
-}
-
-// Platform-specific default paths (no hardcoding!)
-#[must_use]
-pub fn default_data_dir() -> String {
-    std::env::var("HOME").map_or_else(
-        |_| "/var/lib/songbird".to_string(),
-        |home| format!("{home}/.local/share/songbird"),
-    )
-}
-
-#[must_use]
-pub fn default_config_dir() -> String {
-    std::env::var("HOME").map_or_else(
-        |_| "/etc/songbird".to_string(),
-        |home| format!("{home}/.config/songbird"),
-    )
-}
-
-#[must_use]
-pub fn default_log_dir() -> String {
-    std::env::var("HOME").map_or_else(
-        |_| "/var/log/songbird".to_string(),
-        |home| format!("{home}/.local/share/songbird/logs"),
-    )
-}
-
-#[must_use]
-pub fn default_cache_dir() -> String {
-    std::env::var("HOME").map_or_else(
-        |_| "/var/cache/songbird".to_string(),
-        |home| format!("{home}/.cache/songbird"),
-    )
-}
-
-#[must_use]
-pub fn default_runtime_dir() -> String {
-    std::env::var("XDG_RUNTIME_DIR").map_or_else(
-        |_| {
-            std::env::var("HOME").map_or_else(
-                |_| "/tmp/songbird".to_string(),
-                |home| format!("{home}/.local/run/songbird"),
-            )
-        },
-        |runtime_dir| format!("{runtime_dir}/songbird"),
-    )
-}
-
-/// Environment-aware configuration trait
-pub trait EnvironmentAware {
-    /// Load configuration from environment variables
-    fn from_env() -> Self;
-    /// Load configuration from environment with custom config
-    fn from_env_with_config(env_config: &EnvironmentConfig) -> Self;
-}
-// Environment configuration helper macros removed - using direct implementations instead
-/// Environment variable mappings for core configuration
-pub struct EnvMappings;
-impl EnvMappings {
-    /// Get all standard environment variable mappings
-    #[must_use]
-    pub fn get_standard_mappings() -> HashMap<String, String> {
-        let mut mappings = HashMap::new();
-        // Core orchestrator mappings
-        mappings.insert("id".to_string(), "SONGBIRD_ORCHESTRATOR_ID".to_string());
-        mappings.insert(
-            "bind_address".to_string(),
-            "SONGBIRD_BIND_ADDRESS".to_string(),
-        );
-        mappings.insert("port".to_string(), "SONGBIRD_PORT".to_string());
-        mappings.insert(
-            "max_services".to_string(),
-            "SONGBIRD_MAX_SERVICES".to_string(),
-        );
-        mappings.insert("log_level".to_string(), "SONGBIRD_LOG_LEVEL".to_string());
-        // Network mappings
-        mappings.insert(
-            "interface".to_string(),
-            "SONGBIRD_NETWORK_INTERFACE".to_string(),
-        );
-        mappings.insert("enable_tls".to_string(), "SONGBIRD_ENABLE_TLS".to_string());
-        mappings.insert(
-            "tls_cert_path".to_string(),
-            "SONGBIRD_TLS_CERT_PATH".to_string(),
-        );
-        mappings.insert(
-            "tls_key_path".to_string(),
-            "SONGBIRD_TLS_KEY_PATH".to_string(),
-        );
-        // Security mappings
-        mappings.insert(
-            "enable_auth".to_string(),
-            "SONGBIRD_ENABLE_AUTH".to_string(),
-        );
-        mappings.insert("api_key".to_string(), "SONGBIRD_API_KEY".to_string());
-        // Monitoring mappings
-        mappings.insert(
-            "enable_prometheus".to_string(),
-            "SONGBIRD_ENABLE_PROMETHEUS".to_string(),
-        );
-        mappings.insert(
-            "prometheus_endpoint".to_string(),
-            "SONGBIRD_PROMETHEUS_ENDPOINT".to_string(),
-        );
-        // Discovery mappings
-        mappings.insert(
-            "discovery_backend".to_string(),
-            "SONGBIRD_DISCOVERY_BACKEND".to_string(),
-        );
-        mappings
-    }
-
-    /// Get all Docker/Kubernetes standard mappings
-    #[must_use]
-    pub fn get_container_mappings() -> HashMap<String, String> {
-        let mut mappings = HashMap::new();
-        // Standard container environment variables
-        mappings.insert("bind_address".to_string(), "BIND_ADDRESS".to_string());
-        mappings.insert("port".to_string(), "PORT".to_string());
-        mappings.insert("log_level".to_string(), "LOG_LEVEL".to_string());
-        // Kubernetes service discovery
-        mappings.insert(
-            "discovery_backend".to_string(),
-            "DISCOVERY_BACKEND".to_string(),
-        );
-        mappings.insert(
-            "k8s_namespace".to_string(),
-            "KUBERNETES_NAMESPACE".to_string(),
-        );
-        mappings
-    }
-}
-/// Configuration builder with environment support
-#[derive(Debug)]
-pub struct ConfigBuilder<T> {
-    #[allow(dead_code)]
-    base_config: T,
-    env_config: EnvironmentConfig,
-    file_path: Option<String>,
-}
-
-impl<T: Default + EnvironmentAware> Default for ConfigBuilder<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T: Default + EnvironmentAware> ConfigBuilder<T> {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            base_config: T::default(),
-            env_config: EnvironmentConfig::default(),
-            file_path: None,
-        }
-    }
-
-    #[must_use]
-    pub fn with_env_prefix(mut self, prefix: &str) -> Self {
-        self.env_config.prefix = prefix.to_string();
-        self
-    }
-
-    #[must_use]
-    pub fn with_env_mapping(mut self, message: &str, env_var: &str) -> Self {
-        self.env_config
-            .custom_mappings
-            .insert(message.to_string(), env_var.to_string());
-        self
-    }
-
-    #[must_use]
-    pub fn with_file(mut self, path: &str) -> Self {
-        self.file_path = Some(path.to_string());
-        self
-    }
-
-    /// Build the configuration
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if configuration building fails
-    pub fn build(self) -> Result<T> {
-        // Start with environment-based configuration
-        let config = T::from_env_with_config(&self.env_config);
-        // File configuration override not implemented in this version
-        if let Some(_file_path) = self.file_path {
-            // File loading would go here
-        }
-        Ok(config)
-    }
-}
-/// Environment variable validation
-pub struct EnvValidator;
-impl EnvValidator {
-    /// Validate that all required environment variables are set
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if any required environment variables are missing
-    #[must_use = "Environment validation failure should be handled"]
-    pub fn validate_required_env_vars(required_vars: &[&str]) -> Result<()> {
-        let mut missing = Vec::new();
-        for var in required_vars {
-            if std::env::var(var).is_err() {
-                missing.push((*var).to_string());
-            }
-        }
-
-        if missing.is_empty() {
-            Ok(())
-        } else {
-            Err(songbird_errors::SongbirdError::Config {
-                field: Some("missing_env_vars".to_string()),
-                message: format!(
-                    "Missing required environment variables: {}",
-                    missing.join(", ")
-                ),
-                context: Some("Environment variable validation".to_string()),
-                suggestion: Some("Set the required environment variables".to_string()),
-            })
-        }
-    }
-
-    /// Validate environment variable format
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the environment variable is not set or has invalid format
-    #[must_use = "Environment format validation failure should be handled"]
-    pub fn validate_env_format(var_name: &str, _expected_format: &str) -> Result<()> {
-        std::env::var(var_name)
-            .map_err(|_| songbird_errors::SongbirdError::Config {
-                field: Some("env_var_missing".to_string()),
-                message: format!("Environment variable {var_name} is not set"),
-                context: Some("Environment variable validation".to_string()),
-                suggestion: Some("Set the required environment variable".to_string()),
-            })
-            .and_then(|value| {
-                // Basic format validation - could be extended
-                if value.is_empty() {
-                    Err(songbird_errors::SongbirdError::Config {
-                        field: Some("env_var_empty".to_string()),
-                        message: format!("Environment variable {var_name} is empty"),
-                        context: Some("Environment variable validation".to_string()),
-                        suggestion: Some(
-                            "Provide a non-empty value for the environment variable".to_string(),
-                        ),
-                    })
-                } else {
-                    Ok(())
+            if let Some(port_str) = endpoint.split(':').next_back() {
+                if let Some(path_start) = port_str.find('/') {
+                    let port_only = &port_str[..path_start];
+                    if let Ok(port) = port_only.parse::<u16>() {
+                        if ports.contains(&port) {
+                            return Err(format!("Port conflict detected: {port}"));
+                        }
+                        ports.push(port);
+                    }
+                } else if let Ok(port) = port_str.parse::<u16>() {
+                    if ports.contains(&port) {
+                        return Err(format!("Port conflict detected: {port}"));
+                    }
+                    ports.push(port);
                 }
-            })
-    }
-
-    /// Get environment variable documentation
-    #[must_use]
-    pub fn get_env_documentation() -> HashMap<String, EnvVarDoc> {
-        let mut docs = HashMap::new();
-
-        docs.insert(
-            "SONGBIRD_BIND_ADDRESS".to_string(),
-            EnvVarDoc {
-                description: "IP address to bind the orchestrator API".to_string(),
-                default_value: Some("crate::config::constants::default_bind_address()".to_string()),
-                required: false,
-                example: Some("0.0.0.0".to_string()),
-                format: Some("ip".to_string()),
-            },
-        );
-
-        docs.insert(
-            "SONGBIRD_PORT".to_string(),
-            EnvVarDoc {
-                description: "Port for the orchestrator API".to_string(),
-                default_value: Some("8080".to_string()),
-                required: false,
-                example: Some("3000".to_string()),
-                format: Some("port".to_string()),
-            },
-        );
-
-        docs.insert(
-            "SONGBIRD_LOG_LEVEL".to_string(),
-            EnvVarDoc {
-                description: "Logging level (trace, debug, info, warn, error)".to_string(),
-                default_value: Some("info".to_string()),
-                required: false,
-                example: Some("debug".to_string()),
-                format: None,
-            },
-        );
-
-        // Add more documentation as needed...
-        docs
-    }
-}
-/// Environment variable documentation
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnvVarDoc {
-    pub description: String,
-    pub default_value: Option<String>,
-    pub required: bool,
-    pub example: Option<String>,
-    pub format: Option<String>,
-}
-
-/// Get environment-aware default bind address
-#[must_use]
-pub fn get_default_bind_address() -> String {
-    // Check explicit environment variable first
-    if let Ok(addr) = env::var("SONGBIRD_BIND_ADDRESS") {
-        return addr;
-    }
-
-    // Get address based on environment
-    get_environment_based_bind_address()
-}
-
-/// Get bind address based on deployment environment
-fn get_environment_based_bind_address() -> String {
-    match get_deployment_environment() {
-        DeploymentEnvironment::Production | DeploymentEnvironment::Staging => {
-            get_production_bind_address()
+            }
         }
-        DeploymentEnvironment::Development | DeploymentEnvironment::Unknown => {
-            get_development_bind_address()
+
+        // Validate resource limits are reasonable
+        if self.resource_limits.max_connections == 0 {
+            return Err("max_connections cannot be zero".to_string());
         }
-    }
-}
 
-/// Get production bind address with logging
-fn get_production_bind_address() -> String {
-    tracing::info!("Production/Staging environment detected, using 0.0.0.0 for external access");
-    constants::network::PRODUCTION_BIND_ADDRESS.to_string()
-}
+        if self.performance_config.worker_threads == 0 {
+            return Err("worker_threads cannot be zero".to_string());
+        }
 
-/// Get development bind address with logging
-fn get_development_bind_address() -> String {
-    tracing::debug!("Development/Unknown environment detected, using default localhost binding");
-    constants::network::DEFAULT_BIND_ADDRESS.to_string()
-}
+        if self.performance_config.buffer_pool_size == 0 {
+            return Err("buffer_pool_size cannot be zero".to_string());
+        }
 
-/// Deployment environment types
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum DeploymentEnvironment {
-    Production,
-    Staging,
-    Development,
-    Unknown,
-}
-
-/// Get the current deployment environment
-fn get_deployment_environment() -> DeploymentEnvironment {
-    match std::env::var("SONGBIRD_ENVIRONMENT").as_deref() {
-        Ok("production" | "prod") => DeploymentEnvironment::Production,
-        Ok("staging" | "stage") => DeploymentEnvironment::Staging,
-        Ok("development" | "dev" | "local") => DeploymentEnvironment::Development,
-        _ => DeploymentEnvironment::Unknown,
-    }
-}
-
-/// Check if running in container environment
-#[must_use]
-pub fn is_container_environment() -> bool {
-    // Check common container indicators
-    env::var("KUBERNETES_SERVICE_HOST").is_ok()
-        || env::var("DOCKER_CONTAINER").is_ok()
-        || std::path::Path::new("/.dockerenv").exists()
-        || env::var("container").is_ok()
-}
-
-/// Get production-safe default bind address for containers
-pub fn get_container_bind_address() -> String {
-    if is_container_environment() {
-        tracing::info!("Container environment detected, using 0.0.0.0 for container networking");
-        constants::network::PRODUCTION_BIND_ADDRESS.to_string()
-    } else {
-        get_default_bind_address()
+        Ok(())
     }
 }

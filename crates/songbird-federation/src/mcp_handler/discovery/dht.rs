@@ -93,10 +93,7 @@ async fn query_federation_discovery_services() -> Result<Vec<String>, SongbirdEr
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| {
-            SongbirdError::service_error(
-                "discovery",
-                format!("Failed to create HTTP client: {}", e),
-            )
+            SongbirdError::service_error("discovery", format!("Failed to create HTTP client: {e}"))
         })?;
 
     for service_url in discovery_services {
@@ -154,15 +151,12 @@ async fn discover_peers_from_known_endpoints(
         .timeout(std::time::Duration::from_secs(5))
         .build()
         .map_err(|e| {
-            SongbirdError::service_error(
-                "discovery",
-                format!("Failed to create HTTP client: {}", e),
-            )
+            SongbirdError::service_error("discovery", format!("Failed to create HTTP client: {e}"))
         })?;
 
     for endpoint in known_endpoints {
         // Try to get peer information from each known endpoint
-        let peers_url = format!("{}/federation/peers", endpoint);
+        let peers_url = format!("{endpoint}/federation/peers");
         match client.get(&peers_url).send().await {
             Ok(response) if response.status().is_success() => {
                 match response.json::<serde_json::Value>().await {
@@ -293,10 +287,7 @@ pub async fn targeted_service_scan(service_types: &[&str]) -> Result<Vec<String>
         .timeout(std::time::Duration::from_secs(3))
         .build()
         .map_err(|e| {
-            SongbirdError::service_error(
-                "discovery",
-                format!("Failed to create HTTP client: {}", e),
-            )
+            SongbirdError::service_error("discovery", format!("Failed to create HTTP client: {e}"))
         })?;
 
     let subnets = get_local_subnets().await?;
@@ -309,16 +300,16 @@ pub async fn targeted_service_scan(service_types: &[&str]) -> Result<Vec<String>
 
             // Scan common ports for each service type
             for i in 1..255 {
-                let ip = format!("{}.{}", base, i);
+                let ip = format!("{base}.{i}");
 
                 for &service_type in service_types {
                     let service_ports = get_service_specific_ports(service_type);
 
                     for port in service_ports {
-                        let endpoint = format!("http://{}:{}", ip, port);
+                        let endpoint = format!("http://{ip}:{port}");
 
                         // Quick check if the service matches the type we're looking for
-                        match client.get(&format!("{}/health", endpoint)).send().await {
+                        match client.get(format!("{endpoint}/health")).send().await {
                             Ok(response) if response.status().is_success() => {
                                 if let Ok(body) = response.text().await {
                                     if body.contains(service_type) {

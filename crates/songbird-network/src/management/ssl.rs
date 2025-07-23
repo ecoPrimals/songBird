@@ -49,7 +49,7 @@ impl SslManager {
         if !cert_dir.exists() {
             return Err(SongbirdError::config_field(
                 "ssl_cert_dir",
-                &format!(
+                format!(
                     "SSL certificate directory does not exist: {}",
                     self.config.ssl_cert_dir
                 ),
@@ -59,7 +59,7 @@ impl SslManager {
         if !cert_dir.is_dir() {
             return Err(SongbirdError::config_field(
                 "ssl_cert_dir",
-                &format!(
+                format!(
                     "SSL certificate path is not a directory: {}",
                     self.config.ssl_cert_dir
                 ),
@@ -84,12 +84,12 @@ impl SslManager {
 
         // Read certificate file
         let cert_content = std::fs::read_to_string(&cert_path).map_err(|e| {
-            SongbirdError::io_error(&format!("Failed to read certificate file: {}", e))
+            SongbirdError::io_error(format!("Failed to read certificate file: {e}"))
         })?;
 
         // Read private key file
         let key_content = std::fs::read_to_string(&key_path).map_err(|e| {
-            SongbirdError::io_error(&format!("Failed to read private key file: {}", e))
+            SongbirdError::io_error(format!("Failed to read private key file: {e}"))
         })?;
 
         // Basic validation - check if files contain PEM data
@@ -122,7 +122,7 @@ impl SslManager {
 
         // Generate self-signed certificate using OpenSSL
         let output = Command::new("openssl")
-            .args(&[
+            .args([
                 "req",
                 "-x509",
                 "-newkey",
@@ -139,11 +139,11 @@ impl SslManager {
             ])
             .output()
             .map_err(|e| {
-                SongbirdError::execution_error(&format!("Failed to execute OpenSSL: {}", e))
+                SongbirdError::execution_error(format!("Failed to execute OpenSSL: {e}"))
             })?;
 
         if !output.status.success() {
-            return Err(SongbirdError::execution_error(&format!(
+            return Err(SongbirdError::execution_error(format!(
                 "OpenSSL command failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
@@ -166,7 +166,7 @@ impl SslManager {
 
         // Use OpenSSL to get certificate information
         let output = std::process::Command::new("openssl")
-            .args(&[
+            .args([
                 "x509",
                 "-in",
                 cert_path.to_str().unwrap(),
@@ -175,11 +175,11 @@ impl SslManager {
             ])
             .output()
             .map_err(|e| {
-                SongbirdError::execution_error(&format!("Failed to read certificate info: {}", e))
+                SongbirdError::execution_error(format!("Failed to read certificate info: {e}"))
             })?;
 
         if !output.status.success() {
-            return Err(SongbirdError::execution_error(&format!(
+            return Err(SongbirdError::execution_error(format!(
                 "Failed to parse certificate: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
@@ -239,19 +239,19 @@ impl SslManager {
         let key_path = Path::new(&self.config.ssl_cert_dir).join("key.pem");
 
         let backup_cert_path =
-            Path::new(&self.config.ssl_cert_dir).join(format!("cert.{}.bak", timestamp));
+            Path::new(&self.config.ssl_cert_dir).join(format!("cert.{timestamp}.bak"));
         let backup_key_path =
-            Path::new(&self.config.ssl_cert_dir).join(format!("key.{}.bak", timestamp));
+            Path::new(&self.config.ssl_cert_dir).join(format!("key.{timestamp}.bak"));
 
         if cert_path.exists() {
             std::fs::copy(&cert_path, &backup_cert_path).map_err(|e| {
-                SongbirdError::io_error(&format!("Failed to backup certificate: {}", e))
+                SongbirdError::io_error(format!("Failed to backup certificate: {e}"))
             })?;
         }
 
         if key_path.exists() {
             std::fs::copy(&key_path, &backup_key_path).map_err(|e| {
-                SongbirdError::io_error(&format!("Failed to backup private key: {}", e))
+                SongbirdError::io_error(format!("Failed to backup private key: {e}"))
             })?;
         }
 

@@ -1,7 +1,13 @@
 #![allow(dead_code)]
 
 use anyhow::Result;
-use songbird_config::SongbirdConfig;
+use songbird_config::{
+    universal_primals::{
+        AuthenticationMethod, LoadBalancingStrategy, PrimalAuthentication, PrimalCapability,
+        PrimalConfiguration, PrimalEndpoint, QosMetrics,
+    },
+    SongbirdConfig,
+};
 use songbird_core::registry::ServiceRegistry;
 use songbird_federation::{
     manager::FederationManager,
@@ -13,10 +19,7 @@ use songbird_federation::{
 };
 use songbird_network::gaming::GamingManager;
 use songbird_observability::ObservabilityManager;
-use songbird_security::{
-    BearDogAuditLevel, BearDogComplianceMode, BearDogConfig, BearDogSecurityLevel,
-    UniversalSecurityIntegration,
-};
+use songbird_security::UniversalSecurityIntegration;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -47,57 +50,10 @@ impl SongbirdOrchestrator {
         // Initialize gaming manager (no parameters)
         let gaming_manager = Arc::new(GamingManager::new().await?);
 
-        // Initialize federation manager with proper FederationConfig
-        let federation_config = FederationConfig {
-            local_node: LocalNodeConfig {
-                name: "songbird-orchestrator".to_string(),
-                node_type: NodeType::Tower {
-                    location: config.environment.bind_address.clone(),
-                    capabilities: songbird_federation::TowerCapabilities {
-                        cpu_cores: 4,
-                        memory_gb: 8,
-                        storage_tb: 1,
-                        gpus: vec![],
-                        network_bandwidth_mbps: 1000,
-                        specializations: vec!["orchestration".to_string()],
-                    },
-                },
-                listen_addresses: vec![format!(
-                    "{}:{}",
-                    config.environment.bind_address, config.network.federation_port
-                )
-                .parse()?],
-                public_addresses: vec![],
-                location: Some(config.environment.bind_address.clone()),
-            },
-            discovery: DiscoveryConfig {
-                enabled_protocols: vec![DiscoveryProtocol::MDNS, DiscoveryProtocol::UPnP],
-                intervals: DiscoveryIntervals::default(),
-                max_range: NetworkProximity::Regional,
-                bootstrap_nodes: vec![],
-            },
-            security: FedSecurityConfig {
-                enable_beardog: config.is_primal_enabled("beardog"),
-                required_security_level: "internal".to_string(),
-                trusted_nodes: vec![],
-                session_timeout: Duration::from_secs(3600),
-            },
-            performance: PerformanceConfig {
-                route_strategy: RouteStrategy::LowLatency,
-                monitoring_interval: Duration::from_secs(30),
-                route_cache_ttl: Duration::from_secs(300),
-                max_route_hops: 10,
-            },
-            limits: FederationLimits {
-                max_nodes: 100,
-                max_connections: 200,
-                max_route_length: 10,
-                rate_limits: RateLimits {
-                    discovery_per_minute: 60,
-                    route_requests_per_minute: 120,
-                    max_transfer_rate_mbps: 1000,
-                },
-            },
+        // Create simplified federation configuration
+        let federation_config = songbird_federation::manager::SimpleFederationConfig {
+            local_node_name: "orchestrator-node".to_string(),
+            discovery_enabled: true,
         };
 
         let federation_manager = Arc::new(FederationManager::new(federation_config).await?);
@@ -106,33 +62,30 @@ impl SongbirdOrchestrator {
         let observability_manager = Arc::new(ObservabilityManager::new());
 
         // Initialize universal security integration using primal registry
-        let security_integration = if let Some(security_primal) = config
-            .find_primals_with_capability("security")
-            .into_iter()
-            .next()
-        {
+        let security_integration = if let Some(security_primal) =
+            config.primal_registry.as_ref().and_then(|registry| {
+                registry.primals.values().find(|p| {
+                    p.capabilities
+                        .iter()
+                        .any(|cap| cap.capability_type == "security")
+                })
+            }) {
             info!(
                 "🔐 Initializing universal security integration with {}",
                 security_primal.display_name
             );
-            Arc::new(UniversalSecurityIntegration::new(security_primal).await?)
+            Arc::new(UniversalSecurityIntegration::new(security_primal.clone()).await?)
         } else {
             // Fallback: create a basic security primal configuration if none configured
             warn!("⚠️  No security primal configured, creating basic BearDog integration");
-            use songbird_config::config::{
-                AuthenticationMethod, LoadBalancingStrategy, PrimalAuthentication,
-                PrimalCapability, PrimalConfiguration, PrimalEndpoint, QosMetrics,
-            };
+            // Types already imported at module level
 
             let mut beardog_primal =
                 PrimalConfiguration::new_template("beardog", "BearDog Security (Fallback)");
             beardog_primal.enabled = true;
             beardog_primal.endpoint = PrimalEndpoint {
-                primary_url: config
-                    .beardog
-                    .as_ref()
-                    .map(|b| b.endpoint.primary_url.clone())
-                    .unwrap_or_else(|| config.environment.beardog_endpoint.clone()),
+                primary_url: std::env::var("BEARDOG_ENDPOINT")
+                    .unwrap_or_else(|_| "http://localhost:8443".to_string()),
                 fallback_urls: vec![],
                 use_tls: true,
                 custom_headers: HashMap::new(),
@@ -142,11 +95,8 @@ impl SongbirdOrchestrator {
                 method: AuthenticationMethod::ApiKey,
                 credentials: {
                     let mut creds = HashMap::new();
-                    let api_key = config
-                        .beardog
-                        .as_ref()
-                        .and_then(|b| b.authentication.api_key.clone())
-                        .unwrap_or_else(|| "development_key".to_string());
+                    let api_key = std::env::var("BEARDOG_API_KEY")
+                        .unwrap_or_else(|_| "development_key".to_string());
                     creds.insert("api_key".to_string(), serde_json::Value::String(api_key));
                     creds
                 },

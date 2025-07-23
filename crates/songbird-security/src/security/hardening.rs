@@ -249,8 +249,7 @@ impl SecurityHardeningManager {
         for env_var in &env_config.required_environment_variables {
             if env::var(env_var).is_err() {
                 result.errors.push(format!(
-                    "Required environment variable {} is not set",
-                    env_var
+                    "Required environment variable {env_var} is not set"
                 ));
             }
         }
@@ -260,8 +259,7 @@ impl SecurityHardeningManager {
             if let Ok(value) = env::var(env_var) {
                 if forbidden_values.contains(&value) {
                     result.errors.push(format!(
-                        "Environment variable {} has forbidden value: {}",
-                        env_var, value
+                        "Environment variable {env_var} has forbidden value: {value}"
                     ));
                 }
             }
@@ -430,11 +428,11 @@ impl SecurityHardeningManager {
         info!("🔧 Applying environment hardening...");
 
         // Force security enabled if required
-        if self.config.force_security_enabled {
-            if env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default() != "true" {
-                warn!("Forcing security to be enabled");
-                env::set_var("SONGBIRD_SECURITY_ENABLED", "true");
-            }
+        if self.config.force_security_enabled
+            && env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default() != "true"
+        {
+            warn!("Forcing security to be enabled");
+            env::set_var("SONGBIRD_SECURITY_ENABLED", "true");
         }
 
         // Set secure defaults
@@ -466,7 +464,7 @@ impl SecurityHardeningManager {
             env::set_var("SONGBIRD_RATE_LIMIT_ENABLED", "true");
             env::set_var(
                 "SONGBIRD_RATE_LIMIT_RPM",
-                &network_config.rate_limiting.requests_per_minute.to_string(),
+                network_config.rate_limiting.requests_per_minute.to_string(),
             );
         }
 
@@ -482,15 +480,15 @@ impl SecurityHardeningManager {
         // Set authentication requirements
         env::set_var(
             "SONGBIRD_AUTH_MAX_ATTEMPTS",
-            &auth_config.max_failed_attempts.to_string(),
+            auth_config.max_failed_attempts.to_string(),
         );
         env::set_var(
             "SONGBIRD_AUTH_LOCKOUT_DURATION",
-            &auth_config.lockout_duration.as_secs().to_string(),
+            auth_config.lockout_duration.as_secs().to_string(),
         );
         env::set_var(
             "SONGBIRD_TOKEN_EXPIRATION",
-            &auth_config.token_expiration.as_secs().to_string(),
+            auth_config.token_expiration.as_secs().to_string(),
         );
 
         if auth_config.require_strong_tokens {

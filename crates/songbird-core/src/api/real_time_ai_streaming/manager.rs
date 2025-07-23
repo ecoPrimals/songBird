@@ -15,8 +15,8 @@ use super::connection::{
 };
 use super::metrics::StreamingPerformanceMonitor;
 use super::session::{
-    AIAssistanceLevel, CollaborationSessionType, CollaborationWorkspace, SessionState,
-    WorkspaceConfiguration, WorkspaceMetrics,
+    AIAssistanceLevel, CollaborationSessionType, CollaborationWorkspace, WorkspaceConfiguration,
+    WorkspaceMetrics,
 };
 
 /// WebSocket connection manager for AI streaming
@@ -37,6 +37,12 @@ pub struct AIStreamingConnectionManager {
 // Production implementations
 pub struct MessageRouter {
     route_table: HashMap<String, Vec<String>>,
+}
+
+impl Default for MessageRouter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MessageRouter {
@@ -78,6 +84,12 @@ pub struct CollaborationCoordinator {
     active_workspaces: HashMap<String, CollaborationWorkspace>,
 }
 
+impl Default for CollaborationCoordinator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CollaborationCoordinator {
     pub fn new() -> Self {
         Self {
@@ -93,7 +105,7 @@ impl CollaborationCoordinator {
     ) -> Result<CollaborationWorkspace> {
         let workspace = CollaborationWorkspace {
             workspace_id: workspace_id.clone(),
-            name: format!("Workspace-{}", workspace_id), // Generated name since config doesn't have name
+            name: format!("Workspace-{workspace_id}"), // Generated name since config doesn't have name
             session_id: uuid::Uuid::new_v4().to_string(),
             documents: Vec::new(),
             visualizations: Vec::new(),
@@ -203,7 +215,7 @@ impl AIStreamingConnectionManager {
                     },
                     super::super::ai_first_response::AIFirstError {
                         code: "CONNECTION_FAILED".to_string(),
-                        message: format!("Connection establishment failed: {}", e),
+                        message: format!("Connection establishment failed: {e}"),
                         category: super::super::ai_first_response::AIErrorCategory::SystemError,
                         retry_strategy: super::super::ai_first_response::RetryStrategy {
                             should_retry: true,
@@ -288,8 +300,7 @@ impl AIStreamingConnectionManager {
             ],
             connection_config: ConnectionConfig::default(),
             welcome_message: format!(
-                "Welcome to AI streaming! Connection {} established.",
-                connection_id
+                "Welcome to AI streaming! Connection {connection_id} established."
             ),
             session_token: Uuid::new_v4().to_string(),
             server_capabilities: vec![
@@ -331,7 +342,7 @@ impl AIStreamingConnectionManager {
 
         let response = super::connection::CollaborationSessionResponse {
             session_id: session_id.clone(),
-            workspace_url: format!("https://songbird-workspace.local/sessions/{}", session_id),
+            workspace_url: format!("https://songbird-workspace.local/sessions/{session_id}"),
             workspace,
             session_config: super::session::SessionConfiguration {
                 max_participants: 10,

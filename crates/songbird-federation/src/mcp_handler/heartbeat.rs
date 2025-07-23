@@ -10,30 +10,67 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-use sysinfo::{CpuExt, SystemExt};
 use tokio::sync::RwLock;
 use tokio::time::{interval, timeout};
 use tracing::{debug, error, info, warn};
 
 use crate::config::FederationConfig;
-
+use songbird_config::config::hardcoded_elimination::get_config;
+use songbird_core::metrics::MetricsCapabilityAdapter;
 use songbird_errors::{NetworkError, Result, SongbirdError};
+use songbird_universal::capabilities::UniversalCapabilityAdapter;
+use songbird_universal::DiscoveryConfig;
 
-#[derive(Debug)]
-/// Heartbeat manager for MCP federation
+/// Heartbeat manager for MCP federation using capability-based metrics
 pub struct HeartbeatManager {
     config: FederationConfig,
     running: Arc<RwLock<bool>>,
     heartbeat_handle: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
+    metrics_adapter: Arc<dyn MetricsCapabilityAdapter>,
 }
 
 impl HeartbeatManager {
-    /// Create new heartbeat manager
-    pub fn new(config: FederationConfig) -> Self {
+    /// Create new heartbeat manager with capability-based metrics
+    pub async fn new(config: FederationConfig) -> Result<Self> {
+        info!("🎼 Creating federation heartbeat manager with capability-based metrics");
+
+        // Create metrics capability adapter using universal discovery
+        info!("🔍 Heartbeat manager: Initializing universal capability adapter");
+        let discovery_config = DiscoveryConfig::default();
+        let capability_adapter = UniversalCapabilityAdapter::new(discovery_config);
+
+        // Test capability discovery
+        let providers = capability_adapter
+            .find_capability_providers("compute")
+            .await;
+        if providers.is_empty() {
+            warn!("⚠️  Heartbeat manager: No capability providers found via discovery");
+        } else {
+            info!(
+                "✅ Heartbeat manager: Found {} capability providers",
+                providers.len()
+            );
+        }
+
+        let metrics_adapter: Arc<dyn MetricsCapabilityAdapter> =
+            Arc::new(songbird_core::metrics::UniversalMetricsAdapter::new());
+
+        Ok(Self {
+            config,
+            running: Arc::new(RwLock::new(false)),
+            heartbeat_handle: Arc::new(RwLock::new(None)),
+            metrics_adapter,
+        })
+    }
+
+    /// Create heartbeat manager for testing
+    pub fn new_for_testing(config: FederationConfig) -> Self {
+        let adapter = songbird_core::metrics::UniversalMetricsAdapter::new();
         Self {
             config,
             running: Arc::new(RwLock::new(false)),
             heartbeat_handle: Arc::new(RwLock::new(None)),
+            metrics_adapter: Arc::new(adapter),
         }
     }
 
@@ -347,16 +384,36 @@ impl HeartbeatManager {
         }
     }
 
-    /// Create heartbeat message with current node status
+    /// Create heartbeat message with current node status using capability-based metrics
     async fn create_heartbeat_message(&self) -> Result<serde_json::Value> {
-        // Collect system metrics
-        let mut system = sysinfo::System::new_all();
-        system.refresh_all();
+        debug!("🎼 Creating heartbeat message with capability-based metrics");
 
-        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
-            / system.cpus().len() as f32;
-        let memory_usage = (system.used_memory() as f64 / system.total_memory() as f64) * 100.0;
-        let uptime = system.uptime();
+        // Get compute metrics from ToadStool via capability adapter
+        let (cpu_usage, memory_usage, total_memory_gb, available_memory_gb) =
+            match self.metrics_adapter.collect_compute_metrics().await {
+                Ok(compute_metrics) => {
+                    let total_memory_bytes =
+                        compute_metrics.memory_usage_bytes + compute_metrics.memory_available_bytes;
+                    let memory_usage_percent = if total_memory_bytes > 0 {
+                        (compute_metrics.memory_usage_bytes as f64 / total_memory_bytes as f64)
+                            * 100.0
+                    } else {
+                        0.0
+                    };
+
+                    (
+                        compute_metrics.cpu_usage_percent,
+                        memory_usage_percent,
+                        total_memory_bytes / 1024 / 1024 / 1024, // Convert to GB
+                        compute_metrics.memory_available_bytes / 1024 / 1024 / 1024, // Convert to GB
+                    )
+                }
+                Err(e) => {
+                    warn!("⚠️  Failed to get system metrics for heartbeat: {}", e);
+                    // Use default values to keep heartbeat working
+                    (0.0, 0.0, 8, 4) // Default values
+                }
+            };
 
         // Create heartbeat payload
         let heartbeat_data = serde_json::json!({
@@ -367,9 +424,12 @@ impl HeartbeatManager {
             "metrics": {
                 "cpu_usage": cpu_usage,
                 "memory_usage": memory_usage,
-                "uptime_seconds": uptime,
-                "total_memory_gb": system.total_memory() / 1024 / 1024 / 1024,
-                "available_memory_gb": system.available_memory() / 1024 / 1024 / 1024,
+                "uptime_seconds": std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+                "total_memory_gb": total_memory_gb,
+                "available_memory_gb": available_memory_gb,
             },
             "capabilities": [
                 "service_discovery",
@@ -624,6 +684,17 @@ impl HeartbeatManager {
     }
 }
 
+impl std::fmt::Debug for HeartbeatManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HeartbeatManager")
+            .field("config", &self.config)
+            .field("running", &self.running)
+            .field("heartbeat_handle", &self.heartbeat_handle)
+            .field("metrics_adapter", &"<MetricsCapabilityAdapter>")
+            .finish()
+    }
+}
+
 impl Drop for HeartbeatManager {
     fn drop(&mut self) {
         // Ensure heartbeat task is stopped when manager is dropped
@@ -644,7 +715,7 @@ mod tests {
     #[tokio::test]
     async fn test_heartbeat_manager_creation() {
         let config = FederationConfig::default();
-        let heartbeat = HeartbeatManager::new(config);
+        let heartbeat = HeartbeatManager::new_for_testing(config);
 
         assert!(!heartbeat.is_heartbeat_running().await);
     }
@@ -654,14 +725,14 @@ mod tests {
         let mut config = FederationConfig::default();
         config.heartbeat_interval = Some(60);
 
-        let heartbeat = HeartbeatManager::new(config);
+        let heartbeat = HeartbeatManager::new_for_testing(config);
         assert_eq!(heartbeat.get_heartbeat_interval(), Duration::from_secs(60));
     }
 
     #[tokio::test]
     async fn test_heartbeat_task_lifecycle() {
         let config = FederationConfig::default();
-        let heartbeat = HeartbeatManager::new(config);
+        let heartbeat = HeartbeatManager::new_for_testing(config);
 
         // Start heartbeat task
         assert!(heartbeat.start_heartbeat_task().await.is_ok());

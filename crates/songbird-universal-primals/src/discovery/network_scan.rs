@@ -138,7 +138,7 @@ pub async fn probe_primal_endpoint(endpoint: &str) -> PrimalResult<DiscoveredPri
         }
     }
 
-    Err(crate::errors::PrimalError::Network(format!(
+    Err(crate::errors::PrimalError::network_error(format!(
         "Endpoint {endpoint} is not a primal service"
     )))
 }
@@ -265,7 +265,11 @@ pub async fn scan_for_primal_type(primal_type: PrimalType) -> PrimalResult<Vec<D
 
     // Scan localhost with specific ports
     for &port in &ports {
-        let endpoint = format!("http://127.0.0.1:{port}");
+        let endpoint = songbird_config::config::hardcoded_elimination::replace::format_endpoint(
+            "orchestrator",
+            Some(port),
+        )
+        .to_string();
         if let Ok(primal) = probe_primal_endpoint(&endpoint).await {
             if primal.primal_type.as_str() == primal_type.as_str() {
                 discovered_primals.push(primal);

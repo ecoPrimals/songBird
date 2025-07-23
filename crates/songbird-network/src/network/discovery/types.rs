@@ -2,11 +2,9 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
 
-use super::super::beardog_integration::PeerCapabilities;
+use songbird_universal_primals::PrimalCapability;
 
 /// Discovery configuration
 #[derive(Debug, Clone)]
@@ -98,7 +96,7 @@ pub struct NetworkNode {
     pub node_id: String,
     pub address: SocketAddr,
     pub node_type: PeerType,
-    pub capabilities: PeerCapabilities,
+    pub capabilities: Vec<PrimalCapability>,
 }
 
 /// Network connection information
@@ -148,10 +146,9 @@ impl NetworkTopology {
     /// Add connection to topology
     pub fn add_connection(&mut self, connection: NetworkConnection) {
         // Remove existing connection between same nodes
-        self.connections.retain(|c| {
-            !(c.from_node == connection.from_node && c.to_node == connection.to_node)
-        });
-        
+        self.connections
+            .retain(|c| !(c.from_node == connection.from_node && c.to_node == connection.to_node));
+
         self.connections.push(connection);
         self.last_updated = Instant::now();
     }
@@ -173,7 +170,9 @@ impl NetworkTopology {
     pub fn get_nodes_by_type(&self, node_type: &PeerType) -> Vec<&NetworkNode> {
         self.nodes
             .values()
-            .filter(|node| std::mem::discriminant(&node.node_type) == std::mem::discriminant(node_type))
+            .filter(|node| {
+                std::mem::discriminant(&node.node_type) == std::mem::discriminant(node_type)
+            })
             .collect()
     }
 }
@@ -186,7 +185,12 @@ impl Default for NetworkTopology {
 
 impl NetworkNode {
     /// Create new network node
-    pub fn new(node_id: String, address: SocketAddr, node_type: PeerType, capabilities: PeerCapabilities) -> Self {
+    pub fn new(
+        node_id: String,
+        address: SocketAddr,
+        node_type: PeerType,
+        capabilities: Vec<PrimalCapability>,
+    ) -> Self {
         Self {
             node_id,
             address,
@@ -217,7 +221,12 @@ impl NetworkConnection {
 
 impl NetworkMeasurement {
     /// Create new network measurement
-    pub fn new(source: SocketAddr, target: SocketAddr, latency_ms: u32, bandwidth_mbps: u32) -> Self {
+    pub fn new(
+        source: SocketAddr,
+        target: SocketAddr,
+        latency_ms: u32,
+        bandwidth_mbps: u32,
+    ) -> Self {
         Self {
             timestamp: Instant::now(),
             source,
@@ -303,4 +312,23 @@ impl TURNRelay {
             Some(self.expires_at.duration_since(Instant::now()))
         }
     }
-} 
+}
+
+/// Network events for peer discovery and network state changes
+#[derive(Debug, Clone)]
+pub enum NetworkEvent {
+    /// A new peer has been discovered
+    PeerDiscovered {
+        peer_id: String,
+        address: std::net::SocketAddr,
+        capabilities: Vec<PrimalCapability>,
+    },
+    /// A peer has disconnected
+    PeerDisconnected { peer_id: String },
+    /// Network latency measurement
+    LatencyMeasurement {
+        source: std::net::SocketAddr,
+        target: std::net::SocketAddr,
+        latency_ms: u32,
+    },
+}

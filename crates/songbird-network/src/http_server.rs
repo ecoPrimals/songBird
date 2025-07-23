@@ -111,7 +111,7 @@ impl HttpServer {
 
         axum::serve(listener, app).await.map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
-                message: format!("HTTP Server - Server error: {e}"),
+                message: format!("HTTP Server - Server error: {e}").to_string(),
                 endpoint: Some(self.addr.to_string()),
                 port: Some(self.addr.port()),
                 protocol: Some("HTTP".to_string()),

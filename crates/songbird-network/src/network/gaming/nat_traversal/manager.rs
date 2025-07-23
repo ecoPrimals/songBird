@@ -38,9 +38,27 @@ impl NatTraversalManager {
                 .stun_servers
                 .iter()
                 .map(|server| {
-                    format!("{}:{}", server.address, server.port)
+                    let addr_str = format!("{}:{}", server.address, server.port);
+                    addr_str
                         .parse()
-                        .unwrap_or_else(|_| "127.0.0.1:3478".parse().unwrap())
+                        .or_else(|e| {
+                            tracing::warn!(
+                                "Failed to parse STUN server address '{}': {}, using default",
+                                addr_str,
+                                e
+                            );
+                            "127.0.0.1:3478".parse().map_err(|fallback_err| {
+                                tracing::error!(
+                                    "Critical: Default STUN server address is invalid: {}",
+                                    fallback_err
+                                );
+                                fallback_err
+                            })
+                        })
+                        .unwrap_or_else(|_| {
+                            // Last resort: use a hardcoded address that we know is valid
+                            std::net::SocketAddr::from(([127, 0, 0, 1], 3478))
+                        })
                 })
                 .collect(),
             turn_servers: config
@@ -66,8 +84,7 @@ impl NatTraversalManager {
         // Bind local socket
         let socket = UdpSocket::bind(local_addr).await.map_err(|e| {
             SongbirdError::network_error(format!(
-                "NAT Traversal - Failed to bind local socket at {}: {}",
-                local_addr, e
+                "NAT Traversal - Failed to bind local socket at {local_addr}: {e}"
             ))
         })?;
 
@@ -106,8 +123,7 @@ impl NatTraversalManager {
             .local_addr()
             .map_err(|e| {
                 SongbirdError::network_error(format!(
-                    "NAT Traversal - Failed to get local address: {}",
-                    e
+                    "NAT Traversal - Failed to get local address: {e}"
                 ))
             })?;
 
@@ -151,8 +167,7 @@ impl NatTraversalManager {
                 .local_addr()
                 .map_err(|e| {
                     SongbirdError::network_error(format!(
-                        "NAT Traversal - Failed to get local address: {}",
-                        e
+                        "NAT Traversal - Failed to get local address: {e}"
                     ))
                 })?;
 
@@ -354,7 +369,7 @@ impl NatTraversalManager {
         // Send a simple ping packet
         let ping_data = b"PING";
         socket.send_to(ping_data, peer_address).await.map_err(|e| {
-            SongbirdError::network_error(format!("NAT Traversal - Failed to send ping: {}", e))
+            SongbirdError::network_error(format!("NAT Traversal - Failed to send ping: {e}"))
         })?;
 
         // For simplicity, assume success if we can send
@@ -395,14 +410,13 @@ impl NatTraversalManager {
             attempts += 1;
 
             // Send hole punch packet
-            let hole_punch_data = format!("HOLE_PUNCH_{}", attempts);
+            let hole_punch_data = format!("HOLE_PUNCH_{attempts}");
             socket
                 .send_to(hole_punch_data.as_bytes(), peer_address)
                 .await
                 .map_err(|e| {
                     SongbirdError::network_error(format!(
-                        "NAT Traversal - Failed to send hole punch packet: {}",
-                        e
+                        "NAT Traversal - Failed to send hole punch packet: {e}"
                     ))
                 })?;
 

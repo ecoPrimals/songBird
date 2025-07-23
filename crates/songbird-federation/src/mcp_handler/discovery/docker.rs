@@ -52,17 +52,13 @@ async fn discover_via_docker_api() -> Result<Vec<String>, SongbirdError> {
         .map_err(|e| {
             SongbirdError::service_error(
                 "discovery",
-                format!("Failed to create Docker client: {}", e),
+                format!("Failed to create Docker client: {e}"),
             )
         })?;
 
     for docker_host in docker_hosts {
         // Try to list services (Docker Swarm)
-        match client
-            .get(&format!("{}/services", docker_host))
-            .send()
-            .await
-        {
+        match client.get(format!("{docker_host}/services")).send().await {
             Ok(response) if response.status().is_success() => {
                 match response.json::<serde_json::Value>().await {
                     Ok(services_response) => {
@@ -87,7 +83,7 @@ async fn discover_via_docker_api() -> Result<Vec<String>, SongbirdError> {
 
                 // If /services doesn't work, try /containers (standalone Docker)
                 match client
-                    .get(&format!("{}/containers/json", docker_host))
+                    .get(format!("{docker_host}/containers/json"))
                     .send()
                     .await
                 {
@@ -200,7 +196,7 @@ fn extract_docker_service_endpoint(service: &serde_json::Value) -> Option<String
         if let Some(ports) = endpoint.get("Ports").and_then(|v| v.as_array()) {
             for port in ports {
                 if let Some(published_port) = port.get("PublishedPort").and_then(|v| v.as_u64()) {
-                    return Some(format!("http://localhost:{}", published_port));
+                    return Some(format!("http://localhost:{published_port}"));
                 }
             }
         }
@@ -210,7 +206,7 @@ fn extract_docker_service_endpoint(service: &serde_json::Value) -> Option<String
     if let Some(spec) = service.get("Spec") {
         if let Some(name) = spec.get("Name").and_then(|v| v.as_str()) {
             // Default port assumption for Songbird services
-            return Some(format!("http://{}:8080", name));
+            return Some(format!("http://{name}:8080"));
         }
     }
 
@@ -223,7 +219,7 @@ fn extract_docker_container_endpoint(container: &serde_json::Value) -> Option<St
     if let Some(ports) = container.get("Ports").and_then(|v| v.as_array()) {
         for port in ports {
             if let Some(public_port) = port.get("PublicPort").and_then(|v| v.as_u64()) {
-                return Some(format!("http://localhost:{}", public_port));
+                return Some(format!("http://localhost:{public_port}"));
             }
         }
     }
@@ -235,7 +231,7 @@ fn extract_docker_container_endpoint(container: &serde_json::Value) -> Option<St
                 if let Some(ip_address) = network_info.get("IPAddress").and_then(|v| v.as_str()) {
                     if !ip_address.is_empty() {
                         // Try common ports
-                        return Some(format!("http://{}:8080", ip_address));
+                        return Some(format!("http://{ip_address}:8080"));
                     }
                 }
             }
@@ -265,7 +261,7 @@ async fn discover_via_docker_dns() -> Result<Vec<String>, SongbirdError> {
         .timeout(Duration::from_secs(3))
         .build()
         .map_err(|e| {
-            SongbirdError::service_error("discovery", format!("Failed to create DNS client: {}", e))
+            SongbirdError::service_error("discovery", format!("Failed to create DNS client: {e}"))
         })?;
 
     for service_name in service_names {
@@ -273,22 +269,19 @@ async fn discover_via_docker_dns() -> Result<Vec<String>, SongbirdError> {
         let service_ports = vec![80, 8080, 8081, 8082, 9090, 9091];
 
         for port in service_ports {
-            let endpoint = format!("http://{}:{}", service_name, port);
+            let endpoint = format!("http://{service_name}:{port}");
 
             // Quick health check to see if service is available
-            match client.get(&format!("{}/health", endpoint)).send().await {
+            match client.get(format!("{endpoint}/health")).send().await {
                 Ok(response) if response.status().is_success() => {
                     endpoints.push(endpoint.clone());
                     debug!("Found Docker DNS service: {}", endpoint);
                 }
                 Ok(response) if response.status().as_u16() == 404 => {
                     // Service exists but no /health endpoint, try root
-                    match client.get(&endpoint).send().await {
-                        Ok(_) => {
-                            endpoints.push(endpoint.clone());
-                            debug!("Found Docker DNS service (via root): {}", endpoint);
-                        }
-                        _ => {} // Continue
+                    if client.get(&endpoint).send().await.is_ok() {
+                        endpoints.push(endpoint.clone());
+                        debug!("Found Docker DNS service (via root): {}", endpoint);
                     }
                 }
                 _ => {} // Continue
@@ -321,11 +314,11 @@ async fn discover_via_docker_env() -> Result<Vec<String>, SongbirdError> {
         let ports = vec![8080, 8081, 8082, 9090, 9091];
 
         for port in ports {
-            let addr_key = format!("{}_PORT_{}_TCP_ADDR", prefix, port);
-            let port_key = format!("{}_PORT_{}_TCP_PORT", prefix, port);
+            let addr_key = format!("{prefix}_PORT_{port}_TCP_ADDR");
+            let port_key = format!("{prefix}_PORT_{port}_TCP_PORT");
 
             if let (Ok(addr), Ok(port_env)) = (std::env::var(&addr_key), std::env::var(&port_key)) {
-                let endpoint = format!("http://{}:{}", addr, port_env);
+                let endpoint = format!("http://{addr}:{port_env}");
                 endpoints.push(endpoint.clone());
                 debug!(
                     "Found Docker service via env vars: {}={}, {}={}",
@@ -335,14 +328,14 @@ async fn discover_via_docker_env() -> Result<Vec<String>, SongbirdError> {
         }
 
         // Also check for simple service environment variables
-        let service_host_key = format!("{}_SERVICE_HOST", prefix);
-        let service_port_key = format!("{}_SERVICE_PORT", prefix);
+        let service_host_key = format!("{prefix}_SERVICE_HOST");
+        let service_port_key = format!("{prefix}_SERVICE_PORT");
 
         if let (Ok(host), Ok(port)) = (
             std::env::var(&service_host_key),
             std::env::var(&service_port_key),
         ) {
-            let endpoint = format!("http://{}:{}", host, port);
+            let endpoint = format!("http://{host}:{port}");
             endpoints.push(endpoint.clone());
             debug!(
                 "Found Docker service via service env vars: {}={}, {}={}",
@@ -366,7 +359,7 @@ async fn discover_via_docker_env() -> Result<Vec<String>, SongbirdError> {
             };
 
             if let Ok(port) = std::env::var(&port_key) {
-                let endpoint = format!("http://{}:{}", value, port);
+                let endpoint = format!("http://{value}:{port}");
                 endpoints.push(endpoint.clone());
                 debug!("Found service via env scan: {}", endpoint);
             }

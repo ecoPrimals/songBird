@@ -6,16 +6,20 @@ use async_trait::async_trait;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
 /// OAuth2 errors
 #[derive(Debug, Error)]
 pub enum OAuth2Error {
+    /// Network error during OAuth request
     #[error("Network error: {0}")]
     Network(String),
-
+    /// Authentication failed or invalid credentials
     #[error("Authentication failed: {0}")]
     Authentication(String),
+    /// Token is invalid, expired, or malformed
     #[error("Invalid token: {0}")]
     InvalidToken(String),
+    /// OAuth configuration error
     #[error("Configuration error: {0}")]
     Configuration(String),
 }
@@ -83,25 +87,30 @@ pub trait OAuth2Provider: Send + Sync {
         &self,
         code: &str,
         state: &str,
-    ) -> Result<TokenResponse, Box<dyn std::error::Error>>;
+    ) -> Result<OAuth2TokenResponse, Box<dyn std::error::Error>>;
     /// Get user info using access token
     async fn get_user_info(
         &self,
         _access_token: &str,
     ) -> Result<super::UserInfo, Box<dyn std::error::Error>>;
-    /// Refresh access token
+    /// Refresh an access token
     async fn refresh_token(
         &self,
         refresh_token: &str,
-    ) -> Result<TokenResponse, Box<dyn std::error::Error>>;
+    ) -> Result<OAuth2TokenResponse, Box<dyn std::error::Error>>;
 }
-/// OAuth2 token response
+/// OAuth2 token response from authorization server
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TokenResponse {
+pub struct OAuth2TokenResponse {
+    /// The access token for API calls
     pub access_token: String,
+    /// Type of token (usually "Bearer")
     pub token_type: String,
+    /// Token expiration time in seconds
     pub expires_in: Option<u64>,
+    /// Refresh token for getting new access tokens
     pub refresh_token: Option<String>,
+    /// Granted scopes (space-separated)
     pub scope: Option<String>,
 }
 /// Generic OAuth2 provider implementation
@@ -110,6 +119,7 @@ pub struct GenericOAuth2Provider {
     client: songbird_network::communication::HyperHttpClient,
 }
 impl GenericOAuth2Provider {
+    /// Create a new OAuth2 provider with the given configuration
     pub fn new(config: OAuth2Config) -> Result<Self, OAuth2Error> {
         Ok(Self {
             config,
@@ -135,7 +145,7 @@ impl OAuth2Provider for GenericOAuth2Provider {
         &self,
         code: &str,
         _state: &str,
-    ) -> Result<TokenResponse, Box<dyn std::error::Error>> {
+    ) -> Result<OAuth2TokenResponse, Box<dyn std::error::Error>> {
         let params = serde_json::json!({
             "grant_type": "authorization_code",
             "code": code,
@@ -150,7 +160,7 @@ impl OAuth2Provider for GenericOAuth2Provider {
             .await?;
 
         if response.is_success() {
-            let token_response: TokenResponse = response.json()?;
+            let token_response: OAuth2TokenResponse = response.json()?;
             Ok(token_response)
         } else {
             let error_text = response.text()?;
@@ -189,7 +199,7 @@ impl OAuth2Provider for GenericOAuth2Provider {
     async fn refresh_token(
         &self,
         refresh_token: &str,
-    ) -> Result<TokenResponse, Box<dyn std::error::Error>> {
+    ) -> Result<OAuth2TokenResponse, Box<dyn std::error::Error>> {
         let params = serde_json::json!({
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
@@ -204,7 +214,7 @@ impl OAuth2Provider for GenericOAuth2Provider {
             .await?;
 
         if response.is_success() {
-            let token_response: TokenResponse = response.json()?;
+            let token_response: OAuth2TokenResponse = response.json()?;
             Ok(token_response)
         } else {
             let error_text = response.text()?;

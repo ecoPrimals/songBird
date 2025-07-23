@@ -32,6 +32,7 @@ pub mod batch_processor;
 pub mod cache;
 pub mod config;
 pub mod load_balancer;
+pub mod metrics_aware_load_balancer;
 pub mod monitor;
 pub mod object_pool;
 pub mod optimizer;
@@ -45,6 +46,11 @@ pub use config::{
 
 pub use load_balancer::{
     FastLoadBalancer, InstanceMetrics, LoadBalancerStats, LruCache, ServiceInstanceMeta,
+};
+
+pub use metrics_aware_load_balancer::{
+    ComputeRequest, ComputeResponse, MetricsAwareLoadBalancer, MetricsSummary, PrimalScore,
+    RequestPriority,
 };
 
 pub use cache::{AccessPattern, AdaptiveCache, CacheEntry};

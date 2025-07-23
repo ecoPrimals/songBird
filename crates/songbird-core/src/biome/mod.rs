@@ -36,6 +36,7 @@ pub use byob_coordinator::{
     ByobTeamWorkspace, ServiceHealth, ServiceStatus, TeamResourceQuota,
 };
 
+use songbird_config::get_default_bind_address;
 use std::collections::HashMap;
 use std::path::Path;
 use tracing::info;
@@ -103,16 +104,10 @@ pub fn create_example_manifest() -> SongbirdBiomeManifest {
             services.insert(
                 "web".to_string(),
                 ServiceSpec {
-                    endpoint: Some(format!(
-                        "http://{}:8080",
-                        songbird_config::environment::get_default_bind_address()
-                    )),
+                    endpoint: Some(format!("http://{}:8080", get_default_bind_address())),
                     depends_on: vec!["database".to_string()],
                     health_check: Some(HealthCheckSpec {
-                        endpoint: format!(
-                            "http://{}:8080/health",
-                            songbird_config::environment::get_default_bind_address()
-                        ),
+                        endpoint: format!("http://{}:8080/health", get_default_bind_address()),
                         interval_secs: 30,
                         timeout_secs: 5,
                     }),
@@ -123,15 +118,14 @@ pub fn create_example_manifest() -> SongbirdBiomeManifest {
                 "database".to_string(),
                 ServiceSpec {
                     endpoint: Some(format!(
-                        "http://{}:5432",
-                        songbird_config::environment::get_default_bind_address()
+                        "http://{}:{}",
+                        get_default_bind_address(),
+                        std::env::var("SONGBIRD_DATABASE_PORT")
+                            .unwrap_or_else(|_| "5432".to_string())
                     )),
                     depends_on: vec![],
                     health_check: Some(HealthCheckSpec {
-                        endpoint: format!(
-                            "http://{}:5432/health",
-                            songbird_config::environment::get_default_bind_address()
-                        ),
+                        endpoint: format!("http://{}:5432/health", get_default_bind_address()),
                         interval_secs: 60,
                         timeout_secs: 10,
                     }),
@@ -149,12 +143,13 @@ pub fn create_example_manifest() -> SongbirdBiomeManifest {
         }),
         primals: Some({
             let mut primals = HashMap::new();
+            // Use capability-based configuration instead of hardcoded primal names
             primals.insert(
-                "toadstool".to_string(),
+                "compute_provider".to_string(),
                 PrimalCoordination {
                     enabled: true,
-                    endpoint: None, // Will be discovered
-                    capabilities: vec!["storage".to_string(), "coordination".to_string()],
+                    endpoint: None, // Will be discovered via capability system
+                    capabilities: vec!["compute".to_string(), "processing".to_string()],
                 },
             );
             primals

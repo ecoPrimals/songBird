@@ -7,6 +7,7 @@ use clap::{Arg, Command};
 use colored::*;
 use reqwest::Client;
 use serde_json::json;
+use songbird_config::config::hardcoded_elimination::replace;
 use std::process::Command as StdCommand;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -34,7 +35,7 @@ pub struct TestConfig {
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
-            songbird_url: "http://localhost:8080".to_string(),
+            songbird_url: replace::orchestrator_endpoint().to_string(),
             timeout_seconds: 15,
             verbose: false,
             quiet: false,

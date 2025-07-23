@@ -445,7 +445,12 @@ impl UniversalPrimalRouter {
     async fn select_random(&self, nodes: &[PrimalNode]) -> Result<PrimalNode> {
         use rand::seq::SliceRandom;
         let mut rng = rand::thread_rng();
-        let selected = nodes.choose(&mut rng).unwrap();
+        let selected = nodes.choose(&mut rng).ok_or_else(|| {
+            songbird_errors::SongbirdError::from(ServiceError::new(
+                "router",
+                "No nodes available for random selection",
+            ))
+        })?;
         Ok(selected.clone())
     }
 

@@ -1,133 +1,87 @@
-//! Universal types for ecosystem integration
+//! Universal Types for Capability-Based Primal Integration
+//!
+//! This module provides comprehensive type definitions for the universal
+//! capability adapter system.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-// uuid re-exported by other modules
+use std::time::Duration;
 
-/// **UNIVERSAL PRIMAL TYPE** - Dynamic, extensible primal identification
-///
-/// **PURE UNIVERSAL EXTENSIBILITY**
-///
-/// This supports ANY primal without hardcoding or code changes.
-/// New primals can be added through configuration only.
-///
-/// ## Universal Architecture Benefits:
-/// - **Zero Code Changes**: Add new primals via configuration only
-/// - **Infinite Extensibility**: Supports any primal name or type  
-/// - **Clean Architecture**: No hardcoded assumptions
-/// - **Future-Proof**: New ecosystems can use this without modifications
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Universal primal type classification
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct PrimalType {
-    /// The primal type identifier (e.g., "beardog", "toadstool", "custom-ai", etc.)
-    pub name: String,
+    pub category: String,
+    pub subcategory: Option<String>,
+    pub version: String,
 }
 
 impl PrimalType {
-    /// Create a new primal type
-    pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into() }
+    pub fn new(category: &str) -> Self {
+        Self {
+            category: category.to_string(),
+            subcategory: None,
+            version: "1.0".to_string(),
+        }
     }
 
-    /// Get the primal type name
+    /// Create from string (for backward compatibility)
+    pub fn from_string(category: &str) -> Self {
+        Self::new(category)
+    }
+
     pub fn as_str(&self) -> &str {
-        &self.name
-    }
-
-    /// Create from string (universal constructor)
-    pub fn from_string(s: impl Into<String>) -> Self {
-        Self { name: s.into() }
-    }
-}
-
-impl std::str::FromStr for PrimalType {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::new(s))
+        &self.category
     }
 }
 
 impl std::fmt::Display for PrimalType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
+        write!(f, "{}", self.category)
     }
 }
 
-impl From<String> for PrimalType {
-    fn from(name: String) -> Self {
-        Self::new(name)
-    }
+/// Security level classification
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum SecurityLevel {
+    None,
+    Basic,
+    Standard,
+    High,
+    Critical,
 }
 
-impl From<&str> for PrimalType {
-    fn from(name: &str) -> Self {
-        Self::new(name)
-    }
-}
-
-/// Universal service identification
+/// Primal capability definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceIdentification {
+pub struct PrimalCapability {
+    pub capability_type: String,
+    pub version: String,
+    pub parameters: HashMap<String, serde_json::Value>,
+    pub qos_metrics: QosMetrics,
+}
+
+/// Quality of Service metrics
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct QosMetrics {
+    pub latency_ms: Option<f64>,
+    pub throughput_ops_sec: Option<f64>,
+    pub availability: Option<f64>,
+    pub reliability: Option<f64>,
+}
+
+/// Universal capability definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Capability {
     pub name: String,
     pub version: String,
     pub description: String,
-    pub primal_type: PrimalType,
-    pub instance_id: String,
+    pub provider: String,
+    pub endpoint: String,
+    pub qos_metrics: QosMetrics,
+    pub health_status: HealthStatus,
 }
 
-/// Universal service endpoint
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceEndpoint {
-    pub url: String,
-    pub protocol: String,
-    pub health_check_path: Option<String>,
-    pub metadata: HashMap<String, serde_json::Value>,
-}
-
-/// Universal resource specification
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceSpec {
-    pub cpu_cores: Option<f64>,
-    pub memory_mb: Option<u64>,
-    pub disk_mb: Option<u64>,
-    pub network_bandwidth_mbps: Option<u64>,
-    pub gpu_count: Option<u32>,
-    pub custom_resources: HashMap<String, serde_json::Value>,
-}
-
-/// Universal security configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityConfig {
-    pub auth_required: bool,
-    pub auth_methods: Vec<String>,
-    pub encryption_required: bool,
-    pub security_level: SecurityLevel,
-    pub custom_security: HashMap<String, serde_json::Value>,
-}
-
-/// Security levels
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SecurityLevel {
-    Public,
-    Internal,
-    Restricted,
-    Confidential,
-}
-
-/// Universal health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    pub enabled: bool,
-    pub interval_seconds: u64,
-    pub timeout_seconds: u64,
-    pub failure_threshold: u32,
-    pub success_threshold: u32,
-    pub custom_checks: HashMap<String, serde_json::Value>,
-}
-
-/// Universal health status
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Health status enumeration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum HealthStatus {
     Healthy,
     Degraded,
@@ -135,162 +89,435 @@ pub enum HealthStatus {
     Unknown,
 }
 
-impl PartialOrd for HealthStatus {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
+/// Discovery filters for primal search
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DiscoveryFilters {
+    pub capability_types: Vec<String>,
+    pub security_levels: Vec<SecurityLevel>,
+    pub geographic_regions: Vec<String>,
+    pub performance_requirements: Option<QosMetrics>,
 }
 
-impl Ord for HealthStatus {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        let self_priority = match self {
-            HealthStatus::Healthy => 3,
-            HealthStatus::Degraded => 2,
-            HealthStatus::Unhealthy => 1,
-            HealthStatus::Unknown => 0,
-        };
-        let other_priority = match other {
-            HealthStatus::Healthy => 3,
-            HealthStatus::Degraded => 2,
-            HealthStatus::Unhealthy => 1,
-            HealthStatus::Unknown => 0,
-        };
-        self_priority.cmp(&other_priority)
-    }
-}
-
-/// Universal service health
+/// Service information structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceHealth {
-    pub status: HealthStatus,
-    pub last_check: DateTime<Utc>,
-    pub response_time: std::time::Duration,
-    pub error: Option<String>,
+pub struct ServiceInfo {
+    pub name: String,
+    pub primal_type: PrimalType,
+    pub endpoint: String,
+    pub capabilities: Vec<Capability>,
+    pub health: HealthStatus,
+    pub metadata: HashMap<String, String>,
+}
+
+/// Service event for monitoring
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceEvent {
+    pub service_name: String,
+    pub event_type: String,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
     pub details: HashMap<String, serde_json::Value>,
 }
 
-/// Universal service metrics
+/// Registered service in the registry
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceMetrics {
-    pub performance_score: f64,
-    pub average_latency_ms: f64,
-    pub requests_per_second: f64,
-    pub error_rate: f64,
-    pub uptime_percentage: f64,
-    pub custom_metrics: HashMap<String, f64>,
+pub struct RegisteredService {
+    pub id: String,
+    pub service_info: ServiceInfo,
+    pub registration_time: chrono::DateTime<chrono::Utc>,
+    pub last_heartbeat: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-impl Default for ServiceMetrics {
+/// Security configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityConfig {
+    pub enabled: bool,
+    pub level: SecurityLevel,
+    pub authentication_required: bool,
+    pub tls_enabled: bool,
+    pub certificate_path: Option<String>,
+}
+
+/// Security context for operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityContext {
+    pub user_id: Option<String>,
+    pub session_id: String,
+    pub permissions: Vec<String>,
+    pub security_level: SecurityLevel,
+}
+
+/// Universal event for system-wide communication
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UniversalEvent {
+    pub event_id: String,
+    pub event_type: String,
+    pub source: String,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub payload: serde_json::Value,
+}
+
+/// Universal request structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UniversalRequest {
+    pub request_id: String,
+    pub source: String,
+    pub target: String,
+    pub action: String,
+    pub parameters: HashMap<String, serde_json::Value>,
+    pub security_context: Option<SecurityContext>,
+}
+
+/// Universal response structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UniversalResponse {
+    pub request_id: String,
+    pub status: ResponseStatus,
+    pub data: Option<serde_json::Value>,
+    pub error: Option<String>,
+    pub metadata: HashMap<String, String>,
+}
+
+/// Response status enumeration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ResponseStatus {
+    Success,
+    Partial,
+    Failed,
+    Timeout,
+    NotFound,
+}
+
+/// Protocol characteristics for communication
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProtocolCharacteristics {
+    pub protocol_name: String,
+    pub version: String,
+    pub max_message_size: usize,
+    pub supports_streaming: bool,
+    pub security_features: Vec<String>,
+}
+
+/// Load balancing configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadBalancingConfig {
+    pub strategy: LoadBalancingStrategy,
+    pub health_check_interval: Duration,
+    pub max_retries: u32,
+    pub timeout: Duration,
+}
+
+impl Default for LoadBalancingConfig {
     fn default() -> Self {
         Self {
-            performance_score: 0.0,
-            average_latency_ms: 0.0,
-            requests_per_second: 0.0,
-            error_rate: 0.0,
-            uptime_percentage: 100.0,
-            custom_metrics: HashMap::new(),
+            strategy: LoadBalancingStrategy::RoundRobin,
+            health_check_interval: Duration::from_secs(30),
+            max_retries: 3,
+            timeout: Duration::from_secs(10),
         }
     }
 }
 
-/// Universal service status
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ServiceStatus {
-    Registered,
-    Active,
-    Inactive,
-    Deregistered,
-    Failed,
+/// Load balancing strategy
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LoadBalancingStrategy {
+    RoundRobin,
+    WeightedRoundRobin,
+    LeastConnections,
+    HealthBased,
+    Random,
 }
 
-/// Universal retry configuration
+/// Service health information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceHealth {
+    pub status: HealthStatus,
+    pub last_check: chrono::DateTime<chrono::Utc>,
+    pub response_time_ms: Option<f64>,
+    pub error_rate: Option<f64>,
+    pub details: HashMap<String, serde_json::Value>,
+}
+
+/// Error types for various subsystems
+#[derive(Debug, thiserror::Error)]
+pub enum DiscoveryError {
+    #[error("Network error: {0}")]
+    Network(String),
+    #[error("Parse error: {0}")]
+    Parse(String),
+    #[error("Timeout error: {0}")]
+    Timeout(String),
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum LoadBalancingError {
+    #[error("No healthy instances available")]
+    NoHealthyInstances,
+    #[error("Invalid configuration: {0}")]
+    InvalidConfiguration(String),
+    #[error("Service unavailable: {0}")]
+    ServiceUnavailable(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum RegistryError {
+    #[error("Service not found: {0}")]
+    ServiceNotFound(String),
+    #[error("Registration failed: {0}")]
+    RegistrationFailed(String),
+    #[error("Duplicate service: {0}")]
+    DuplicateService(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProtocolError {
+    #[error("Protocol mismatch: {0}")]
+    ProtocolMismatch(String),
+    #[error("Version incompatible: {0}")]
+    VersionIncompatible(String),
+    #[error("Message format error: {0}")]
+    MessageFormat(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ServiceError {
+    #[error("Service unavailable: {0}")]
+    Unavailable(String),
+    #[error("Service overloaded: {0}")]
+    Overloaded(String),
+    #[error("Invalid request: {0}")]
+    InvalidRequest(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SecurityError {
+    #[error("Authentication failed: {0}")]
+    AuthenticationFailed(String),
+    #[error("Authorization denied: {0}")]
+    AuthorizationDenied(String),
+    #[error("Security violation: {0}")]
+    SecurityViolation(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum MetricsError {
+    #[error("Metric collection failed: {0}")]
+    CollectionFailed(String),
+    #[error("Invalid metric: {0}")]
+    InvalidMetric(String),
+    #[error("Storage error: {0}")]
+    StorageError(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum EventError {
+    #[error("Event processing failed: {0}")]
+    ProcessingFailed(String),
+    #[error("Invalid event format: {0}")]
+    InvalidFormat(String),
+    #[error("Event delivery failed: {0}")]
+    DeliveryFailed(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    #[error("Configuration invalid: {0}")]
+    Invalid(String),
+    #[error("Configuration not found: {0}")]
+    NotFound(String),
+    #[error("Configuration parse error: {0}")]
+    ParseError(String),
+}
+
+/// Capability requirement specification
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapabilityRequirement {
+    pub capability_type: String,
+    pub minimum_version: String,
+    pub required_qos: Option<QosMetrics>,
+    pub security_level: SecurityLevel,
+}
+
+/// Service capability definition
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceCapability {
+    pub capability_type: String,
+    pub version: String,
+    pub endpoint_path: String,
+    pub supported_operations: Vec<String>,
+    pub qos_guarantees: QosMetrics,
+}
+
+impl Default for PrimalType {
+    fn default() -> Self {
+        Self::new("universal")
+    }
+}
+
+impl Default for SecurityLevel {
+    fn default() -> Self {
+        SecurityLevel::Standard
+    }
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            level: SecurityLevel::Standard,
+            authentication_required: false,
+            tls_enabled: false,
+            certificate_path: None,
+        }
+    }
+}
+
+impl Default for HealthStatus {
+    fn default() -> Self {
+        HealthStatus::Unknown
+    }
+}
+
+impl Default for LoadBalancingStrategy {
+    fn default() -> Self {
+        LoadBalancingStrategy::RoundRobin
+    }
+}
+
+impl Default for ResponseStatus {
+    fn default() -> Self {
+        ResponseStatus::Success
+    }
+}
+
+/// Retry configuration for resilient operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetryConfig {
-    pub max_retries: u32,
-    pub initial_delay_ms: u64,
-    pub max_delay_ms: u64,
+    pub max_attempts: u32,
+    pub initial_delay: Duration,
+    pub max_delay: Duration,
     pub backoff_multiplier: f64,
+}
+
+/// Circuit breaker configuration  
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CircuitBreakerConfig {
+    pub failure_threshold: u32,
+    pub success_threshold: u32,
+    pub timeout: Duration,
+    pub half_open_max_calls: u32,
+}
+
+/// Service identification information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceIdentification {
+    pub service_id: String,
+    pub service_name: String,
+    pub version: String,
+    pub instance_id: String,
+}
+
+/// Service endpoint configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceEndpoint {
+    pub url: String,
+    pub protocol: String,
+    pub port: u16,
+    pub path: Option<String>,
+    pub tls_enabled: bool,
+}
+
+/// Resource specification for services
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceSpec {
+    pub cpu_cores: Option<u32>,
+    pub memory_mb: Option<u64>,
+    pub disk_gb: Option<u64>,
+    pub network_bandwidth_mbps: Option<u32>,
+}
+
+/// Health check configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthCheckConfig {
+    pub enabled: bool,
+    pub endpoint: String,
+    pub interval: Duration,
+    pub timeout: Duration,
+    pub healthy_threshold: u32,
+    pub unhealthy_threshold: u32,
+}
+
+/// Feature flags for capability control
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeatureFlags {
+    pub features: HashMap<String, bool>,
+    pub rollout_percentage: HashMap<String, f64>,
 }
 
 impl Default for RetryConfig {
     fn default() -> Self {
         Self {
-            max_retries: 3,
-            initial_delay_ms: 100,
-            max_delay_ms: 30000,
+            max_attempts: 3,
+            initial_delay: Duration::from_millis(100),
+            max_delay: Duration::from_secs(30),
             backoff_multiplier: 2.0,
         }
     }
-}
-
-/// Universal circuit breaker configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    pub failure_threshold: u32,
-    pub recovery_timeout_ms: u64,
-    pub test_request_count: u32,
-    pub success_threshold: u32,
 }
 
 impl Default for CircuitBreakerConfig {
     fn default() -> Self {
         Self {
             failure_threshold: 5,
-            recovery_timeout_ms: 60000,
-            test_request_count: 3,
-            success_threshold: 2,
+            success_threshold: 3,
+            timeout: Duration::from_secs(60),
+            half_open_max_calls: 1,
         }
     }
 }
 
-/// Universal load balancing configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoadBalancingConfig {
-    pub strategy: String,
-    pub health_check_enabled: bool,
-    pub sticky_sessions: bool,
-    pub custom_config: HashMap<String, serde_json::Value>,
-}
-
-impl Default for LoadBalancingConfig {
+impl Default for HealthCheckConfig {
     fn default() -> Self {
         Self {
-            strategy: "capability_based".to_string(),
-            health_check_enabled: true,
-            sticky_sessions: false,
-            custom_config: HashMap::new(),
+            enabled: true,
+            endpoint: "/health".to_string(),
+            interval: Duration::from_secs(30),
+            timeout: Duration::from_secs(5),
+            healthy_threshold: 2,
+            unhealthy_threshold: 3,
         }
     }
-}
-
-/// Universal authentication method
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AuthMethod {
-    Token,
-    Jwt,
-    Oauth2,
-    BearDog,
-    Custom(String),
-}
-
-/// Universal feature flags
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FeatureFlags {
-    pub development_mode: bool,
-    pub debug_logging: bool,
-    pub metrics_enabled: bool,
-    pub tracing_enabled: bool,
-    pub experimental_features: Vec<String>,
 }
 
 impl Default for FeatureFlags {
     fn default() -> Self {
         Self {
-            development_mode: false,
-            debug_logging: false,
-            metrics_enabled: true,
-            tracing_enabled: true,
-            experimental_features: Vec::new(),
+            features: HashMap::new(),
+            rollout_percentage: HashMap::new(),
+        }
+    }
+}
+
+impl Default for ServiceEndpoint {
+    fn default() -> Self {
+        Self {
+            url: "http://localhost:8080".to_string(),
+            protocol: "http".to_string(),
+            port: 8080,
+            path: None,
+            tls_enabled: false,
+        }
+    }
+}
+
+impl Default for ResourceSpec {
+    fn default() -> Self {
+        Self {
+            cpu_cores: None,
+            memory_mb: None,
+            disk_gb: None,
+            network_bandwidth_mbps: None,
         }
     }
 }

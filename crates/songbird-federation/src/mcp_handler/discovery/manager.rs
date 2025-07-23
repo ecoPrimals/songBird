@@ -204,22 +204,17 @@ impl DiscoveryManager {
 
     /// Get discovery status for all methods
     pub async fn get_discovery_status(&self) -> DiscoveryStatus {
-        let mut status = DiscoveryStatus::default();
-
-        // Test each discovery method
-        status.mdns_available = discover_via_mdns().await.is_ok();
-        status.udp_broadcast_available = discover_via_udp_broadcast().await.is_ok();
-        status.service_registry_available = discover_via_service_registry().await.is_ok();
-        status.dht_available = discover_via_dht(&self.config).await.is_ok();
-        status.kubernetes_available = super::kubernetes::is_running_in_kubernetes()
-            && discover_from_kubernetes().await.is_ok();
-        status.docker_available =
-            super::docker::is_running_in_docker() && discover_from_docker_swarm().await.is_ok();
-
-        // Network scan is always available as fallback
-        status.network_scan_available = true;
-
-        status
+        DiscoveryStatus {
+            mdns_available: discover_via_mdns().await.is_ok(),
+            udp_broadcast_available: discover_via_udp_broadcast().await.is_ok(),
+            service_registry_available: discover_via_service_registry().await.is_ok(),
+            dht_available: discover_via_dht(&self.config).await.is_ok(),
+            kubernetes_available: super::kubernetes::is_running_in_kubernetes()
+                && discover_from_kubernetes().await.is_ok(),
+            docker_available: super::docker::is_running_in_docker()
+                && discover_from_docker_swarm().await.is_ok(),
+            network_scan_available: true, // Network scan is always available as fallback
+        }
     }
 
     /// Perform targeted discovery for specific service types

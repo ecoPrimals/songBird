@@ -343,6 +343,21 @@ pub struct DiscoveryConfig {
     pub bootstrap_nodes: Vec<String>,
 }
 
+impl Default for DiscoveryConfig {
+    fn default() -> Self {
+        Self {
+            enabled_protocols: vec![
+                DiscoveryProtocol::MDNS,
+                DiscoveryProtocol::UPnP,
+                DiscoveryProtocol::STUN,
+            ],
+            intervals: DiscoveryIntervals::default(),
+            max_range: NetworkProximity::Regional,
+            bootstrap_nodes: Vec::new(),
+        }
+    }
+}
+
 /// Security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityConfig {
@@ -734,9 +749,9 @@ impl Default for DiscoveryIntervals {
     fn default() -> Self {
         Self {
             local_discovery: Duration::from_secs(30),
-            regional_discovery: Duration::from_secs(300),
-            global_discovery: Duration::from_secs(3600),
-            topology_refresh: Duration::from_secs(60),
+            regional_discovery: Duration::from_secs(60),
+            global_discovery: Duration::from_secs(300),
+            topology_refresh: Duration::from_secs(120),
         }
     }
 }

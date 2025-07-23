@@ -125,17 +125,15 @@ impl AiAwareRequestCache {
         let data_size = data.len();
 
         // Check memory limits
-        if self.total_memory_bytes + data_size > self.config.max_memory_bytes {
-            if !self.make_space_for(data_size) {
-                return false;
-            }
+        if self.total_memory_bytes + data_size > self.config.max_memory_bytes
+            && !self.make_space_for(data_size)
+        {
+            return false;
         }
 
         // Check item count limits
-        if self.cache.len() >= self.config.max_items {
-            if !self.evict_lru() {
-                return false;
-            }
+        if self.cache.len() >= self.config.max_items && !self.evict_lru() {
+            return false;
         }
 
         let access_pattern = AccessPattern::new();
@@ -351,7 +349,7 @@ impl AiAwareCache {
 
             let params_str = sorted_params
                 .iter()
-                .map(|(k, v)| format!("{}:{}", k, v))
+                .map(|(k, v)| format!("{k}:{v}"))
                 .collect::<Vec<_>>()
                 .join(",");
 
@@ -360,7 +358,7 @@ impl AiAwareCache {
             "no_params".to_string()
         };
 
-        format!("{}:{}:{}", model_id, input_hash, params_hash)
+        format!("{model_id}:{input_hash}:{params_hash}")
     }
 
     pub async fn compute_input_hash(input: &serde_json::Value) -> String {

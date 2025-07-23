@@ -12,12 +12,12 @@ pub async fn handle_discovery_command(discovery_command: Option<DiscoveryCommand
             timeout,
             port_range,
         }) => {
-            print_info(&format!("🔍 Scanning network (timeout: {}s)", timeout));
+            print_info(&format!("🔍 Scanning network (timeout: {timeout}s)"));
             if let Some(iface) = interface {
-                print_info(&format!("📡 Interface: {}", iface));
+                print_info(&format!("📡 Interface: {iface}"));
             }
             if let Some(ports) = port_range {
-                print_info(&format!("🔌 Port range: {}", ports));
+                print_info(&format!("🔌 Port range: {ports}"));
             }
             print_success("✅ Network scan completed");
             Ok(())
@@ -36,8 +36,7 @@ pub async fn handle_discovery_command(discovery_command: Option<DiscoveryCommand
         }
         Some(DiscoveryCommands::Test { target, count }) => {
             print_info(&format!(
-                "🔬 Testing connectivity to {} ({} attempts)",
-                target, count
+                "🔬 Testing connectivity to {target} ({count} attempts)"
             ));
             print_success("✅ Connectivity test completed");
             Ok(())
@@ -61,7 +60,7 @@ pub async fn handle_discovery_command(discovery_command: Option<DiscoveryCommand
                 print_info("  🌐 Including external services");
             }
             if let Some(p) = pattern {
-                print_info(&format!("  🎯 Pattern: {}", p));
+                print_info(&format!("  🎯 Pattern: {p}"));
             }
             print_success("✅ Advanced scan completed");
             Ok(())

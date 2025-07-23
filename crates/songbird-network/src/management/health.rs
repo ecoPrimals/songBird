@@ -2,6 +2,7 @@
 
 use songbird_errors::SongbirdError;
 use std::time::{Duration, SystemTime};
+use tracing::info;
 
 use super::config::{HealthCheckConfig, NetworkConfig};
 use super::monitoring::{HealthStatus, NetworkHealthStatus};
@@ -51,7 +52,9 @@ impl HealthChecker {
             .timeout(target.timeout)
             .build()
             .map_err(|e| {
-                SongbirdError::network_error(&format!("Failed to create HTTP client: {}", e))
+                SongbirdError::network_error(
+                    format!("Failed to create HTTP client: {e}").to_string(),
+                )
             })?;
 
         let result = match client.get(&target.url).send().await {
@@ -291,15 +294,21 @@ impl HealthCheckTarget {
 pub fn create_health_targets(config: &NetworkConfig) -> Vec<HealthCheckTarget> {
     let mut targets = Vec::new();
 
-    // Add upstream servers as health check targets
+    // Add upstream servers as health check targets with proper indexing
     for (i, server) in config.upstream_servers.iter().enumerate() {
         let health_url = if server.starts_with("http") {
-            format!("{}/health", server)
+            format!("{server}/health")
         } else {
-            format!("http://{}/health", server)
+            format!("http://{server}/health")
         };
 
-        let target = HealthCheckTarget::new(format!("upstream_{}", i), health_url)
+        info!(
+            "Adding health check target #{}: {} -> {}",
+            i + 1,
+            server,
+            health_url
+        );
+        let target = HealthCheckTarget::new("upstream_{i}".to_string(), health_url)
             .with_timeout(config.health_check.timeout);
 
         targets.push(target);
@@ -309,7 +318,11 @@ pub fn create_health_targets(config: &NetworkConfig) -> Vec<HealthCheckTarget> {
     if config.monitoring_enabled {
         let monitor_target = HealthCheckTarget::new(
             "monitoring".to_string(),
-            format!("http://localhost:{}/health", config.monitoring_port),
+            songbird_config::config::hardcoded_elimination::replace::format_service_endpoint(
+                "orchestrator",
+                "health",
+                Some(config.monitoring_port),
+            ),
         );
         targets.push(monitor_target);
     }

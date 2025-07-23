@@ -157,17 +157,7 @@ pub enum GamingThreatScenario {
     ServiceDisruption,
 }
 
-// Supporting structures for the real implementations
-#[derive(Debug, Clone)]
-pub struct SecurityTestReport {
-    pub threat_detection_results: Vec<TestResult>,
-    pub zero_trust_results: Vec<TestResult>,
-    pub encryption_results: Vec<TestResult>,
-    pub audit_results: Vec<TestResult>,
-    pub compliance_results: Vec<TestResult>,
-    pub overall_score: f64,
-    pub recommendations: Vec<String>,
-}
+// SecurityTestReport moved to end of file with comprehensive specialized result types
 
 #[derive(Debug, Clone)]
 pub struct TestResult {
@@ -224,4 +214,63 @@ pub struct AuditLogEntry {
     pub resource: String,
     pub result: String,
     pub details: String,
+}
+
+// Specialized result types for different security test categories
+#[derive(Debug, Clone)]
+pub struct ThreatDetectionResult {
+    pub threat_id: String,
+    pub threat_type: String,
+    pub severity_score: f64,
+    pub detected: bool,
+    pub passed: bool,
+    pub details: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZeroTrustResult {
+    pub test_id: String,
+    pub context: String,
+    pub trust_score: f64,
+    pub passed: bool,
+    pub details: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct EncryptionResult {
+    pub test_id: String,
+    pub algorithm: String,
+    pub key_strength: u32,
+    pub strength_score: f64,
+    pub passed: bool,
+    pub details: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct AuditResult {
+    pub test_id: String,
+    pub audit_type: String,
+    pub completeness_score: f64,
+    pub passed: bool,
+    pub details: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ComplianceResult {
+    pub test_id: String,
+    pub standard: String,
+    pub compliance_score: f64,
+    pub passed: bool,
+    pub details: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct SecurityTestReport {
+    pub threat_detection_results: Vec<ThreatDetectionResult>,
+    pub zero_trust_results: Vec<ZeroTrustResult>,
+    pub encryption_results: Vec<EncryptionResult>,
+    pub audit_results: Vec<AuditResult>,
+    pub compliance_results: Vec<ComplianceResult>,
+    pub overall_score: f64,
+    pub recommendations: Vec<String>,
 }

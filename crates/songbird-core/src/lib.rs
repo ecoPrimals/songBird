@@ -85,6 +85,7 @@ pub mod benchmarks;
 pub mod biome;
 pub mod biomeos;
 pub mod load_balancer;
+pub mod metrics;
 pub mod orchestrator;
 pub mod performance;
 pub mod primal_integration;

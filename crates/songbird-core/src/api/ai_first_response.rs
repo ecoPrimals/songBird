@@ -76,6 +76,21 @@ impl<T> AIFirstResponse<T> {
         }
     }
 
+    /// Check if the response indicates success
+    pub fn is_success(&self) -> bool {
+        self.success
+    }
+
+    /// Check if the response indicates an error
+    pub fn is_error(&self) -> bool {
+        !self.success
+    }
+
+    /// Unwrap the data from a successful response
+    pub fn unwrap_data(self) -> T {
+        self.data
+    }
+
     /// Add human interaction context
     pub fn with_human_context(mut self, context: HumanInteractionContext) -> Self {
         self.human_context = Some(context);
@@ -206,7 +221,7 @@ pub enum ErrorSeverity {
 }
 
 /// Metadata specifically designed for AI decision making
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AIResponseMetadata {
     /// Performance characteristics
     pub performance: PerformanceMetrics,
@@ -228,20 +243,6 @@ pub struct AIResponseMetadata {
 
     /// Service mesh routing information
     pub routing_metadata: RoutingMetadata,
-}
-
-impl Default for AIResponseMetadata {
-    fn default() -> Self {
-        Self {
-            performance: PerformanceMetrics::default(),
-            resource_usage: ResourceUsage::default(),
-            quality_metrics: QualityMetrics::default(),
-            cache_info: CacheInfo::default(),
-            rate_limit_status: RateLimitStatus::default(),
-            dependencies: Vec::new(),
-            routing_metadata: RoutingMetadata::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -394,7 +395,7 @@ impl Default for RateLimitStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RoutingMetadata {
     /// Selected service endpoint
     pub selected_endpoint: Option<String>,
@@ -410,18 +411,6 @@ pub struct RoutingMetadata {
 
     /// Routing decision factors
     pub decision_factors: Vec<RoutingDecisionFactor>,
-}
-
-impl Default for RoutingMetadata {
-    fn default() -> Self {
-        Self {
-            selected_endpoint: None,
-            available_endpoints: 0,
-            load_balancing_algorithm: None,
-            service_health_scores: HashMap::new(),
-            decision_factors: Vec::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -728,7 +717,7 @@ impl AIFirstError {
     pub fn human_intervention_required(reason: &str) -> Self {
         Self {
             code: "HUMAN_INTERVENTION_REQUIRED".to_string(),
-            message: format!("Human intervention required: {}", reason),
+            message: format!("Human intervention required: {reason}"),
             category: AIErrorCategory::HumanInterventionRequired,
             retry_strategy: RetryStrategy {
                 should_retry: false,

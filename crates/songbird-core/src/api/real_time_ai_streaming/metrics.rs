@@ -152,6 +152,12 @@ pub struct DataTransferMetrics {
     pub transfer_rate_bps: f64,
 }
 
+impl Default for StreamingPerformanceMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StreamingPerformanceMonitor {
     /// Create new performance monitor
     pub fn new() -> Self {

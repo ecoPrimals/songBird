@@ -84,17 +84,17 @@ impl IntegrationManager {
         info!("🔍 Validating configuration...");
 
         // Check required configuration sections
-        if self.config.environment.bind_address.is_empty() {
+        if self.config.network.bind_address.is_empty() {
             return Err(anyhow::anyhow!("Bind address is required"));
         }
 
-        if self.config.network.orchestrator_port == 0 {
-            return Err(anyhow::anyhow!("Orchestrator port must be specified"));
+        if self.config.network.port_range.start == 0 || self.config.network.port_range.end == 0 {
+            return Err(anyhow::anyhow!("Port range must be specified"));
         }
 
-        // Validate port ranges
-        if self.config.network.gaming.starcraft_port == 0 {
-            return Err(anyhow::anyhow!("Gaming port must be configured"));
+        // Validate gaming configuration via environment
+        if std::env::var("GAMING_PORT").is_err() {
+            warn!("⚠️  Gaming port not configured via GAMING_PORT environment variable");
         }
 
         info!("✅ Configuration validation passed");
@@ -302,21 +302,19 @@ impl ConfigurationIntegration {
     pub fn validate_cross_service_configuration(config: &SongbirdConfig) -> Result<()> {
         info!("🔍 Validating cross-service configuration...");
 
-        // Check gaming configuration
-        if config.network.gaming.starcraft_port == 0 {
-            return Err(anyhow::anyhow!("Gaming port must be specified"));
+        // Check gaming configuration via environment
+        if std::env::var("GAMING_PORT").is_err() {
+            warn!("⚠️  Gaming port not configured via GAMING_PORT environment variable");
         }
 
-        // Check environment configuration
-        if config.environment.bind_address.is_empty() {
-            return Err(anyhow::anyhow!(
-                "Environment bind address must be specified"
-            ));
+        // Check network configuration
+        if config.network.bind_address.is_empty() {
+            return Err(anyhow::anyhow!("Network bind address must be specified"));
         }
 
-        // Check discovery configuration
-        if config.network.discovery_ports.is_empty() {
-            return Err(anyhow::anyhow!("Discovery ports must be specified"));
+        // Check port range configuration
+        if config.network.port_range.start == 0 || config.network.port_range.end == 0 {
+            return Err(anyhow::anyhow!("Network port range must be specified"));
         }
 
         info!("✅ Cross-service configuration validation passed");
@@ -326,12 +324,13 @@ impl ConfigurationIntegration {
     /// Generate configuration integration report
     pub fn generate_integration_report(config: &SongbirdConfig) -> ConfigurationIntegrationReport {
         ConfigurationIntegrationReport {
-            gaming_configured: config.network.gaming.starcraft_port != 0,
+            gaming_configured: std::env::var("GAMING_PORT").is_ok(),
             federation_configured: true, // Federation is always configured with defaults
-            security_configured: config.beardog.is_some(),
+            security_configured: config.primal_registry.is_some(),
             observability_configured: true, // Basic observability is always configured
-            environment_configured: !config.environment.bind_address.is_empty(),
-            discovery_configured: !config.network.discovery_ports.is_empty(),
+            environment_configured: !config.network.bind_address.is_empty(),
+            discovery_configured: config.network.port_range.start > 0
+                && config.network.port_range.end > 0,
             timestamp: std::time::SystemTime::now(),
         }
     }

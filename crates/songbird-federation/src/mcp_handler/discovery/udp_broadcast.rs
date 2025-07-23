@@ -108,9 +108,9 @@ pub struct ServiceInfo {
     pub instance_id: String,
 }
 
-impl ServiceInfo {
+impl Default for ServiceInfo {
     /// Create default service info
-    pub fn default() -> Self {
+    fn default() -> Self {
         Self {
             endpoints: vec!["federation".to_string(), "mcp".to_string()],
             capabilities: vec![
@@ -131,12 +131,12 @@ pub async fn start_discovery_listener(
 ) -> Result<(), SongbirdError> {
     info!("Starting UDP discovery listener on port {}", port);
 
-    let socket = tokio::net::UdpSocket::bind(format!("0.0.0.0:{}", port))
+    let socket = tokio::net::UdpSocket::bind(format!("0.0.0.0:{port}"))
         .await
         .map_err(|e| {
             SongbirdError::service_error(
                 "discovery",
-                format!("Failed to bind UDP listener socket: {}", e),
+                format!("Failed to bind UDP listener socket: {e}"),
             )
         })?;
 
@@ -181,18 +181,18 @@ pub fn parse_discovery_response(response: &str) -> Option<DiscoveryResponse> {
     let mut instance_id = String::new();
 
     for line in response.lines() {
-        if line.starts_with("port=") {
-            if let Ok(p) = line[5..].parse::<u16>() {
+        if let Some(stripped) = line.strip_prefix("port=") {
+            if let Ok(p) = stripped.parse::<u16>() {
                 port = p;
             }
-        } else if line.starts_with("endpoints=") {
-            endpoints = line[10..].split(',').map(|s| s.to_string()).collect();
-        } else if line.starts_with("capabilities=") {
-            capabilities = line[13..].split(',').map(|s| s.to_string()).collect();
-        } else if line.starts_with("version=") {
-            version = line[8..].to_string();
-        } else if line.starts_with("instance_id=") {
-            instance_id = line[12..].to_string();
+        } else if let Some(stripped) = line.strip_prefix("endpoints=") {
+            endpoints = stripped.split(',').map(|s| s.to_string()).collect();
+        } else if let Some(stripped) = line.strip_prefix("capabilities=") {
+            capabilities = stripped.split(',').map(|s| s.to_string()).collect();
+        } else if let Some(stripped) = line.strip_prefix("version=") {
+            version = stripped.to_string();
+        } else if let Some(stripped) = line.strip_prefix("instance_id=") {
+            instance_id = stripped.to_string();
         }
     }
 

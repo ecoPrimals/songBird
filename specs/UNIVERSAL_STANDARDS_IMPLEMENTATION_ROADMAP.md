@@ -45,80 +45,109 @@ pub struct PrimalType {
     pub name: String,
 }
 
-impl PrimalType {
-    /// Create a new primal type - supports ANY name
-    pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into() }
-    }
-
-    /// Get the primal type name
-    pub fn as_str(&self) -> &str {
-        &self.name
-    }
-
-    /// Universal constructor from any string
-    pub fn from_string(s: impl Into<String>) -> Self {
-        Self { name: s.into() }
-    }
+// ✅ IMPLEMENTED: Capability-based routing (not name-based)
+pub async fn route_by_capability(
+    capability: PrimalCapability,
+    request: PrimalRequest
+) -> Result<PrimalResponse> {
+    // Route to ANY primal that provides this capability
+    let suitable_primals = registry.find_by_capability(capability).await?;
+    load_balance_across(suitable_primals, request).await
 }
-
-// Examples of universal extensibility in action:
-let beardog = PrimalType::new("beardog");
-let phoenix = PrimalType::new("phoenix-ai");
-let quantum = PrimalType::new("quantum-compute");
-let custom = PrimalType::new("my-custom-primal");
-// ALL WORK WITHOUT CODE CHANGES!
 ```
 
-#### **✅ IMPLEMENTED: Universal Service Discovery**
+### **2. Universal Metrics Ingestion System ⚠️ IMPLEMENTATION REQUIRED**
 
-Our implementation uses **pure capability-based discovery** that works with unlimited primal types:
+**REQUIREMENT**: Ingest system metrics from ToadStool, security metrics from BearDog, storage metrics from NestGate, and AI metrics from Squirrel using capability-based adapters.
+
+#### **Core Implementation Pattern:**
 
 ```rust
-// ✅ IMPLEMENTED: Universal service discovery
-impl UniversalDiscovery {
-    /// Discover ANY primal by capability - no hardcoding!
-    pub async fn discover_primals_with_capability(
-        &self, 
-        capability: &str
-    ) -> Result<Vec<DiscoveredPrimal>> {
-        // Probes /api/info endpoints to detect capabilities
-        // Works with beardog, toadstool, phoenix-ai, quantum-mesh, etc.
-        // Zero hardcoded assumptions!
-    }
+// File: crates/songbird-core/src/metrics/capability_adapters.rs
+// IMPLEMENT: Universal metrics ingestion via capability adapters
 
-    /// Universal primal classification by service info
-    pub fn classify_primal_from_service_info(
-        &self,
-        service_info: &serde_json::Value
-    ) -> PrimalType {
-        // Dynamically infers primal type from capabilities
-        // Supports unlimited future primals
+/// Universal Metrics Capability Adapter
+#[async_trait]
+pub trait MetricsCapabilityAdapter {
+    /// Collect compute metrics from ToadStool or equivalent compute primal
+    async fn collect_compute_metrics(&self) -> Result<ComputeMetrics>;
+    
+    /// Collect security metrics from BearDog or equivalent security primal  
+    async fn collect_security_metrics(&self) -> Result<SecurityMetrics>;
+    
+    /// Collect storage metrics from NestGate or equivalent storage primal
+    async fn collect_storage_metrics(&self) -> Result<StorageMetrics>;
+    
+    /// Collect AI metrics from Squirrel or equivalent AI primal
+    async fn collect_ai_metrics(&self) -> Result<AIMetrics>;
+}
+
+/// ToadStool Compute Metrics (what we ingest from ToadStool)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComputeMetrics {
+    pub cpu_usage_percent: f64,           // Real-time CPU from ToadStool
+    pub memory_usage_bytes: u64,          // Memory metrics from ToadStool
+    pub memory_available_bytes: u64,      // Available memory from ToadStool
+    pub disk_usage_percent: f64,          // Storage utilization from ToadStool
+    pub network_io_bytes_per_sec: u64,    // Network throughput from ToadStool
+    pub active_containers: u32,           // Container metrics from ToadStool
+    pub queued_jobs: u32,                 // Pending workloads from ToadStool
+    pub performance_score: f64,           // ToadStool's optimization metrics
+}
+
+/// BearDog Security Metrics (what we ingest from BearDog)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityMetrics {
+    pub threat_level: SecurityLevel,      // Current threat from BearDog
+    pub active_sessions: u32,             // Auth sessions from BearDog
+    pub failed_auth_attempts: u32,        // Security incidents from BearDog
+    pub encryption_operations_per_sec: u64, // Crypto load from BearDog
+    pub compliance_score: f64,            // Security compliance from BearDog
+}
+```
+
+### **3. Enhanced Load Balancing with Real Metrics ⚠️ IMPLEMENTATION REQUIRED**
+
+**REQUIREMENT**: Use real metrics from ToadStool to make intelligent load balancing decisions.
+
+#### **Implementation Pattern:**
+
+```rust
+// File: crates/songbird-core/src/performance/metrics_aware_load_balancer.rs
+// IMPLEMENT: Load balancing based on real ToadStool metrics
+
+pub struct MetricsAwareLoadBalancer {
+    compute_metrics_adapter: Arc<dyn MetricsCapabilityAdapter>,
+    load_balancer: Arc<LoadBalancer>,
+}
+
+impl MetricsAwareLoadBalancer {
+    /// Route requests based on real compute metrics from ToadStool
+    pub async fn route_compute_request(&self, request: ComputeRequest) -> Result<ComputeResponse> {
+        // Get real metrics from ToadStool via capability adapter
+        let metrics = self.compute_metrics_adapter.collect_compute_metrics().await?;
+        
+        // Make intelligent routing decision based on real data
+        let target_primal = self.select_best_compute_primal(metrics).await?;
+        
+        // Route to selected primal
+        target_primal.handle_compute_request(request).await
+    }
+    
+    /// Select best compute primal based on ToadStool metrics
+    async fn select_best_compute_primal(&self, metrics: ComputeMetrics) -> Result<Arc<dyn PrimalProvider>> {
+        // Use real CPU usage, memory pressure, queue depth from ToadStool
+        let available_primals = self.registry.find_by_capability(
+            PrimalCapability::ContainerRuntime { orchestrators: vec!["docker".to_string()] }
+        ).await?;
+        
+        // Route based on real metrics, not hardcoded algorithms
+        self.load_balancer.select_by_metrics(available_primals, metrics).await
     }
 }
 ```
 
-### **2. Comprehensive Universal Migration ✅ COMPLETE**
-
-#### **✅ User-Facing Systems Migration**
-- **CLI Quick Setup**: Migrated from `with_beardog()` → `with_primal_registry()` ✅
-- **Orchestrator Core**: Migrated from `BeardogIntegration` → `UniversalSecurityIntegration` ✅
-- **Gaming Auto-Config**: Fully universal with intelligent primal selection ✅
-- **Test Suite**: Migrated from hardcoded methods to universal primal testing ✅
-
-#### **✅ Discovery & Configuration Systems**
-- **Legacy Discovery**: Migrated from hardcoded arrays to dynamic capability detection ✅
-- **Configuration**: Universal primal registry replaces all hardcoded configs ✅
-- **Service Provider**: Universal security provider selection by capability ✅
-- **Network Gaming**: Auto-config works with ANY security primal ✅
-
-#### **✅ Architecture Achievements**
-- **Zero Code Changes**: New primals work through configuration only ✅
-- **Infinite Extensibility**: `phoenix-ai`, `quantum-compute`, `neural-mesh` supported ✅
-- **Perfect Backward Compatibility**: All existing configurations work unchanged ✅
-- **Capability-Based Routing**: Intelligent primal selection by capabilities ✅
-
-### **3. Implement AI-First Citizen API Standard**
+### **4. Implement AI-First Citizen API Standard**
 
 **REQUIREMENT**: All endpoints must support AIFirstResponse format and human-AI collaboration.
 
@@ -174,7 +203,7 @@ pub trait ServiceMeshAIBatchProcessing: Send + Sync {
 }
 ```
 
-### **4. Implement Universal Primal SDK Integration**
+### **5. Implement Universal Primal SDK Integration**
 
 **REQUIREMENT**: Integration with biomeOS Universal Primal SDK for community extensibility.
 
@@ -248,7 +277,7 @@ pub trait UniversalPrimalProvider: Send + Sync {
 }
 ```
 
-### **5. Complete Ecosystem API Standardization**
+### **6. Complete Ecosystem API Standardization**
 
 **REQUIREMENT**: Full compliance with Songbird-centric communication patterns.
 

@@ -49,8 +49,10 @@ pub fn discover_capabilities_from_service(
     // If no specific capabilities detected, assign generic service capability
     if discovered_capabilities.is_empty() {
         discovered_capabilities.push(PrimalCapability::Custom {
-            name: "generic_service".to_string(),
-            attributes: extract_generic_attributes(service_info),
+            name: "universal".to_string(),
+            properties: extract_generic_attributes(service_info)
+                .into_iter()
+                .collect(),
         });
     }
 
@@ -183,7 +185,7 @@ fn detect_orchestration_capabilities(service_info: &serde_json::Value) -> Vec<Pr
 
     if has_orchestration_support(service_info) {
         capabilities.push(PrimalCapability::Orchestration {
-            primals: detect_managed_primals(service_info),
+            features: detect_managed_primals(service_info),
         });
     }
 
@@ -500,13 +502,13 @@ pub fn infer_primal_type_from_capabilities(capabilities: &[PrimalCapability]) ->
     if capability_types.is_empty() {
         PrimalType::new("unknown-service")
     } else {
-        PrimalType::new(capability_types.join("-"))
+        PrimalType::new(&capability_types.join("-"))
     }
 }
 
 /// Parse primal type from string representation (fallback for legacy)
 pub fn parse_primal_type_from_string(type_str: &str) -> PrimalType {
-    PrimalType::new(type_str.to_string())
+    PrimalType::new(type_str)
 }
 
 /// Get default capabilities - now uses capability detection instead of hardcoded names
@@ -553,7 +555,7 @@ pub fn get_default_capabilities_for_type(primal_type: &PrimalType) -> Vec<Primal
     if capabilities.is_empty() {
         capabilities.push(PrimalCapability::Custom {
             name: "generic_service".to_string(),
-            attributes: HashMap::new(),
+            properties: vec![],
         });
     }
 
@@ -596,7 +598,12 @@ fn get_default_ai_capabilities() -> Vec<PrimalCapability> {
 }
 
 fn get_default_orchestration_capabilities() -> Vec<PrimalCapability> {
-    vec![PrimalCapability::Orchestration {
-        primals: vec!["universal".to_string()],
-    }]
+    vec![
+        PrimalCapability::Orchestration {
+            features: vec!["universal".to_string()],
+        },
+        PrimalCapability::ServiceDiscovery {
+            protocols: vec!["http".to_string()],
+        },
+    ]
 }
