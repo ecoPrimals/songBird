@@ -56,6 +56,7 @@ hex = "0.4"
 songbird-config = { path = "../songbird-config" }
 songbird-errors = { path = "../songbird-errors" }
 songbird-discovery = { path = "../songbird-discovery" }
+songbird-universal-primals = { path = "../songbird-universal-primals" }
 
 # Network discovery
 mdns = "3.0"

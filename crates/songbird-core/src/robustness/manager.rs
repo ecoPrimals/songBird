@@ -1,9 +1,9 @@
 //! Main robustness manager that coordinates all reliability patterns
 
-use super::bulkhead::{BulkheadError, BulkheadInstance, BulkheadPermit};
+use super::bulkhead::{BulkheadError, BulkheadInstance};
 use super::circuit_breaker::CircuitBreakerInstance;
 use super::config::RobustnessConfig;
-use super::error_types::{CircuitBreakerState, HealthStatus, RetryableError};
+use super::error_types::{CircuitBreakerState, HealthStatus};
 use super::health_checker::HealthCheckerInstance;
 use super::rate_limiter::RateLimiterInstance;
 use super::stats::{
@@ -94,7 +94,7 @@ impl RobustnessManager {
             } else {
                 return Err(SongbirdError::config_field(
                     "circuit_breaker".to_string(),
-                    format!("Circuit breaker '{}' not found", service_name),
+                    format!("Circuit breaker '{service_name}' not found"),
                 ));
             }
         }
@@ -136,7 +136,7 @@ impl RobustnessManager {
             } else {
                 return Err(SongbirdError::config_field(
                     "rate_limiter".to_string(),
-                    format!("Rate limiter '{}' not found", service_name),
+                    format!("Rate limiter '{service_name}' not found"),
                 ));
             }
         }
@@ -176,7 +176,7 @@ impl RobustnessManager {
             } else {
                 return Err(SongbirdError::config_field(
                     "bulkhead".to_string(),
-                    format!("Bulkhead '{}' not found", service_name),
+                    format!("Bulkhead '{service_name}' not found"),
                 ));
             }
         };
@@ -220,7 +220,7 @@ impl RobustnessManager {
         } else {
             Err(SongbirdError::config_field(
                 "health_checker".to_string(),
-                format!("Health checker '{}' not found", service_name),
+                format!("Health checker '{service_name}' not found"),
             ))
         }
     }

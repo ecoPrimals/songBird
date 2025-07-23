@@ -34,12 +34,19 @@ pub struct UniversalSecurityManager {
 /// Device Security Policy - Applied to every connected device
 #[derive(Debug, Clone)]
 pub struct DeviceSecurityPolicy {
+    /// Unique device identifier
     pub device_id: String,
+    /// Human-readable device name
     pub device_name: String,
+    /// Security level for this device
     pub security_level: SecurityLevel,
+    /// Whether encryption is required for this device
     pub encryption_required: bool,
+    /// Whether family-safe mode is enabled
     pub family_safe_mode: bool,
+    /// When this device was first trusted
     pub trusted_since: DateTime<Utc>,
+    /// Auto-enabled security features for this device
     pub auto_security_features: Vec<AutoSecurityFeature>,
 }
 
@@ -74,39 +81,63 @@ pub enum AutoSecurityFeature {
 }
 
 /// Friend trust levels for social security
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FriendTrustLevel {
-    /// Family members - maximum trust and access
-    Family { verified_at: DateTime<Utc> },
-    /// Close friends - high trust, most access
-    CloseFriend { verified_at: DateTime<Utc> },
-    /// Friends - standard trust
-    Friend { verified_at: DateTime<Utc> },
-    /// Acquaintances - limited trust
-    Acquaintance { verified_at: DateTime<Utc> },
-    /// Unknown - no trust, maximum protection
+    /// Closest family members with full trust
+    Family {
+        /// When family relationship was verified
+        verified_at: DateTime<Utc>,
+    },
+    /// Close friends with high trust
+    CloseFriend {
+        /// When close friend status was verified
+        verified_at: DateTime<Utc>,
+    },
+    /// Regular friends with standard trust
+    Friend {
+        /// When friend status was verified
+        verified_at: DateTime<Utc>,
+    },
+    /// Acquaintances with limited trust
+    Acquaintance {
+        /// When acquaintance status was verified
+        verified_at: DateTime<Utc>,
+    },
+    /// Unknown users with no trust
     Unknown,
 }
 
-/// Family Protection Configuration
+/// Family protection configuration
 #[derive(Debug, Clone)]
 pub struct FamilyProtectionConfig {
+    /// Whether family protection is enabled
     pub enabled: bool,
+    /// Family name for identification
     pub family_name: String,
+    /// Overall protection level for the family
     pub protection_level: SecurityLevel,
+    /// List of trusted device IDs
     pub trusted_devices: Vec<String>,
+    /// Whether guests can access the network
     pub guest_access_enabled: bool,
+    /// Whether parental controls are active
     pub parental_controls: bool,
+    /// Anti-scammer protection settings
     pub scammer_protection: ScammerProtectionConfig,
 }
 
-/// Scammer Protection Settings
+/// Grandma-safe scammer protection
 #[derive(Debug, Clone)]
 pub struct ScammerProtectionConfig {
+    /// Block suspicious tech support calls and remote access attempts
     pub block_tech_support_calls: bool,
+    /// Block unknown remote access tools
     pub block_unknown_remote_access: bool,
+    /// Block suspicious downloads and attachments
     pub block_suspicious_downloads: bool,
+    /// Enable family-safe browsing with scam protection
     pub family_safe_browsing: bool,
+    /// Protect against financial scams and phishing
     pub financial_protection: bool,
 }
 
@@ -143,27 +174,41 @@ pub struct LightweightTunnelCrypto {
     beardog_crypto_interface: Option<Arc<dyn BearDogCryptoInterface>>,
 }
 
-/// Lightweight session key for tunnel coordination with gaming optimization
+/// Lightweight session key for tunnel coordination
 #[derive(Debug, Clone)]
 pub struct SessionKey {
+    /// Unique key identifier
     pub key_id: String,
+    /// The actual key data
     pub key_data: Vec<u8>,
+    /// When the key was created
     pub created_at: SystemTime,
+    /// When the key expires
     pub expires_at: SystemTime,
+    /// Type of tunnel this key is for
     pub tunnel_type: TunnelType,
+    /// Whether the key can be automatically renewed
     pub auto_renewable: bool,
+    /// Number of times this key has been renewed
     pub renewal_count: u32,
+    /// Gaming-specific metadata if applicable
     pub gaming_metadata: Option<GamingTunnelMetadata>,
 }
 
-/// Gaming-specific tunnel metadata
+/// Gaming-specific tunnel metadata for optimized connections
 #[derive(Debug, Clone)]
 pub struct GamingTunnelMetadata {
+    /// Game session identifier if available
     pub game_session_id: Option<String>,
+    /// Number of players in the session
     pub player_count: Option<u32>,
+    /// Type of game being played
     pub game_type: Option<String>,
+    /// Match identifier for competitive games
     pub match_id: Option<String>,
+    /// Lobby identifier for matchmaking
     pub lobby_id: Option<String>,
+    /// Gaming priority level for QoS
     pub priority: GamingPriority,
 }
 
@@ -243,11 +288,15 @@ pub struct ReinforcedTunnel {
     pub combined_strength: CryptoStrength,
 }
 
+/// Cryptographic strength levels for layered security
 #[derive(Debug, Clone)]
 pub enum CryptoStrength {
-    SongBirdOnly,   // Ultra-light tunnel crypto
-    BearDogOnly,    // Heavy data crypto
-    LayeredDefense, // Both layers working together
+    /// Ultra-light tunnel crypto
+    SongBirdOnly,
+    /// Heavy data crypto
+    BearDogOnly,
+    /// Both layers working together
+    LayeredDefense,
 }
 
 /// Gaming tunnel status for monitoring and management
@@ -487,6 +536,7 @@ impl UniversalSecurityManager {
 }
 
 impl LightweightTunnelCrypto {
+    /// Create a new lightweight tunnel crypto manager
     pub fn new() -> Self {
         Self {
             session_keys: Arc::new(RwLock::new(HashMap::new())),

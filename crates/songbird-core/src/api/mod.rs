@@ -26,20 +26,21 @@ pub mod ai_workload_classification;
 /// Real-Time AI Streaming API module
 pub mod real_time_ai_streaming;
 
-// Re-export main types and functions from core
-pub use core::*;
+// Import modules with conflict resolution
+pub use core::{types as core_types, ResourceUsage as CoreResourceUsage};
 
-// Re-export AI-first response types
-pub use ai_first_response::*;
+pub use ai_first_response::ResourceUsage as AiResourceUsage;
 
-// Re-export universal service registration types
-pub use universal_service_registration::*;
+pub use universal_service_registration::types::{
+    AlertThresholds as UniversalAlertThresholds,
+    CircuitBreakerConfig as UniversalCircuitBreakerConfig,
+};
 
-// Re-export AI-enhanced service mesh types
 pub use ai_enhanced_service_mesh::*;
 
-// Re-export AI workload classification types
-pub use ai_workload_classification::*;
+// Re-export WorkloadCircuitBreakerConfig from robustness module instead of AI classification
+pub use crate::robustness::CircuitBreakerConfig as WorkloadCircuitBreakerConfig;
 
-// Re-export real-time AI streaming types
-pub use real_time_ai_streaming::*;
+pub use real_time_ai_streaming::{
+    types as streaming_types, AlertThresholds as StreamingAlertThresholds,
+};

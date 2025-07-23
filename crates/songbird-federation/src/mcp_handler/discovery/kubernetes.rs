@@ -53,7 +53,7 @@ async fn discover_via_kubernetes_api() -> Result<Vec<String>, SongbirdError> {
         .map_err(|e| {
             SongbirdError::service_error(
                 "discovery",
-                format!("Failed to create Kubernetes client: {}", e),
+                format!("Failed to create Kubernetes client: {e}"),
             )
         })?;
 
@@ -63,7 +63,7 @@ async fn discover_via_kubernetes_api() -> Result<Vec<String>, SongbirdError> {
         .unwrap_or_default();
 
     for k8s_host in kubernetes_hosts {
-        let mut request = client.get(&format!("{}/api/v1/services", k8s_host));
+        let mut request = client.get(format!("{k8s_host}/api/v1/services"));
 
         if !token.is_empty() {
             request = request.bearer_auth(&token);
@@ -128,7 +128,7 @@ fn parse_kubernetes_services(services_response: &serde_json::Value) -> Vec<Strin
                                             port.get("port").and_then(|v| v.as_u64())
                                         {
                                             let endpoint =
-                                                format!("http://{}:{}", cluster_ip, port_num);
+                                                format!("http://{cluster_ip}:{port_num}");
                                             endpoints.push(endpoint.clone());
                                             debug!(
                                                 "Found Kubernetes service endpoint: {}",
@@ -169,7 +169,7 @@ async fn discover_via_kubernetes_dns() -> Result<Vec<String>, SongbirdError> {
         .timeout(Duration::from_secs(3))
         .build()
         .map_err(|e| {
-            SongbirdError::service_error("discovery", format!("Failed to create DNS client: {}", e))
+            SongbirdError::service_error("discovery", format!("Failed to create DNS client: {e}"))
         })?;
 
     for dns_name in dns_patterns {
@@ -177,22 +177,19 @@ async fn discover_via_kubernetes_dns() -> Result<Vec<String>, SongbirdError> {
         let service_ports = vec![80, 8080, 8081, 8082, 9090, 9091];
 
         for port in service_ports {
-            let endpoint = format!("http://{}:{}", dns_name, port);
+            let endpoint = format!("http://{dns_name}:{port}");
 
             // Quick health check to see if service is available
-            match client.get(&format!("{}/health", endpoint)).send().await {
+            match client.get(format!("{endpoint}/health")).send().await {
                 Ok(response) if response.status().is_success() => {
                     endpoints.push(endpoint.clone());
                     debug!("Found Kubernetes DNS service: {}", endpoint);
                 }
                 Ok(response) if response.status().as_u16() == 404 => {
                     // Service exists but no /health endpoint, try root
-                    match client.get(&endpoint).send().await {
-                        Ok(_) => {
-                            endpoints.push(endpoint.clone());
-                            debug!("Found Kubernetes DNS service (via root): {}", endpoint);
-                        }
-                        _ => {} // Continue
+                    if client.get(&endpoint).send().await.is_ok() {
+                        endpoints.push(endpoint.clone());
+                        debug!("Found Kubernetes DNS service (via root): {}", endpoint);
                     }
                 }
                 _ => {} // Continue
@@ -224,11 +221,11 @@ async fn discover_via_kubernetes_env() -> Result<Vec<String>, SongbirdError> {
     ];
 
     for prefix in env_prefixes {
-        let host_key = format!("{}_SERVICE_HOST", prefix);
-        let port_key = format!("{}_SERVICE_PORT", prefix);
+        let host_key = format!("{prefix}_SERVICE_HOST");
+        let port_key = format!("{prefix}_SERVICE_PORT");
 
         if let (Ok(host), Ok(port)) = (std::env::var(&host_key), std::env::var(&port_key)) {
-            let endpoint = format!("http://{}:{}", host, port);
+            let endpoint = format!("http://{host}:{port}");
             endpoints.push(endpoint.clone());
             debug!(
                 "Found Kubernetes service via env vars: {}={}, {}={}",
@@ -237,9 +234,9 @@ async fn discover_via_kubernetes_env() -> Result<Vec<String>, SongbirdError> {
         }
 
         // Also check for TCP port variants
-        let tcp_port_key = format!("{}_SERVICE_PORT_HTTP", prefix);
+        let tcp_port_key = format!("{prefix}_SERVICE_PORT_HTTP");
         if let (Ok(host), Ok(port)) = (std::env::var(&host_key), std::env::var(&tcp_port_key)) {
-            let endpoint = format!("http://{}:{}", host, port);
+            let endpoint = format!("http://{host}:{port}");
             endpoints.push(endpoint.clone());
             debug!(
                 "Found Kubernetes service via env vars (TCP): {}={}, {}={}",
@@ -255,10 +252,10 @@ async fn discover_via_kubernetes_env() -> Result<Vec<String>, SongbirdError> {
         {
             // Try to find corresponding port
             let service_name = key.replace("_SERVICE_HOST", "");
-            let port_key = format!("{}_SERVICE_PORT", service_name);
+            let port_key = format!("{service_name}_SERVICE_PORT");
 
             if let Ok(port) = std::env::var(&port_key) {
-                let endpoint = format!("http://{}:{}", value, port);
+                let endpoint = format!("http://{value}:{port}");
                 endpoints.push(endpoint.clone());
                 debug!("Found service via env scan: {}", endpoint);
             }

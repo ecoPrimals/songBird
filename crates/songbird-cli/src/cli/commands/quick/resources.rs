@@ -2,29 +2,33 @@
 //!
 //! Headless API for detecting system resources that biomeOS can consume
 
+use super::{NetworkSpeed, SystemResources};
 use crate::cli::CliResult;
-use super::{SystemResources, NetworkSpeed};
 use serde::{Deserialize, Serialize};
 
 /// Detect system resources via API
 pub async fn detect_system_resources_api() -> CliResult<SystemResources> {
-    let cpu_cores = num_cpus::get();
-    let memory_gb = detect_available_memory();
-    let storage_gb = detect_available_storage();
-    let has_gpu = detect_gpu_availability();
-    let network_speed = detect_network_speed().await;
-    let platform = detect_platform();
-    let architecture = detect_architecture();
+    // Use the parameterized version with default settings for full detection
+    let request = ResourceDetectionRequest {
+        detect_gpu: true,
+        detect_storage: true,
+        network_test: true,
+    };
 
-    Ok(SystemResources {
-        cpu_cores,
-        memory_gb,
-        storage_gb,
-        has_gpu,
-        network_speed,
-        platform,
-        architecture,
-    })
+    detect_resources_with_params(request).await
+}
+
+/// Detect system resources with selective detection for performance (used for light resource checks)
+#[allow(dead_code)]
+pub async fn detect_system_resources_fast() -> CliResult<SystemResources> {
+    // Fast detection - skip expensive tests
+    let request = ResourceDetectionRequest {
+        detect_gpu: false,
+        detect_storage: false,
+        network_test: false,
+    };
+
+    detect_resources_with_params(request).await
 }
 
 /// Resource detection request parameters
@@ -36,7 +40,9 @@ pub struct ResourceDetectionRequest {
 }
 
 /// Enhanced resource detection with parameters
-pub async fn detect_resources_with_params(request: ResourceDetectionRequest) -> CliResult<SystemResources> {
+pub async fn detect_resources_with_params(
+    request: ResourceDetectionRequest,
+) -> CliResult<SystemResources> {
     let cpu_cores = num_cpus::get();
     let memory_gb = detect_available_memory();
     let storage_gb = if request.detect_storage {
@@ -77,7 +83,7 @@ fn detect_available_memory() -> f64 {
 
 fn detect_available_storage() -> Option<f64> {
     let path = std::env::current_dir().ok()?;
-    
+
     #[cfg(unix)]
     {
         use std::ffi::CString;
@@ -86,8 +92,12 @@ fn detect_available_storage() -> Option<f64> {
         let path_cstr = CString::new(path.to_string_lossy().as_bytes()).ok()?;
         let mut statfs = MaybeUninit::<libc::statvfs>::uninit();
 
+        // SAFETY: statvfs is a standard POSIX system call that fills the provided buffer
+        // with filesystem statistics. The buffer is properly initialized as MaybeUninit
+        // and we check the return value before using the data.
         let result = unsafe { libc::statvfs(path_cstr.as_ptr(), statfs.as_mut_ptr()) };
         if result == 0 {
+            // SAFETY: statvfs succeeded (result == 0), so the buffer is now properly initialized
             let statfs = unsafe { statfs.assume_init() };
             let available_bytes = statfs.f_bavail.saturating_mul(statfs.f_frsize);
             return Some(available_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
@@ -108,6 +118,8 @@ fn detect_available_storage() -> Option<f64> {
 
         let mut free_bytes: u64 = 0;
         let mut total_bytes: u64 = 0;
+        // SAFETY: GetDiskFreeSpaceExW is a standard Windows API call that writes to the provided
+        // out-parameters. We provide valid pointers and the wide_path is null-terminated.
         unsafe {
             let result = winapi::um::fileapi::GetDiskFreeSpaceExW(
                 wide_path.as_ptr(),
@@ -134,7 +146,7 @@ fn detect_gpu_availability() -> bool {
         return true;
     }
 
-    // Check for AMD GPU  
+    // Check for AMD GPU
     if std::process::Command::new("rocm-smi")
         .output()
         .map(|output| output.status.success())
@@ -174,4 +186,4 @@ fn detect_platform() -> String {
 
 fn detect_architecture() -> String {
     std::env::consts::ARCH.to_string()
-} 
+}

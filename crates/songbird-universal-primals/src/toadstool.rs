@@ -12,7 +12,7 @@ use crate::traits::{
     DynamicPortInfo, PrimalCapability, PrimalContext, PrimalDependency, PrimalEndpoints,
     PrimalHealth, PrimalProvider,
 };
-use crate::types::{PrimalRequest, PrimalResponse, PrimalResponseType};
+use crate::types::{PrimalRequest, PrimalResponse};
 use songbird_universal::PrimalType;
 
 /// Toadstool Compute Primal - Advanced compute orchestration and serverless execution
@@ -178,71 +178,86 @@ impl ToadstoolPrimal {
         Self::new(context)
     }
 
-    /// Execute container operation
-    async fn execute_container_operation(
+    /// Deploy container workload
+    pub async fn deploy_container(
         &self,
-        operation: &str,
-        payload: Value,
-    ) -> PrimalResult<Value> {
-        let container_endpoint = self
-            .endpoints
-            .custom
-            .get("containers")
-            .unwrap_or(&self.endpoints.primary);
+        image: &str,
+        config: HashMap<String, String>,
+    ) -> crate::errors::PrimalResult<String> {
+        let operation = serde_json::json!({
+            "type": "deploy",
+            "image": image,
+            "config": config,
+        });
 
-        debug!(
-            "Executing container operation: {} at {}",
-            operation, container_endpoint
-        );
-
-        // Get team ID from metadata
-        let team_id = self
-            .context
-            .metadata
-            .get("team_id")
-            .unwrap_or(&self.context.user_id);
-
-        let response = self
-            .http_client
-            .post(format!("{container_endpoint}/containers/{operation}"))
-            .header("Content-Type", "application/json")
-            .header("User-Agent", "songbird-orchestrator/1.0")
-            .header("X-Context-User", &self.context.user_id)
-            .header("X-Context-Team", team_id)
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| {
-                error!("Failed to execute container operation {}: {}", operation, e);
-                crate::errors::PrimalError::Network(format!("Container operation failed: {e}"))
-            })?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            warn!(
-                "Container operation {} failed with status {}: {}",
-                operation, status, error_text
-            );
-            return Err(crate::errors::PrimalError::Network(format!(
-                "Container operation {operation} failed: {status} - {error_text}"
-            )));
+        match self.execute_container_operation(operation).await {
+            Ok(result) => {
+                if let Some(container_id) = result.get("container_id") {
+                    Ok(container_id.as_str().unwrap_or("unknown").to_string())
+                } else {
+                    Err(crate::errors::PrimalError::ServiceUnavailable {
+                        message: "No container ID returned".to_string(),
+                    })
+                }
+            }
+            Err(e) => Err(e),
         }
+    }
 
-        let result: Value = response.json().await.map_err(|e| {
-            error!("Failed to parse container operation response: {}", e);
-            crate::errors::PrimalError::Serialization(format!("Response parsing failed: {e}"))
-        })?;
+    /// Scale container workload
+    pub async fn scale_container(
+        &self,
+        container_id: &str,
+        replicas: u32,
+    ) -> crate::errors::PrimalResult<HashMap<String, serde_json::Value>> {
+        let operation = serde_json::json!({
+            "type": "scale",
+            "container_id": container_id,
+            "replicas": replicas,
+        });
 
-        info!("Container operation {} completed successfully", operation);
-        Ok(result)
+        match self.execute_container_operation(operation).await {
+            Ok(result) => Ok(self.value_to_hashmap(result)),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Execute function workload
+    pub async fn execute_function_workload(
+        &self,
+        function_name: &str,
+        payload: serde_json::Value,
+    ) -> crate::errors::PrimalResult<serde_json::Value> {
+        let operation = serde_json::json!({
+            "type": "function",
+            "function": function_name,
+            "payload": payload,
+        });
+
+        self.execute_container_operation(operation).await
+    }
+
+    /// Stop container workload
+    pub async fn stop_container(&self, container_id: &str) -> crate::errors::PrimalResult<bool> {
+        let operation = serde_json::json!({
+            "type": "stop",
+            "container_id": container_id,
+        });
+
+        match self.execute_container_operation(operation).await {
+            Ok(result) => Ok(result
+                .get("success")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)),
+            Err(e) => Err(e),
+        }
     }
 
     /// Execute serverless function
-    async fn execute_serverless_function(&self, function_data: Value) -> PrimalResult<Value> {
+    async fn execute_serverless_function(
+        &self,
+        function_data: serde_json::Value,
+    ) -> PrimalResult<serde_json::Value> {
         let serverless_endpoint = self
             .endpoints
             .custom
@@ -279,7 +294,9 @@ impl ToadstoolPrimal {
             .await
             .map_err(|e| {
                 error!("Failed to execute serverless function: {}", e);
-                crate::errors::PrimalError::Network(format!("Serverless execution failed: {e}"))
+                crate::errors::PrimalError::network_error(format!(
+                    "Serverless execution failed: {e}"
+                ))
             })?;
 
         if !response.status().is_success() {
@@ -292,14 +309,14 @@ impl ToadstoolPrimal {
                 "Serverless function execution failed with status {}: {}",
                 status, error_text
             );
-            return Err(crate::errors::PrimalError::Network(format!(
+            return Err(crate::errors::PrimalError::network_error(format!(
                 "Serverless execution failed: {status} - {error_text}"
             )));
         }
 
         let result: Value = response.json().await.map_err(|e| {
             error!("Failed to parse serverless execution response: {}", e);
-            crate::errors::PrimalError::Serialization(format!("Response parsing failed: {e}"))
+            crate::errors::PrimalError::serialization_error(format!("Response parsing failed: {e}"))
         })?;
 
         info!("Serverless function executed successfully");
@@ -307,7 +324,11 @@ impl ToadstoolPrimal {
     }
 
     /// Manage compute job
-    async fn manage_compute_job(&self, action: &str, job_data: Value) -> PrimalResult<Value> {
+    async fn manage_compute_job(
+        &self,
+        action: &str,
+        job_data: serde_json::Value,
+    ) -> PrimalResult<serde_json::Value> {
         let jobs_endpoint = self
             .endpoints
             .custom
@@ -335,7 +356,7 @@ impl ToadstoolPrimal {
             .await
             .map_err(|e| {
                 error!("Failed to manage compute job {}: {}", action, e);
-                crate::errors::PrimalError::Network(format!("Job management failed: {e}"))
+                crate::errors::PrimalError::network_error(format!("Job management failed: {e}"))
             })?;
 
         if !response.status().is_success() {
@@ -348,14 +369,14 @@ impl ToadstoolPrimal {
                 "Job management {} failed with status {}: {}",
                 action, status, error_text
             );
-            return Err(crate::errors::PrimalError::Network(format!(
+            return Err(crate::errors::PrimalError::network_error(format!(
                 "Job management {action} failed: {status} - {error_text}"
             )));
         }
 
         let result: Value = response.json().await.map_err(|e| {
             error!("Failed to parse job management response: {}", e);
-            crate::errors::PrimalError::Serialization(format!("Response parsing failed: {e}"))
+            crate::errors::PrimalError::serialization_error(format!("Response parsing failed: {e}"))
         })?;
 
         info!("Job management {} completed successfully", action);
@@ -363,7 +384,10 @@ impl ToadstoolPrimal {
     }
 
     /// Handle scaling operations
-    async fn handle_scaling_operation(&self, scaling_data: Value) -> PrimalResult<Value> {
+    async fn handle_scaling_operation(
+        &self,
+        scaling_data: serde_json::Value,
+    ) -> PrimalResult<serde_json::Value> {
         let scaling_endpoint = self
             .endpoints
             .custom
@@ -391,7 +415,7 @@ impl ToadstoolPrimal {
             .await
             .map_err(|e| {
                 error!("Failed to handle scaling operation: {}", e);
-                crate::errors::PrimalError::Network(format!("Scaling operation failed: {e}"))
+                crate::errors::PrimalError::network_error(format!("Scaling operation failed: {e}"))
             })?;
 
         if !response.status().is_success() {
@@ -404,14 +428,14 @@ impl ToadstoolPrimal {
                 "Scaling operation failed with status {}: {}",
                 status, error_text
             );
-            return Err(crate::errors::PrimalError::Network(format!(
+            return Err(crate::errors::PrimalError::network_error(format!(
                 "Scaling operation failed: {status} - {error_text}"
             )));
         }
 
         let result: Value = response.json().await.map_err(|e| {
             error!("Failed to parse scaling operation response: {}", e);
-            crate::errors::PrimalError::Serialization(format!("Response parsing failed: {e}"))
+            crate::errors::PrimalError::serialization_error(format!("Response parsing failed: {e}"))
         })?;
 
         info!("Scaling operation completed successfully");
@@ -446,16 +470,99 @@ impl ToadstoolPrimal {
         }
     }
 
-    /// Convert Value to HashMap for response payload
+    /// Execute container operation (now used internally by all container operations)
+    async fn execute_container_operation(
+        &self,
+        operation: serde_json::Value,
+    ) -> crate::errors::PrimalResult<serde_json::Value> {
+        let container_endpoint = self
+            .endpoints
+            .custom
+            .get("containers")
+            .unwrap_or(&self.endpoints.primary);
+
+        let payload = serde_json::json!({
+            "operation": operation,
+            "timestamp": chrono::Utc::now(),
+        });
+
+        debug!(
+            "Executing container operation: {} at {}",
+            operation, container_endpoint
+        );
+
+        // Get team ID from metadata
+        let team_id = self
+            .context
+            .metadata
+            .get("team_id")
+            .unwrap_or(&self.context.user_id);
+
+        let response = self
+            .http_client
+            .post(format!("{container_endpoint}/containers/execute"))
+            .header("Content-Type", "application/json")
+            .header("User-Agent", "songbird-orchestrator/1.0")
+            .header("X-Context-User", &self.context.user_id)
+            .header("X-Context-Team", team_id)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| {
+                error!("Failed to execute container operation: {}", e);
+                crate::errors::PrimalError::network_error(format!(
+                    "Container operation failed: {e}"
+                ))
+            })?;
+
+        if response.status().is_success() {
+            match response.json().await {
+                Ok(json) => Ok(json),
+                Err(e) => Err(crate::errors::PrimalError::serialization_error(format!(
+                    "Failed to parse container operation response: {e}"
+                ))),
+            }
+        } else {
+            let error_msg = format!(
+                "Container operation failed with status: {}",
+                response.status()
+            );
+            Err(crate::errors::PrimalError::ServiceUnavailable { message: error_msg })
+        }
+    }
+
+    /// Convert Value to HashMap for response payload (now used internally)
     fn value_to_hashmap(&self, value: Value) -> HashMap<String, Value> {
         match value {
-            Value::Object(map) => map.into_iter().collect(),
+            Value::Object(map) => {
+                let mut result = HashMap::new();
+                for (k, v) in map {
+                    result.insert(k, v);
+                }
+                result
+            }
             _ => {
                 let mut result = HashMap::new();
                 result.insert("result".to_string(), value);
                 result
             }
         }
+    }
+}
+
+/// Test connection to Toadstool service
+async fn test_toadstool_connection() -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get("http://localhost:8082/health")
+        .timeout(Duration::from_secs(5))
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        Err(format!("Health check failed with status: {}", response.status()).into())
     }
 }
 
@@ -486,17 +593,19 @@ impl PrimalProvider for ToadstoolPrimal {
     }
 
     async fn health_check(&self) -> PrimalHealth {
-        if self.check_service_availability().await {
-            PrimalHealth::Healthy
-        } else {
-            PrimalHealth::Unhealthy {
+        match test_toadstool_connection().await {
+            Ok(_) => PrimalHealth::Healthy,
+            Err(_) => PrimalHealth::Unhealthy {
                 reason: "Toadstool service unavailable".to_string(),
-            }
+            },
         }
     }
 
-    fn endpoints(&self) -> PrimalEndpoints {
-        self.endpoints.clone()
+    fn endpoints(&self) -> Vec<String> {
+        vec![
+            "http://localhost:8082".to_string(),
+            "http://localhost:8082/health".to_string(),
+        ]
     }
 
     async fn handle_primal_request(&self, request: PrimalRequest) -> PrimalResult<PrimalResponse> {
@@ -505,96 +614,178 @@ impl PrimalProvider for ToadstoolPrimal {
             request.request_type.as_str()
         );
 
+        // Cache primal_id to avoid repeated clones - ZERO-COPY OPTIMIZATION
+        let primal_id = &self.context().primal_id;
+
         // Check if service is available before processing
         if !self.check_service_availability().await {
             return Ok(PrimalResponse::error(
-                request.id,
-                PrimalResponseType::Custom("toadstool".to_string()),
+                primal_id.clone(),      // Only clone when actually needed for the response
+                request.id.to_string(), // Convert Uuid to String
                 "Toadstool service is currently unavailable".to_string(),
+            ));
+        }
+
+        if request.request_type != crate::types::PrimalRequestType::Custom("toadstool".to_string())
+        {
+            return Ok(PrimalResponse::error(
+                primal_id.clone(),
+                request.id.to_string(), // Convert Uuid to String
+                "Invalid request type for Toadstool".to_string(),
             ));
         }
 
         match request.request_type.as_str() {
             "container" => {
-                // Handle container operations
+                debug!("🐳 Handling container request");
+
+                // Extract container operation details from payload
                 let operation = request
                     .payload
                     .get("operation")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("run");
+                    .unwrap_or("deploy");
 
-                let payload_value = serde_json::to_value(&request.payload)?;
-                match self
-                    .execute_container_operation(operation, payload_value)
-                    .await
-                {
+                let image = request
+                    .payload
+                    .get("image")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+
+                if image.is_empty() {
+                    return Ok(PrimalResponse::error(
+                        primal_id.clone(),
+                        request.id.to_string(), // Convert Uuid to String
+                        "Container image is required".to_string(),
+                    ));
+                }
+
+                let result = match operation {
+                    "deploy" => {
+                        let config = request
+                            .payload
+                            .get("config")
+                            .and_then(|v| v.as_object())
+                            .map(|obj| {
+                                obj.iter()
+                                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+
+                        match self.deploy_container(image, config).await {
+                            Ok(container_id) => {
+                                Ok(serde_json::json!({"container_id": container_id}))
+                            }
+                            Err(e) => Err(e),
+                        }
+                    }
+                    "scale" => {
+                        let container_id = request
+                            .payload
+                            .get("container_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let replicas = request
+                            .payload
+                            .get("replicas")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(1) as u32;
+
+                        match self.scale_container(container_id, replicas).await {
+                            Ok(response) => Ok(serde_json::to_value(response)?),
+                            Err(e) => Err(e),
+                        }
+                    }
+                    "stop" => {
+                        let container_id = request
+                            .payload
+                            .get("container_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+
+                        match self.stop_container(container_id).await {
+                            Ok(success) => Ok(serde_json::json!({"stopped": success})),
+                            Err(e) => Err(e),
+                        }
+                    }
+                    _ => {
+                        return Ok(PrimalResponse::error(
+                            primal_id.clone(),
+                            request.id.to_string(), // Convert Uuid to String
+                            format!("Unsupported container operation: {operation}"),
+                        ));
+                    }
+                };
+
+                match result {
                     Ok(result) => Ok(PrimalResponse::success(
-                        request.id,
-                        PrimalResponseType::Custom("container".to_string()),
-                        self.value_to_hashmap(result),
+                        primal_id.clone(),
+                        request.id.to_string(), // Convert Uuid to String
+                        result,
                     )),
                     Err(e) => Ok(PrimalResponse::error(
-                        request.id,
-                        PrimalResponseType::Custom("container".to_string()),
+                        primal_id.clone(),
+                        request.id.to_string(), // Convert Uuid to String
                         format!("Container operation failed: {e}"),
                     )),
                 }
             }
             "serverless" => {
-                // Handle serverless function execution
-                let payload_value = serde_json::to_value(&request.payload)?;
-                match self.execute_serverless_function(payload_value).await {
+                debug!("⚡ Handling serverless request");
+                let result = self
+                    .execute_serverless_function(serde_json::to_value(&request.payload)?)
+                    .await;
+                match result {
                     Ok(result) => Ok(PrimalResponse::success(
-                        request.id,
-                        PrimalResponseType::Custom("serverless".to_string()),
-                        self.value_to_hashmap(result),
+                        primal_id.clone(),
+                        request.id.to_string(), // Convert Uuid to String
+                        result,
                     )),
                     Err(e) => Ok(PrimalResponse::error(
-                        request.id,
-                        PrimalResponseType::Custom("serverless".to_string()),
+                        primal_id.clone(),
+                        request.id.to_string(), // Convert Uuid to String
                         format!("Serverless execution failed: {e}"),
                     )),
                 }
             }
             "job" => {
-                // Handle compute job management
-                let action = request
-                    .payload
-                    .get("action")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("submit");
-
-                let payload_value = serde_json::to_value(&request.payload)?;
-                match self.manage_compute_job(action, payload_value).await {
+                debug!("💼 Handling job request");
+                let result = self
+                    .manage_compute_job("submit", serde_json::to_value(&request.payload)?)
+                    .await;
+                match result {
                     Ok(result) => Ok(PrimalResponse::success(
-                        request.id,
-                        PrimalResponseType::Custom("job".to_string()),
-                        self.value_to_hashmap(result),
+                        primal_id.clone(),
+                        request.id.to_string(), // Convert Uuid to String
+                        result,
                     )),
                     Err(e) => Ok(PrimalResponse::error(
-                        request.id,
-                        PrimalResponseType::Custom("job".to_string()),
-                        format!("Job management failed: {e}"),
+                        primal_id.clone(),
+                        request.id.to_string(), // Convert Uuid to String
+                        format!("Job execution failed: {e}"),
                     )),
                 }
             }
-            "scaling" => {
-                // Handle scaling operations
-                let payload_value = serde_json::to_value(&request.payload)?;
-                match self.handle_scaling_operation(payload_value).await {
+            "scale" => {
+                debug!("📈 Handling scaling request");
+                let result = self
+                    .handle_scaling_operation(serde_json::to_value(&request.payload)?)
+                    .await;
+                match result {
                     Ok(result) => Ok(PrimalResponse::success(
-                        request.id,
-                        PrimalResponseType::Custom("scaling".to_string()),
-                        self.value_to_hashmap(result),
+                        primal_id.clone(),
+                        request.id.to_string(), // Convert Uuid to String
+                        result,
                     )),
                     Err(e) => Ok(PrimalResponse::error(
-                        request.id,
-                        PrimalResponseType::Custom("scaling".to_string()),
+                        primal_id.clone(),
+                        request.id.to_string(), // Convert Uuid to String
                         format!("Scaling operation failed: {e}"),
                     )),
                 }
             }
-            _ => Err(crate::errors::PrimalError::Validation(format!(
+            _ => Err(crate::errors::PrimalError::validation_error(format!(
                 "Unknown request type: {}",
                 request.request_type.as_str()
             ))),

@@ -6,7 +6,7 @@
 
 use crate::cli::CliError;
 // CLI initialization commands
-use songbird_config::config::OrchestratorConfig;
+use songbird_core::biome::OrchestratorConfig;
 // Initialization error handling
 use colored::*;
 use dialoguer::{theme::ColorfulTheme, Input, Select};

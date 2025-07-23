@@ -233,13 +233,35 @@ async fn perform_custom_check(check: &CustomHealthCheck) -> Result<f64> {
             Ok(1.0)
         }
         HealthCheckType::ProcessCheck { process_name } => {
-            // Simulate process check
+            use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+
             tracing::debug!("Checking process: {}", process_name);
-            Ok(1.0)
+
+            let mut system = System::new_with_specifics(
+                RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+            );
+            system.refresh_processes();
+
+            // Check if process exists and is healthy
+            let process_found = system.processes().values().any(|process| {
+                process
+                    .name()
+                    .to_lowercase()
+                    .contains(&process_name.to_lowercase())
+            });
+
+            Ok(if process_found { 1.0 } else { 0.0 })
         }
         HealthCheckType::MemoryUsage { max_percentage } => {
-            // Simulate memory usage check
-            let current_usage = 45.0; // Placeholder
+            use sysinfo::System;
+
+            let mut system = System::new_all();
+            system.refresh_memory();
+
+            let current_usage =
+                ((system.used_memory() as f64) / (system.total_memory() as f64)) * 100.0;
+            tracing::debug!("Current memory usage: {:.2}%", current_usage);
+
             if current_usage < *max_percentage {
                 Ok(1.0 - (current_usage / 100.0))
             } else {
@@ -247,8 +269,18 @@ async fn perform_custom_check(check: &CustomHealthCheck) -> Result<f64> {
             }
         }
         HealthCheckType::CpuUsage { max_percentage } => {
-            // Simulate CPU usage check
-            let current_usage = 25.0; // Placeholder
+            use sysinfo::System;
+
+            let mut system = System::new_all();
+            system.refresh_cpu();
+
+            // Wait a bit for accurate CPU measurement
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            system.refresh_cpu();
+
+            let current_usage = system.global_cpu_info().cpu_usage() as f64;
+            tracing::debug!("Current CPU usage: {:.2}%", current_usage);
+
             if current_usage < *max_percentage {
                 Ok(1.0 - (current_usage / 100.0))
             } else {
@@ -265,9 +297,55 @@ async fn perform_custom_check(check: &CustomHealthCheck) -> Result<f64> {
 
 /// Perform HTTP health check
 async fn perform_http_check(service_id: &str, path: &str) -> Result<()> {
+    use reqwest;
+    use tokio::time::{timeout, Duration};
+
     tracing::debug!("HTTP health check for {} at {}", service_id, path);
-    // Placeholder implementation
-    Ok(())
+
+    // Create HTTP client with timeout
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .map_err(|e| {
+            songbird_errors::SongbirdError::service_error(
+                "registry",
+                format!("Failed to create HTTP client: {e}"),
+            )
+        })?;
+
+    // Perform the health check request
+    let response = timeout(Duration::from_secs(10), client.get(path).send())
+        .await
+        .map_err(|_| {
+            songbird_errors::SongbirdError::service_error(
+                "registry",
+                "HTTP health check timeout".to_string(),
+            )
+        })?
+        .map_err(|e| {
+            songbird_errors::SongbirdError::service_error(
+                "registry",
+                format!("HTTP health check failed: {e}"),
+            )
+        })?;
+
+    if response.status().is_success() {
+        tracing::debug!(
+            "HTTP health check for {} passed: {}",
+            service_id,
+            response.status()
+        );
+        Ok(())
+    } else {
+        Err(songbird_errors::SongbirdError::service_error(
+            "registry",
+            format!(
+                "HTTP health check for {} failed: {}",
+                service_id,
+                response.status()
+            ),
+        ))
+    }
 }
 
 /// Execute health failure action

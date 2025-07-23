@@ -443,7 +443,7 @@ impl RealProtocolDetector {
         }
 
         Err(SongbirdError::Network(Box::new(NetworkError {
-            message: format!("Protocol Detector - No suitable network interface found"),
+            message: "Protocol Detector - No suitable network interface found".to_string(),
             endpoint: None,
             port: None,
             protocol: None,
@@ -461,7 +461,7 @@ impl RealProtocolDetector {
         }
 
         Err(SongbirdError::Network(Box::new(NetworkError {
-            message: format!("Protocol Detector - No suitable network interface found"),
+            message: "Protocol Detector - No suitable network interface found".to_string(),
             endpoint: None,
             port: None,
             protocol: None,
@@ -578,7 +578,8 @@ impl RealProtocolDetectorCapture {
                 .find(|iface| iface.is_up() && !iface.is_loopback())
                 .ok_or_else(|| {
                     SongbirdError::Network(Box::new(NetworkError {
-                        message: format!("Protocol Detector - No suitable network interface found"),
+                        message: "Protocol Detector - No suitable network interface found"
+                            .to_string(),
                         endpoint: None,
                         port: None,
                         protocol: None,

@@ -68,6 +68,10 @@ pub enum DiscoveryMethod {
     Mdns,
     /// DNS-SD discovery
     DnsSD,
+    /// Self-registration (service registers itself)
+    SelfRegistration,
+    /// Environment variable discovery
+    EnvironmentVariable,
 }
 
 /// Discovery result containing multiple primals
@@ -267,9 +271,9 @@ impl Default for DiscoveryConfig {
             discovery_timeout_secs: 30,
             max_concurrent_operations: 20,
             network_scan_port_ranges: vec![
-                (8000, 8100),   // Common HTTP ports
-                (9000, 9100),   // Alternative HTTP ports  
-                (3000, 3100),   // Development ports
+                (8000, 8100), // Common HTTP ports
+                (9000, 9100), // Alternative HTTP ports
+                (3000, 3100), // Development ports
             ],
         }
     }
@@ -322,6 +326,8 @@ impl std::fmt::Display for DiscoveryMethod {
             DiscoveryMethod::Manual => write!(f, "manual"),
             DiscoveryMethod::Mdns => write!(f, "mdns"),
             DiscoveryMethod::DnsSD => write!(f, "dns_sd"),
+            DiscoveryMethod::SelfRegistration => write!(f, "self_registration"),
+            DiscoveryMethod::EnvironmentVariable => write!(f, "environment_variable"),
         }
     }
 }

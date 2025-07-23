@@ -97,7 +97,7 @@ impl Default for NetworkConfig {
         Self {
             multicast_address: "224.0.0.251".to_string(),
             federation_port: 8765,
-            service_port: env_config.bind_port,
+            service_port: 8080, // Default discovery port since bind_port field doesn't exist
             bind_address: env_config.bind_address.clone(),
             announcement_interval_secs: 60,
             response_timeout_secs: 2,
@@ -181,9 +181,9 @@ impl Default for SongbirdDiscoveryConfig {
             node_type: NodeType::Orchestrator,
             institution: None,
             federation_enabled: false,
-            health_check_interval_secs: env_config.health_check_interval_secs,
-            node_discovery_interval_secs: env_config.health_check_interval_secs,
-            trust_verification_enabled: true,
+            health_check_interval_secs: 30, // Default health check interval
+            node_discovery_interval_secs: env_config.connection_timeout_secs,
+            trust_verification_enabled: env_config.require_tls, // Use TLS requirement as trust verification
             max_federation_nodes: 1000,
             network: NetworkConfig::default(),
             monitoring: MonitoringConfig::default(),

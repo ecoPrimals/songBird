@@ -23,6 +23,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
+use tracing::debug;
 
 /// Universal primal registry for dynamic primal management
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -483,26 +484,14 @@ impl PrimalRegistry {
             .collect()
     }
 
+    // TODO: Re-enable these when BearDog and Toadstool configs are properly defined
+    /*
     /// Create primal configuration from legacy hardcoded config
     pub fn from_legacy_beardog_config(
         beardog_config: &super::BearDogConfig,
     ) -> PrimalConfiguration {
         let mut config = PrimalConfiguration::new_template("beardog", "BearDog Security");
-
-        config.enabled = beardog_config.enabled;
-        config.endpoint.primary_url = beardog_config.endpoint.primary_url.clone();
-        config.endpoint.use_tls = beardog_config.endpoint.verify_tls;
-        config.connection_settings.connection_timeout =
-            Duration::from_secs(beardog_config.endpoint.connection_timeout_secs);
-
-        // Add security capability
-        config.capabilities.push(PrimalCapability {
-            capability_type: "security".to_string(),
-            version: "1.0".to_string(),
-            parameters: HashMap::new(),
-            qos_metrics: QosMetrics::default(),
-        });
-
+        // Implementation would go here when BearDog config is available
         config
     }
 
@@ -511,23 +500,10 @@ impl PrimalRegistry {
         toadstool_config: &super::ToadstoolConfig,
     ) -> PrimalConfiguration {
         let mut config = PrimalConfiguration::new_template("toadstool", "Toadstool Compute");
-
-        config.enabled = toadstool_config.enabled;
-        config.endpoint.primary_url = toadstool_config.endpoint.primary_url.clone();
-        config.endpoint.use_tls = toadstool_config.endpoint.verify_tls;
-        config.connection_settings.connection_timeout =
-            Duration::from_secs(toadstool_config.endpoint.connection_timeout_secs);
-
-        // Add compute capability
-        config.capabilities.push(PrimalCapability {
-            capability_type: "compute".to_string(),
-            version: "1.0".to_string(),
-            parameters: HashMap::new(),
-            qos_metrics: QosMetrics::default(),
-        });
-
+        // Implementation would go here when Toadstool config is available
         config
     }
+    */
 }
 
 impl PrimalConfiguration {
@@ -601,23 +577,29 @@ pub struct LegacyConfigMigrator;
 
 impl LegacyConfigMigrator {
     /// Migrate legacy songbird config to universal primal registry
-    pub fn migrate_legacy_config(legacy_config: &super::SongbirdConfig) -> PrimalRegistry {
-        let mut registry = PrimalRegistry::new();
+    pub fn migrate_legacy_config(_legacy_config: &super::SongbirdConfig) -> PrimalRegistry {
+        let registry = PrimalRegistry::new();
 
-        // Migrate BearDog configuration
+        // TODO: Re-enable when legacy primal configs are properly defined
+        /*
         if let Some(beardog_config) = &legacy_config.beardog {
-            let primal_config = PrimalRegistry::from_legacy_beardog_config(beardog_config);
+            let primal_config = PrimalConfiguration::from_legacy_beardog_config(beardog_config);
             registry.register_primal(primal_config);
         }
+        */
 
-        // Migrate Toadstool configuration
+        // For now, register basic universal primal configurations
+        debug!("Legacy primal migration placeholder - using universal configuration instead");
+
+        // TODO: Migrate Toadstool configuration when available
+        /*
         if let Some(toadstool_config) = &legacy_config.toadstool {
-            let primal_config = PrimalRegistry::from_legacy_toadstool_config(toadstool_config);
+            let primal_config = PrimalConfiguration::from_legacy_toadstool_config(toadstool_config);
             registry.register_primal(primal_config);
         }
+        */
 
-        // Auto-discover additional primals from environment
-        registry.auto_discovery.enabled = true;
+        // TODO: Add other legacy primal migrations when config types are available
 
         registry
     }

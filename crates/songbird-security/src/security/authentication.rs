@@ -3,14 +3,12 @@
 //! Provides authentication mechanisms and credential validation
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
 use songbird_errors::{AuthError, Result};
+use std::collections::HashMap;
+use std::time::{Duration, UNIX_EPOCH};
 
 /// Authentication result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct AuthenticationResult {
     pub success: bool,
     pub token: Option<String>,
@@ -21,7 +19,7 @@ pub struct AuthenticationResult {
 }
 
 /// Different types of credentials
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum Credentials {
     /// Username and password
     UserPassword { username: String, password: String },
@@ -51,7 +49,7 @@ pub enum Credentials {
 }
 
 /// Authentication session
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct AuthSession {
     pub session_id: String,
     pub user_id: String,
@@ -65,7 +63,7 @@ pub struct AuthSession {
 impl AuthSession {
     /// Create a new authentication session
     pub fn new(user_id: String, duration: Duration, permissions: Vec<String>) -> Self {
-        let now = SystemTime::now()
+        let now = std::time::SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
@@ -83,7 +81,7 @@ impl AuthSession {
 
     /// Check if session is expired
     pub fn is_expired(&self) -> bool {
-        let now = SystemTime::now()
+        let now = std::time::SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
@@ -92,7 +90,7 @@ impl AuthSession {
 
     /// Update last activity timestamp
     pub fn update_activity(&mut self) {
-        self.last_activity = SystemTime::now()
+        self.last_activity = std::time::SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
@@ -216,14 +214,46 @@ impl InMemoryAuthenticator {
 
     /// Hash password (simplified - use proper hashing in production)
     fn hash_password(&self, password: &str) -> Result<String> {
-        // In production, use bcrypt, argon2, or similar
-        Ok(format!("hashed_{password}"))
+        // Use SHA-256 with salt - secure cryptographic hashing
+        use rand::{thread_rng, Rng};
+        use ring::digest;
+
+        let mut salt = [0u8; 16];
+        thread_rng().fill(&mut salt);
+
+        let mut to_hash = Vec::new();
+        to_hash.extend_from_slice(&salt);
+        to_hash.extend_from_slice(password.as_bytes());
+
+        let hash = digest::digest(&digest::SHA256, &to_hash);
+
+        let mut combined = Vec::new();
+        combined.extend_from_slice(&salt);
+        combined.extend_from_slice(hash.as_ref());
+
+        Ok(hex::encode(combined))
     }
 
     /// Verify password
-    fn verify_password(&self, password: &str, hash: &str) -> bool {
-        // In production, use proper password verification
-        format!("hashed_{password}") == hash
+    fn verify_password(&self, password: &str, stored_hash: &str) -> bool {
+        use ring::digest;
+
+        let Ok(combined) = hex::decode(stored_hash) else {
+            return false;
+        };
+
+        if combined.len() != 48 {
+            return false;
+        }
+
+        let (salt, stored_hash_bytes) = combined.split_at(16);
+
+        let mut to_hash = Vec::new();
+        to_hash.extend_from_slice(salt);
+        to_hash.extend_from_slice(password.as_bytes());
+
+        let calculated_hash = digest::digest(&digest::SHA256, &to_hash);
+        calculated_hash.as_ref() == stored_hash_bytes
     }
 
     /// Verify MFA code (simplified)

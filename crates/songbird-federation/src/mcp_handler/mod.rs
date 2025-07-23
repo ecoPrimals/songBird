@@ -22,7 +22,7 @@ use self::protocol::ProtocolHandler;
 use crate::config::{FederationConfig, FederationMode, FederationStatus};
 use crate::messages::{FederationRequest, ServiceProviderInfo};
 use chrono::Utc;
-use songbird_errors::SongbirdError;
+use songbird_errors::Result;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
@@ -56,8 +56,8 @@ pub struct McpFederation {
 }
 
 impl McpFederation {
-    /// Create a new MCP federation handler
-    pub fn new(mode: FederationMode, config: FederationConfig) -> Self {
+    /// Create a new MCP federation handler with capability-based metrics
+    pub async fn new(mode: FederationMode, config: FederationConfig) -> Result<Self> {
         let initial_status = FederationStatus {
             enabled: !matches!(mode, FederationMode::Standalone),
             connected: false,
@@ -69,9 +69,42 @@ impl McpFederation {
         };
 
         let discovery = DiscoveryManager::new(config.clone());
-        let heartbeat = HeartbeatManager::new(config.clone());
-        let monitoring = Arc::new(RwLock::new(MonitoringManager::new(config.clone())));
-        let protocol = Arc::new(RwLock::new(ProtocolHandler::new(config.clone())));
+        let heartbeat = HeartbeatManager::new(config.clone()).await?;
+        let monitoring = Arc::new(RwLock::new(MonitoringManager::new(config.clone()).await?));
+        let protocol = Arc::new(RwLock::new(ProtocolHandler::new(config.clone()).await?));
+
+        Ok(Self {
+            mode,
+            running: Arc::new(RwLock::new(false)),
+            status: Arc::new(RwLock::new(initial_status)),
+            config,
+            discovery,
+            heartbeat,
+            monitoring,
+            protocol,
+        })
+    }
+
+    /// Create federation handler for testing without capability adapters
+    pub fn new_for_testing(mode: FederationMode, config: FederationConfig) -> Self {
+        let initial_status = FederationStatus {
+            enabled: !matches!(mode, FederationMode::Standalone),
+            connected: false,
+            node_count: 0,
+            last_heartbeat: None,
+            cluster_id: config.cluster_id.clone(),
+            node_id: config.node_id.clone(),
+            protocol_version: "1.0".to_string(),
+        };
+
+        let discovery = DiscoveryManager::new(config.clone());
+        let heartbeat = HeartbeatManager::new_for_testing(config.clone());
+        let monitoring = Arc::new(RwLock::new(MonitoringManager::new_for_testing(
+            config.clone(),
+        )));
+        let protocol = Arc::new(RwLock::new(ProtocolHandler::new_for_testing(
+            config.clone(),
+        )));
 
         Self {
             mode,
@@ -86,7 +119,7 @@ impl McpFederation {
     }
 
     /// Start MCP federation
-    pub async fn start(&self) -> Result<(), SongbirdError> {
+    pub async fn start(&self) -> Result<()> {
         if matches!(self.mode, FederationMode::Standalone) {
             info!("Standalone mode - skipping MCP federation");
             return Ok(());
@@ -158,7 +191,7 @@ impl McpFederation {
     }
 
     /// Stop MCP federation
-    pub async fn stop(&self) -> Result<(), SongbirdError> {
+    pub async fn stop(&self) -> Result<()> {
         info!("Stopping MCP federation");
 
         {
@@ -188,7 +221,7 @@ impl McpFederation {
     }
 
     /// Auto-detect federation endpoints
-    pub async fn auto_detect(&self) -> Result<(), SongbirdError> {
+    pub async fn auto_detect(&self) -> Result<()> {
         info!("Starting MCP federation auto-detection");
 
         let discovered_endpoints = self.discovery.auto_detect().await?;
@@ -250,7 +283,7 @@ impl McpFederation {
     pub async fn register_service_provider(
         &self,
         provider_info: ServiceProviderInfo,
-    ) -> Result<(), SongbirdError> {
+    ) -> Result<()> {
         info!(
             "Registering service provider: {} ({})",
             provider_info.name, provider_info.description
@@ -263,7 +296,7 @@ impl McpFederation {
     }
 
     /// Send heartbeat to all endpoints
-    pub async fn send_heartbeat(&self) -> Result<(), SongbirdError> {
+    pub async fn send_heartbeat(&self) -> Result<()> {
         info!("Sending federation heartbeat");
 
         let result = self.heartbeat.send_heartbeat_to_all().await;
@@ -278,19 +311,19 @@ impl McpFederation {
     }
 
     /// Get local services information
-    pub async fn get_local_services(&self) -> Result<Vec<serde_json::Value>, SongbirdError> {
+    pub async fn get_local_services(&self) -> Result<Vec<serde_json::Value>> {
         let mut monitoring = self.monitoring.write().await;
         monitoring.get_local_services().await
     }
 
     /// Get system metrics
-    pub async fn get_system_metrics(&self) -> Result<monitoring::SystemMetrics, SongbirdError> {
+    pub async fn get_system_metrics(&self) -> Result<monitoring::SystemMetrics> {
         let mut monitoring = self.monitoring.write().await;
         monitoring.collect_metrics().await
     }
 
     /// Get health status
-    pub async fn get_health_status(&self) -> Result<monitoring::HealthStatus, SongbirdError> {
+    pub async fn get_health_status(&self) -> Result<monitoring::HealthStatus> {
         let mut monitoring = self.monitoring.write().await;
         monitoring.get_health_status().await
     }
@@ -299,19 +332,19 @@ impl McpFederation {
     pub async fn handle_federation_request(
         &self,
         request: &FederationRequest,
-    ) -> Result<crate::messages::FederationResponse, SongbirdError> {
+    ) -> Result<crate::messages::FederationResponse> {
         let mut protocol = self.protocol.write().await;
         protocol.handle_federation_request(request).await
     }
 
     /// Test connectivity
-    pub async fn test_connectivity(&self) -> Result<bool, SongbirdError> {
+    pub async fn test_connectivity(&self) -> Result<bool> {
         let monitoring = self.monitoring.read().await;
         monitoring.test_connectivity().await
     }
 
     /// Broadcast message to federation
-    pub async fn broadcast_message(&self, message: &str) -> Result<(), SongbirdError> {
+    pub async fn broadcast_message(&self, message: &str) -> Result<()> {
         let monitoring = self.monitoring.read().await;
         monitoring.broadcast_message(message).await
     }
@@ -323,10 +356,7 @@ impl McpFederation {
     }
 
     /// Update federation configuration
-    pub async fn update_config(
-        &mut self,
-        new_config: FederationConfig,
-    ) -> Result<(), SongbirdError> {
+    pub async fn update_config(&mut self, new_config: FederationConfig) -> Result<()> {
         info!("Updating federation configuration");
 
         // Update local configuration
@@ -351,15 +381,12 @@ impl McpFederation {
     }
 
     /// Get discovered endpoints
-    pub async fn get_discovered_endpoints(&self) -> Result<Vec<String>, SongbirdError> {
+    pub async fn get_discovered_endpoints(&self) -> Result<Vec<String>> {
         self.discovery.auto_detect().await
     }
 
     /// Validate a list of endpoints and ensure they support federation
-    pub async fn validate_endpoints(
-        &self,
-        endpoints: Vec<String>,
-    ) -> Result<Vec<String>, SongbirdError> {
+    pub async fn validate_endpoints(&self, endpoints: Vec<String>) -> Result<Vec<String>> {
         self.discovery.validate_endpoints(endpoints).await
     }
 
@@ -372,7 +399,7 @@ impl McpFederation {
     }
 
     /// Unregister service provider
-    pub async fn unregister_service_provider(&self, id: &str) -> Result<(), SongbirdError> {
+    pub async fn unregister_service_provider(&self, id: &str) -> Result<()> {
         let mut protocol = self.protocol.write().await;
         protocol.unregister_service_provider(id).await
     }
@@ -401,7 +428,7 @@ mod tests {
     #[tokio::test]
     async fn test_mcp_federation_creation() {
         let config = create_test_config();
-        let federation = McpFederation::new(FederationMode::Clustered, config);
+        let federation = McpFederation::new_for_testing(FederationMode::Clustered, config);
 
         assert!(matches!(federation.mode, FederationMode::Clustered));
         assert!(!federation.is_running().await);
@@ -411,7 +438,7 @@ mod tests {
     #[tokio::test]
     async fn test_federation_status() {
         let config = create_test_config();
-        let federation = McpFederation::new(FederationMode::Clustered, config);
+        let federation = McpFederation::new_for_testing(FederationMode::Clustered, config);
 
         let status = federation.get_status().await;
         assert_eq!(status.cluster_id, "test-cluster");
@@ -423,7 +450,7 @@ mod tests {
     #[tokio::test]
     async fn test_standalone_mode() {
         let config = create_test_config();
-        let federation = McpFederation::new(FederationMode::Standalone, config);
+        let federation = McpFederation::new_for_testing(FederationMode::Standalone, config);
 
         // Starting in standalone mode should succeed without network operations
         let result = federation.start().await;
@@ -433,7 +460,7 @@ mod tests {
     #[tokio::test]
     async fn test_protocol_stats() {
         let config = create_test_config();
-        let federation = McpFederation::new(FederationMode::Clustered, config);
+        let federation = McpFederation::new_for_testing(FederationMode::Clustered, config);
 
         let stats = federation.get_protocol_stats().await;
         assert_eq!(stats.cluster_id, "test-cluster");

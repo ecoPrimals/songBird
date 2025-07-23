@@ -6,14 +6,15 @@ use std::time::Instant;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-use super::super::beardog_integration::PeerCapabilities;
 use super::types::{DiscoveredPeer, DiscoveryConfig, PeerType};
 use songbird_errors::Result;
+use songbird_universal_primals::PrimalCapability;
 
 /// Peer registry for managing discovered peers
+#[derive(Clone)]
 pub struct PeerRegistry {
     peers: Arc<RwLock<HashMap<String, DiscoveredPeer>>>,
-    peer_capabilities: Arc<RwLock<HashMap<String, PeerCapabilities>>>,
+    peer_capabilities: Arc<RwLock<HashMap<String, Vec<PrimalCapability>>>>,
     last_seen: Arc<RwLock<HashMap<String, Instant>>>,
     config: DiscoveryConfig,
 }
@@ -46,19 +47,23 @@ impl PeerRegistry {
     }
 
     /// Register a discovered peer
-    pub async fn register_peer(&self, peer: DiscoveredPeer, capabilities: PeerCapabilities) -> Result<()> {
+    pub async fn register_peer(
+        &self,
+        peer: DiscoveredPeer,
+        capabilities: Vec<PrimalCapability>,
+    ) -> Result<()> {
         let peer_id = peer.peer_id.clone();
-        
+
         {
             let mut peers = self.peers.write().await;
             peers.insert(peer_id.clone(), peer);
         }
-        
+
         {
             let mut caps = self.peer_capabilities.write().await;
             caps.insert(peer_id.clone(), capabilities);
         }
-        
+
         {
             let mut last_seen = self.last_seen.write().await;
             last_seen.insert(peer_id.clone(), Instant::now());
@@ -71,22 +76,22 @@ impl PeerRegistry {
     /// Update peer last seen time
     pub async fn update_peer_last_seen(&self, peer_id: &str) -> Result<()> {
         let mut last_seen = self.last_seen.write().await;
-        
+
         if last_seen.contains_key(peer_id) {
             last_seen.insert(peer_id.to_string(), Instant::now());
-            
+
             // Also update the peer's last_seen field
             let mut peers = self.peers.write().await;
             if let Some(peer) = peers.get_mut(peer_id) {
                 peer.update_last_seen();
             }
-            
+
             debug!("Updated last seen for peer: {}", peer_id);
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::network_error(
-                &format!("Peer not found: {}", peer_id)
-            ))
+            Err(songbird_errors::SongbirdError::network_error(format!(
+                "Peer not found: {peer_id}"
+            )))
         }
     }
 
@@ -97,7 +102,7 @@ impl PeerRegistry {
     }
 
     /// Get peer capabilities
-    pub async fn get_peer_capabilities(&self, peer_id: &str) -> Option<PeerCapabilities> {
+    pub async fn get_peer_capabilities(&self, peer_id: &str) -> Option<Vec<PrimalCapability>> {
         let capabilities = self.peer_capabilities.read().await;
         capabilities.get(peer_id).cloned()
     }
@@ -112,7 +117,9 @@ impl PeerRegistry {
         let peers = self.peers.read().await;
         peers
             .values()
-            .filter(|peer| std::mem::discriminant(&peer.peer_type) == std::mem::discriminant(&peer_type))
+            .filter(|peer| {
+                std::mem::discriminant(&peer.peer_type) == std::mem::discriminant(&peer_type)
+            })
             .cloned()
             .collect()
     }
@@ -123,12 +130,12 @@ impl PeerRegistry {
             let mut peers = self.peers.write().await;
             peers.remove(peer_id);
         }
-        
+
         {
             let mut capabilities = self.peer_capabilities.write().await;
             capabilities.remove(peer_id);
         }
-        
+
         {
             let mut last_seen = self.last_seen.write().await;
             last_seen.remove(peer_id);
@@ -141,11 +148,11 @@ impl PeerRegistry {
     /// Cleanup expired peers
     pub async fn cleanup_expired_peers(&self) {
         let mut expired_peers = Vec::new();
-        
+
         {
             let last_seen = self.last_seen.read().await;
             let now = Instant::now();
-            
+
             for (peer_id, last_seen_time) in last_seen.iter() {
                 if now.duration_since(*last_seen_time) > self.config.peer_timeout {
                     expired_peers.push(peer_id.clone());
@@ -233,12 +240,12 @@ impl PeerRegistry {
             let mut peers = self.peers.write().await;
             peers.clear();
         }
-        
+
         {
             let mut capabilities = self.peer_capabilities.write().await;
             capabilities.clear();
         }
-        
+
         {
             let mut last_seen = self.last_seen.write().await;
             last_seen.clear();
@@ -254,30 +261,46 @@ impl PeerRegistry {
     }
 
     /// Update peer capabilities
-    pub async fn update_peer_capabilities(&self, peer_id: &str, capabilities: PeerCapabilities) -> Result<()> {
+    pub async fn update_peer_capabilities(
+        &self,
+        peer_id: &str,
+        capabilities: Vec<PrimalCapability>,
+    ) -> Result<()> {
         let mut caps = self.peer_capabilities.write().await;
-        
+
         if caps.contains_key(peer_id) {
             caps.insert(peer_id.to_string(), capabilities);
             debug!("Updated capabilities for peer: {}", peer_id);
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::network_error(
-                &format!("Peer not found: {}", peer_id)
-            ))
+            Err(songbird_errors::SongbirdError::network_error(format!(
+                "Peer not found: {peer_id}"
+            )))
         }
     }
 
     /// Get gaming-optimized peers
-    pub async fn get_gaming_peers(&self) -> Vec<(DiscoveredPeer, PeerCapabilities)> {
+    pub async fn get_gaming_peers(&self) -> Vec<(DiscoveredPeer, Vec<PrimalCapability>)> {
         let peers = self.peers.read().await;
         let capabilities = self.peer_capabilities.read().await;
-        
+
         peers
             .values()
             .filter_map(|peer| {
                 if let Some(caps) = capabilities.get(&peer.peer_id) {
-                    if caps.gaming_optimized {
+                    // Check if peer has gaming optimization
+                    let has_gaming = caps.iter().any(|cap| {
+                        if let PrimalCapability::Custom { name, properties } = cap {
+                            name == "Gaming"
+                                && properties
+                                    .iter()
+                                    .any(|(k, v)| k == "optimized" && v == "true")
+                        } else {
+                            false
+                        }
+                    });
+
+                    if has_gaming {
                         Some((peer.clone(), caps.clone()))
                     } else {
                         None
@@ -290,24 +313,43 @@ impl PeerRegistry {
     }
 
     /// Get best peers by latency
-    pub async fn get_best_peers(&self, limit: usize) -> Vec<(DiscoveredPeer, PeerCapabilities)> {
+    pub async fn get_best_peers(
+        &self,
+        limit: usize,
+    ) -> Vec<(DiscoveredPeer, Vec<PrimalCapability>)> {
         let peers = self.peers.read().await;
         let capabilities = self.peer_capabilities.read().await;
-        
+
         let mut peer_caps: Vec<_> = peers
             .values()
             .filter_map(|peer| {
-                if let Some(caps) = capabilities.get(&peer.peer_id) {
-                    Some((peer.clone(), caps.clone()))
-                } else {
-                    None
-                }
+                capabilities
+                    .get(&peer.peer_id)
+                    .map(|caps| (peer.clone(), caps.clone()))
             })
             .collect();
 
         // Sort by latency (ascending)
-        peer_caps.sort_by_key(|(_, caps)| caps.latency_ms);
-        
+        peer_caps.sort_by_key(|(_, caps)| {
+            // Extract latency from NetworkConnectivity capability
+            caps.iter()
+                .find_map(|cap| {
+                    if let PrimalCapability::Custom { name, properties } = cap {
+                        if name == "NetworkConnectivity" {
+                            properties
+                                .iter()
+                                .find(|(k, _)| k == "latency_ms")
+                                .and_then(|(_, v)| v.parse::<f32>().ok())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(f32::MAX) as u32 // Default to high latency if not found
+        });
+
         peer_caps.truncate(limit);
         peer_caps
     }
@@ -320,4 +362,4 @@ pub struct PeerStatistics {
     pub active_peers: usize,
     pub expired_peers: usize,
     pub peer_types: HashMap<String, usize>,
-} 
+}

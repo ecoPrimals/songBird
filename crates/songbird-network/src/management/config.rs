@@ -171,7 +171,8 @@ impl Default for NetworkConfig {
             ssl_termination_enabled: false,
             ssl_cert_dir: "/etc/ssl/certs".to_string(),
             auto_ssl_enabled: false,
-            default_domain: "localhost".to_string(),
+            default_domain: std::env::var("SONGBIRD_DEFAULT_DOMAIN")
+                .unwrap_or_else(|_| "localhost".to_string()),
             cors_enabled: false,
             cors_allowed_origins: vec!["*".to_string()],
             rate_limiting_enabled: false,

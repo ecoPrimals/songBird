@@ -18,11 +18,17 @@ use crate::security::beardog::BearDogConfig;
 /// (advanced authentication, encryption, key management), integrate with BearDog primal.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityConfig {
+    /// Enable user authentication
     pub authentication_enabled: bool,
+    /// Enable resource authorization
     pub authorization_enabled: bool,
+    /// Enable data encryption
     pub encryption_enabled: bool,
+    /// Enable security audit logging
     pub audit_logging: bool,
+    /// Session timeout duration
     pub session_timeout: Duration,
+    /// Maximum login attempts before lockout
     pub max_login_attempts: u32,
     /// Minimal password policy - delegates to BearDog when available
     pub password_policy: PasswordPolicy,
@@ -73,18 +79,23 @@ pub enum PasswordValidationStrategy {
     Flexible,
     /// Custom validation - defers to security authority like BearDog (recommended)
     Custom,
+    /// Traditional password policy (for standalone deployments only)
+    TraditionalPolicy(TraditionalPasswordPolicy),
 }
 
 /// Traditional password policy settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TraditionalPasswordPolicy {
+    /// Minimum password length
     pub min_length: u32,
+    /// Require at least one uppercase letter
     pub require_uppercase: bool,
+    /// Require at least one lowercase letter
     pub require_lowercase: bool,
+    /// Require at least one number
     pub require_numbers: bool,
+    /// Require at least one special character
     pub require_special_chars: bool,
-    /// Minimum number of character categories required (out of 4: upper, lower, numbers, special)
-    pub min_character_categories: u32,
 }
 
 /// Passphrase policy settings (XKCD-style: "correct horse battery staple")
@@ -125,12 +136,11 @@ impl Default for PasswordPolicy {
 impl Default for TraditionalPasswordPolicy {
     fn default() -> Self {
         Self {
-            min_length: 12, // Longer for traditional passwords
+            min_length: 8,
             require_uppercase: true,
             require_lowercase: true,
             require_numbers: true,
-            require_special_chars: true,
-            min_character_categories: 3, // Require at least 3 of 4 categories
+            require_special_chars: false,
         }
     }
 }
@@ -173,7 +183,6 @@ impl PasswordPolicy {
                 require_lowercase: false,
                 require_numbers: false,
                 require_special_chars: false,
-                min_character_categories: 1,
             }),
             passphrase_policy: None,
             max_age_days: 30, // Short expiry to encourage proper security setup
@@ -185,15 +194,16 @@ impl PasswordPolicy {
     /// Create legacy/traditional policy (for standalone deployments only)
     pub fn standalone_traditional() -> Self {
         Self {
-            validation_strategy: PasswordValidationStrategy::Traditional,
-            traditional_policy: Some(TraditionalPasswordPolicy {
-                min_length: 8,
-                require_uppercase: true,
-                require_lowercase: true,
-                require_numbers: true,
-                require_special_chars: true,
-                min_character_categories: 4,
-            }),
+            validation_strategy: PasswordValidationStrategy::TraditionalPolicy(
+                TraditionalPasswordPolicy {
+                    min_length: 12,
+                    require_uppercase: true,
+                    require_lowercase: true,
+                    require_numbers: true,
+                    require_special_chars: true,
+                },
+            ),
+            traditional_policy: None,
             passphrase_policy: None,
             max_age_days: 90,
             prevent_password_reuse: true,
@@ -219,66 +229,95 @@ impl PasswordPolicy {
 // ============================================================================
 
 /// Subject types for authorization
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SubjectType {
+    /// Individual user account
     User,
+    /// System service account
     Service,
+    /// User role or group role
     Role,
+    /// User group or organizational unit
     Group,
 }
 
-/// Resource for authorization
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Resource being accessed in authorization
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Resource {
+    /// Type of resource (file, database, service, etc.)
     pub resource_type: String,
+    /// Unique identifier for the resource
     pub resource_id: String,
+    /// Additional resource attributes for context
     pub attributes: HashMap<String, String>,
 }
 
-/// Action for authorization
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Action being performed on a resource
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Action {
+    /// Type of action (read, write, delete, execute, etc.)
     pub action_type: String,
+    /// Additional action attributes for context
     pub attributes: HashMap<String, String>,
 }
 
-/// Permission definition
+/// Permission granting or denying access to a resource
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Permission {
+    /// Unique permission identifier
     pub id: String,
+    /// Subject (user/service/role) this permission applies to
     pub subject: String,
+    /// Type of subject
     pub subject_type: SubjectType,
+    /// Resource this permission covers
     pub resource: Resource,
+    /// Action this permission allows or denies
     pub action: Action,
+    /// Whether this permission allows or denies access
     pub effect: PermissionEffect,
+    /// Conditions that must be met for this permission to apply
     pub conditions: Vec<Condition>,
 }
 
-/// Permission effect
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Effect of a permission
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PermissionEffect {
+    /// Grant access
     Allow,
+    /// Deny access
     Deny,
 }
 
-/// Condition for permission evaluation
+/// Condition that must be met for a permission to apply
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Condition {
+    /// Attribute name to evaluate
     pub attribute: String,
+    /// Comparison operator
     pub operator: ConditionOperator,
+    /// Value to compare against
     pub value: String,
 }
 
-/// Condition operators
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Operators for condition evaluation
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConditionOperator {
+    /// Exact equality
     Equals,
+    /// Not equal
     NotEquals,
+    /// String contains
     Contains,
+    /// String does not contain
     NotContains,
+    /// Numeric greater than
     GreaterThan,
+    /// Numeric less than
     LessThan,
+    /// Value is in list
     InList,
+    /// Value is not in list
     NotInList,
 }
 
@@ -286,15 +325,22 @@ pub enum ConditionOperator {
 // AUTHENTICATION TYPES
 // ============================================================================
 
-/// Authentication token
+/// Authentication token with user information and permissions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthToken {
+    /// The actual token string
     pub token: String,
+    /// Subject (user/service) this token represents
     pub subject: String,
+    /// Type of subject
     pub subject_type: SubjectType,
+    /// When the token was issued (Unix timestamp)
     pub issued_at: u64,
+    /// When the token expires (Unix timestamp)
     pub expires_at: u64,
+    /// List of permission strings for quick access checks
     pub permissions: Vec<String>,
+    /// Additional token attributes
     pub attributes: HashMap<String, String>,
 }
 

@@ -2,6 +2,7 @@
 
 use songbird_errors::SongbirdError;
 use std::collections::HashMap;
+use tracing::info;
 
 use super::config::NetworkConfig;
 
@@ -88,7 +89,8 @@ impl ProxyConfigGenerator {
                 }
             }
             for server in &self.config.upstream_servers {
-                config.push_str(&format!("        server {};\n", server));
+                info!("Adding upstream server to Nginx config: {}", server);
+                config.push_str(&format!("        server {server};\n"));
             }
             config.push_str("    }\n\n");
         }
@@ -138,10 +140,7 @@ impl ProxyConfigGenerator {
 
         // Custom headers
         for (name, value) in &self.config.custom_headers {
-            config.push_str(&format!(
-                "        add_header '{}' '{}' always;\n",
-                name, value
-            ));
+            config.push_str(&format!("        add_header '{name}' '{value}' always;\n"));
         }
 
         // Rate limiting
@@ -157,7 +156,9 @@ impl ProxyConfigGenerator {
         if self.config.load_balancing_enabled {
             config.push_str("            proxy_pass http://backend;\n");
         } else {
-            config.push_str("            proxy_pass http://127.0.0.1:8080;\n");
+            let proxy_endpoint =
+                songbird_config::config::hardcoded_elimination::replace::orchestrator_endpoint();
+            config.push_str(&format!("            proxy_pass {proxy_endpoint};\n"));
         }
 
         config.push_str("            proxy_set_header Host $host;\n");
@@ -249,7 +250,7 @@ impl ProxyConfigGenerator {
             config.push_str(
                 "    stick-table type ip size 100k expire 30s store http_req_rate(10s)\n",
             );
-            config.push_str(&format!("    http-request track-sc0 src\n"));
+            config.push_str("    http-request track-sc0 src\n");
             config.push_str(&format!(
                 "    http-request reject if {{ sc_http_req_rate(0) gt {} }}\n",
                 self.config.rate_limit.requests_per_minute / 6
@@ -274,10 +275,15 @@ impl ProxyConfigGenerator {
 
         if self.config.load_balancing_enabled && !self.config.upstream_servers.is_empty() {
             for (i, server) in self.config.upstream_servers.iter().enumerate() {
-                config.push_str(&format!("    server server{} {} check\n", i, server));
+                info!("Adding HAProxy server #{}: {}", i + 1, server);
+                config.push_str(&format!("    server server{i} {server} check\n"));
             }
         } else {
-            config.push_str("    server default 127.0.0.1:8080 check\n");
+            let default_server = format!(
+                "{}:8080",
+                songbird_config::config::hardcoded_elimination::replace::bind_address()
+            );
+            config.push_str(&format!("    server default {default_server} check\n"));
         }
 
         Ok(config)

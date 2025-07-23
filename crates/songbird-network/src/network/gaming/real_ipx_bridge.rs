@@ -135,10 +135,7 @@ impl RealIpxBridge {
     pub async fn new(bind_address: SocketAddr, buffer_pool_size: usize) -> Result<Self> {
         let socket = UdpSocket::bind(bind_address).await.map_err(|e| {
             SongbirdError::Network(Box::new(NetworkError {
-                message: format!(
-                    "Real IPX Bridge - Failed to bind to address {}: {}",
-                    bind_address, e
-                ),
+                message: format!("Real IPX Bridge - Failed to bind to address {bind_address}: {e}"),
                 endpoint: Some(bind_address.to_string()),
                 port: Some(bind_address.port()),
                 protocol: None,

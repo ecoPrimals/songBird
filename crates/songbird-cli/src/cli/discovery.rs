@@ -76,7 +76,9 @@ impl NetworkScanner {
         }
 
         // Execute scans with timeout
-        let scan_timeout = Duration::from_secs(30); // Total scan timeout
+        // Use configurable timeout instead of hardcoded 30 seconds
+        let scan_timeout =
+            songbird_config::config::hardcoded_elimination::replace::connection_timeout();
         let results =
             tokio::time::timeout(scan_timeout, futures_util::future::join_all(scan_tasks)).await;
 

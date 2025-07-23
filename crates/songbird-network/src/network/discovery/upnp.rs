@@ -7,9 +7,9 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{debug, error};
 
-use super::super::beardog_integration::PeerCapabilities;
 use super::types::{DiscoveryConfig, UPnPDevice};
 use songbird_errors::Result;
+use songbird_universal_primals::PrimalCapability;
 
 /// UPnP client for local network discovery
 pub struct UPnPClient {
@@ -29,7 +29,7 @@ impl UPnPClient {
     }
 
     /// Discover peers via UPnP
-    pub async fn discover_peers(&self) -> Result<Vec<PeerCapabilities>> {
+    pub async fn discover_peers(&self) -> Result<Vec<Vec<PrimalCapability>>> {
         debug!("Discovering peers via UPnP...");
 
         let mut peers = Vec::new();
@@ -37,7 +37,7 @@ impl UPnPClient {
         // Create UPnP multicast socket for SSDP discovery
         let bind_addr = format!(
             "{}:0",
-            crate::config::constants::network::production_bind_address()
+            songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
         );
         let socket = match tokio::net::UdpSocket::bind(&bind_addr).await {
             Ok(socket) => socket,
@@ -97,17 +97,27 @@ impl UPnPClient {
                     let latency_ms = self.measure_latency(&addr).await.unwrap_or(10);
                     let bandwidth_mbps = self.estimate_bandwidth(&addr).await.unwrap_or(100);
 
-                    peers.push(PeerCapabilities {
-                        protocol_support: vec![
-                            "UPnP".to_string(),
-                            "BSTP".to_string(),
-                            "HTTP".to_string(),
-                        ],
-                        bandwidth_mbps,
-                        latency_ms,
-                        gaming_optimized: true,
-                        security_level: crate::network::beardog_integration::SecurityLevel::Gaming,
-                    });
+                    peers.push(vec![
+                        PrimalCapability::NetworkRouting {
+                            protocols: vec![
+                                "UPnP".to_string(),
+                                "BSTP".to_string(),
+                                "HTTP".to_string(),
+                            ],
+                        },
+                        PrimalCapability::Custom {
+                            name: "Gaming".to_string(),
+                            properties: vec![("optimized".to_string(), "true".to_string())],
+                        },
+                        PrimalCapability::Custom {
+                            name: "NetworkConnectivity".to_string(),
+                            properties: [
+                                ("bandwidth_mbps".to_string(), bandwidth_mbps.to_string()),
+                                ("latency_ms".to_string(), latency_ms.to_string()),
+                            ]
+                            .to_vec(),
+                        },
+                    ]);
                 }
             }
         });
@@ -126,25 +136,98 @@ impl UPnPClient {
     }
 
     /// Measure latency to a discovered device
-    async fn measure_latency(&self, _addr: &SocketAddr) -> Option<u32> {
-        // In a real implementation, this would:
-        // 1. Send ICMP ping requests
-        // 2. Measure round-trip time
-        // 3. Return average latency over multiple measurements
-        
-        // For now, return a mock value based on local network assumptions
-        Some(5) // Assume 5ms for local network
+    async fn measure_latency(&self, addr: &SocketAddr) -> Option<u32> {
+        debug!("Measuring latency to UPnP device: {}", addr);
+
+        // Use TCP connection timing as a proxy for latency since ICMP requires privileges
+        let start_time = std::time::Instant::now();
+
+        match tokio::time::timeout(
+            Duration::from_millis(5000),
+            tokio::net::TcpStream::connect(addr),
+        )
+        .await
+        {
+            Ok(Ok(_stream)) => {
+                let latency_ms = start_time.elapsed().as_millis() as u32;
+                debug!("TCP connect latency to {}: {}ms", addr, latency_ms);
+                Some(latency_ms)
+            }
+            Ok(Err(e)) => {
+                debug!("TCP connect failed to {}: {}", addr, e);
+                // Even failed connections can give us some timing info
+                let partial_latency = start_time.elapsed().as_millis() as u32;
+                if partial_latency > 1000 {
+                    // If it took a long time to fail, the device is likely unreachable
+                    None
+                } else {
+                    // Quick failure might just be a closed port, but device is reachable
+                    Some(partial_latency * 2) // Estimate based on partial timing
+                }
+            }
+            Err(_timeout) => {
+                debug!("Latency measurement timed out for {}", addr);
+                None
+            }
+        }
     }
 
     /// Estimate bandwidth to a discovered device
-    async fn estimate_bandwidth(&self, _addr: &SocketAddr) -> Option<u32> {
-        // In a real implementation, this would:
-        // 1. Perform bandwidth tests using UPnP device capabilities
-        // 2. Send test data and measure transfer rates
-        // 3. Return estimated bandwidth in Mbps
-        
-        // For now, return a conservative estimate for local networks
-        Some(100) // Assume 100 Mbps for local network
+    async fn estimate_bandwidth(&self, addr: &SocketAddr) -> Option<u32> {
+        debug!("Estimating bandwidth to UPnP device: {}", addr);
+
+        // Measure latency first to get baseline connectivity info
+        let latency_ms = match self.measure_latency(addr).await {
+            Some(latency) => latency,
+            None => {
+                debug!("Cannot estimate bandwidth without connectivity");
+                return None;
+            }
+        };
+
+        // Use a simple bandwidth estimation based on latency and network topology
+        let estimated_mbps = match latency_ms {
+            // Very low latency suggests local gigabit network
+            lat if lat < 2 => 1000,
+            // Low latency suggests fast local network
+            lat if lat < 5 => 100,
+            // Medium latency suggests standard local network
+            lat if lat < 15 => 100,
+            // Higher latency suggests slower connection or distant device
+            lat if lat < 50 => 10,
+            // Very high latency suggests limited bandwidth
+            _ => 1,
+        };
+
+        // Additional heuristics based on IP address ranges
+        let adjusted_bandwidth = match addr.ip() {
+            std::net::IpAddr::V4(ipv4) => {
+                let octets = ipv4.octets();
+                match octets {
+                    // Local loopback - assume very fast
+                    [127, _, _, _] => estimated_mbps.max(1000),
+                    // Private Class A (10.x.x.x) - typically enterprise/fast
+                    [10, _, _, _] => estimated_mbps.max(100),
+                    // Private Class B (172.16-31.x.x) - typically office networks
+                    [172, second, _, _] if (16..=31).contains(&second) => estimated_mbps.max(100),
+                    // Private Class C (192.168.x.x) - typically home networks
+                    [192, 168, _, _] => estimated_mbps.min(100), // Cap at 100 Mbps for home
+                    // Public IP - more conservative estimate
+                    _ => estimated_mbps.min(50),
+                }
+            }
+            std::net::IpAddr::V6(_) => {
+                // IPv6 local networks are typically modern and fast
+                estimated_mbps.max(100)
+            }
+        };
+
+        debug!(
+            "Estimated bandwidth to {}: {} Mbps (latency: {}ms)",
+            addr, adjusted_bandwidth, latency_ms
+        );
+
+        Some(adjusted_bandwidth)
     }
 
     /// Get all discovered devices
@@ -184,9 +267,13 @@ impl UPnPClient {
 
     /// Start UPnP device announcement listener
     pub async fn start_announcement_listener(&self) -> Result<()> {
-        debug!("Starting UPnP announcement listener on port {}", self.discovery_port);
+        debug!(
+            "Starting UPnP announcement listener on port {}",
+            self.discovery_port
+        );
 
-        let socket = tokio::net::UdpSocket::bind(format!("0.0.0.0:{}", self.discovery_port)).await?;
+        let socket =
+            tokio::net::UdpSocket::bind(format!("0.0.0.0:{}", self.discovery_port)).await?;
         socket.join_multicast_v4(
             std::net::Ipv4Addr::new(239, 255, 255, 250),
             std::net::Ipv4Addr::new(0, 0, 0, 0),
@@ -223,7 +310,10 @@ impl UPnPClient {
             "NOTIFY * HTTP/1.1",
             "HOST: 239.255.255.250:1900",
             "CACHE-CONTROL: max-age=120",
-            "LOCATION: http://0.0.0.0:8080/upnp/desc.xml",
+            &format!(
+                "LOCATION: http://{}:8080/upnp/desc.xml",
+                songbird_config::config::hardcoded_elimination::replace::production_bind_address()
+            ),
             "NT: urn:schemas-songbird:device:orchestrator:1",
             "NTS: ssdp:alive",
             "USN: uuid:songbird-orchestrator::urn:schemas-songbird:device:orchestrator:1",
@@ -233,9 +323,11 @@ impl UPnPClient {
         ]
         .join("\r\n");
 
-        socket.send_to(announcement.as_bytes(), multicast_addr).await?;
+        socket
+            .send_to(announcement.as_bytes(), multicast_addr)
+            .await?;
         debug!("Sent UPnP device announcement");
 
         Ok(())
     }
-} 
+}

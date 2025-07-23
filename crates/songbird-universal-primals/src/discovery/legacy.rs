@@ -123,15 +123,23 @@ pub fn get_configured_service_endpoints() -> Vec<(String, String)> {
             ),
             (
                 "local_dev_2".to_string(),
-                "http://127.0.0.1:8080".to_string(),
+                songbird_config::config::hardcoded_elimination::replace::orchestrator_endpoint()
+                    .to_string(),
             ),
             (
                 "local_dev_3".to_string(),
-                "http://127.0.0.1:8083".to_string(),
+                songbird_config::config::hardcoded_elimination::replace::format_endpoint(
+                    "squirrel", None,
+                )
+                .to_string(),
             ),
             (
                 "local_dev_4".to_string(),
-                "http://127.0.0.1:8084".to_string(),
+                songbird_config::config::hardcoded_elimination::replace::format_endpoint(
+                    "orchestrator",
+                    Some(8084),
+                )
+                .to_string(),
             ),
         ];
     }
@@ -290,7 +298,11 @@ pub async fn discover_from_well_known_locations() -> PrimalResult<Vec<Discovered
     // Also add localhost development patterns
     let development_ports = vec![8080, 8443, 8082, 8083, 8084, 8085];
     for port in development_ports {
-        let endpoint = format!("http://localhost:{port}");
+        let endpoint = songbird_config::config::hardcoded_elimination::replace::format_endpoint(
+            "orchestrator",
+            Some(port),
+        )
+        .to_string();
         if let Ok(true) = test_endpoint_connectivity(&endpoint).await {
             match probe_service_capabilities(&endpoint).await {
                 Ok((capabilities, metadata)) => {

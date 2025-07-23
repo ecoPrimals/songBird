@@ -158,17 +158,18 @@ impl PrimalDiscoveryEngine {
     /// Start ecosystem discovery (connects to real primals at ../beardog, etc.)
     async fn start_ecosystem_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
         debug!("🌌 Starting ecosystem primal discovery...");
-        
+
         use super::ecosystem::{EcosystemDiscovery, EcosystemDiscoveryConfig};
-        
+
         let ecosystem_config = EcosystemDiscoveryConfig {
             ecosystem_base_path: "../".to_string(),
             health_check_timeout_ms: 5000,
             max_concurrent_discoveries: 10,
             enable_filesystem_discovery: true,
             enable_network_discovery: true,
+            enable_capability_inference: true,
         };
-        
+
         let ecosystem_discovery = EcosystemDiscovery::new(ecosystem_config);
         ecosystem_discovery.discover_ecosystem_primals().await
     }

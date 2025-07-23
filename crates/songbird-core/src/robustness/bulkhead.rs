@@ -2,7 +2,7 @@
 
 use super::config::BulkheadConfig;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// Bulkhead instance for resource isolation
 #[derive(Debug)]

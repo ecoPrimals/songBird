@@ -16,18 +16,22 @@ pub struct BeardogIntegration {
 
 impl BeardogIntegration {
     /// Create new BearDog integration
-    pub fn new(config: BeardogConfig) -> Self {
+    pub fn new(config: BeardogConfig) -> Result<Self, std::io::Error> {
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| {
+                tracing::error!("Failed to create BearDog HTTP client: {}", e);
+                std::io::Error::new(std::io::ErrorKind::Other, 
+                    format!("BearDog integration unavailable: HTTP client creation failed: {}", e))
+            })?;
 
-        Self {
+        Ok(Self {
             config,
             client,
             event_buffer: Arc::new(RwLock::new(Vec::new())),
             active_policies: Arc::new(RwLock::new(Vec::new())),
-        }
+        })
     }
 
     /// Initialize BearDog integration

@@ -28,7 +28,7 @@ impl ToadstoolClient {
             .build()
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Substrate Module - Network error: {}", e),
+                    message: format!("Substrate Module - Network error: {e}"),
                     endpoint: Some(endpoint.clone()),
                     port: None,
                     protocol: Some("HTTP".to_string()),
@@ -101,7 +101,7 @@ impl ToadstoolClient {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Request failed: {}", e),
+                    message: format!("Request failed: {e}"),
                     endpoint: Some(self.endpoint.clone()),
                     port: None,
                     protocol: Some("HTTP".to_string()),
@@ -111,7 +111,7 @@ impl ToadstoolClient {
         if response.status().is_success() {
             let body: serde_json::Value = response.json().await.map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Failed to parse response: {}", e),
+                    message: format!("Failed to parse response: {e}"),
                     endpoint: Some(self.endpoint.clone()),
                     port: None,
                     protocol: Some("HTTP".to_string()),

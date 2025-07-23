@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::body::Incoming;
-use hyper::{Method, Request, Response, StatusCode};
+use hyper::{Method, Request, Response};
 use serde_json::json;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -114,11 +114,27 @@ impl SimpleDashboard {
 </html>
         "#;
 
-        Ok(Response::builder()
-            .status(StatusCode::OK)
+        let response = hyper::Response::builder()
             .header("content-type", "text/html")
-            .body(Full::new(Bytes::from(html)))
-            .expect("Failed to build HTTP response for dashboard"))
+            .body(Full::new(Bytes::from(html)));
+
+        match response {
+            Ok(resp) => Ok(resp),
+            Err(e) => {
+                tracing::error!("Failed to build HTTP response for dashboard: {}", e);
+                // Create fallback response
+                Ok(hyper::Response::builder()
+                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+                    .header("content-type", "text/plain")
+                    .body(Full::new(Bytes::from("Dashboard temporarily unavailable")))
+                    .unwrap_or_else(|_| {
+                        let (parts, _) =
+                            hyper::Response::new(Full::new(Bytes::from("Server error")))
+                                .into_parts();
+                        hyper::Response::from_parts(parts, Full::new(Bytes::from("Critical error")))
+                    }))
+            }
+        }
     }
 
     /// Serve metrics API
@@ -130,11 +146,33 @@ impl SimpleDashboard {
             "timestamp": chrono::Utc::now()
         });
 
-        Ok(Response::builder()
-            .status(StatusCode::OK)
+        let json_response = metrics.to_string();
+        let response = hyper::Response::builder()
             .header("content-type", "application/json")
-            .body(Full::new(Bytes::from(metrics.to_string())))
-            .expect("Failed to build HTTP response for metrics"))
+            .body(Full::new(Bytes::from(json_response)));
+
+        match response {
+            Ok(resp) => Ok(resp),
+            Err(e) => {
+                tracing::error!("Failed to build HTTP response for metrics: {}", e);
+                Ok(hyper::Response::builder()
+                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+                    .header("content-type", "application/json")
+                    .body(Full::new(Bytes::from(
+                        r#"{"error": "Metrics unavailable"}"#,
+                    )))
+                    .unwrap_or_else(|_| {
+                        let (parts, _) = hyper::Response::new(Full::new(Bytes::from(
+                            r#"{"error": "Server error"}"#,
+                        )))
+                        .into_parts();
+                        hyper::Response::from_parts(
+                            parts,
+                            Full::new(Bytes::from(r#"{"error": "Critical error"}"#)),
+                        )
+                    }))
+            }
+        }
     }
 
     /// Serve health API
@@ -145,11 +183,33 @@ impl SimpleDashboard {
             "timestamp": chrono::Utc::now()
         });
 
-        Ok(Response::builder()
-            .status(StatusCode::OK)
+        let json_response = health.to_string();
+        let response = hyper::Response::builder()
             .header("content-type", "application/json")
-            .body(Full::new(Bytes::from(health.to_string())))
-            .expect("Failed to build HTTP response for health"))
+            .body(Full::new(Bytes::from(json_response)));
+
+        match response {
+            Ok(resp) => Ok(resp),
+            Err(e) => {
+                tracing::error!("Failed to build HTTP response for health: {}", e);
+                Ok(hyper::Response::builder()
+                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+                    .header("content-type", "application/json")
+                    .body(Full::new(Bytes::from(
+                        r#"{"error": "Health check unavailable"}"#,
+                    )))
+                    .unwrap_or_else(|_| {
+                        let (parts, _) = hyper::Response::new(Full::new(Bytes::from(
+                            r#"{"error": "Server error"}"#,
+                        )))
+                        .into_parts();
+                        hyper::Response::from_parts(
+                            parts,
+                            Full::new(Bytes::from(r#"{"error": "Critical error"}"#)),
+                        )
+                    }))
+            }
+        }
     }
 
     /// Serve status API
@@ -160,19 +220,57 @@ impl SimpleDashboard {
             "timestamp": chrono::Utc::now()
         });
 
-        Ok(Response::builder()
-            .status(StatusCode::OK)
+        let json_response = status.to_string();
+        let response = hyper::Response::builder()
             .header("content-type", "application/json")
-            .body(Full::new(Bytes::from(status.to_string())))
-            .expect("Failed to build HTTP response for status"))
+            .body(Full::new(Bytes::from(json_response)));
+
+        match response {
+            Ok(resp) => Ok(resp),
+            Err(e) => {
+                tracing::error!("Failed to build HTTP response for status: {}", e);
+                Ok(hyper::Response::builder()
+                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+                    .header("content-type", "application/json")
+                    .body(Full::new(Bytes::from(r#"{"error": "Status unavailable"}"#)))
+                    .unwrap_or_else(|_| {
+                        let (parts, _) = hyper::Response::new(Full::new(Bytes::from(
+                            r#"{"error": "Server error"}"#,
+                        )))
+                        .into_parts();
+                        hyper::Response::from_parts(
+                            parts,
+                            Full::new(Bytes::from(r#"{"error": "Critical error"}"#)),
+                        )
+                    }))
+            }
+        }
     }
 
     /// Serve 404 response
     async fn serve_not_found(&self) -> Result<Response<Full<Bytes>>> {
-        Ok(Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Full::new(Bytes::from("Not Found")))
-            .expect("Failed to build 404 HTTP response"))
+        // Return 404 for unknown paths
+        let response = hyper::Response::builder()
+            .status(hyper::StatusCode::NOT_FOUND)
+            .header("content-type", "text/plain")
+            .body(Full::new(Bytes::from("Not Found")));
+
+        match response {
+            Ok(resp) => Ok(resp),
+            Err(e) => {
+                tracing::error!("Failed to build 404 HTTP response: {}", e);
+                Ok(hyper::Response::builder()
+                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+                    .header("content-type", "text/plain")
+                    .body(Full::new(Bytes::from("Server error")))
+                    .unwrap_or_else(|_| {
+                        let (parts, _) =
+                            hyper::Response::new(Full::new(Bytes::from("Critical failure")))
+                                .into_parts();
+                        hyper::Response::from_parts(parts, Full::new(Bytes::from("Server failure")))
+                    }))
+            }
+        }
     }
 }
 

@@ -233,9 +233,9 @@ impl ConnectionProxy {
 
         // Start the server
         let addr = format!("{}:{}", self.config.bind_address, self.config.port);
-        let listener = tokio::net::TcpListener::bind(&addr)
-            .await
-            .map_err(|e| SongbirdError::Communication(format!("Failed to bind to {addr}: {e}")))?;
+        let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
+            SongbirdError::Communication(format!("Failed to bind to {addr}: {e}").to_string())
+        })?;
 
         tracing::info!("Proxy server listening on {}", addr);
 
@@ -327,7 +327,9 @@ impl ConnectionProxy {
             .timeout(Duration::from_secs(self.config.request_timeout))
             .build()
             .map_err(|e| {
-                SongbirdError::Communication(format!("Failed to create HTTP client: {e}"))
+                SongbirdError::Communication(
+                    format!("Failed to create HTTP client: {e}").to_string(),
+                )
             })?;
 
         // Build target URL
@@ -345,7 +347,9 @@ impl ConnectionProxy {
         // Build request
         // Convert axum::http::Method to reqwest::Method by parsing string
         let reqwest_method = reqwest::Method::from_bytes(request.method.as_str().as_bytes())
-            .map_err(|e| SongbirdError::Communication(format!("Invalid HTTP method: {e}")))?;
+            .map_err(|e| {
+                SongbirdError::Communication(format!("Invalid HTTP method: {e}").to_string())
+            })?;
         let mut req_builder = client.request(reqwest_method, &target_url);
 
         // Add headers
@@ -382,7 +386,9 @@ impl ConnectionProxy {
                     }
                 }
                 let body = resp.bytes().await.map_err(|e| {
-                    SongbirdError::Communication(format!("Failed to read response body: {e}"))
+                    SongbirdError::Communication(
+                        format!("Failed to read response body: {e}").to_string(),
+                    )
                 })?;
 
                 let response_time = start_time.elapsed();
@@ -412,6 +418,9 @@ impl ConnectionProxy {
                 })
             }
             Err(e) => {
+                // Log detailed error information for debugging
+                tracing::error!("Proxy request failed for {}: {}", request.uri, e);
+
                 // Update failure stats
                 {
                     let mut stats = self.stats.write().await;
@@ -422,7 +431,9 @@ impl ConnectionProxy {
                 // Update circuit breaker
                 self.record_circuit_breaker_failure(service_name).await;
 
-                Err(SongbirdError::Communication(format!("Request failed: {e}")))
+                Err(SongbirdError::Communication(
+                    "Request failed: {e}".to_string(),
+                ))
             }
         }
     }
@@ -445,14 +456,14 @@ impl ConnectionProxy {
             services
                 .get(service_name)
                 .ok_or_else(|| SongbirdError::Configuration {
-                    message: format!("Service not found: {service_name}"),
+                    message: "Service not found: {service_name}".to_string(),
                     suggestion: Some("Check if service is registered".to_string()),
                     field: "service_name".to_string(),
                 })?;
 
         if service_instances.is_empty() {
             return Err(SongbirdError::Configuration {
-                message: format!("No instances available for service: {service_name}"),
+                message: "No instances available for service: {service_name}".to_string(),
                 suggestion: Some("Check service health and registration".to_string()),
                 field: "service_instances".to_string(),
             });
@@ -601,7 +612,7 @@ async fn proxy_handler(
         });
 
     // Build URI with path
-    let uri_with_path = format!("/{path}");
+    let uri_with_path = "/{path}".to_string();
     let reconstructed_uri = uri_with_path
         .parse::<Uri>()
         .unwrap_or_else(|_| Uri::from_static("/"));

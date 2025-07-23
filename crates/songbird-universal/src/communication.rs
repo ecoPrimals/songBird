@@ -2,10 +2,13 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_config::AuthMethod;
 use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::{CapabilityRequirement, PrimalType, SecurityConfig, SecurityLevel, ServiceCapability};
+// Remove problematic import - will fix hardcoded values in a different way
+// use songbird_config::config::hardcoded_elimination::replace;
 
 /// Universal request format for all ecosystem communication
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -212,7 +215,7 @@ impl Default for SecurityContext {
             auth_token: None,
             identity: "anonymous".to_string(),
             permissions: Vec::new(),
-            security_level: SecurityLevel::Public,
+            security_level: SecurityLevel::None,
             custom_security: HashMap::new(),
         }
     }
@@ -362,7 +365,7 @@ pub struct SongbirdIntegrationConfig {
 
     /// Authentication
     pub auth_token: Option<String>,
-    pub auth_method: crate::AuthMethod,
+    pub auth_method: AuthMethod,
 
     /// Retry configuration
     pub retry_config: crate::RetryConfig,
@@ -382,7 +385,7 @@ impl Default for SongbirdIntegrationConfig {
             health_endpoint: "http://localhost:8080/health".to_string(),
             metrics_endpoint: "http://localhost:8080/metrics".to_string(),
             auth_token: None,
-            auth_method: crate::AuthMethod::Token,
+            auth_method: AuthMethod::JWT,
             retry_config: crate::RetryConfig::default(),
             circuit_breaker: crate::CircuitBreakerConfig::default(),
             load_balancing: crate::LoadBalancingConfig::default(),

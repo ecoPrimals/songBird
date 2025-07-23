@@ -57,7 +57,9 @@ impl HyperResponse {
     pub fn text(&self) -> Result<String, HyperClientError> {
         std::str::from_utf8(&self.body)
             .map(|s| s.to_string())
-            .map_err(|e| HyperClientError::Body(format!("Invalid UTF-8 in response body: {e}")))
+            .map_err(|e| {
+                HyperClientError::Body(format!("Invalid UTF-8 in response body: {e}").to_string())
+            })
     }
 
     /// Get response body as JSON
@@ -135,7 +137,9 @@ impl HyperHttpClient {
             .user_agent(&self.user_agent)
             .build()
             .map_err(|e| {
-                HyperClientError::ConnectionFailed(format!("Failed to create client: {e}"))
+                HyperClientError::ConnectionFailed(
+                    format!("Failed to create client: {e}").to_string(),
+                )
             })?;
 
         // Build request
@@ -150,10 +154,9 @@ impl HyperHttpClient {
         }
 
         // Execute request
-        let response = request_builder
-            .send()
-            .await
-            .map_err(|e| HyperClientError::ConnectionFailed(format!("Request failed: {e}")))?;
+        let response = request_builder.send().await.map_err(|e| {
+            HyperClientError::ConnectionFailed(format!("Request failed: {e}").to_string())
+        })?;
 
         // Extract response parts
         let status = response.status().as_u16();
@@ -164,10 +167,9 @@ impl HyperHttpClient {
             .collect();
 
         // Read body
-        let body_bytes = response
-            .bytes()
-            .await
-            .map_err(|e| HyperClientError::Body(format!("Failed to read response body: {e}")))?;
+        let body_bytes = response.bytes().await.map_err(|e| {
+            HyperClientError::Body(format!("Failed to read response body: {e}").to_string())
+        })?;
 
         Ok(HyperResponse {
             status,
@@ -190,7 +192,9 @@ impl HyperHttpClient {
             .user_agent(&self.user_agent)
             .build()
             .map_err(|e| {
-                HyperClientError::ConnectionFailed(format!("Failed to create client: {e}"))
+                HyperClientError::ConnectionFailed(
+                    format!("Failed to create client: {e}").to_string(),
+                )
             })?;
 
         // Build request with JSON body
@@ -205,10 +209,9 @@ impl HyperHttpClient {
         }
 
         // Execute request
-        let response = request_builder
-            .send()
-            .await
-            .map_err(|e| HyperClientError::ConnectionFailed(format!("Request failed: {e}")))?;
+        let response = request_builder.send().await.map_err(|e| {
+            HyperClientError::ConnectionFailed(format!("Request failed: {e}").to_string())
+        })?;
 
         // Extract response parts
         let status = response.status().as_u16();
@@ -219,10 +222,9 @@ impl HyperHttpClient {
             .collect();
 
         // Read body
-        let body_bytes = response
-            .bytes()
-            .await
-            .map_err(|e| HyperClientError::Body(format!("Failed to read response body: {e}")))?;
+        let body_bytes = response.bytes().await.map_err(|e| {
+            HyperClientError::Body(format!("Failed to read response body: {e}").to_string())
+        })?;
 
         Ok(HyperResponse {
             status,
@@ -246,7 +248,9 @@ impl HyperHttpClient {
             .user_agent(&self.user_agent)
             .build()
             .map_err(|e| {
-                HyperClientError::ConnectionFailed(format!("Failed to create client: {e}"))
+                HyperClientError::ConnectionFailed(
+                    format!("Failed to create client: {e}").to_string(),
+                )
             })?;
 
         // Parse method and build request
@@ -278,10 +282,9 @@ impl HyperHttpClient {
         }
 
         // Execute request
-        let response = request_builder
-            .send()
-            .await
-            .map_err(|e| HyperClientError::ConnectionFailed(format!("Request failed: {e}")))?;
+        let response = request_builder.send().await.map_err(|e| {
+            HyperClientError::ConnectionFailed(format!("Request failed: {e}").to_string())
+        })?;
 
         // Extract response parts
         let status = response.status().as_u16();
@@ -292,10 +295,9 @@ impl HyperHttpClient {
             .collect();
 
         // Read body
-        let body_bytes = response
-            .bytes()
-            .await
-            .map_err(|e| HyperClientError::Body(format!("Failed to read response body: {e}")))?;
+        let body_bytes = response.bytes().await.map_err(|e| {
+            HyperClientError::Body(format!("Failed to read response body: {e}").to_string())
+        })?;
 
         Ok(HyperResponse {
             status,

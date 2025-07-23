@@ -1,602 +1,592 @@
-//! Configuration management for Songbird components
+//! Core configuration management for Songbird
 //!
-//! This module provides comprehensive configuration management including
-//! network settings, security configurations, discovery mechanisms,
-//! and `BearDog` integration settings.
+//! This module provides the main configuration structures and validation
+//! for the Songbird ecosystem, with zero hardcoded values.
 
+use crate::PerformanceConfig;
 use serde::{Deserialize, Serialize};
-use songbird_errors::{Result, SongbirdError};
 use std::collections::HashMap;
-use std::path::Path;
 
 pub mod constants;
 pub mod environment;
+pub mod hardcoded_elimination;
 pub mod network;
 pub mod paths;
 pub mod providers;
 pub mod universal_primals;
 pub mod validation;
 
-// Re-export commonly used configuration types
-pub use constants::*;
-pub use environment::*;
-pub use network::*;
-pub use paths::*;
-pub use universal_primals::*;
+// Re-export commonly used types
+pub use constants::get_default_bind_address;
+pub use environment::EnvironmentConfig;
 
-// Alias for backward compatibility
-pub type PathsConfig = PathConfig;
-
-/// Quality of service requirements for configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct QosRequirements {
-    /// Expected latency in milliseconds
-    pub latency_ms: Option<f64>,
-
-    /// Throughput in operations per second
-    pub throughput_ops_sec: Option<f64>,
-
-    /// Availability percentage (0.0 to 1.0)
-    pub availability: Option<f64>,
-
-    /// Reliability score (0.0 to 1.0)
-    pub reliability: Option<f64>,
-
-    /// Maximum acceptable error rate (0.0 to 1.0)
-    pub max_error_rate: Option<f64>,
-}
-
-/// Main configuration structure for Songbird Orchestrator
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Main Songbird configuration structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SongbirdConfig {
+    /// Environment configuration (development, staging, production)
+    pub environment: String,
+
+    /// Performance tuning configuration
+    pub performance: Option<PerformanceConfig>,
+
     /// Network configuration
     pub network: NetworkConfig,
-
-    /// Environment configuration
-    pub environment: EnvironmentConfig,
-
-    /// Path configuration
-    pub paths: PathsConfig,
-
-    /// Universal primal registry (NEW - replaces hardcoded primal configs)
-    pub primal_registry: Option<PrimalRegistry>,
-
-    /// BearDog security integration (DEPRECATED - use primal_registry)
-    #[serde(default)]
-    pub beardog: Option<BearDogConfig>,
-
-    /// Toadstool compute integration (DEPRECATED - use primal_registry)
-    #[serde(default)]
-    pub toadstool: Option<ToadstoolConfig>,
 
     /// Security configuration
     pub security: SecurityConfig,
 
-    /// Additional custom configuration
-    pub custom: HashMap<String, serde_json::Value>,
+    /// Service discovery configuration
+    pub discovery: DiscoveryConfig,
+
+    /// Observability configuration
+    pub observability: ObservabilityConfig,
+
+    /// Universal primal registry - replaces hardcoded primal configs
+    pub primal_registry: Option<universal_primals::PrimalRegistry>,
+
+    /// Custom configuration parameters
+    pub custom: Option<HashMap<String, serde_json::Value>>,
+
+    // Legacy fields for backward compatibility (deprecated)
+    // TODO: Remove these in next major version
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[deprecated(note = "Use primal_registry instead")]
+    pub beardog: Option<serde_json::Value>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[deprecated(note = "Use primal_registry instead")]
+    pub toadstool: Option<serde_json::Value>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[deprecated(note = "Use primal_registry instead")]
+    pub nestgate: Option<serde_json::Value>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[deprecated(note = "Use primal_registry instead")]
+    pub squirrel: Option<serde_json::Value>,
 }
 
-/// Orchestrator configuration (alias for compatibility)
-pub type OrchestratorConfig = SongbirdConfig;
-
-/// Security configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityConfig {
-    pub encryption_enabled: bool,
-    pub tls_enabled: bool,
-    pub cert_path: Option<String>,
-    pub key_path: Option<String>,
-    pub ca_path: Option<String>,
-
-    /// JWT secret for authentication
-    pub jwt_secret: Option<String>,
-}
-
-/// Observability configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ObservabilityConfig {
-    pub metrics_enabled: bool,
-    pub tracing_enabled: bool,
-    pub dashboard_enabled: bool,
-    pub dashboard_port: Option<u16>,
-}
-
-/// Gaming configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GamingConfig {
-    pub enabled: bool,
-    pub auto_detect: bool,
-    pub supported_protocols: Vec<String>,
-    pub bridge_timeout_secs: u64,
-}
-
-/// BearDog security module configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogConfig {
-    /// Enable BearDog integration
-    pub enabled: bool,
-
-    /// BearDog service endpoint configuration
-    pub endpoint: BearDogEndpointConfig,
-
-    /// Authentication configuration for BearDog
-    pub authentication: BearDogAuthConfig,
-
-    /// Default security settings
-    pub security: BearDogSecurityConfig,
-}
-
-/// BearDog service endpoint configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogEndpointConfig {
-    /// Primary BearDog service URL
-    pub primary_url: String,
-
-    /// Connection timeout in seconds
-    pub connection_timeout_secs: u64,
-
-    /// Enable TLS verification
-    pub verify_tls: bool,
-}
-
-/// BearDog authentication configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogAuthConfig {
-    /// Authentication method
-    pub auth_method: BearDogAuthMethod,
-
-    /// API key (if using API key auth)
-    pub api_key: Option<String>,
-}
-
-/// BearDog authentication methods
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum BearDogAuthMethod {
-    /// API key authentication
-    ApiKey,
-    /// Mutual TLS authentication
-    MutualTls,
-}
-
-/// BearDog security configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogSecurityConfig {
-    /// Default security level for operations
-    pub default_security_level: String,
-
-    /// Enable automatic key rotation
-    pub auto_key_rotation: bool,
-}
-
-/// Toadstool compute integration configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToadstoolConfig {
-    /// Enable Toadstool integration
-    pub enabled: bool,
-
-    /// Toadstool service endpoint configuration
-    pub endpoint: ToadstoolEndpointConfig,
-
-    /// Authentication configuration for Toadstool
-    pub authentication: ToadstoolAuthConfig,
-
-    /// Default compute settings
-    pub compute: ToadstoolComputeConfig,
-}
-
-/// Toadstool service endpoint configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToadstoolEndpointConfig {
-    /// Primary Toadstool service URL
-    pub primary_url: String,
-
-    /// Connection timeout in seconds
-    pub connection_timeout_secs: u64,
-
-    /// Enable TLS verification
-    pub verify_tls: bool,
-}
-
-/// Toadstool authentication configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToadstoolAuthConfig {
-    /// Authentication method
-    pub auth_method: ToadstoolAuthMethod,
-
-    /// API key (if using API key auth)
-    pub api_key: Option<String>,
-}
-
-/// Toadstool authentication methods
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ToadstoolAuthMethod {
-    /// API key authentication
-    ApiKey,
-    /// Mutual TLS authentication
-    MutualTls,
-    /// No authentication (for development)
-    None,
-}
-
-/// Toadstool compute configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToadstoolComputeConfig {
-    /// Default container runtime
-    pub default_runtime: String,
-
-    /// Enable GPU support
-    pub enable_gpu: bool,
-
-    /// Default resource limits
-    pub default_resource_limits: ToadstoolResourceLimits,
-}
-
-/// Toadstool resource limits
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToadstoolResourceLimits {
-    /// Max CPU cores per deployment
-    pub max_cpu_cores: f64,
-
-    /// Max memory bytes per deployment
-    pub max_memory_bytes: u64,
-
-    /// Max storage bytes per deployment
-    pub max_storage_bytes: u64,
-
-    /// Max GPU count per deployment
-    pub max_gpu_count: u32,
-}
-
-impl Default for BearDogConfig {
+impl Default for SongbirdConfig {
+    #[allow(deprecated)]
     fn default() -> Self {
-        let env_config = crate::config::environment::EnvironmentConfig::default();
-
         Self {
-            enabled: false,
-            endpoint: BearDogEndpointConfig {
-                primary_url: env_config.beardog_endpoint,
-                connection_timeout_secs: env_config.connection_timeout_secs,
-                verify_tls: env_config.require_tls,
-            },
-            authentication: BearDogAuthConfig {
-                auth_method: BearDogAuthMethod::ApiKey,
-                api_key: None,
-            },
-            security: BearDogSecurityConfig {
-                default_security_level: std::env::var("SONGBIRD_BEARDOG_SECURITY_LEVEL")
-                    .unwrap_or_else(|_| "confidential".to_string()),
-                auto_key_rotation: std::env::var("SONGBIRD_BEARDOG_AUTO_KEY_ROTATION")
-                    .map(|v| v.parse().unwrap_or(true))
-                    .unwrap_or(true),
-            },
-        }
-    }
-}
-
-impl Default for ToadstoolConfig {
-    fn default() -> Self {
-        let env_config = crate::config::environment::EnvironmentConfig::default();
-
-        Self {
-            enabled: false,
-            endpoint: ToadstoolEndpointConfig {
-                primary_url: std::env::var("SONGBIRD_TOADSTOOL_ENDPOINT").unwrap_or_else(|_| {
-                    format!(
-                        "http://{}:8081",
-                        crate::config::environment::get_default_bind_address()
-                    )
-                }),
-                connection_timeout_secs: env_config.connection_timeout_secs,
-                verify_tls: env_config.require_tls,
-            },
-            authentication: ToadstoolAuthConfig {
-                auth_method: ToadstoolAuthMethod::None,
-                api_key: None,
-            },
-            compute: ToadstoolComputeConfig {
-                default_runtime: "docker".to_string(),
-                enable_gpu: false,
-                default_resource_limits: ToadstoolResourceLimits {
-                    max_cpu_cores: 16.0,
-                    max_memory_bytes: 32 * 1024 * 1024 * 1024, // 32GB
-                    max_storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
-                    max_gpu_count: 4,
-                },
-            },
+            environment: std::env::var("SONGBIRD_ENV")
+                .unwrap_or_else(|_| "development".to_string()),
+            performance: Some(PerformanceConfig::default()),
+            network: NetworkConfig::default(),
+            security: SecurityConfig::default(),
+            discovery: DiscoveryConfig::default(),
+            observability: ObservabilityConfig::default(),
+            primal_registry: Some(universal_primals::PrimalRegistry::default()),
+            custom: None,
+            // Legacy fields - deprecated but kept for backward compatibility
+            beardog: None,
+            toadstool: None,
+            nestgate: None,
+            squirrel: None,
         }
     }
 }
 
 impl SongbirdConfig {
-    /// Get the effective primal registry (migrates from legacy if needed)
-    pub fn get_primal_registry(&self) -> PrimalRegistry {
-        if let Some(registry) = &self.primal_registry {
-            registry.clone()
-        } else {
-            // Migrate from legacy configuration
-            LegacyConfigMigrator::migrate_legacy_config(self)
+    /// Enable a primal in the universal registry
+    pub fn enable_primal(&mut self, primal_name: &str, endpoint: &str) {
+        if self.primal_registry.is_none() {
+            self.primal_registry = Some(universal_primals::PrimalRegistry::default());
+        }
+
+        if let Some(registry) = &mut self.primal_registry {
+            let mut primal_config = universal_primals::PrimalConfiguration::new_template(
+                primal_name,
+                &format!("{} Service", primal_name.to_uppercase()),
+            );
+            primal_config.endpoint.primary_url = endpoint.to_string();
+            primal_config.enabled = true;
+
+            registry.register_primal(primal_config);
         }
     }
 
-    /// Set the primal registry
-    pub fn set_primal_registry(&mut self, registry: PrimalRegistry) {
-        self.primal_registry = Some(registry);
-    }
-
-    /// Check if a primal type is enabled (universal method)
-    pub fn is_primal_enabled(&self, primal_type: &str) -> bool {
-        self.get_primal_registry()
-            .get_primal(primal_type)
-            .map(|p| p.enabled)
+    /// Check if a primal is enabled
+    pub fn is_primal_enabled(&self, primal_name: &str) -> bool {
+        self.primal_registry
+            .as_ref()
+            .and_then(|registry| registry.get_primal(primal_name))
+            .map(|primal| primal.enabled)
             .unwrap_or(false)
     }
 
-    /// Get primal configuration by type (universal method)
-    pub fn get_primal_config(&self, primal_type: &str) -> Option<PrimalConfiguration> {
-        self.get_primal_registry().get_primal(primal_type).cloned()
+    /// Get primal configuration
+    pub fn get_primal_config(
+        &self,
+        primal_name: &str,
+    ) -> Option<&universal_primals::PrimalConfiguration> {
+        self.primal_registry
+            .as_ref()
+            .and_then(|registry| registry.get_primal(primal_name))
     }
 
-    /// Find primals with specific capability (universal method)
-    pub fn find_primals_with_capability(&self, capability_type: &str) -> Vec<PrimalConfiguration> {
-        self.get_primal_registry()
-            .find_primals_with_capability(capability_type)
-            .into_iter()
-            .cloned()
-            .collect()
-    }
-
-    /// Enable a primal with basic configuration (universal method)
-    pub fn enable_primal(&mut self, primal_type: &str, endpoint_url: &str) {
-        let mut registry = self.get_primal_registry();
-
-        if let Some(existing) = registry.primals.get_mut(primal_type) {
-            existing.enabled = true;
-            existing.endpoint.primary_url = endpoint_url.to_string();
-        } else {
-            let mut config = PrimalConfiguration::new_template(primal_type, primal_type);
-            config.enabled = true;
-            config.endpoint.primary_url = endpoint_url.to_string();
-
-            // Add default capabilities based on known primal types
-            config.capabilities = Self::get_default_capabilities_for_primal_type(primal_type);
-
-            registry.register_primal(config);
-        }
-
-        self.primal_registry = Some(registry);
-    }
-
-    /// Get default capabilities for known primal types
-    fn get_default_capabilities_for_primal_type(primal_type: &str) -> Vec<PrimalCapability> {
-        match primal_type.to_lowercase().as_str() {
-            "beardog" => vec![PrimalCapability {
-                capability_type: "security".to_string(),
-                version: "1.0".to_string(),
-                parameters: std::collections::HashMap::new(),
-                qos_metrics: QosMetrics::default(),
-            }],
-            "toadstool" => vec![PrimalCapability {
-                capability_type: "compute".to_string(),
-                version: "1.0".to_string(),
-                parameters: std::collections::HashMap::new(),
-                qos_metrics: QosMetrics::default(),
-            }],
-            "nestgate" => vec![PrimalCapability {
-                capability_type: "storage".to_string(),
-                version: "1.0".to_string(),
-                parameters: std::collections::HashMap::new(),
-                qos_metrics: QosMetrics::default(),
-            }],
-            "phoenix-ai" | "phoenix_ai" => vec![PrimalCapability {
-                capability_type: "ai".to_string(),
-                version: "1.0".to_string(),
-                parameters: std::collections::HashMap::new(),
-                qos_metrics: QosMetrics::default(),
-            }],
-            "squirrel" => vec![PrimalCapability {
-                capability_type: "messaging".to_string(),
-                version: "1.0".to_string(),
-                parameters: std::collections::HashMap::new(),
-                qos_metrics: QosMetrics::default(),
-            }],
-            // Default: basic capability for unknown primals
-            _ => vec![PrimalCapability {
-                capability_type: "basic".to_string(),
-                version: "1.0".to_string(),
-                parameters: std::collections::HashMap::new(),
-                qos_metrics: QosMetrics::default(),
-            }],
+    /// Disable a primal
+    pub fn disable_primal(&mut self, primal_name: &str) {
+        if let Some(registry) = &mut self.primal_registry {
+            if let Some(primal) = registry.primals.get_mut(primal_name) {
+                primal.enabled = false;
+            }
         }
     }
 
-    /// Disable a primal (universal method)
-    pub fn disable_primal(&mut self, primal_type: &str) {
-        let mut registry = self.get_primal_registry();
-
-        if let Some(existing) = registry.primals.get_mut(primal_type) {
-            existing.enabled = false;
-        }
-
-        self.primal_registry = Some(registry);
-    }
-
-    // ===== BACKWARD COMPATIBILITY METHODS (DEPRECATED) =====
-
-    /// Check if BearDog integration is enabled
-    #[deprecated(note = "Use is_primal_enabled(\"beardog\") instead")]
-    pub fn is_beardog_enabled(&self) -> bool {
-        self.is_primal_enabled("beardog")
-    }
-
-    /// Get BearDog configuration (returns default if not configured)
-    #[deprecated(note = "Use get_primal_config(\"beardog\") instead")]
-    pub fn get_beardog_config(&self) -> BearDogConfig {
-        // Return legacy config if it exists, otherwise create from primal registry
-        if let Some(config) = &self.beardog {
-            config.clone()
-        } else {
-            // Create legacy config from universal primal registry
-            BearDogConfig::default()
-        }
-    }
-
-    /// Enable BearDog integration with default configuration
-    #[deprecated(note = "Use enable_primal(\"beardog\", endpoint_url) instead")]
-    pub fn enable_beardog(&mut self) {
-        self.enable_primal("beardog", &crate::config::constants::default_beardog_endpoint());
-    }
-
-    /// Disable BearDog integration
-    #[deprecated(note = "Use disable_primal(\"beardog\") instead")]
-    pub fn disable_beardog(&mut self) {
-        self.disable_primal("beardog");
-    }
-
-    /// Check if Toadstool integration is enabled
-    #[deprecated(note = "Use is_primal_enabled(\"toadstool\") instead")]
-    pub fn is_toadstool_enabled(&self) -> bool {
-        self.is_primal_enabled("toadstool")
-    }
-
-    /// Get Toadstool configuration (returns default if not configured)
-    #[deprecated(note = "Use get_primal_config(\"toadstool\") instead")]
-    pub fn get_toadstool_config(&self) -> ToadstoolConfig {
-        // Return legacy config if it exists, otherwise create from primal registry
-        if let Some(config) = &self.toadstool {
-            config.clone()
-        } else {
-            // Create legacy config from universal primal registry
-            ToadstoolConfig::default()
-        }
-    }
-
-    /// Enable Toadstool integration with default configuration
-    #[deprecated(note = "Use enable_primal(\"toadstool\", endpoint_url) instead")]
-    pub fn enable_toadstool(&mut self) {
-        self.enable_primal("toadstool", &crate::config::constants::default_toadstool_endpoint());
-    }
-
-    /// Disable Toadstool integration
-    #[deprecated(note = "Use disable_primal(\"toadstool\") instead")]
-    pub fn disable_toadstool(&mut self) {
-        self.disable_primal("toadstool");
+    /// Get all enabled primals
+    pub fn get_enabled_primals(&self) -> Vec<&universal_primals::PrimalConfiguration> {
+        self.primal_registry
+            .as_ref()
+            .map(|registry| registry.get_enabled_primals())
+            .unwrap_or_default()
     }
 }
 
-/// Configuration file formats
-#[derive(Debug, Clone, Copy)]
-pub enum ConfigFormat {
-    Toml,
-    Yaml,
-    Json,
+/// Network configuration with zero hardcoded values
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkConfig {
+    /// Bind address (configurable, no hardcoded localhost)
+    pub bind_address: String,
+
+    /// Port range for dynamic allocation
+    pub port_range: PortRange,
+
+    /// Connection timeout in milliseconds
+    pub connection_timeout_ms: u64,
+
+    /// Maximum concurrent connections
+    pub max_connections: usize,
+
+    /// Enable IPv6 support
+    pub enable_ipv6: bool,
+
+    /// TLS configuration
+    pub tls: Option<TlsConfig>,
+
+    /// Proxy configuration
+    pub proxy: Option<ProxyConfig>,
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self {
+            bind_address: std::env::var("SONGBIRD_BIND_ADDRESS")
+                .unwrap_or_else(|_| "0.0.0.0".to_string()),
+            port_range: PortRange {
+                start: std::env::var("SONGBIRD_PORT_START")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(8000),
+                end: std::env::var("SONGBIRD_PORT_END")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(9000),
+            },
+            connection_timeout_ms: std::env::var("SONGBIRD_CONNECTION_TIMEOUT_MS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(30000),
+            max_connections: std::env::var("SONGBIRD_MAX_CONNECTIONS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1000),
+            enable_ipv6: std::env::var("SONGBIRD_ENABLE_IPV6")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(true),
+            tls: None,   // Configured separately if needed
+            proxy: None, // Configured separately if needed
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortRange {
+    pub start: u16,
+    pub end: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TlsConfig {
+    pub enabled: bool,
+    pub cert_path: String,
+    pub key_path: String,
+    pub ca_path: Option<String>,
+    pub verify_client: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProxyConfig {
+    pub enabled: bool,
+    pub proxy_url: String,
+    pub bypass_list: Vec<String>,
+}
+
+/// Security configuration with comprehensive options
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityConfig {
+    /// Enable security features
+    pub enabled: bool,
+
+    /// Authentication configuration
+    pub authentication: AuthConfig,
+
+    /// Authorization configuration  
+    pub authorization: AuthzConfig,
+
+    /// Encryption configuration
+    pub encryption: EncryptionConfig,
+
+    /// Rate limiting configuration
+    pub rate_limiting: RateLimitConfig,
+
+    /// Audit logging configuration
+    pub audit_logging: AuditConfig,
 }
 
 impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
-            encryption_enabled: true,
-            tls_enabled: false,
-            cert_path: None,
-            key_path: None,
-            ca_path: None,
-
-            jwt_secret: None,
+            enabled: std::env::var("SONGBIRD_SECURITY_ENABLED")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(true),
+            authentication: AuthConfig::default(),
+            authorization: AuthzConfig::default(),
+            encryption: EncryptionConfig::default(),
+            rate_limiting: RateLimitConfig::default(),
+            audit_logging: AuditConfig::default(),
         }
     }
 }
 
-impl Default for ObservabilityConfig {
-    fn default() -> Self {
-        Self {
-            metrics_enabled: true,
-            tracing_enabled: true,
-            dashboard_enabled: false,
-            dashboard_port: Some(3000),
-        }
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthConfig {
+    pub enabled: bool,
+    pub method: AuthMethod,
+    pub token_lifetime_seconds: u64,
+    pub refresh_enabled: bool,
 }
 
-impl Default for GamingConfig {
+impl Default for AuthConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            auto_detect: true,
-            supported_protocols: vec![
-                "IPX".to_string(),
-                "DirectPlay".to_string(),
-                "NetBIOS".to_string(),
-                "UDP".to_string(),
-                "TCP".to_string(),
-            ],
-            bridge_timeout_secs: 300,
+            method: AuthMethod::JWT,
+            token_lifetime_seconds: 3600, // 1 hour
+            refresh_enabled: true,
         }
     }
 }
 
-impl SongbirdConfig {
-    /// Load configuration from file
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let content = std::fs::read_to_string(path).map_err(|e| SongbirdError::Config {
-            field: Some("config_file".to_string()),
-            message: format!("Failed to read config file: {e}"),
-            context: None,
-            suggestion: Some("Check if the file exists and is readable".to_string()),
-        })?;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AuthMethod {
+    JWT,
+    OAuth2,
+    ApiKey,
+    Mutual,
+}
 
-        toml::from_str(&content).map_err(|e| SongbirdError::Config {
-            field: None,
-            message: format!("Failed to parse config: {e}"),
-            context: None,
-            suggestion: Some("Check TOML syntax".to_string()),
-        })
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthzConfig {
+    pub enabled: bool,
+    pub model: AuthzModel,
+    pub policy_file: Option<String>,
+}
 
-    /// Save configuration to file
-    pub fn to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let content = toml::to_string_pretty(self).map_err(|e| SongbirdError::Config {
-            field: None,
-            message: format!("Failed to serialize config: {e}"),
-            context: None,
-            suggestion: Some("Check if the config structure is valid".to_string()),
-        })?;
-
-        std::fs::write(path, content).map_err(|e| SongbirdError::Config {
-            field: Some("config_file".to_string()),
-            message: format!("Failed to write config file: {e}"),
-            context: None,
-            suggestion: Some("Check if you have write permissions".to_string()),
-        })
-    }
-
-    /// Validate configuration
-    pub fn validate_config(&self) -> Result<()> {
-        let mut validation_errors = Vec::new();
-
-        if self.network.orchestrator_port == 0 {
-            validation_errors.push("Network port cannot be zero".to_string());
-        }
-
-        // Validate port ranges
-        if self.network.orchestrator_port < 1024
-            && std::env::var("SONGBIRD_ALLOW_PRIVILEGED_PORTS").is_err()
-        {
-            validation_errors.push(
-                "Port must be >= 1024 unless SONGBIRD_ALLOW_PRIVILEGED_PORTS is set".to_string(),
-            );
-        }
-
-        if validation_errors.is_empty() {
-            Ok(())
-        } else {
-            Err(SongbirdError::Config {
-                field: None,
-                message: validation_errors.join(", "),
-                context: None,
-                suggestion: Some("Check your configuration values".to_string()),
-            })
+impl Default for AuthzConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            model: AuthzModel::RBAC,
+            policy_file: None,
         }
     }
 }
-pub mod hardcoded_elimination;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AuthzModel {
+    RBAC, // Role-Based Access Control
+    ABAC, // Attribute-Based Access Control
+    ACL,  // Access Control List
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EncryptionConfig {
+    pub at_rest: bool,
+    pub in_transit: bool,
+    pub algorithm: EncryptionAlgorithm,
+    pub key_rotation_days: u32,
+}
+
+impl Default for EncryptionConfig {
+    fn default() -> Self {
+        Self {
+            at_rest: true,
+            in_transit: true,
+            algorithm: EncryptionAlgorithm::AES256GCM,
+            key_rotation_days: 90,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EncryptionAlgorithm {
+    AES256GCM,
+    ChaCha20Poly1305,
+    AES128GCM,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RateLimitConfig {
+    pub enabled: bool,
+    pub requests_per_minute: u32,
+    pub burst_size: u32,
+    pub window_seconds: u32,
+}
+
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            requests_per_minute: 1000,
+            burst_size: 100,
+            window_seconds: 60,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditConfig {
+    pub enabled: bool,
+    pub log_level: AuditLevel,
+    pub retention_days: u32,
+    pub include_payload: bool,
+}
+
+impl Default for AuditConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            log_level: AuditLevel::Info,
+            retention_days: 90,
+            include_payload: false, // Security best practice
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AuditLevel {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+/// Service discovery configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveryConfig {
+    /// Discovery mechanism
+    pub mechanism: DiscoveryMechanism,
+
+    /// Discovery interval in seconds
+    pub interval_seconds: u64,
+
+    /// Health check configuration
+    pub health_check: HealthCheckConfig,
+
+    /// Service registration configuration
+    pub registration: RegistrationConfig,
+}
+
+impl Default for DiscoveryConfig {
+    fn default() -> Self {
+        Self {
+            mechanism: DiscoveryMechanism::DNS,
+            interval_seconds: 30,
+            health_check: HealthCheckConfig::default(),
+            registration: RegistrationConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DiscoveryMechanism {
+    DNS,
+    Consul,
+    Etcd,
+    Kubernetes,
+    Static,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthCheckConfig {
+    pub enabled: bool,
+    pub endpoint: String,
+    pub interval_seconds: u64,
+    pub timeout_seconds: u64,
+    pub retries: u32,
+}
+
+impl Default for HealthCheckConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            endpoint: "/health".to_string(),
+            interval_seconds: 10,
+            timeout_seconds: 5,
+            retries: 3,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegistrationConfig {
+    pub auto_register: bool,
+    pub service_name: String,
+    pub tags: Vec<String>,
+    pub metadata: HashMap<String, String>,
+}
+
+impl Default for RegistrationConfig {
+    fn default() -> Self {
+        Self {
+            auto_register: true,
+            service_name: std::env::var("SONGBIRD_SERVICE_NAME")
+                .unwrap_or_else(|_| "songbird".to_string()),
+            tags: vec!["songbird".to_string(), "primal".to_string()],
+            metadata: HashMap::new(),
+        }
+    }
+}
+
+/// Observability configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ObservabilityConfig {
+    /// Metrics configuration
+    pub metrics: MetricsConfig,
+
+    /// Tracing configuration
+    pub tracing: TracingConfig,
+
+    /// Logging configuration
+    pub logging: LoggingConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetricsConfig {
+    pub enabled: bool,
+    pub endpoint: String,
+    pub interval_seconds: u64,
+    pub exporters: Vec<MetricsExporter>,
+}
+
+impl Default for MetricsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            endpoint: "/metrics".to_string(),
+            interval_seconds: 15,
+            exporters: vec![MetricsExporter::Prometheus],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MetricsExporter {
+    Prometheus,
+    StatsD,
+    OpenTelemetry,
+    CloudWatch,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TracingConfig {
+    pub enabled: bool,
+    pub sample_rate: f64,
+    pub exporters: Vec<TracingExporter>,
+    pub max_span_attributes: u32,
+}
+
+impl Default for TracingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            sample_rate: 0.1, // 10% sampling
+            exporters: vec![TracingExporter::Jaeger],
+            max_span_attributes: 128,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TracingExporter {
+    Jaeger,
+    Zipkin,
+    OpenTelemetry,
+    Console,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoggingConfig {
+    pub level: LogLevel,
+    pub format: LogFormat,
+    pub output: LogOutput,
+    pub rotation: LogRotation,
+}
+
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self {
+            level: LogLevel::Info,
+            format: LogFormat::JSON,
+            output: LogOutput::Stdout,
+            rotation: LogRotation::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LogLevel {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LogFormat {
+    JSON,
+    Plain,
+    Structured,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LogOutput {
+    Stdout,
+    Stderr,
+    File(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogRotation {
+    pub enabled: bool,
+    pub max_size_mb: u64,
+    pub max_files: u32,
+    pub max_age_days: u32,
+}
+
+impl Default for LogRotation {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            max_size_mb: 100,
+            max_files: 10,
+            max_age_days: 30,
+        }
+    }
+}

@@ -123,7 +123,7 @@ async fn parse_mdns_response(response_data: &str) -> Result<Vec<String>, Songbir
 
         // Look for IP:Port patterns
         if let Some(endpoint) = extract_ip_port_from_line(line) {
-            endpoints.push(format!("http://{}", endpoint));
+            endpoints.push(format!("http://{endpoint}"));
         }
     }
 
@@ -200,7 +200,7 @@ async fn create_mdns_advertisement(service_port: u16) -> Result<Vec<u8>, Songbir
     advertisement.extend(&[0x00, 0x00, 0x00, 0x78]); // TTL: 120 seconds
 
     // Add service instance and port information
-    let instance_name = format!("songbird-{}", service_port);
+    let instance_name = format!("songbird-{service_port}");
     advertisement.extend(&[0x00, instance_name.len() as u8]);
     advertisement.extend(instance_name.bytes());
 

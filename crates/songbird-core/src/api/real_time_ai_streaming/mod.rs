@@ -30,6 +30,7 @@ pub use human_interaction::*;
 pub use manager::*;
 pub use messages::*;
 pub use metrics::*;
-pub use service_mesh::*;
+// Import all items but resolve name conflicts with aliases
+pub use service_mesh::{ComponentStatus as MeshComponentStatus, StatusChange as MeshStatusChange};
 pub use session::*;
-pub use types::*;
+pub use types::{ComponentStatus as TypesComponentStatus, StatusChange as TypesStatusChange};

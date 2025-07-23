@@ -26,7 +26,6 @@
 // In the full refactoring, this would import from focused submodules.
 // For now, providing core functionality directly in this file.
 
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_errors::Result;
@@ -128,6 +127,12 @@ pub struct PerformancePredictor {
 }
 
 // Implementation blocks for the core types
+impl Default for AIEnhancedServiceMeshManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AIEnhancedServiceMeshManager {
     pub fn new() -> Self {
         Self {
@@ -146,6 +151,12 @@ impl AIEnhancedServiceMeshManager {
     }
 }
 
+impl Default for AIAnalysisEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AIAnalysisEngine {
     pub fn new() -> Self {
         Self {
@@ -157,6 +168,12 @@ impl AIAnalysisEngine {
     }
 }
 
+impl Default for HumanCollaborationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HumanCollaborationManager {
     pub fn new() -> Self {
         Self {
@@ -165,6 +182,12 @@ impl HumanCollaborationManager {
                 escalation_threshold: 0.9,
             },
         }
+    }
+}
+
+impl Default for PerformancePredictor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -5,10 +5,12 @@
 
 use std::collections::HashMap;
 
+use super::hardening::{
+    get_secure_env_var, validate_production_environment, SecurityHardeningManager,
+};
 use super::providers::{AuthenticationProvider, AuthorizationProvider};
 use super::types::{Action, AuthToken, Resource, SecurityConfig};
-use super::hardening::{SecurityHardeningManager, validate_production_environment, get_secure_env_var};
-use songbird_errors::{Result, SongbirdError, NetworkError, AuthError};
+use songbird_errors::{AuthError, NetworkError, Result, SongbirdError};
 
 // ============================================================================
 // SECURITY MANAGER
@@ -64,13 +66,13 @@ impl SecurityManager {
 
         // Validate security configuration
         let validation_result = self.hardening_manager.validate_security_configuration();
-        
+
         if !validation_result.is_secure {
             return Err(SongbirdError::Security {
                 message: "Security validation failed during initialization".to_string(),
                 context: Some("security_manager_init".to_string()),
-            severity: Some("medium".to_string()),
-            suggestion: Some("Check security configuration".to_string()),
+                severity: Some("medium".to_string()),
+                suggestion: Some("Check security configuration".to_string()),
             });
         }
 
@@ -86,6 +88,7 @@ impl SecurityManager {
         if !self.config.authentication_enabled {
             tracing::error!("SECURITY CRITICAL: Authentication disabled");
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+                provider: Some("SecurityManager".to_string()),
                 message: "Authentication is disabled".to_string(),
             })));
         }
@@ -98,7 +101,11 @@ impl SecurityManager {
         // Log authentication result for security audit
         match &result {
             Ok(token) => {
-                tracing::info!("Authentication successful for user: {} (token: {})", username, token.token);
+                tracing::info!(
+                    "Authentication successful for user: {} (token: {})",
+                    username,
+                    token.token
+                );
             }
             Err(e) => {
                 tracing::warn!("Authentication failed for user: {} - {}", username, e);
@@ -123,21 +130,27 @@ impl SecurityManager {
             tracing::error!("SECURITY CRITICAL: Authorization disabled - this should only be used in development!");
             let environment = get_secure_env_var("SONGBIRD_ENV", "development")?;
             if environment != "development" {
-                return Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    service: Some("security".to_string()),
+                return Err(SongbirdError::Network(Box::new(NetworkError {
                     message: "Authorization cannot be disabled in production".to_string(),
-                    details: None,
+                    endpoint: Some("security".to_string()),
+                    port: None,
+                    protocol: None,
                 })));
             }
             return Ok(false); // Explicit deny in production
         }
 
         // Log authorization attempt for security audit
-        tracing::debug!("Authorization attempt for action: {:?} on resource: {:?}", action, resource);
+        tracing::debug!(
+            "Authorization attempt for action: {:?} on resource: {:?}",
+            action,
+            resource
+        );
 
         let auth_token = self.auth_user.validate_token(token).await?;
 
-        let result = self.authz_user
+        let result = self
+            .authz_user
             .authorize(
                 &auth_token.subject,
                 auth_token.subject_type,
@@ -151,13 +164,26 @@ impl SecurityManager {
         match &result {
             Ok(authorized) => {
                 if *authorized {
-                    tracing::debug!("Authorization granted for action: {:?} on resource: {:?}", action, resource);
+                    tracing::debug!(
+                        "Authorization granted for action: {:?} on resource: {:?}",
+                        action,
+                        resource
+                    );
                 } else {
-                    tracing::warn!("Authorization denied for action: {:?} on resource: {:?}", action, resource);
+                    tracing::warn!(
+                        "Authorization denied for action: {:?} on resource: {:?}",
+                        action,
+                        resource
+                    );
                 }
             }
             Err(e) => {
-                tracing::error!("Authorization error for action: {:?} on resource: {:?} - {}", action, resource, e);
+                tracing::error!(
+                    "Authorization error for action: {:?} on resource: {:?} - {}",
+                    action,
+                    resource,
+                    e
+                );
             }
         }
 
@@ -177,11 +203,13 @@ impl SecurityManager {
     /// Validate current security configuration
     pub fn validate_security(&self) -> Result<()> {
         let validation_result = self.hardening_manager.validate_security_configuration();
-        
+
         if !validation_result.is_secure {
             return Err(SongbirdError::Security {
                 message: format!("Security validation failed: {:?}", validation_result.errors),
                 context: Some("security_validation".to_string()),
+                severity: Some("high".to_string()),
+                suggestion: Some("Check security configuration and hardening settings".to_string()),
             });
         }
 

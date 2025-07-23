@@ -7,6 +7,7 @@ use parking_lot;
 use serde_json;
 use songbird_errors::{Result, SongbirdError};
 use std::collections::HashMap;
+use tracing::debug;
 
 pub use songbird_discovery::traits::communication::MessageType;
 
@@ -84,7 +85,7 @@ pub struct HttpCommunication {
 impl HttpCommunication {
     pub fn new(_base_url: String) -> Result<Self> {
         let client = self::hyper_client::HyperHttpClient::new().map_err(|e| {
-            SongbirdError::Communication(format!("Failed to create HTTP client: {e}"))
+            SongbirdError::Communication(format!("Failed to create HTTP client: {e}").to_string())
         })?;
 
         let circuit_breaker = CircuitBreaker::new(CircuitBreakerConfig::default());
@@ -265,7 +266,7 @@ impl CommunicationLayer for WebSocketCommunication {
 
         // Simulate WebSocket message sending
         let payload = serde_json::to_string(&message).map_err(|e| {
-            SongbirdError::Communication(format!("Failed to serialize message: {e}"))
+            SongbirdError::Communication(format!("Failed to serialize message: {e}").to_string())
         })?;
 
         // Update stats
@@ -433,6 +434,12 @@ impl CommunicationLayer for InMemoryCommunication {
         let mut responses = Vec::new();
 
         for (topic, subscriber_ids) in subscribers_snapshot.iter() {
+            debug!(
+                "Broadcasting to topic '{}' with {} subscribers",
+                topic,
+                subscriber_ids.len()
+            );
+
             for subscriber_id in subscriber_ids {
                 let target = ServiceAddress {
                     service_id: subscriber_id.clone(),

@@ -5,7 +5,7 @@
 #[cfg(feature = "beardog")]
 use songbird_network::network::gaming::bstp_handshake::BSTPHandshakeManager;
 #[cfg(feature = "beardog")]
-use songbird_network::network::gaming::security_provider::{PeerInfo, SelfHealingSecurityManager};
+use songbird_network::network::gaming::security_provider::{PeerInfo, UniversalSecurityManager};
 #[cfg(feature = "beardog")]
 use tracing::{error, info, warn};
 #[cfg(feature = "beardog")]
@@ -30,8 +30,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("🤝 Started handshake for session: {}", greeting.session_id);
     info!("📋 Protocol version: {}", greeting.version);
 
-    // Simulate handshake completion (in real scenario, this would be network communication)
-    let mock_peer_key = [42u8; 32];
+    // Generate secure random peer key for testing
+    use rand::{thread_rng, Rng};
+    let mut mock_peer_key = [0u8; 32];
+    thread_rng().fill(&mut mock_peer_key); // Secure random for better testing
     let mock_greeting = songbird_network::network::gaming::bstp_handshake::BearDogGreeting {
         version: 1,
         session_id: "real_crypto_test".to_string(),
@@ -91,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("\n🧪 Test 2: Architecture Testing (Self-Healing Security)");
 
     std::env::set_var("BEARDOG_AVAILABLE", "true");
-    let security_manager = SelfHealingSecurityManager::new().await?;
+    let security_manager = UniversalSecurityManager::new(None).await?;
     let stats = security_manager.get_stats().await;
 
     info!("🛡️ Security Manager Status:");

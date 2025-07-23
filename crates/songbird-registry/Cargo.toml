@@ -19,6 +19,12 @@ futures-util = "0.3"
 # Collection types
 dashmap = "5.0"
 
+# System monitoring
+sysinfo = "0.30"
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
 # Internal dependencies
 songbird-errors = { path = "../songbird-errors" }
 songbird-discovery = { path = "../songbird-discovery" }

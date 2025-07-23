@@ -71,7 +71,7 @@ pub async fn scan_subnet_for_federation(
 
 /// Check if a port is open on the given IP address
 pub async fn is_port_open(ip: &str, port: u16) -> bool {
-    let address = format!("{}:{}", ip, port);
+    let address = format!("{ip}:{port}");
 
     match timeout(
         Duration::from_millis(100),
@@ -99,7 +99,7 @@ pub async fn verify_federation_endpoint(endpoint: &str) -> Result<bool, Songbird
         })?;
 
     // Try to get federation info
-    let info_url = format!("{}/federation/info", endpoint);
+    let info_url = format!("{endpoint}/federation/info");
     match client.get(&info_url).send().await {
         Ok(response) if response.status().is_success() => {
             // Check if response contains federation identifiers

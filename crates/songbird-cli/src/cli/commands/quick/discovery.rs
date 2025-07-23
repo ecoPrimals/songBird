@@ -2,15 +2,20 @@
 //!
 //! Headless API for discovering Songbird networks that biomeOS can consume
 
-use crate::cli::{CliError, CliResult};
 use super::{DiscoveredNetwork, DiscoveryParameters};
-use serde::{Deserialize, Serialize};
+use crate::cli::{CliError, CliResult};
 use std::net::IpAddr;
 
+// Discovery configuration constants
+const DEFAULT_DISCOVERY_HTTP_PORT: u16 = 8080;
+const MAX_DISCOVERY_TIMEOUT_MS: u64 = 5000;
+
 /// Network discovery API endpoint
-pub async fn discover_networks_api(params: DiscoveryParameters) -> CliResult<Vec<DiscoveredNetwork>> {
+pub async fn discover_networks_api(
+    params: DiscoveryParameters,
+) -> CliResult<Vec<DiscoveredNetwork>> {
     let mut networks = Vec::new();
-    
+
     for method in &params.methods {
         match method.as_str() {
             "subnet" => {
@@ -38,7 +43,7 @@ pub async fn discover_networks_api(params: DiscoveryParameters) -> CliResult<Vec
                 });
             }
         }
-        
+
         if networks.len() >= params.max_results {
             networks.truncate(params.max_results);
             break;
@@ -56,24 +61,24 @@ pub async fn discover_networks_api(params: DiscoveryParameters) -> CliResult<Vec
 /// Calculate compatibility score for a network
 fn calculate_compatibility_score(network: &DiscoveredNetwork) -> f64 {
     let mut score: f64 = 0.5; // Base score - explicitly typed as f64
-    
+
     // Prefer networks with more nodes (up to a point)
     if network.node_count >= 3 && network.node_count <= 20 {
         score += 0.2;
     } else if network.node_count > 20 {
         score += 0.1; // Large networks might be less optimal
     }
-    
+
     // Prefer academic or research networks
     if network.network_type.contains("Academic") || network.network_type.contains("Research") {
         score += 0.2;
     }
-    
+
     // Institution bonus
     if network.institution.is_some() {
         score += 0.1;
     }
-    
+
     score.min(1.0)
 }
 
@@ -103,7 +108,9 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
     })?;
 
     socket
-        .set_read_timeout(Some(Duration::from_millis(timeout_ms.min(5000))))
+        .set_read_timeout(Some(Duration::from_millis(
+            timeout_ms.min(MAX_DISCOVERY_TIMEOUT_MS),
+        )))
         .map_err(|e| CliError::Network {
             message: format!("Failed to set timeout: {e}"),
             endpoint: Some("socket".to_string()),
@@ -160,10 +167,10 @@ fn parse_discovery_response(response: &str, source_ip: IpAddr) -> Option<Discove
             node_count,
             network_type,
             institution,
-            endpoint: format!("{}:8080", source_ip), // Would get actual endpoint from response
+            endpoint: format!("{source_ip}:{DEFAULT_DISCOVERY_HTTP_PORT}"), // Would get actual endpoint from response
             compatibility_score: 0.0, // Will be calculated later
         })
     } else {
         None
     }
-} 
+}

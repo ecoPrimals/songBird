@@ -20,7 +20,7 @@ pub mod circuit_breaker;
 pub mod clients;
 pub mod connection_pool;
 pub mod metrics;
-pub mod substrate;
+pub mod os_substrate;
 pub mod types;
 
 // Re-export all public types for backward compatibility
@@ -29,5 +29,5 @@ pub use circuit_breaker::*;
 pub use clients::*;
 pub use connection_pool::*;
 pub use metrics::*;
-pub use substrate::*;
+pub use os_substrate::*;
 pub use types::*;

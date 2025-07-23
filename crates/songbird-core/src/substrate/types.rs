@@ -1,7 +1,6 @@
 //! Data structures and types for substrate operations
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 /// System information structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

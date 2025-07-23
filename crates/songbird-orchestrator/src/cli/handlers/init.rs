@@ -7,8 +7,7 @@ use anyhow::Result;
 pub async fn handle_init_command(directory: Option<String>, non_interactive: bool) -> Result<()> {
     let target_dir = directory.unwrap_or_else(|| ".".to_string());
     print_info(&format!(
-        "🚀 Initializing Songbird in directory: {}",
-        target_dir
+        "🚀 Initializing Songbird in directory: {target_dir}"
     ));
 
     std::fs::create_dir_all(&target_dir)?;
@@ -32,7 +31,7 @@ pub async fn handle_init_command(directory: Option<String>, non_interactive: boo
 
 /// Create default configuration files
 async fn create_default_config(target_dir: &str) -> Result<()> {
-    let config_dir = format!("{}/.songbird", target_dir);
+    let config_dir = format!("{target_dir}/.songbird");
     std::fs::create_dir_all(&config_dir)?;
 
     let config_content = r#"# Songbird Universal Orchestrator Configuration
@@ -45,9 +44,9 @@ bind_port = 8080
 discovery_port = 8001
 "#;
 
-    let config_path = format!("{}/songbird.toml", config_dir);
+    let config_path = format!("{config_dir}/songbird.toml");
     std::fs::write(&config_path, config_content)?;
-    print_success(&format!("Created configuration file: {}", config_path));
+    print_success(&format!("Created configuration file: {config_path}"));
 
     Ok(())
 }

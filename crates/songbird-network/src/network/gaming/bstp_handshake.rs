@@ -241,7 +241,7 @@ impl BSTPHandshakeManager {
         cipher
             .encrypt(nonce, plaintext)
             .map_err(|e| songbird_errors::SongbirdError::Security {
-                message: format!("Encryption failed: {}", e),
+                message: format!("Encryption failed: {e}"),
                 context: Some("AES-256-GCM encryption error".to_string()),
                 severity: Some("error".to_string()),
                 suggestion: Some("Check session keys and retry".to_string()),
@@ -274,12 +274,12 @@ impl BSTPHandshakeManager {
 
         // Extract nonce from ciphertext (first 12 bytes)
         let nonce_bytes = &ciphertext[..12];
-        let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
+        let nonce = aes_gcm::Nonce::from_slice(nonce_bytes);
 
         // Decrypt the data
         cipher.decrypt(nonce, &ciphertext[12..]).map_err(|e| {
             songbird_errors::SongbirdError::Security {
-                message: format!("Decryption failed: {}", e),
+                message: format!("Decryption failed: {e}"),
                 context: Some("AES-256-GCM decryption error".to_string()),
                 severity: Some("error".to_string()),
                 suggestion: Some("Check session keys and ciphertext integrity".to_string()),

@@ -1,6 +1,5 @@
 //! BiomeOS client for API communication
 
-use std::collections::HashMap;
 use std::time::Duration;
 use tracing::{debug, error, info, warn};
 
@@ -47,7 +46,10 @@ impl BiomeOSClient {
                     Err(songbird_errors::SongbirdError::Service(Box::new(
                         ServiceError::new(
                             "BiomeOS",
-                            &format!("BiomeOS registration failed: {}", response.status()),
+                            format!(
+                                "BiomeOS registration failed: {status}",
+                                status = response.status()
+                            ),
                         ),
                     )))
                 }
@@ -55,7 +57,7 @@ impl BiomeOSClient {
             Err(e) => {
                 error!("Failed to connect to BiomeOS for registration: {}", e);
                 Err(songbird_errors::SongbirdError::Network(Box::new(
-                    NetworkError::new(&format!("BiomeOS connection failed: {}", e)),
+                    NetworkError::new(format!("BiomeOS connection failed: {e}")),
                 )))
             }
         }
@@ -138,7 +140,7 @@ impl BiomeOSClient {
                             Err(songbird_errors::SongbirdError::Service(Box::new(
                                 ServiceError::new(
                                     "BiomeOS",
-                                    &format!("BiomeOS status parsing failed: {}", e),
+                                    format!("BiomeOS status parsing failed: {e}"),
                                 ),
                             )))
                         }
@@ -151,7 +153,7 @@ impl BiomeOSClient {
                     Err(songbird_errors::SongbirdError::Service(Box::new(
                         ServiceError::new(
                             "BiomeOS",
-                            &format!("BiomeOS status request failed: {}", response.status()),
+                            format!("BiomeOS status request failed: {}", response.status()),
                         ),
                     )))
                 }
@@ -159,7 +161,7 @@ impl BiomeOSClient {
             Err(e) => {
                 error!("Failed to connect to BiomeOS for status: {}", e);
                 Err(songbird_errors::SongbirdError::Network(Box::new(
-                    NetworkError::new(&format!("BiomeOS connection failed: {}", e)),
+                    NetworkError::new(format!("BiomeOS connection failed: {e}")),
                 )))
             }
         }
@@ -190,7 +192,7 @@ impl BiomeOSClient {
                             Err(songbird_errors::SongbirdError::Service(Box::new(
                                 ServiceError::new(
                                     "BiomeOS",
-                                    &format!("BYOB deployment parsing failed: {}", e),
+                                    format!("BYOB deployment parsing failed: {e}"),
                                 ),
                             )))
                         }
@@ -200,7 +202,7 @@ impl BiomeOSClient {
                     Err(songbird_errors::SongbirdError::Service(Box::new(
                         ServiceError::new(
                             "BiomeOS",
-                            &format!("BYOB deployment failed: {}", response.status()),
+                            format!("BYOB deployment failed: {}", response.status()),
                         ),
                     )))
                 }
@@ -208,7 +210,7 @@ impl BiomeOSClient {
             Err(e) => {
                 error!("Failed to connect to BiomeOS for BYOB deployment: {}", e);
                 Err(songbird_errors::SongbirdError::Network(Box::new(
-                    NetworkError::new(&format!("BiomeOS connection failed: {}", e)),
+                    NetworkError::new(format!("BiomeOS connection failed: {e}")),
                 )))
             }
         }
@@ -240,7 +242,7 @@ impl BiomeOSClient {
                             Err(songbird_errors::SongbirdError::Service(Box::new(
                                 ServiceError::new(
                                     "BiomeOS",
-                                    &format!("Deployment status parsing failed: {}", e),
+                                    format!("Deployment status parsing failed: {e}"),
                                 ),
                             )))
                         }
@@ -282,7 +284,7 @@ impl BiomeOSClient {
                             Err(songbird_errors::SongbirdError::Service(Box::new(
                                 ServiceError::new(
                                     "BiomeOS",
-                                    &format!("Ecosystem message parsing failed: {}", e),
+                                    format!("Ecosystem message parsing failed: {e}"),
                                 ),
                             )))
                         }
@@ -295,7 +297,7 @@ impl BiomeOSClient {
                     Err(songbird_errors::SongbirdError::Service(Box::new(
                         ServiceError::new(
                             "BiomeOS",
-                            &format!("Ecosystem message failed: {}", response.status()),
+                            format!("Ecosystem message failed: {}", response.status()),
                         ),
                     )))
                 }
@@ -303,7 +305,7 @@ impl BiomeOSClient {
             Err(e) => {
                 error!("Failed to send ecosystem message to BiomeOS: {}", e);
                 Err(songbird_errors::SongbirdError::Network(Box::new(
-                    NetworkError::new(&format!("BiomeOS connection failed: {}", e)),
+                    NetworkError::new(format!("BiomeOS connection failed: {e}")),
                 )))
             }
         }
@@ -328,7 +330,7 @@ impl BiomeOSClient {
                             Err(songbird_errors::SongbirdError::Service(Box::new(
                                 ServiceError::new(
                                     "BiomeOS",
-                                    &format!("BiomeOS resource info parsing failed: {}", e),
+                                    format!("BiomeOS resource info parsing failed: {e}"),
                                 ),
                             )))
                         }
@@ -341,7 +343,7 @@ impl BiomeOSClient {
                     Err(songbird_errors::SongbirdError::Service(Box::new(
                         ServiceError::new(
                             "BiomeOS",
-                            &format!("BiomeOS resource info failed: {}", response.status()),
+                            format!("BiomeOS resource info failed: {}", response.status()),
                         ),
                     )))
                 }
@@ -349,7 +351,7 @@ impl BiomeOSClient {
             Err(e) => {
                 error!("Failed to get resource info from BiomeOS: {}", e);
                 Err(songbird_errors::SongbirdError::Network(Box::new(
-                    NetworkError::new(&format!("BiomeOS connection failed: {}", e)),
+                    NetworkError::new(format!("BiomeOS connection failed: {e}")),
                 )))
             }
         }
@@ -403,7 +405,7 @@ impl BiomeOSClient {
                             Err(songbird_errors::SongbirdError::Service(Box::new(
                                 ServiceError::new(
                                     "BiomeOS",
-                                    &format!("Response parsing failed: {}", e),
+                                    format!("Response parsing failed: {e}"),
                                 ),
                             )))
                         }
@@ -417,7 +419,7 @@ impl BiomeOSClient {
                     Err(songbird_errors::SongbirdError::Service(Box::new(
                         ServiceError::new(
                             "BiomeOS",
-                            &format!("Request to {} failed: {}", endpoint, response.status()),
+                            format!("Request to {endpoint} failed: {}", response.status()),
                         ),
                     )))
                 }
@@ -425,10 +427,7 @@ impl BiomeOSClient {
             Err(e) => {
                 error!("Failed to connect to BiomeOS for {}: {}", endpoint, e);
                 Err(songbird_errors::SongbirdError::Network(Box::new(
-                    NetworkError::new(&format!(
-                        "BiomeOS connection failed for {}: {}",
-                        endpoint, e
-                    )),
+                    NetworkError::new(format!("BiomeOS connection failed for {endpoint}: {e}")),
                 )))
             }
         }

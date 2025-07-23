@@ -209,8 +209,7 @@ impl ProtocolTranslator for IPXTranslator {
                 protocol: "IPX".to_string(),
                 players: 1,
                 max_players: 8,
-                host_address: songbird_config::config::constants::external_address()
-                    .unwrap_or_else(|| "0.0.0.0:6112".to_string()),
+                host_address: songbird_config::config::constants::external_address(),
             }],
         })
     }
@@ -343,7 +342,7 @@ impl DirectPlayTranslator {
         } else {
             Err(SongbirdError::Protocol(Box::new(ProtocolError {
                 protocol: Some("DirectPlay".to_string()),
-                message: format!("Session not found: {session_id}"),
+                message: "Session not found: {session_id}".to_string(),
             })))
         }
     }
@@ -354,13 +353,7 @@ impl DirectPlayTranslator {
         let mut active_sessions = Vec::new();
 
         for session in sessions.values() {
-            let external_addr = songbird_config::config::constants::external_address()
-                .unwrap_or_else(|| {
-                    format!(
-                        "{}:2300",
-                        songbird_config::config::constants::default_bind_address()
-                    )
-                });
+            let external_addr = songbird_config::config::constants::external_address();
 
             let host_address = external_addr.parse().unwrap_or_else(|_| {
                 format!(
@@ -583,8 +576,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
         } else {
             // Check for DirectPlay signature in small packets
             if discovery_packet.windows(5).any(|w| w == b"DPLAY") {
-                let external_addr = songbird_config::config::constants::external_address()
-                    .unwrap_or_else(|| "0.0.0.0:2300".to_string());
+                let external_addr = songbird_config::config::constants::external_address();
 
                 let sessions = vec![DirectPlaySession {
                     session_name: "Game Session".to_string(),
@@ -691,8 +683,7 @@ impl ProtocolTranslator for NetBIOSTranslator {
                     protocol: "NetBIOS".to_string(),
                     players: 1,
                     max_players: 8,
-                    host_address: songbird_config::config::constants::external_address()
-                        .unwrap_or_else(|| "0.0.0.0:137".to_string()),
+                    host_address: songbird_config::config::constants::external_address(),
                 })
                 .collect();
 
@@ -765,13 +756,7 @@ impl ProtocolTranslator for UDPTranslator {
 
     async fn handle_game_discovery(&self, discovery_packet: &[u8]) -> Result<DiscoveryResponse> {
         if discovery_packet.starts_with(b"GAME_SEARCH") {
-            let external_addr = songbird_config::config::constants::external_address()
-                .unwrap_or_else(|| {
-                    format!(
-                        "{}:6112",
-                        songbird_config::config::constants::default_bind_address()
-                    )
-                });
+            let external_addr = songbird_config::config::constants::external_address();
 
             Ok(DiscoveryResponse::LegacyGames {
                 games: vec![LegacyGameInfo {
@@ -835,6 +820,10 @@ impl ProtocolTranslator for TCPTranslator {
         }
 
         let bind_address = songbird_config::config::constants::default_bind_address();
+        info!(
+            "🔧 Protocol translator binding to address: {}",
+            bind_address
+        );
         let server_address = format!("{bind_address}:0")
             .parse()
             .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], 0)));

@@ -195,6 +195,39 @@ impl UniversalPrimalRegistry {
                     "Primal instance {instance_id} is unhealthy: {reason}"
                 )))
             }
+            PrimalHealth::Unknown => {
+                warn!(
+                    "Primal instance {} returned unknown health status, registering anyway",
+                    instance_id
+                );
+                // Register despite unknown status
+                {
+                    let mut primals = self.registered_primals.write().await;
+                    primals.insert(instance_id.clone(), primal.clone());
+                }
+
+                // Index capabilities
+                self.index_capabilities(&instance_id, &primal.capabilities())
+                    .await;
+
+                // Index context
+                self.index_context(&context.user_id, &instance_id).await;
+
+                // Index type
+                self.index_type(&primal.primal_type(), &instance_id).await;
+
+                // Store port information
+                if let Some(port_info) = port_info {
+                    let mut port_manager = self.port_manager.write().await;
+                    port_manager.insert(instance_id.clone(), port_info);
+                }
+
+                info!(
+                    "Registered primal instance with unknown health status: {}",
+                    instance_id
+                );
+                Ok(())
+            }
         }
     }
 

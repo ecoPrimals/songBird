@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, Mutex};
-use tokio::time::{interval, timeout};
+use tokio::time::interval;
 
 /// Async batch processor for efficient pipeline optimization
 pub struct AsyncBatchProcessor<T, R> {
@@ -86,7 +86,7 @@ where
 
         let batch_item = BatchItem { item, response_tx };
 
-        if let Err(_) = self.sender.send(batch_item) {
+        if self.sender.send(batch_item).is_err() {
             return Err(BatchError::ProcessingFailed(
                 "Processor is shut down".to_string(),
             ));
@@ -267,7 +267,7 @@ impl BatchStats {
 impl std::fmt::Display for BatchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BatchError::ProcessingFailed(msg) => write!(f, "Processing failed: {}", msg),
+            BatchError::ProcessingFailed(msg) => write!(f, "Processing failed: {msg}"),
             BatchError::Timeout => write!(f, "Processing timed out"),
             BatchError::Cancelled => write!(f, "Processing was cancelled"),
         }

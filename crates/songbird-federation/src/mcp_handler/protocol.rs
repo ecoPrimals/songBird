@@ -13,25 +13,91 @@ use super::super::messages::{
     FederationRequest, FederationRequestType, FederationResponse, ServiceProviderInfo,
 };
 use chrono::Utc;
-use songbird_errors::{NetworkError, SongbirdError};
+use songbird_config::config::hardcoded_elimination::get_config;
+use songbird_core::metrics::MetricsCapabilityAdapter;
+use songbird_errors::{NetworkError, Result, SongbirdError};
+use songbird_universal::capabilities::UniversalCapabilityAdapter;
+use songbird_universal::DiscoveryConfig;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
-use sysinfo::{CpuExt, SystemExt};
 use tracing::{debug, info, warn};
 
-#[derive(Debug)]
-/// Protocol handler for MCP federation
+/// Protocol handler for MCP federation using capability-based metrics
 pub struct ProtocolHandler {
     config: FederationConfig,
     service_providers: HashMap<String, ServiceProviderInfo>,
+    metrics_adapter: Arc<dyn MetricsCapabilityAdapter>,
 }
 
 impl ProtocolHandler {
-    /// Create new protocol handler
-    pub fn new(config: FederationConfig) -> Self {
-        Self {
+    /// Create new protocol handler with capability-based metrics
+    pub async fn new(config: FederationConfig) -> Result<Self> {
+        info!("🎼 Creating federation protocol handler with capability-based metrics");
+
+        // Create metrics capability adapter using universal discovery
+        info!("🔍 Protocol handler: Initializing universal capability adapter");
+        let discovery_config = DiscoveryConfig::default();
+        let capability_adapter = UniversalCapabilityAdapter::new(discovery_config);
+
+        // Test capability discovery
+        let providers = capability_adapter
+            .find_capability_providers("compute")
+            .await;
+        if providers.is_empty() {
+            warn!("⚠️  Protocol handler: No capability providers found via discovery");
+        } else {
+            info!(
+                "✅ Protocol handler: Found {} capability providers",
+                providers.len()
+            );
+        }
+
+        let metrics_adapter: Arc<dyn MetricsCapabilityAdapter> =
+            Arc::new(songbird_core::metrics::UniversalMetricsAdapter::new());
+
+        // Universal capability endpoint discovery (replaces hardcoded endpoints)
+        let mut discovered_endpoints = Vec::new();
+
+        // Discover all capability types universally
+        let capability_types = ["compute", "security", "storage", "ai", "orchestration"];
+
+        for capability_type in &capability_types {
+            let primals = capability_adapter
+                .find_capability_providers(capability_type)
+                .await;
+            for primal_name in &primals {
+                let endpoint = songbird_config::config::constants::get_primal_endpoint(primal_name);
+                discovered_endpoints.push(endpoint);
+                debug!("Found {} capability: {}", capability_type, primal_name);
+            }
+        }
+
+        // Add legacy fallbacks if no capabilities discovered
+        if discovered_endpoints.is_empty() {
+            warn!("No universal capabilities discovered, using legacy fallbacks");
+            discovered_endpoints.extend([
+                songbird_config::config::constants::get_primal_endpoint("toadstool"), // ToadStool
+                songbird_config::config::constants::get_primal_endpoint("beardog"),   // BearDog
+                songbird_config::config::constants::get_primal_endpoint("nestgate"),  // NestGate
+                songbird_config::config::constants::get_primal_endpoint("squirrel"),  // Squirrel
+            ]);
+        }
+
+        Ok(Self {
             config,
             service_providers: HashMap::with_capacity(16), // Pre-allocate for expected service providers
+            metrics_adapter,
+        })
+    }
+
+    /// Create protocol handler for testing
+    pub fn new_for_testing(config: FederationConfig) -> Self {
+        let adapter = songbird_core::metrics::UniversalMetricsAdapter::new();
+        Self {
+            config,
+            service_providers: HashMap::with_capacity(16),
+            metrics_adapter: Arc::new(adapter),
         }
     }
 
@@ -39,7 +105,7 @@ impl ProtocolHandler {
     pub async fn register_service_provider(
         &mut self,
         provider_info: ServiceProviderInfo,
-    ) -> Result<(), SongbirdError> {
+    ) -> Result<()> {
         info!(
             "Registering service provider: {} - {}",
             provider_info.name, provider_info.description
@@ -57,10 +123,7 @@ impl ProtocolHandler {
     }
 
     /// Validate service provider information
-    fn validate_service_provider(
-        &self,
-        provider: &ServiceProviderInfo,
-    ) -> Result<(), SongbirdError> {
+    fn validate_service_provider(&self, provider: &ServiceProviderInfo) -> Result<()> {
         if provider.name.is_empty() {
             return Err(SongbirdError::Configuration {
                 field: "provider_name".to_string(),
@@ -110,10 +173,7 @@ impl ProtocolHandler {
     }
 
     /// Broadcast service registration to federation endpoints
-    async fn broadcast_service_registration(
-        &self,
-        provider: &ServiceProviderInfo,
-    ) -> Result<(), SongbirdError> {
+    async fn broadcast_service_registration(&self, provider: &ServiceProviderInfo) -> Result<()> {
         info!(
             "Broadcasting service registration for: {} - {}",
             provider.name, provider.description
@@ -178,7 +238,7 @@ impl ProtocolHandler {
         &self,
         endpoint: &str,
         request: &FederationRequest,
-    ) -> Result<FederationResponse, SongbirdError> {
+    ) -> Result<FederationResponse> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
@@ -226,7 +286,7 @@ impl ProtocolHandler {
     pub async fn handle_federation_request(
         &mut self,
         request: &FederationRequest,
-    ) -> Result<FederationResponse, SongbirdError> {
+    ) -> Result<FederationResponse> {
         self.validate_federation_request(request)?;
 
         let response_data = match request.request_type {
@@ -255,10 +315,7 @@ impl ProtocolHandler {
     }
 
     /// Validate federation request
-    fn validate_federation_request(
-        &self,
-        request: &FederationRequest,
-    ) -> Result<(), SongbirdError> {
+    fn validate_federation_request(&self, request: &FederationRequest) -> Result<()> {
         // Validate request has valid timestamp (not too old)
         let now = chrono::Utc::now();
         let age = now.signed_duration_since(request.timestamp);
@@ -277,7 +334,7 @@ impl ProtocolHandler {
     async fn handle_service_registration_request(
         &mut self,
         request: &FederationRequest,
-    ) -> Result<serde_json::Value, SongbirdError> {
+    ) -> Result<serde_json::Value> {
         let provider: ServiceProviderInfo =
             serde_json::from_value(request.data.clone()).map_err(|e| {
                 SongbirdError::Communication(format!("Invalid service provider data: {e}"))
@@ -295,7 +352,7 @@ impl ProtocolHandler {
     async fn handle_service_discovery_request(
         &self,
         request: &FederationRequest,
-    ) -> Result<serde_json::Value, SongbirdError> {
+    ) -> Result<serde_json::Value> {
         let service_type_filter = request.data.get("service_type").and_then(|v| v.as_str());
 
         let filtered_providers: Vec<&ServiceProviderInfo> = self
@@ -313,22 +370,42 @@ impl ProtocolHandler {
         }))
     }
 
-    /// Handle health check request
+    /// Handle health check request using capability-based metrics
     async fn handle_health_check_request(
         &self,
         _request: &FederationRequest,
-    ) -> Result<serde_json::Value, SongbirdError> {
-        debug!("Processing health check request");
+    ) -> Result<serde_json::Value> {
+        debug!("🎼 Processing health check request with capability-based metrics");
 
-        // Collect actual health metrics from system
-        let mut system = sysinfo::System::new_all();
-        system.refresh_all();
+        // Get compute metrics from ToadStool via capability adapter
+        let (cpu_usage, memory_usage, total_memory_gb, uptime) =
+            match self.metrics_adapter.collect_compute_metrics().await {
+                Ok(compute_metrics) => {
+                    let total_memory_bytes =
+                        compute_metrics.memory_usage_bytes + compute_metrics.memory_available_bytes;
+                    let memory_usage_percent = if total_memory_bytes > 0 {
+                        (compute_metrics.memory_usage_bytes as f64 / total_memory_bytes as f64)
+                            * 100.0
+                    } else {
+                        0.0
+                    };
 
-        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
-            / system.cpus().len() as f32;
-        let memory_usage = (system.used_memory() as f64 / system.total_memory() as f64) * 100.0;
-        let total_memory_gb = system.total_memory() / 1024 / 1024 / 1024;
-        let uptime = system.uptime();
+                    (
+                        compute_metrics.cpu_usage_percent as f32,
+                        memory_usage_percent,
+                        total_memory_bytes / 1024 / 1024 / 1024, // Convert to GB
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs(),
+                    )
+                }
+                Err(e) => {
+                    warn!("⚠️  Failed to get system metrics for health check: {}", e);
+                    // Use default values to keep health check working
+                    (0.0, 0.0, 8, 0) // Default values
+                }
+            };
 
         // Check network connectivity
         let network_healthy = self.check_network_connectivity().await.unwrap_or(false);
@@ -372,7 +449,7 @@ impl ProtocolHandler {
     }
 
     /// Check network connectivity to external services
-    async fn check_network_connectivity(&self) -> Result<bool, SongbirdError> {
+    async fn check_network_connectivity(&self) -> Result<bool> {
         // Test connectivity to a reliable external service
         let test_result = tokio::time::timeout(
             Duration::from_secs(5),
@@ -387,7 +464,7 @@ impl ProtocolHandler {
     }
 
     /// Check health of a specific federation endpoint
-    async fn check_endpoint_health(&self, endpoint: &str) -> Result<bool, SongbirdError> {
+    async fn check_endpoint_health(&self, endpoint: &str) -> Result<bool> {
         let client = reqwest::Client::new();
         let health_url = format!("{endpoint}/health");
 
@@ -404,7 +481,7 @@ impl ProtocolHandler {
     async fn handle_status_update_request(
         &self,
         request: &FederationRequest,
-    ) -> Result<serde_json::Value, SongbirdError> {
+    ) -> Result<serde_json::Value> {
         let status_info = &request.data;
 
         info!(
@@ -424,7 +501,7 @@ impl ProtocolHandler {
     async fn handle_custom_request(
         &self,
         request: &FederationRequest,
-    ) -> Result<serde_json::Value, SongbirdError> {
+    ) -> Result<serde_json::Value> {
         let custom_type = request
             .data
             .get("custom_type")
@@ -461,7 +538,7 @@ impl ProtocolHandler {
     }
 
     /// Remove service provider
-    pub async fn unregister_service_provider(&mut self, id: &str) -> Result<(), SongbirdError> {
+    pub async fn unregister_service_provider(&mut self, id: &str) -> Result<()> {
         if let Some(provider) = self.service_providers.remove(id) {
             info!("Unregistered service provider: {}", provider.name);
 
@@ -475,10 +552,7 @@ impl ProtocolHandler {
     }
 
     /// Broadcast service unregistration
-    async fn broadcast_service_unregistration(
-        &self,
-        provider: &ServiceProviderInfo,
-    ) -> Result<(), SongbirdError> {
+    async fn broadcast_service_unregistration(&self, provider: &ServiceProviderInfo) -> Result<()> {
         info!("Broadcasting service unregistration for: {}", provider.name);
 
         let request = FederationRequest {
@@ -536,7 +610,7 @@ impl ProtocolHandler {
     }
 
     /// Update protocol configuration
-    pub fn update_config(&mut self, new_config: FederationConfig) -> Result<(), SongbirdError> {
+    pub fn update_config(&mut self, new_config: FederationConfig) -> Result<()> {
         info!("Updating protocol configuration");
 
         // Update local configuration
@@ -550,6 +624,16 @@ impl ProtocolHandler {
 
         info!("Protocol configuration updated successfully");
         Ok(())
+    }
+}
+
+impl std::fmt::Debug for ProtocolHandler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProtocolHandler")
+            .field("config", &self.config)
+            .field("service_providers", &self.service_providers)
+            .field("metrics_adapter", &"<MetricsCapabilityAdapter>")
+            .finish()
     }
 }
 
@@ -590,7 +674,7 @@ mod tests {
     #[tokio::test]
     async fn test_protocol_handler_creation() {
         let config = create_test_config();
-        let handler = ProtocolHandler::new(config);
+        let handler = ProtocolHandler::new_for_testing(config);
 
         assert_eq!(handler.service_providers.len(), 0);
         assert_eq!(handler.config.cluster_id, "test-cluster");
@@ -599,7 +683,7 @@ mod tests {
     #[tokio::test]
     async fn test_service_provider_validation() {
         let config = create_test_config();
-        let handler = ProtocolHandler::new(config);
+        let handler = ProtocolHandler::new_for_testing(config);
 
         let provider = create_test_service_provider();
         assert!(handler.validate_service_provider(&provider).is_ok());
@@ -615,7 +699,7 @@ mod tests {
     #[tokio::test]
     async fn test_service_provider_registration() {
         let config = create_test_config();
-        let mut handler = ProtocolHandler::new(config);
+        let mut handler = ProtocolHandler::new_for_testing(config);
 
         let provider = create_test_service_provider();
         let result = handler.register_service_provider(provider.clone()).await;
@@ -627,7 +711,7 @@ mod tests {
     #[tokio::test]
     async fn test_protocol_stats() {
         let config = create_test_config();
-        let handler = ProtocolHandler::new(config);
+        let handler = ProtocolHandler::new_for_testing(config);
 
         let stats = handler.get_protocol_stats();
         assert_eq!(stats.cluster_id, "test-cluster");

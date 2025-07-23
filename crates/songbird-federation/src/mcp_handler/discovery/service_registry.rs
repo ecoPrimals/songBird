@@ -178,14 +178,14 @@ fn extract_endpoints_from_consul_service(service_details: &serde_json::Value) ->
                 instance.get("Address").and_then(|v| v.as_str()),
                 instance.get("ServicePort").and_then(|v| v.as_u64()),
             ) {
-                let endpoint = format!("http://{}:{}", address, port);
+                let endpoint = format!("http://{address}:{port}");
                 endpoints.push(endpoint.clone());
                 debug!("Found Consul service endpoint: {}", endpoint);
             } else if let (Some(address), Some(port)) = (
                 instance.get("ServiceAddress").and_then(|v| v.as_str()),
                 instance.get("ServicePort").and_then(|v| v.as_u64()),
             ) {
-                let endpoint = format!("http://{}:{}", address, port);
+                let endpoint = format!("http://{address}:{port}");
                 endpoints.push(endpoint.clone());
                 debug!("Found Consul service endpoint (alt): {}", endpoint);
             }
@@ -252,7 +252,7 @@ async fn query_etcd_services(etcd_url: &str) -> Result<Vec<String>, SongbirdErro
     ];
 
     for key_prefix in keys_to_check {
-        let keys_url = format!("{}/v2/keys{}", etcd_url, key_prefix);
+        let keys_url = format!("{etcd_url}/v2/keys{key_prefix}");
 
         match client.get(&keys_url).send().await {
             Ok(response) if response.status().is_success() => {

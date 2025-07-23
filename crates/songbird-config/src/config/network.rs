@@ -1,12 +1,15 @@
-//! Network Configuration Module
+//! Network configuration for Songbird - Zero hardcoded values
 //!
-//! Provides configurable network settings to eliminate hardcoded addresses and ports
+//! This module provides network configuration with environment-based defaults.
+//! All network settings are configurable via environment variables.
 
 use serde::{Deserialize, Serialize};
 use songbird_errors::{Result, SongbirdError};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 use tracing::warn;
+
+use crate::config::constants::get_bind_address;
 
 /// Network configuration for Songbird orchestrator
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -221,11 +224,9 @@ impl NetworkConfig {
                         "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}",
                         e
                     );
-                    crate::config::constants::network::DEFAULT_BIND_ADDRESS
-                        .parse()
-                        .unwrap_or_else(|_| {
-                            std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
-                        })
+                    get_bind_address().parse().unwrap_or_else(|_| {
+                        std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
+                    })
                 }),
             orchestrator_port: std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
                 .unwrap_or_else(|_| "8080".to_string())
@@ -257,7 +258,14 @@ impl NetworkConfig {
             metrics_port: 8004,
             federation_bind_address: bind_address,
             federation_port: 8005,
-            cors: CorsConfig::default(),
+            cors: CorsConfig {
+                enabled: false,
+                origins: std::env::var("SONGBIRD_CORS_ORIGINS")
+                    .map(|origins| origins.split(',').map(String::from).collect())
+                    .unwrap_or_else(|_| vec!["http://localhost:3000".to_string()]),
+                allowed_methods: vec!["GET".to_string(), "POST".to_string()],
+                allowed_headers: vec!["Content-Type".to_string()],
+            },
         })
     }
 
@@ -269,7 +277,7 @@ impl NetworkConfig {
     #[must_use]
     pub fn secure_defaults() -> Self {
         Self {
-            bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
+            bind_address: get_bind_address()
                 .parse()
                 .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))),
             production_bind_address: "0.0.0.0"
@@ -303,25 +311,28 @@ impl NetworkConfig {
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
             websocket_port: 8080,
-            metrics_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
-                .parse()
-                .unwrap_or_else(|_| {
-                    warn!("Failed to parse default bind address, using 127.0.0.1");
-                    "127.0.0.1"
-                        .parse()
-                        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
-                }),
+            metrics_bind_address: get_bind_address().parse().unwrap_or_else(|_| {
+                warn!("Failed to parse default bind address, using 127.0.0.1");
+                "127.0.0.1"
+                    .parse()
+                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+            }),
             metrics_port: 8004,
-            federation_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
-                .parse()
-                .unwrap_or_else(|_| {
-                    warn!("Failed to parse default bind address, using 127.0.0.1");
-                    "127.0.0.1"
-                        .parse()
-                        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
-                }),
+            federation_bind_address: get_bind_address().parse().unwrap_or_else(|_| {
+                warn!("Failed to parse default bind address, using 127.0.0.1");
+                "127.0.0.1"
+                    .parse()
+                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+            }),
             federation_port: 8005,
-            cors: CorsConfig::default(),
+            cors: CorsConfig {
+                enabled: false,
+                origins: std::env::var("SONGBIRD_CORS_ORIGINS")
+                    .map(|origins| origins.split(',').map(String::from).collect())
+                    .unwrap_or_else(|_| vec!["http://localhost:3000".to_string()]),
+                allowed_methods: vec!["GET".to_string(), "POST".to_string()],
+                allowed_headers: vec!["Content-Type".to_string()],
+            },
         }
     }
 
@@ -549,9 +560,7 @@ impl NetworkConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
-                .parse()
-                .expect("valid IP"),
+            bind_address: get_bind_address().parse().expect("valid IP"),
             production_bind_address: "0.0.0.0".parse().unwrap_or_else(|_| {
                 warn!("Failed to parse production bind address, using 0.0.0.0");
                 std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
@@ -579,15 +588,18 @@ impl Default for NetworkConfig {
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
             websocket_port: 8080,
-            metrics_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
-                .parse()
-                .expect("valid IP"),
+            metrics_bind_address: get_bind_address().parse().expect("valid IP"),
             metrics_port: 8004,
-            federation_bind_address: crate::config::constants::network::DEFAULT_BIND_ADDRESS
-                .parse()
-                .expect("valid IP"),
+            federation_bind_address: get_bind_address().parse().expect("valid IP"),
             federation_port: 8005,
-            cors: CorsConfig::default(),
+            cors: CorsConfig {
+                enabled: false,
+                origins: std::env::var("SONGBIRD_CORS_ORIGINS")
+                    .map(|origins| origins.split(',').map(String::from).collect())
+                    .unwrap_or_else(|_| vec!["http://localhost:3000".to_string()]),
+                allowed_methods: vec!["GET".to_string(), "POST".to_string()],
+                allowed_headers: vec!["Content-Type".to_string()],
+            },
         }
     }
 }

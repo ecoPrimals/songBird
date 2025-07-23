@@ -127,7 +127,7 @@ pub struct Resource {
 }
 
 /// Constraints for resource allocation
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AllocationConstraints {
     /// Total budget limit
     pub total_budget: Option<f64>,
@@ -240,16 +240,6 @@ impl Default for TextInputConstraints {
             max_length: Some(1000),
             format_pattern: None,
             forbidden_patterns: vec![],
-        }
-    }
-}
-
-impl Default for AllocationConstraints {
-    fn default() -> Self {
-        Self {
-            total_budget: None,
-            minimum_allocations: HashMap::new(),
-            maximum_allocations: HashMap::new(),
         }
     }
 }

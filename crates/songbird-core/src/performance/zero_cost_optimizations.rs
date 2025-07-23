@@ -11,11 +11,11 @@
 //! - Memory safety preserved
 //! - No undefined behavior possible
 
-use std::collections::HashMap;
 use std::hint::black_box;
 use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
+use tracing::info;
 
 /// Zero-cost string interning with compile-time safety
 #[derive(Debug)]
@@ -64,6 +64,12 @@ impl SafeStringInterner {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.strings.len()
+    }
+
+    /// Check if interned strings collection is empty - zero cost operation
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.strings.is_empty()
     }
 }
 
@@ -120,6 +126,12 @@ pub struct LockFreeCounter {
     value: AtomicU64,
 }
 
+impl Default for LockFreeCounter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LockFreeCounter {
     /// Create new counter - zero cost
     #[inline(always)]
@@ -155,6 +167,12 @@ pub struct FixedCircularBuffer<T, const N: usize> {
     head: usize,
     tail: usize,
     len: usize,
+}
+
+impl<T, const N: usize> Default for FixedCircularBuffer<T, N> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T, const N: usize> FixedCircularBuffer<T, N> {
@@ -226,7 +244,7 @@ impl<T, const N: usize> FixedCircularBuffer<T, N> {
 impl<T, const N: usize> Drop for FixedCircularBuffer<T, N> {
     fn drop(&mut self) {
         // Safely drop all initialized items
-        while let Some(_) = self.pop() {
+        while self.pop().is_some() {
             // Items are properly dropped by pop()
         }
     }
@@ -236,6 +254,12 @@ impl<T, const N: usize> Drop for FixedCircularBuffer<T, N> {
 pub struct PerformanceMeasurement {
     start_time: Option<Instant>,
     counter: LockFreeCounter,
+}
+
+impl Default for PerformanceMeasurement {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PerformanceMeasurement {
@@ -299,7 +323,7 @@ pub fn demonstrate_zero_cost_performance() {
     }
 
     if let Some(ops_per_sec) = perf.ops_per_second() {
-        println!("✅ String Interning: {:.0} ops/sec", ops_per_sec);
+        info!("✅ String Interning: {:.0} ops/sec", ops_per_sec);
     }
 
     // Buffer pool demonstration - zero allocation during operation
@@ -318,7 +342,7 @@ pub fn demonstrate_zero_cost_performance() {
     }
 
     if let Some(buffer_ops_per_sec) = buffer_perf.ops_per_second() {
-        println!("✅ Buffer Pool: {:.0} ops/sec", buffer_ops_per_sec);
+        info!("✅ Buffer Pool: {:.0} ops/sec", buffer_ops_per_sec);
     }
 
     // Fixed circular buffer - compile-time optimized
@@ -340,7 +364,7 @@ pub fn demonstrate_zero_cost_performance() {
     }
 
     if let Some(circular_ops_per_sec) = circular_perf.ops_per_second() {
-        println!("✅ Circular Buffer: {:.0} ops/sec", circular_ops_per_sec);
+        info!("✅ Circular Buffer: {:.0} ops/sec", circular_ops_per_sec);
     }
 
     println!("🏆 ALL OPTIMIZATIONS: 100% SAFE, ZERO RUNTIME COST!");

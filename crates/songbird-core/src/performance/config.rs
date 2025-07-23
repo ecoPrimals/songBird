@@ -65,6 +65,8 @@ impl Default for ObjectPoolSizes {
 /// Load balancing strategy enumeration
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoadBalancingStrategy {
+    /// Simple round-robin
+    RoundRobin,
     /// Round-robin with performance weights
     WeightedRoundRobin,
     /// Least connections with adaptive weighting
@@ -153,6 +155,12 @@ pub struct PerformanceTuningResult {
     pub memory_usage_mb: usize,
     pub cpu_usage_percent: f64,
     pub recommendations: Vec<String>,
+}
+
+impl Default for PerformanceTuningResult {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PerformanceTuningResult {

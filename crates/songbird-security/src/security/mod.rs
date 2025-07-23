@@ -8,10 +8,12 @@ pub mod beardog;
 pub mod core;
 pub mod encryption;
 pub mod hardening;
+pub mod manager;
 pub mod oauth;
 pub mod providers;
 pub mod types;
 pub mod universal_security;
+pub mod universal_security_provider;
 pub mod zero_trust_middleware;
 
 // Re-export main types and managers from core
@@ -27,4 +29,5 @@ pub use oauth::*;
 // Note: providers are available via specific imports rather than glob
 pub use types::*;
 pub use universal_security::*;
+pub use universal_security_provider::{FallbackSecurityProvider, UniversalSecurityProvider};
 pub use zero_trust_middleware::ZeroTrustMiddleware;

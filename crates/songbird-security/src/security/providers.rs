@@ -3,13 +3,13 @@
 //! Contains authentication and authorization provider traits and implementations.
 
 use async_trait::async_trait;
+use songbird_errors::{AuthError, Result};
 use std::collections::HashMap;
 
 use crate::security::types::{
     Action, AuthToken, PassphrasePolicy, PasswordValidationStrategy, Permission, PermissionEffect,
     Resource, SecurityConfig, SubjectType, TraditionalPasswordPolicy,
 };
-use songbird_errors::{AuthError, Result};
 
 // ============================================================================
 // PROVIDER TRAITS
@@ -129,13 +129,18 @@ impl InMemoryAuthProvider {
             }
             PasswordValidationStrategy::Traditional => {
                 if let Some(ref traditional_policy) = policy.traditional_policy {
-                    self.validate_traditional_password(password, traditional_policy)
+                    self.validate_traditional_password(password, traditional_policy)?;
+                    Ok(())
                 } else {
                     Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                         message: "Traditional password policy not configured".to_string(),
                         provider: Some("PasswordValidator".to_string()),
                     })))
                 }
+            }
+            PasswordValidationStrategy::TraditionalPolicy(ref policy) => {
+                self.validate_traditional_password(password, policy)?;
+                Ok(())
             }
             PasswordValidationStrategy::Flexible => {
                 // Try passphrase first (preferred), fall back to traditional
@@ -231,13 +236,11 @@ impl InMemoryAuthProvider {
         }
 
         // Check against common passwords if enabled
-        if policy.check_common_passwords {
-            if self.is_common_password(passphrase) {
-                return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
+        if policy.check_common_passwords && self.is_common_password(passphrase) {
+            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
                     message: "This passphrase is too common. Please choose a more unique combination of words".to_string(),
                     provider: Some("SimplePassphraseValidator".to_string()),
                 })));
-            }
         }
 
         // Basic entropy check (simplified - in production, use proper entropy calculation)
@@ -308,20 +311,13 @@ impl InMemoryAuthProvider {
             }
         }
 
-        // Check minimum categories requirement
-        if categories_met < policy.min_character_categories {
-            let missing_str = if missing_categories.is_empty() {
-                format!(
-                    "more character variety (need {} categories)",
-                    policy.min_character_categories
-                )
-            } else {
-                format!("at least one: {}", missing_categories.join(", "))
-            };
+        // Report specific missing requirements
+        if !missing_categories.is_empty() {
+            let missing_str = format!("Missing required: {}", missing_categories.join(", "));
 
             return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                message: format!("Password must contain {}", missing_str),
-                provider: Some("TraditionalPasswordValidator".to_string()),
+                message: format!("Password validation failed: {}", missing_str),
+                provider: Some("password_complexity".to_string()),
             })));
         }
 
@@ -401,13 +397,54 @@ impl InMemoryAuthProvider {
     }
 
     fn hash_password(&self, password: &str) -> Result<String> {
-        // Simplified hash - use proper hashing (bcrypt, argon2, etc.) in production
-        Ok(format!("hash_{password}"))
+        // Use SHA-256 with salt - much more secure than format!("hash_{}")
+        use rand::{thread_rng, Rng};
+        use ring::digest;
+
+        // Generate random salt
+        let mut salt = [0u8; 16];
+        thread_rng().fill(&mut salt);
+
+        // Hash password with salt using SHA-256
+        let mut to_hash = Vec::new();
+        to_hash.extend_from_slice(&salt);
+        to_hash.extend_from_slice(password.as_bytes());
+
+        let hash = digest::digest(&digest::SHA256, &to_hash);
+
+        // Combine salt + hash for storage
+        let mut combined = Vec::new();
+        combined.extend_from_slice(&salt);
+        combined.extend_from_slice(hash.as_ref());
+
+        // Use hex encoding for simplicity
+        Ok(hex::encode(combined))
     }
 
-    fn verify_password(&self, password: &str, hash: &str) -> bool {
-        // Simplified verification - use proper verification in production
-        hash == format!("hash_{password}")
+    fn verify_password(&self, password: &str, stored_hash: &str) -> bool {
+        use ring::digest;
+
+        // Decode hex
+        let Ok(combined) = hex::decode(stored_hash) else {
+            return false;
+        };
+
+        if combined.len() != 48 {
+            // 16 bytes salt + 32 bytes SHA-256 hash
+            return false;
+        }
+
+        let (salt, stored_hash_bytes) = combined.split_at(16);
+
+        // Hash provided password with same salt
+        let mut to_hash = Vec::new();
+        to_hash.extend_from_slice(salt);
+        to_hash.extend_from_slice(password.as_bytes());
+
+        let calculated_hash = digest::digest(&digest::SHA256, &to_hash);
+
+        // Constant-time comparison
+        calculated_hash.as_ref() == stored_hash_bytes
     }
 }
 
@@ -477,6 +514,7 @@ impl Default for InMemoryAuthzProvider {
 }
 
 impl InMemoryAuthzProvider {
+    /// Create a new in-memory authorization provider
     pub fn new() -> Self {
         Self {
             permissions: HashMap::new(),

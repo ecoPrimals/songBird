@@ -173,7 +173,7 @@ impl ProductionLanManager {
             .parse()
             .map_err(|e| SongbirdError::Config {
                 field: Some("host_address".to_string()),
-                message: format!("Invalid host address configuration: {e}"),
+                message: format!("Invalid host address configuration: {e}").to_string(),
                 context: Some("production_lan_manager".to_string()),
                 suggestion: Some(
                     "Check the bind address and port configuration format".to_string(),
@@ -265,7 +265,7 @@ impl ProductionLanManager {
         let sessions = self.sessions.read().await;
         sessions.get(session_code).cloned().ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
-                message: format!("Production LAN Manager - Session not found: {session_code}"),
+                message: "Production LAN Manager - Session not found: {session_code}".to_string(),
                 port: None,
                 endpoint: None,
                 protocol: None,
@@ -281,7 +281,7 @@ impl ProductionLanManager {
             Ok(())
         } else {
             Err(SongbirdError::Network(Box::new(NetworkError {
-                message: format!("Production LAN Manager - Session not found: {session_code}"),
+                message: "Production LAN Manager - Session not found: {session_code}".to_string(),
                 port: None,
                 endpoint: None,
                 protocol: None,

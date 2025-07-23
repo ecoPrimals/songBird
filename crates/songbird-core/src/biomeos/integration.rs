@@ -4,16 +4,15 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 use super::client::BiomeOSClient;
 use super::registration::ServiceRegistrationManager;
 use super::types::*;
 use crate::biome::{BiomeMetadata, OrchestratorConfig, OrchestratorStatus, SongbirdOrchestrator};
-use crate::primal_integration::{DiscoveredPrimal, PrimalIntegrationManager};
+use crate::primal_integration::PrimalIntegrationManager;
 use songbird_config::SongbirdConfig;
-use songbird_errors::{Result, ServiceError};
-use songbird_universal::PrimalType;
+use songbird_errors::Result;
 
 /// BiomeOS integration for Songbird orchestrator
 pub struct BiomeOSIntegration {
@@ -157,10 +156,10 @@ impl BiomeOSIntegration {
             service_name: "songbird-orchestrator".to_string(),
             service_version: env!("CARGO_PKG_VERSION").to_string(),
             endpoints: BiomeOSEndpoints {
-                main: format!("http://{}:{}", bind_address, base_port),
-                health: format!("http://{}:{}/health", bind_address, base_port),
-                metrics: Some(format!("http://{}:{}/metrics", bind_address, base_port)),
-                management: Some(format!("http://{}:{}/admin", bind_address, base_port)),
+                main: format!("http://{bind_address}:{base_port}"),
+                health: format!("http://{bind_address}:{base_port}/health"),
+                metrics: Some(format!("http://{bind_address}:{base_port}/metrics")),
+                management: Some(format!("http://{bind_address}:{base_port}/admin")),
                 additional: HashMap::new(),
             },
             capabilities: BiomeOSCapabilities::default(),

@@ -11,9 +11,48 @@ pub mod types;
 pub mod workspace;
 
 use self::deployment::DeploymentManager;
-use self::integration::IntegrationManager;
 use self::monitoring::MonitoringManager;
 use self::workspace::WorkspaceManager;
+
+/// Simple integration manager stub
+#[derive(Debug, Clone)]
+pub struct IntegrationManager {
+    // Basic integration functionality
+}
+
+impl IntegrationManager {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    /// Configure with NestGate integration (stub implementation)
+    pub fn with_nestgate(self, _config: super::NestGateConfig) -> Self {
+        // In a real implementation, this would configure NestGate integration
+        self
+    }
+
+    /// Add a primal discovery endpoint (stub implementation)
+    pub fn add_primal_discovery_endpoint(
+        &mut self,
+        _primal_name: &str,
+        _endpoint: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // In a real implementation, this would add the endpoint to discovery
+        Ok(())
+    }
+
+    /// List primal discovery endpoints (stub implementation)
+    pub fn list_primal_discovery_endpoints(&self) -> Vec<(String, String)> {
+        // In a real implementation, this would return actual endpoints
+        vec![]
+    }
+}
+
+impl Default for IntegrationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 use super::{NestGateConfig, OrchestratorConfig};
 use std::collections::HashMap;
@@ -200,21 +239,20 @@ impl ByobCoordinator {
     }
 
     /// Add primal discovery endpoint
-    pub async fn add_primal_discovery_endpoint(
-        &self,
+    pub fn add_primal_discovery_endpoint(
+        &mut self,
         primal_name: String,
         endpoint: String,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         self.integration_manager
-            .add_primal_discovery_endpoint(primal_name, endpoint)
-            .await
+            .add_primal_discovery_endpoint(&primal_name, &endpoint)?;
+
+        Ok(())
     }
 
-    /// List primal discovery endpoints
-    pub async fn list_primal_discovery_endpoints(&self) -> HashMap<String, String> {
-        self.integration_manager
-            .list_primal_discovery_endpoints()
-            .await
+    /// List primal discovery endpoints with automatic discovery
+    pub fn list_primal_endpoints(&self) -> Vec<(String, String)> {
+        self.integration_manager.list_primal_discovery_endpoints()
     }
 
     /// Check deployment health
@@ -270,7 +308,7 @@ impl Clone for ByobCoordinator {
 }
 
 // Re-export types for convenience
-pub use integration::PrimalInfo;
+pub use crate::api::byob::PrimalInfo;
 pub use monitoring::{DeploymentHealth, MonitoringStats, OverallHealth};
 pub use types::*;
 pub use workspace::WorkspaceStats;

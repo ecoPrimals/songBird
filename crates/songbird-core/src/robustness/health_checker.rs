@@ -51,10 +51,7 @@ impl HealthCheckerInstance {
         let duration = start_time.elapsed();
         self.last_check_duration = Some(duration);
 
-        let is_healthy = match check_result {
-            Ok(result) => result,
-            Err(_) => false, // Timeout
-        };
+        let is_healthy: bool = check_result.unwrap_or_default(); // Timeout becomes false
 
         self.record_check_result(is_healthy);
         self.update_health_status();

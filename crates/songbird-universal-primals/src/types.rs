@@ -27,27 +27,33 @@ pub struct PrimalRequest {
     pub security_level: Option<String>,
 }
 
-/// Universal response structure from primal services
+/// Response from primal services - modernized and consistent
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalResponse {
-    /// Request ID this response corresponds to
-    pub request_id: Uuid,
-    /// Type of response being returned
+    /// Type of response
     pub response_type: PrimalResponseType,
-    /// Response payload data
-    pub payload: HashMap<String, serde_json::Value>,
-    /// Timestamp when response was created
-    pub timestamp: DateTime<Utc>,
+    /// Response payload
+    pub payload: serde_json::Value,
+    /// Response timestamp
+    pub timestamp: chrono::DateTime<chrono::Utc>,
     /// Whether the request was successful
     pub success: bool,
-    /// Error message if request failed
+    /// Error message if any
     pub error_message: Option<String>,
-    /// Additional metadata about the response
+    /// Unique identifier of the responding primal
+    pub primal_id: String,
+    /// Request ID this is responding to
+    pub request_id: String,
+    /// Response status
+    pub status: String,
+    /// Additional response data
+    pub data: serde_json::Value,
+    /// Response metadata
     pub metadata: Option<HashMap<String, String>>,
 }
 
 /// Types of requests that can be made to primals
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimalRequestType {
     /// Authentication request
     Authenticate,
@@ -128,6 +134,12 @@ pub enum PrimalResponseType {
     Inference,
     /// Custom response type
     Custom(String),
+    /// Success response
+    Success,
+    /// Error response
+    Error,
+    /// Service unavailable response
+    ServiceUnavailable,
 }
 
 impl PrimalRequestType {
@@ -179,6 +191,9 @@ impl PrimalResponseType {
             PrimalResponseType::Compute => "compute",
             PrimalResponseType::Inference => "inference",
             PrimalResponseType::Custom(s) => s,
+            PrimalResponseType::Success => "success",
+            PrimalResponseType::Error => "error",
+            PrimalResponseType::ServiceUnavailable => "service_unavailable",
         }
     }
 }
@@ -220,36 +235,55 @@ impl PrimalRequest {
 
 impl PrimalResponse {
     /// Create a new successful response
-    pub fn success(
-        request_id: Uuid,
-        response_type: PrimalResponseType,
-        payload: HashMap<String, serde_json::Value>,
-    ) -> Self {
+    pub fn success(primal_id: String, request_id: String, data: serde_json::Value) -> Self {
         Self {
-            request_id,
-            response_type,
-            payload,
-            timestamp: Utc::now(),
+            response_type: PrimalResponseType::Success,
+            payload: data.clone(),
+            timestamp: chrono::Utc::now(),
             success: true,
             error_message: None,
+            primal_id,
+            request_id,
+            status: "success".to_string(),
+            data,
             metadata: None,
         }
     }
 
     /// Create a new error response
-    pub fn error(
-        request_id: Uuid,
-        response_type: PrimalResponseType,
-        error_message: String,
-    ) -> Self {
+    pub fn error(primal_id: String, request_id: String, error: String) -> Self {
         Self {
-            request_id,
-            response_type,
-            payload: HashMap::new(),
-            timestamp: Utc::now(),
+            response_type: PrimalResponseType::Error,
+            payload: serde_json::json!({"error": error}),
+            timestamp: chrono::Utc::now(),
             success: false,
-            error_message: Some(error_message),
+            error_message: Some(error.clone()),
+            primal_id,
+            request_id,
+            status: "error".to_string(),
+            data: serde_json::json!({"error": error}),
             metadata: None,
+        }
+    }
+
+    /// Create a service unavailable response
+    pub fn service_unavailable(primal_id: String, request_id: String) -> Self {
+        Self {
+            response_type: PrimalResponseType::ServiceUnavailable,
+            payload: serde_json::json!({"error": "Service unavailable"}),
+            timestamp: chrono::Utc::now(),
+            success: false,
+            error_message: Some("Service unavailable".to_string()),
+            primal_id,
+            request_id,
+            status: "service_unavailable".to_string(),
+            data: serde_json::json!({"error": "Service unavailable"}),
+            metadata: Some({
+                let mut map = HashMap::new();
+                map.insert("fallback_mode".to_string(), "true".to_string());
+                map.insert("error_type".to_string(), "service_unavailable".to_string());
+                map
+            }),
         }
     }
 }

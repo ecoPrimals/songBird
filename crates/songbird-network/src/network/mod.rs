@@ -9,7 +9,152 @@ use std::time::Duration;
 
 use songbird_errors::{Result, SongbirdError};
 
+pub mod discovery;
 pub mod gaming;
+
+/// Songbird Discovery Service - acts as the primary discovery coordinator
+#[derive(Debug, Clone)]
+pub struct SongbirdDiscoveryService {
+    config: NetworkConfig,
+    discovered_services: std::sync::Arc<tokio::sync::RwLock<HashMap<String, DiscoveredService>>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DiscoveredService {
+    pub service_id: String,
+    pub endpoint: String,
+    pub service_type: String,
+    pub capabilities: Vec<String>,
+    pub last_seen: std::time::Instant,
+    pub health_status: ServiceHealth,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ServiceHealth {
+    Healthy,
+    Degraded,
+    Unhealthy,
+    Unknown,
+}
+
+impl SongbirdDiscoveryService {
+    /// Create a new SongbirdDiscoveryService with the given configuration
+    pub fn new(config: NetworkConfig) -> Self {
+        Self {
+            config,
+            discovered_services: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// Get the current network configuration
+    pub fn get_config(&self) -> &NetworkConfig {
+        &self.config
+    }
+
+    /// Update the network configuration
+    pub fn update_config(&mut self, new_config: NetworkConfig) {
+        self.config = new_config;
+    }
+
+    /// Register a service with the discovery system
+    pub async fn register_service(&self, service: DiscoveredService) -> Result<()> {
+        let mut services = self.discovered_services.write().await;
+        services.insert(service.service_id.clone(), service);
+        Ok(())
+    }
+
+    /// Discover services by capability
+    pub async fn discover_by_capability(&self, capability: &str) -> Result<Vec<DiscoveredService>> {
+        let services = self.discovered_services.read().await;
+        let matching_services = services
+            .values()
+            .filter(|service| service.capabilities.contains(&capability.to_string()))
+            .cloned()
+            .collect();
+        Ok(matching_services)
+    }
+
+    /// Get all healthy services
+    pub async fn get_healthy_services(&self) -> Result<Vec<DiscoveredService>> {
+        let services = self.discovered_services.read().await;
+        let healthy_services = services
+            .values()
+            .filter(|service| service.health_status == ServiceHealth::Healthy)
+            .cloned()
+            .collect();
+        Ok(healthy_services)
+    }
+
+    /// Perform ecosystem discovery (scan ../beardog, ../nestgate, etc.)
+    pub async fn discover_ecosystem_services(&self) -> Result<Vec<DiscoveredService>> {
+        let mut services = Vec::new();
+
+        // Known ecosystem primals
+        let ecosystem_services = vec![
+            (
+                "beardog",
+                "8443",
+                vec!["authentication", "security", "encryption"],
+            ),
+            (
+                "nestgate",
+                "8080",
+                vec!["storage", "object_storage", "file_storage"],
+            ),
+            (
+                "toadstool",
+                "8082",
+                vec!["compute", "serverless", "containers"],
+            ),
+            ("squirrel", "8084", vec!["ai", "llm", "machine_learning"]),
+        ];
+
+        for (service_name, default_port, capabilities) in ecosystem_services {
+            // Check if ecosystem directory exists
+            let ecosystem_path = format!("../{service_name}");
+            if std::path::Path::new(&ecosystem_path).exists() {
+                // Try to connect to the service
+                let endpoints = vec![
+                    format!("http://localhost:{}", default_port),
+                    format!("http://127.0.0.1:{}", default_port),
+                ];
+
+                for endpoint in endpoints {
+                    if self.test_endpoint_health(&endpoint).await? {
+                        let service = DiscoveredService {
+                            service_id: format!("{service_name}_ecosystem"),
+                            endpoint,
+                            service_type: service_name.to_string(),
+                            capabilities: capabilities.iter().map(|s| s.to_string()).collect(),
+                            last_seen: std::time::Instant::now(),
+                            health_status: ServiceHealth::Healthy,
+                        };
+                        services.push(service);
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(services)
+    }
+
+    async fn test_endpoint_health(&self, endpoint: &str) -> Result<bool> {
+        let client = reqwest::Client::new();
+
+        // Try common health endpoints
+        let health_paths = vec!["/health", "/healthz", "/ping", "/status"];
+
+        for path in health_paths {
+            match client.get(format!("{endpoint}{path}")).send().await {
+                Ok(response) if response.status().is_success() => return Ok(true),
+                _ => continue,
+            }
+        }
+
+        Ok(false)
+    }
+}
 
 /// Network configuration for the orchestrator
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +169,7 @@ pub struct NetworkConfig {
     pub max_connections: u32,
     pub buffer_size: usize,
     pub enable_tls: bool,
+    pub enable_ecosystem_discovery: bool,
 }
 
 impl Default for NetworkConfig {
@@ -51,8 +197,9 @@ impl Default for NetworkConfig {
             connection_timeout: env_config.connection_timeout(),
 
             // Security and performance from environment
-            max_connections: env_config.max_connections,
+            max_connections: env_config.max_connections as u32,
             enable_tls: env_config.require_tls,
+            enable_ecosystem_discovery: true, // Enable by default
             ssl_config: None,
             domain_config: None,
             proxy_routes: Vec::new(),
@@ -274,10 +421,13 @@ impl Default for ProxyStats {
 pub mod utils {
     use super::*;
     use std::net::ToSocketAddrs;
+    use tracing::debug;
 
     /// Check if a host:port combination is reachable
     pub async fn is_reachable(host: &str, port: u16) -> bool {
         let addr = format!("{host}:{port}");
+        debug!("Testing reachability for {}:{}", host, port);
+
         match addr.to_socket_addrs() {
             Ok(mut addrs) => {
                 if let Some(socket_addr) = addrs.next() {
@@ -295,7 +445,7 @@ pub mod utils {
         // Try to connect to a remote address to determine local IP
         let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| {
             SongbirdError::NetworkDetection {
-                message: format!("Failed to create socket: {e}"),
+                message: format!("Failed to create socket: {e}").to_string(),
                 interface: None,
                 suggestion: Some("Check network permissions and socket availability".to_string()),
             }
@@ -304,7 +454,7 @@ pub mod utils {
         socket
             .connect("8.8.8.8:80")
             .map_err(|e| SongbirdError::NetworkDetection {
-                message: format!("Failed to connect to determine local IP: {e}"),
+                message: format!("Failed to connect to determine local IP: {e}").to_string(),
                 interface: None,
                 suggestion: Some("Check network connectivity and DNS resolution".to_string()),
             })?;
@@ -312,7 +462,7 @@ pub mod utils {
         let local_addr = socket
             .local_addr()
             .map_err(|e| SongbirdError::NetworkDetection {
-                message: format!("Failed to get local address: {e}"),
+                message: format!("Failed to get local address: {e}").to_string(),
                 interface: None,
                 suggestion: Some("Check socket binding and network interface status".to_string()),
             })?;
@@ -324,7 +474,7 @@ pub mod utils {
     pub fn validate_ip_address(ip_str: &str) -> Result<IpAddr> {
         ip_str.parse().map_err(|e| SongbirdError::Config {
             field: Some("ip_address".to_string()),
-            message: format!("Invalid IP address '{ip_str}': {e}"),
+            message: format!("Invalid IP address '{ip_str}': {e}").to_string(),
             context: Some("ip_address_validation".to_string()),
             suggestion: Some("Ensure IP address format is valid (e.g., 192.168.1.1)".to_string()),
         })

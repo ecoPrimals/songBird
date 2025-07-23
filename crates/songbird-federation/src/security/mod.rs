@@ -59,7 +59,10 @@ impl SecurityManager {
         // Start session cleanup task
         let sessions = self.sessions.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+            // Use configurable heartbeat interval instead of hardcoded 60 seconds
+            let heartbeat_interval =
+                songbird_config::config::hardcoded_elimination::replace::health_check_timeout();
+            let mut interval = tokio::time::interval(heartbeat_interval);
             loop {
                 interval.tick().await;
 
@@ -160,56 +163,92 @@ impl SecurityManager {
 
     /// Encrypt data for secure transmission
     pub async fn encrypt_data(&self, data: &[u8]) -> Result<Vec<u8>> {
-        // For now, use a simple encryption scheme
-        // In production, this would use proper symmetric encryption
+        // **FEDERATION FALLBACK SECURITY** - Defers to BearDog when available
+        // This is for Songbird-to-Songbird federation when BearDog unavailable
+
         let key = ring::aead::LessSafeKey::new(
             ring::aead::UnboundKey::new(&ring::aead::AES_256_GCM, &self.derive_encryption_key()?)
                 .map_err(|e| {
                 songbird_errors::SongbirdError::service_error(
                     "security",
-                    format!("Failed to create encryption key: {e}"),
+                    format!("Failed to create federation encryption key: {e}"),
                 )
             })?,
         );
 
         let mut encrypted = data.to_vec();
-        let nonce = ring::aead::Nonce::assume_unique_for_key([0u8; 12]); // In production, use proper nonce
+
+        // **SECURITY FIX**: Use unique nonce based on timestamp
+        let mut nonce_bytes = [0u8; 12];
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64;
+
+        // Fill nonce with timestamp-based unique values
+        for (i, byte) in nonce_bytes.iter_mut().enumerate() {
+            *byte = ((timestamp >> (i * 8)) as u8).wrapping_add(i as u8);
+        }
+
+        let nonce = ring::aead::Nonce::assume_unique_for_key(nonce_bytes);
 
         key.seal_in_place_append_tag(nonce, ring::aead::Aad::empty(), &mut encrypted)
             .map_err(|e| {
                 songbird_errors::SongbirdError::service_error(
                     "security",
-                    format!("Failed to encrypt data: {e}"),
+                    format!("Failed to encrypt federation data: {e}"),
                 )
             })?;
 
-        Ok(encrypted)
+        // Prepend nonce for decryption
+        let mut result = Vec::new();
+        result.extend_from_slice(&nonce_bytes);
+        result.extend_from_slice(&encrypted);
+
+        Ok(result)
     }
 
     /// Decrypt data from secure transmission
     pub async fn decrypt_data(&self, encrypted_data: &[u8]) -> Result<Vec<u8>> {
+        if encrypted_data.len() < 12 {
+            return Err(songbird_errors::SongbirdError::service_error(
+                "security",
+                "Invalid encrypted data: too short for nonce".to_string(),
+            ));
+        }
+
+        // Extract nonce and ciphertext
+        let (nonce_bytes, ciphertext) = encrypted_data.split_at(12);
+        let nonce_array: [u8; 12] = nonce_bytes.try_into().map_err(|_| {
+            songbird_errors::SongbirdError::service_error(
+                "security",
+                "Invalid nonce length".to_string(),
+            )
+        })?;
+
         let key = ring::aead::LessSafeKey::new(
             ring::aead::UnboundKey::new(&ring::aead::AES_256_GCM, &self.derive_encryption_key()?)
                 .map_err(|e| {
                 songbird_errors::SongbirdError::service_error(
                     "security",
-                    format!("Failed to create decryption key: {e}"),
+                    format!("Failed to create federation decryption key: {e}"),
                 )
             })?,
         );
 
-        let mut decrypted = encrypted_data.to_vec();
-        let nonce = ring::aead::Nonce::assume_unique_for_key([0u8; 12]); // In production, use proper nonce
+        let mut decrypted = ciphertext.to_vec();
+        let nonce = ring::aead::Nonce::assume_unique_for_key(nonce_array);
 
-        key.open_in_place(nonce, ring::aead::Aad::empty(), &mut decrypted)
+        let decrypted_data = key
+            .open_in_place(nonce, ring::aead::Aad::empty(), &mut decrypted)
             .map_err(|e| {
                 songbird_errors::SongbirdError::service_error(
                     "security",
-                    format!("Failed to decrypt data: {e}"),
+                    format!("Failed to decrypt federation data: {e}"),
                 )
             })?;
 
-        Ok(decrypted)
+        Ok(decrypted_data.to_vec())
     }
 
     /// Derive encryption key from node key pair

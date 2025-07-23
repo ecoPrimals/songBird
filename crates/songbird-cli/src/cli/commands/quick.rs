@@ -2,23 +2,23 @@
 //!
 //! Provides API endpoints for system resource detection, network discovery,
 //! and zero-touch configuration that biomeOS can consume.
-//! 
+//!
 //! All interactive UI elements have been removed - this module provides
 //! clean JSON APIs following the songbird headless architecture.
 
 use crate::cli::{CliError, CliResult};
-use serde::{Deserialize, Serialize};
-use songbird_config::config::OrchestratorConfig;
 use clap::ValueEnum;
+use serde::{Deserialize, Serialize};
+use songbird_core::biome::OrchestratorConfig;
 
 // Import from submodules in the quick/ directory
-mod resources;
 mod discovery;
+mod resources;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ValueEnum)]
 pub enum ContributeType {
     Compute,
-    Storage, 
+    Storage,
     Data,
     All,
 }
@@ -97,7 +97,7 @@ pub struct QuickSetupResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SetupStatus {
     ResourcesDetected,
-    NetworksDiscovered, 
+    NetworksDiscovered,
     ConfigurationGenerated,
     SystemReady,
     Error(String),
@@ -115,25 +115,29 @@ pub struct EndpointPreferences {
 pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> CliResult<QuickSetupResponse> {
     // Step 1: Detect system resources
     let resources = resources::detect_system_resources_api().await?;
-    
+
     // Step 2: Discover networks
     let discovery_params = DiscoveryParameters {
-        methods: request.endpoint_preferences
+        methods: request
+            .endpoint_preferences
             .as_ref()
             .map(|p| p.preferred_discovery_methods.clone())
             .unwrap_or_else(|| vec!["subnet".to_string(), "multicast".to_string()]),
-        timeout_ms: request.endpoint_preferences
+        timeout_ms: request
+            .endpoint_preferences
             .as_ref()
             .and_then(|p| p.timeout_seconds)
-            .unwrap_or(30) * 1000,
-        max_results: request.endpoint_preferences
+            .unwrap_or(30)
+            * 1000,
+        max_results: request
+            .endpoint_preferences
             .as_ref()
             .and_then(|p| p.max_networks_to_discover)
             .unwrap_or(10),
     };
-    
+
     let discovered_networks = discovery::discover_networks_api(discovery_params).await?;
-    
+
     // Step 3: Generate optimized configuration
     let node_name = request.node_name.unwrap_or_else(|| {
         format!(
@@ -142,13 +146,13 @@ pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> CliResult<Qu
             hostname::get().unwrap_or_default().to_string_lossy()
         )
     });
-    
+
     // Simple config generation (avoiding complex field access for now)
-    let mut config = OrchestratorConfig::default();
+    let config = OrchestratorConfig::default();
     // Basic configuration will be handled by the config system
-    
+
     let next_steps = generate_next_steps(&discovered_networks, &request.contribute_type);
-    
+
     Ok(QuickSetupResponse {
         success: true,
         node_name,
@@ -161,9 +165,12 @@ pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> CliResult<Qu
 }
 
 /// Generate next steps based on setup results
-fn generate_next_steps(networks: &[DiscoveredNetwork], contribute_type: &ContributeType) -> Vec<String> {
+fn generate_next_steps(
+    networks: &[DiscoveredNetwork],
+    contribute_type: &ContributeType,
+) -> Vec<String> {
     let mut steps = Vec::new();
-    
+
     match networks.len() {
         0 => {
             steps.push("Start a new Songbird network".to_string());
@@ -174,14 +181,19 @@ fn generate_next_steps(networks: &[DiscoveredNetwork], contribute_type: &Contrib
             steps.push("Verify network connectivity".to_string());
         }
         _ => {
-            let best_network = networks.iter()
-                .max_by(|a, b| a.compatibility_score.partial_cmp(&b.compatibility_score).unwrap())
+            let best_network = networks
+                .iter()
+                .max_by(|a, b| {
+                    a.compatibility_score
+                        .partial_cmp(&b.compatibility_score)
+                        .unwrap()
+                })
                 .unwrap();
             steps.push(format!("Recommended: Join '{}' network", best_network.name));
             steps.push("Alternative networks available".to_string());
         }
     }
-    
+
     match contribute_type {
         ContributeType::Compute => {
             steps.push("Enable compute sharing in configuration".to_string());
@@ -196,7 +208,7 @@ fn generate_next_steps(networks: &[DiscoveredNetwork], contribute_type: &Contrib
             steps.push("Configure resource sharing for all types".to_string());
         }
     }
-    
+
     steps.push("Monitor system status via API".to_string());
     steps
 }
@@ -209,9 +221,9 @@ pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> 
         endpoint_preferences: None,
         security_preferences: None,
     };
-    
+
     let response = execute_quick_setup_api(request).await?;
-    
+
     // For CLI compatibility, just indicate success
     if response.success {
         Ok(())

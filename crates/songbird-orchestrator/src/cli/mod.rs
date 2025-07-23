@@ -7,11 +7,7 @@
 
 use anyhow::Result;
 use clap::Parser;
-use songbird_discovery::{
-    discovery::{config::SongbirdDiscoveryConfig, types::NodeType},
-    traits::discovery::{ServiceDiscovery as ServiceDiscoveryTrait, ServiceQuery},
-    SongbirdDiscovery,
-};
+use songbird_discovery::discovery::{config::SongbirdDiscoveryConfig, types::NodeType};
 use std::sync::OnceLock;
 
 // Import our organized modules
@@ -200,7 +196,7 @@ pub fn get_discovery_config() -> &'static SongbirdDiscoveryConfig {
 
 /// Progress display utilities
 pub fn show_progress(message: &str) {
-    print!("⏳ {} ", message);
+    print!("⏳ {message} ");
     std::io::Write::flush(&mut std::io::stdout()).unwrap_or(());
 }
 

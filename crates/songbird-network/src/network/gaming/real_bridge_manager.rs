@@ -293,7 +293,15 @@ impl RealBridgeManager {
 
         // Initialize NAT traversal
         let mut nat_manager = NatTraversalManager::new(NatTraversalConfig::default());
-        nat_manager.initialize("0.0.0.0:0".parse().unwrap()).await?;
+        let bind_addr = "0.0.0.0:0".parse().map_err(|e| {
+            songbird_errors::SongbirdError::Network(Box::new(songbird_errors::NetworkError {
+                message: format!("Failed to parse NAT manager bind address: {e}"),
+                endpoint: Some("0.0.0.0:0".to_string()),
+                port: Some(0),
+                protocol: Some("UDP".to_string()),
+            }))
+        })?;
+        nat_manager.initialize(bind_addr).await?;
 
         // Initialize socket pool
         let socket_pool = SocketPool::new(config.socket_config.base_port_range);
@@ -439,7 +447,7 @@ impl RealBridgeManager {
         let mut sessions = self.active_sessions.write().await;
         let session = sessions.get_mut(&session_code).ok_or_else(|| {
             SongbirdError::Network(Box::new(NetworkError {
-                message: format!("Session not found: {session_code}"),
+                message: "Session not found: {session_code}".to_string(),
                 endpoint: None,
                 port: None,
                 protocol: None,
@@ -458,12 +466,21 @@ impl RealBridgeManager {
             .parse()
             .unwrap_or_else(|_| {
                 tracing::warn!("Failed to parse local player address, using configurable default");
-                format!(
+                let default_addr = format!(
                     "{}:0",
                     songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
-                )
-                .parse()
-                .expect("Default local player address should be valid")
+                );
+                default_addr.parse().unwrap_or_else(|e| {
+                    tracing::error!(
+                        "Critical: Default player address '{}' is invalid: {}",
+                        default_addr,
+                        e
+                    );
+                    // Fallback to localhost as last resort
+                    "127.0.0.1:0"
+                        .parse()
+                        .expect("Localhost fallback must be valid")
+                })
             }),
             external_address: self.nat_manager.get_external_address(),
             nat_type: self.nat_manager.get_nat_type(),
@@ -819,7 +836,7 @@ impl SocketPool {
                         ),
                     });
                 }
-                format!("0.0.0.0:{port}")
+                "0.0.0.0:{port}".to_string()
             } else {
                 format!("{}:{}", env_config.bind_address, port)
             };

@@ -80,30 +80,28 @@ impl LoadBalancer {
     }
 
     /// Update server statistics after request completion
-    pub fn update_server_stats(
-        &mut self,
-        server: &str,
-        success: bool,
-        response_time: std::time::Duration,
-    ) {
-        self.strategy.update_stats(server, success, response_time);
+    pub async fn update_server_stats(&mut self) -> Result<(), SongbirdError> {
+        // Collect server list without holding mutex
+        let server_list: Vec<String> = {
+            let stats = self.server_stats.lock().unwrap();
+            stats.keys().cloned().collect()
+        };
 
-        let mut stats = self.server_stats.lock().unwrap();
-        let server_stats = stats
-            .entry(server.to_string())
-            .or_insert_with(|| ServerStats::new());
+        // Check health for each server independently
+        for server in &server_list {
+            let is_healthy = self.check_server_health(server).await?;
 
-        server_stats.total_requests += 1;
-        if !success {
-            server_stats.failed_requests += 1;
+            // Update stats after health check (short mutex hold)
+            {
+                let mut stats = self.server_stats.lock().unwrap();
+                stats
+                    .entry(server.clone())
+                    .or_insert_with(ServerStats::new)
+                    .is_healthy = is_healthy;
+            }
         }
 
-        // Update average response time (simple moving average)
-        let total_time = server_stats.avg_response_time.as_nanos() as u64
-            * (server_stats.total_requests - 1)
-            + response_time.as_nanos() as u64;
-        server_stats.avg_response_time =
-            std::time::Duration::from_nanos(total_time / server_stats.total_requests);
+        Ok(())
     }
 
     /// Get server statistics
@@ -135,16 +133,24 @@ impl LoadBalancer {
 
     /// Perform health check on all servers
     pub async fn health_check(&mut self) -> Result<(), SongbirdError> {
-        let mut stats = self.server_stats.lock().unwrap();
+        // Collect servers list outside the lock
+        let servers = self.config.upstream_servers.clone();
 
-        for server in &self.config.upstream_servers {
+        // Perform health checks without holding the mutex
+        let mut health_results = Vec::new();
+        for server in &servers {
             let is_healthy = self.check_server_health(server).await?;
+            health_results.push((server.clone(), is_healthy));
+        }
 
-            let server_stats = stats
-                .entry(server.clone())
-                .or_insert_with(|| ServerStats::new());
-            server_stats.is_healthy = is_healthy;
-            server_stats.last_health_check = std::time::SystemTime::now();
+        // Update stats with minimal lock time
+        {
+            let mut stats = self.server_stats.lock().unwrap();
+            for (server, is_healthy) in health_results {
+                let server_stats = stats.entry(server).or_insert_with(ServerStats::new);
+                server_stats.is_healthy = is_healthy;
+                server_stats.last_health_check = std::time::SystemTime::now();
+            }
         }
 
         Ok(())
@@ -154,9 +160,9 @@ impl LoadBalancer {
     async fn check_server_health(&self, server: &str) -> Result<bool, SongbirdError> {
         // Parse server URL
         let health_url = if server.starts_with("http") {
-            format!("{}/health", server)
+            "{server}/health".to_string()
         } else {
-            format!("http://{}/health", server)
+            "http://{server}/health".to_string()
         };
 
         // Perform health check with timeout
@@ -164,7 +170,9 @@ impl LoadBalancer {
             .timeout(self.config.health_check.timeout)
             .build()
             .map_err(|e| {
-                SongbirdError::network_error(&format!("Failed to create HTTP client: {}", e))
+                SongbirdError::network_error(
+                    format!("Failed to create HTTP client: {e}").to_string(),
+                )
             })?;
 
         match client.get(&health_url).send().await {

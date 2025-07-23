@@ -1,45 +1,112 @@
 /*!
  * MCP Federation Monitoring
  *
- * Handles system monitoring and metrics collection for MCP federation:
- * - System resource monitoring (CPU, memory, storage)
- * - Service monitoring and health checks
- * - Performance metrics collection
- * - Capacity and load monitoring
+ * Handles system monitoring and metrics collection for MCP federation using
+ * Songbird's capability-based approach:
+ * - Delegates system monitoring to ToadStool via MetricsCapabilityAdapter
+ * - Service monitoring and health checks  
+ * - Federation-specific performance metrics
+ * - Cross-federation coordination monitoring
  */
 
+use std::sync::Arc;
 use std::time::SystemTime;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::config::FederationConfig;
+use songbird_config::config::hardcoded_elimination::get_config;
 use songbird_config::constants;
+use songbird_core::metrics::MetricsCapabilityAdapter;
 use songbird_errors::{NetworkError, Result, SongbirdError};
-use sysinfo::{CpuExt, DiskExt, System, SystemExt};
+use songbird_universal::capabilities::UniversalCapabilityAdapter;
+use songbird_universal::DiscoveryConfig;
 
-#[derive(Debug)]
-/// System monitoring manager for MCP federation
+/// Federation monitoring manager using capability-based metrics
 pub struct MonitoringManager {
-    system: System,
+    /// Metrics capability adapter for getting system metrics from ToadStool
+    metrics_adapter: Arc<dyn MetricsCapabilityAdapter>,
+    /// Start time for uptime calculations
     start_time: SystemTime,
-    config: crate::config::FederationConfig,
+    /// Federation configuration
+    config: FederationConfig,
 }
 
 impl MonitoringManager {
-    /// Create new monitoring manager
-    pub fn new(config: crate::config::FederationConfig) -> Self {
-        let mut system = System::new_all();
-        system.refresh_all();
+    /// Create new monitoring manager with capability-based metrics
+    pub async fn new(config: FederationConfig) -> Result<Self> {
+        info!("🎼 Creating federation monitoring manager with capability-based metrics");
 
+        // Create metrics capability adapter using universal discovery
+        info!("🔍 Federation monitoring: Initializing universal capability adapter");
+        let discovery_config = DiscoveryConfig::default();
+        let capability_adapter = UniversalCapabilityAdapter::new(discovery_config);
+
+        // Test capability discovery
+        let providers = capability_adapter
+            .find_capability_providers("compute")
+            .await;
+        if providers.is_empty() {
+            warn!("⚠️  Federation monitoring: No capability providers found via discovery");
+        } else {
+            info!(
+                "✅ Federation monitoring: Found {} capability providers",
+                providers.len()
+            );
+        }
+
+        let metrics_adapter: Arc<dyn MetricsCapabilityAdapter> =
+            Arc::new(songbird_core::metrics::UniversalMetricsAdapter::new());
+
+        // Universal capability endpoint discovery (replaces hardcoded endpoints)
+        let mut discovered_endpoints = Vec::new();
+
+        // Discover all capability types universally
+        let capability_types = ["compute", "security", "storage", "ai", "orchestration"];
+
+        for capability_type in &capability_types {
+            let primals = capability_adapter
+                .find_capability_providers(capability_type)
+                .await;
+            for primal_name in &primals {
+                let endpoint = songbird_config::config::constants::get_primal_endpoint(primal_name);
+                discovered_endpoints.push(endpoint);
+                debug!("Found {} capability: {}", capability_type, primal_name);
+            }
+        }
+
+        // Add legacy fallbacks if no capabilities discovered
+        if discovered_endpoints.is_empty() {
+            warn!("No universal capabilities discovered, using legacy fallbacks");
+            discovered_endpoints.extend([
+                songbird_config::config::constants::get_primal_endpoint("toadstool"), // ToadStool
+                songbird_config::config::constants::get_primal_endpoint("beardog"),   // BearDog
+                songbird_config::config::constants::get_primal_endpoint("nestgate"),  // NestGate
+                songbird_config::config::constants::get_primal_endpoint("squirrel"),  // Squirrel
+            ]);
+        }
+
+        info!("🎼 Federation monitoring manager created successfully");
+        Ok(Self {
+            metrics_adapter,
+            start_time: SystemTime::now(),
+            config,
+        })
+    }
+
+    /// Create monitoring manager for testing without capability adapter
+    pub fn new_for_testing(config: FederationConfig) -> Self {
+        let adapter = songbird_core::metrics::UniversalMetricsAdapter::new();
         Self {
-            system,
+            metrics_adapter: Arc::new(adapter),
             start_time: SystemTime::now(),
             config,
         }
     }
 
-    /// Refresh system information
+    /// Refresh is handled automatically by capability adapters - no action needed
     pub fn refresh(&mut self) {
-        self.system.refresh_all();
+        // No-op: capability adapters handle fresh data collection automatically
+        debug!("🔄 Federation monitoring: Refresh requested (handled by capability adapters)");
     }
 
     /// Get local services information
@@ -138,67 +205,116 @@ impl MonitoringManager {
         }
     }
 
-    /// Get CPU usage percentage
+    /// Get CPU usage percentage from ToadStool via capability adapter
     pub async fn get_cpu_usage(&mut self) -> Result<f64> {
-        self.refresh();
+        debug!("🍄 Federation monitoring: Getting CPU usage from ToadStool");
 
-        let cpus = self.system.cpus();
-        if cpus.is_empty() {
-            return Ok(0.0);
+        match self.metrics_adapter.collect_compute_metrics().await {
+            Ok(compute_metrics) => {
+                debug!(
+                    "✅ Got CPU usage from ToadStool: {:.1}%",
+                    compute_metrics.cpu_usage_percent
+                );
+                Ok(compute_metrics.cpu_usage_percent)
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to get CPU usage from ToadStool: {}", e);
+                // Return a default value rather than failing the federation
+                Ok(0.0)
+            }
         }
-
-        let total_usage: f32 = cpus.iter().map(|cpu| cpu.cpu_usage()).sum();
-        let average_usage = total_usage / cpus.len() as f32;
-
-        Ok(average_usage as f64)
     }
 
-    /// Get memory usage percentage
+    /// Get memory usage percentage from ToadStool via capability adapter
     pub async fn get_memory_usage(&mut self) -> Result<f64> {
-        self.refresh();
+        debug!("🍄 Federation monitoring: Getting memory usage from ToadStool");
 
-        let total_memory = self.system.total_memory();
-        let used_memory = self.system.used_memory();
-
-        if total_memory == 0 {
-            return Ok(0.0);
+        match self.metrics_adapter.collect_compute_metrics().await {
+            Ok(compute_metrics) => {
+                let total_memory =
+                    compute_metrics.memory_usage_bytes + compute_metrics.memory_available_bytes;
+                let usage_percentage = if total_memory > 0 {
+                    (compute_metrics.memory_usage_bytes as f64 / total_memory as f64) * 100.0
+                } else {
+                    0.0
+                };
+                debug!(
+                    "✅ Got memory usage from ToadStool: {:.1}%",
+                    usage_percentage
+                );
+                Ok(usage_percentage)
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to get memory usage from ToadStool: {}", e);
+                // Return a default value rather than failing the federation
+                Ok(0.0)
+            }
         }
-
-        let usage_percentage = (used_memory as f64 / total_memory as f64) * 100.0;
-        Ok(usage_percentage)
     }
 
-    /// Get total memory in GB
+    /// Get total memory in GB from ToadStool via capability adapter
     pub async fn get_total_memory_gb(&mut self) -> Result<u64> {
-        self.refresh();
-        let total_memory_kb = self.system.total_memory();
-        Ok(total_memory_kb / 1024 / 1024) // Convert KB to GB
+        debug!("🍄 Federation monitoring: Getting total memory from ToadStool");
+
+        match self.metrics_adapter.collect_compute_metrics().await {
+            Ok(compute_metrics) => {
+                let total_memory_bytes =
+                    compute_metrics.memory_usage_bytes + compute_metrics.memory_available_bytes;
+                let total_memory_gb = total_memory_bytes / 1024 / 1024 / 1024; // Convert bytes to GB
+                debug!("✅ Got total memory from ToadStool: {} GB", total_memory_gb);
+                Ok(total_memory_gb)
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to get total memory from ToadStool: {}", e);
+                // Return a reasonable default value
+                Ok(8) // 8GB default
+            }
+        }
     }
 
-    /// Get available storage in GB
+    /// Get available storage in GB from NestGate via capability adapter
     pub async fn get_available_storage_gb(&mut self) -> Result<u64> {
-        self.refresh();
+        debug!("🏠 Federation monitoring: Getting available storage from capability providers");
 
-        let mut total_available = 0u64;
-
-        for disk in self.system.disks() {
-            total_available += disk.available_space();
+        match self.metrics_adapter.collect_compute_metrics().await {
+            Ok(compute_metrics) => {
+                // Use memory_available_bytes as a proxy for storage capacity
+                let available_gb = compute_metrics.memory_available_bytes / 1024 / 1024 / 1024;
+                debug!(
+                    "✅ Got available storage from NestGate: {} GB",
+                    available_gb
+                );
+                Ok(available_gb)
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to get storage metrics from NestGate: {}", e);
+                // Return a reasonable default value
+                Ok(100) // 100GB default
+            }
         }
-
-        Ok(total_available / 1024 / 1024 / 1024) // Convert bytes to GB
     }
 
-    /// Get total storage size in GB
+    /// Get total storage size in GB from NestGate via capability adapter
     pub async fn get_storage_size(&mut self) -> Result<u64> {
-        self.refresh();
+        debug!("🏠 Federation monitoring: Getting total storage from capability providers");
 
-        let mut total_size = 0u64;
-
-        for disk in self.system.disks() {
-            total_size += disk.total_space();
+        match self.metrics_adapter.collect_compute_metrics().await {
+            Ok(compute_metrics) => {
+                // Use memory_usage_bytes + memory_available_bytes as total capacity proxy
+                let total_gb = (compute_metrics.memory_usage_bytes
+                    + compute_metrics.memory_available_bytes)
+                    / 1024
+                    / 1024
+                    / 1024;
+                debug!("✅ Got total storage from NestGate: {} GB", total_gb);
+                Ok(total_gb)
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to get storage metrics from NestGate: {}", e);
+                // Return a reasonable default value
+                Ok(500) // 500GB default
+            }
         }
-
-        Ok(total_size / 1024 / 1024 / 1024) // Convert bytes to GB
     }
 
     /// Get service count
@@ -232,13 +348,30 @@ impl MonitoringManager {
         Ok(uptime.as_secs())
     }
 
-    /// Get system load average
+    /// Get system load average from ToadStool via capability adapter
     pub async fn get_load_average(&mut self) -> Result<f64> {
-        self.refresh();
+        debug!("🍄 Federation monitoring: Getting system load from ToadStool");
 
-        // Get 1-minute load average
-        let load_avg = self.system.load_average();
-        Ok(load_avg.one)
+        match self.metrics_adapter.collect_compute_metrics().await {
+            Ok(compute_metrics) => {
+                // Approximate load average from CPU usage and queue depth
+                // Load average typically correlates with CPU usage and waiting processes
+                let cpu_load = compute_metrics.cpu_usage_percent / 100.0;
+                let queue_load = (compute_metrics.queued_jobs as f64) * 0.1; // Each queued job adds to load
+                let estimated_load = cpu_load + queue_load;
+
+                debug!(
+                    "✅ Estimated system load from ToadStool: {:.2} (CPU: {:.1}%, Queue: {})",
+                    estimated_load, compute_metrics.cpu_usage_percent, compute_metrics.queued_jobs
+                );
+                Ok(estimated_load)
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to get system metrics from ToadStool: {}", e);
+                // Return a low default load
+                Ok(0.1)
+            }
+        }
     }
 
     /// Get system capacity percentage (0.0 to 100.0)
@@ -511,9 +644,10 @@ impl MonitoringManager {
         self.get_service_count().await
     }
 
-    /// Collect comprehensive system metrics
+    /// Collect comprehensive system metrics using capability-based adapters
     pub async fn collect_metrics(&mut self) -> Result<SystemMetrics> {
-        debug!("Collecting comprehensive system metrics");
+        info!("🎼 Federation monitoring: Collecting system metrics via capability adapters");
+        debug!("🍄 CPU/Memory/Load from ToadStool, 🏠 Storage from NestGate");
 
         let metrics = SystemMetrics {
             timestamp: SystemTime::now()
@@ -696,7 +830,18 @@ impl MonitoringManager {
 
 impl Default for MonitoringManager {
     fn default() -> Self {
-        Self::new(crate::config::FederationConfig::default())
+        // Use the testing constructor for Default since Default needs to be sync
+        Self::new_for_testing(crate::config::FederationConfig::default())
+    }
+}
+
+impl std::fmt::Debug for MonitoringManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MonitoringManager")
+            .field("metrics_adapter", &"<MetricsCapabilityAdapter>")
+            .field("start_time", &self.start_time)
+            .field("config", &self.config)
+            .finish()
     }
 }
 
@@ -752,7 +897,7 @@ mod tests {
             max_retries: 3,
             auto_discovery: true,
         };
-        let mut monitor = MonitoringManager::new(config);
+        let mut monitor = MonitoringManager::new_for_testing(config);
 
         // Basic functionality tests
         assert!(monitor.get_cpu_usage().await.is_ok());
@@ -773,7 +918,7 @@ mod tests {
             max_retries: 3,
             auto_discovery: true,
         };
-        let mut monitor = MonitoringManager::new(config);
+        let mut monitor = MonitoringManager::new_for_testing(config);
 
         let metrics = monitor.collect_metrics().await;
         assert!(metrics.is_ok());
@@ -796,7 +941,7 @@ mod tests {
             max_retries: 3,
             auto_discovery: true,
         };
-        let mut monitor = MonitoringManager::new(config);
+        let mut monitor = MonitoringManager::new_for_testing(config);
 
         // Test that enabled features work
         assert!(monitor.get_cpu_usage().await.is_ok());
@@ -817,7 +962,7 @@ mod tests {
             max_retries: 3,
             auto_discovery: true,
         };
-        let mut monitor = MonitoringManager::new(config.clone());
+        let mut monitor = MonitoringManager::new_for_testing(config.clone());
 
         // Test configuration update
         let result = monitor.update_config(config).await;

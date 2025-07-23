@@ -88,7 +88,7 @@ impl UniversalGameBridge {
         // Get the appropriate translator
         let translator = self.translators.get(&protocol_class).ok_or_else(|| {
             SongbirdError::Protocol(Box::new(ProtocolError {
-                message: format!("No translator available for protocol: {protocol_class:?}"),
+                message: "No translator available for protocol: {protocol_class:?}".to_string(),
                 protocol: Some("universal_bridge".to_string()),
             }))
         })?;
@@ -167,7 +167,7 @@ impl UniversalGameBridge {
         let sessions = self.active_sessions.read().await;
         let session = sessions.get(session_id).ok_or_else(|| {
             SongbirdError::Protocol(Box::new(ProtocolError {
-                message: format!("Session not found: {session_id}"),
+                message: "Session not found: {session_id}".to_string(),
                 protocol: Some("universal_bridge".to_string()),
             }))
         })?;
@@ -194,7 +194,7 @@ impl UniversalGameBridge {
         let sessions = self.active_sessions.read().await;
         let session = sessions.get(session_id).ok_or_else(|| {
             SongbirdError::Protocol(Box::new(ProtocolError {
-                message: format!("Session not found: {session_id}"),
+                message: "Session not found: {session_id}".to_string(),
                 protocol: Some("universal_bridge".to_string()),
             }))
         })?;
@@ -330,7 +330,7 @@ impl UniversalGameBridge {
             .find(|s| s.id == bridge_id)
             .ok_or_else(|| {
                 SongbirdError::Protocol(Box::new(ProtocolError {
-                    message: format!("Bridge not found: {bridge_id}"),
+                    message: "Bridge not found: {bridge_id}".to_string(),
                     protocol: Some("universal_bridge".to_string()),
                 }))
             })?;
@@ -393,7 +393,7 @@ impl UniversalGameBridge {
             tracing::info!("✅ Bridge stopped: {}", bridge_id);
         } else {
             return Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                message: format!("Bridge not found: {bridge_id}"),
+                message: "Bridge not found: {bridge_id}".to_string(),
                 protocol: Some("universal_bridge".to_string()),
             })));
         }

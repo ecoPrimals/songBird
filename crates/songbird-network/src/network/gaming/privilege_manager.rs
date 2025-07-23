@@ -357,7 +357,8 @@ impl PrivilegeManager {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Command execution failed: {e}"),
+                    message: format!("Gaming Privilege Manager - Command execution failed: {e}")
+                        .to_string(),
                     endpoint: None,
                     port: None,
                     protocol: None,
@@ -381,7 +382,8 @@ impl PrivilegeManager {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Sudo execution failed: {e}"),
+                    message: format!("Gaming Privilege Manager - Sudo execution failed: {e}")
+                        .to_string(),
                     endpoint: None,
                     port: None,
                     protocol: None,
@@ -417,7 +419,8 @@ impl PrivilegeManager {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Pkexec execution failed: {e}"),
+                    message: format!("Gaming Privilege Manager - Pkexec execution failed: {e}")
+                        .to_string(),
                     endpoint: None,
                     port: None,
                     protocol: None,
@@ -440,7 +443,8 @@ impl PrivilegeManager {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Capabilities setting failed: {e}"),
+                    message: format!("Gaming Privilege Manager - Capabilities setting failed: {e}")
+                        .to_string(),
                     endpoint: None,
                     port: None,
                     protocol: None,
@@ -474,7 +478,8 @@ impl PrivilegeManager {
             .await
             .map_err(|e| {
                 SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Setuid execution failed: {e}"),
+                    message: format!("Gaming Privilege Manager - Setuid execution failed: {e}")
+                        .to_string(),
                     endpoint: None,
                     port: None,
                     protocol: None,
