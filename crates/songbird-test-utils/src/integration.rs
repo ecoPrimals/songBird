@@ -104,7 +104,7 @@ impl IntegrationTestContext {
             };
             Ok(status)
         } else {
-            Err(SongbirdError::internal_error(resource_error(format!(
+            Err(SongbirdError::internal_error(format!(
                 "Service '{name}' not found"
             )))
         }

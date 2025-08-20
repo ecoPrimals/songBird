@@ -149,18 +149,18 @@ impl PerformanceTestFramework {
     ) -> SongbirdResult<()> {
         let results = self.results.read().await;
         let result = results.get(benchmark_name).ok_or_else(|| {
-            SongbirdError::resource_error(format!("Benchmark '{benchmark_name}' not found"))
+            SongbirdError::SongbirdError::internal_error(format!("Benchmark '{benchmark_name}' not found"))
         })?;
 
         if result.throughput < self.config.target_throughput {
-            return Err(SongbirdError::internal_error(validation_error(format!(
+            return Err(SongbirdError::validation_error(format!(
                 "Throughput {} below target {}",
                 result.throughput, self.config.target_throughput
             )));
         }
 
         if result.success_rate < 0.95 {
-            return Err(SongbirdError::internal_error(validation_error(format!(
+            return Err(SongbirdError::validation_error(format!(
                 "Success rate {} below 95%",
                 result.success_rate
             )));
