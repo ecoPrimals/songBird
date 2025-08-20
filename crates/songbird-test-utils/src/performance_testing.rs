@@ -1,6 +1,6 @@
-//! Performance Testing Framework
-//!
-//! Canonical performance testing utilities for the Songbird ecosystem.
+// Performance Testing Framework
+//
+// Canonical performance testing utilities for the Songbird ecosystem.
 
 use songbird_errors::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
@@ -93,7 +93,7 @@ impl PerformanceTestFramework {
         }
 
         if durations.is_empty() {
-            return Err(SongbirdError::internal_error(operation_error(
+            return Err(SongbirdError::internal_error(
                 "No benchmark data collected",
             ));
         }

@@ -1,6 +1,6 @@
-//! Fixture Tests
-//!
-//! Tests for test fixture management and setup utilities
+// Fixture Tests
+//
+// Tests for test fixture management and setup utilities
 
 use std::path::PathBuf;
 

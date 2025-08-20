@@ -1,4 +1,4 @@
-//! Async test helpers for songbird testing
+// Async test helpers for songbird testing
 
 use songbird_errors::{SongbirdError, SongbirdResult};
 use std::future::Future;

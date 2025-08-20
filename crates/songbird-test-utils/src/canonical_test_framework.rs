@@ -1,7 +1,7 @@
-//! Canonical Test Framework for Songbird Universal Orchestrator
-//!
-//! This module provides standardized testing patterns, utilities, and assertions
-//! that ensure consistent testing across all Songbird crates.
+// Canonical Test Framework for Songbird Universal Orchestrator
+//
+// This module provides standardized testing patterns, utilities, and assertions
+// that ensure consistent testing across all Songbird crates.
 
 use songbird_errors::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;

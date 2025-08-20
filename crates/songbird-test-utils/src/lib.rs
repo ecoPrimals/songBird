@@ -1,7 +1,7 @@
-//! Songbird Test Utilities
-//!
-//! Canonical testing infrastructure following modernization patterns.
-//! Provides comprehensive testing capabilities for the Songbird ecosystem.
+// Songbird Test Utilities
+//
+// Canonical testing infrastructure following modernization patterns.
+// Provides comprehensive testing capabilities for the Songbird ecosystem.
 
 pub mod async_helpers;
 pub mod canonical_test_framework;

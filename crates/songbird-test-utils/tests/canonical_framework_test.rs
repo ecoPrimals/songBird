@@ -1,4 +1,4 @@
-//! Canonical Test Framework Tests
+// Canonical Test Framework Tests
 
 use songbird_errors::{SongbirdError as ErrorType, SongbirdResult};
 use songbird_test_utils::canonical_test_framework::{

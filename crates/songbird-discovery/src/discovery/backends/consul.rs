@@ -94,7 +94,7 @@ impl ConsulServiceDiscovery {
             updated_at: Utc::now(),
             instance_id: format!("consul-{}", uuid::Uuid::new_v4()),
             host: address.to_string(),
-            port,
+            port: port.try_into().unwrap_or(8080),
         })
     }
 }
@@ -212,7 +212,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
         let consul_response: Value = response.json().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
                 message: format!("Failed to parse Consul response: {e}"),
-                service: service_name.map(String::from),
+                service: query.name.clone(),
                 timeout: None,
                 suggestion: Some("Check Consul API version compatibility".to_string()),
             }))
@@ -299,5 +299,5 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
 }
 
 impl ConsulServiceDiscovery {
-    /// Check health status of a specific service (internal method)  
+    // Check health status of a specific service (internal method)
 }

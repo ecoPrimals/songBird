@@ -1,6 +1,6 @@
-//! Edge Cases Tests
-//!
-//! Tests for edge cases and boundary condition testing utilities
+// Edge Cases Tests
+//
+// Tests for edge cases and boundary condition testing utilities
 
 #[test]
 fn test_extreme_values() {

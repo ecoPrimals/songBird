@@ -1,7 +1,7 @@
-//! Chaos Engineering Module
-//!
-//! Canonical chaos engineering system following modernization patterns.
-//! Refactored from large monolithic file into focused, maintainable modules.
+// Chaos Engineering Module
+//
+// Canonical chaos engineering system following modernization patterns.
+// Refactored from large monolithic file into focused, maintainable modules.
 
 pub mod config;
 pub mod manager;

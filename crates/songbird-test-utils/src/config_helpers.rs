@@ -1,5 +1,5 @@
 use songbird_config::unified::*;
-//! Configuration test helpers
+// Configuration test helpers
 ///
 /// Centralizes common configuration creation patterns used across tests
 /// Performance configuration test helpers

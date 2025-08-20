@@ -1,8 +1,8 @@
 use songbird_config::unified::*;
-//! Chaos Engineering Configuration Types
-//!
-//! Canonical configuration types for chaos engineering experiments.
-//! Extracted from monolithic fault_injection.rs for maintainability.
+// Chaos Engineering Configuration Types
+//
+// Canonical configuration types for chaos engineering experiments.
+// Extracted from monolithic fault_injection.rs for maintainability.
 
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
