@@ -38,7 +38,7 @@ where
         sleep(poll_interval).await;
     }
 
-    Err(SongbirdError::internal_error(operation_error(format!(
+    Err(SongbirdError::internal_error(format!(
         "Condition not met within {max_wait:?}"
     )))
 }
@@ -61,7 +61,7 @@ where
             Ok(result) => return Ok(result),
             Err(e) => {
                 if attempt == max_retries - 1 {
-                    return Err(SongbirdError::internal_error(operation_error(format!(
+                    return Err(SongbirdError::internal_error(format!(
                         "Operation failed after {max_retries} retries: {e}"
                     )));
                 }

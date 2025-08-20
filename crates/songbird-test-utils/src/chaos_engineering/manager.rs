@@ -114,7 +114,7 @@ impl ChaosEngineeringManager {
                 }
             }
             _ => {
-                return Err(SongbirdError::internal_error(validation_error(format!(
+                return Err(SongbirdError::validation_error(format!(
                     "Experiment type {:?} not yet implemented",
                     experiment.experiment_type
                 )));
@@ -139,7 +139,7 @@ impl ChaosEngineeringManager {
                 experiment.status = ExperimentStatus::Stopped;
                 experiment.end_time = Some(SystemTime::now());
             } else {
-                return Err(SongbirdError::internal_error(resource_error(format!(
+                return Err(SongbirdError::internal_error(format!(
                     "Experiment {experiment_id} not found"
                 )));
             }
@@ -164,7 +164,7 @@ impl ChaosEngineeringManager {
         })?;
 
         experiments.get(experiment_id).cloned().ok_or_else(|| {
-            SongbirdError::resource_error(format!("Experiment {experiment_id} not found"))
+            SongbirdError::SongbirdError::internal_error(format!("Experiment {experiment_id} not found"))
         })
     }
 

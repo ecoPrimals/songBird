@@ -88,7 +88,7 @@ impl ErrorTestingFramework {
     pub async fn run_scenario(&self, scenario_name: &str) -> SongbirdResult<ErrorTestResult> {
         let scenarios = self.scenarios.read().await;
         let _scenario = scenarios.get(scenario_name).ok_or_else(|| {
-            SongbirdError::resource_error(format!("Scenario '{scenario_name}' not found"))
+            SongbirdError::SongbirdError::internal_error(format!("Scenario '{scenario_name}' not found"))
         })?;
 
         let start = std::time::Instant::now();

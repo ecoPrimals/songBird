@@ -5,7 +5,8 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
-use super::super::core::{ServiceDiscovery, ServiceInstance};
+use crate::traits::discovery::{ServiceDiscovery, ServiceQuery, ServiceEvent, ServiceHealthStatus, HealthStatus, SortBy};
+use crate::traits::service::ServiceInfo;
 use songbird_errors::{DiscoveryError, Result, SongbirdError};
 
 /// Consul service discovery backend
@@ -27,31 +28,31 @@ impl ConsulServiceDiscovery {
     }
 
     /// Build service registration payload for Consul
-    fn build_service_payload(&self, service: &ServiceInstance) -> Value {
+    fn build_service_payload(&self, service: &ServiceInfo) -> Value {
         let mut check = json!({
-            "HTTP": format!("http://{}/health", service.address),
+            "HTTP": format!("http://{}:{}/health", service.host, service.port),
             "Interval": "10s",
             "Timeout": "5s"
         });
 
         // Use custom health check URL if provided
-        if let Some(health_url) = &service.health_check_url {
+        if let Some(health_url) = &service.health_check_endpoint {
             check["HTTP"] = json!(health_url);
         }
 
         json!({
-            "ID": service.id,
+            "ID": service.service_id,
             "Name": service.name,
             "Tags": service.tags,
-            "Address": service.address.ip().to_string(),
-            "Port": service.address.port(),
+            "Address": service.host,
+            "Port": service.port,
             "Meta": service.metadata,
             "Check": check
         })
     }
 
-    /// Parse Consul service response into ServiceInstance
-    fn parse_consul_service(&self, consul_service: &Value) -> Option<ServiceInstance> {
+    /// Parse Consul service response into ServiceInfo
+    fn parse_consul_service(&self, consul_service: &Value) -> Option<ServiceInfo> {
         let id = consul_service["ID"].as_str()?.to_string();
         let name = consul_service["Service"].as_str()?.to_string();
 
@@ -74,20 +75,33 @@ impl ConsulServiceDiscovery {
             })
             .unwrap_or_default();
 
-        Some(ServiceInstance {
-            id,
+        use chrono::Utc;
+        use crate::traits::service::ServiceStatus;
+        
+        Some(ServiceInfo {
+            service_id: id,
             name,
-            address: socket_addr,
-            metadata,
-            health_check_url: None, // Consul manages health checks
+            version: "1.0.0".to_string(), // Default version
+            service_type: "consul-service".to_string(),
+            description: None,
+            endpoints: vec![], // TODO: Extract from Consul service definition
+            health_check_endpoint: None,
+            metadata: metadata.into_iter().map(|(k, v)| (k, serde_json::Value::String(v))).collect(),
             tags,
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: format!("consul-{}", uuid::Uuid::new_v4()),
+            host: address.to_string(),
+            port,
         })
     }
 }
 
 #[async_trait]
 impl ServiceDiscovery for ConsulServiceDiscovery {
-    async fn register_service(&self, service: ServiceInstance) -> Result<()> {
+    async fn register(&self, service: ServiceInfo) -> Result<()> {
         tracing::info!("Registering service {} with Consul", service.name);
 
         let url = format!("{}/v1/agent/service/register", self.consul_url);
@@ -128,7 +142,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
         }
     }
 
-    async fn deregister_service(&self, service_id: &str) -> Result<()> {
+    async fn unregister(&self, service_id: &str) -> Result<()> {
         tracing::info!("Deregistering service {} from Consul", service_id);
 
         let url = format!(
@@ -165,8 +179,8 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
         }
     }
 
-    async fn discover_services(&self, service_name: Option<&str>) -> Result<Vec<ServiceInstance>> {
-        let url = match service_name {
+    async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
+        let url = match &query.name {
             Some(name) => format!("{}/v1/health/service/{}", self.consul_url, name),
             None => format!("{}/v1/agent/services", self.consul_url),
         };
@@ -176,7 +190,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
         let response = self.client.get(&url).send().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
                 message: format!("Failed to discover services from Consul: {e}"),
-                service: service_name.map(String::from),
+                service: query.name.clone(),
                 timeout: None,
                 suggestion: Some("Check Consul connectivity".to_string()),
             }))
@@ -189,7 +203,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
                 .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(SongbirdError::Discovery(Box::new(DiscoveryError {
                 message: format!("Consul discovery failed: {error_text}"),
-                service: service_name.map(String::from),
+                service: query.name.clone(),
                 timeout: None,
                 suggestion: Some("Check Consul query and ACLs".to_string()),
             })));
@@ -204,7 +218,7 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
             }))
         })?;
 
-        let services: Vec<ServiceInstance> = if service_name.is_some() {
+        let services: Vec<ServiceInfo> = if query.name.is_some() {
             // Health endpoint returns array of health checks
             consul_response
                 .as_array()
@@ -238,45 +252,52 @@ impl ServiceDiscovery for ConsulServiceDiscovery {
         Ok(services)
     }
 
-    async fn health_check(&self, service_id: &str) -> Result<bool> {
-        let url = format!("{}/v1/health/service/{}", self.consul_url, service_id);
+    /// Check health status of a specific service (internal method)
 
-        let response = self.client.get(&url).send().await.map_err(|e| {
-            SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Failed to check service health in Consul: {e}"),
-                service: Some(service_id.to_string()),
-                timeout: None,
-                suggestion: Some("Check Consul connectivity".to_string()),
-            }))
-        })?;
-
-        if !response.status().is_success() {
-            return Ok(false);
-        }
-
-        let health_response: Value = response.json().await.map_err(|_| {
-            SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: "Failed to parse Consul health response".to_string(),
-                service: Some(service_id.to_string()),
-                timeout: None,
-                suggestion: Some("Check Consul API version".to_string()),
-            }))
-        })?;
-
-        // Check if any service instances are healthy
-        let is_healthy = health_response
-            .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .any(|health_check| {
-                let empty_vec = vec![];
-                let checks = health_check["Checks"].as_array().unwrap_or(&empty_vec);
-                checks
-                    .iter()
-                    .all(|check| check["Status"].as_str() == Some("passing"))
-            });
-
-        tracing::debug!("Health check for service {}: {}", service_id, is_healthy);
-        Ok(is_healthy)
+    async fn watch(
+        &self,
+        query: ServiceQuery,
+    ) -> Result<std::pin::Pin<Box<dyn futures_util::Stream<Item = ServiceEvent> + Send>>> {
+        // TODO: Implement Consul watch functionality
+        use futures_util::stream;
+        Ok(Box::pin(stream::empty()))
     }
+
+    async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()> {
+        tracing::info!("Updating health for service {} to {:?}", service_id, health);
+        // TODO: Implement health update via Consul API
+        Ok(())
+    }
+
+    async fn list_all(&self) -> Result<Vec<ServiceInfo>> {
+        self.discover(ServiceQuery::new()).await
+    }
+
+    async fn exists(&self, service_id: &str) -> Result<bool> {
+        let query = ServiceQuery::new().with_service_id(service_id);
+        let services = self.discover(query).await?;
+        Ok(!services.is_empty())
+    }
+
+    async fn is_registered(&self, service_id: &str) -> Result<bool> {
+        self.exists(service_id).await
+    }
+
+    async fn update_metadata(
+        &self,
+        service_id: &str,
+        metadata: std::collections::HashMap<String, String>,
+    ) -> Result<()> {
+        tracing::info!("Updating metadata for service {}: {:?}", service_id, metadata);
+        // TODO: Implement metadata update via Consul API
+        Ok(())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl ConsulServiceDiscovery {
+    /// Check health status of a specific service (internal method)  
 }
