@@ -1,0 +1,38 @@
+[package]
+name = "songbird-canonical"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+repository = "https://github.com/ecoPrimals/SongBird"
+description = "Canonical type system and patterns for the Songbird ecosystem"
+readme = "../../README.md"
+keywords = ["canonical", "types", "patterns", "ecosystem", "rust"]
+categories = ["data-structures", "development-tools", "network-programming"]
+
+[dependencies]
+# Core async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Validation
+validator = "0.20"  # Updated to latest version to fix idna vulnerability
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Internal dependencies
+# Note: SongbirdResponse moved to songbird-errors to break circular dependency
+
+[features]
+default = ["std"]
+std = []
+compile_time_validation = [] 

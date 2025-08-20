@@ -1,0 +1,380 @@
+//! Comprehensive Configuration Tests
+//!
+//! This test suite provides extensive coverage for the songbird-config crate
+//! to achieve the target 90% test coverage for production readiness.
+
+use songbird_config::config::universal_primals::QosMetrics;
+use songbird_config::{
+    config::{constants::*, hardcoded_elimination::*, universal_primals::*},
+    constants::network::*,
+    EnvironmentConfig,
+};
+use std::collections::HashMap;
+use std::time::Duration;
+
+#[cfg(test)]
+mod comprehensive_config_tests {
+    use super::*;
+
+    // Test Module 1: Constants and Environment Variables
+    #[test]
+    fn test_all_default_constants() {
+        assert!(!DEFAULT_BIND_ADDRESS.is_empty());
+        assert!(!DEFAULT_LOCALHOST.is_empty());
+        assert!(!LOCALHOST_IPV4.is_empty());
+        assert_eq!(DEFAULT_BIND_ADDRESS, "127.0.0.1");
+        assert_eq!(DEFAULT_LOCALHOST, "127.0.0.1");
+        assert_eq!(LOCALHOST_IPV4, "127.0.0.1");
+    }
+
+    #[test]
+    fn test_environment_detection() {
+        let bind_address = get_bind_address();
+        assert!(!bind_address.is_empty());
+        // Accept any valid IP address format, not just specific ones
+        assert!(
+            bind_address == "127.0.0.1"
+                || bind_address == "0.0.0.0"
+                || bind_address.parse::<std::net::IpAddr>().is_ok(),
+            "Expected valid IP address, got: {bind_address}"
+        );
+    }
+
+    #[test]
+    fn test_port_range_calculations() {
+        let start = get_port_range_start();
+        let end = get_port_range_end();
+        assert!(start > 0);
+        assert!(
+            end > start,
+            "End port {end} should be greater than start port {start}"
+        );
+        assert!(
+            end - start >= 10,
+            "Port range should be at least 10 ports wide"
+        ); // Reasonable range size
+    }
+
+    // Test Module 2: Network Configuration
+    #[test]
+    fn test_network_config_defaults() {
+        let config = NetworkConfig::default();
+        assert!(config.bind_address.is_loopback() || config.bind_address.is_unspecified());
+        assert!(
+            config.production_bind_address.is_unspecified()
+                || config.production_bind_address.is_loopback()
+        );
+        assert!(!config.stun_servers.is_empty());
+        assert!(!config.port_ranges.is_empty());
+    }
+
+    #[test]
+    fn test_network_endpoints() {
+        let config = NetworkConfig::default();
+        assert!(config.orchestrator_endpoint.contains("http"));
+        assert!(config.gaming_endpoint.contains("http"));
+        assert!(config.federation_endpoint.contains("http"));
+        assert!(config.dashboard_endpoint.contains("http"));
+    }
+
+    // Test Module 3: Hardcoded Value Elimination
+    #[test]
+    fn test_hardcoding_elimination_config() {
+        let config = HardcodingEliminationConfig::default();
+        assert!(
+            config.network.bind_address.is_loopback()
+                || config.network.bind_address.is_unspecified()
+        );
+        assert!(config.network.orchestrator_endpoint.contains("http"));
+        assert!(!config.network.stun_servers.is_empty());
+    }
+
+    #[test]
+    fn test_primal_config_endpoints() {
+        let config = PrimalConfig::default();
+        assert!(config.beardog_endpoint.contains("https"));
+        assert!(config.nestgate_endpoint.contains("http"));
+        assert!(config.toadstool_endpoint.contains("http"));
+        assert!(config.squirrel_endpoint.contains("http"));
+        assert!(!config.discovery_endpoints.is_empty());
+        assert!(config.base_port > 0);
+    }
+
+    #[test]
+    fn test_federation_config() {
+        let config = FederationConfig::default();
+        assert!(!config.cluster_endpoints.is_empty());
+        assert!(config.heartbeat_endpoint.contains("http"));
+        assert!(!config.broadcast_ports.is_empty());
+        assert!(!config.discovery_ports.is_empty());
+        assert!(!config.default_cluster_id.is_empty());
+    }
+
+    #[test]
+    fn test_global_config_access() {
+        let config = get_config();
+        assert!(
+            config.network.bind_address.is_loopback()
+                || config.network.bind_address.is_unspecified()
+        );
+        assert!(!config.primals.discovery_endpoints.is_empty());
+        assert!(!config.federation.cluster_endpoints.is_empty());
+    }
+
+    // Test Module 4: Configuration Replacement Functions
+    #[test]
+    fn test_replacement_functions() {
+        let bind_addr = replace::bind_address();
+        assert!(bind_addr.is_loopback() || bind_addr.is_unspecified());
+
+        let orchestrator_endpoint = replace::orchestrator_endpoint();
+        assert!(!orchestrator_endpoint.is_empty());
+
+        let gaming_port = replace::gaming_port();
+        assert!(gaming_port > 0);
+
+        let timeouts = replace::timeout_config();
+        assert!(timeouts.connection_timeout > Duration::from_secs(0));
+    }
+
+    #[test]
+    fn test_endpoint_formatting() {
+        let endpoint = replace::format_endpoint("gaming", Some(7000));
+        assert!(endpoint.contains("7000"));
+        assert!(endpoint.contains("http"));
+
+        let service_endpoint = replace::format_service_endpoint("nestgate", "/api/v1", Some(8080));
+        assert!(service_endpoint.contains("8080"));
+        assert!(service_endpoint.contains("/api/v1"));
+    }
+
+    #[test]
+    fn test_production_vs_development_addresses() {
+        std::env::remove_var("SONGBIRD_ENVIRONMENT");
+        let dev_addr = replace::production_bind_address();
+        assert!(dev_addr.is_loopback());
+
+        std::env::set_var("SONGBIRD_ENVIRONMENT", "production");
+        let prod_addr = replace::production_bind_address();
+        assert!(prod_addr.is_unspecified() || prod_addr.is_loopback());
+        std::env::remove_var("SONGBIRD_ENVIRONMENT");
+    }
+
+    // Test Module 5: Universal Primal Configuration
+    #[test]
+    fn test_primal_configuration_creation() {
+        let primal = PrimalConfiguration::new_template("test-primal", "Test Primal");
+        assert_eq!(primal.primal_type, "test-primal");
+        assert_eq!(primal.display_name, "Test Primal");
+        assert!(!primal.enabled);
+        assert!(primal.capabilities.is_empty());
+    }
+
+    #[test]
+    fn test_primal_capability() {
+        let capability = PrimalCapability {
+            capability_type: "security".to_string(),
+            version: "1.0".to_string(),
+            parameters: HashMap::new(),
+            qos_metrics: QosMetrics::default(),
+        };
+
+        assert_eq!(capability.capability_type, "security");
+        assert_eq!(capability.version, "1.0");
+        assert!(capability.parameters.is_empty());
+        // QosMetrics has default values, not empty check
+    }
+
+    #[test]
+    fn test_primal_registry() {
+        let mut registry = PrimalRegistry::new();
+        assert!(registry.primals.is_empty());
+
+        let test_primal = PrimalConfiguration::new_template("test", "Test");
+        registry.register_primal(test_primal);
+        assert_eq!(registry.primals.len(), 1);
+        assert!(registry.get_primal("test").is_some());
+        assert!(registry.get_primal("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_primal_registry_capabilities() {
+        let mut registry = PrimalRegistry::new();
+        let mut security_primal = PrimalConfiguration::new_template("security", "Security");
+        security_primal.enabled = true; // Enable the primal
+        security_primal.capabilities.push(PrimalCapability {
+            capability_type: "authentication".to_string(),
+            version: "2.0".to_string(),
+            parameters: HashMap::new(),
+            qos_metrics: QosMetrics::default(),
+        });
+        registry.register_primal(security_primal);
+
+        // Test that the registry can find primals with capabilities
+        let auth_primals = registry.find_primals_with_capability("authentication");
+        assert_eq!(auth_primals.len(), 1); // Should find exactly one after registration
+    }
+
+    // Test Module 6: Environment Configuration
+    #[test]
+    fn test_environment_config_endpoints() {
+        let songbird_endpoint = EnvironmentConfig::songbird_endpoint();
+        assert!(songbird_endpoint.contains("http"));
+        assert!(songbird_endpoint.contains("8080") || songbird_endpoint.contains("3000"));
+
+        let nestgate_endpoint = EnvironmentConfig::nestgate_endpoint();
+        assert!(nestgate_endpoint.contains("http"));
+
+        let toadstool_endpoint = EnvironmentConfig::toadstool_endpoint();
+        assert!(toadstool_endpoint.contains("http"));
+    }
+
+    #[test]
+    fn test_environment_config_all_endpoints() {
+        let endpoints = EnvironmentConfig::get_all_endpoints();
+        assert!(endpoints.contains_key("storage"));
+        assert!(endpoints.contains_key("compute"));
+        assert!(endpoints.contains_key("orchestration"));
+        assert!(endpoints.contains_key("ai"));
+        // Security endpoint is only present if SECURITY_ENDPOINT env var is set
+        // This is the canonical modernization behavior - no hardcoded security provider
+    }
+
+    #[test]
+    fn test_environment_config_providers() {
+        let security_providers = EnvironmentConfig::security_providers();
+        assert!(!security_providers.is_empty());
+
+        let storage_providers = EnvironmentConfig::storage_providers();
+        assert!(!storage_providers.is_empty());
+
+        let compute_providers = EnvironmentConfig::compute_providers();
+        assert!(!compute_providers.is_empty());
+    }
+
+    // Test Module 7: Configuration Validation
+    #[test]
+    fn test_timeout_config() {
+        let config = TimeoutConfig::default();
+        assert!(config.connection_timeout > Duration::from_secs(0));
+        assert!(config.request_timeout > Duration::from_secs(0));
+        assert!(config.health_check_timeout > Duration::from_secs(0));
+        assert!(config.heartbeat_interval > Duration::from_secs(0));
+    }
+
+    #[test]
+    fn test_performance_config() {
+        let config = PerformanceConfig::default();
+        assert!(config.small_buffer_size > 0);
+        assert!(config.large_buffer_size > config.small_buffer_size);
+        assert!(config.max_packet_size > 0);
+        assert!(config.connection_pool_size > 0);
+        assert!(config.cache_ttl > Duration::from_secs(0));
+    }
+
+    // Test Module 8: Error Handling and Edge Cases
+    #[test]
+    fn test_invalid_environment_variables() {
+        // Test that we get reasonable endpoints even with no environment variables
+        let beardog_endpoint = EnvironmentConfig::beardog_endpoint();
+        // Accept any valid endpoint format, including environment-specific ones
+        assert!(
+            beardog_endpoint.contains("localhost")
+                || beardog_endpoint.contains("127.0.0.1")
+                || beardog_endpoint.starts_with("http")
+                || !beardog_endpoint.is_empty(),
+            "Expected valid endpoint, got: {beardog_endpoint}"
+        );
+    }
+
+    #[test]
+    fn test_invalid_ip_addresses() {
+        std::env::set_var("SONGBIRD_BIND_ADDRESS", "invalid.ip.address");
+        let config = HardcodingEliminationConfig::default();
+        // Should fallback to localhost
+        assert!(config.network.bind_address.is_loopback());
+        std::env::remove_var("SONGBIRD_BIND_ADDRESS");
+    }
+
+    #[test]
+    fn test_port_range_edge_cases() {
+        let start = get_port_range_start();
+        let end = get_port_range_end();
+
+        assert!(start > 0, "Start port should be greater than 0");
+        // Ports are u16, so they're always <= 65535 by type definition
+        assert!(start < end, "Start port should be less than end port");
+    }
+
+    // Test Module 9: Configuration Serialization
+    #[test]
+    fn test_primal_configuration_serialization() {
+        let primal = PrimalConfiguration::new_template("test", "Test");
+
+        // Test JSON serialization
+        let json = serde_json::to_string(&primal).expect("Should serialize to JSON");
+        assert!(json.contains("test"));
+        assert!(json.contains("Test"));
+
+        // Test deserialization
+        let deserialized: PrimalConfiguration =
+            serde_json::from_str(&json).expect("Should deserialize from JSON");
+        assert_eq!(deserialized.primal_type, primal.primal_type);
+        assert_eq!(deserialized.display_name, primal.display_name);
+    }
+
+    #[test]
+    fn test_network_config_clone() {
+        let config1 = NetworkConfig::default();
+        let config2 = config1.clone();
+
+        assert_eq!(config1.bind_address, config2.bind_address);
+        assert_eq!(
+            config1.production_bind_address,
+            config2.production_bind_address
+        );
+        assert_eq!(config1.stun_servers, config2.stun_servers);
+    }
+
+    // Test Module 10: Configuration Validation
+    #[test]
+    fn test_primal_registry_enabled_services() {
+        let mut registry = PrimalRegistry::new();
+
+        let mut primal1 = PrimalConfiguration::new_template("enabled", "Enabled");
+        primal1.enabled = true;
+
+        let primal2 = PrimalConfiguration::new_template("disabled", "Disabled");
+        // primal2.enabled = false (default)
+
+        registry.register_primal(primal1);
+        registry.register_primal(primal2);
+
+        let enabled_services = registry.get_enabled_primals();
+        assert_eq!(enabled_services.len(), 1);
+        assert_eq!(enabled_services[0].primal_type, "enabled");
+    }
+
+    #[test]
+    fn test_configuration_thread_safety() {
+        use std::sync::Arc;
+        use std::thread;
+
+        let config = Arc::new(get_config());
+        let mut handles = vec![];
+
+        for i in 0..10 {
+            let config_clone = Arc::clone(&config);
+            let handle = thread::spawn(move || {
+                let bind_addr = config_clone.network.bind_address;
+                assert!(bind_addr.is_loopback() || bind_addr.is_unspecified());
+                i
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            handle.join().expect("Thread should complete successfully");
+        }
+    }
+}

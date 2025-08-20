@@ -5,7 +5,7 @@
 use songbird_core::production_benchmarks::{
     quick_production_check, BenchmarkConfig, ProductionBenchmarkRunner as BenchmarkRunner,
 };
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::time::Duration;
 
 #[ignore = "Long-running performance test - run with: cargo test test_run_full_benchmark_suite -- --ignored"]

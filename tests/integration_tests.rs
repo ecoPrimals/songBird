@@ -13,11 +13,11 @@ async fn test_basic_orchestration() -> Result<()> {
     let _config = SongbirdConfig::default();
 
     // Test that we can create a GamingManager with the correct API
-    let gaming_manager = GamingManager::new().await?;
+    let gaming_manager = GamingManager::new()?;
 
     // Test federation manager (corrected API)
     // NOTE: Federation manager temporarily disabled due to complex config type requirements
-    // let federation_manager = FederationManager::new(federation_config).await?;
+    // let federation_manager = FederationManager::new(federation_config)?;
     // let federation_status = federation_manager.get_federation_status().await?;
     // assert_eq!(federation_status.total_nodes, 0); // Should be empty for default config
 
@@ -35,7 +35,7 @@ async fn test_federation_coordination() -> Result<()> {
     // Test creating federation manager with correct API
     // NOTE: Federation manager temporarily disabled due to complex config type requirements
     // let federation_config = songbird_federation::config::FederationConfig::default();
-    // let federation_manager = FederationManager::new(federation_config).await?;
+    // let federation_manager = FederationManager::new(federation_config)?;
     // let status = federation_manager.get_federation_status().await;
     // assert!(status.is_ok()); // Should be ok for initialized MCP
 
@@ -55,7 +55,7 @@ async fn test_primal_coordination() -> Result<()> {
     // Test federation manager initialization
     // NOTE: Federation manager temporarily disabled due to complex config type requirements
     // let federation_config = songbird_federation::config::FederationConfig::default();
-    // let federation_manager = FederationManager::new(federation_config).await?;
+    // let federation_manager = FederationManager::new(federation_config)?;
     // let federation_status = federation_manager.get_federation_status().await?;
     // assert_eq!(federation_status.total_nodes, 0);
 

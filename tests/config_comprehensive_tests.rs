@@ -10,7 +10,7 @@ use songbird_config::{
     EnvironmentConfig, GamingNetworkConfig, NetworkConfig, PortRange, SecurityConfig,
     SongbirdConfig,
 };
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 
 #[test]
 fn test_songbird_config_creation() -> Result<()> {
@@ -83,7 +83,8 @@ fn test_songbird_config_security_fields() -> Result<()> {
 #[tokio::test]
 async fn test_network_config_creation() -> Result<()> {
     let network_config = NetworkConfig {
-        bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
+        bind_address: &get_bind_address().parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
         orchestrator_port: 8080,
         discovery_port: 8001,
         health_port: 8002,
@@ -94,14 +95,14 @@ async fn test_network_config_creation() -> Result<()> {
     assert_eq!(network_config.orchestrator_port, 8080);
     assert_eq!(
         network_config.bind_address,
-        "127.0.0.1".parse::<IpAddr>().unwrap()
+        &get_bind_address().parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?
     );
     // assert_eq!(network_config.gaming_port_range.start, 7000);
     // assert_eq!(network_config.gaming_port_range.end, 8000);
     Ok(())
 }
 
-#[test]
 fn test_environment_config_creation() -> Result<()> {
     let env_config = EnvironmentConfig::default();
 
@@ -142,7 +143,8 @@ fn test_security_config_creation() -> Result<()> {
 async fn test_config_validation() -> Result<()> {
     let config = SongbirdConfig {
         network: NetworkConfig {
-            bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
+            bind_address: &get_bind_address().parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
             orchestrator_port: 8080,
             ..Default::default()
         },
@@ -162,26 +164,25 @@ async fn test_config_validation() -> Result<()> {
     Ok(())
 }
 
-#[test]
 fn test_songbird_config_universal_primal_integration() -> Result<()> {
     let mut config = SongbirdConfig::default();
 
-    // Test universal primal integration (replaces old BearDog-specific test)
-    assert!(!config.is_primal_enabled("beardog"));
+    // Test universal primal integration (capability-based, not name-based)
+    assert!(!config.is_primal_enabled("security-provider"));
 
-    // Enable BearDog through universal primal system
-    config.enable_primal("beardog", "https://beardog.example.com:8443");
-    assert!(config.is_primal_enabled("beardog"));
+    // Enable any security provider through universal primal system
+    config.enable_primal("security-provider", "https://security.example.com:8443");
+    assert!(config.is_primal_enabled("security-provider"));
 
-    // Verify primal configuration
-    let beardog_config = config.get_primal_config("beardog");
-    assert!(beardog_config.is_some());
-    let beardog = beardog_config.unwrap();
-    assert!(beardog.enabled);
-    assert_eq!(beardog.primal_type, "beardog");
+    // Verify primal configuration (universal pattern)
+    let security_config = config.get_primal_config("security-provider");
+    assert!(security_config.is_some());
+    let security_provider = security_config.expect("Test operation should succeed");
+    assert!(security_provider.enabled);
+    assert_eq!(security_provider.primal_type, "security-provider");
     assert_eq!(
-        beardog.endpoint.primary_url,
-        "https://beardog.example.com:8443"
+        security_provider.endpoint.primary_url,
+        "https://security.example.com:8443"
     );
 
     // Test capability-based primal discovery (universal feature)
@@ -192,7 +193,7 @@ fn test_songbird_config_universal_primal_integration() -> Result<()> {
     );
 
     // Test multiple primals (universal extensibility)
-    config.enable_primal("toadstool", "http://toadstool.example.com:8080");
+    config.enable_primal("toadstool", "http://toadstool.example.com:{}");
     config.enable_primal("phoenix-ai", "https://phoenix.example.com:8888");
 
     assert!(config.is_primal_enabled("toadstool"));
@@ -206,8 +207,8 @@ fn test_songbird_config_universal_primal_integration() -> Result<()> {
     );
 
     // Disable a primal
-    config.disable_primal("beardog");
-    assert!(!config.is_primal_enabled("beardog"));
+            config.disable_primal("security-provider");
+        assert!(!config.is_primal_enabled("security-provider"));
 
     // Verify other primals are still enabled
     assert!(config.is_primal_enabled("toadstool"));
@@ -522,10 +523,12 @@ fn test_config_deserialization() -> Result<()> {
     let config = SongbirdConfig::default();
 
     // Serialize to TOML
-    let toml_string = toml::to_string(&config).unwrap();
+    let toml_string = toml::to_string(&config)
+    .map_err(|e| SongbirdError::serialization_error(&format!("TOML serialization failed: {}", e)))?;
 
     // Deserialize from TOML
-    let deserialized_config: SongbirdConfig = toml::from_str(&toml_string).unwrap();
+    let deserialized_config: SongbirdConfig = toml::from_str(&toml_string)
+    .map_err(|e| SongbirdError::serialization_error(&format!("TOML deserialization failed: {}", e)))?;
 
     // Verify key fields match
     assert_eq!(

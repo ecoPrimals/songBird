@@ -213,7 +213,7 @@ mod security_integration_tests {
             discovery_metadata: songbird_config::config::DiscoveryMetadata::default(),
         };
 
-        let integration = UniversalSecurityIntegration::new(primal_config).await;
+        let integration = UniversalSecurityIntegration::new(primal_config);
 
         // Should create successfully or fail gracefully
         match integration {

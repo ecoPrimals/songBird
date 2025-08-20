@@ -1,10 +1,11 @@
 use chrono::Utc;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use songbird_network::communication::{
     CommunicationLayer, CommunicationResponse, HttpCommunication, InMemoryCommunication,
     ServiceAddress, ServiceMessage, WebSocketCommunication,
 };
 use std::collections::HashMap;
+use songbird_network::CommunicationLayer;
 
 #[tokio::test]
 async fn test_service_address_creation() -> Result<()> {
@@ -106,7 +107,7 @@ async fn test_http_communication_basic() -> Result<()> {
         return Ok(());
     }
 
-    let http_comm = HttpCommunication::new("http://localhost:8080".to_string())?;
+    let http_comm = HttpCommunication::new("http://localhost:{}".to_string())?;
 
     let address = ServiceAddress {
         service_id: "test-service".to_string(),
@@ -164,10 +165,10 @@ async fn test_communication_stats() -> Result<()> {
     let comm = InMemoryCommunication::new();
     let stats = comm.get_stats().await?;
 
-    assert_eq!(stats.messages_sent, 0);
-    assert_eq!(stats.messages_received, 0);
-    assert_eq!(stats.bytes_sent, 0);
-    assert_eq!(stats.bytes_received, 0);
+    assert_eq!(stats.await.messages_sent, 0);
+    assert_eq!(stats.await.messages_received, 0);
+    assert_eq!(stats.await.bytes_sent, 0);
+    assert_eq!(stats.await.bytes_received, 0);
 
     Ok(())
 }

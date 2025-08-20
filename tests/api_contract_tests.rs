@@ -8,7 +8,7 @@
 //! - Breaking change detection
 
 use songbird_config::SongbirdConfig;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult, SongbirdError};
 use songbird_network::gaming::GamingManager;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -192,7 +192,7 @@ impl ApiContractValidator {
         let mut result = ContractValidationResult::new("gaming_api");
         
         // Test gaming manager creation (simulated API call)
-        let gaming_manager_result = GamingManager::new().await;
+        let gaming_manager_result = GamingManager::new();
         
         result.add_check("gaming_manager_creation", self.validate_gaming_manager_contract(&gaming_manager_result));
         

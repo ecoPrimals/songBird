@@ -9,7 +9,7 @@
 //! - Security breach simulations
 
 use songbird_config::SongbirdConfig;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult, SongbirdError};
 use songbird_network::gaming::GamingManager;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -53,7 +53,7 @@ impl ChaosTestFramework {
         }
     }
 
-    pub async fn inject_failure(&self, failure: ChaosFailure) -> Result<()> {
+    pub async fn inject_failure(&self) -> Result<()> {
         let mut failures = self.active_failures.write().await;
         failures.push(failure.clone());
         
@@ -63,7 +63,7 @@ impl ChaosTestFramework {
         Ok(())
     }
 
-    pub async fn simulate_network_partition(&self, duration: Duration) -> Result<()> {
+    pub async fn simulate_network_partition(&self) -> Result<()> {
         self.inject_failure(ChaosFailure {
             failure_type: FailureType::NetworkPartition,
             intensity: 1.0,
@@ -73,7 +73,7 @@ impl ChaosTestFramework {
         }).await
     }
 
-    pub async fn simulate_memory_pressure(&self, intensity: f32, duration: Duration) -> Result<()> {
+    pub async fn simulate_memory_pressure(&self) -> Result<()> {
         self.inject_failure(ChaosFailure {
             failure_type: FailureType::MemoryPressure,
             intensity,
@@ -83,7 +83,7 @@ impl ChaosTestFramework {
         }).await
     }
 
-    pub async fn verify_system_resilience(&self, max_duration: Duration) -> Result<ResilienceReport> {
+    pub async fn verify_system_resilience(&self) -> Result<ResilienceReport> {
         let start = Instant::now();
         let mut report = ResilienceReport::default();
 
@@ -109,21 +109,21 @@ impl ChaosTestFramework {
         Ok(report)
     }
 
-    async fn test_configuration_system(&self) -> Result<()> {
+    async fn test_configuration_system() -> Result<()> {
         let config = SongbirdConfig::default();
         let validation = config.validate();
-        validation.map_err(|e| SongbirdError::service_error("chaos_test", e.to_string()))?;
+        validation.ok_or_else(|| SongbirdError::service_error("chaos_test", e.to_string()))?;
         Ok(())
     }
 
-    async fn test_gaming_system(&self) -> Result<()> {
-        let manager = GamingManager::new().await?;
+    async fn test_gaming_system() -> Result<()> {
+        let manager = GamingManager::new()?;
         // Verify gaming manager can be created under stress
         drop(manager);
         Ok(())
     }
 
-    async fn test_service_discovery(&self) -> Result<()> {
+    async fn test_service_discovery() -> Result<()> {
         // Test service discovery resilience
         // This would integrate with actual service discovery when available
         Ok(())

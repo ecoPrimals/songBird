@@ -1,0 +1,96 @@
+//! CLI Configuration Tests
+//!
+//! Tests for CLI configuration handling and validation
+
+use super::*;
+use crate::cli::config::CliConfig;
+use std::fs;
+use tempfile::TempDir;
+
+#[cfg(test)]
+mod config_tests {
+
+    #[test]
+    fn test_default_cli_config() {
+        let config = CliConfig::default();
+        assert!(config.is_valid());
+        assert_eq!(config.output_format, OutputFormat::Json);
+        assert!(!config.verbose);
+        assert!(!config.quiet);
+    }
+
+    #[test]
+    fn test_cli_config_from_file() -> SongbirdResult<()> {
+        let temp_dir = TempDir::new()?;
+        let config_path = temp_dir.path().join("cli_config.toml");
+
+        let config_content = r#"
+output_format = "yaml"
+verbose = true
+quiet = false
+timeout_ms = 5000
+"#;
+
+        fs::write(&config_path, config_content)?;
+
+        let config = CliConfig::from_file(&config_path)?;
+        assert_eq!(config.output_format, OutputFormat::Yaml);
+        assert!(config.verbose);
+        assert!(!config.quiet);
+        assert_eq!(config.timeout_ms, 5000);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_cli_config_validation() {
+        let mut config = CliConfig::default();
+        assert!(config.is_valid());
+
+        // Test invalid timeout
+        config.timeout_ms = 0;
+        assert!(!config.is_valid());
+
+        // Test conflicting verbose/quiet
+        config.timeout_ms = 1000;
+        config.verbose = true;
+        config.quiet = true;
+        assert!(!config.is_valid());
+    }
+
+    #[test]
+    fn test_cli_config_merge() {
+        let base_config = CliConfig {
+            output_format: OutputFormat::Json,
+            verbose: false,
+            quiet: false,
+            timeout_ms: 3000,
+        };
+
+        let override_config = CliConfig {
+            output_format: OutputFormat::Yaml,
+            verbose: true,
+            quiet: false,
+            timeout_ms: 5000,
+        };
+
+        let merged = base_config.merge(override_config);
+        assert_eq!(merged.output_format, OutputFormat::Yaml);
+        assert!(merged.verbose);
+        assert_eq!(merged.timeout_ms, 5000);
+    }
+
+    #[test]
+    fn test_config_environment_override() {
+        std::env::set_var("SONGBIRD_CLI_VERBOSE", "true");
+        std::env::set_var("SONGBIRD_CLI_FORMAT", "table");
+
+        let config = CliConfig::from_environment();
+        assert!(config.verbose);
+        assert_eq!(config.output_format, OutputFormat::Table);
+
+        // Clean up
+        std::env::remove_var("SONGBIRD_CLI_VERBOSE");
+        std::env::remove_var("SONGBIRD_CLI_FORMAT");
+    }
+}

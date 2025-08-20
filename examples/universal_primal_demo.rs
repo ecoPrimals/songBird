@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use songbird_universal_primals::{
+// // use songbird_universal_primals  // TEMPORARILY DISABLED  // TEMPORARILY DISABLED::{
     nestgate::NestGatePrimalClient, toadstool::ToadstoolPrimal, NetworkLocation, PrimalContext,
     PrimalResult, SecurityLevel, UniversalPrimalRegistry,
 };
@@ -14,7 +14,7 @@ use songbird_universal_primals::{
 ///
 /// This demonstrates how to create and configure a BearDog primal for security services.
 /// BearDog provides advanced threat detection and security automation.
-async fn create_beardog_primal(_context: PrimalContext) -> PrimalResult<String> {
+fn create_beardog_primal(PrimalResult<String>) ->  {
     // For demo purposes, return a placeholder since BearDogPrimal doesn't exist yet
     Ok("BearDog primal placeholder".to_string())
 }
@@ -23,7 +23,7 @@ async fn create_beardog_primal(_context: PrimalContext) -> PrimalResult<String> 
 ///
 /// This demonstrates how to create and configure a Squirrel primal for data processing.
 /// Squirrel provides distributed data processing and analytics capabilities.
-async fn create_squirrel_primal(_context: PrimalContext) -> PrimalResult<String> {
+fn create_squirrel_primal(PrimalResult<String>) ->  {
     // For demo purposes, return a placeholder since SquirrelPrimal doesn't exist yet
     Ok("Squirrel primal placeholder".to_string())
 }
@@ -32,7 +32,7 @@ async fn create_squirrel_primal(_context: PrimalContext) -> PrimalResult<String>
 ///
 /// This function shows how to use multiple primals together for a complete
 /// ecosystem solution with security, networking, orchestration, and data processing.
-pub async fn demonstrate_universal_primal_usage() -> PrimalResult<()> {
+pub async fn demonstrate_universal_primal_usage(&self) -> PrimalResult<()> {
     tracing::info!("🚀 Starting Universal Primal Demo");
 
     // Create primal context
@@ -41,7 +41,7 @@ pub async fn demonstrate_universal_primal_usage() -> PrimalResult<()> {
         device_id: "demo_device".to_string(),
         session_id: "demo_session".to_string(),
         network_location: NetworkLocation {
-            ip_address: "127.0.0.1".to_string(),
+            ip_address: &get_bind_address().to_string(),
             subnet: Some("192.168.1.0/24".to_string()),
             network_id: Some("demo_network".to_string()),
             geo_location: Some("Local".to_string()),
@@ -144,18 +144,18 @@ pub async fn demonstrate_universal_primal_usage() -> PrimalResult<()> {
 
 /// Main function for the universal primal demo
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
     // Run the demo
     match demonstrate_universal_primal_usage().await {
-        Ok(()) => {
+        Ok(success(()) => {
             tracing::info!("Demo completed successfully!");
         }
         Err(e) => {
             tracing::error!("Demo failed: {}", e);
-            return Err(e.into());
+            return Err(e));
         }
     }
 

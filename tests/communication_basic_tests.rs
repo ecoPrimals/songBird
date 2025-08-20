@@ -8,11 +8,11 @@ use tokio::test;
 async fn test_service_address_creation() {
     let address = ServiceAddress {
         service_id: "test-service".to_string(),
-        endpoint: Some("http://localhost:8080".to_string()),
+        endpoint: Some("http://localhost:{}".to_string()),
     };
 
     assert_eq!(address.service_id, "test-service");
-    assert_eq!(address.endpoint, Some("http://localhost:8080".to_string()));
+    assert_eq!(address.endpoint, Some("http://localhost:{}".to_string()));
 }
 
 /// Test ServiceMessage creation
@@ -65,10 +65,10 @@ async fn test_communication_stats_creation() {
         bytes_received: 9800,
     };
 
-    assert_eq!(stats.messages_sent, 100);
-    assert_eq!(stats.messages_received, 95);
-    assert_eq!(stats.bytes_sent, 10240);
-    assert_eq!(stats.bytes_received, 9800);
+    assert_eq!(stats.await.messages_sent, 100);
+    assert_eq!(stats.await.messages_received, 95);
+    assert_eq!(stats.await.bytes_sent, 10240);
+    assert_eq!(stats.await.bytes_received, 9800);
 }
 
 /// Test ServiceAddress cloning
@@ -76,7 +76,7 @@ async fn test_communication_stats_creation() {
 async fn test_service_address_cloning() {
     let address = ServiceAddress {
         service_id: "test-service".to_string(),
-        endpoint: Some("http://localhost:8080".to_string()),
+        endpoint: Some("http://localhost:{}".to_string()),
     };
 
     let cloned = address.clone();

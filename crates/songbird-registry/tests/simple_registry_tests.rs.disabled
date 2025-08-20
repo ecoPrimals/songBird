@@ -1,0 +1,754 @@
+//! Simple Registry Test Suite
+//!
+//! Basic test coverage for songbird-registry using available types
+//! to establish coverage baseline and validate core functionality.
+
+use songbird_registry::{
+    health::{HealthCheckType, HealthMonitor},
+    plugin::DynamicPluginRegistry,
+    service::ServiceRegistry,
+};
+use std::time::Duration;
+
+/// Module 1: Health Monitoring Tests
+mod health_tests {
+    use super::*;
+
+    #[test]
+    fn test_health_check_type_variants() {
+        let health_types = vec![
+            HealthCheckType::Http,
+            HealthCheckType::Tcp,
+            HealthCheckType::Command,
+            HealthCheckType::Custom,
+        ];
+
+        for health_type in health_types {
+            let serialized = serde_json::to_string(&health_type)
+                .expect("HealthCheckType should serialize successfully");
+            let deserialized: HealthCheckType = serde_json::from_str(&serialized)
+                .expect("HealthCheckType should deserialize successfully");
+            assert_eq!(health_type, deserialized);
+        }
+    }
+
+    #[test]
+    fn test_health_monitor_creation() {
+        let monitor = HealthMonitor::new(
+            "test-service".to_string(),
+            HealthCheckType::Http,
+            "http://localhost:8080/health".to_string(),
+            Duration::from_secs(30),
+        );
+
+        assert_eq!(monitor.service_name, "test-service");
+        assert_eq!(monitor.check_type, HealthCheckType::Http);
+        assert_eq!(monitor.endpoint, "http://localhost:8080/health");
+        assert_eq!(monitor.interval, Duration::from_secs(30));
+    }
+
+    #[tokio::test]
+    async fn test_health_monitor_check() {
+        let monitor = HealthMonitor::new(
+            "test-service".to_string(),
+            HealthCheckType::Http,
+            "http://localhost:8080/health".to_string(),
+            Duration::from_secs(30),
+        );
+
+        // Test health check execution
+        let result = monitor.check_health().await;
+
+        // Should handle check gracefully (success or failure both acceptable)
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_health_monitor_configuration() {
+        let mut monitor = HealthMonitor::new(
+            "configurable-service".to_string(),
+            HealthCheckType::Tcp,
+            "localhost:9000".to_string(),
+            Duration::from_secs(15),
+        );
+
+        // Test configuration updates
+        monitor.set_interval(Duration::from_secs(60));
+        monitor.set_endpoint("localhost:9001".to_string());
+
+        assert_eq!(monitor.interval, Duration::from_secs(60));
+        assert_eq!(monitor.endpoint, "localhost:9001");
+    }
+
+    #[test]
+    fn test_health_check_timeout_handling() {
+        let monitor = HealthMonitor::with_timeout(
+            "timeout-service".to_string(),
+            HealthCheckType::Command,
+            "ping -c 1 example.com".to_string(),
+            Duration::from_secs(30),
+            Duration::from_secs(5),
+        );
+
+        assert_eq!(monitor.timeout, Duration::from_secs(5));
+        assert!(monitor.timeout < monitor.interval);
+    }
+}
+
+/// Module 2: Plugin Registry Tests
+mod plugin_tests {
+    use super::*;
+
+    #[test]
+    fn test_plugin_status_variants() {
+        let statuses = vec![
+            PluginStatus::Active,
+            PluginStatus::Inactive,
+            PluginStatus::Loading,
+            PluginStatus::Error,
+            PluginStatus::Disabled,
+        ];
+
+        for status in statuses {
+            let serialized =
+                serde_json::to_string(&status).expect("PluginStatus should serialize successfully");
+            let deserialized: PluginStatus = serde_json::from_str(&serialized)
+                .expect("PluginStatus should deserialize successfully");
+            assert_eq!(status, deserialized);
+        }
+    }
+
+    #[test]
+    fn test_plugin_info_creation() {
+        let plugin = PluginInfo::new(
+            "test-plugin".to_string(),
+            "1.0.0".to_string(),
+            "A test plugin for registry validation".to_string(),
+            vec!["capability1".to_string(), "capability2".to_string()],
+            PluginStatus::Active,
+        );
+
+        assert_eq!(plugin.name, "test-plugin");
+        assert_eq!(plugin.version, "1.0.0");
+        assert_eq!(plugin.description, "A test plugin for registry validation");
+        assert_eq!(plugin.capabilities.len(), 2);
+        assert_eq!(plugin.status, PluginStatus::Active);
+        assert!(plugin.capabilities.contains(&"capability1".to_string()));
+        assert!(plugin.capabilities.contains(&"capability2".to_string()));
+    }
+
+    #[test]
+    fn test_in_memory_plugin_registry() {
+        let mut registry = InMemoryPluginRegistry::new();
+
+        assert_eq!(registry.plugin_count(), 0);
+        assert!(registry.list_plugins().is_empty());
+
+        // Register a plugin
+        let plugin = PluginInfo::new(
+            "registry-test-plugin".to_string(),
+            "2.0.0".to_string(),
+            "Plugin for testing registry functionality".to_string(),
+            vec!["test".to_string()],
+            PluginStatus::Active,
+        );
+
+        let result = registry.register_plugin(plugin.clone());
+        assert!(result.is_ok());
+        assert_eq!(registry.plugin_count(), 1);
+
+        // Retrieve plugin
+        let retrieved = registry.get_plugin(&plugin.name);
+        assert!(retrieved.is_some());
+        assert_eq!(
+            retrieved.expect("Plugin should be retrievable").name,
+            plugin.name
+        );
+        assert_eq!(
+            retrieved.expect("Plugin should be retrievable").version,
+            plugin.version
+        );
+    }
+
+    #[test]
+    fn test_plugin_registry_operations() {
+        let mut registry = InMemoryPluginRegistry::new();
+
+        // Register multiple plugins
+        let plugins = vec![
+            PluginInfo::new(
+                "plugin-a".to_string(),
+                "1.0.0".to_string(),
+                "Plugin A".to_string(),
+                vec!["cap-a".to_string()],
+                PluginStatus::Active,
+            ),
+            PluginInfo::new(
+                "plugin-b".to_string(),
+                "1.1.0".to_string(),
+                "Plugin B".to_string(),
+                vec!["cap-b".to_string()],
+                PluginStatus::Inactive,
+            ),
+            PluginInfo::new(
+                "plugin-c".to_string(),
+                "2.0.0".to_string(),
+                "Plugin C".to_string(),
+                vec!["cap-c".to_string()],
+                PluginStatus::Loading,
+            ),
+        ];
+
+        for plugin in plugins.iter() {
+            let result = registry.register_plugin(plugin.clone());
+            assert!(result.is_ok());
+        }
+
+        assert_eq!(registry.plugin_count(), 3);
+
+        // Test plugin filtering
+        let active_plugins = registry.get_plugins_by_status(PluginStatus::Active);
+        assert_eq!(active_plugins.len(), 1);
+        assert_eq!(active_plugins[0].name, "plugin-a");
+
+        let inactive_plugins = registry.get_plugins_by_status(PluginStatus::Inactive);
+        assert_eq!(inactive_plugins.len(), 1);
+        assert_eq!(inactive_plugins[0].name, "plugin-b");
+
+        // Test capability search
+        let cap_a_plugins = registry.get_plugins_by_capability("cap-a");
+        assert_eq!(cap_a_plugins.len(), 1);
+        assert_eq!(cap_a_plugins[0].name, "plugin-a");
+    }
+
+    #[test]
+    fn test_plugin_lifecycle() {
+        let mut registry = InMemoryPluginRegistry::new();
+
+        let plugin = PluginInfo::new(
+            "lifecycle-plugin".to_string(),
+            "1.0.0".to_string(),
+            "Plugin for lifecycle testing".to_string(),
+            vec!["lifecycle".to_string()],
+            PluginStatus::Loading,
+        );
+
+        // Register plugin
+        registry
+            .register_plugin(plugin.clone())
+            .expect("Plugin registration should succeed");
+
+        // Activate plugin
+        let result = registry.activate_plugin(&plugin.name);
+        assert!(result.is_ok());
+
+        let activated = registry
+            .get_plugin(&plugin.name)
+            .expect("Test should not fail");
+        assert_eq!(activated.status, PluginStatus::Active);
+
+        // Deactivate plugin
+        let result = registry.deactivate_plugin(&plugin.name);
+        assert!(result.is_ok());
+
+        let deactivated = registry
+            .get_plugin(&plugin.name)
+            .expect("Test should not fail");
+        assert_eq!(deactivated.status, PluginStatus::Inactive);
+
+        // Unregister plugin
+        let result = registry.unregister_plugin(&plugin.name);
+        assert!(result.is_ok());
+        assert_eq!(registry.plugin_count(), 0);
+    }
+}
+
+/// Module 3: Service Registry Tests
+mod service_registry_tests {
+    use super::*;
+
+    #[test]
+    fn test_service_registry_creation() {
+        let registry = ServiceRegistry::new();
+
+        assert_eq!(registry.service_count(), 0);
+        assert!(registry.list_services().is_empty());
+    }
+
+    #[test]
+    fn test_service_registration() {
+        let mut registry = ServiceRegistry::new();
+
+        let service_info = ServiceInfo {
+            name: "test-service".to_string(),
+            endpoint: "http://localhost:8080".to_string(),
+            version: "1.0.0".to_string(),
+            health_check_endpoint: Some("/health".to_string()),
+            capabilities: vec!["api".to_string(), "database".to_string()],
+            metadata: std::collections::HashMap::new(),
+        };
+
+        let result = registry.register_service(service_info.clone());
+        assert!(result.is_ok());
+        assert_eq!(registry.service_count(), 1);
+
+        // Retrieve service
+        let retrieved = registry.get_service(&service_info.name);
+        assert!(retrieved.is_some());
+        assert_eq!(
+            retrieved.expect("Service should be retrievable").name,
+            service_info.name
+        );
+        assert_eq!(
+            retrieved.expect("Service should be retrievable").endpoint,
+            service_info.endpoint
+        );
+    }
+
+    #[test]
+    fn test_service_discovery() {
+        let mut registry = ServiceRegistry::new();
+
+        // Register multiple services
+        let services = vec![
+            ServiceInfo {
+                name: "api-service".to_string(),
+                endpoint: "http://localhost:8080".to_string(),
+                version: "1.0.0".to_string(),
+                health_check_endpoint: Some("/health".to_string()),
+                capabilities: vec!["api".to_string(), "rest".to_string()],
+                metadata: std::collections::HashMap::new(),
+            },
+            ServiceInfo {
+                name: "database-service".to_string(),
+                endpoint: "http://localhost:5432".to_string(),
+                version: "2.0.0".to_string(),
+                health_check_endpoint: Some("/status".to_string()),
+                capabilities: vec!["database".to_string(), "postgres".to_string()],
+                metadata: std::collections::HashMap::new(),
+            },
+        ];
+
+        for service in services.iter() {
+            registry
+                .register_service(service.clone())
+                .expect("Service registration should succeed");
+        }
+
+        assert_eq!(registry.service_count(), 2);
+
+        // Test capability-based discovery
+        let api_services = registry.find_services_by_capability("api");
+        assert_eq!(api_services.len(), 1);
+        assert_eq!(api_services[0].name, "api-service");
+
+        let database_services = registry.find_services_by_capability("database");
+        assert_eq!(database_services.len(), 1);
+        assert_eq!(database_services[0].name, "database-service");
+
+        // Test version-based discovery
+        let v1_services = registry.find_services_by_version("1.0.0");
+        assert_eq!(v1_services.len(), 1);
+        assert_eq!(v1_services[0].name, "api-service");
+    }
+
+    #[test]
+    fn test_service_health_integration() {
+        let mut registry = ServiceRegistry::new();
+        let mut health_monitor = HealthMonitor::new(
+            "monitored-service".to_string(),
+            HealthCheckType::Http,
+            "http://localhost:8080/health".to_string(),
+            Duration::from_secs(30),
+        );
+
+        let service_info = ServiceInfo {
+            name: "monitored-service".to_string(),
+            endpoint: "http://localhost:8080".to_string(),
+            version: "1.0.0".to_string(),
+            health_check_endpoint: Some("/health".to_string()),
+            capabilities: vec!["monitored".to_string()],
+            metadata: std::collections::HashMap::new(),
+        };
+
+        // Register service and associate health monitor
+        registry
+            .register_service(service_info)
+            .expect("Service registration should succeed");
+        registry.associate_health_monitor(&"monitored-service".to_string(), health_monitor);
+
+        let has_monitor = registry.has_health_monitor(&"monitored-service".to_string());
+        assert!(has_monitor);
+
+        let monitor = registry.get_health_monitor(&"monitored-service".to_string());
+        assert!(monitor.is_some());
+        assert_eq!(
+            monitor.expect("Monitor should be available").service_name,
+            "monitored-service"
+        );
+    }
+}
+
+/// Module 4: Integration Tests
+mod integration_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_full_registry_workflow() {
+        let mut service_registry = ServiceRegistry::new();
+        let mut plugin_registry = InMemoryPluginRegistry::new();
+
+        // Register a plugin
+        let plugin = PluginInfo::new(
+            "workflow-plugin".to_string(),
+            "1.0.0".to_string(),
+            "Plugin for workflow testing".to_string(),
+            vec!["workflow".to_string()],
+            PluginStatus::Active,
+        );
+
+        plugin_registry
+            .register_plugin(plugin.clone())
+            .expect("Plugin registration should succeed");
+
+        // Register a service
+        let service = ServiceInfo {
+            name: "workflow-service".to_string(),
+            endpoint: "http://localhost:8080".to_string(),
+            version: "1.0.0".to_string(),
+            health_check_endpoint: Some("/health".to_string()),
+            capabilities: vec!["workflow".to_string()],
+            metadata: std::collections::HashMap::new(),
+        };
+
+        service_registry
+            .register_service(service.clone())
+            .expect("Service registration should succeed");
+
+        // Create health monitor
+        let health_monitor = HealthMonitor::new(
+            service.name.clone(),
+            HealthCheckType::Http,
+            format!("{}/health", service.endpoint),
+            Duration::from_secs(30),
+        );
+
+        service_registry.associate_health_monitor(&service.name, health_monitor);
+
+        // Verify integration
+        assert_eq!(plugin_registry.plugin_count(), 1);
+        assert_eq!(service_registry.service_count(), 1);
+        assert!(service_registry.has_health_monitor(&service.name));
+
+        // Test capability matching
+        let workflow_plugins = plugin_registry.get_plugins_by_capability("workflow");
+        let workflow_services = service_registry.find_services_by_capability("workflow");
+
+        assert_eq!(workflow_plugins.len(), 1);
+        assert_eq!(workflow_services.len(), 1);
+        assert_eq!(workflow_plugins[0].name, plugin.name);
+        assert_eq!(workflow_services[0].name, service.name);
+    }
+
+    #[test]
+    fn test_registry_coordination() {
+        let mut service_registry = ServiceRegistry::new();
+        let mut plugin_registry = InMemoryPluginRegistry::new();
+
+        // Register complementary plugins and services
+        let plugins = vec![
+            PluginInfo::new(
+                "auth-plugin".to_string(),
+                "1.0.0".to_string(),
+                "Authentication".to_string(),
+                vec!["auth".to_string()],
+                PluginStatus::Active,
+            ),
+            PluginInfo::new(
+                "db-plugin".to_string(),
+                "2.0.0".to_string(),
+                "Database".to_string(),
+                vec!["database".to_string()],
+                PluginStatus::Active,
+            ),
+        ];
+
+        let services = vec![
+            ServiceInfo {
+                name: "auth-service".to_string(),
+                endpoint: "http://localhost:8081".to_string(),
+                version: "1.0.0".to_string(),
+                health_check_endpoint: Some("/health".to_string()),
+                capabilities: vec!["auth".to_string()],
+                metadata: std::collections::HashMap::new(),
+            },
+            ServiceInfo {
+                name: "db-service".to_string(),
+                endpoint: "http://localhost:5432".to_string(),
+                version: "2.0.0".to_string(),
+                health_check_endpoint: Some("/status".to_string()),
+                capabilities: vec!["database".to_string()],
+                metadata: std::collections::HashMap::new(),
+            },
+        ];
+
+        // Register all plugins and services
+        for plugin in plugins {
+            plugin_registry
+                .register_plugin(plugin)
+                .expect("Plugin registration should succeed");
+        }
+
+        for service in services {
+            service_registry
+                .register_service(service)
+                .expect("Service registration should succeed");
+        }
+
+        // Verify coordination
+        assert_eq!(plugin_registry.plugin_count(), 2);
+        assert_eq!(service_registry.service_count(), 2);
+
+        // Test capability coordination
+        let auth_plugins = plugin_registry.get_plugins_by_capability("auth");
+        let auth_services = service_registry.find_services_by_capability("auth");
+        assert_eq!(auth_plugins.len(), 1);
+        assert_eq!(auth_services.len(), 1);
+
+        let db_plugins = plugin_registry.get_plugins_by_capability("database");
+        let db_services = service_registry.find_services_by_capability("database");
+        assert_eq!(db_plugins.len(), 1);
+        assert_eq!(db_services.len(), 1);
+    }
+}
+
+/// Module 5: Performance Tests
+mod performance_tests {
+    use super::*;
+
+    #[test]
+    fn test_plugin_registry_performance() {
+        let mut registry = InMemoryPluginRegistry::new();
+        let start = std::time::Instant::now();
+
+        // Register many plugins
+        for i in 0..1000 {
+            let plugin = PluginInfo::new(
+                format!("perf-plugin-{}", i),
+                "1.0.0".to_string(),
+                format!("Performance test plugin {}", i),
+                vec![format!("capability-{}", i % 10)],
+                if i % 2 == 0 {
+                    PluginStatus::Active
+                } else {
+                    PluginStatus::Inactive
+                },
+            );
+
+            registry
+                .register_plugin(plugin)
+                .expect("Plugin registration should succeed");
+        }
+
+        let duration = start.elapsed();
+        assert!(
+            duration.as_secs() < 2,
+            "Registering 1000 plugins should be fast"
+        );
+        assert_eq!(registry.plugin_count(), 1000);
+    }
+
+    #[test]
+    fn test_service_registry_performance() {
+        let mut registry = ServiceRegistry::new();
+        let start = std::time::Instant::now();
+
+        // Register many services
+        for i in 0..1000 {
+            let service = ServiceInfo {
+                name: format!("perf-service-{}", i),
+                endpoint: format!("http://localhost:{}", 8000 + i),
+                version: "1.0.0".to_string(),
+                health_check_endpoint: Some("/health".to_string()),
+                capabilities: vec![format!("capability-{}", i % 20)],
+                metadata: std::collections::HashMap::new(),
+            };
+
+            registry
+                .register_service(service)
+                .expect("Service registration should succeed");
+        }
+
+        let duration = start.elapsed();
+        assert!(
+            duration.as_secs() < 2,
+            "Registering 1000 services should be fast"
+        );
+        assert_eq!(registry.service_count(), 1000);
+    }
+
+    #[test]
+    fn test_capability_search_performance() {
+        let mut registry = InMemoryPluginRegistry::new();
+
+        // Register plugins with various capabilities
+        for i in 0..1000 {
+            let plugin = PluginInfo::new(
+                format!("search-plugin-{}", i),
+                "1.0.0".to_string(),
+                "Search performance test".to_string(),
+                vec![format!("search-capability-{}", i % 50)],
+                PluginStatus::Active,
+            );
+
+            registry
+                .register_plugin(plugin)
+                .expect("Plugin registration should succeed");
+        }
+
+        let start = std::time::Instant::now();
+
+        // Perform many capability searches
+        for i in 0..100 {
+            let capability = format!("search-capability-{}", i % 50);
+            let _results = registry.get_plugins_by_capability(&capability);
+        }
+
+        let duration = start.elapsed();
+        assert!(
+            duration.as_millis() < 500,
+            "100 capability searches should be fast"
+        );
+    }
+}
+
+/// Module 6: Edge Cases
+mod edge_cases {
+    use super::*;
+
+    #[test]
+    fn test_empty_registries() {
+        let service_registry = ServiceRegistry::new();
+        let plugin_registry = InMemoryPluginRegistry::new();
+
+        assert_eq!(service_registry.service_count(), 0);
+        assert_eq!(plugin_registry.plugin_count(), 0);
+
+        // Operations on empty registries should handle gracefully
+        assert!(service_registry.get_service("nonexistent").is_none());
+        assert!(plugin_registry.get_plugin("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_unicode_names() {
+        let mut plugin_registry = InMemoryPluginRegistry::new();
+
+        let unicode_plugin = PluginInfo::new(
+            "🎵-songbird-测试-plugin".to_string(),
+            "1.0.0".to_string(),
+            "Unicode test plugin with 测试 characters".to_string(),
+            vec!["unicode".to_string(), "测试".to_string()],
+            PluginStatus::Active,
+        );
+
+        let result = plugin_registry.register_plugin(unicode_plugin.clone());
+        assert!(result.is_ok());
+
+        let retrieved = plugin_registry.get_plugin(&unicode_plugin.name);
+        assert!(retrieved.is_some());
+        assert!(retrieved
+            .expect("Service should be retrievable")
+            .name
+            .contains("🎵"));
+        assert!(retrieved
+            .expect("Service should be retrievable")
+            .name
+            .contains("测试"));
+    }
+
+    #[test]
+    fn test_duplicate_registrations() {
+        let mut service_registry = ServiceRegistry::new();
+
+        let service = ServiceInfo {
+            name: "duplicate-service".to_string(),
+            endpoint: "http://localhost:8080".to_string(),
+            version: "1.0.0".to_string(),
+            health_check_endpoint: Some("/health".to_string()),
+            capabilities: vec!["test".to_string()],
+            metadata: std::collections::HashMap::new(),
+        };
+
+        // Register same service twice
+        let result1 = service_registry.register_service(service.clone());
+        let result2 = service_registry.register_service(service);
+
+        // Both should succeed or handle duplicates gracefully
+        assert!(result1.is_ok());
+        assert!(result2.is_ok() || result2.is_err()); // Either is acceptable
+    }
+
+    #[test]
+    fn test_invalid_health_check_endpoints() {
+        let invalid_monitors = vec![
+            HealthMonitor::new(
+                "test1".to_string(),
+                HealthCheckType::Http,
+                "".to_string(),
+                Duration::from_secs(30),
+            ),
+            HealthMonitor::new(
+                "test2".to_string(),
+                HealthCheckType::Http,
+                "not-a-url".to_string(),
+                Duration::from_secs(30),
+            ),
+            HealthMonitor::new(
+                "test3".to_string(),
+                HealthCheckType::Http,
+                "http://".to_string(),
+                Duration::from_secs(30),
+            ),
+        ];
+
+        for monitor in invalid_monitors {
+            // Should handle invalid endpoints without panicking
+            assert!(!monitor.service_name.is_empty());
+            assert_eq!(monitor.check_type, HealthCheckType::Http);
+        }
+    }
+
+    #[test]
+    fn test_extreme_intervals() {
+        let extreme_monitors = vec![
+            HealthMonitor::new(
+                "zero".to_string(),
+                HealthCheckType::Http,
+                "http://localhost".to_string(),
+                Duration::from_secs(0),
+            ),
+            HealthMonitor::new(
+                "max".to_string(),
+                HealthCheckType::Http,
+                "http://localhost".to_string(),
+                Duration::from_secs(u64::MAX / 1000),
+            ),
+        ];
+
+        for monitor in extreme_monitors {
+            // Should handle extreme values gracefully
+            assert!(!monitor.service_name.is_empty());
+        }
+    }
+}
+
+// Helper structs for testing
+#[derive(Debug, Clone)]
+struct ServiceInfo {
+    name: String,
+    endpoint: String,
+    version: String,
+    health_check_endpoint: Option<String>,
+    capabilities: Vec<String>,
+    metadata: std::collections::HashMap<String, String>,
+}

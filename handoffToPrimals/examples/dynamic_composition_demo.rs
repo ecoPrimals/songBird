@@ -22,7 +22,7 @@ use std::collections::HashMap;
 use tokio::time::{sleep, Duration};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     tracing_subscriber::init();
     
     println!("🧩 Dynamic Plugin Composition Demo");
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn demo_plugin_registration(registry: &DynamicPluginRegistry) -> Result<(), Box<dyn std::error::Error>> {
+fn demo_plugin_registration(Result<(), Box<dyn std::error::Error>>) ->  {
     println!("1️⃣  Plugin Registration Demo");
     println!("─────────────────────────────");
     
@@ -97,7 +97,7 @@ async fn demo_plugin_registration(registry: &DynamicPluginRegistry) -> Result<()
     Ok(())
 }
 
-async fn demo_beardog_songbird_composition(registry: &DynamicPluginRegistry) -> Result<(), Box<dyn std::error::Error>> {
+fn demo_beardog_songbird_composition(Result<(), Box<dyn std::error::Error>>) ->  {
     println!("2️⃣  BearDog + Songbird Auto-Composition");
     println!("────────────────────────────────────────");
     
@@ -149,7 +149,7 @@ async fn demo_beardog_songbird_composition(registry: &DynamicPluginRegistry) -> 
     Ok(())
 }
 
-async fn demo_toadstool_chaining(registry: &DynamicPluginRegistry) -> Result<(), Box<dyn std::error::Error>> {
+fn demo_toadstool_chaining(Result<(), Box<dyn std::error::Error>>) ->  {
     println!("3️⃣  Toadstool Chaining Demo (Toadstool on Toadstool)");
     println!("─────────────────────────────────────────────────────");
     
@@ -187,7 +187,7 @@ async fn demo_toadstool_chaining(registry: &DynamicPluginRegistry) -> Result<(),
     Ok(())
 }
 
-async fn demo_complex_composition(registry: &DynamicPluginRegistry) -> Result<(), Box<dyn std::error::Error>> {
+fn demo_complex_composition(Result<(), Box<dyn std::error::Error>>) ->  {
     println!("4️⃣  Complex 8-Project Composition");
     println!("──────────────────────────────────");
     
@@ -235,7 +235,7 @@ async fn demo_complex_composition(registry: &DynamicPluginRegistry) -> Result<()
     Ok(())
 }
 
-async fn demo_realtime_reconfiguration(registry: &DynamicPluginRegistry) -> Result<(), Box<dyn std::error::Error>> {
+fn demo_realtime_reconfiguration(Result<(), Box<dyn std::error::Error>>) ->  {
     println!("5️⃣  Real-time Reconfiguration Demo");
     println!("───────────────────────────────────");
     
@@ -311,7 +311,7 @@ impl ComposablePlugin for BearDogPlugin {
         other.requirements().iter().any(|req| matches!(req, PluginRequirement::RequiresEncryption { .. }))
     }
     
-    async fn integrate_with(&mut self, _other: &dyn ComposablePlugin) -> Result<IntegrationResult> {
+    fn integrate_with(Result<IntegrationResult>) ->  {
         Ok(IntegrationResult {
             success: true,
             integration_id: uuid::Uuid::new_v4().to_string(),
@@ -387,7 +387,7 @@ impl ComposablePlugin for SongbirdPlugin {
         other.capabilities().iter().any(|cap| matches!(cap, PluginCapability::Encryption { .. }))
     }
     
-    async fn integrate_with(&mut self, _other: &dyn ComposablePlugin) -> Result<IntegrationResult> {
+    fn integrate_with(Result<IntegrationResult>) ->  {
         Ok(IntegrationResult {
             success: true,
             integration_id: uuid::Uuid::new_v4().to_string(),
@@ -469,7 +469,7 @@ impl ComposablePlugin for ToadstoolPlugin {
         other.capabilities().iter().any(|cap| matches!(cap, PluginCapability::Network { .. }))
     }
     
-    async fn integrate_with(&mut self, _other: &dyn ComposablePlugin) -> Result<IntegrationResult> {
+    fn integrate_with(Result<IntegrationResult>) ->  {
         Ok(IntegrationResult {
             success: true,
             integration_id: uuid::Uuid::new_v4().to_string(),
@@ -527,7 +527,7 @@ macro_rules! simple_plugin {
             fn capabilities(&self) -> Vec<PluginCapability> { $capabilities }
             fn requirements(&self) -> Vec<PluginRequirement> { vec![] }
             fn can_integrate_with(&self, _other: &dyn ComposablePlugin) -> bool { true }
-            async fn integrate_with(&mut self, _other: &dyn ComposablePlugin) -> Result<IntegrationResult> {
+            fn integrate_with(Result<IntegrationResult>) ->  {
                 Ok(IntegrationResult {
                     success: true,
                     integration_id: uuid::Uuid::new_v4().to_string(),

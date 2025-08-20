@@ -1,466 +1,269 @@
-//! BearDog Security Module Integration Demo
+//! Universal Security Provider Integration Demo
 //!
-//! Demonstrates how the BearDog security module integrates with
-//! Songbird Orchestrator's encrypted snapshot system for production-grade
-//! security with your in-house security module.
+//! Demonstrates how any security provider integrates with Songbird through
+//! the universal adapter system. This replaces hardcoded BearDog integration.
 //!
-//! This example shows:
-//! - Setting up BearDog integration
-//! - Creating encrypted snapshots with BearDog
-//! - Access control with BearDog authorization
-//! - Audit logging with BearDog security events
-//! - Federation-ready encrypted storage
+//! ## Features Demonstrated
+//! - Setting up universal security adapter
+//! - Creating encrypted snapshots with any security provider
+//! - Access control with universal authorization
+//! - Audit logging with universal security events
 
-use songbird_orchestrator::{
-    federation::{
-        // Core types
-        SnapshotMetadata, SnapshotType, AccessControlList, NodeAccessEntry,
-        StoragePreferences, PerformanceTier, SnapshotFilters,
-        // BearDog integration types
-        BearDogEncryptedSnapshotManager, BearDogSecurityProvider,
-        BearDogSecurityContext, BearDogEncryptedData, BearDogKeySpec, BearDogKeyHandle,
-        BearDogKeyPurpose, BearDogRotationPolicy, BearDogSecurityLevel,
-        BearDogPrincipal, BearDogResource, BearDogAction, BearDogSecureChannel,
-        BearDogSecurityEvent, BearDogSecurityEventType, BearDogSecurityOutcome,
-        BearDogPrincipalType, BearDogKeyContext, BearDogTimePeriod,
-        BearDogComplianceReport, BearDogAuditLevel, BearDogComplianceMode,
-    },
-    discovery::types::{NodeId, TrustLevel},
-    errors::{Result, SongbirdError},
+use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_universal::adapters::security::{
+    UniversalSecurityAdapter, SecurityProvider, SecurityCapability, ProviderHealth,
+    EncryptionContext, EncryptedData, AuthCredentials, AuthToken
 };
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use chrono::{DateTime, Utc};
-
-// ============================================================================
-// MOCK BEARDOG IMPLEMENTATION FOR DEMO
-// ============================================================================
-
-/// Mock BearDog implementation for demonstration
-/// 
-/// In your real implementation, this would connect to your actual BearDog
-/// security service via HTTP, gRPC, or direct library integration.
-pub struct MockBearDogProvider {
-    keys: Arc<RwLock<HashMap<String, Vec<u8>>>>,
-    audit_log: Arc<RwLock<Vec<BearDogSecurityEvent>>>,
-    compliance_violations: Arc<RwLock<u64>>,
-}
-
-impl MockBearDogProvider {
-    pub fn new() -> Self {
-        Self {
-            keys: Arc::new(RwLock::new(HashMap::new())),
-            audit_log: Arc::new(RwLock::new(Vec::new())),
-            compliance_violations: Arc::new(RwLock::new(0)),
-        }
-    }
-    
-    pub async fn get_audit_log(&self) -> Vec<BearDogSecurityEvent> {
-        self.audit_log.read().await.clone()
-    }
-    
-    pub async fn get_compliance_violations(&self) -> u64 {
-        *self.compliance_violations.read().await
-    }
-}
-
-#[async_trait]
-impl BearDogSecurityProvider for MockBearDogProvider {
-    async fn encrypt(&self, data: &[u8], context: &BearDogSecurityContext) -> Result<BearDogEncryptedData> {
-        // **DEMO ENCRYPTION** - In production, BearDog provides world-class crypto
-        // This demo shows integration pattern, not production security
-        use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
-        use ring::rand::{SecureRandom, SystemRandom};
-        use rand::{thread_rng, Rng};
-        
-        tracing::info!("BearDog DEMO: Encrypting {} bytes with security level {:?}", data.len(), context.security_level);
-        tracing::info!("🔒 This is a DEMO - production BearDog provides genetic cryptography");
-        
-        // Generate secure demo key (not hardcoded [42u8; 32])
-        let mut key = [0u8; 32];
-        thread_rng().fill(&mut key); // Secure random key for demo
-        
-        let unbound_key = UnboundKey::new(&AES_256_GCM, &key)
-            .map_err(|_| SongbirdError::SecurityError("Failed to create demo encryption key".to_string()))?;
-        let encryption_key = LessSafeKey::new(unbound_key);
-        
-        let rng = SystemRandom::new();
-        let mut nonce_bytes = [0u8; 12];
-        rng.fill(&mut nonce_bytes)
-            .map_err(|_| SongbirdError::SecurityError("Failed to generate nonce".to_string()))?;
-        
-        let nonce = Nonce::assume_unique_for_key(nonce_bytes);
-        let mut in_out = data.to_vec();
-        encryption_key.seal_in_place_append_tag(nonce, Aad::empty(), &mut in_out)
-            .map_err(|_| SongbirdError::SecurityError("Encryption failed".to_string()))?;
-        
-        Ok(BearDogEncryptedData {
-            algorithm: "AES-256-GCM".to_string(),
-            nonce: nonce_bytes.to_vec(),
-            ciphertext: in_out,
-            salt: None,
-            key_handle: None,
-        })
-    }
-    
-    async fn decrypt(&self, encrypted: &BearDogEncryptedData, context: &BearDogSecurityContext) -> Result<Vec<u8>> {
-        // Mock decryption (in real BearDog, this would be your crypto)
-        use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
-        
-        tracing::info!("BearDog: Decrypting data for operation {}", context.operation_id);
-        
-        // **DEMO DECRYPTION** - In production, BearDog manages keys securely
-        use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
-        use rand::{thread_rng, Rng};
-        
-        tracing::info!("BearDog DEMO: Decrypting data for operation {}", context.operation_id);
-        tracing::warn!("🔒 DEMO ONLY - Real BearDog uses proper key management");
-        
-        // For demo purposes, we'll need to use the same key as encryption
-        // In real BearDog, this would come from secure key management
-        let mut key = [0u8; 32]; 
-        thread_rng().fill(&mut key); // This is just for demo - real BearDog has persistent key management
-        
-        let unbound_key = UnboundKey::new(&AES_256_GCM, &key)
-            .map_err(|_| SongbirdError::SecurityError("Failed to create demo decryption key".to_string()))?;
-        let decryption_key = LessSafeKey::new(unbound_key);
-        
-        let nonce_bytes: [u8; 12] = encrypted.nonce.as_slice()
-            .try_into()
-            .map_err(|_| SongbirdError::SecurityError("Invalid nonce length".to_string()))?;
-        let nonce = Nonce::assume_unique_for_key(nonce_bytes);
-        
-        let mut in_out = encrypted.ciphertext.clone();
-        let plaintext = decryption_key.open_in_place(nonce, Aad::empty(), &mut in_out)
-            .map_err(|_| SongbirdError::SecurityError("Decryption failed".to_string()))?;
-        
-        Ok(plaintext.to_vec())
-    }
-    
-    async fn derive_key(&self, key_id: &str, context: &BearDogKeyContext) -> Result<Vec<u8>> {
-        tracing::info!("BearDog DEMO: Deriving key {} for purpose {:?}", key_id, context.key_purpose);
-        tracing::warn!("🔑 DEMO ONLY - Real BearDog uses hardware security modules");
-        
-        let mut keys = self.keys.write().await;
-        if let Some(key) = keys.get(key_id) {
-            Ok(key.clone())
-        } else {
-            // Use secure key derivation for demo (not hardcoded [42u8; 32])
-            use ring::digest;
-            use rand::{thread_rng, Rng};
-            
-            // Create key material from key_id + random salt (demo approach)
-            let mut salt = [0u8; 16];
-            thread_rng().fill(&mut salt);
-            
-            let mut key_input = Vec::new();
-            key_input.extend_from_slice(key_id.as_bytes());
-            key_input.extend_from_slice(&salt);
-            
-            // Derive key using SHA-256 (demo - real BearDog uses advanced KDF)
-            let digest = digest::digest(&digest::SHA256, &key_input);
-            let new_key = digest.as_ref().to_vec();
-            
-            keys.insert(key_id.to_string(), new_key.clone());
-            Ok(new_key)
-        }
-    }
-    
-    async fn generate_key(&self, key_spec: &BearDogKeySpec) -> Result<BearDogKeyHandle> {
-        let key_id = format!("beardog_key_{}", chrono::Utc::now().timestamp_nanos());
-        let key = vec![42u8; key_spec.key_size]; // Mock key generation
-        
-        tracing::info!("BearDog: Generated {} key: {}", key_spec.algorithm, key_id);
-        
-        let mut keys = self.keys.write().await;
-        keys.insert(key_id.clone(), key);
-        
-        Ok(BearDogKeyHandle {
-            id: key_id,
-            version: 1,
-            created_at: Utc::now(),
-            expires_at: Some(Utc::now() + chrono::Duration::days(key_spec.rotation_policy.interval_days as i64)),
-        })
-    }
-    
-    async fn verify_access(&self, principal: &BearDogPrincipal, resource: &BearDogResource, action: &BearDogAction) -> Result<bool> {
-        tracing::info!("BearDog: Verifying access for {} to {} ({})", principal.id, resource.id, action.name);
-        
-        // Mock access control - allow nodes, deny others for demo
-        let allowed = match principal.principal_type {
-            BearDogPrincipalType::Node => true,
-            BearDogPrincipalType::System => true,
-            _ => {
-                // Simulate compliance violation
-                let mut violations = self.compliance_violations.write().await;
-                *violations += 1;
-                false
-            }
-        };
-        
-        if !allowed {
-            tracing::warn!("BearDog: Access denied for {} to {}", principal.id, resource.id);
-        }
-        
-        Ok(allowed)
-    }
-    
-    async fn establish_secure_channel(&self, peer_id: &NodeId) -> Result<BearDogSecureChannel> {
-        tracing::info!("BearDog: Establishing secure channel with peer {}", peer_id);
-        
-        Ok(BearDogSecureChannel {
-            channel_id: format!("beardog_channel_{}", chrono::Utc::now().timestamp_nanos()),
-            peer_id: peer_id.clone(),
-            established_at: Utc::now(),
-            encryption_key: vec![42u8; 32],
-        })
-    }
-    
-    async fn log_security_event(&self, event: &BearDogSecurityEvent) -> Result<()> {
-        let mut audit_log = self.audit_log.write().await;
-        audit_log.push(event.clone());
-        
-        tracing::info!("BearDog: Logged security event {} - {:?}", event.event_id, event.outcome);
-        Ok(())
-    }
-    
-    async fn rotate_key(&self, key_id: &str) -> Result<BearDogKeyHandle> {
-        tracing::info!("BearDog: Rotating key {}", key_id);
-        
-        let new_key_id = format!("{}_rotated_{}", key_id, Utc::now().timestamp());
-        let new_key = vec![43u8; 32]; // New key material
-        
-        let mut keys = self.keys.write().await;
-        keys.insert(new_key_id.clone(), new_key);
-        
-        Ok(BearDogKeyHandle {
-            id: new_key_id,
-            version: 2,
-            created_at: Utc::now(),
-            expires_at: Some(Utc::now() + chrono::Duration::days(30)),
-        })
-    }
-    
-    async fn get_compliance_report(&self, period: &BearDogTimePeriod) -> Result<BearDogComplianceReport> {
-        let audit_events = self.audit_log.read().await;
-        let violations = *self.compliance_violations.read().await;
-        
-        let encryption_ops = audit_events.iter()
-            .filter(|e| matches!(e.event_type, BearDogSecurityEventType::Encryption))
-            .count() as u64;
-        
-        let key_rotations = audit_events.iter()
-            .filter(|e| matches!(e.event_type, BearDogSecurityEventType::KeyRotation))
-            .count() as u64;
-        
-        let compliance_score = if violations == 0 { 100.0 } else { 100.0 - (violations as f64 * 10.0) };
-        
-        Ok(BearDogComplianceReport {
-            period: period.clone(),
-            encryption_operations: encryption_ops,
-            key_rotations,
-            access_violations: violations,
-            compliance_score,
-            recommendations: if violations > 0 {
-                vec!["Review access control policies".to_string()]
-            } else {
-                vec!["Compliance status: EXCELLENT".to_string()]
-            },
-        })
-    }
-}
-
-// ============================================================================
-// DEMO MAIN FUNCTION
-// ============================================================================
+use tracing::{info, warn};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> SongbirdResult<()> {
+    // Initialize tracing
     tracing_subscriber::fmt::init();
-    
-    println!("🐻🐕 BEARDOG SECURITY INTEGRATION WITH SONGBIRD ORCHESTRATOR");
-    println!("===========================================================");
-    println!("🎯 Production-ready encrypted snapshots with BearDog security");
-    println!("🔐 Enterprise key management and access control");
-    println!("🛡️ Comprehensive audit logging and compliance reporting\n");
-    
-    // 1. Initialize BearDog provider
-    println!("1️⃣  Initializing BearDog Security Provider...");
-    let beardog_provider = Arc::new(MockBearDogProvider::new());
-    println!("✅ BearDog provider initialized with enterprise-grade security");
-    
-    // 2. Create BearDog-integrated snapshot manager
-    println!("\n2️⃣  Creating BearDog-integrated Snapshot Manager...");
-    let node_id = "production-node-001".to_string();
-    let snapshot_manager = BearDogEncryptedSnapshotManager::new_with_beardog(
-        beardog_provider.clone(),
-        node_id.clone(),
-        BearDogSecurityLevel::Confidential,
-    )?;
-    println!("✅ BearDog snapshot manager created with Confidential security level");
-    
-    // 3. Create sensitive production data
-    println!("\n3️⃣  Creating sensitive production data...");
-    let sensitive_data = b"CONFIDENTIAL: Production database backup with customer PII and financial records. Classification: Confidential. Access restricted to authorized personnel only.";
-    println!("📊 Data size: {} bytes", sensitive_data.len());
-    println!("🔒 Security classification: CONFIDENTIAL");
-    
-    // 4. Create snapshot metadata
-    let metadata = SnapshotMetadata {
-        name: "Production Customer Database Backup".to_string(),
-        snapshot_type: SnapshotType::Database { 
-            schema_version: "v3.2.1".to_string() 
-        },
-        size_bytes: 0,
-        original_size_bytes: sensitive_data.len() as u64,
-        compression: None,
-        tags: vec![
-            "production".to_string(),
-            "customer-data".to_string(),
-            "pii".to_string(),
-            "financial".to_string(),
-            "confidential".to_string(),
+
+    info!("🚀 Starting Universal Security Provider Integration Demo");
+
+    // Create universal security adapter
+    let security_adapter = UniversalSecurityAdapter::new();
+
+    // Register a security provider (could be BearDog, custom implementation, etc.)
+    let security_provider = SecurityProvider {
+        id: "security-provider-1".to_string(),
+        name: "Universal Security Provider".to_string(), // No hardcoded "BearDog"
+        capabilities: vec![
+            SecurityCapability::Encryption,
+            SecurityCapability::Decryption,
+            SecurityCapability::Authentication,
+            SecurityCapability::Authorization,
+            SecurityCapability::AuditLogging,
         ],
-        version: "2024.01.15".to_string(),
-        expires_at: Some(Utc::now() + chrono::Duration::days(90)),
+        endpoint: "https://security-provider:8443".to_string(),
+        priority: 10,
+        health_status: ProviderHealth::Healthy,
     };
-    
-    // 5. Create access control with specific authorized nodes
-    let access_control = AccessControlList {
-        read_access: vec![
-            NodeAccessEntry {
-                node_id: "backup-restore-node".to_string(),
-                institution: Some("Internal IT Department".to_string()),
-                min_trust_level: TrustLevel::Institutional,
-                granted_at: Utc::now(),
-                expires_at: Some(Utc::now() + chrono::Duration::days(30)),
-            },
-            NodeAccessEntry {
-                node_id: "disaster-recovery-node".to_string(),
-                institution: Some("Internal IT Department".to_string()),
-                min_trust_level: TrustLevel::Institutional,
-                granted_at: Utc::now(),
-                expires_at: Some(Utc::now() + chrono::Duration::days(90)),
-            },
-        ],
-        write_access: vec![],
-        public_read: false,
-        access_expires_at: Some(Utc::now() + chrono::Duration::days(90)),
+
+    security_adapter.register_provider(security_provider).await?;
+
+    // Demo 1: Universal Encryption
+    demo_universal_encryption(&security_adapter).await?;
+
+    // Demo 2: Universal Authentication  
+    demo_universal_authentication(&security_adapter).await?;
+
+    // Demo 3: Universal Authorization
+    demo_universal_authorization(&security_adapter).await?;
+
+    // Demo 4: Health Monitoring
+    demo_health_monitoring(&security_adapter).await?;
+
+    info!("✅ Universal Security Provider Integration Demo completed successfully");
+    Ok(())
+}
+
+/// Demo universal encryption with any security provider
+async fn demo_universal_encryption(adapter: &UniversalSecurityAdapter) -> SongbirdResult<()> {
+    info!("🔒 Demo 1: Universal Encryption");
+
+    let test_data = b"Sensitive data to encrypt";
+    let context = EncryptionContext {
+        algorithm: "AES-256-GCM".to_string(),
+        key_id: Some("demo-key".to_string()),
     };
-    
-    // 6. Create storage preferences for production deployment
-    let storage_preferences = StoragePreferences {
-        preferred_nodes: vec![
-            "storage-node-east-1".to_string(),
-            "storage-node-west-1".to_string(),
-        ],
-        excluded_nodes: vec!["test-node".to_string()],
-        geographic_region: Some("us-central".to_string()),
-        preferred_institutions: vec!["Internal Infrastructure".to_string()],
-        min_storage_trust: TrustLevel::Institutional,
-        replication_factor: 3,
-        performance_tier: PerformanceTier::HighPerformance,
-    };
-    
-    // 7. Create encrypted snapshot using BearDog
-    println!("\n7️⃣  Creating encrypted snapshot with BearDog security...");
-    let snapshot_id = snapshot_manager.create_encrypted_snapshot(
-        sensitive_data,
-        metadata,
-        access_control,
-        storage_preferences,
-    ).await?;
-    println!("✅ BearDog encrypted snapshot created: {}", snapshot_id);
-    println!("🔐 Data encrypted with BearDog enterprise encryption");
-    println!("🗝️  Keys managed by BearDog key management system");
-    println!("📝 Security event logged to BearDog audit system");
-    
-    // 8. Demonstrate authorized access
-    println!("\n8️⃣  Testing authorized access to encrypted snapshot...");
-    let authorized_node = "backup-restore-node".to_string();
-    match snapshot_manager.retrieve_encrypted_snapshot(&snapshot_id, &authorized_node).await {
-        Ok(decrypted_data) => {
-            println!("✅ Authorized access successful");
-            println!("📊 Decrypted {} bytes", decrypted_data.len());
-            println!("🔍 Data integrity verified: {}", decrypted_data == sensitive_data);
-            println!("🛡️ BearDog access control enforced successfully");
+
+    // Encrypt using any available provider
+    match adapter.encrypt_data(test_data, context).await {
+        Ok(encrypted_data) => {
+            info!("✅ Successfully encrypted {} bytes using provider: {}", 
+                  test_data.len(), encrypted_data.provider_id);
+
+            // Decrypt the data
+            match adapter.decrypt_data(&encrypted_data).await {
+                Ok(decrypted_data) => {
+                    info!("✅ Successfully decrypted {} bytes", decrypted_data.len());
+                    assert_eq!(test_data, decrypted_data.as_slice());
+                }
+                Err(e) => warn!("⚠️ Decryption failed: {}", e),
+            }
         }
         Err(e) => {
-            println!("❌ Authorized access failed: {}", e);
+            warn!("⚠️ No encryption providers available: {}", e);
+            info!("💡 This is expected in demo mode - in production, register actual providers");
         }
     }
-    
-    // 9. Demonstrate unauthorized access denial
-    println!("\n9️⃣  Testing unauthorized access (should be denied)...");
-    let unauthorized_node = "random-external-node".to_string();
-    match snapshot_manager.retrieve_encrypted_snapshot(&snapshot_id, &unauthorized_node).await {
-        Ok(_) => {
-            println!("❌ SECURITY VIOLATION: Unauthorized access was allowed!");
+
+    Ok(())
+}
+
+/// Demo universal authentication with any security provider
+async fn demo_universal_authentication(adapter: &UniversalSecurityAdapter) -> SongbirdResult<()> {
+    info!("🔐 Demo 2: Universal Authentication");
+
+    let credentials = AuthCredentials {
+        username: "demo-user".to_string(),
+        password: "demo-password".to_string(),
+        provider: None, // Let adapter choose best provider
+    };
+
+    match adapter.authenticate(credentials).await {
+        Ok(token) => {
+            info!("✅ Successfully authenticated user, token from provider: {}", token.provider);
+            info!("🎫 Token expires at: {}", token.expires_at);
         }
         Err(e) => {
-            println!("✅ Unauthorized access properly denied: {}", e);
-            println!("🛡️ BearDog access control working correctly");
+            warn!("⚠️ Authentication failed: {}", e);
+            info!("💡 This is expected in demo mode - in production, providers handle auth");
         }
     }
-    
-    // 10. Generate compliance report
-    println!("\n🔟 Generating BearDog compliance report...");
-    let report_period = BearDogTimePeriod {
-        start: Utc::now() - chrono::Duration::hours(1),
-        end: Utc::now(),
+
+    Ok(())
+}
+
+/// Demo universal authorization with any security provider
+async fn demo_universal_authorization(adapter: &UniversalSecurityAdapter) -> SongbirdResult<()> {
+    info!("🔒 Demo 3: Universal Authorization");
+
+    // Create a demo token (in real usage, this comes from authentication)
+    let demo_token = AuthToken {
+        token: "demo-token".to_string(),
+        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
+        provider: "demo-provider".to_string(),
     };
-    
-    let compliance_report = beardog_provider.get_compliance_report(&report_period).await?;
-    println!("📊 BEARDOG COMPLIANCE REPORT");
-    println!("   Period: {} to {}", report_period.start.format("%H:%M:%S"), report_period.end.format("%H:%M:%S"));
-    println!("   Encryption Operations: {}", compliance_report.encryption_operations);
-    println!("   Key Rotations: {}", compliance_report.key_rotations);
-    println!("   Access Violations: {}", compliance_report.access_violations);
-    println!("   Compliance Score: {:.1}%", compliance_report.compliance_score);
-    for recommendation in &compliance_report.recommendations {
-        println!("   Recommendation: {}", recommendation);
+
+    let resource = "sensitive-resource";
+    let action = "read";
+
+    match adapter.authorize(&demo_token, resource, action).await {
+        Ok(authorized) => {
+            if authorized {
+                info!("✅ Access granted to resource: {} for action: {}", resource, action);
+            } else {
+                info!("❌ Access denied to resource: {} for action: {}", resource, action);
+            }
+        }
+        Err(e) => {
+            warn!("⚠️ Authorization check failed: {}", e);
+            info!("💡 This is expected in demo mode - in production, providers handle authz");
+        }
     }
-    
-    // 11. Show detailed audit log
-    println!("\n1️⃣1️⃣ BearDog Security Audit Log:");
-    let audit_events = beardog_provider.get_audit_log().await;
-    for (i, event) in audit_events.iter().enumerate() {
-        println!("   {}. [{}] {} - {} - {:?}", 
-                 i + 1, 
-                 event.timestamp.format("%H:%M:%S"),
-                 event.event_type.to_string(), 
-                 event.principal.id, 
-                 event.outcome);
+
+    Ok(())
+}
+
+/// Demo health monitoring of all security providers
+async fn demo_health_monitoring(adapter: &UniversalSecurityAdapter) -> SongbirdResult<()> {
+    info!("📊 Demo 4: Health Monitoring");
+
+    match adapter.health_check().await {
+        Ok(health_report) => {
+            info!("📈 Security Provider Health Report:");
+            info!("   Total providers: {}", health_report.total_providers);
+            info!("   Healthy providers: {}", health_report.healthy_providers);
+            
+            for (provider_id, health) in health_report.provider_status {
+                info!("   Provider {}: {:?}", provider_id, health);
+            }
+        }
+        Err(e) => {
+            warn!("⚠️ Health check failed: {}", e);
+        }
     }
+
+    Ok(())
+}
+
+/// Example of registering multiple security providers
+#[allow(dead_code)]
+async fn demo_multiple_providers() -> SongbirdResult<()> {
+    let adapter = UniversalSecurityAdapter::new();
+
+    // Register primary security provider (could be BearDog)
+    let primary_provider = SecurityProvider {
+        id: "primary-security".to_string(),
+        name: "Primary Security Provider".to_string(),
+        capabilities: vec![
+            SecurityCapability::Encryption,
+            SecurityCapability::Authentication,
+            SecurityCapability::Authorization,
+        ],
+        endpoint: "https://primary-security:8443".to_string(),
+        priority: 10,
+        health_status: ProviderHealth::Healthy,
+    };
+
+    // Register backup security provider (could be custom implementation)
+    let backup_provider = SecurityProvider {
+        id: "backup-security".to_string(),
+        name: "Backup Security Provider".to_string(),
+        capabilities: vec![
+            SecurityCapability::Encryption,
+            SecurityCapability::Authentication,
+        ],
+        endpoint: "https://backup-security:8444".to_string(),
+        priority: 5, // Lower priority
+        health_status: ProviderHealth::Healthy,
+    };
+
+    adapter.register_provider(primary_provider).await?;
+    adapter.register_provider(backup_provider).await?;
+
+    info!("✅ Registered multiple security providers for redundancy");
     
-    println!("\n🎉 BEARDOG INTEGRATION DEMONSTRATION COMPLETED!");
-    println!("==============================================");
-    println!("✅ BearDog encrypted {} bytes with enterprise security", sensitive_data.len());
-    println!("✅ BearDog access control enforced and verified");
-    println!("✅ BearDog audit events logged: {}", audit_events.len());
-    println!("✅ BearDog compliance reporting operational");
-    println!("✅ Production-ready encrypted snapshot system with BearDog");
-    println!("🔐 Your in-house security module is fully integrated!");
+    // The adapter will automatically use the highest priority available provider
+    // and fall back to others if the primary fails
     
     Ok(())
 }
 
-// Helper trait implementations for demo output formatting
-impl std::fmt::Display for BearDogSecurityEventType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BearDogSecurityEventType::Authentication => write!(f, "AUTH"),
-            BearDogSecurityEventType::Authorization => write!(f, "AUTHZ"),
-            BearDogSecurityEventType::Encryption => write!(f, "ENCRYPT"),
-            BearDogSecurityEventType::Decryption => write!(f, "DECRYPT"),
-            BearDogSecurityEventType::KeyGeneration => write!(f, "KEYGEN"),
-            BearDogSecurityEventType::KeyRotation => write!(f, "KEYROT"),
-            BearDogSecurityEventType::AccessGranted => write!(f, "ACCESS_OK"),
-            BearDogSecurityEventType::AccessDenied => write!(f, "ACCESS_DENIED"),
-            BearDogSecurityEventType::SecurityViolation => write!(f, "VIOLATION"),
-        }
-    }
+/// Example of environment-driven provider configuration
+#[allow(dead_code)]
+async fn demo_environment_configuration() -> SongbirdResult<()> {
+    let adapter = UniversalSecurityAdapter::new();
+
+    // In production, read from environment variables:
+    // SECURITY_PROVIDER_1_ENDPOINT=https://provider1:8443
+    // SECURITY_PROVIDER_1_CAPABILITIES=encryption,authentication
+    // SECURITY_PROVIDER_1_PRIORITY=10
+
+    let endpoint = std::env::var("SECURITY_PROVIDER_1_ENDPOINT")
+        .unwrap_or_else(|_| "https://default-security:8443".to_string());
+    
+    let capabilities_str = std::env::var("SECURITY_PROVIDER_1_CAPABILITIES")
+        .unwrap_or_else(|_| "encryption,authentication".to_string());
+    
+    let priority: u8 = std::env::var("SECURITY_PROVIDER_1_PRIORITY")
+        .unwrap_or_else(|_| "10".to_string())
+        .parse()
+        .unwrap_or(10);
+
+    // Parse capabilities from environment
+    let capabilities = capabilities_str
+        .split(',')
+        .filter_map(|cap| match cap.trim() {
+            "encryption" => Some(SecurityCapability::Encryption),
+            "decryption" => Some(SecurityCapability::Decryption),
+            "authentication" => Some(SecurityCapability::Authentication),
+            "authorization" => Some(SecurityCapability::Authorization),
+            "audit" => Some(SecurityCapability::AuditLogging),
+            "threat_detection" => Some(SecurityCapability::ThreatDetection),
+            _ => None,
+        })
+        .collect();
+
+    let provider = SecurityProvider {
+        id: "env-provider".to_string(),
+        name: "Environment-Configured Provider".to_string(),
+        capabilities,
+        endpoint,
+        priority,
+        health_status: ProviderHealth::Healthy,
+    };
+
+    adapter.register_provider(provider).await?;
+
+    info!("✅ Configured security provider from environment variables");
+    info!("💡 This enables deployment-time provider selection without code changes");
+
+    Ok(())
 } 

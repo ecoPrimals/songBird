@@ -9,7 +9,7 @@
 //! - Performance under realistic load conditions
 
 use songbird_config::SongbirdConfig;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use songbird_network::gaming::GamingManager;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -145,7 +145,7 @@ impl E2ETestOrchestrator {
     }
 
     // Individual test step implementations
-    async fn test_configuration_loading(&self) -> Result<StepResult> {
+    async fn test_configuration_loading() -> Result<()> {
         let start = Instant::now();
         let config = SongbirdConfig::default();
         let validation = config.validate();
@@ -156,11 +156,11 @@ impl E2ETestOrchestrator {
         }
     }
 
-    async fn test_core_services_startup(&self) -> Result<StepResult> {
+    async fn test_core_services_startup() -> Result<()> {
         let start = Instant::now();
         
         // Test that we can initialize core services
-        let gaming_result = GamingManager::new().await;
+        let gaming_result = GamingManager::new();
         
         match gaming_result {
             Ok(_) => Ok(StepResult::success("Core services started", start.elapsed())),
@@ -168,28 +168,28 @@ impl E2ETestOrchestrator {
         }
     }
 
-    async fn test_network_layer_initialization(&self) -> Result<StepResult> {
+    async fn test_network_layer_initialization() -> Result<()> {
         let start = Instant::now();
         // Network layer initialization test
         Ok(StepResult::success("Network layer initialized", start.elapsed()))
     }
 
-    async fn test_gaming_bridge_establishment(&self) -> Result<StepResult> {
+    async fn test_gaming_bridge_establishment() -> Result<()> {
         let start = Instant::now();
         // Gaming bridge test
         Ok(StepResult::success("Gaming bridge established", start.elapsed()))
     }
 
-    async fn test_health_check_system(&self) -> Result<StepResult> {
+    async fn test_health_check_system() -> Result<()> {
         let start = Instant::now();
         // Health check system test
         Ok(StepResult::success("Health checks verified", start.elapsed()))
     }
 
-    async fn test_gaming_session_detection(&self) -> Result<StepResult> {
+    async fn test_gaming_session_detection() -> Result<()> {
         let start = Instant::now();
         
-        let mut gaming_manager = GamingManager::new().await?;
+        let mut gaming_manager = GamingManager::new()?;
         let scan_result = gaming_manager.scan_for_games(None).await;
         
         match scan_result {
@@ -198,55 +198,55 @@ impl E2ETestOrchestrator {
         }
     }
 
-    async fn test_protocol_bridge_setup(&self) -> Result<StepResult> {
+    async fn test_protocol_bridge_setup() -> Result<()> {
         let start = Instant::now();
         // Protocol bridge setup test
         Ok(StepResult::success("Protocol bridge configured", start.elapsed()))
     }
 
-    async fn test_network_routing_setup(&self) -> Result<StepResult> {
+    async fn test_network_routing_setup() -> Result<()> {
         let start = Instant::now();
         // Network routing test
         Ok(StepResult::success("Network routing configured", start.elapsed()))
     }
 
-    async fn test_player_connection_handling(&self) -> Result<StepResult> {
+    async fn test_player_connection_handling() -> Result<()> {
         let start = Instant::now();
         // Player connection test
         Ok(StepResult::success("Player connections handled", start.elapsed()))
     }
 
-    async fn test_session_monitoring(&self) -> Result<StepResult> {
+    async fn test_session_monitoring() -> Result<()> {
         let start = Instant::now();
         // Session monitoring test
         Ok(StepResult::success("Session monitoring active", start.elapsed()))
     }
 
-    async fn test_federation_node_discovery(&self) -> Result<StepResult> {
+    async fn test_federation_node_discovery() -> Result<()> {
         let start = Instant::now();
         // Federation node discovery test
         Ok(StepResult::success("Federation nodes discovered", start.elapsed()))
     }
 
-    async fn test_federation_security_handshake(&self) -> Result<StepResult> {
+    async fn test_federation_security_handshake() -> Result<()> {
         let start = Instant::now();
         // Security handshake test
         Ok(StepResult::success("Security handshake completed", start.elapsed()))
     }
 
-    async fn test_service_mesh_coordination(&self) -> Result<StepResult> {
+    async fn test_service_mesh_coordination() -> Result<()> {
         let start = Instant::now();
         // Service mesh test
         Ok(StepResult::success("Service mesh coordinated", start.elapsed()))
     }
 
-    async fn test_federation_load_balancing(&self) -> Result<StepResult> {
+    async fn test_federation_load_balancing() -> Result<()> {
         let start = Instant::now();
         // Load balancing test
         Ok(StepResult::success("Load balancing configured", start.elapsed()))
     }
 
-    async fn test_federation_health_monitoring(&self) -> Result<StepResult> {
+    async fn test_federation_health_monitoring() -> Result<()> {
         let start = Instant::now();
         // Health monitoring test
         Ok(StepResult::success("Health monitoring coordinated", start.elapsed()))
@@ -271,7 +271,7 @@ impl WorkflowResult {
         }
     }
 
-    pub fn add_step(&mut self, step_name: &str, result: Result<StepResult>) {
+    pub fn add_step(&mut self, step_name: &str, result: SongbirdResult<StepResult>) {
         match result {
             Ok(mut step) => {
                 step.step_name = step_name.to_string();

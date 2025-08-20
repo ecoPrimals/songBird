@@ -1,0 +1,164 @@
+{
+  "stats": {
+    "files_scanned": 0,
+    "files_modified": 3,
+    "total_replacements": 11,
+    "patterns_applied": {},
+    "categories": {},
+    "errors": [],
+    "warnings": [],
+    "manual_review_needed": []
+  },
+  "files_modified": [
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/systematic_migrator.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/modernized_migrator.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/modernized_migrator.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/systematic_migrator.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/modernized_migrator.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/main.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/comprehensive_migrator.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/main.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/modernized_migrator.rs"
+  ],
+  "remaining_unwraps": [
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/systematic_migrator.rs",
+      "line": 335,
+      "context": "panic!(\"Test assertion should not fail: {:?}\", e);",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/systematic_migrator.rs",
+      "line": 348,
+      "context": "panic!(\"Test assertion should not fail - {}: {:?}\", \"$1\", e);",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 285,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 289,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 291,
+      "context": "} else if line_content.contains(\".expect(\") {",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 305,
+      "context": "if let Some(start) = line.find(\".expect(\") {",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 314,
+      "context": "line.replace(\".expect(\", replacement)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 443,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 447,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 457,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 465,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 472,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 476,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 480,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 486,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 492,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/enhanced_migrator.rs",
+      "line": 496,
+      "context": "panic!(\"Critical error - unable to continue: {:?}\", e)",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/modernized_migrator.rs",
+      "line": 273,
+      "context": ".expect(\"Test orchestrator should initialize successfully\")\"#.to_string(),",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/modernized_migrator.rs",
+      "line": 284,
+      "context": ".expect(\"Test config file should load successfully\")\"#.to_string(),",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/modernized_migrator.rs",
+      "line": 295,
+      "context": ".expect(\"Test temp directory should be created successfully\")\"#.to_string(),",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/modernized_migrator.rs",
+      "line": 306,
+      "context": ".expect(\"Test primal should be registered\")\"#.to_string(),",
+      "pattern": "unwrap/expect/panic"
+    },
+    {
+      "file": "/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/src/modernized_migrator.rs",
+      "line": 317,
+      "context": "replacement: r#\".expect(\"Test operation should succeed\");\"#.to_string(),",
+      "pattern": "unwrap/expect/panic"
+    }
+  ],
+  "recommendations": [
+    "✅ Successfully applied 11 modernization changes",
+    "🔧 Run 'cargo fmt' to ensure consistent formatting",
+    "🧪 Run 'cargo test' to verify all changes work correctly",
+    "📋 Run 'cargo clippy' to check for additional issues"
+  ]
+}

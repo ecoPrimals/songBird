@@ -1,0 +1,102 @@
+//! Observability configuration structures
+
+use serde::{Deserialize, Serialize};
+use std::env;
+
+/// Unified configuration for observability features
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UnifiedObservabilityConfig {
+    /// Dashboard configuration
+    pub dashboard: DashboardConfig,
+    /// Health check configuration  
+    pub health_checks: HealthCheckConfig,
+    /// Logging configuration
+    pub logging: LoggingConfig,
+    /// Tracing configuration
+    pub tracing: TracingConfig,
+}
+
+/// Dashboard configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DashboardConfig {
+    pub enabled: bool,
+    pub port: u16,
+    pub refresh_interval_ms: u64,
+    pub max_alerts: usize,
+    pub enable_real_time: bool,
+}
+
+impl Default for DashboardConfig {
+    fn default() -> Self {
+        Self {
+            enabled: env::var("SONGBIRD_DASHBOARD_ENABLED").is_ok(),
+            port: env::var("SONGBIRD_DASHBOARD_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(8080),
+            refresh_interval_ms: 1000,
+            max_alerts: 100,
+            enable_real_time: true,
+        }
+    }
+}
+
+/// Health check configuration - Re-export from canonical core location
+/// **UNIFICATION COMPLETE**: Uses the comprehensive `HealthCheckConfig` from core.rs
+pub use super::core::HealthCheckConfig;
+
+/// Logging configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoggingConfig {
+    pub level: String,
+    pub format: String,
+    pub output: String,
+    pub rotation: LogRotationConfig,
+}
+
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self {
+            level: env::var("SONGBIRD_LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
+            format: env::var("SONGBIRD_LOG_FORMAT").unwrap_or_else(|_| "json".to_string()),
+            output: env::var("SONGBIRD_LOG_OUTPUT").unwrap_or_else(|_| "stdout".to_string()),
+            rotation: LogRotationConfig::default(),
+        }
+    }
+}
+
+/// Log rotation configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogRotationConfig {
+    pub enabled: bool,
+    pub max_size_mb: u64,
+    pub max_files: u32,
+}
+
+impl Default for LogRotationConfig {
+    fn default() -> Self {
+        Self {
+            enabled: env::var("SONGBIRD_LOG_ROTATION_ENABLED").is_ok(),
+            max_size_mb: 100,
+            max_files: 10,
+        }
+    }
+}
+
+/// Tracing configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TracingConfig {
+    pub enabled: bool,
+    pub endpoint: Option<String>,
+    pub sample_rate: f64,
+}
+
+impl Default for TracingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: env::var("SONGBIRD_TRACING_ENABLED").is_ok(),
+            endpoint: env::var("SONGBIRD_TRACING_ENDPOINT").ok(),
+            sample_rate: 0.1,
+        }
+    }
+}

@@ -34,7 +34,7 @@ async fn test_health_check_result_creation() {
     };
 
     assert_eq!(result.name, "test-service");
-    assert_eq!(result.status, HealthStatus::Healthy);
+    assert_eq!(result.status, true);
     assert_eq!(result.message, "OK");
     assert_eq!(result.response_time_ms, 100);
 }

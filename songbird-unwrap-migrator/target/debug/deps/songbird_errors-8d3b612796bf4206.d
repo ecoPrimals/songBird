@@ -1,0 +1,12 @@
+/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/target/debug/deps/songbird_errors-8d3b612796bf4206.d: /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/lib.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/ai_first.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/mod.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/conversions.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/core.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/specific.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/unified.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/validation.rs
+
+/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/target/debug/deps/libsongbird_errors-8d3b612796bf4206.rmeta: /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/lib.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/ai_first.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/mod.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/conversions.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/core.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/specific.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/unified.rs /home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/validation.rs
+
+/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/lib.rs:
+/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/ai_first.rs:
+/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/mod.rs:
+/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/conversions.rs:
+/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/core.rs:
+/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/songbird_errors/specific.rs:
+/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/unified.rs:
+/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-errors/src/validation.rs:

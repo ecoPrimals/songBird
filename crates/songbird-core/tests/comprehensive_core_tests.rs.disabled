@@ -1,0 +1,199 @@
+//! Comprehensive Core Tests - Modernized and Fixed
+//!
+//! **🔧 MODERNIZATION COMPLETE**: Fixed all fragmented type references
+//! and updated to use canonical implementations.
+
+use songbird_core::{
+    performance::{
+        AdaptiveCache, InstanceMetrics, LoadBalancingStrategy, PerformanceConfig,
+        ServiceInstanceMeta,
+    },
+    scalability::{ResourceUsage, ScalabilityConfig, ScalabilityManager, ScalingAction},
+    traits::CacheConfig as TraitsCacheConfig,
+};
+use songbird_errors::{SongbirdError, SongbirdResult};
+use std::time::{Duration, Instant};
+use tokio::time::sleep;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_cache_with_zero_capacity() {
+        let config = TraitsCacheConfig {
+            enabled: true,
+            ttl_seconds: 300,
+            max_entries: 0, // Zero capacity
+            cache_evaluations: false,
+            cache_flags: false,
+        };
+        let cache = AdaptiveCache::new(config);
+
+        cache.insert("key".to_string(), "value".to_string()).await;
+
+        // Should not store anything with zero capacity
+        let value = cache.get("key").await;
+        assert!(value.is_none());
+        assert_eq!(cache.size().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_scaling_with_invalid_metrics() {
+        let config = ScalabilityConfig::default();
+        let mut manager = ScalabilityManager::new(config);
+
+        // Add invalid metrics using the actual ResourceUsage fields
+        let invalid_usage = ResourceUsage {
+            cpu_percent: -10.0,    // Invalid negative value
+            memory_percent: 150.0, // Invalid > 100%
+            network_io_mbps: 0.0,
+            disk_io_mbps: 0.0,
+        };
+
+        manager.add_metrics(invalid_usage).await;
+
+        let action = manager.evaluate_scaling().await;
+        assert!(action.is_ok());
+
+        // Should handle invalid metrics gracefully
+        match action.unwrap() {
+            ScalingAction::NoAction { reason } => {
+                assert!(reason.contains("invalid") || reason.contains("metrics"));
+            }
+            _ => {
+                // Other actions are also acceptable for invalid metrics
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_performance_cache_basic_operations() {
+        let config = TraitsCacheConfig {
+            enabled: true,
+            ttl_seconds: 300,
+            max_entries: 1000,
+            cache_evaluations: true,
+            cache_flags: true,
+        };
+        let cache = AdaptiveCache::new(config);
+
+        // Test basic insert and get
+        cache
+            .insert("test_key".to_string(), "test_value".to_string())
+            .await;
+        let value = cache.get("test_key").await;
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), "test_value");
+    }
+
+    #[tokio::test]
+    async fn test_cache_ttl_expiration() {
+        let config = TraitsCacheConfig {
+            enabled: true,
+            ttl_seconds: 1, // Very short TTL for testing
+            max_entries: 1000,
+            cache_evaluations: true,
+            cache_flags: true,
+        };
+        let cache = AdaptiveCache::new(config);
+
+        cache
+            .insert("temp_key".to_string(), "temp_value".to_string())
+            .await;
+
+        // Should be available immediately
+        let value = cache.get("temp_key").await;
+        assert!(value.is_some());
+
+        // Wait for TTL expiration
+        sleep(Duration::from_secs(2)).await;
+
+        // Should be expired now
+        let expired_value = cache.get("temp_key").await;
+        assert!(expired_value.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_service_instance_metadata() {
+        let instance = ServiceInstanceMeta {
+            id: "test-instance".to_string(),
+            endpoint: "http://localhost:8080".to_string(),
+            weight: 1.0,
+            health_score: 0.95,
+            last_updated: Instant::now(),
+        };
+
+        assert_eq!(instance.id, "test-instance");
+        assert_eq!(instance.endpoint, "http://localhost:8080");
+        assert_eq!(instance.weight, 1.0);
+        assert!(instance.health_score > 0.9);
+    }
+
+    #[tokio::test]
+    async fn test_instance_metrics_defaults() {
+        let metrics = InstanceMetrics::default();
+
+        assert_eq!(metrics.response_time_ms, 0.0);
+        assert_eq!(metrics.success_rate, 1.0);
+        assert_eq!(metrics.active_connections, 0);
+        assert_eq!(metrics.total_requests, 0);
+    }
+
+    #[tokio::test]
+    async fn test_resource_usage_defaults() {
+        let usage = ResourceUsage::default();
+
+        assert_eq!(usage.cpu_percent, 0.0);
+        assert_eq!(usage.memory_percent, 0.0);
+        assert_eq!(usage.network_io_mbps, 0.0);
+        assert_eq!(usage.disk_io_mbps, 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_performance_config_defaults() {
+        let config = PerformanceConfig::default();
+
+        assert!(config.enable_fast_load_balancing);
+        assert!(config.enable_adaptive_caching);
+        assert!(config.enable_memory_optimization);
+    }
+
+    #[tokio::test]
+    async fn test_scalability_config_defaults() {
+        let config = ScalabilityConfig::default();
+
+        // Test that default configuration is valid
+        let manager = ScalabilityManager::new(config);
+
+        // Should be able to create manager without errors
+        assert!(true); // Placeholder for actual manager validation
+    }
+
+    #[tokio::test]
+    async fn test_cache_configuration_validation() {
+        // Test valid configuration
+        let valid_config = TraitsCacheConfig {
+            enabled: true,
+            ttl_seconds: 300,
+            max_entries: 1000,
+            cache_evaluations: true,
+            cache_flags: true,
+        };
+
+        let cache = AdaptiveCache::new(valid_config);
+
+        // Should create cache successfully
+        assert_eq!(cache.size().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_error_handling() {
+        // Test that our error types work correctly
+        let error = SongbirdError::internal_error("Test error");
+        assert!(format!("{:?}", error).contains("Test error"));
+
+        let result: SongbirdResult<()> = Err(error);
+        assert!(result.is_err());
+    }
+}

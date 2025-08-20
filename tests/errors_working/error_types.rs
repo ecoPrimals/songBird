@@ -3,7 +3,7 @@
 use songbird_errors::{
     AuthError, CircuitBreakerError, DeploymentError, DiscoveryError, GamingError, IoError,
     NetworkError, NotFoundError, ProtocolError, ServiceError, SongbirdError, ValidationError,
-};
+, SongbirdError};
 use std::time::Duration;
 
 #[test]
@@ -36,7 +36,7 @@ fn test_songbird_error_network() {
         service: Some("api".to_string()),
         message: "Connection refused".to_string(),
         details: Some("Port 8080 not responding".to_string()),
-        endpoint: Some("localhost:8080".to_string()),
+        endpoint: Some("localhost:{}".to_string()),
         suggestion: Some("Check if service is running".to_string()),
     }));
 

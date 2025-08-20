@@ -72,7 +72,7 @@ async fn test_biome_deployment_lifecycle() {
     coordinator
         .register_team_workspace(team_id.clone(), quota.clone())
         .await
-        .unwrap();
+        .expect("Test operation should succeed");
 
     // Create deployment request
     let manifest = create_test_manifest();
@@ -84,13 +84,13 @@ async fn test_biome_deployment_lifecycle() {
     };
 
     // Deploy biome
-    let deployment_id = coordinator.deploy_biome(deployment_request).await.unwrap();
+    let deployment_id = coordinator.deploy_biome(deployment_request).await.expect("Test operation should succeed");
 
     // Check deployment status
     let status = coordinator
         .get_deployment_status(&deployment_id)
         .await
-        .unwrap();
+        .expect("Test operation should succeed");
     assert!(matches!(
         status,
         ByobDeploymentStatus::Pending
@@ -100,7 +100,7 @@ async fn test_biome_deployment_lifecycle() {
     ));
 
     // List team deployments
-    let deployments = coordinator.list_team_deployments(&team_id).await.unwrap();
+    let deployments = coordinator.list_team_deployments(&team_id).await.expect("Test operation should succeed");
     assert_eq!(deployments.len(), 1);
     assert_eq!(deployments[0].deployment_id, deployment_id);
 
@@ -127,7 +127,7 @@ async fn test_primal_coordination_status_update() {
     coordinator
         .register_team_workspace(team_id.clone(), quota.clone())
         .await
-        .unwrap();
+        .expect("Test operation should succeed");
 
     let manifest = create_test_manifest();
     let deployment_request = ByobDeploymentRequest {
@@ -137,14 +137,14 @@ async fn test_primal_coordination_status_update() {
         resource_quota: quota,
     };
 
-    let deployment_id = coordinator.deploy_biome(deployment_request).await.unwrap();
+    let deployment_id = coordinator.deploy_biome(deployment_request).await.expect("Test operation should succeed");
 
     // Note: update_primal_coordination_status is private, so we can't test it directly
     // In a real scenario, this would be called internally during deployment
     // For now, we just verify the deployment was created successfully
 
     // Verify deployment was created
-    let deployments = coordinator.list_team_deployments(&team_id).await.unwrap();
+    let deployments = coordinator.list_team_deployments(&team_id).await.expect("Test operation should succeed");
     let deployment = &deployments[0];
     assert_eq!(deployment.deployment_id, deployment_id);
 
@@ -156,7 +156,7 @@ async fn test_primal_coordination_status_update() {
 async fn test_nestgate_storage_provisioning() {
     let config = OrchestratorConfig::default();
     let nestgate_config = NestGateConfig {
-        api_endpoint: "http://test-nestgate:8080".to_string(),
+        api_endpoint: "http://test-nestgate:{}".to_string(),
         api_key: "test-key".to_string(),
         default_pool: "default".to_string(),
         default_quotas: StorageQuotas {
@@ -182,7 +182,7 @@ async fn test_nestgate_storage_provisioning() {
     coordinator
         .register_team_workspace(team_id.clone(), quota)
         .await
-        .unwrap();
+        .expect("Test operation should succeed");
 
     // Create storage requirements
     let _requirements = TeamStorageRequirements {
@@ -243,7 +243,7 @@ async fn test_deployment_cleanup() {
     coordinator
         .register_team_workspace(team_id.clone(), quota.clone())
         .await
-        .unwrap();
+        .expect("Test operation should succeed");
 
     let manifest = create_test_manifest();
     let deployment_request = ByobDeploymentRequest {
@@ -253,7 +253,7 @@ async fn test_deployment_cleanup() {
         resource_quota: quota,
     };
 
-    let deployment_id = coordinator.deploy_biome(deployment_request).await.unwrap();
+    let deployment_id = coordinator.deploy_biome(deployment_request).await.expect("Test operation should succeed");
 
     // Test cleanup via stop_deployment (which calls cleanup internally)
     let result = coordinator.stop_deployment(&deployment_id).await;
@@ -282,7 +282,7 @@ async fn test_configured_port_usage() {
     coordinator
         .register_team_workspace(team_id.clone(), quota.clone())
         .await
-        .unwrap();
+        .expect("Test operation should succeed");
 
     let manifest = create_test_manifest();
     let deployment_request = ByobDeploymentRequest {
@@ -292,10 +292,10 @@ async fn test_configured_port_usage() {
         resource_quota: quota,
     };
 
-    let deployment_id = coordinator.deploy_biome(deployment_request).await.unwrap();
+    let deployment_id = coordinator.deploy_biome(deployment_request).await.expect("Test operation should succeed");
 
     // Verify the configured port is used in endpoints
-    let deployments = coordinator.list_team_deployments(&team_id).await.unwrap();
+    let deployments = coordinator.list_team_deployments(&team_id).await.expect("Test operation should succeed");
     let deployment = &deployments[0];
 
     // Test would need to check actual endpoint generation
@@ -337,7 +337,7 @@ async fn test_resource_quota_validation() {
     coordinator
         .register_team_workspace(team_id.clone(), quota.clone())
         .await
-        .unwrap();
+        .expect("Test operation should succeed");
 
     // Try to exceed deployment limit
     let manifest = create_test_manifest();
@@ -371,7 +371,7 @@ fn create_test_manifest() -> SongbirdBiomeManifest {
     services.insert(
         "web-service".to_string(),
         ServiceSpec {
-            endpoint: Some("http://web-service:8080".to_string()),
+            endpoint: Some("http://web-service:{}".to_string()),
             depends_on: vec!["database".to_string()],
             health_check: Some(HealthCheckSpec {
                 endpoint: "/health".to_string(),
@@ -401,7 +401,7 @@ fn create_test_manifest() -> SongbirdBiomeManifest {
         "toadstool".to_string(),
         PrimalCoordination {
             enabled: true,
-            endpoint: Some("http://toadstool:8080".to_string()),
+            endpoint: Some("http://toadstool:{}".to_string()),
             capabilities: vec!["compute".to_string(), "containers".to_string()],
         },
     );
@@ -410,7 +410,7 @@ fn create_test_manifest() -> SongbirdBiomeManifest {
         "nestgate".to_string(),
         PrimalCoordination {
             enabled: true,
-            endpoint: Some("http://nestgate:8080".to_string()),
+            endpoint: Some("http://nestgate:{}".to_string()),
             capabilities: vec!["storage".to_string(), "databases".to_string()],
         },
     );

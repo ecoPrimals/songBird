@@ -8,8 +8,23 @@
 //! - Performance and timeout testing
 //! - Error handling and edge cases
 
-use songbird_config::config::{ConnectionLimits, NetworkConfig, NetworkTimeouts, PortRange};
-use songbird_errors::{NetworkError, SongbirdError};
+use songbird_config::config::{ConnectionLimits, NetworkTimeouts, PortRange};
+use songbird_config::canonical_network::CanonicalNetworkConfig as NetworkConfig;
+use songbird_core::{
+    orchestrator::Orchestrator,
+    traits::{
+        ServiceDiscovery, ServiceInfo, ServiceHealth, HealthStatus,
+        LoadBalancer, LoadBalancingStrategy,
+    },
+};
+use songbird_errors::{NetworkError, SongbirdError, SongbirdResult};
+use songbird_network::{
+    management::{
+        config::NetworkManagementConfig,
+        load_balancer::{LoadBalancer as NetworkLoadBalancer, LoadBalancingStrategy as NetworkStrategy},
+    },
+    network::mod_types::{NetworkRequest, NetworkResponse},
+};
 use songbird_network::management::{
     config::HealthCheckConfig,
     health::{HealthCheckTarget, HealthChecker},
@@ -29,7 +44,7 @@ mod network_config_tests {
         // Test secure defaults
         assert_eq!(config.bind_address, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))); // Localhost only
         assert!(config.orchestrator_port > 0);
-        assert!(config.orchestrator_port <= 65535);
+        // Port is u16, so always <= 65535 by type definition
         assert!(config.require_tls == false); // Default false for development, should be true in prod
 
         // Test reasonable defaults
@@ -247,7 +262,7 @@ mod health_checking_tests {
         // Test health check of invalid address
         let target = HealthCheckTarget {
             name: "invalid".to_string(),
-            url: "http://invalid.nonexistent.domain.test:8080".to_string(),
+            url: "http://invalid.nonexistent.domain.test:{}".to_string(),
             expected_status: 200,
             timeout: Duration::from_secs(1),
         };
@@ -286,7 +301,7 @@ mod health_checking_tests {
         let start = Instant::now();
         let target = HealthCheckTarget {
             name: "timeout_test".to_string(),
-            url: "http://192.0.2.0:8080".to_string(), // RFC5737 test address
+            url: "http://192.0.2.0:{}".to_string(), // RFC5737 test address
             expected_status: 200,
             timeout: Duration::from_millis(10),
         };
@@ -319,13 +334,13 @@ mod network_error_handling_tests {
     fn test_network_error_creation() {
         let error = NetworkError {
             message: "Connection failed".to_string(),
-            endpoint: Some("example.com:8080".to_string()),
+            endpoint: Some("example.com:{}".to_string()),
             port: Some(8080),
             protocol: Some("HTTP".to_string()),
         };
 
         assert_eq!(error.message, "Connection failed");
-        assert_eq!(error.endpoint, Some("example.com:8080".to_string()));
+        assert_eq!(error.endpoint, Some("example.com:{}".to_string()));
         assert_eq!(error.port, Some(8080));
         assert_eq!(error.protocol, Some("HTTP".to_string()));
     }
@@ -601,7 +616,7 @@ mod network_edge_cases_tests {
             "http://",                     // Incomplete URL
             "ftp://example.com",           // Wrong protocol
             "http://[invalid-ipv6",        // Malformed IPv6
-            "http://256.256.256.256:8080", // Invalid IP
+            "http://256.256.256.256:{}", // Invalid IP
         ];
 
         for addr in invalid_addresses {

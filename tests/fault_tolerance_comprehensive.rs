@@ -11,7 +11,7 @@ use songbird_network::management::{
     health::{HealthChecker, HealthCheckConfig},
     load_balancer::{LoadBalancer, LoadBalancingStrategy},
 };
-use songbird_universal_primals::{
+// // use songbird_universal_primals  // TEMPORARILY DISABLED  // TEMPORARILY DISABLED::{
     discovery::{EcosystemDiscovery, EcosystemDiscoveryConfig},
     traits::{PrimalCapability, PrimalContext, SecurityLevel},
 };
@@ -349,7 +349,7 @@ async fn test_partition_graceful_degradation() {
     // In a real system, this would use cached primal information
     let fallback_capabilities = vec![
         PrimalCapability::Authentication { providers: vec!["local".to_string()] },
-        PrimalCapability::FileSystem { supports_zfs: false },
+                        PrimalCapability::Storage { types: vec!["file".to_string()] },
     ];
     
     assert!(!fallback_capabilities.is_empty(), "Should have fallback capabilities");

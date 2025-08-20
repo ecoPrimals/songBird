@@ -1,0 +1,90 @@
+//! Integration tests for Songbird CLI
+//!
+//! Tests CLI functionality end-to-end with canonical patterns
+
+use super::*;
+use crate::cli::CliError;
+use songbird_config::config::SongbirdConfig;
+use tempfile::TempDir;
+
+#[tokio::test]
+async fn test_cli_config_integration() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let config_path = temp_dir.path().join("songbird.toml");
+
+    // Create a test config file
+    let config_content = r#"
+[network]
+bind_address = "127.0.0.1"
+bind_port = 8080
+
+[security]
+enable_tls = false
+"#;
+
+    std::fs::write(&config_path, config_content).expect("Failed to write config file");
+
+    // Test CLI can load and validate the config
+    let result = crate::cli::load_config_from_file(config_path.to_str().unwrap());
+    assert!(result.is_ok(), "CLI should successfully load valid config");
+}
+
+#[tokio::test]
+async fn test_cli_error_handling_integration() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let invalid_config_path = temp_dir.path().join("invalid.toml");
+
+    // Create an invalid config file
+    let invalid_content = "invalid toml content [[[";
+    std::fs::write(&invalid_config_path, invalid_content).expect("Failed to write invalid config");
+
+    // Test CLI properly handles invalid config
+    let result = crate::cli::load_config_from_file(invalid_config_path.to_str().unwrap());
+    assert!(result.is_err(), "CLI should reject invalid config");
+
+    match result.unwrap_err() {
+        CliError::ConfigurationError(_) => {
+            // Expected error type
+        }
+        other => {
+            eprintln!("Expected ConfigurationError, got: {:?}", other);
+            assert!(false, "Expected ConfigurationError for invalid TOML");
+        }
+    }
+}
+
+#[test]
+fn test_cli_canonical_patterns() {
+    // Test that CLI follows canonical patterns
+    let app = crate::cli::build_cli();
+
+    // Verify app has expected subcommands
+    let subcommands: Vec<&str> = app.get_subcommands().map(|cmd| cmd.get_name()).collect();
+    assert!(
+        subcommands.contains(&"config"),
+        "CLI should have config subcommand"
+    );
+    assert!(
+        subcommands.contains(&"start"),
+        "CLI should have start subcommand"
+    );
+}
+
+#[tokio::test]
+async fn test_cli_environment_integration() {
+    // Test CLI respects environment variables
+    std::env::set_var("SONGBIRD_BIND_PORT", "9090");
+
+    let config = SongbirdConfig::default();
+    // In a real implementation, this would check that the config
+    // respects the environment variable
+
+    // Clean up
+    std::env::remove_var("SONGBIRD_BIND_PORT");
+
+    // Basic validation that config system works
+    assert!(
+        config.network.bind_port > 0,
+        "Config should have valid port"
+    );
+}

@@ -1,6 +1,6 @@
 //! Error conversion and helper function tests
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult, SongbirdError};
 
 #[test]
 fn test_songbird_error_helper_methods() {
@@ -63,14 +63,14 @@ fn test_songbird_error_from_json_error() {
 
 #[test]
 fn test_result_type_ok() {
-    let result: Result<String> = Ok("success".to_string());
+    let result: SongbirdResult<String> = Ok("success".to_string());
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), "success");
+    assert_eq!(result.ok_or_else(|| SongbirdError::internal(format!("Operation failed: {:?}", e)))?, "success");
 }
 
 #[test]
 fn test_result_type_err() {
-    let result: Result<String> = Err(SongbirdError::config_error("test", "Failed"));
+    let result: SongbirdResult<String> = Err(SongbirdError::config_error("test", "Failed"));
     assert!(result.is_err());
 }
 
@@ -91,7 +91,7 @@ fn test_songbird_error_conversion_chain() {
 #[test]
 fn test_error_display_formatting() {
     let error = SongbirdError::config_error("timeout", "Invalid timeout value");
-    let display = format!("{}", error);
+    let display = format!("{error}");
     let debug = format!("{:?}", error);
     
     assert!(display.contains("Invalid timeout value"));

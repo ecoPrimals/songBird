@@ -3,7 +3,7 @@
 //! Validates that the Songbird system meets its performance requirements
 //! including sub-10ms discovery, high-throughput processing, and low-latency routing.
 
-use songbird_universal_primals::{
+// // use songbird_universal_primals  // TEMPORARILY DISABLED  // TEMPORARILY DISABLED::{
     discovery::{EcosystemDiscovery, EcosystemDiscoveryConfig},
     traits::{PrimalCapability, PrimalContext, SecurityLevel},
 };
@@ -65,8 +65,10 @@ async fn test_sub_10ms_discovery_requirement() {
     
     // Calculate statistics
     let avg_time = discovery_times.iter().sum::<Duration>() / discovery_times.len() as u32;
-    let max_time = discovery_times.iter().max().unwrap();
-    let min_time = discovery_times.iter().min().unwrap();
+    let max_time = discovery_times.iter().max()
+    .ok_or_else(|| SongbirdError::runtime_error("Collection is empty"))?;
+    let min_time = discovery_times.iter().min()
+    .ok_or_else(|| SongbirdError::runtime_error("Collection is empty"))?;
     
     info!("📊 Discovery Performance Statistics:");
     info!("  Average: {}μs", avg_time.as_micros());
@@ -175,7 +177,8 @@ async fn test_low_latency_primal_classification() {
     
     // Calculate latency statistics
     let avg_latency = classification_times.iter().sum::<Duration>() / classification_times.len() as u32;
-    let max_latency = classification_times.iter().max().unwrap();
+    let max_latency = classification_times.iter().max()
+    .ok_or_else(|| SongbirdError::runtime_error("Collection is empty"))?;
     
     info!("📊 Classification Latency:");
     info!("  Average: {}ns per classification", avg_latency.as_nanos());

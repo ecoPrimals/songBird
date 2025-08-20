@@ -1,0 +1,31 @@
+# Clippy configuration for maximum pedantic code quality
+# Enable all pedantic lints for the highest code quality standards
+
+# Pedantic lints - enable all for maximum code quality
+avoid-breaking-exported-api = false
+enum-variant-name-threshold = 3
+max-fn-params-bools = 3
+max-struct-bools = 3
+max-trait-bounds = 3
+msrv = "1.70.0"
+single-char-binding-names-threshold = 4
+trivial-copy-size-limit = 64
+type-complexity-threshold = 250
+vec-box-size-threshold = 4096
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 30
+
+# Performance optimizations
+too-many-arguments-threshold = 7
+too-many-lines-threshold = 100
+
+# Naming conventions
+disallowed-names = ["foo", "bar", "baz", "TODO", "FIXME"]
+
+# Documentation
+missing-docs-in-crate-items = false
+
+# Allow certain patterns that are acceptable in our codebase
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true 

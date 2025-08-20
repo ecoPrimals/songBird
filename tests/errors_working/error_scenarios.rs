@@ -5,7 +5,7 @@ use songbird_errors::{
     AuthError, CircuitBreakerError, DeploymentError, DiscoveryError, ExecutionError, GamingError,
     IoError, NetworkError, NotFoundError, PluginNotFoundError, ProtocolError, RateLimitError,
     ResourceExhaustedError, Result, RetryError, ServiceError, SongbirdError, ValidationError,
-};
+, SongbirdError};
 
 #[tokio::test]
 async fn test_comprehensive_error_scenarios() -> Result<()> {

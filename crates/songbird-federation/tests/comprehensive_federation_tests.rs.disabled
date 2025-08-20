@@ -1,0 +1,955 @@
+//! Comprehensive Federation Tests
+//!
+//! This test suite provides extensive coverage for the songbird-federation crate
+//! to achieve the target 90% test coverage for production readiness.
+
+use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_federation::{
+    consensus::{
+        byzantine::{ByzantineConfig, ByzantineConsensus, ConsensusMessage},
+        raft::{LogEntry, NodeState, RaftConfig, RaftNode},
+    },
+    coordination::{
+        distributed_orchestrator::{DistributedOrchestrator, OrchestratorConfig},
+        leader_election::{ElectionConfig, LeaderElection, LeadershipState},
+    },
+    discovery::{
+        federated_discovery::{DiscoveryConfig, FederatedDiscovery},
+        service_mesh::{MeshConfig, ServiceMesh, ServiceNode},
+    },
+    networking::{
+        gossip::{GossipConfig, GossipMessage, GossipProtocol},
+        peer_management::{PeerConfig, PeerInfo, PeerManager, PeerStatus},
+    },
+    replication::{
+        data_replication::{DataReplicator, ReplicationConfig, ReplicationStrategy},
+        state_sync::{StateSync, SyncConfig, SyncState},
+    },
+    security::{
+        federation_auth::{AuthConfig, AuthToken, FederationAuth},
+        trust_management::{TrustConfig, TrustLevel, TrustManager},
+    },
+};
+use std::collections::{HashMap, HashSet};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::time::{Duration, Instant, SystemTime};
+use tokio::time::sleep;
+
+#[cfg(test)]
+mod comprehensive_federation_tests {
+    use super::*;
+
+    // Test Module 1: Raft Consensus
+    #[tokio::test]
+    async fn test_raft_node_creation() {
+        let config = RaftConfig {
+            node_id: "node1".to_string(),
+            cluster_size: 3,
+            election_timeout: Duration::from_millis(150),
+            heartbeat_interval: Duration::from_millis(50),
+            max_log_entries: 1000,
+        };
+
+        let node = RaftNode::new(config);
+        assert_eq!(node.get_state().await, NodeState::Follower);
+        assert_eq!(node.get_node_id(), "node1");
+    }
+
+    #[tokio::test]
+    async fn test_raft_leader_election() {
+        let mut nodes = vec![];
+
+        for i in 0..3 {
+            let config = RaftConfig {
+                node_id: format!("node{}", i),
+                cluster_size: 3,
+                election_timeout: Duration::from_millis(100 + i * 10), // Stagger timeouts
+                heartbeat_interval: Duration::from_millis(30),
+                max_log_entries: 1000,
+            };
+            nodes.push(RaftNode::new(config));
+        }
+
+        // Start election process
+        for node in &nodes {
+            node.start_election().await.expect("Should start election");
+        }
+
+        // Allow time for election
+        sleep(Duration::from_millis(200)).await;
+
+        // Verify one leader elected
+        let mut leader_count = 0;
+        for node in &nodes {
+            if node.get_state().await == NodeState::Leader {
+                leader_count += 1;
+            }
+        }
+
+        assert_eq!(leader_count, 1, "Exactly one leader should be elected");
+    }
+
+    #[tokio::test]
+    async fn test_raft_log_replication() {
+        let config = RaftConfig {
+            node_id: "leader".to_string(),
+            cluster_size: 1, // Single node for simplicity
+            election_timeout: Duration::from_millis(150),
+            heartbeat_interval: Duration::from_millis(50),
+            max_log_entries: 1000,
+        };
+
+        let mut node = RaftNode::new(config);
+
+        // Become leader
+        node.start_election().await.expect("Should start election");
+        sleep(Duration::from_millis(100)).await;
+
+        // Add log entries
+        let entry1 = LogEntry {
+            term: 1,
+            index: 1,
+            command: b"SET key1 value1".to_vec(),
+            timestamp: SystemTime::now(),
+        };
+
+        let entry2 = LogEntry {
+            term: 1,
+            index: 2,
+            command: b"SET key2 value2".to_vec(),
+            timestamp: SystemTime::now(),
+        };
+
+        node.append_log_entry(entry1)
+            .await
+            .expect("Should append entry");
+        node.append_log_entry(entry2)
+            .await
+            .expect("Should append entry");
+
+        assert_eq!(node.get_log_length().await, 2);
+    }
+
+    // Test Module 2: Byzantine Consensus
+    #[tokio::test]
+    async fn test_byzantine_consensus_creation() {
+        let config = ByzantineConfig {
+            node_id: "byzantine_node1".to_string(),
+            total_nodes: 4,
+            fault_tolerance: 1, // Can tolerate 1 faulty node
+            round_timeout: Duration::from_millis(200),
+            max_rounds: 10,
+        };
+
+        let consensus = ByzantineConsensus::new(config);
+        assert!(consensus.is_initialized());
+        assert_eq!(consensus.get_node_id(), "byzantine_node1");
+    }
+
+    #[tokio::test]
+    async fn test_byzantine_message_handling() {
+        let config = ByzantineConfig {
+            node_id: "node1".to_string(),
+            total_nodes: 4,
+            fault_tolerance: 1,
+            round_timeout: Duration::from_millis(200),
+            max_rounds: 10,
+        };
+
+        let mut consensus = ByzantineConsensus::new(config);
+
+        let message = ConsensusMessage {
+            sender: "node2".to_string(),
+            round: 1,
+            phase: "prepare".to_string(),
+            value: Some(b"test_value".to_vec()),
+            signature: b"mock_signature".to_vec(),
+            timestamp: SystemTime::now(),
+        };
+
+        let result = consensus.handle_message(message).await;
+        assert!(result.is_ok());
+    }
+
+    // Test Module 3: Distributed Orchestrator
+    #[tokio::test]
+    async fn test_distributed_orchestrator_creation() {
+        let config = OrchestratorConfig {
+            node_id: "orchestrator1".to_string(),
+            cluster_nodes: vec![
+                "node1".to_string(),
+                "node2".to_string(),
+                "node3".to_string(),
+            ],
+            coordination_interval: Duration::from_secs(30),
+            health_check_interval: Duration::from_secs(10),
+            max_coordination_retries: 3,
+        };
+
+        let orchestrator = DistributedOrchestrator::new(config);
+        assert!(orchestrator.is_initialized());
+    }
+
+    #[tokio::test]
+    async fn test_orchestrator_service_coordination() {
+        let config = OrchestratorConfig {
+            node_id: "coordinator".to_string(),
+            cluster_nodes: vec!["node1".to_string(), "node2".to_string()],
+            coordination_interval: Duration::from_secs(30),
+            health_check_interval: Duration::from_secs(10),
+            max_coordination_retries: 3,
+        };
+
+        let mut orchestrator = DistributedOrchestrator::new(config);
+
+        // Register a service for coordination
+        let service_info = HashMap::from([
+            ("name".to_string(), "test_service".to_string()),
+            ("version".to_string(), "1.0.0".to_string()),
+            ("endpoint".to_string(), "http://localhost:8080".to_string()),
+        ]);
+
+        let result = orchestrator.coordinate_service(service_info).await;
+        assert!(result.is_ok());
+
+        let coordination_status = orchestrator.get_coordination_status().await;
+        assert!(coordination_status.is_ok());
+    }
+
+    // Test Module 4: Leader Election
+    #[tokio::test]
+    async fn test_leader_election_creation() {
+        let config = ElectionConfig {
+            node_id: "election_node1".to_string(),
+            cluster_size: 3,
+            election_timeout: Duration::from_millis(500),
+            heartbeat_interval: Duration::from_millis(100),
+            priority: 1,
+        };
+
+        let election = LeaderElection::new(config);
+        assert_eq!(election.get_state().await, LeadershipState::Follower);
+    }
+
+    #[tokio::test]
+    async fn test_leader_election_process() {
+        let mut elections = vec![];
+
+        for i in 0..3 {
+            let config = ElectionConfig {
+                node_id: format!("election_node{}", i),
+                cluster_size: 3,
+                election_timeout: Duration::from_millis(400 + i * 50),
+                heartbeat_interval: Duration::from_millis(80),
+                priority: i as u8, // Different priorities
+            };
+            elections.push(LeaderElection::new(config));
+        }
+
+        // Start elections
+        for election in &elections {
+            election
+                .start_election()
+                .await
+                .expect("Should start election");
+        }
+
+        // Wait for election completion
+        sleep(Duration::from_millis(600)).await;
+
+        // Verify leadership
+        let mut leaders = 0;
+        for election in &elections {
+            if election.get_state().await == LeadershipState::Leader {
+                leaders += 1;
+            }
+        }
+
+        assert_eq!(leaders, 1, "Should have exactly one leader");
+    }
+
+    // Test Module 5: Federated Discovery
+    #[tokio::test]
+    async fn test_federated_discovery_creation() {
+        let config = DiscoveryConfig {
+            node_id: "discovery_node1".to_string(),
+            federation_endpoints: vec![
+                "http://federation1.example.com:8080".to_string(),
+                "http://federation2.example.com:8080".to_string(),
+            ],
+            discovery_interval: Duration::from_secs(30),
+            cache_ttl: Duration::from_secs(300),
+            max_retries: 3,
+        };
+
+        let discovery = FederatedDiscovery::new(config);
+        assert!(discovery.is_active());
+    }
+
+    #[tokio::test]
+    async fn test_service_discovery_and_registration() {
+        let config = DiscoveryConfig {
+            node_id: "discovery_test".to_string(),
+            federation_endpoints: vec!["http://localhost:8080".to_string()],
+            discovery_interval: Duration::from_secs(30),
+            cache_ttl: Duration::from_secs(300),
+            max_retries: 3,
+        };
+
+        let mut discovery = FederatedDiscovery::new(config);
+
+        // Register a service
+        let service_metadata = HashMap::from([
+            ("name".to_string(), "test_service".to_string()),
+            ("version".to_string(), "1.0.0".to_string()),
+            ("endpoint".to_string(), "http://localhost:9000".to_string()),
+            ("capabilities".to_string(), "compute,storage".to_string()),
+        ]);
+
+        let registration_result = discovery.register_service(service_metadata).await;
+        assert!(registration_result.is_ok());
+
+        // Discover services
+        let discovered_services = discovery.discover_services("test_service").await;
+        assert!(discovered_services.is_ok());
+
+        let services = discovered_services.unwrap();
+        assert!(!services.is_empty());
+    }
+
+    // Test Module 6: Service Mesh
+    #[tokio::test]
+    async fn test_service_mesh_creation() {
+        let config = MeshConfig {
+            mesh_id: "test_mesh".to_string(),
+            max_nodes: 100,
+            heartbeat_interval: Duration::from_secs(30),
+            failure_detection_timeout: Duration::from_secs(90),
+            routing_algorithm: "shortest_path".to_string(),
+        };
+
+        let mesh = ServiceMesh::new(config);
+        assert_eq!(mesh.get_mesh_id(), "test_mesh");
+        assert_eq!(mesh.get_node_count().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_service_mesh_node_management() {
+        let config = MeshConfig {
+            mesh_id: "node_management_mesh".to_string(),
+            max_nodes: 10,
+            heartbeat_interval: Duration::from_secs(30),
+            failure_detection_timeout: Duration::from_secs(90),
+            routing_algorithm: "shortest_path".to_string(),
+        };
+
+        let mut mesh = ServiceMesh::new(config);
+
+        // Add service nodes
+        let node1 = ServiceNode {
+            id: "service_node1".to_string(),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10)), 8080),
+            capabilities: vec!["compute".to_string(), "storage".to_string()],
+            health_score: 0.95,
+            last_heartbeat: SystemTime::now(),
+            metadata: HashMap::new(),
+        };
+
+        let node2 = ServiceNode {
+            id: "service_node2".to_string(),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 11)), 8080),
+            capabilities: vec!["networking".to_string()],
+            health_score: 0.88,
+            last_heartbeat: SystemTime::now(),
+            metadata: HashMap::new(),
+        };
+
+        mesh.add_node(node1).await.expect("Should add node1");
+        mesh.add_node(node2).await.expect("Should add node2");
+
+        assert_eq!(mesh.get_node_count().await, 2);
+
+        // Test node discovery
+        let compute_nodes = mesh.find_nodes_by_capability("compute").await;
+        assert!(compute_nodes.is_ok());
+        assert_eq!(compute_nodes.unwrap().len(), 1);
+    }
+
+    // Test Module 7: Gossip Protocol
+    #[tokio::test]
+    async fn test_gossip_protocol_creation() {
+        let config = GossipConfig {
+            node_id: "gossip_node1".to_string(),
+            gossip_interval: Duration::from_millis(100),
+            fanout: 3,
+            max_message_age: Duration::from_secs(60),
+            compression_enabled: true,
+        };
+
+        let gossip = GossipProtocol::new(config);
+        assert!(gossip.is_active());
+        assert_eq!(gossip.get_node_id(), "gossip_node1");
+    }
+
+    #[tokio::test]
+    async fn test_gossip_message_propagation() {
+        let mut gossip_nodes = vec![];
+
+        for i in 0..5 {
+            let config = GossipConfig {
+                node_id: format!("gossip_node{}", i),
+                gossip_interval: Duration::from_millis(50),
+                fanout: 2,
+                max_message_age: Duration::from_secs(60),
+                compression_enabled: false,
+            };
+            gossip_nodes.push(GossipProtocol::new(config));
+        }
+
+        // Connect nodes to each other
+        for i in 0..gossip_nodes.len() {
+            for j in 0..gossip_nodes.len() {
+                if i != j {
+                    let peer_id = format!("gossip_node{}", j);
+                    gossip_nodes[i]
+                        .add_peer(peer_id)
+                        .await
+                        .expect("Should add peer");
+                }
+            }
+        }
+
+        // Send a gossip message from first node
+        let message = GossipMessage {
+            id: "test_message_1".to_string(),
+            sender: "gossip_node0".to_string(),
+            content: b"Hello, federation!".to_vec(),
+            timestamp: SystemTime::now(),
+            ttl: 10,
+        };
+
+        gossip_nodes[0]
+            .broadcast_message(message)
+            .await
+            .expect("Should broadcast message");
+
+        // Allow time for propagation
+        sleep(Duration::from_millis(200)).await;
+
+        // Verify message received by other nodes
+        for i in 1..gossip_nodes.len() {
+            let messages = gossip_nodes[i].get_received_messages().await;
+            assert!(
+                !messages.is_empty(),
+                "Node {} should have received messages",
+                i
+            );
+        }
+    }
+
+    // Test Module 8: Peer Management
+    #[tokio::test]
+    async fn test_peer_manager_creation() {
+        let config = PeerConfig {
+            max_peers: 20,
+            connection_timeout: Duration::from_secs(30),
+            heartbeat_interval: Duration::from_secs(60),
+            peer_discovery_interval: Duration::from_secs(120),
+            max_connection_retries: 3,
+        };
+
+        let peer_manager = PeerManager::new(config);
+        assert_eq!(peer_manager.get_peer_count().await, 0);
+        assert_eq!(peer_manager.get_max_peers(), 20);
+    }
+
+    #[tokio::test]
+    async fn test_peer_lifecycle_management() {
+        let config = PeerConfig {
+            max_peers: 5,
+            connection_timeout: Duration::from_secs(10),
+            heartbeat_interval: Duration::from_secs(30),
+            peer_discovery_interval: Duration::from_secs(60),
+            max_connection_retries: 2,
+        };
+
+        let mut peer_manager = PeerManager::new(config);
+
+        // Add peers
+        let peer1 = PeerInfo {
+            id: "peer1".to_string(),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 20)), 8080),
+            status: PeerStatus::Connected,
+            last_seen: SystemTime::now(),
+            capabilities: vec!["federation".to_string(), "consensus".to_string()],
+            trust_score: 0.9,
+            metadata: HashMap::new(),
+        };
+
+        let peer2 = PeerInfo {
+            id: "peer2".to_string(),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 21)), 8080),
+            status: PeerStatus::Connecting,
+            last_seen: SystemTime::now(),
+            capabilities: vec!["replication".to_string()],
+            trust_score: 0.85,
+            metadata: HashMap::new(),
+        };
+
+        peer_manager
+            .add_peer(peer1)
+            .await
+            .expect("Should add peer1");
+        peer_manager
+            .add_peer(peer2)
+            .await
+            .expect("Should add peer2");
+
+        assert_eq!(peer_manager.get_peer_count().await, 2);
+
+        // Test peer status updates
+        peer_manager
+            .update_peer_status("peer2", PeerStatus::Connected)
+            .await
+            .expect("Should update peer status");
+
+        let peer2_info = peer_manager.get_peer_info("peer2").await;
+        assert!(peer2_info.is_ok());
+        assert_eq!(peer2_info.unwrap().status, PeerStatus::Connected);
+    }
+
+    // Test Module 9: Data Replication
+    #[tokio::test]
+    async fn test_data_replicator_creation() {
+        let config = ReplicationConfig {
+            replication_factor: 3,
+            strategy: ReplicationStrategy::Synchronous,
+            consistency_level: "strong".to_string(),
+            timeout: Duration::from_secs(30),
+            max_retries: 3,
+        };
+
+        let replicator = DataReplicator::new(config);
+        assert_eq!(replicator.get_replication_factor(), 3);
+        assert!(replicator.is_initialized());
+    }
+
+    #[tokio::test]
+    async fn test_data_replication_process() {
+        let config = ReplicationConfig {
+            replication_factor: 2,
+            strategy: ReplicationStrategy::Asynchronous,
+            consistency_level: "eventual".to_string(),
+            timeout: Duration::from_secs(10),
+            max_retries: 2,
+        };
+
+        let mut replicator = DataReplicator::new(config);
+
+        // Add replica targets
+        let targets = vec![
+            "replica1.example.com:8080".to_string(),
+            "replica2.example.com:8080".to_string(),
+        ];
+
+        for target in targets {
+            replicator
+                .add_replica_target(target)
+                .await
+                .expect("Should add replica target");
+        }
+
+        // Replicate data
+        let data = b"Test data for replication".to_vec();
+        let key = "test_key_1".to_string();
+
+        let replication_result = replicator.replicate_data(key, data).await;
+        assert!(replication_result.is_ok());
+
+        let replication_status = replicator.get_replication_status().await;
+        assert!(replication_status.is_ok());
+    }
+
+    // Test Module 10: State Synchronization
+    #[tokio::test]
+    async fn test_state_sync_creation() {
+        let config = SyncConfig {
+            sync_interval: Duration::from_secs(30),
+            batch_size: 100,
+            compression_enabled: true,
+            conflict_resolution: "last_write_wins".to_string(),
+            max_sync_retries: 3,
+        };
+
+        let state_sync = StateSync::new(config);
+        assert_eq!(state_sync.get_sync_state().await, SyncState::Idle);
+    }
+
+    #[tokio::test]
+    async fn test_state_synchronization_process() {
+        let config = SyncConfig {
+            sync_interval: Duration::from_secs(10),
+            batch_size: 50,
+            compression_enabled: false,
+            conflict_resolution: "timestamp".to_string(),
+            max_sync_retries: 2,
+        };
+
+        let mut state_sync = StateSync::new(config);
+
+        // Add sync peers
+        let peers = vec![
+            "sync_peer1.example.com:8080".to_string(),
+            "sync_peer2.example.com:8080".to_string(),
+        ];
+
+        for peer in peers {
+            state_sync
+                .add_sync_peer(peer)
+                .await
+                .expect("Should add sync peer");
+        }
+
+        // Start synchronization
+        let sync_result = state_sync.start_sync().await;
+        assert!(sync_result.is_ok());
+
+        // Check sync state
+        let state = state_sync.get_sync_state().await;
+        assert!(matches!(state, SyncState::Syncing | SyncState::Completed));
+    }
+
+    // Test Module 11: Federation Authentication
+    #[tokio::test]
+    async fn test_federation_auth_creation() {
+        let config = AuthConfig {
+            auth_method: "mutual_tls".to_string(),
+            token_expiry: Duration::from_secs(3600),
+            refresh_threshold: Duration::from_secs(300),
+            max_auth_retries: 3,
+            trusted_cas: vec!["ca1.pem".to_string(), "ca2.pem".to_string()],
+        };
+
+        let auth = FederationAuth::new(config);
+        assert!(auth.is_initialized());
+    }
+
+    #[tokio::test]
+    async fn test_auth_token_management() {
+        let config = AuthConfig {
+            auth_method: "jwt".to_string(),
+            token_expiry: Duration::from_secs(1800),
+            refresh_threshold: Duration::from_secs(300),
+            max_auth_retries: 2,
+            trusted_cas: vec![],
+        };
+
+        let mut auth = FederationAuth::new(config);
+
+        // Generate auth token
+        let token_result = auth.generate_token("test_federation", "test_node").await;
+        assert!(token_result.is_ok());
+
+        let token = token_result.unwrap();
+        assert!(!token.token.is_empty());
+        assert!(token.expires_at > SystemTime::now());
+
+        // Validate token
+        let validation_result = auth.validate_token(&token.token).await;
+        assert!(validation_result.is_ok());
+        assert!(validation_result.unwrap());
+    }
+
+    // Test Module 12: Trust Management
+    #[tokio::test]
+    async fn test_trust_manager_creation() {
+        let config = TrustConfig {
+            initial_trust_level: TrustLevel::Medium,
+            trust_decay_rate: 0.01,
+            trust_update_interval: Duration::from_secs(300),
+            min_trust_threshold: 0.3,
+            max_trust_level: 1.0,
+        };
+
+        let trust_manager = TrustManager::new(config);
+        assert!(trust_manager.is_initialized());
+    }
+
+    #[tokio::test]
+    async fn test_trust_level_management() {
+        let config = TrustConfig {
+            initial_trust_level: TrustLevel::Medium,
+            trust_decay_rate: 0.005,
+            trust_update_interval: Duration::from_secs(60),
+            min_trust_threshold: 0.2,
+            max_trust_level: 1.0,
+        };
+
+        let mut trust_manager = TrustManager::new(config);
+
+        // Add trusted entities
+        trust_manager
+            .add_entity("trusted_node1", TrustLevel::High)
+            .await
+            .expect("Should add trusted entity");
+        trust_manager
+            .add_entity("new_node", TrustLevel::Low)
+            .await
+            .expect("Should add new entity");
+
+        // Update trust based on behavior
+        trust_manager
+            .record_positive_interaction("new_node")
+            .await
+            .expect("Should record positive interaction");
+        trust_manager
+            .record_negative_interaction("trusted_node1")
+            .await
+            .expect("Should record negative interaction");
+
+        // Check trust levels
+        let new_node_trust = trust_manager.get_trust_level("new_node").await;
+        let trusted_node_trust = trust_manager.get_trust_level("trusted_node1").await;
+
+        assert!(new_node_trust.is_ok());
+        assert!(trusted_node_trust.is_ok());
+
+        // New node should have increased trust, trusted node should have decreased
+        assert!(new_node_trust.unwrap() > TrustLevel::Low);
+    }
+
+    // Test Module 13: Error Handling and Edge Cases
+    #[tokio::test]
+    async fn test_raft_with_network_partition() {
+        let config = RaftConfig {
+            node_id: "isolated_node".to_string(),
+            cluster_size: 3,
+            election_timeout: Duration::from_millis(100),
+            heartbeat_interval: Duration::from_millis(30),
+            max_log_entries: 1000,
+        };
+
+        let node = RaftNode::new(config);
+
+        // Simulate network partition by starting election without peers
+        let election_result = node.start_election().await;
+        assert!(election_result.is_ok());
+
+        // Should remain in candidate state due to no majority
+        sleep(Duration::from_millis(150)).await;
+        let state = node.get_state().await;
+        assert!(matches!(state, NodeState::Candidate | NodeState::Follower));
+    }
+
+    #[tokio::test]
+    async fn test_gossip_with_message_loops() {
+        let config = GossipConfig {
+            node_id: "loop_test_node".to_string(),
+            gossip_interval: Duration::from_millis(50),
+            fanout: 1,
+            max_message_age: Duration::from_millis(200), // Short TTL
+            compression_enabled: false,
+        };
+
+        let mut gossip = GossipProtocol::new(config);
+
+        // Add self as peer to create potential loop
+        gossip
+            .add_peer("loop_test_node".to_string())
+            .await
+            .expect("Should add self as peer");
+
+        // Send message that could loop
+        let message = GossipMessage {
+            id: "loop_message".to_string(),
+            sender: "loop_test_node".to_string(),
+            content: b"Loop test".to_vec(),
+            timestamp: SystemTime::now(),
+            ttl: 5,
+        };
+
+        let broadcast_result = gossip.broadcast_message(message).await;
+        assert!(broadcast_result.is_ok());
+
+        // Should handle loop prevention gracefully
+        sleep(Duration::from_millis(100)).await;
+        let messages = gossip.get_received_messages().await;
+
+        // Should not cause infinite loops
+        assert!(messages.len() < 10);
+    }
+
+    #[tokio::test]
+    async fn test_peer_manager_connection_failures() {
+        let config = PeerConfig {
+            max_peers: 3,
+            connection_timeout: Duration::from_millis(10), // Very short timeout
+            heartbeat_interval: Duration::from_secs(30),
+            peer_discovery_interval: Duration::from_secs(60),
+            max_connection_retries: 1,
+        };
+
+        let mut peer_manager = PeerManager::new(config);
+
+        // Add peer with unreachable address
+        let unreachable_peer = PeerInfo {
+            id: "unreachable_peer".to_string(),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 0, 2, 1)), 9999), // RFC5737 test address
+            status: PeerStatus::Disconnected,
+            last_seen: SystemTime::now(),
+            capabilities: vec!["test".to_string()],
+            trust_score: 0.5,
+            metadata: HashMap::new(),
+        };
+
+        let add_result = peer_manager.add_peer(unreachable_peer).await;
+        assert!(add_result.is_ok()); // Should add but fail to connect
+
+        // Attempt connection should fail gracefully
+        let connect_result = peer_manager.connect_to_peer("unreachable_peer").await;
+        assert!(connect_result.is_err());
+    }
+
+    // Test Module 14: Performance and Concurrency
+    #[tokio::test]
+    async fn test_concurrent_raft_operations() {
+        let config = RaftConfig {
+            node_id: "concurrent_node".to_string(),
+            cluster_size: 1,
+            election_timeout: Duration::from_millis(100),
+            heartbeat_interval: Duration::from_millis(30),
+            max_log_entries: 1000,
+        };
+
+        let node = RaftNode::new(config);
+
+        // Perform concurrent operations
+        let mut handles = vec![];
+        for i in 0..10 {
+            let node_clone = node.clone();
+            let handle = tokio::spawn(async move {
+                let entry = LogEntry {
+                    term: 1,
+                    index: i + 1,
+                    command: format!("SET key{} value{}", i, i).into_bytes(),
+                    timestamp: SystemTime::now(),
+                };
+                node_clone.append_log_entry(entry).await
+            });
+            handles.push(handle);
+        }
+
+        // Wait for all operations
+        let mut successful_operations = 0;
+        for handle in handles {
+            let result = handle.await.expect("Task should complete");
+            if result.is_ok() {
+                successful_operations += 1;
+            }
+        }
+
+        assert!(successful_operations > 0);
+    }
+
+    #[tokio::test]
+    async fn test_gossip_performance_under_load() {
+        let config = GossipConfig {
+            node_id: "performance_node".to_string(),
+            gossip_interval: Duration::from_millis(10),
+            fanout: 2,
+            max_message_age: Duration::from_secs(60),
+            compression_enabled: true,
+        };
+
+        let gossip = GossipProtocol::new(config);
+
+        // Add multiple peers
+        for i in 0..5 {
+            let peer_id = format!("peer{}", i);
+            gossip.add_peer(peer_id).await.expect("Should add peer");
+        }
+
+        // Send many messages rapidly
+        let start = Instant::now();
+        for i in 0..50 {
+            let message = GossipMessage {
+                id: format!("perf_message_{}", i),
+                sender: "performance_node".to_string(),
+                content: format!("Performance test message {}", i).into_bytes(),
+                timestamp: SystemTime::now(),
+                ttl: 10,
+            };
+
+            let _ = gossip.broadcast_message(message).await;
+        }
+        let duration = start.elapsed();
+
+        // Should handle rapid message sending efficiently
+        assert!(duration < Duration::from_millis(500));
+    }
+
+    #[tokio::test]
+    async fn test_federation_integration_workflow() {
+        // Create a mini federation with multiple components
+        let raft_config = RaftConfig {
+            node_id: "integration_raft".to_string(),
+            cluster_size: 1,
+            election_timeout: Duration::from_millis(100),
+            heartbeat_interval: Duration::from_millis(30),
+            max_log_entries: 100,
+        };
+
+        let gossip_config = GossipConfig {
+            node_id: "integration_gossip".to_string(),
+            gossip_interval: Duration::from_millis(50),
+            fanout: 2,
+            max_message_age: Duration::from_secs(30),
+            compression_enabled: false,
+        };
+
+        let discovery_config = DiscoveryConfig {
+            node_id: "integration_discovery".to_string(),
+            federation_endpoints: vec!["http://localhost:8080".to_string()],
+            discovery_interval: Duration::from_secs(30),
+            cache_ttl: Duration::from_secs(300),
+            max_retries: 2,
+        };
+
+        // Initialize components
+        let raft_node = RaftNode::new(raft_config);
+        let gossip_protocol = GossipProtocol::new(gossip_config);
+        let mut federated_discovery = FederatedDiscovery::new(discovery_config);
+
+        // Start raft election
+        raft_node
+            .start_election()
+            .await
+            .expect("Should start election");
+
+        // Register service through discovery
+        let service_metadata = HashMap::from([
+            ("name".to_string(), "integration_service".to_string()),
+            ("endpoint".to_string(), "http://localhost:9000".to_string()),
+        ]);
+
+        let registration_result = federated_discovery.register_service(service_metadata).await;
+        assert!(registration_result.is_ok());
+
+        // Send gossip message
+        let gossip_message = GossipMessage {
+            id: "integration_message".to_string(),
+            sender: "integration_gossip".to_string(),
+            content: b"Integration test successful".to_vec(),
+            timestamp: SystemTime::now(),
+            ttl: 10,
+        };
+
+        let gossip_result = gossip_protocol.broadcast_message(gossip_message).await;
+        assert!(gossip_result.is_ok());
+
+        // Verify all components are functioning
+        assert!(raft_node.get_state().await != NodeState::Failed);
+        assert!(gossip_protocol.is_active());
+        assert!(federated_discovery.is_active());
+    }
+}

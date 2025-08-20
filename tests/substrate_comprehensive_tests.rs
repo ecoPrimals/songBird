@@ -6,16 +6,16 @@
 use songbird_core::substrate::{
     MetricsSummary, NetworkRequest, OSSubstrate, PathRequest, PathRequirements, PathType,
 };
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::time::Duration;
 
 /// Test basic substrate initialization
 #[tokio::test]
-async fn test_substrate_initialization() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+async fn test_substrate_initialization() -> SongbirdResult<()> {
+    let substrate = OSSubstrate::new()?;
 
     // Verify substrate was created with universal capability system
-    assert!(substrate.compute_endpoints.len() >= 0); // May be 0 if no compute primals running
+    // Comparison removed - always true for unsigned types // May be 0 if no compute primals running
 
     println!("✅ Substrate initialized successfully with universal capability system");
     println!("   🔧 Found {} compute capability endpoints", substrate.compute_endpoints.len());
@@ -33,8 +33,8 @@ async fn test_substrate_initialization() -> Result<()> {
 
 /// Test system information retrieval
 #[tokio::test]
-async fn test_system_info_retrieval() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+async fn test_system_info_retrieval() -> SongbirdResult<()> {
+    let substrate = OSSubstrate::new()?;
 
     let system_info = substrate.get_system_info().await?;
 
@@ -53,8 +53,8 @@ async fn test_system_info_retrieval() -> Result<()> {
 
 /// Test path operations
 #[tokio::test]
-async fn test_path_operations() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+async fn test_path_operations() -> SongbirdResult<()> {
+    let substrate = OSSubstrate::new()?;
 
     let path_request = PathRequest {
         path_type: PathType::Data,
@@ -95,7 +95,7 @@ async fn test_path_operations() -> Result<()> {
 /// Test capabilities retrieval
 #[tokio::test]
 async fn test_capabilities_retrieval() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     let capabilities = substrate.get_capabilities().await?;
 
@@ -110,7 +110,7 @@ async fn test_capabilities_retrieval() -> Result<()> {
 /// Test network operations
 #[tokio::test]
 async fn test_network_operations() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     let network_request = NetworkRequest {
         operation_type: "toadstool".to_string(),
@@ -137,7 +137,7 @@ async fn test_network_operations() -> Result<()> {
 /// Test cache functionality
 #[tokio::test]
 async fn test_cache_functionality() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     // Warm up the cache
     substrate.warm_cache().await?;
@@ -167,7 +167,7 @@ async fn test_cache_functionality() -> Result<()> {
 /// Test metrics collection
 #[tokio::test]
 async fn test_metrics_collection() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     // Perform some operations to generate metrics
     let _ = substrate.get_system_info().await;
@@ -199,7 +199,7 @@ async fn test_metrics_collection() -> Result<()> {
 /// Test network interface discovery
 #[tokio::test]
 async fn test_network_interface_discovery() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     let interface = substrate.get_network_interface().await?;
 
@@ -212,7 +212,7 @@ async fn test_network_interface_discovery() -> Result<()> {
 /// Test available port finding
 #[tokio::test]
 async fn test_available_port_finding() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     let port = substrate.get_available_port().await?;
 
@@ -226,7 +226,7 @@ async fn test_available_port_finding() -> Result<()> {
 /// Test cache statistics
 #[tokio::test]
 async fn test_cache_statistics() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     // Generate some cache activity
     let _ = substrate.get_system_info().await;
@@ -251,7 +251,7 @@ async fn test_cache_statistics() -> Result<()> {
 /// Test concurrent substrate operations
 #[tokio::test]
 async fn test_concurrent_operations() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     // Run multiple operations concurrently
     let futures = (0..5).map(|_| {
@@ -279,7 +279,7 @@ async fn test_concurrent_operations() -> Result<()> {
 /// Test error handling and resilience
 #[tokio::test]
 async fn test_error_handling() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     // Test with invalid network request
     let invalid_request = NetworkRequest {
@@ -310,7 +310,7 @@ async fn test_error_handling() -> Result<()> {
 /// Test substrate performance under load
 #[tokio::test]
 async fn test_performance_under_load() -> Result<()> {
-    let substrate = OSSubstrate::new().await?;
+    let substrate = OSSubstrate::new()?;
 
     let start = std::time::Instant::now();
 
