@@ -10,7 +10,7 @@
 //! 4. Graceful Fallback - Songbird handles tasks when primals unavailable
 //! 5. Zero Hardcoding - No assumptions about specific primal implementations
 
-use songbird_universal_primals::{
+// // use songbird_universal_primals  // TEMPORARILY DISABLED  // TEMPORARILY DISABLED::{
     discovery::{discover_ecosystem_primals, create_universal_context, EcosystemDiscovery, EcosystemDiscoveryConfig},
     registry::UniversalPrimalRegistry,
     traits::{PrimalCapability, PrimalContext, SecurityLevel, NetworkLocation},
@@ -21,7 +21,7 @@ use tracing::{info, warn, error};
 use tokio;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     // Initialize logging
     tracing_subscriber::fmt::init();
 
@@ -66,9 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Demonstrate ecosystem mode with real primal integration
-async fn demonstrate_ecosystem_mode(
-    discovered_primals: Vec<songbird_universal_primals::discovery::types::DiscoveredPrimal>
-) -> Result<(), Box<dyn std::error::Error>> {
+fn demonstrate_ecosystem_mode(Result<(), Box<dyn std::error::Error>>) ->  {
     info!("🌌 Operating in ECOSYSTEM MODE - leveraging real primals");
 
     // Create user context for capability routing
@@ -90,23 +88,18 @@ async fn demonstrate_ecosystem_mode(
                         security_primals.push(primal.primal_id.clone());
                     }
                 }
-                PrimalCapability::FileSystem { .. }
-                | PrimalCapability::ObjectStorage { .. }
-                | PrimalCapability::Backup { .. } => {
+                PrimalCapability::Storage { .. } => {
                     if !storage_primals.contains(&primal.primal_id) {
                         storage_primals.push(primal.primal_id.clone());
                     }
                 }
-                PrimalCapability::ContainerRuntime { .. }
-                | PrimalCapability::ServerlessExecution { .. }
-                | PrimalCapability::LoadBalancing { .. } => {
+                PrimalCapability::Compute { .. }
+                | PrimalCapability::Orchestration { .. } => {
                     if !compute_primals.contains(&primal.primal_id) {
                         compute_primals.push(primal.primal_id.clone());
                     }
                 }
-                PrimalCapability::ModelInference { .. }
-                | PrimalCapability::AgentFramework { .. }
-                | PrimalCapability::MachineLearning { .. } => {
+                PrimalCapability::AI { .. } => {
                     if !ai_primals.contains(&primal.primal_id) {
                         ai_primals.push(primal.primal_id.clone());
                     }
@@ -126,10 +119,7 @@ async fn demonstrate_ecosystem_mode(
 }
 
 /// Demonstrate security delegation to BearDog (or any security-capable primal)
-async fn demonstrate_security_delegation(
-    security_primals: &[String],
-    all_primals: &[songbird_universal_primals::discovery::types::DiscoveredPrimal]
-) -> Result<(), Box<dyn std::error::Error>> {
+fn demonstrate_security_delegation(Result<(), Box<dyn std::error::Error>>) ->  {
     info!("🔐 SECURITY DELEGATION - Routing to security-capable primals");
 
     if security_primals.is_empty() {
@@ -177,16 +167,16 @@ async fn demonstrate_security_delegation(
     Ok(())
 }
 
-/// Demonstrate storage delegation to NestGate (or any storage-capable primal)
-async fn demonstrate_storage_delegation(
+/// Demonstrate storage delegation to BearDog (or any storage-capable primal)
+fn demonstrate_storage_delegation(
     storage_primals: &[String],
-    all_primals: &[songbird_universal_primals::discovery::types::DiscoveredPrimal]
+    all_primals: &[DiscoveredPrimal],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    info!("🗄️ STORAGE DELEGATION - Routing to storage-capable primals");
+    info!("💾 STORAGE DELEGATION - Routing to storage-capable primals");
 
     if storage_primals.is_empty() {
         warn!("  ⚠️ No storage primals available - using Songbird fallback");
-        info!("  📱 Songbird: Handling storage with local filesystem");
+        info!("  📱 Songbird: Using local filesystem for storage");
         return Ok(());
     }
 
@@ -194,21 +184,12 @@ async fn demonstrate_storage_delegation(
         if let Some(primal) = all_primals.iter().find(|p| &p.primal_id == primal_id) {
             let primal_name = primal.metadata.get("primal_name").unwrap_or(&"unknown".to_string());
             
-            info!("  💾 DELEGATING to {}: File System & Object Storage", primal_name);
+            info!("  🗄️ DELEGATING to {}: Storage & Backup Systems", primal_name);
             
             for capability in &primal.capabilities {
                 match capability {
-                    PrimalCapability::FileSystem { supports_zfs } => {
-                        info!("    📁 File System: ZFS={}", supports_zfs);
-                    }
-                    PrimalCapability::ObjectStorage { backends } => {
-                        info!("    🗃️ Object Storage: {:?}", backends);
-                    }
-                    PrimalCapability::DataReplication { consistency } => {
-                        info!("    🔄 Replication: {}", consistency);
-                    }
-                    PrimalCapability::Backup { incremental } => {
-                        info!("    💿 Backup: Incremental={}", incremental);
+                    PrimalCapability::Storage { types } => {
+                        info!("    📦 Storage types: {:?}", types);
                     }
                     _ => {}
                 }
@@ -223,9 +204,9 @@ async fn demonstrate_storage_delegation(
 }
 
 /// Demonstrate compute delegation to Toadstool (or any compute-capable primal)
-async fn demonstrate_compute_delegation(
+fn demonstrate_compute_delegation(
     compute_primals: &[String],
-    all_primals: &[songbird_universal_primals::discovery::types::DiscoveredPrimal]
+    all_primals: &[DiscoveredPrimal],
 ) -> Result<(), Box<dyn std::error::Error>> {
     info!("⚡ COMPUTE DELEGATION - Routing to compute-capable primals");
 
@@ -239,21 +220,15 @@ async fn demonstrate_compute_delegation(
         if let Some(primal) = all_primals.iter().find(|p| &p.primal_id == primal_id) {
             let primal_name = primal.metadata.get("primal_name").unwrap_or(&"unknown".to_string());
             
-            info!("  🚀 DELEGATING to {}: Container Runtime & Serverless", primal_name);
+            info!("  🚀 DELEGATING to {}: Compute & Orchestration", primal_name);
             
             for capability in &primal.capabilities {
                 match capability {
-                    PrimalCapability::ContainerRuntime { orchestrators } => {
-                        info!("    🐳 Container Runtime: {:?}", orchestrators);
+                    PrimalCapability::Compute { features } => {
+                        info!("    🖥️ Compute features: {:?}", features);
                     }
-                    PrimalCapability::ServerlessExecution { languages } => {
-                        info!("    ⚡ Serverless: {:?}", languages);
-                    }
-                    PrimalCapability::LoadBalancing { algorithms } => {
-                        info!("    ⚖️ Load Balancing: {:?}", algorithms);
-                    }
-                    PrimalCapability::AutoScaling { metrics } => {
-                        info!("    📈 Auto-scaling: {:?}", metrics);
+                    PrimalCapability::Orchestration { features } => {
+                        info!("    ⚙️ Orchestration features: {:?}", features);
                     }
                     _ => {}
                 }
@@ -268,9 +243,9 @@ async fn demonstrate_compute_delegation(
 }
 
 /// Demonstrate AI delegation to Squirrel (or any AI-capable primal)
-async fn demonstrate_ai_delegation(
+fn demonstrate_ai_delegation(
     ai_primals: &[String],
-    all_primals: &[songbird_universal_primals::discovery::types::DiscoveredPrimal]
+    all_primals: &[DiscoveredPrimal],
 ) -> Result<(), Box<dyn std::error::Error>> {
     info!("🧠 AI DELEGATION - Routing to AI-capable primals");
 
@@ -284,21 +259,12 @@ async fn demonstrate_ai_delegation(
         if let Some(primal) = all_primals.iter().find(|p| &p.primal_id == primal_id) {
             let primal_name = primal.metadata.get("primal_name").unwrap_or(&"unknown".to_string());
             
-            info!("  🤖 DELEGATING to {}: Model Inference & ML", primal_name);
+            info!("  🤖 DELEGATING to {}: AI & Machine Learning", primal_name);
             
             for capability in &primal.capabilities {
                 match capability {
-                    PrimalCapability::ModelInference { models } => {
-                        info!("    🎯 Model Inference: {:?}", models);
-                    }
-                    PrimalCapability::AgentFramework { mcp_support } => {
-                        info!("    🤝 Agent Framework: MCP={}", mcp_support);
-                    }
-                    PrimalCapability::MachineLearning { training_support } => {
-                        info!("    🎓 Machine Learning: Training={}", training_support);
-                    }
-                    PrimalCapability::NaturalLanguage { languages } => {
-                        info!("    💬 NLP: {:?}", languages);
+                    PrimalCapability::AI { models } => {
+                        info!("    🤖 AI models: {:?}", models);
                     }
                     _ => {}
                 }
@@ -313,7 +279,7 @@ async fn demonstrate_ai_delegation(
 }
 
 /// Demonstrate standalone mode when no ecosystem primals are available
-async fn demonstrate_standalone_mode() -> Result<(), Box<dyn std::error::Error>> {
+fn demonstrate_standalone_mode(Result<(), Box<dyn std::error::Error>>) ->  {
     info!("📱 Operating in STANDALONE MODE - Songbird handles all tasks");
     info!("  🔐 Security: Built-in authentication & AES-256-GCM encryption");
     info!("  🗄️ Storage: Local filesystem operations");

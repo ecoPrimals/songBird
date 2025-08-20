@@ -3,14 +3,14 @@
 //! These tests verify the gaming network configuration, optimization settings,
 //! and one-touch setup capabilities.
 
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use songbird_network::network::gaming::{GamingAutoConfig, OneTouchConfig};
 use std::time::Duration;
 
 /// Test basic gaming auto config initialization
 #[tokio::test]
 async fn test_gaming_auto_config_initialization() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     // Verify initial state
     let setup_state = config.get_setup_state();
@@ -23,7 +23,7 @@ async fn test_gaming_auto_config_initialization() -> Result<()> {
 /// Test setup state management
 #[tokio::test]
 async fn test_setup_state_management() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     // Check initial configuration state
     let is_configured = config.is_configured();
@@ -42,7 +42,7 @@ async fn test_setup_state_management() -> Result<()> {
 /// Test security validator functionality
 #[tokio::test]
 async fn test_security_validator() -> Result<()> {
-    let mut config = GamingAutoConfig::new().await?;
+    let mut config = GamingAutoConfig::new()?;
 
     // Get security validator
     let _validator = config.get_security_validator();
@@ -58,7 +58,7 @@ async fn test_security_validator() -> Result<()> {
 /// Test game-specific configuration
 #[tokio::test]
 async fn test_game_specific_configuration() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     // Configure for a specific game
     let game_config = config.configure_for_game("StarCraft").await?;
@@ -80,7 +80,7 @@ async fn test_game_specific_configuration() -> Result<()> {
 /// Test multiple game configurations
 #[tokio::test]
 async fn test_multiple_game_configurations() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     let games = vec!["StarCraft", "CounterStrike", "Minecraft", "Valorant"];
 
@@ -98,7 +98,7 @@ async fn test_multiple_game_configurations() -> Result<()> {
 /// Test configuration with warnings
 #[tokio::test]
 async fn test_configuration_with_warnings() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     // Some configurations might generate warnings
     let game_config = config.configure_for_game("UnknownGame").await?;
@@ -116,7 +116,7 @@ async fn test_configuration_with_warnings() -> Result<()> {
 /// Test status retrieval
 #[tokio::test]
 async fn test_status_retrieval() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     let status = config.get_status().await?;
 
@@ -143,7 +143,7 @@ async fn test_status_retrieval() -> Result<()> {
 /// Test family safe setup
 #[tokio::test]
 async fn test_family_safe_setup() -> Result<()> {
-    let mut config = GamingAutoConfig::new().await?;
+    let mut config = GamingAutoConfig::new()?;
 
     let result = config.setup_family_safe("test_family".to_string()).await?;
 
@@ -180,7 +180,7 @@ async fn test_family_safe_setup() -> Result<()> {
 async fn test_concurrent_configurations() -> Result<()> {
     // Create multiple configs for concurrent testing
     let futures = (0..3).map(|i| async move {
-        let config = GamingAutoConfig::new().await?;
+        let config = GamingAutoConfig::new()?;
         let game_name = format!("Game{}", i);
         config.configure_for_game(&game_name).await
     });
@@ -203,7 +203,7 @@ async fn test_concurrent_configurations() -> Result<()> {
 /// Test error handling in gaming configuration
 #[tokio::test]
 async fn test_error_handling() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     // Test with edge cases
     let empty_game_config = config.configure_for_game("").await?;
@@ -221,7 +221,7 @@ async fn test_error_handling() -> Result<()> {
 /// Test configuration structure
 #[tokio::test]
 async fn test_configuration_structure() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     let game_config = config.configure_for_game("StructureTest").await?;
 
@@ -246,7 +246,7 @@ async fn test_configuration_structure() -> Result<()> {
 /// Test gaming config performance
 #[tokio::test]
 async fn test_gaming_config_performance() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     let start = std::time::Instant::now();
 
@@ -268,7 +268,7 @@ async fn test_gaming_config_performance() -> Result<()> {
 /// Test setup state consistency
 #[tokio::test]
 async fn test_setup_state_consistency() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     // Check initial state multiple times
     for _ in 0..5 {
@@ -291,7 +291,7 @@ async fn test_setup_state_consistency() -> Result<()> {
 /// Test configuration with special characters
 #[tokio::test]
 async fn test_special_character_handling() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     let special_names = vec![
         "Game-With-Dashes",
@@ -316,7 +316,7 @@ async fn test_special_character_handling() -> Result<()> {
 /// Test configuration defaults
 #[tokio::test]
 async fn test_configuration_defaults() -> Result<()> {
-    let config = GamingAutoConfig::new().await?;
+    let config = GamingAutoConfig::new()?;
 
     let game_config = config.configure_for_game("DefaultTest").await?;
 

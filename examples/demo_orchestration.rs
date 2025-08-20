@@ -3,8 +3,8 @@ use songbird_core::biome::{
     SongbirdBiomeManifest, TeamResourceQuota,
 };
 // Note: ServiceDiscovery trait is used from traits module
-use songbird_discovery::discovery::config::SongbirdDiscoveryConfig;
-use songbird_discovery::discovery::SongbirdDiscovery;
+use songbird_discovery::config::SongbirdDiscoveryConfig;
+use songbird_discovery::SongbirdDiscovery;
 use songbird_registry::service::ServiceRegistry;
 // Note: PluginRegistry trait is imported from traits module
 
@@ -18,7 +18,7 @@ use tracing::info;
 use uuid::Uuid;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
@@ -38,11 +38,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Demo 1: Service Registry and Dynamic Plugin Composition
-async fn demo_service_registry() -> Result<(), Box<dyn std::error::Error>> {
+fn demo_service_registry(Result<(), Box<dyn std::error::Error>>) ->  {
     info!("🔧 Demo 1: Service Registry & Dynamic Plugin Composition");
 
     // Create service registry
-    let _registry = ServiceRegistry::new().await?;
+    let _registry = ServiceRegistry::new()?;
     info!("✅ Service registry created successfully");
 
     // Create dynamic plugin registry
@@ -104,7 +104,7 @@ async fn demo_service_registry() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Demo 2: BYOB Deployment with Orchestration
-async fn demo_byob_deployment() -> Result<(), Box<dyn std::error::Error>> {
+fn demo_byob_deployment(Result<(), Box<dyn std::error::Error>>) ->  {
     info!("🏗️ Demo 2: BYOB Deployment with Orchestration");
 
     // Create orchestrator configuration
@@ -158,7 +158,7 @@ async fn demo_byob_deployment() -> Result<(), Box<dyn std::error::Error>> {
             services.insert(
                 "api-backend".to_string(),
                 ServiceSpec {
-                    endpoint: Some("http://localhost:8080".to_string()),
+                    endpoint: Some("http://localhost:{}".to_string()),
                     depends_on: vec!["database".to_string()],
                     health_check: Some(songbird_core::biome::HealthCheckSpec {
                         endpoint: "/api/health".to_string(),
@@ -223,7 +223,7 @@ async fn demo_byob_deployment() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Demo 3: Auto-Discovery System
-async fn demo_auto_discovery() -> Result<(), Box<dyn std::error::Error>> {
+fn demo_auto_discovery(Result<(), Box<dyn std::error::Error>>) ->  {
     info!("🔍 Demo 3: Auto-Discovery System");
 
     // Create discovery configuration

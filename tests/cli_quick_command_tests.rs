@@ -4,12 +4,12 @@
 //! Focuses on one-touch gaming setup and basic configuration
 
 use songbird_config::SongbirdConfig;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult, SongbirdError};
 use std::path::PathBuf;
 use tempfile::TempDir;
 
 // Helper functions for tests
-async fn setup_quick_gaming_environment(config_path: &std::path::Path) -> Result<()> {
+async fn setup_quick_gaming_environment() -> Result<()> {
     let mut config = SongbirdConfig::default();
 
     // Set up gaming-specific configuration
@@ -35,7 +35,7 @@ async fn setup_quick_gaming_environment(config_path: &std::path::Path) -> Result
     Ok(())
 }
 
-async fn configure_quick_discovery(config_path: &std::path::Path) -> Result<()> {
+async fn configure_quick_discovery() -> Result<()> {
     // Check if config file exists
     if !config_path.exists() {
         return Err(SongbirdError::Configuration {
@@ -79,20 +79,23 @@ async fn configure_quick_discovery(config_path: &std::path::Path) -> Result<()> 
     Ok(())
 }
 
-async fn setup_basic_networking(config_path: &std::path::Path) -> Result<()> {
+async fn setup_basic_networking() -> Result<()> {
     let mut config = SongbirdConfig::default();
 
     // Basic networking configuration
     config.network.orchestrator_port = 8080;
-    config.network.bind_address = "127.0.0.1".parse().unwrap();
+    config.network.bind_address = &get_bind_address().parse()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid address '{}': {}", &get_bind_address(), e)))?;
 
-    let config_toml = toml::to_string(&config).unwrap();
-    std::fs::write(config_path, config_toml).unwrap();
+    let config_toml = toml::to_string(&config)
+    .map_err(|e| SongbirdError::serialization_error(&format!("TOML serialization failed: {}", e)))?;
+    std::fs::write(config_path, config_toml)
+    .map_err(|e| SongbirdError::io_error(&format!("Write failed: {}", e)))?;
 
     Ok(())
 }
 
-async fn apply_security_defaults(config_path: &std::path::Path) -> Result<()> {
+async fn apply_security_defaults() -> Result<()> {
     let mut config = SongbirdConfig::default();
 
     // Apply security defaults
@@ -100,13 +103,15 @@ async fn apply_security_defaults(config_path: &std::path::Path) -> Result<()> {
     config.security.cert_path = Some("/etc/songbird/certs/server.crt".to_string());
     config.security.key_path = Some("/etc/songbird/certs/server.key".to_string());
 
-    let config_toml = toml::to_string(&config).unwrap();
-    std::fs::write(config_path, config_toml).unwrap();
+    let config_toml = toml::to_string(&config)
+    .map_err(|e| SongbirdError::serialization_error(&format!("TOML serialization failed: {}", e)))?;
+    std::fs::write(config_path, config_toml)
+    .map_err(|e| SongbirdError::io_error(&format!("Write failed: {}", e)))?;
 
     Ok(())
 }
 
-async fn validate_quick_setup(config_path: &std::path::Path) -> Result<()> {
+async fn validate_quick_setup() -> Result<()> {
     let config_content =
         std::fs::read_to_string(config_path).map_err(|e| SongbirdError::Configuration {
             suggestion: Some("Check configuration file".to_string()),

@@ -1,0 +1,12 @@
+/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/target/debug/deps/tinystr-d499cbd39546a509.d: /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/lib.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/macros.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/ascii.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/asciibyte.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/error.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/int_ops.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/unvalidated.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/ule.rs
+
+/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/target/debug/deps/libtinystr-d499cbd39546a509.rmeta: /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/lib.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/macros.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/ascii.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/asciibyte.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/error.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/int_ops.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/unvalidated.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/ule.rs
+
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/lib.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/macros.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/ascii.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/asciibyte.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/error.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/int_ops.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/unvalidated.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tinystr-0.8.1/src/ule.rs:

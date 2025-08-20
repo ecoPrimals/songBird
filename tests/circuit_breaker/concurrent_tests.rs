@@ -25,7 +25,7 @@ async fn test_concurrent_failure_recording() {
 
     // Wait for all tasks
     for handle in handles {
-        handle.await.unwrap();
+        handle.await.expect("Test operation should succeed");
     }
 
     // Circuit should be open
@@ -58,7 +58,7 @@ async fn test_concurrent_success_recording() {
     }
 
     for handle in handles {
-        handle.await.unwrap();
+        handle.await.expect("Test operation should succeed");
     }
 
     // Should be closed
@@ -87,7 +87,7 @@ async fn test_high_load_performance() {
     }
 
     for handle in handles {
-        handle.await.unwrap();
+        handle.await.expect("Test operation should succeed");
     }
 
     let duration = start.elapsed();
@@ -113,6 +113,6 @@ async fn test_concurrent_state_checks() {
     }
 
     for handle in handles {
-        handle.await.unwrap();
+        handle.await.expect("Test operation should succeed");
     }
 } 

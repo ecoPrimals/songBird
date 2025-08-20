@@ -1,0 +1,3 @@
+# Deprecated Items Cleanup Log - Fri Aug  1 06:10:17 PM EDT 2025
+# Systematic removal of deprecated structs, traits, and methods
+

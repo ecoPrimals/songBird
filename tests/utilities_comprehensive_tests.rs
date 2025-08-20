@@ -7,7 +7,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_test_utils::{
+    fixtures::{MockPeer, MockMessage},
+    test_framework::{TestEnvironment, TestResult},
+    utilities::{TimeoutConfig, CacheConfig, ValidationConfig},
+};
+use songbird_errors::{SongbirdResult, SongbirdError};
 
 #[test]
 fn test_string_utilities_basic() {
@@ -60,15 +65,18 @@ fn test_string_utilities_validation() {
 fn test_string_utilities_parsing() {
     // Test string parsing
     let number_string = "42";
-    let parsed_number: i32 = number_string.parse().unwrap();
+    let parsed_number: i32 = number_string.parse()
+    .map_err(|e| SongbirdError::validation_error(&format!("Parse failed: {}", e)))?;
     assert_eq!(parsed_number, 42);
 
     let float_string = "3.14159";
-    let parsed_float: f64 = float_string.parse().unwrap();
+    let parsed_float: f64 = float_string.parse()
+    .map_err(|e| SongbirdError::validation_error(&format!("Parse failed: {}", e)))?;
     assert!((parsed_float - std::f64::consts::PI).abs() < 0.00001);
 
     let bool_string = "true";
-    let parsed_bool: bool = bool_string.parse().unwrap();
+    let parsed_bool: bool = bool_string.parse()
+    .map_err(|e| SongbirdError::validation_error(&format!("Parse failed: {}", e)))?;
     assert!(parsed_bool);
 }
 
@@ -125,10 +133,12 @@ fn test_data_processing_aggregation() {
     // Test aggregation operations
     let data = [10, 20, 30, 40, 50];
 
-    let min = data.iter().min().unwrap();
+    let min = data.iter().min()
+    .ok_or_else(|| SongbirdError::runtime_error("Collection is empty"))?;
     assert_eq!(*min, 10);
 
-    let max = data.iter().max().unwrap();
+    let max = data.iter().max()
+    .ok_or_else(|| SongbirdError::runtime_error("Collection is empty"))?;
     assert_eq!(*max, 50);
 
     let average = data.iter().sum::<i32>() as f64 / data.len() as f64;
@@ -148,7 +158,7 @@ fn test_caching_basic() {
     assert!(cache.contains_key("key1"));
 
     // Test cache hit
-    let value = cache.get("key1").unwrap();
+    let value = cache.get("key1").expect("Test operation should succeed");
     assert_eq!(value, "value1");
 
     // Test cache size
@@ -191,7 +201,7 @@ fn test_caching_advanced() {
     std::thread::sleep(Duration::from_millis(10));
 
     // Check if expired
-    let entry = cache.get("temp_key").unwrap();
+    let entry = cache.get("temp_key").expect("Test operation should succeed");
     assert!(entry.is_expired());
 }
 
@@ -202,13 +212,16 @@ fn test_caching_thread_safe() {
     let cache_clone = cache.clone();
 
     let handle = std::thread::spawn(move || {
-        let mut cache = cache_clone.lock().unwrap();
+        let mut cache = cache_clone.lock()
+    .map_err(|e| SongbirdError::runtime_error(&format!("Lock acquisition failed: {}", e)))?;
         cache.insert("thread_key".to_string(), 42);
     });
 
-    handle.join().unwrap();
+    handle.join()
+    .map_err(|e| SongbirdError::runtime_error(&format!("Thread join failed: {:?}", e)))?;
 
-    let cache = cache.lock().unwrap();
+    let cache = cache.lock()
+    .map_err(|e| SongbirdError::runtime_error(&format!("Lock acquisition failed: {}", e)))?;
     assert_eq!(cache.get("thread_key"), Some(&42));
 }
 
@@ -308,7 +321,7 @@ fn test_helper_functions_retry_logic() {
     );
 
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), "success");
+    assert_eq!(result.ok_or_else(|| SongbirdError::internal(format!("Operation failed: {:?}", e)))?, "success");
     assert_eq!(counter, 3);
 }
 
@@ -713,7 +726,7 @@ fn test_utility_error_handling() {
     }
 
     assert!(safe_divide(10.0, 2.0).is_ok());
-    assert_eq!(safe_divide(10.0, 2.0).unwrap(), 5.0);
+    assert_eq!(safe_divide(10.0, 2.0).map_err(|e| SongbirdError::internal(format!("Operation failed: {:?}", e)))?, 5.0);
 
     assert!(safe_divide(10.0, 0.0).is_err());
 
@@ -724,5 +737,5 @@ fn test_utility_error_handling() {
     }
 
     assert!(chain_operations().is_ok());
-    assert_eq!(chain_operations().unwrap(), "Result: 5");
+    assert_eq!(chain_operations().map_err(|e| SongbirdError::internal(format!("Operation failed: {:?}", e)))?, "Result: 5");
 }

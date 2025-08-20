@@ -6,7 +6,7 @@
 use songbird_errors::{
     DiscoveryError, GamingError, NetworkError, NotFoundError, Result, SongbirdError,
     ValidationError,
-};
+, SongbirdError};
 use std::time::Duration;
 
 #[test]
@@ -58,7 +58,7 @@ fn test_songbird_error_types() -> Result<()> {
 fn test_error_display_formatting() -> Result<()> {
     let error = SongbirdError::Network(Box::new(NetworkError {
         message: "Connection refused".to_string(),
-        endpoint: Some("192.168.1.100:8080".to_string()),
+        endpoint: Some("192.168.1.100:{}".to_string()),
         port: Some(8080),
         protocol: Some("http".to_string()),
     }));
@@ -124,7 +124,7 @@ fn test_validation_error_without_value() -> Result<()> {
 
 #[test]
 fn test_result_type_ok() -> Result<()> {
-    let successful_result: Result<String> = Ok("Success".to_string());
+    let successful_result: SongbirdResult<String> = Ok("Success".to_string());
 
     match successful_result {
         Ok(value) => assert_eq!(value, "Success"),
@@ -383,15 +383,15 @@ fn test_error_recovery_suggestions() -> Result<()> {
 #[test]
 fn test_error_logging_format() -> Result<()> {
     let error = SongbirdError::Network(Box::new(NetworkError {
-        message: "Connection refused to 192.168.1.100:8080".to_string(),
-        endpoint: Some("192.168.1.100:8080".to_string()),
+        message: "Connection refused to 192.168.1.100:{}".to_string(),
+        endpoint: Some("192.168.1.100:{}".to_string()),
         port: Some(8080),
         protocol: Some("http".to_string()),
     }));
 
     let log_format = error.to_string();
     assert!(log_format.contains("Connection refused"));
-    assert!(log_format.contains("192.168.1.100:8080"));
+    assert!(log_format.contains("192.168.1.100:{}"));
 
     Ok(())
 }
@@ -454,7 +454,7 @@ fn test_error_performance_impact() -> Result<()> {
 
 #[test]
 fn test_error_memory_usage() -> Result<()> {
-    let error = SongbirdError::config("Simple error".to_string());
+            let error = SongbirdError::configuration_error("Simple error");
     let error_size = std::mem::size_of_val(&error);
 
     // Error should not be too large (very generous threshold)
@@ -478,7 +478,8 @@ fn test_error_thread_safety() -> Result<()> {
     // Simulate sending to another thread
     let handle = std::thread::spawn(move || error_clone.to_string());
 
-    let result = handle.join().unwrap();
+    let result = handle.join()
+    .map_err(|e| SongbirdError::runtime_error(&format!("Thread join failed: {:?}", e)))?;
     assert!(result.contains("Thread safety test"));
 
     Ok(())

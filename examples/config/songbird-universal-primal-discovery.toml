@@ -1,0 +1,92 @@
+# Songbird Universal Primal Discovery Configuration
+# 
+# This configuration demonstrates how to set up primal discovery using the
+# universal capability-based system instead of hardcoded primal names.
+#
+# **Key Architecture Principle:**
+# Songbird discovers primals by CAPABILITY, not by name. This allows any
+# primal (existing or community-created) to be used without code changes.
+
+[discovery]
+# Enable different discovery methods
+enable_environment_discovery = true
+enable_network_scan = true
+enable_kubernetes_discovery = false
+enable_docker_discovery = false
+
+# Network scanning configuration
+scan_ports = [8080, 8081, 8082, 8083, 8084, 8085, 8443, 3000, 5000]
+scan_networks = ["127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16"]
+discovery_timeout_seconds = 10
+max_concurrent_discoveries = 20
+
+[adapter]
+# Request timeout in milliseconds
+request_timeout_ms = 30000
+# Maximum retries for failed requests
+max_retries = 3
+# Cache TTL for discovered primals in seconds
+cache_ttl_seconds = 300
+# Enable fallback to any available primal if preferred not found
+enable_fallback = true
+
+# Example Environment Variables for Primal Discovery:
+# 
+# Instead of hardcoded primal names like BEARDOG_ENDPOINT, use:
+# PRIMAL_1_NAME=beardog-security-service
+# PRIMAL_1_ENDPOINT=https://127.0.0.1:8443
+# PRIMAL_1_CAPABILITIES=security,encryption,authentication
+# PRIMAL_1_TYPE=security
+# 
+# PRIMAL_2_NAME=custom-ai-service  
+# PRIMAL_2_ENDPOINT=http://ai.internal:8080
+# PRIMAL_2_CAPABILITIES=ai,ml,model_inference
+# PRIMAL_2_TYPE=ai
+#
+# PRIMAL_3_NAME=distributed-storage
+# PRIMAL_3_ENDPOINT=http://storage.cluster:8082
+# PRIMAL_3_CAPABILITIES=storage,data,persistence  
+# PRIMAL_3_TYPE=storage
+#
+# PRIMAL_4_NAME=compute-cluster
+# PRIMAL_4_ENDPOINT=http://compute.internal:8084
+# PRIMAL_4_CAPABILITIES=compute,processing,execution
+# PRIMAL_4_TYPE=compute
+
+# Example usage in code:
+#
+# // Create universal adapter
+# let adapter = UniversalPrimalAdapterBuilder::new()
+#     .with_timeout(30000)
+#     .with_retries(3)
+#     .enable_fallback(true)
+#     .build()
+#     .await?;
+#
+# // Discover all available primals
+# let discovered = adapter.discover_primals().await?;
+# println!("Found primals: {:?}", discovered);
+#
+# // Send request by capability (not by primal name!)
+# let result = adapter.security_request("encrypt", json!({
+#     "data": "sensitive information",
+#     "algorithm": "AES-256-GCM"
+# })).await?;
+#
+# // Or find best primal for specific capability
+# let best_ai_primal = adapter.find_best_primal_for_capability("ai").await?;
+#
+# // Send request to any primal with "compute" capability
+# let compute_result = adapter.compute_request("process", json!({
+#     "task": "batch_processing",
+#     "data": [...] 
+# })).await?;
+
+[logging]
+level = "info"
+# Log primal discovery and capability matching
+log_discovery = true
+# Log request routing decisions  
+log_routing = true
+# Log health status updates
+log_health_updates = true 

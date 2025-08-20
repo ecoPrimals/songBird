@@ -1,20 +1,22 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/songbird-core",
-    "crates/songbird-network", 
-    "crates/songbird-security",
-    "crates/songbird-discovery",
-    "crates/songbird-observability", 
-    "crates/songbird-federation",
-    "crates/songbird-registry",
-    "crates/songbird-config",
+    "crates/songbird-canonical",
     "crates/songbird-cli",
+    "crates/songbird-config",
+    "crates/songbird-core",
+    "crates/songbird-discovery",
     "crates/songbird-errors",
-    "crates/songbird-universal-primals",
-    "crates/songbird-universal",
-    "crates/songbird-orchestrator",
+    "crates/songbird-federation",
     "crates/songbird-lib",
+    "crates/songbird-network",
+    "crates/songbird-observability",
+    "crates/songbird-orchestrator",
+    "crates/songbird-registry",
+    "crates/songbird-security",
+    "crates/songbird-test-utils",
+    "crates/songbird-universal",
+    "crates/songbird-universal-primals",
 ]
 
 [workspace.package]
@@ -27,9 +29,10 @@ homepage = "https://songbird-gaming.ecoprimals.dev"
 
 [workspace.dependencies]
 # Core async runtime
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.46", features = ["full"] }  # Updated to fix slab vulnerability
 async-trait = "0.1"
-futures-util = "0.3"
+futures-util = "0.3.31"  # Force latest version
+slab = "0.4.11"  # Force secure version to override vulnerable 0.4.10
 
 # Serialization 
 serde = { version = "1.0", features = ["derive"] }
@@ -56,7 +59,8 @@ clap = { version = "4.0", features = ["derive"] }
 colored = "2.0"
 
 # Networking
-trust-dns-resolver = "0.23"
+hickory-resolver = "0.24"  # Updated from trust-dns-resolver (unmaintained)
+trust-dns-resolver = "0.23"  # Legacy support for migration
 socket2 = "0.5"
 
 # Time
@@ -86,6 +90,9 @@ num_cpus = "1.0"
 # File/Directory operations
 dirs = "5.0"
 
+# Performance testing
+criterion = { version = "0.5", features = ["html_reports"] }
+
 # === ANTI-MONOLITH WORKSPACE COMPLETE ===
 
 [profile.bench]
@@ -97,4 +104,6 @@ codegen-units = 1
 [profile.release-with-debug]
 inherits = "release"
 debug = true
+
+
 

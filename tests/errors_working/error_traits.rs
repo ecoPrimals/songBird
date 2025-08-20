@@ -39,7 +39,7 @@ fn test_error_sync_trait() {
 #[test]
 fn test_error_display_trait() {
     let error = SongbirdError::config_error("database_url", "Invalid URL format");
-    let display_output = format!("{}", error);
+    let display_output = format!("{error}");
     
     assert!(!display_output.is_empty());
     assert!(display_output.contains("Invalid URL format"));
@@ -53,7 +53,7 @@ fn test_error_debug_trait() {
     
     assert!(!debug_output.is_empty());
     // Debug output should be more verbose than Display
-    assert!(debug_output.len() >= format!("{}", error).len());
+    assert!(debug_output.len() >= format!("{error}").len());
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn test_error_clone_trait() {
     let cloned = original.clone();
     
     // Both errors should format the same way
-    assert_eq!(format!("{}", original), format!("{}", cloned));
+    assert_eq!(format!("{original}"), format!("{cloned}"));
     assert_eq!(format!("{:?}", original), format!("{:?}", cloned));
 }
 
@@ -73,10 +73,10 @@ fn test_error_partial_eq_trait() {
     let error3 = SongbirdError::config_error("other_field", "message");
     
     // Same errors should be equal
-    assert_eq!(format!("{}", error1), format!("{}", error2));
+    assert_eq!(format!("{error1}"), format!("{error2}"));
     
     // Different errors should not be equal
-    assert_ne!(format!("{}", error1), format!("{}", error3));
+    assert_ne!(format!("{error1}"), format!("{error3}"));
 }
 
 #[test]
@@ -92,7 +92,7 @@ fn test_error_from_trait_string() {
     let string_error = String::from("String error message");
     let songbird_error: SongbirdError = string_error.into();
     
-    let display = format!("{}", songbird_error);
+    let display = format!("{songbird_error}");
     assert!(display.contains("String error message"));
 }
 
@@ -101,7 +101,7 @@ fn test_error_from_trait_str() {
     let str_error = "Static str error message";
     let songbird_error: SongbirdError = str_error.into();
     
-    let display = format!("{}", songbird_error);
+    let display = format!("{songbird_error}");
     assert!(display.contains("Static str error message"));
 }
 
@@ -135,10 +135,11 @@ fn test_error_thread_safety() {
     let error_clone = Arc::clone(&error);
     
     let handle = thread::spawn(move || {
-        format!("{}", error_clone)
+        format!("{error_clone}")
     });
     
-    let result = handle.join().unwrap();
+    let result = handle.join()
+    .map_err(|e| SongbirdError::runtime_error(&format!("Thread join failed: {:?}", e)))?;
     assert!(!result.is_empty());
 }
 
@@ -151,7 +152,7 @@ fn test_error_source_chain_with_io() {
     let error_ref: &dyn Error = &songbird_error;
     assert!(error_ref.source().is_some());
     
-    let source = error_ref.source().unwrap();
+    let source = error_ref.source().expect("Test operation should succeed");
     assert!(source.to_string().contains("Access denied"));
 }
 

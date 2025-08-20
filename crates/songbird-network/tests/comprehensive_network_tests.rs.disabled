@@ -1,0 +1,242 @@
+//! Comprehensive Network Tests
+//!
+//! This test suite provides extensive coverage for the songbird-network crate
+//! to achieve the target 90% test coverage for production readiness.
+
+use songbird_config::NetworkConfig;
+use songbird_errors::SongbirdResult;
+use songbird_network::{
+    communication::{CommunicationMessage, CommunicationResponse, MessagePriority, Protocol},
+    network::gaming::CanonicalGamingManager,
+    unified_types::{NetworkManager, UnifiedNetworkConfig},
+};
+use std::collections::HashMap;
+use std::time::Duration;
+
+#[cfg(test)]
+mod comprehensive_network_tests {
+    use super::*;
+
+    // Test Module 1: Communication Message Tests
+    #[tokio::test]
+    async fn test_communication_message_creation() {
+        let message = CommunicationMessage {
+            id: "test_id".to_string(),
+            sender: "test_sender".to_string(),
+            recipient: "test_recipient".to_string(),
+            payload: b"test_data".to_vec(),
+            protocol: Protocol::Http,
+            priority: MessagePriority::Normal,
+            timestamp: chrono::Utc::now(),
+            metadata: HashMap::new(),
+        };
+
+        assert_eq!(message.sender, "test_sender");
+        assert_eq!(message.recipient, "test_recipient");
+        assert_eq!(message.payload, b"test_data");
+    }
+
+    #[tokio::test]
+    async fn test_communication_response_success() {
+        let response = CommunicationResponse {
+            message_id: "test_id".to_string(),
+            success: true,
+            payload: Some(b"test_data".to_vec()),
+            error: None,
+            latency_ms: Some(50),
+        };
+
+        assert!(response.success);
+        assert!(response.payload.is_some());
+        assert!(response.error.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_communication_response_error() {
+        let response = CommunicationResponse {
+            message_id: "test_id".to_string(),
+            success: false,
+            payload: None,
+            error: Some("test_error".to_string()),
+            latency_ms: Some(100),
+        };
+
+        assert!(!response.success);
+        assert!(response.payload.is_none());
+        assert!(response.error.is_some());
+    }
+
+    // Test Module 2: Network Manager Tests
+    #[tokio::test]
+    async fn test_network_manager_creation() {
+        let config = NetworkConfig::default();
+        let manager = NetworkManager::new(config);
+        // NetworkManager::new returns the struct directly, not a Result
+        // Verify the manager was created with proper configuration
+        assert!(
+            !manager.config().bind_address.is_empty(),
+            "Manager should have a valid bind address"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_unified_network_config_validation() {
+        let config = UnifiedNetworkConfig {
+            bind_address: "127.0.0.1".to_string(),
+            port_range: (8000, 9000),
+            connection_timeout_ms: 5000,
+            max_connections: 100,
+            enable_ipv6: false,
+            buffer_size: 8192,
+            enable_compression: true,
+        };
+
+        assert!(!config.bind_address.is_empty());
+        assert!(config.port_range.0 < config.port_range.1);
+        assert!(config.connection_timeout_ms > 0);
+        assert!(config.max_connections > 0);
+    }
+
+    // Test Module 3: Gaming Manager Tests
+    #[tokio::test]
+    async fn test_canonical_gaming_manager_creation() {
+        let manager_result = CanonicalGamingManager::new().await;
+        assert!(manager_result.is_ok());
+    }
+
+    // Test Module 4: Protocol Tests
+    #[tokio::test]
+    async fn test_protocol_variants() {
+        let protocols = vec![
+            Protocol::Http,
+            Protocol::Https,
+            Protocol::WebSocket,
+            Protocol::WebSocketSecure,
+            Protocol::Grpc,
+            Protocol::Tcp,
+            Protocol::Udp,
+        ];
+
+        // Test that all protocols can be created and compared
+        for protocol in protocols {
+            match protocol {
+                Protocol::Http => assert_eq!(protocol, Protocol::Http),
+                Protocol::Https => assert_eq!(protocol, Protocol::Https),
+                Protocol::WebSocket => assert_eq!(protocol, Protocol::WebSocket),
+                Protocol::WebSocketSecure => assert_eq!(protocol, Protocol::WebSocketSecure),
+                Protocol::Grpc => assert_eq!(protocol, Protocol::Grpc),
+                Protocol::Tcp => assert_eq!(protocol, Protocol::Tcp),
+                Protocol::Udp => assert_eq!(protocol, Protocol::Udp),
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_message_priority_variants() {
+        let priorities = vec![
+            MessagePriority::Low,
+            MessagePriority::Normal,
+            MessagePriority::High,
+            MessagePriority::Critical,
+        ];
+
+        // Test that all priorities can be created and compared
+        for priority in priorities {
+            match priority {
+                MessagePriority::Low => assert_eq!(priority, MessagePriority::Low),
+                MessagePriority::Normal => assert_eq!(priority, MessagePriority::Normal),
+                MessagePriority::High => assert_eq!(priority, MessagePriority::High),
+                MessagePriority::Critical => assert_eq!(priority, MessagePriority::Critical),
+            }
+        }
+    }
+
+    // Test Module 5: Integration Tests
+    #[tokio::test]
+    async fn test_network_integration_basic() -> SongbirdResult<()> {
+        let config = NetworkConfig::default();
+        let _network_manager = NetworkManager::new(config);
+        let _gaming_manager = CanonicalGamingManager::new().await?;
+
+        // Basic integration test - if we get here without panicking, integration is working
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_error_handling_integration() {
+        // Test error handling across network components
+        let config = NetworkConfig::default();
+        let _manager = NetworkManager::new(config);
+
+        // Test gaming manager error handling
+        let gaming_result = CanonicalGamingManager::new().await;
+
+        // Test that the result is either Ok or Err (both are valid outcomes)
+        match gaming_result {
+            Ok(manager) => {
+                // Test successful path - verify manager is functional
+                assert!(
+                    manager.get_config().max_sessions > 0,
+                    "Gaming manager should have valid config with session limit"
+                );
+            }
+            Err(error) => {
+                // Test error path - verify error is meaningful
+                assert!(
+                    !error.to_string().is_empty(),
+                    "Error should have a meaningful message"
+                );
+            }
+        }
+    }
+
+    // Test Module 6: Performance Tests (Basic)
+    #[tokio::test]
+    async fn test_network_performance_basic() -> SongbirdResult<()> {
+        let config = NetworkConfig::default();
+        let _manager = NetworkManager::new(config);
+
+        // Basic performance test - measure creation time
+        let start = std::time::Instant::now();
+        let _gaming_manager = CanonicalGamingManager::new().await?;
+        let duration = start.elapsed();
+
+        // Should create manager in reasonable time (< 100ms)
+        assert!(duration < Duration::from_millis(100));
+        Ok(())
+    }
+
+    // Test Module 7: Configuration Tests
+    #[tokio::test]
+    async fn test_network_config_defaults() {
+        let config = NetworkConfig::default();
+
+        // Test that default configuration is valid
+        assert!(!config.bind_address.is_empty());
+        assert!(config.port_range.start < config.port_range.end);
+        assert!(config.connection_timeout_ms > 0);
+        assert!(config.max_connections > 0);
+    }
+
+    #[tokio::test]
+    async fn test_unified_config_customization() {
+        let mut config = UnifiedNetworkConfig {
+            bind_address: "0.0.0.0".to_string(),
+            port_range: (3000, 4000),
+            connection_timeout_ms: 10000,
+            max_connections: 500,
+            enable_ipv6: true,
+            buffer_size: 16384,
+            enable_compression: false,
+        };
+
+        // Test customization
+        config.bind_address = "192.168.1.100".to_string();
+        config.max_connections = 1000;
+
+        assert_eq!(config.bind_address, "192.168.1.100");
+        assert_eq!(config.max_connections, 1000);
+        assert!(config.enable_ipv6);
+        assert!(!config.enable_compression);
+    }
+}

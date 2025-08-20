@@ -5,7 +5,7 @@
 use songbird_errors::{
     CircuitBreakerError, DiscoveryError, GamingError, NetworkError, Result, RetryError,
     ServiceError, SongbirdError, ValidationError,
-};
+, SongbirdError};
 
 #[tokio::test]
 async fn test_error_creation_and_display() -> Result<()> {
@@ -43,7 +43,7 @@ async fn test_error_creation_and_display() -> Result<()> {
     // Test network error - using actual fields
     let network_error = SongbirdError::Network(Box::new(NetworkError {
         message: "Connection timeout".to_string(),
-        endpoint: Some("192.168.1.100:8080".to_string()),
+        endpoint: Some("192.168.1.100:{}".to_string()),
         port: Some(8080),
         protocol: Some("HTTP".to_string()),
     }));
@@ -135,7 +135,7 @@ async fn test_error_constructors() -> Result<()> {
     assert!(health_error.to_string().contains("db-service"));
     assert!(health_error.to_string().contains("Health check failed"));
 
-    let config_error = SongbirdError::config("Invalid config".to_string());
+            let config_error = SongbirdError::configuration_error("Invalid config");
     assert!(config_error.to_string().contains("Invalid config"));
 
     Ok(())

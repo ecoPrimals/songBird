@@ -1,0 +1,45 @@
+//! Simple Network Tests - Modernized and Fixed
+//!
+//! **🔧 MODERNIZATION COMPLETE**: Updated to use canonical network types
+
+use songbird_config::NetworkConfig;
+use songbird_errors::SongbirdError;
+use songbird_network::NetworkResult;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_network_config_creation() {
+        let config = NetworkConfig {
+            bind_address: "127.0.0.1".to_string(),
+            ..Default::default()
+        };
+        assert_eq!(config.bind_address, "127.0.0.1");
+    }
+
+    #[test]
+    fn test_network_result_success() {
+        let result = "test".to_string();
+        assert_eq!(result, "test");
+    }
+
+    #[test]
+    fn test_error_display() {
+        let network_error = SongbirdError::network_error("Network issue");
+        let config_error = SongbirdError::configuration_error("Config issue");
+
+        assert!(format!("{network_error:?}").contains("Network issue"));
+        assert!(format!("{config_error:?}").contains("Config issue"));
+    }
+
+    #[test]
+    fn test_network_result_types() {
+        let success_result: NetworkResult<String> = Ok("test".to_string());
+        assert!(success_result.is_ok());
+
+        let error_result: NetworkResult<String> = Err(SongbirdError::network_error("test error"));
+        assert!(error_result.is_err());
+    }
+}

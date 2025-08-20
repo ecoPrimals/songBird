@@ -23,14 +23,15 @@ mod system_integration_tests {
     #[tokio::test]
     async fn test_configuration_system_integration() {
         // Test that the configuration system integrates properly
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()
+    .expect("Test temp directory should be created successfully");
         let config_path = temp_dir.path().join("test_config.toml");
 
         // Create a test configuration
         let test_config_content = r#"
             [network]
             orchestrator_port = 8080
-            bind_address = "127.0.0.1"
+            bind_address = &get_bind_address()
             require_tls = false
             
             [environment]
@@ -38,10 +39,12 @@ mod system_integration_tests {
             use_defaults = true
         "#;
 
-        std::fs::write(&config_path, test_config_content).unwrap();
+        std::fs::write(&config_path, test_config_content)
+    .map_err(|e| SongbirdError::io_error(&format!("Write failed: {}", e)))?;
 
         // Test file content and default configuration
-        let file_content = std::fs::read_to_string(&config_path).unwrap();
+        let file_content = std::fs::read_to_string(&config_path)
+    .map_err(|e| SongbirdError::io_error(&format!("Read failed: {}", e)))?;
         assert!(file_content.contains("orchestrator_port = 8080"));
         assert!(file_content.contains("SONGBIRD_TEST_"));
 
@@ -151,7 +154,7 @@ mod component_communication_tests {
         // Test that environment config provides reasonable defaults
         assert!(!env_config.prefix.is_empty());
         assert!(env_config.bind_port > 0);
-        assert!(env_config.bind_port <= 65535);
+        // Port is u16, so always <= 65535 by type definition
         assert!(!env_config.bind_address.is_empty());
 
         // Test that security defaults are reasonable
@@ -187,14 +190,15 @@ mod performance_integration_tests {
     #[tokio::test]
     async fn test_configuration_loading_performance() {
         // Test that configuration loading is performant
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()
+    .expect("Test temp directory should be created successfully");
         let config_path = temp_dir.path().join("perf_config.toml");
 
         // Create a larger configuration file
         let config_content = r#"
             [network]
             orchestrator_port = 8080
-            bind_address = "127.0.0.1"
+            bind_address = &get_bind_address()
             require_tls = false
             
             [environment]
@@ -206,7 +210,8 @@ mod performance_integration_tests {
             # Add more sections to test parsing performance
         "#;
 
-        std::fs::write(&config_path, config_content).unwrap();
+        std::fs::write(&config_path, config_content)
+    .map_err(|e| SongbirdError::io_error(&format!("Write failed: {}", e)))?;
 
         // Measure file reading time instead of complex parsing
         let start = Instant::now();
@@ -223,7 +228,7 @@ mod performance_integration_tests {
         );
 
         // Test that file contains expected content
-        let content = file_content.unwrap();
+        let content = file_content.expect("Test operation should succeed");
         assert!(content.contains("orchestrator_port = 8080"));
         assert!(content.contains("SONGBIRD_PERF_"));
     }
@@ -299,7 +304,8 @@ mod error_recovery_tests {
     #[tokio::test]
     async fn test_invalid_configuration_recovery() {
         // Test that system handles invalid configurations gracefully
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()
+    .expect("Test temp directory should be created successfully");
         let invalid_config_path = temp_dir.path().join("invalid.toml");
 
         // Create invalid TOML
@@ -309,7 +315,8 @@ mod error_recovery_tests {
             invalid_syntax here
         "#;
 
-        std::fs::write(&invalid_config_path, invalid_content).unwrap();
+        std::fs::write(&invalid_config_path, invalid_content)
+    .map_err(|e| SongbirdError::io_error(&format!("Write failed: {}", e)))?;
 
         // Try to load invalid config
         let result = SongbirdConfig::from_file(&invalid_config_path);
@@ -339,7 +346,7 @@ mod error_recovery_tests {
 
         let network_error = NetworkError {
             message: "Connection timeout".to_string(),
-            endpoint: Some("test.example.com:8080".to_string()),
+            endpoint: Some("test.example.com:{}".to_string()),
             port: Some(8080),
             protocol: Some("HTTP".to_string()),
         };
@@ -347,7 +354,7 @@ mod error_recovery_tests {
         let songbird_error = SongbirdError::Network(Box::new(network_error.clone()));
 
         // Test error formatting
-        let error_string = format!("{}", songbird_error);
+        let error_string = format!("{songbird_error}");
         assert!(error_string.contains("Connection timeout"));
 
         // Test error matching
@@ -390,31 +397,34 @@ mod real_world_scenario_tests {
     #[tokio::test]
     async fn test_typical_system_startup_scenario() {
         // Simulate typical system startup
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()
+    .expect("Test temp directory should be created successfully");
         let config_path = temp_dir.path().join("startup_config.toml");
 
         // 1. Create configuration file
         let config_content = r#"
             [network]
             orchestrator_port = 8080
-            bind_address = "127.0.0.1"
+            bind_address = &get_bind_address()
             require_tls = false
             
             [environment]
             prefix = "SONGBIRD_"
             use_defaults = true
         "#;
-        std::fs::write(&config_path, config_content).unwrap();
+        std::fs::write(&config_path, config_content)
+    .map_err(|e| SongbirdError::io_error(&format!("Write failed: {}", e)))?;
 
         // 2. Test configuration file content
-        let file_content = std::fs::read_to_string(&config_path).unwrap();
+        let file_content = std::fs::read_to_string(&config_path)
+    .map_err(|e| SongbirdError::io_error(&format!("Read failed: {}", e)))?;
         assert!(file_content.contains("orchestrator_port = 8080"));
         assert!(file_content.contains("SONGBIRD_"));
 
         // 3. Test default configuration instead of parsing complex TOML
         let default_config = SongbirdConfig::default();
         assert!(default_config.network.orchestrator_port > 0);
-        assert!(default_config.network.orchestrator_port <= 65535);
+        // Port is u16, so always <= 65535 by type definition
 
         // 4. Initialize components (simulated)
         let network_config = &default_config.network;
@@ -463,31 +473,36 @@ mod real_world_scenario_tests {
     #[tokio::test]
     async fn test_configuration_hot_reload_scenario() {
         // Simulate configuration hot reload
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()
+    .expect("Test temp directory should be created successfully");
         let config_path = temp_dir.path().join("hot_reload_config.toml");
 
         // 1. Initial configuration
         let initial_config = r#"
             [network]
             orchestrator_port = 8080
-            bind_address = "127.0.0.1"
+            bind_address = &get_bind_address()
         "#;
-        std::fs::write(&config_path, initial_config).unwrap();
+        std::fs::write(&config_path, initial_config)
+    .map_err(|e| SongbirdError::io_error(&format!("Write failed: {}", e)))?;
 
         // Test basic file parsing without complex config structure
-        let file_content1 = std::fs::read_to_string(&config_path).unwrap();
+        let file_content1 = std::fs::read_to_string(&config_path)
+    .map_err(|e| SongbirdError::io_error(&format!("Read failed: {}", e)))?;
         assert!(file_content1.contains("orchestrator_port = 8080"));
 
         // 2. Update configuration
         let updated_config = r#"
             [network]
             orchestrator_port = 9090
-            bind_address = "127.0.0.1"
+            bind_address = &get_bind_address()
         "#;
-        std::fs::write(&config_path, updated_config).unwrap();
+        std::fs::write(&config_path, updated_config)
+    .map_err(|e| SongbirdError::io_error(&format!("Write failed: {}", e)))?;
 
         // 3. Verify hot reload by checking file content change
-        let file_content2 = std::fs::read_to_string(&config_path).unwrap();
+        let file_content2 = std::fs::read_to_string(&config_path)
+    .map_err(|e| SongbirdError::io_error(&format!("Read failed: {}", e)))?;
         assert!(file_content2.contains("orchestrator_port = 9090"));
 
         // 4. Verify change was detected
@@ -515,7 +530,8 @@ mod real_world_scenario_tests {
         }
 
         // Test configuration error
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()
+    .expect("Test temp directory should be created successfully");
         let bad_config_path = temp_dir.path().join("nonexistent.toml");
 
         let config_error = SongbirdConfig::from_file(&bad_config_path);

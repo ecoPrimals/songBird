@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use songbird_network::communication::circuit_breaker::{
     CircuitBreaker, CircuitBreakerConfig, CircuitState,
 };

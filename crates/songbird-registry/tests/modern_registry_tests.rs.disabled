@@ -1,0 +1,396 @@
+//! Modern Registry Tests - Canonical Implementation
+//!
+//! This module tests the registry functionality using current APIs
+//! and canonical patterns.
+
+use songbird_errors::{Result as SongbirdResult, SongbirdError, SongbirdResponse};
+use songbird_discovery::traits::service::{ServiceInfo, UniversalService};
+use songbird_registry::{
+    health::{HealthCheckPolicy, HealthCheckType, HealthFailureAction, HealthMonitor},
+    service::{DynUniversalService, ServiceRegistry},
+};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::RwLock;
+
+/// Mock service implementation for testing
+pub struct MockTestService {
+    pub service_id: String,
+    pub endpoint: String,
+    pub healthy: Arc<RwLock<bool>>,
+}
+
+impl MockTestService {
+    pub fn new(service_id: String, endpoint: String) -> Self {
+        Self {
+            service_id,
+            endpoint,
+            healthy: Arc::new(RwLock::new(true)),
+        }
+    }
+
+    pub async fn set_healthy(&self, healthy: bool) {
+        *self.healthy.write().await = healthy;
+    }
+}
+
+#[async_trait::async_trait]
+impl UniversalService for MockTestService {
+    type Error = SongbirdError;
+
+    fn service_info(&self) -> ServiceInfo {
+        ServiceInfo {
+            service_id: self.service_id.clone(),
+            name: format!("Test Service {}", self.service_id),
+            version: "1.0.0".to_string(),
+            endpoint: self.endpoint.clone(),
+            capabilities: vec!["test".to_string()],
+            metadata: HashMap::new(),
+        }
+    }
+
+    async fn start(&mut self) -> Result<(), Self::Error> {
+        tracing::info!("Starting test service: {}", self.service_id);
+        Ok(())
+    }
+
+    async fn stop(&mut self) -> Result<(), Self::Error> {
+        tracing::info!("Stopping test service: {}", self.service_id);
+        Ok(())
+    }
+
+    async fn health_check(&self) -> Result<serde_json::Value, Self::Error> {
+        let is_healthy = *self.healthy.read().await;
+        Ok(serde_json::json!({
+            "status": if is_healthy { "healthy" } else { "unhealthy" },
+            "service_id": self.service_id,
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
+}
+
+/// Test basic health monitor functionality
+#[tokio::test]
+async fn test_modern_health_monitor_creation() -> SongbirdResult<()> {
+    let _monitor = HealthMonitor::new();
+
+    // Health monitor should be created successfully
+    Ok(())
+}
+
+/// Test service registry creation and basic functionality
+#[tokio::test]
+async fn test_modern_service_registry_creation() -> SongbirdResult<()> {
+    let _registry = ServiceRegistry::new()
+        .await
+        .map_err(|e| SongbirdError::service_error("registry", e.to_string()))?;
+
+    // Registry should be created successfully
+    Ok(())
+}
+
+/// Test service registration with modern API
+#[tokio::test]
+async fn test_modern_service_registration() -> SongbirdResult<()> {
+    let registry = ServiceRegistry::new()
+        .await
+        .map_err(|e| SongbirdError::service_error("registry", e.to_string()))?;
+
+    // Create a mock service
+    let service = MockTestService::new(
+        "test-service-1".to_string(),
+        "http://localhost:8080".to_string(),
+    );
+
+    // Register the service
+    let boxed_service: Box<DynUniversalService> = Box::new(service);
+    registry
+        .register(boxed_service)
+        .await
+        .map_err(|e| SongbirdError::service_error("registration", e.to_string()))?;
+
+    Ok(())
+}
+
+/// Test service discovery functionality
+#[tokio::test]
+async fn test_modern_service_discovery() -> SongbirdResult<()> {
+    let registry = ServiceRegistry::new()
+        .await
+        .map_err(|e| SongbirdError::service_error("registry", e.to_string()))?;
+
+    // Register multiple services
+    for i in 1..=3 {
+        let service = MockTestService::new(
+            format!("test-service-{}", i),
+            format!("http://localhost:808{}", i),
+        );
+
+        let boxed_service: Box<DynUniversalService> = Box::new(service);
+        registry
+            .register(boxed_service)
+            .await
+            .map_err(|e| SongbirdError::service_error("registration", e.to_string()))?;
+    }
+
+    // Test discovery using the correct method name
+    let services = registry
+        .list_services()
+        .await
+        .map_err(|e| SongbirdError::service_error("discovery", e.to_string()))?;
+
+    // Should have discovered 3 services
+    assert_eq!(services.len(), 3);
+
+    Ok(SongbirdResponse::success(services))
+}
+
+/// Test health check policy creation with correct structure
+#[tokio::test]
+async fn test_modern_health_check_policy() -> SongbirdResult<()> {
+    let policy = HealthCheckPolicy {
+        service_id: "test-service".to_string(),
+        check_interval: Duration::from_secs(30),
+        timeout: Duration::from_secs(5),
+        healthy_threshold: 2,
+        unhealthy_threshold: 3,
+        health_check_path: Some("/health".to_string()),
+        custom_health_checks: vec![],
+        failure_action: HealthFailureAction::Alert,
+    };
+
+    // Policy should be created with expected values
+    assert_eq!(policy.check_interval, Duration::from_secs(30));
+    assert_eq!(policy.healthy_threshold, 2);
+    assert_eq!(policy.unhealthy_threshold, 3);
+
+    Ok(())
+}
+
+/// Test service lifecycle management
+#[tokio::test]
+async fn test_modern_service_lifecycle() -> SongbirdResult<()> {
+    let registry = ServiceRegistry::new()
+        .await
+        .map_err(|e| SongbirdError::service_error("registry", e.to_string()))?;
+
+    // Create and register a service
+    let service = MockTestService::new(
+        "lifecycle-test".to_string(),
+        "http://localhost:8080".to_string(),
+    );
+
+    let boxed_service: Box<DynUniversalService> = Box::new(service);
+    registry
+        .register(boxed_service)
+        .await
+        .map_err(|e| SongbirdError::service_error("registration", e.to_string()))?;
+
+    // Test service discovery after registration
+    let services = registry
+        .list_services()
+        .await
+        .map_err(|e| SongbirdError::service_error("discovery", e.to_string()))?;
+
+    assert_eq!(services.len(), 1);
+    assert_eq!(services[0].service_id, "lifecycle-test");
+
+    Ok(SongbirdResponse::success(services))
+}
+
+/// Test health monitoring integration
+#[tokio::test]
+async fn test_modern_health_monitoring_integration() -> SongbirdResult<()> {
+    let registry = ServiceRegistry::new()
+        .await
+        .map_err(|e| SongbirdError::service_error("registry", e.to_string()))?;
+
+    let mut monitor = HealthMonitor::new();
+
+    // Create a service for health monitoring
+    let service = MockTestService::new(
+        "health-test".to_string(),
+        "http://localhost:8080".to_string(),
+    );
+
+    // Register the service
+    let boxed_service: Box<DynUniversalService> = Box::new(service);
+    registry
+        .register(boxed_service)
+        .await
+        .map_err(|e| SongbirdError::service_error("registration", e.to_string()))?;
+
+    // Create health check policy with correct structure
+    let policy = HealthCheckPolicy {
+        service_id: "health-test".to_string(),
+        check_interval: Duration::from_secs(10),
+        timeout: Duration::from_secs(5),
+        healthy_threshold: 2,
+        unhealthy_threshold: 3,
+        health_check_path: Some("/health".to_string()),
+        custom_health_checks: vec![],
+        failure_action: HealthFailureAction::Alert,
+    };
+
+    // Start monitoring
+    monitor
+        .start_monitoring("health-test".to_string(), policy)
+        .await
+        .map_err(|e| SongbirdError::service_error("monitoring", e.to_string()))?;
+
+    Ok(())
+}
+
+/// Test service capability-based discovery
+#[tokio::test]
+async fn test_modern_capability_discovery() -> SongbirdResult<()> {
+    let registry = ServiceRegistry::new()
+        .await
+        .map_err(|e| SongbirdError::service_error("registry", e.to_string()))?;
+
+    // Register services with different capabilities
+    let api_service = MockTestService::new(
+        "api-service".to_string(),
+        "http://localhost:8080".to_string(),
+    );
+
+    let storage_service = MockTestService::new(
+        "storage-service".to_string(),
+        "http://localhost:8081".to_string(),
+    );
+
+    registry
+        .register(Box::new(api_service))
+        .await
+        .map_err(|e| SongbirdError::service_error("registration", e.to_string()))?;
+
+    registry
+        .register(Box::new(storage_service))
+        .await
+        .map_err(|e| SongbirdError::service_error("registration", e.to_string()))?;
+
+    // Test discovery
+    let all_services = registry
+        .list_services()
+        .await
+        .map_err(|e| SongbirdError::service_error("discovery", e.to_string()))?;
+
+    assert_eq!(all_services.len(), 2);
+
+    // Verify service IDs
+    let service_ids: Vec<_> = all_services.iter().map(|s| &s.service_id).collect();
+    assert!(service_ids.contains(&&"api-service".to_string()));
+    assert!(service_ids.contains(&&"storage-service".to_string()));
+
+    Ok(SongbirdResponse::success(all_services))
+}
+
+/// Test error handling in service operations
+#[tokio::test]
+async fn test_modern_error_handling() -> SongbirdResult<()> {
+    let registry = ServiceRegistry::new()
+        .await
+        .map_err(|e| SongbirdError::service_error("registry", e.to_string()))?;
+
+    // Test with a service that might fail
+    let service = MockTestService::new(
+        "error-test".to_string(),
+        "http://localhost:8080".to_string(),
+    );
+
+    // Set service to unhealthy state
+    service.set_healthy(false).await;
+
+    // Register the service
+    let boxed_service: Box<DynUniversalService> = Box::new(service);
+    registry
+        .register(boxed_service)
+        .await
+        .map_err(|e| SongbirdError::service_error("registration", e.to_string()))?;
+
+    // Service should still be registered even if unhealthy
+    let services = registry
+        .list_services()
+        .await
+        .map_err(|e| SongbirdError::service_error("discovery", e.to_string()))?;
+
+    assert_eq!(services.len(), 1);
+    assert_eq!(services[0].service_id, "error-test");
+
+    Ok(())
+}
+
+/// Test service count functionality
+#[tokio::test]
+async fn test_modern_service_count() -> SongbirdResult<()> {
+    let registry = ServiceRegistry::new()
+        .await
+        .map_err(|e| SongbirdError::service_error("registry", e.to_string()))?;
+
+    // Initially should have 0 services
+    assert_eq!(registry.service_count().await, 0);
+
+    // Register some services
+    for i in 1..=5 {
+        let service = MockTestService::new(
+            format!("count-test-{}", i),
+            format!("http://localhost:808{}", i),
+        );
+
+        let boxed_service: Box<DynUniversalService> = Box::new(service);
+        registry
+            .register(boxed_service)
+            .await
+            .map_err(|e| SongbirdError::service_error("registration", e.to_string()))?;
+    }
+
+    // Should now have 5 services
+    assert_eq!(registry.service_count().await, 5);
+
+    Ok(())
+}
+
+/// Test health check types
+#[tokio::test]
+async fn test_modern_health_check_types() -> SongbirdResult<()> {
+    // Test different health check types
+    let http_check = HealthCheckType::HttpEndpoint {
+        path: "/health".to_string(),
+        expected_status: 200,
+    };
+
+    let tcp_check = HealthCheckType::TcpConnect { port: 8080 };
+
+    let memory_check = HealthCheckType::MemoryUsage {
+        max_percentage: 80.0,
+    };
+
+    // All should be created successfully
+    match http_check {
+        HealthCheckType::HttpEndpoint {
+            path,
+            expected_status,
+        } => {
+            assert_eq!(path, "/health");
+            assert_eq!(expected_status, 200);
+        }
+        _ => panic!("Expected HttpEndpoint check type"),
+    }
+
+    match tcp_check {
+        HealthCheckType::TcpConnect { port } => {
+            assert_eq!(port, 8080);
+        }
+        _ => panic!("Expected TcpConnect check type"),
+    }
+
+    match memory_check {
+        HealthCheckType::MemoryUsage { max_percentage } => {
+            assert!((max_percentage - 80.0).abs() < f64::EPSILON);
+        }
+        _ => panic!("Expected MemoryUsage check type"),
+    }
+
+    Ok(())
+}

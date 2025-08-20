@@ -94,7 +94,8 @@ mod zero_cost_benchmarks {
         let start = Instant::now();
 
         for _ in 0..ITERATIONS {
-            let mut guard = mutex_counter.lock().unwrap();
+            let mut guard = mutex_counter.lock()
+    .map_err(|e| SongbirdError::runtime_error(&format!("Lock acquisition failed: {}", e)))?;
             *guard += 1;
             black_box(*guard);
         }
@@ -355,7 +356,8 @@ mod real_world_performance_scenarios {
             .collect();
 
         for handle in handles {
-            handle.join().unwrap();
+            handle.join()
+    .map_err(|e| SongbirdError::runtime_error(&format!("Thread join failed: {:?}", e)))?;
         }
 
         let duration = start.elapsed();

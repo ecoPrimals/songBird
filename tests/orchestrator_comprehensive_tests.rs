@@ -2,7 +2,7 @@
 
 use songbird_config::SongbirdConfig;
 use songbird_core::orchestrator::*;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::net::IpAddr;
 use tokio::test;
 
@@ -96,18 +96,20 @@ async fn test_orchestrator_lifecycle() {
 async fn test_orchestrator_config_access() {
     let config = SongbirdConfig {
         network: songbird_config::config::NetworkConfig {
-            bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
+            bind_address: &get_bind_address().parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
             orchestrator_port: 9000,
             ..Default::default()
         },
         ..Default::default()
     };
 
-    let orchestrator = Orchestrator::new(config.clone()).unwrap();
+    let orchestrator = Orchestrator::new(config.clone()).expect("Test operation should succeed");
     let retrieved_config = orchestrator.get_config();
     assert_eq!(
         retrieved_config.network.bind_address,
-        "127.0.0.1".parse::<IpAddr>().unwrap()
+        &get_bind_address().parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?
     );
     assert_eq!(retrieved_config.network.orchestrator_port, 9000);
 }
@@ -120,7 +122,7 @@ async fn test_orchestrator_service_discovery() {
     let services = orchestrator.discover_services().await;
     assert!(services.is_ok());
 
-    let service_list = services.unwrap();
+    let service_list = services.expect("Test operation should succeed");
     assert!(!service_list.is_empty());
     assert!(service_list.contains(&"orchestrator".to_string()));
 }
@@ -152,7 +154,7 @@ async fn test_orchestrator_concurrent() {
     }
 
     for handle in handles {
-        let (i, health_ok) = handle.await.unwrap();
+        let (i, health_ok) = handle.await.expect("Test operation should succeed");
         assert!(health_ok);
         assert!(i < 10);
     }
@@ -180,7 +182,8 @@ async fn test_orchestrator_different_configs() {
     let configs = vec![
         SongbirdConfig {
             network: songbird_config::config::NetworkConfig {
-                bind_address: "0.0.0.0".parse::<IpAddr>().unwrap(),
+                bind_address: "0.0.0.0".parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
                 orchestrator_port: 8080,
                 ..Default::default()
             },
@@ -188,7 +191,8 @@ async fn test_orchestrator_different_configs() {
         },
         SongbirdConfig {
             network: songbird_config::config::NetworkConfig {
-                bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
+                bind_address: &get_bind_address().parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
                 orchestrator_port: 3000,
                 ..Default::default()
             },
@@ -197,7 +201,7 @@ async fn test_orchestrator_different_configs() {
     ];
 
     for config in configs {
-        let orchestrator = Orchestrator::new(config.clone()).unwrap();
+        let orchestrator = Orchestrator::new(config.clone()).expect("Test operation should succeed");
         let retrieved_config = orchestrator.get_config();
         assert_eq!(
             retrieved_config.network.bind_address,
@@ -281,7 +285,7 @@ async fn test_orchestrator_integration() {
     let services = orchestrator.discover_services().await;
     assert!(services.is_ok());
 
-    let service_list = services.unwrap();
+    let service_list = services.expect("Test operation should succeed");
     assert!(!service_list.is_empty());
 }
 
@@ -297,7 +301,7 @@ async fn test_orchestrator_scaling_integration() {
     let scaling_manager = GamingScalingManager::new(scaling_config);
     assert!(scaling_manager.is_ok());
 
-    let manager = scaling_manager.unwrap();
+    let manager = scaling_manager.expect("Test operation should succeed");
     let current_scale = manager.current_scale();
     assert!(matches!(current_scale, GamingScale::HomeGaming));
 
@@ -310,7 +314,8 @@ async fn test_orchestrator_scaling_integration() {
 #[test]
 async fn test_orchestrator_configuration() -> Result<()> {
     let mut config = SongbirdConfig::default();
-    config.network.bind_address = "127.0.0.1".parse::<IpAddr>().unwrap();
+    config.network.bind_address = &get_bind_address().parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?;
     config.network.orchestrator_port = 9000;
 
     let orchestrator = Orchestrator::new(config)?;
@@ -318,7 +323,8 @@ async fn test_orchestrator_configuration() -> Result<()> {
 
     assert_eq!(
         retrieved_config.network.bind_address,
-        "127.0.0.1".parse::<IpAddr>().unwrap()
+        &get_bind_address().parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?
     );
     assert_eq!(retrieved_config.network.orchestrator_port, 9000);
     Ok(())
@@ -330,7 +336,8 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
     // Test with stress configuration
     let config = SongbirdConfig {
         network: songbird_config::config::NetworkConfig {
-            bind_address: "0.0.0.0".parse::<IpAddr>().unwrap(),
+            bind_address: "0.0.0.0".parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
             orchestrator_port: 8080,
             ..Default::default()
         },
@@ -342,7 +349,8 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
     // Test with different configuration
     let config2 = SongbirdConfig {
         network: songbird_config::config::NetworkConfig {
-            bind_address: "127.0.0.1".parse::<IpAddr>().unwrap(),
+            bind_address: &get_bind_address().parse::<IpAddr>()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
             orchestrator_port: 3000,
             ..Default::default()
         },

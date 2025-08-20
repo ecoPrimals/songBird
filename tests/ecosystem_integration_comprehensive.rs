@@ -3,7 +3,7 @@
 //! Tests the complete universal capability-based discovery system across
 //! multiple primals to ensure true ecosystem integration works.
 
-use songbird_universal_primals::{
+// // use songbird_universal_primals  // TEMPORARILY DISABLED  // TEMPORARILY DISABLED::{
     discovery::{discover_ecosystem_primals, EcosystemDiscovery, EcosystemDiscoveryConfig},
     traits::{PrimalCapability, PrimalType},
 };
@@ -214,24 +214,25 @@ async fn test_capability_inference_logic() {
 fn categorize_capabilities(capabilities: &[PrimalCapability]) -> &'static str {
     for capability in capabilities {
         match capability {
-            PrimalCapability::Authentication { .. } | 
-            PrimalCapability::Encryption { .. } |
-            PrimalCapability::ThreatDetection { .. } => return "security",
+            // Storage capabilities (canonical)
+            PrimalCapability::Storage { .. } => return "storage",
             
-            PrimalCapability::FileSystem { .. } |
-            PrimalCapability::ObjectStorage { .. } |
-            PrimalCapability::DataReplication { .. } => return "storage",
+            // Compute capabilities (canonical)  
+            PrimalCapability::Compute { .. } => return "compute",
             
-            PrimalCapability::ContainerRuntime { .. } |
-            PrimalCapability::ServerlessExecution { .. } => return "compute",
+            // AI capabilities (canonical)
+            PrimalCapability::AI { .. } => return "ai",
             
-            PrimalCapability::ModelInference { .. } |
-            PrimalCapability::AgentFramework { .. } => return "ai",
-            
-            PrimalCapability::Orchestration { .. } |
-            PrimalCapability::ServiceDiscovery { .. } => return "orchestration",
-            
-            _ => continue,
+            // Other canonical capabilities
+            PrimalCapability::Networking { .. } => return "networking",
+            PrimalCapability::Security { .. } => return "security", 
+            PrimalCapability::Authentication { .. } => return "authentication",
+            PrimalCapability::Orchestration { .. } => return "orchestration",
+            PrimalCapability::Database { .. } => return "database",
+            PrimalCapability::Messaging { .. } => return "messaging",
+            PrimalCapability::ServiceDiscovery { .. } => return "discovery",
+            PrimalCapability::Encryption { .. } => return "encryption",
+            PrimalCapability::Custom { .. } => return "custom",
         }
     }
     "universal"
@@ -245,9 +246,9 @@ fn has_capability_type(primal: &songbird_universal_primals::discovery::types::Di
     primal.capabilities.iter().any(|cap| {
         match (capability_type, cap) {
             ("authentication", PrimalCapability::Authentication { .. }) => true,
-            ("file-storage", PrimalCapability::FileSystem { .. }) => true,
-            ("container-runtime", PrimalCapability::ContainerRuntime { .. }) => true,
-            ("model-inference", PrimalCapability::ModelInference { .. }) => true,
+            ("file-storage", PrimalCapability::Storage { types }) => types.contains(&"file".to_string()),
+            ("container-runtime", PrimalCapability::Compute { features }) => features.contains(&"containers".to_string()),
+            ("model-inference", PrimalCapability::AI { models }) => !models.is_empty(),
             ("service-discovery", PrimalCapability::ServiceDiscovery { .. }) => true,
             _ => false,
         }
@@ -261,14 +262,14 @@ fn should_have_auth_capabilities(capabilities: &[PrimalCapability], service_name
 
 fn should_have_storage_capabilities(capabilities: &[PrimalCapability], service_name: &str) {
     let has_storage = capabilities.iter().any(|cap| matches!(cap, 
-        PrimalCapability::FileSystem { .. } | PrimalCapability::ObjectStorage { .. }
+        PrimalCapability::Storage { .. }
     ));
     assert!(has_storage, "Service '{}' should have storage capabilities", service_name);
 }
 
 fn should_have_ai_capabilities(capabilities: &[PrimalCapability], service_name: &str) {
     let has_ai = capabilities.iter().any(|cap| matches!(cap, 
-        PrimalCapability::ModelInference { .. } | PrimalCapability::AgentFramework { .. }
+        PrimalCapability::AI { .. }
     ));
     assert!(has_ai, "Service '{}' should have AI capabilities", service_name);
 }

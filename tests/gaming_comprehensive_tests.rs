@@ -1,4 +1,4 @@
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use songbird_network::gaming::production_lan::{ProductionLanConfig, ProductionLanManager};
 use songbird_network::gaming::types::IpxAddress;
 use songbird_network::gaming::{
@@ -6,10 +6,11 @@ use songbird_network::gaming::{
     NatType, PlayerEndpoint, VirtualNetwork,
 };
 use std::time::Duration;
+use songbird_network::CommunicationLayer;
 
 #[tokio::test]
 async fn test_gaming_network_manager_creation() -> Result<()> {
-    let manager = GamingManager::new().await?;
+    let manager = GamingManager::new()?;
     assert!(manager.lan_sessions.read().await.is_empty());
 
     Ok(())
@@ -17,7 +18,7 @@ async fn test_gaming_network_manager_creation() -> Result<()> {
 
 #[tokio::test]
 async fn test_gaming_protocol_detection() -> Result<()> {
-    let mut manager = GamingManager::new().await?;
+    let mut manager = GamingManager::new()?;
 
     // Test protocol detection by scanning for games
     let detected_games = manager.scan_for_games(Some("lo".to_string())).await?;
@@ -28,14 +29,15 @@ async fn test_gaming_protocol_detection() -> Result<()> {
 
 #[tokio::test]
 async fn test_gaming_session_creation() -> Result<()> {
-    let mut manager = GamingManager::new().await?;
+    let mut manager = GamingManager::new()?;
 
     // Create a mock detected game session
     let session = DetectedGameSession {
         session_id: "test_session".to_string(),
         protocol_class: GameProtocolClass::IpxBased,
         local_ports: vec![6112],
-        remote_endpoints: vec!["192.168.1.1:6112".parse().unwrap()],
+        remote_endpoints: vec!["192.168.1.1:6112".parse()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid address '{}': {}", "192.168.1.1:6112", e)))?],
         process_id: None,
         game_name: Some("Test Game".to_string()),
         detected_at: std::time::SystemTime::now(),
@@ -75,8 +77,10 @@ async fn test_player_endpoint_creation() -> Result<()> {
     let endpoint = PlayerEndpoint {
         player_id: "player1".to_string(),
         display_name: "Test Player".to_string(),
-        real_address: "192.168.1.100:6112".parse().unwrap(),
-        virtual_address: Some("10.0.0.1".parse().unwrap()),
+        real_address: "192.168.1.100:6112".parse()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid address '{}': {}", "192.168.1.100:6112", e)))?,
+        virtual_address: Some("10.0.0.1".parse()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid address '{}': {}", "10.0.0.1", e)))?),
         nat_type: NatType::Unknown,
     };
 
@@ -94,7 +98,8 @@ async fn test_detected_game_session_creation() -> Result<()> {
         session_id: "test_session_001".to_string(),
         protocol_class: GameProtocolClass::IpxBased,
         local_ports: vec![6112, 6113],
-        remote_endpoints: vec!["192.168.1.1:6112".parse().unwrap()],
+        remote_endpoints: vec!["192.168.1.1:6112".parse()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid address '{}': {}", "192.168.1.1:6112", e)))?],
         process_id: Some(1234),
         game_name: Some("StarCraft".to_string()),
         detected_at: std::time::SystemTime::now(),
@@ -153,7 +158,7 @@ async fn test_virtual_network_creation() -> Result<()> {
 
 #[tokio::test]
 async fn test_gaming_manager_auto_configure() -> Result<()> {
-    let manager = GamingManager::new().await?;
+    let manager = GamingManager::new()?;
     let config = manager.auto_configure().await?;
 
     // Basic validation of the configuration structure - check it has discovery settings
@@ -176,11 +181,11 @@ async fn test_production_lan_config_creation() -> Result<()> {
 #[tokio::test]
 async fn test_production_lan_manager_creation() -> Result<()> {
     let config = ProductionLanConfig::default();
-    let manager = ProductionLanManager::new(config).await?;
+    let manager = ProductionLanManager::new(config)?;
 
     // Check that we can get the manager's statistics
     let stats = manager.get_stats().await;
-    assert_eq!(stats.active_sessions, 0); // No active sessions initially
+    assert_eq!(stats.await.active_sessions, 0); // No active sessions initially
 
     Ok(())
 }
@@ -251,7 +256,7 @@ async fn test_game_session_status_variants() -> Result<()> {
 
 #[tokio::test]
 async fn test_concurrent_gaming_manager() -> Result<()> {
-    let manager = std::sync::Arc::new(GamingManager::new().await?);
+    let manager = std::sync::Arc::new(GamingManager::new()?);
     let mut handles = vec![];
 
     // Test concurrent access to the manager
@@ -266,7 +271,7 @@ async fn test_concurrent_gaming_manager() -> Result<()> {
 
     // Wait for all tasks to complete
     for handle in handles {
-        assert!(handle.await.unwrap());
+        assert!(handle.await.ok_or_else(|| SongbirdError::internal(format!("Operation failed: {:?}", e)))?);
     }
 
     Ok(())
@@ -274,7 +279,7 @@ async fn test_concurrent_gaming_manager() -> Result<()> {
 
 #[tokio::test]
 async fn test_gaming_manager_session_management() -> Result<()> {
-    let manager = GamingManager::new().await?;
+    let manager = GamingManager::new()?;
 
     // Get initial session count
     let initial_sessions = manager.get_active_sessions().await;
@@ -293,7 +298,8 @@ async fn test_gaming_serialization() -> Result<()> {
         session_id: "serialization_test".to_string(),
         protocol_class: GameProtocolClass::BattleNet,
         local_ports: vec![6112],
-        remote_endpoints: vec!["192.168.1.1:6112".parse().unwrap()],
+        remote_endpoints: vec!["192.168.1.1:6112".parse()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid address '{}': {}", "192.168.1.1:6112", e)))?],
         process_id: Some(5678),
         game_name: Some("Diablo II".to_string()),
         detected_at: std::time::SystemTime::now(),
@@ -324,11 +330,13 @@ async fn test_virtual_network_variants() -> Result<()> {
     let udp_network = VirtualNetwork::UDP {
         subnet: "192.168.1.0/24".to_string(),
         players: std::collections::HashMap::new(),
-        broadcast_address: "192.168.1.255".parse().unwrap(),
+        broadcast_address: "192.168.1.255".parse()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid address '{}': {}", "192.168.1.255", e)))?,
     };
 
     let tcp_network = VirtualNetwork::TCP {
-        host_address: "192.168.1.1:6112".parse().unwrap(),
+        host_address: "192.168.1.1:6112".parse()
+    .map_err(|e| SongbirdError::network_error(&format!("Invalid address '{}': {}", "192.168.1.1:6112", e)))?,
         players: std::collections::HashMap::new(),
     };
 
@@ -346,7 +354,7 @@ async fn test_gaming_performance() -> Result<()> {
 
     // Test performance of creating multiple gaming managers
     for _ in 0..10 {
-        let _manager = GamingManager::new().await?;
+        let _manager = GamingManager::new()?;
     }
 
     let elapsed = start_time.elapsed();

@@ -1,134 +1,94 @@
-//! Ecosystem Standalone Operation Demo
+//! Ecosystem Standalone Demo - Canonical Implementation
 //!
-//! This demo shows how Songbird operates standalone while discovering and
-//! leveraging other primals (toadstool, nestgate, squirrel) for network effects.
+//! This example demonstrates the canonical patterns for running a standalone
+//! Songbird ecosystem with modern service discovery and capability matching.
 
-use songbird_universal_primals::{
-    discovery::PrimalDiscoveryEngine,
-    registry::UniversalPrimalRegistry,
-    traits::{NetworkLocation, PrimalCapability, PrimalContext, SecurityLevel},
+use songbird_universal_primals::errors::PrimalResult;
+use songbird_universal_primals::universal_registry::{
+    HealthStatus, ServiceCategory, ServiceFilter,
 };
-use std::collections::HashMap;
-use tracing::{info, warn};
-use tracing_subscriber::fmt;
+use songbird_universal_primals::{
+    MemoryServiceRegistry, ServiceCapability, UniversalServiceRegistry,
+};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    fmt::init();
+async fn main() -> PrimalResult<()> {
+    println!("🎵 Songbird Ecosystem Standalone Demo - Canonical Implementation");
 
-    info!("🎼 Starting Songbird in Standalone + Ecosystem mode");
+    // Create the universal service registry
+    let registry = MemoryServiceRegistry::new();
 
-    // 1. Initialize Songbird as standalone orchestrator
-    let songbird_registry = UniversalPrimalRegistry::new();
+    // Demonstrate basic registry functionality
+    demonstrate_registry_operations(&registry).await?;
 
-    // 2. Create discovery engine for ecosystem integration
-    let mut discovery_engine = PrimalDiscoveryEngine::new(
-        songbird_config::config::hardcoded_elimination::PrimalConfig::default(),
-    );
+    // Demonstrate service discovery patterns
+    demonstrate_service_discovery(&registry).await?;
 
-    info!("🔍 Discovering ecosystem primals...");
-
-    // 3. Auto-discover available primals (toadstool, nestgate, squirrel, etc.)
-    match discovery_engine.start_discovery().await {
-        Ok(_) => {
-            let discovered = discovery_engine.get_discovered_primals();
-            info!("✅ Discovered {} ecosystem primals", discovered.len());
-
-            for primal in discovered {
-                info!(
-                    "  - {} [{}]: {} capabilities",
-                    primal.primal_type.as_str(),
-                    primal.endpoint,
-                    primal.capabilities.len()
-                );
-            }
-        }
-        Err(e) => {
-            warn!("⚠️ Discovery failed: {}", e);
-            info!("📱 Operating in standalone mode only");
-        }
-    }
-
-    // 4. Demonstrate capability-based routing
-    info!("🧠 Testing capability-based routing...");
-
-    let user_context = PrimalContext {
-        user_id: "demo-user".to_string(),
-        device_id: "demo-device".to_string(),
-        session_id: uuid::Uuid::new_v4().to_string(),
-        network_location: NetworkLocation {
-            ip_address: "192.168.1.100".to_string(),
-            subnet: Some("192.168.1.0/24".to_string()),
-            network_id: Some("home-network".to_string()),
-            geo_location: Some("local".to_string()),
-        },
-        security_level: SecurityLevel::Standard,
-        metadata: HashMap::new(),
-    };
-
-    // 5. Route different workload types to appropriate primals
-    route_workload_example(&songbird_registry, &user_context, "compute").await;
-    route_workload_example(&songbird_registry, &user_context, "storage").await;
-    route_workload_example(&songbird_registry, &user_context, "ai").await;
-    route_workload_example(&songbird_registry, &user_context, "security").await;
-
-    info!("🌟 Standalone + Ecosystem operation demonstrated successfully!");
-
+    println!("✅ Ecosystem standalone demo completed successfully!");
     Ok(())
 }
 
-async fn route_workload_example(
-    registry: &UniversalPrimalRegistry,
-    context: &PrimalContext,
-    workload_type: &str,
-) {
-    info!("🔀 Routing {} workload...", workload_type);
+/// Demonstrate basic registry operations
+async fn demonstrate_registry_operations(registry: &MemoryServiceRegistry) -> PrimalResult<()> {
+    println!("🔧 Demonstrating registry operations...");
 
-    // Find primals that can handle this workload type
-    let available_primals = match workload_type {
-        "compute" => {
-            let capability = PrimalCapability::ContainerRuntime {
-                orchestrators: vec!["docker".to_string()],
-            };
-            registry
-                .find_by_capability_for_context(&capability, context)
-                .await
-        }
-        "storage" => {
-            let capability = PrimalCapability::FileSystem {
-                supports_zfs: false,
-            };
-            registry
-                .find_by_capability_for_context(&capability, context)
-                .await
-        }
-        "ai" => {
-            let capability = PrimalCapability::ModelInference {
-                models: vec!["gpt".to_string()],
-            };
-            registry
-                .find_by_capability_for_context(&capability, context)
-                .await
-        }
-        "security" => {
-            let capability = PrimalCapability::Encryption {
-                algorithms: vec!["aes256".to_string()],
-            };
-            registry
-                .find_by_capability_for_context(&capability, context)
-                .await
-        }
-        _ => Vec::new(),
+    // Test basic registry functionality
+    let service_count = registry.list_services(None).await?.len();
+    println!("Current service count: {service_count}");
+
+    println!("✅ Registry operations demonstrated");
+    Ok(())
+}
+
+/// Demonstrate service discovery patterns
+async fn demonstrate_service_discovery(registry: &MemoryServiceRegistry) -> PrimalResult<()> {
+    println!("🔍 Demonstrating service discovery patterns...");
+
+    // Create service filters for different categories
+    let compute_filter = ServiceFilter {
+        categories: Some(vec![ServiceCategory::Compute]),
+        lifecycle_stages: None,
+        compliance_levels: None,
+        capabilities: None,
+        health_status: None,
+        tags: Some(vec![]),
     };
 
-    if available_primals.is_empty() {
-        info!("  📱 No ecosystem primal found, handling locally in Songbird");
-        // Songbird handles the workload itself (standalone mode)
-    } else {
-        info!(
-            "  🌐 Found {} capable primals, routing to ecosystem",
-            available_primals.len()
-        );
-        // Route to the most appropriate primal (network effects)
-    }
+    let storage_filter = ServiceFilter {
+        categories: Some(vec![ServiceCategory::Storage]),
+        lifecycle_stages: None,
+        compliance_levels: None,
+        capabilities: None,
+        health_status: Some(vec![HealthStatus::Healthy]),
+        tags: Some(vec![]),
+    };
+
+    // Demonstrate filtering capabilities
+    let compute_services = registry.list_services(Some(compute_filter)).await?;
+    let storage_services = registry.list_services(Some(storage_filter)).await?;
+
+    println!("Found {} compute services", compute_services.len());
+    println!("Found {} healthy storage services", storage_services.len());
+
+    // Demonstrate capability-based discovery
+    let _compute_capability = ServiceCapability::Compute {
+        cpu_cores: Some(4.0),
+        memory_gb: Some(8.0),
+        gpu_support: false,
+        container_runtime: Some("docker".to_string()),
+    };
+
+    let _storage_capability = ServiceCapability::Storage {
+        storage_gb: Some(500.0),
+        storage_type: songbird_universal_primals::universal_registry::StorageType::FileSystem,
+        backup_support: true,
+        encryption_support: true,
+    };
+
+    println!("🧠 Capability patterns defined:");
+    println!("  - Compute: 4+ cores, 8GB+ RAM, Docker runtime");
+    println!("  - Storage: 500GB+, backup & encryption support");
+
+    println!("✅ Service discovery demonstration completed");
+    Ok(())
 }

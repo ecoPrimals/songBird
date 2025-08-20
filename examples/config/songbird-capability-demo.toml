@@ -1,0 +1,97 @@
+# 🌌 Songbird Capability-Based Configuration Demo
+# This demonstrates the correct architecture where each primal only knows itself
+# and discovers others through capability-based universal adapter routing
+
+[global]
+service_name = "songbird"
+environment = "development"
+log_level = "info"
+node_id = "songbird-demo-001"
+
+[network]
+bind_address = "127.0.0.1"
+port = 8080
+max_connections = 1000
+
+# ✅ CORRECT: Self-awareness only - Songbird knows itself
+[network.self_config]
+self_id = "songbird"
+self_capabilities = ["orchestration", "service_discovery", "load_balancing", "gaming_protocols", "federation"]
+
+[network.self_config.self_endpoint]
+host = "127.0.0.1"  
+port = 8080
+scheme = "http"
+
+# ✅ CORRECT: Universal discovery for capability-based routing
+[network.universal_discovery]
+enabled = true
+discovery_methods = ["network_scan", "service_registry", "mdns", "environment"]
+
+# Service Discovery Endpoints (infrastructure, not specific primals)
+[[network.universal_discovery.service_discovery.consul]]
+host = "127.0.0.1"
+port = 8500
+scheme = "http"
+
+[[network.universal_discovery.service_discovery.etcd]]
+host = "127.0.0.1" 
+port = 2379
+scheme = "http"
+
+[network.gaming]
+enable_gaming_protocols = true
+directplay_port = 47624
+port_range = [8000, 8100]
+
+[security]
+enabled = true
+
+[federation]
+enabled = true
+discovery_port = 7000
+
+[discovery]
+auto_discovery = true
+discovery_interval_secs = 30
+
+[performance]
+enable_optimizations = true
+benchmark_mode = false
+
+[observability]
+metrics_enabled = true
+tracing_enabled = true
+
+# ===============================================================================
+# ENVIRONMENT VARIABLE PATTERN FOR DYNAMIC PRIMAL REGISTRATION
+# ===============================================================================
+# Any primal can register itself using this universal pattern:
+#
+# PRIMAL_{UNIQUE_ID}_ENDPOINT="https://endpoint.url"
+# PRIMAL_{UNIQUE_ID}_CAPABILITIES="capability1,capability2,capability3"
+#
+# Examples:
+#
+# # Security capabilities
+# PRIMAL_BEARDOG_V1_ENDPOINT="https://security.internal:8443"
+# PRIMAL_BEARDOG_V1_CAPABILITIES="security,encryption,audit"
+#
+# # Storage capabilities  
+# PRIMAL_NESTGATE_V1_ENDPOINT="https://storage.internal:9000"
+# PRIMAL_NESTGATE_V1_CAPABILITIES="storage,backup,archival"
+#
+# # Compute capabilities
+# PRIMAL_TOADSTOOL_V1_ENDPOINT="https://compute.internal:8082"
+# PRIMAL_TOADSTOOL_V1_CAPABILITIES="compute,metrics,scaling"
+#
+# # AI capabilities
+# PRIMAL_SQUIRREL_V1_ENDPOINT="https://ai.internal:8002"  
+# PRIMAL_SQUIRREL_V1_CAPABILITIES="ai,inference,training"
+#
+# # Future/Custom capabilities (no code changes needed!)
+# PRIMAL_QUANTUM_LAB_ENDPOINT="https://quantum.research.edu:9000"
+# PRIMAL_QUANTUM_LAB_CAPABILITIES="quantum_compute,cryptography,simulation"
+#
+# PRIMAL_COMPANY_AUTH_ENDPOINT="https://auth.company.com:443"
+# PRIMAL_COMPANY_AUTH_CAPABILITIES="security,oauth2,ldap,saml" 

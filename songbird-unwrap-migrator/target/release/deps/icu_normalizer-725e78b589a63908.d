@@ -1,0 +1,10 @@
+/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/target/release/deps/icu_normalizer-725e78b589a63908.d: /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/lib.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/properties.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/provider.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/uts46.rs
+
+/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/target/release/deps/libicu_normalizer-725e78b589a63908.rlib: /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/lib.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/properties.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/provider.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/uts46.rs
+
+/home/eastgate/Development/ecoPrimals/songbird/songbird-unwrap-migrator/target/release/deps/libicu_normalizer-725e78b589a63908.rmeta: /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/lib.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/properties.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/provider.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/uts46.rs
+
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/lib.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/properties.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/provider.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/icu_normalizer-2.0.0/src/uts46.rs:

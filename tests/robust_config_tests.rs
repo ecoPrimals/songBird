@@ -27,7 +27,7 @@ mod environment_config_tests {
         let config = EnvironmentConfig::default();
 
         // Test reasonable defaults
-        assert_eq!(config.bind_address, "127.0.0.1"); // Localhost only by default
+        assert_eq!(config.bind_address, &get_bind_address()); // Localhost only by default
         assert_eq!(config.bind_port, 8080);
         // Note: TLS defaults to false for development ease, should be true in production
         assert!(!config.require_tls || config.require_tls); // Accept either default
@@ -140,19 +140,20 @@ mod primal_registry_tests {
     #[test]
     fn test_primal_registration() {
         let mut registry = PrimalRegistry::new();
-        let beardog_config = create_test_primal_config("beardog");
+        let security_config = create_test_primal_config("security-provider");
 
-        registry.register_primal(beardog_config.clone());
+        registry.register_primal(security_config.clone());
 
         assert_eq!(registry.primals.len(), 1);
-        assert!(registry.primals.contains_key("beardog"));
+        assert!(registry.primals.contains_key("security-provider"));
 
-        let registered = registry.get_primal("beardog").unwrap();
-        assert_eq!(registered.primal_type, "beardog");
+        let registered = registry.get_primal("security-provider")
+    .expect("Test primal should be registered");
+        assert_eq!(registered.primal_type, "security-provider");
         assert!(registered.enabled);
         assert_eq!(
             registered.endpoint.primary_url,
-            "https://localhost:8443/beardog"
+            "https://localhost:8443/security-provider"
         );
     }
 
@@ -161,8 +162,8 @@ mod primal_registry_tests {
         let mut registry = PrimalRegistry::new();
 
         // Add multiple primals with different capabilities
-        let mut beardog = create_test_primal_config("beardog");
-        beardog.capabilities = vec![PrimalCapability {
+        let mut security_provider = create_test_primal_config("security-provider");
+        security_provider.capabilities = vec![PrimalCapability {
             capability_type: "security".to_string(),
             version: "1.0".to_string(),
             parameters: HashMap::new(),
@@ -177,13 +178,13 @@ mod primal_registry_tests {
             qos_metrics: QosMetrics::default(),
         }];
 
-        registry.register_primal(beardog);
+        registry.register_primal(security_provider);
         registry.register_primal(toadstool);
 
-        // Test capability-based discovery
+        // Test capability-based discovery (universal pattern)
         let security_primals = registry.find_primals_with_capability("security");
         assert_eq!(security_primals.len(), 1);
-        assert_eq!(security_primals[0].primal_type, "beardog");
+        assert_eq!(security_primals[0].primal_type, "security-provider");
 
         let compute_primals = registry.find_primals_with_capability("compute");
         assert_eq!(compute_primals.len(), 1);
@@ -256,7 +257,7 @@ mod config_validation_tests {
         // Basic validation - config should be constructible
         assert!(config.network.bind_address.to_string().len() > 0);
         assert!(config.network.orchestrator_port > 0);
-        assert!(config.network.orchestrator_port <= 65535);
+        // Port is u16, so always <= 65535 by type definition
     }
 
     #[test]
@@ -267,7 +268,7 @@ mod config_validation_tests {
         let toml_str = toml::to_string(&config);
         assert!(toml_str.is_ok(), "Config should be serializable to TOML");
 
-        let toml_content = toml_str.unwrap();
+        let toml_content = toml_str.expect("Test operation should succeed");
         assert!(toml_content.contains("[network]"));
         assert!(toml_content.contains("orchestrator_port"));
     }
@@ -302,7 +303,8 @@ mod config_persistence_tests {
 
     #[tokio::test]
     async fn test_config_file_loading() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()
+    .expect("Test temp directory should be created successfully");
         let config_path = temp_dir.path().join("test_config.toml");
 
         let test_config = r#"
@@ -310,27 +312,28 @@ mod config_persistence_tests {
             orchestrator_port = 8888
         "#;
 
-        fs::write(&config_path, test_config).unwrap();
+        fs::write(&config_path, test_config).expect("Test operation should succeed");
 
         // Test file creation and basic TOML parsing
-        let file_content = fs::read_to_string(&config_path).unwrap();
+        let file_content = fs::read_to_string(&config_path).expect("Test operation should succeed");
         assert!(file_content.contains("orchestrator_port = 8888"));
 
         // Test TOML deserialization capability
         let parsed: std::result::Result<toml::Value, _> = toml::from_str(&file_content);
         assert!(parsed.is_ok(), "Should parse TOML content successfully");
 
-        let toml_value = parsed.unwrap();
+        let toml_value = parsed.expect("Test operation should succeed");
         if let Some(network) = toml_value.get("network") {
             if let Some(port) = network.get("orchestrator_port") {
-                assert_eq!(port.as_integer().unwrap(), 8888);
+                assert_eq!(port.as_integer().map_err(|e| SongbirdError::internal(format!("Operation failed: {:?}", e)))?, 8888);
             }
         }
     }
 
     #[tokio::test]
     async fn test_config_file_save() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()
+    .expect("Test temp directory should be created successfully");
         let config_path = temp_dir.path().join("saved_config.toml");
 
         let config = SongbirdConfig::default();
@@ -342,7 +345,7 @@ mod config_persistence_tests {
             "Should serialize config to TOML successfully"
         );
 
-        let toml_content = toml_string.unwrap();
+        let toml_content = toml_string.expect("Test operation should succeed");
 
         // Write serialized config to file
         let write_result = fs::write(&config_path, &toml_content);
@@ -352,7 +355,7 @@ mod config_persistence_tests {
         );
 
         // Verify file was created and contains network config
-        let file_content = fs::read_to_string(&config_path).unwrap();
+        let file_content = fs::read_to_string(&config_path).expect("Test operation should succeed");
         assert!(
             file_content.contains("[network]"),
             "Should contain network section"
@@ -365,7 +368,8 @@ mod config_persistence_tests {
 
     #[test]
     fn test_invalid_config_file_handling() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new()
+    .expect("Test temp directory should be created successfully");
         let config_path = temp_dir.path().join("invalid_config.toml");
 
         let invalid_toml = r#"
@@ -374,10 +378,10 @@ mod config_persistence_tests {
             invalid_field = true
         "#;
 
-        fs::write(&config_path, invalid_toml).unwrap();
+        fs::write(&config_path, invalid_toml).expect("Test operation should succeed");
 
         // Test that invalid TOML is properly rejected
-        let file_content = fs::read_to_string(&config_path).unwrap();
+        let file_content = fs::read_to_string(&config_path).expect("Test operation should succeed");
         let result: std::result::Result<toml::Value, _> = toml::from_str(&file_content);
         assert!(result.is_err(), "Should fail to parse invalid TOML");
     }
@@ -403,7 +407,7 @@ mod security_configuration_tests {
             let serialized = serde_json::to_string(&method);
             assert!(serialized.is_ok(), "Authentication method should serialize");
 
-            let json_str = serialized.unwrap();
+            let json_str = serialized.expect("Test operation should succeed");
             let deserialized: std::result::Result<AuthenticationMethod, _> =
                 serde_json::from_str(&json_str);
             assert!(

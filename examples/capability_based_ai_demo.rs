@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use tracing::{info, Level};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_max_level(Level::INFO)
