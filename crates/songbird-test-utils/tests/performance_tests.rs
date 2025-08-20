@@ -1,6 +1,6 @@
-//! Performance Tests
-//!
-//! Tests for performance measurement and benchmarking utilities
+// Performance Tests
+//
+// Tests for performance measurement and benchmarking utilities
 
 use std::time::{Duration, Instant};
 

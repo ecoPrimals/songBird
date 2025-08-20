@@ -1,6 +1,6 @@
-//! Integration Tests
-//!
-//! Tests for integration testing helpers and utilities
+// Integration Tests
+//
+// Tests for integration testing helpers and utilities
 
 use std::time::Duration;
 

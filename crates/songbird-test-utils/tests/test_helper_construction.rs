@@ -1,6 +1,6 @@
-//! Test Helper Construction Tests
-//!
-//! Tests for test helper construction utilities
+// Test Helper Construction Tests
+//
+// Tests for test helper construction utilities
 
 use std::time::{Duration, Instant};
 

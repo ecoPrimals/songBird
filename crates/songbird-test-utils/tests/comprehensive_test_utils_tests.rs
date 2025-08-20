@@ -1,9 +1,9 @@
-//! Comprehensive Test Utils Test Suite
-//!
-//! Systematic test coverage for songbird-test-utils using the proven 7-module framework
-//! targeting significant coverage improvement for testing utilities and helpers.
-//!
-//! This file organizes tests split across multiple modules to maintain the 1000-line limit.
+// Comprehensive Test Utils Test Suite
+//
+// Systematic test coverage for songbird-test-utils using the proven 7-module framework
+// targeting significant coverage improvement for testing utilities and helpers.
+//
+// This file organizes tests split across multiple modules to maintain the 1000-line limit.
 
 // Import all test modules
 mod edge_cases;

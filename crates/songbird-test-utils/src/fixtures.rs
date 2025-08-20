@@ -1,4 +1,4 @@
-//! Test fixtures and data structures
+// Test fixtures and data structures
 ///
 /// Provides standardized test fixtures, mock data, and common
 /// test utilities for use across the Songbird ecosystem.

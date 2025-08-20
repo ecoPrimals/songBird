@@ -1,6 +1,6 @@
-//! Mock Framework Tests
-//!
-//! Tests for mock service and testing framework functionality
+// Mock Framework Tests
+//
+// Tests for mock service and testing framework functionality
 
 use std::collections::HashMap;
 

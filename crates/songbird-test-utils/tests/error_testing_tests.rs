@@ -1,6 +1,6 @@
-//! Error Testing Tests
-//!
-//! Tests for error injection and fault tolerance testing utilities
+// Error Testing Tests
+//
+// Tests for error injection and fault tolerance testing utilities
 
 use std::collections::HashMap;
 

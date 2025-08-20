@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::net::SocketAddr;
 
-use super::super::core::{ServiceDiscovery, ServiceInstance};
+use crate::traits::discovery::{ServiceDiscovery, ServiceQuery, ServiceEvent, ServiceHealthStatus};
+use crate::traits::service::ServiceInfo;
 use songbird_errors::{DiscoveryError, Result, SongbirdError};
 
 /// Kubernetes service discovery for cloud-native deployments
@@ -67,7 +68,7 @@ impl KubernetesServiceDiscovery {
     }
 
     /// Build service definition for Kubernetes
-    fn build_service_definition(&self, service: &ServiceInstance) -> Value {
+    fn build_service_definition(&self, service: &ServiceInfo) -> Value {
         json!({
             "apiVersion": "v1",
             "kind": "Service",
@@ -84,16 +85,16 @@ impl KubernetesServiceDiscovery {
                     "app": service.name
                 },
                 "ports": [{
-                    "port": service.address.port(),
-                    "targetPort": service.address.port(),
+                    "port": service.port,
+                    "targetPort": service.port,
                     "protocol": "TCP"
                 }]
             }
         })
     }
 
-    /// Parse Kubernetes service into ServiceInstance
-    fn parse_kubernetes_service(&self, k8s_service: &Value) -> Option<ServiceInstance> {
+    /// Parse Kubernetes service into ServiceInfo
+    fn parse_kubernetes_service(&self, k8s_service: &Value) -> Option<ServiceInfo> {
         let metadata = k8s_service.get("metadata")?;
         let spec = k8s_service.get("spec")?;
 
@@ -119,7 +120,7 @@ impl KubernetesServiceDiscovery {
             .unwrap_or_default();
 
         // Extract annotations as metadata
-        let metadata_map = metadata["annotations"]
+        let metadata_map: std::collections::HashMap<String, String> = metadata["annotations"]
             .as_object()
             .map(|annotations| {
                 annotations
@@ -129,20 +130,33 @@ impl KubernetesServiceDiscovery {
             })
             .unwrap_or_default();
 
-        Some(ServiceInstance {
-            id,
+        use chrono::Utc;
+        use crate::traits::service::ServiceStatus;
+        
+        Some(ServiceInfo {
+            service_id: id,
             name,
-            address,
-            metadata: metadata_map,
-            health_check_url: None,
+            version: "1.0.0".to_string(),
+            service_type: "kubernetes-service".to_string(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: metadata_map.into_iter().map(|(k, v)| (k, serde_json::Value::String(v))).collect(),
             tags,
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: format!("k8s-{}", uuid::Uuid::new_v4()),
+            host: address.ip().to_string(),
+            port: address.port(),
         })
     }
 }
 
 #[async_trait]
 impl ServiceDiscovery for KubernetesServiceDiscovery {
-    async fn register_service(&self, service: ServiceInstance) -> Result<()> {
+    async fn register(&self, service: ServiceInfo) -> Result<()> {
         tracing::info!(
             "Registering service {} in Kubernetes namespace {}",
             service.name,
@@ -194,7 +208,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         }
     }
 
-    async fn deregister_service(&self, service_id: &str) -> Result<()> {
+    async fn unregister(&self, service_id: &str) -> Result<()> {
         tracing::info!(
             "Deregistering service {} from Kubernetes namespace {}",
             service_id,
@@ -208,7 +222,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
 
         let url = format!(
             "{}/api/v1/namespaces/{}/services/{}",
-            self.api_server, self.namespace, service_name
+            self.api_server, self.namespace, query.name
         );
 
         let response = self
@@ -246,10 +260,10 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         }
     }
 
-    async fn discover_services(&self, service_name: Option<&str>) -> Result<Vec<ServiceInstance>> {
+    async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
         let token = self.get_service_account_token().await?;
 
-        let url = match service_name {
+        let url = match &query.name {
             Some(name) => format!(
                 "{}/api/v1/namespaces/{}/services/{}",
                 self.api_server, self.namespace, name
@@ -271,7 +285,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
             .map_err(|e| {
                 SongbirdError::Discovery(Box::new(DiscoveryError {
                     message: format!("Failed to discover services from Kubernetes: {e}"),
-                    service: service_name.map(String::from),
+                    service: query.name.clone(),
                     timeout: None,
                     suggestion: Some("Check Kubernetes API connectivity and RBAC".to_string()),
                 }))
@@ -284,7 +298,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
                 .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(SongbirdError::Discovery(Box::new(DiscoveryError {
                 message: format!("Kubernetes service discovery failed: {error_text}"),
-                service: service_name.map(String::from),
+                service: query.name.map(String::from),
                 timeout: None,
                 suggestion: Some("Check namespace and RBAC permissions".to_string()),
             })));
@@ -293,13 +307,13 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         let k8s_response: Value = response.json().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
                 message: format!("Failed to parse Kubernetes response: {e}"),
-                service: service_name.map(String::from),
+                service: query.name.map(String::from),
                 timeout: None,
                 suggestion: Some("Check Kubernetes API version compatibility".to_string()),
             }))
         })?;
 
-        let services = if service_name.is_some() {
+        let services = if query.name.is_some() {
             // Single service response
             vec![k8s_response]
         } else {
@@ -307,7 +321,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
             k8s_response["items"].as_array().unwrap_or(&vec![]).to_vec()
         };
 
-        let parsed_services: Vec<ServiceInstance> = services
+        let parsed_services: Vec<ServiceInfo> = services
             .iter()
             .filter_map(|service| self.parse_kubernetes_service(service))
             .collect();
@@ -319,62 +333,47 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         Ok(parsed_services)
     }
 
-    async fn health_check(&self, service_id: &str) -> Result<bool> {
-        // For Kubernetes, we check if the service exists and has endpoints
-        let token = self.get_service_account_token().await?;
 
-        // Extract service name from service_id
-        let service_name = service_id.split('.').next().unwrap_or(service_id);
+    async fn watch(
+        &self,
+        query: ServiceQuery,
+    ) -> Result<std::pin::Pin<Box<dyn futures_util::Stream<Item = ServiceEvent> + Send>>> {
+        // TODO: Implement Kubernetes watch functionality
+        use futures_util::stream;
+        Ok(Box::pin(stream::empty()))
+    }
 
-        let endpoints_url = format!(
-            "{}/api/v1/namespaces/{}/endpoints/{}",
-            self.api_server, self.namespace, service_name
-        );
+    async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()> {
+        tracing::info!("Updating health for service {} to {:?}", service_id, health);
+        // TODO: Implement health update via Kubernetes API
+        Ok(())
+    }
 
-        let response = self
-            .client
-            .get(&endpoints_url)
-            .header("Authorization", format!("Bearer {token}"))
-            .send()
-            .await
-            .map_err(|e| {
-                SongbirdError::Discovery(Box::new(DiscoveryError {
-                    message: format!("Failed to check service endpoints in Kubernetes: {e}"),
-                    service: Some(service_id.to_string()),
-                    timeout: None,
-                    suggestion: Some("Check Kubernetes API connectivity".to_string()),
-                }))
-            })?;
+    async fn list_all(&self) -> Result<Vec<ServiceInfo>> {
+        self.discover(ServiceQuery::new()).await
+    }
 
-        if !response.status().is_success() {
-            return Ok(false);
-        }
+    async fn exists(&self, service_id: &str) -> Result<bool> {
+        let query = ServiceQuery::new().with_service_id(service_id);
+        let services = self.discover(query).await?;
+        Ok(!services.is_empty())
+    }
 
-        let endpoints_response: Value = response.json().await.map_err(|_| {
-            SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: "Failed to parse Kubernetes endpoints response".to_string(),
-                service: Some(service_id.to_string()),
-                timeout: None,
-                suggestion: Some("Check Kubernetes API version".to_string()),
-            }))
-        })?;
+    async fn is_registered(&self, service_id: &str) -> Result<bool> {
+        self.exists(service_id).await
+    }
 
-        // Check if service has ready endpoints
-        let has_ready_endpoints = endpoints_response["subsets"]
-            .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .any(|subset| {
-                subset["addresses"]
-                    .as_array()
-                    .is_some_and(|addrs| !addrs.is_empty())
-            });
+    async fn update_metadata(
+        &self,
+        service_id: &str,
+        metadata: std::collections::HashMap<String, String>,
+    ) -> Result<()> {
+        tracing::info!("Updating metadata for service {}: {:?}", service_id, metadata);
+        // TODO: Implement metadata update via Kubernetes API
+        Ok(())
+    }
 
-        tracing::debug!(
-            "Health check for service {}: {}",
-            service_id,
-            has_ready_endpoints
-        );
-        Ok(has_ready_endpoints)
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

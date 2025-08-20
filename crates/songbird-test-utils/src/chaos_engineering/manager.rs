@@ -1,7 +1,7 @@
-//! Chaos Engineering Manager
-//!
-//! Core chaos engineering management following canonical patterns.
-//! Extracted from monolithic fault_injection.rs for maintainability.
+// Chaos Engineering Manager
+//
+// Core chaos engineering management following canonical patterns.
+// Extracted from monolithic fault_injection.rs for maintainability.
 
 use crate::chaos_engineering::config::*;
 use songbird_errors::{SongbirdError, SongbirdResult};
