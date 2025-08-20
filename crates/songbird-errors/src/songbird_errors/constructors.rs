@@ -123,6 +123,18 @@ impl SongbirdError {
         }))
     }
 
+    /// Create a new internal error (generic internal failure)
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        SongbirdError::Communication(message.into())
+    }
+
+    /// Create a new operation error (operation failure)
+    pub fn operation_error(message: impl Into<String>) -> Self {
+        SongbirdError::Communication(message.into())
+    }
+
+
+
     /// Create a new not found error
     pub fn not_found_error(message: impl Into<String>) -> Self {
         SongbirdError::NotFound(Box::new(NotFoundError {

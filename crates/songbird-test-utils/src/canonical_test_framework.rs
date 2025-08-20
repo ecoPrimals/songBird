@@ -3,7 +3,7 @@
 // This module provides standardized testing patterns, utilities, and assertions
 // that ensure consistent testing across all Songbird crates.
 
-use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_errors::{SongbirdError, Result as SongbirdResult};
 use std::collections::HashMap;
 use std::future::Future;
 use std::time::Duration;
@@ -71,7 +71,7 @@ impl CanonicalAssertions {
     pub fn assert_success<T>(result: &SongbirdResult<T>) -> TestResult<()> {
         match result {
             Ok(_) => Ok(()),
-            Err(e) => Err(SongbirdError::SongbirdError::validation_error(format!(
+            Err(e) => Err(SongbirdError::validation_error(format!(
                 "Expected success but got error: {e}"
             ))),
         }
@@ -80,7 +80,7 @@ impl CanonicalAssertions {
     /// Assert that a result is an error
     pub fn assert_error<T>(result: &SongbirdResult<T>) -> TestResult<()> {
         match result {
-            Ok(_) => Err(SongbirdError::SongbirdError::validation_error(
+            Ok(_) => Err(SongbirdError::validation_error(
                 "Expected error but got success",
             )),
             Err(_) => Ok(()),
@@ -93,7 +93,7 @@ impl CanonicalAssertions {
         expected_msg: &str,
     ) -> TestResult<()> {
         match result {
-            Ok(_) => Err(SongbirdError::SongbirdError::validation_error(
+            Ok(_) => Err(SongbirdError::validation_error(
                 "Expected error but got success",
             )),
             Err(e) => {
@@ -101,7 +101,7 @@ impl CanonicalAssertions {
                 if error_str.contains(expected_msg) {
                     Ok(())
                 } else {
-                    Err(SongbirdError::SongbirdError::validation_error(format!(
+                    Err(SongbirdError::validation_error(format!(
                         "Error '{error_str}' does not contain '{expected_msg}'"
                     )))
                 }
@@ -140,7 +140,7 @@ impl CanonicalAssertions {
         if value >= min && value <= max {
             Ok(())
         } else {
-            Err(SongbirdError::SongbirdError::validation_error(format!(
+            Err(SongbirdError::validation_error(format!(
                 "Value {value:?} is not in range [{min:?}, {max:?}]"
             )))
         }
@@ -152,7 +152,7 @@ impl CanonicalAssertions {
         if diff <= tolerance {
             Ok(())
         } else {
-            Err(SongbirdError::SongbirdError::validation_error(format!(
+            Err(SongbirdError::validation_error(format!(
                 "Values not approximately equal: {actual} vs {expected} (tolerance: {tolerance})"
             )))
         }
@@ -173,7 +173,7 @@ impl CanonicalAssertions {
         if diff <= tolerance {
             Ok(())
         } else {
-            Err(SongbirdError::SongbirdError::validation_error(format!(
+            Err(SongbirdError::validation_error(format!(
                 "Duration {actual:?} is not within {tolerance:?} of expected {expected:?}"
             )))
         }
@@ -238,7 +238,7 @@ impl PerformanceTestUtils {
         if results.average() <= max_duration {
             Ok(())
         } else {
-            Err(SongbirdError::SongbirdError::validation_error(format!(
+            Err(SongbirdError::validation_error(format!(
                 "Performance requirement failed: average {:?} > max {:?}",
                 results.average(),
                 max_duration
@@ -361,8 +361,7 @@ impl MockService {
             Ok(format!("Response from {}", self.name))
         } else {
             Err(SongbirdError::internal_error(
-                &self.name,
-                "Service unavailable",
+                format!("Service {} unavailable", &self.name),
             ))
         }
     }

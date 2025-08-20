@@ -4,7 +4,7 @@
 // Extracted from monolithic fault_injection.rs for maintainability.
 
 use crate::chaos_engineering::config::*;
-use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_errors::{SongbirdError, Result as SongbirdResult};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant, SystemTime};
@@ -164,7 +164,7 @@ impl ChaosEngineeringManager {
         })?;
 
         experiments.get(experiment_id).cloned().ok_or_else(|| {
-            SongbirdError::SongbirdError::internal_error(format!("Experiment {experiment_id} not found"))
+            SongbirdError::internal_error(format!("Experiment {experiment_id} not found"))
         })
     }
 

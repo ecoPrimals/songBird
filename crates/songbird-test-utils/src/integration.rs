@@ -1,5 +1,5 @@
 use crate::canonical_test_framework::{MockService, TestEnvironment};
-use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_errors::{SongbirdError, Result as SongbirdResult};
 /// Integration testing utilities
 ///
 /// Provides utilities for end-to-end testing, integration testing,

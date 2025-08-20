@@ -69,7 +69,35 @@ impl ServiceDiscoveryFactory {
 
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                let discovery = StaticServiceDiscovery::with_services(services).await;
+                // Convert ServiceInstance to ServiceInfo
+                let service_infos: Vec<crate::traits::service::ServiceInfo> = services
+                    .into_iter()
+                    .map(|service| {
+                        use chrono::Utc;
+                        use crate::traits::service::ServiceStatus;
+                        
+                        crate::traits::service::ServiceInfo {
+                            service_id: service.id,
+                            name: service.name,
+                            version: "1.0.0".to_string(),
+                            service_type: "static-service".to_string(),
+                            description: None,
+                            endpoints: vec![],
+                            health_check_endpoint: service.health_check_url,
+                            metadata: service.metadata.into_iter().map(|(k, v)| (k, serde_json::Value::String(v))).collect(),
+                            tags: service.tags,
+                            dependencies: vec![],
+                            status: ServiceStatus::Running,
+                            created_at: Utc::now(),
+                            updated_at: Utc::now(),
+                            instance_id: format!("static-{}", uuid::Uuid::new_v4()),
+                            host: service.address.ip().to_string(),
+                            port: service.address.port(),
+                        }
+                    })
+                    .collect();
+                
+                let discovery = StaticServiceDiscovery::with_services(service_infos).await;
                 Ok(Box::new(discovery) as Box<dyn ServiceDiscovery>)
             })
         })
