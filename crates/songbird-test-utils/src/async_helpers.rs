@@ -1,6 +1,6 @@
 // Async test helpers for songbird testing
 
-use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_errors::{SongbirdError, Result as SongbirdResult};
 use std::future::Future;
 use std::time::Duration;
 use tokio::time::{sleep, timeout};

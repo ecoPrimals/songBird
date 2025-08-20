@@ -2,7 +2,7 @@
 ///
 /// Provides standardized test fixtures, mock data, and common
 /// test utilities for use across the Songbird ecosystem.
-use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_errors::{SongbirdError, Result as SongbirdResult};
 use std::net::SocketAddr;
 
 /// Create a test socket address with a random port

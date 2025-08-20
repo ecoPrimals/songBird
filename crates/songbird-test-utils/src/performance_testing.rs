@@ -2,7 +2,7 @@
 //
 // Canonical performance testing utilities for the Songbird ecosystem.
 
-use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_errors::{SongbirdError, Result as SongbirdResult};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -149,7 +149,7 @@ impl PerformanceTestFramework {
     ) -> SongbirdResult<()> {
         let results = self.results.read().await;
         let result = results.get(benchmark_name).ok_or_else(|| {
-            SongbirdError::SongbirdError::internal_error(format!("Benchmark '{benchmark_name}' not found"))
+            SongbirdError::internal_error(format!("Benchmark '{benchmark_name}' not found"))
         })?;
 
         if result.throughput < self.config.target_throughput {

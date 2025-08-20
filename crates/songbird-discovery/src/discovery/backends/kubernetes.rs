@@ -222,7 +222,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
 
         let url = format!(
             "{}/api/v1/namespaces/{}/services/{}",
-            self.api_server, self.namespace, query.name
+            self.api_server, self.namespace, service_name
         );
 
         let response = self
@@ -307,7 +307,7 @@ impl ServiceDiscovery for KubernetesServiceDiscovery {
         let k8s_response: Value = response.json().await.map_err(|e| {
             SongbirdError::Discovery(Box::new(DiscoveryError {
                 message: format!("Failed to parse Kubernetes response: {e}"),
-                service: query.name.map(String::from),
+                service: query.name.clone(),
                 timeout: None,
                 suggestion: Some("Check Kubernetes API version compatibility".to_string()),
             }))
