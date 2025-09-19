@@ -233,7 +233,7 @@ impl AdvancedCache {
         let mut storage = self
             .storage
             .write()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", e)))?;
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {}", e)))?;
 
         let lock_duration = lock_start.elapsed();
         let processing_start = Instant::now();
@@ -309,7 +309,7 @@ impl AdvancedCache {
         let mut storage = self
             .storage
             .write()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", e)))?;
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {}", e)))?;
 
         let lock_duration = lock_start.elapsed();
         let processing_start = Instant::now();
@@ -399,7 +399,7 @@ impl AdvancedCache {
         let mut storage = self
             .storage
             .write()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", e)))?;
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {}", e)))?;
 
         let lock_duration = lock_start.elapsed();
         let processing_start = Instant::now();
@@ -443,7 +443,7 @@ impl AdvancedCache {
         let storage = self
             .storage
             .read()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", e)))?;
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {}", e)))?;
 
         Ok(songbird_errors::evolved_success(storage.data.contains_key(key)).into())
     }
@@ -476,7 +476,7 @@ impl AdvancedCache {
         let mut storage = self
             .storage
             .write()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", e)))?;
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {}", e)))?;
 
         storage.data.clear();
         storage.lru_queue.clear();
@@ -497,7 +497,7 @@ impl AdvancedCache {
         let mut storage = self
             .storage
             .write()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", e)))?;
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {}", e)))?;
 
         let now = Instant::now();
         let mut expired_count = 0;
@@ -534,7 +534,7 @@ impl AdvancedCache {
         let stats = self
             .stats
             .read()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", e)))?;
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {}", e)))?;
 
         let mut stats_clone = stats.clone();
         stats_clone.uptime_seconds = self.start_time.elapsed().as_secs();
@@ -667,7 +667,7 @@ impl AdvancedCache {
         let mut stats = self
             .stats
             .write()
-            .map_err(|e| SongbirdError::service_error("cache", format!("Lock error: {}", e)))?;
+            .map_err(|e| SongbirdError::service("cache", format!("Lock error: {}", e)))?;
         updater(&mut stats);
         Ok(())
     }
@@ -769,6 +769,7 @@ impl From<Vec<u8>> for CacheKey {
 /// Convenience functions for common cache operations
 pub mod cache_ops {
     use super::*;
+use songbird_errors::SongbirdResult;
 
     /// Store a JSON-serializable value in the global cache
     pub fn set_json<T: serde::Serialize>(
@@ -777,7 +778,7 @@ pub mod cache_ops {
         ttl: Option<Duration>,
     ) -> SongbirdResult<()> {
         let json_value = serde_json::to_value(value).map_err(|e| {
-            SongbirdError::service_error("cache", format!("JSON serialization error: {}", e))
+            SongbirdError::service("cache", format!("JSON serialization error: {}", e))
         })?;
 
         AdvancedCache::global().set_with_ttl(key.into(), json_value, ttl)?;
@@ -790,7 +791,7 @@ pub mod cache_ops {
 
         if let Some(CacheValue::Json(json_arc)) = result.data.value {
             let value = serde_json::from_value((*json_arc).clone()).map_err(|e| {
-                SongbirdError::service_error("cache", format!("JSON deserialization error: {}", e))
+                SongbirdError::service("cache", format!("JSON deserialization error: {}", e))
             })?;
             Ok(success(Some(value)))
         } else {

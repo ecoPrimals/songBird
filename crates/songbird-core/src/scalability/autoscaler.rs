@@ -4,7 +4,7 @@
 
 use crate::scalability::types::*;
 use chrono::{DateTime, Utc};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::info;
 
@@ -50,7 +50,7 @@ impl AutoScaler {
         current_instances: u32,
         resource_usage: &ResourceUsage,
         request_rate: f64,
-    ) -> Result<ScalingDecision> {
+    ) -> SongbirdResult<ScalingDecision> {
         // Check cooldown period
         if let Some(last_time) = self.last_scaling_time {
             let elapsed = Utc::now() - last_time;
@@ -202,7 +202,7 @@ impl AutoScaler {
         &mut self,
         service_id: &str,
         decision: &ScalingDecision,
-    ) -> Result<()> {
+    ) -> SongbirdResult<()> {
         match decision {
             ScalingDecision::ScaleUp(instances) => {
                 info!(
@@ -227,37 +227,23 @@ impl AutoScaler {
     }
 
     /// Scale up service instances
-    async fn scale_up_service(&mut self, service_id: &str, instances: u32) -> Result<()> {
+    async fn scale_up_service(&mut self, service_id: &str, instances: u32) -> SongbirdResult<()> {
         // Check if we have enough resources
         let required_cpu = f64::from(instances) * 0.5; // Assume 0.5 CPU per instance
         let required_memory = instances * 512; // Assume 512MB per instance
 
         if f64::from(self.resource_pool.available_cpu_cores) < required_cpu {
-            return Err(SongbirdError::Config {
-                field: Some("CPU".to_string()),
-                message: format!(
-                    "Insufficient CPU cores: need {required_cpu}, have {}",
-                    self.resource_pool.available_cpu_cores
-                ),
-                context: Some("resource_validation".to_string()),
-                suggestion: Some(
-                    "Add more CPU cores or reduce the minimum instance count".to_string(),
-                ),
-            });
+            return Err(SongbirdError::configuration(format!(
+                "Insufficient CPU cores: need {}, have {}",
+                required_cpu, self.resource_pool.available_cpu_cores
+            )));
         }
 
         if self.resource_pool.available_memory_mb < required_memory {
-            return Err(SongbirdError::Config {
-                field: Some("Memory".to_string()),
-                message: format!(
-                    "Insufficient memory: need {required_memory}MB, have {}MB",
-                    self.resource_pool.available_memory_mb
-                ),
-                context: Some("resource_validation".to_string()),
-                suggestion: Some(
-                    "Add more memory or reduce the minimum instance count".to_string(),
-                ),
-            });
+            return Err(SongbirdError::configuration(format!(
+                "Insufficient memory: need {}MB, have {}MB",
+                required_memory, self.resource_pool.available_memory_mb
+            )));
         }
 
         // Allocate resources
@@ -274,7 +260,7 @@ impl AutoScaler {
     }
 
     /// Scale down service instances
-    async fn scale_down_service(&mut self, service_id: &str, instances: u32) -> Result<()> {
+    async fn scale_down_service(&mut self, service_id: &str, instances: u32) -> SongbirdResult<()> {
         // Free up resources
         let freed_cpu = f64::from(instances) * 0.5; // Assume 0.5 CPU per instance
         let freed_memory = instances * 512; // Assume 512MB per instance

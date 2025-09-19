@@ -1,4 +1,4 @@
-use super::core::SongbirdError;
+use songbird_types::errors::SongbirdError;
 use super::specific::*;
 
 // From implementations for seamless error conversion
@@ -32,8 +32,7 @@ impl From<std::io::Error> for SongbirdError {
 
 impl From<std::net::AddrParseError> for SongbirdError {
     fn from(err: std::net::AddrParseError) -> Self {
-        SongbirdError::Network(Box::new(NetworkError {
-            message: format!("Address parse error: {err}"),
+        SongbirdError::network(format!("Address parse error: {err),
             endpoint: None,
             port: None,
             protocol: None,

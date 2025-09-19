@@ -23,7 +23,7 @@
 //! use songbird_core::scalability::{ScalabilityManager, ScalabilityConfig};
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! async fn main() -> SongbirdResult<()>> {
 //!     let config = ScalabilityConfig::default();
 //!     let mut manager = ScalabilityManager::new(config);
 //!     

@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 use tokio::task::JoinHandle;
 
 use crate::service::ServiceMetrics;
-use songbird_errors::Result;
+use songbird_types::errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Auto-scaling engine managing service scaling decisions
 pub struct AutoScalingEngine {

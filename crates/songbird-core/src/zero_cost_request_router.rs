@@ -259,6 +259,7 @@ pub trait ZeroCostCommunication {
 #[cfg(test)]
 mod tests {
     use super::*;
+use songbird_errors::SongbirdResult;
 
     struct MockLoadBalancer;
     struct MockCommunication;

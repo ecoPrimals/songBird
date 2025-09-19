@@ -4,6 +4,7 @@
 //! for measuring and optimizing Songbird's core functionality.
 
 use serde::{Deserialize, Serialize};
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
@@ -49,9 +50,7 @@ impl CoreBenchmarkSuite {
     }
 
     /// Benchmark basic hash map operations (simulating service registry)
-    pub async fn benchmark_hashmap_operations(
-        &mut self,
-    ) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
+    pub async fn benchmark_hashmap_operations(&mut self) -> SongbirdResult<BenchmarkResult> {
         let test_name = "hashmap_operations";
         let iterations = 100000;
         let mut durations = Vec::new();
@@ -102,9 +101,7 @@ impl CoreBenchmarkSuite {
     }
 
     /// Benchmark async task spawning (simulating orchestrator scaling)
-    pub async fn benchmark_task_spawning(
-        &mut self,
-    ) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
+    pub async fn benchmark_task_spawning(&mut self) -> SongbirdResult<BenchmarkResult> {
         let test_name = "async_task_spawning";
         let iterations = 1000;
         let mut durations = Vec::new();
@@ -156,9 +153,7 @@ impl CoreBenchmarkSuite {
     }
 
     /// Benchmark JSON serialization (simulating API responses)
-    pub async fn benchmark_json_serialization(
-        &mut self,
-    ) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
+    pub async fn benchmark_json_serialization(&mut self) -> SongbirdResult<BenchmarkResult> {
         let test_name = "json_serialization";
         let iterations = 10000;
         let mut durations = Vec::new();
@@ -202,7 +197,7 @@ impl CoreBenchmarkSuite {
     }
 
     /// Run all benchmarks
-    pub async fn run_all_benchmarks(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run_all_benchmarks(&mut self) -> SongbirdResult<()> {
         println!("🚀 Running Songbird Core Performance Benchmarks");
         println!(
             "System: {} cores, {}MB RAM",
@@ -348,6 +343,7 @@ impl Default for CoreBenchmarkSuite {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use songbird_errors::SongbirdResult;
 
     #[tokio::test]
     async fn test_benchmark_suite_creation() {

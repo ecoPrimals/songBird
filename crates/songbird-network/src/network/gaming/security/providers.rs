@@ -9,7 +9,7 @@ use super::types::{
 };
 use async_trait::async_trait;
 use songbird_config::universal_primals::{PrimalConfiguration, PrimalRegistry};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use songbird_universal::UniversalCapabilityAdapter;
 use std::sync::Arc;
 use std::time::{Duration, Instant};

@@ -192,10 +192,7 @@ impl InMemoryAuthenticator {
             user.mfa_secret = Some(secret);
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                message: "User not found".to_string(),
-                provider: Some("InMemoryAuthenticator".to_string()),
-            })))
+            Err(songbird_errors::SongbirdError::security("User not found"))
         }
     }
 
@@ -205,10 +202,7 @@ impl InMemoryAuthenticator {
             user.enabled = false;
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                message: "User not found".to_string(),
-                provider: Some("InMemoryAuthenticator".to_string()),
-            })))
+            Err(songbird_errors::SongbirdError::security("User not found"))
         }
     }
 
@@ -353,10 +347,7 @@ impl InMemoryAuthenticator {
         let username = match primary_credential {
             Credentials::UserPassword { username, .. } => username,
             _ => {
-                return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                    message: "MFA only supported with username/password".to_string(),
-                    provider: Some("InMemoryAuthenticator".to_string()),
-                })))
+                return Err(songbird_errors::SongbirdError::security("MFA only supported with username/password"))
             }
         };
 
@@ -393,16 +384,10 @@ impl InMemoryAuthenticator {
                     })
                 }
             } else {
-                Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                    message: "MFA not configured for user".to_string(),
-                    provider: Some("InMemoryAuthenticator".to_string()),
-                })))
+                Err(songbird_errors::SongbirdError::security("MFA not configured for user"))
             }
         } else {
-            Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                message: "User not found".to_string(),
-                provider: Some("InMemoryAuthenticator".to_string()),
-            })))
+            Err(songbird_errors::SongbirdError::security("User not found"))
         }
     }
 
@@ -526,10 +511,7 @@ impl Authenticator for InMemoryAuthenticator {
                 let username = match primary_credential.as_ref() {
                     Credentials::UserPassword { username, .. } => username,
                     _ => {
-                        return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                            message: "MFA only supported with username/password".to_string(),
-                            provider: Some("InMemoryAuthenticator".to_string()),
-                        })))
+                        return Err(songbird_errors::SongbirdError::security("MFA only supported with username/password"))
                     }
                 };
 
@@ -589,18 +571,12 @@ impl Authenticator for InMemoryAuthenticator {
     async fn validate_session(&self, session_id: &str) -> Result<AuthSession> {
         if let Some(session) = self.sessions.get(session_id) {
             if session.is_expired() {
-                Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                    message: "Session expired".to_string(),
-                    provider: Some("InMemoryAuthenticator".to_string()),
-                })))
+                Err(songbird_errors::SongbirdError::security("Session expired"))
             } else {
                 Ok(session.clone())
             }
         } else {
-            Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                message: "Session not found".to_string(),
-                provider: Some("InMemoryAuthenticator".to_string()),
-            })))
+            Err(songbird_errors::SongbirdError::security("Session not found"))
         }
     }
 
@@ -626,10 +602,7 @@ impl Authenticator for InMemoryAuthenticator {
             }
         }
 
-        Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-            message: "User not found".to_string(),
-            provider: Some("InMemoryAuthenticator".to_string()),
-        })))
+        Err(songbird_errors::SongbirdError::security("User not found"))
     }
 }
 

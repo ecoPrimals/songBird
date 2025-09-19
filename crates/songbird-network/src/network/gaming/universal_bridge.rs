@@ -87,8 +87,7 @@ impl UniversalGameBridge {
 
         // Get the appropriate translator
         let translator = self.translators.get(&protocol_class).ok_or_else(|| {
-            SongbirdError::Protocol(Box::new(ProtocolError {
-                message: "No translator available for protocol: {protocol_class:?}".to_string(),
+            SongbirdError::network("No translator available for protocol: {protocol_class:?),
                 protocol: Some("universal_bridge".to_string()),
             }))
         })?;
@@ -166,8 +165,7 @@ impl UniversalGameBridge {
     ) -> Result<InternetPacket> {
         let sessions = self.active_sessions.read().await;
         let session = sessions.get(session_id).ok_or_else(|| {
-            SongbirdError::Protocol(Box::new(ProtocolError {
-                message: "Session not found: {session_id}".to_string(),
+            SongbirdError::network("Session not found: {session_id),
                 protocol: Some("universal_bridge".to_string()),
             }))
         })?;
@@ -176,8 +174,7 @@ impl UniversalGameBridge {
             .translators
             .get(&session.protocol_class)
             .ok_or_else(|| {
-                SongbirdError::Protocol(Box::new(ProtocolError {
-                    message: format!("No translator for protocol: {:?}", session.protocol_class),
+                SongbirdError::network(format!("No translator for protocol: {:?),
                     protocol: Some("universal_bridge".to_string()),
                 }))
             })?;
@@ -193,8 +190,7 @@ impl UniversalGameBridge {
     ) -> Result<Vec<u8>> {
         let sessions = self.active_sessions.read().await;
         let session = sessions.get(session_id).ok_or_else(|| {
-            SongbirdError::Protocol(Box::new(ProtocolError {
-                message: "Session not found: {session_id}".to_string(),
+            SongbirdError::network("Session not found: {session_id),
                 protocol: Some("universal_bridge".to_string()),
             }))
         })?;
@@ -203,8 +199,7 @@ impl UniversalGameBridge {
             .translators
             .get(&session.protocol_class)
             .ok_or_else(|| {
-                SongbirdError::Protocol(Box::new(ProtocolError {
-                    message: format!("No translator for protocol: {:?}", session.protocol_class),
+                SongbirdError::network(format!("No translator for protocol: {:?),
                     protocol: Some("universal_bridge".to_string()),
                 }))
             })?;
@@ -329,8 +324,7 @@ impl UniversalGameBridge {
             .values()
             .find(|s| s.id == bridge_id)
             .ok_or_else(|| {
-                SongbirdError::Protocol(Box::new(ProtocolError {
-                    message: "Bridge not found: {bridge_id}".to_string(),
+                SongbirdError::network("Bridge not found: {bridge_id),
                     protocol: Some("universal_bridge".to_string()),
                 }))
             })?;
@@ -392,8 +386,7 @@ impl UniversalGameBridge {
             sessions.remove(&session_id);
             tracing::info!("✅ Bridge stopped: {}", bridge_id);
         } else {
-            return Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                message: "Bridge not found: {bridge_id}".to_string(),
+            return Err(SongbirdError::network("Bridge not found: {bridge_id),
                 protocol: Some("universal_bridge".to_string()),
             })));
         }

@@ -450,6 +450,7 @@ impl CompressionUtils {
 #[cfg(test)]
 mod tests {
     use super::*;
+use songbird_errors::SongbirdResult;
 
     #[test]
     fn test_zero_copy_message_borrowed() {

@@ -215,7 +215,7 @@ impl ConnectionProxy {
         let mut running = self.running.write().await;
         if *running {
             return Err(SongbirdError::Configuration {
-                field: "proxy_lifecycle".to_string(),
+                field: Some("proxy_lifecycle".to_string()),
                 message: "Proxy server already running".to_string(),
                 suggestion: Some("Check proxy status before starting".to_string()),
             });
@@ -234,7 +234,7 @@ impl ConnectionProxy {
         // Start the server
         let addr = format!("{}:{}", self.config.bind_address, self.config.port);
         let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
-            SongbirdError::Communication(format!("Failed to bind to {addr}: {e}").to_string())
+            SongbirdError::network(format!("Failed to bind to {addr}: {e}").to_string())
         })?;
 
         tracing::info!("Proxy server listening on {}", addr);
@@ -271,7 +271,7 @@ impl ConnectionProxy {
         let mut running = self.running.write().await;
         if !*running {
             return Err(SongbirdError::Configuration {
-                field: "proxy_lifecycle".to_string(),
+                field: Some("proxy_lifecycle".to_string()),
                 message: "Proxy server not running".to_string(),
                 suggestion: Some("Check proxy status before stopping".to_string()),
             });
@@ -314,7 +314,7 @@ impl ConnectionProxy {
 
         // Check circuit breaker
         if self.is_circuit_breaker_open(service_name).await {
-            return Err(SongbirdError::Communication(format!(
+            return Err(SongbirdError::network(format!(
                 "Circuit breaker open for service: {service_name}"
             )));
         }
@@ -327,9 +327,7 @@ impl ConnectionProxy {
             .timeout(Duration::from_secs(self.config.request_timeout))
             .build()
             .map_err(|e| {
-                SongbirdError::Communication(
-                    format!("Failed to create HTTP client: {e}").to_string(),
-                )
+                SongbirdError::network(format!("Failed to create HTTP client: {e}").to_string())
             })?;
 
         // Build target URL
@@ -347,9 +345,7 @@ impl ConnectionProxy {
         // Build request
         // Convert axum::http::Method to reqwest::Method by parsing string
         let reqwest_method = reqwest::Method::from_bytes(request.method.as_str().as_bytes())
-            .map_err(|e| {
-                SongbirdError::Communication(format!("Invalid HTTP method: {e}").to_string())
-            })?;
+            .map_err(|e| SongbirdError::network(format!("Invalid HTTP method: {e}").to_string()))?;
         let mut req_builder = client.request(reqwest_method, &target_url);
 
         // Add headers
@@ -386,9 +382,7 @@ impl ConnectionProxy {
                     }
                 }
                 let body = resp.bytes().await.map_err(|e| {
-                    SongbirdError::Communication(
-                        format!("Failed to read response body: {e}").to_string(),
-                    )
+                    SongbirdError::network(format!("Failed to read response body: {e}").to_string())
                 })?;
 
                 let response_time = start_time.elapsed();
@@ -431,9 +425,7 @@ impl ConnectionProxy {
                 // Update circuit breaker
                 self.record_circuit_breaker_failure(service_name).await;
 
-                Err(SongbirdError::Communication(
-                    "Request failed: {e}".to_string(),
-                ))
+                Err(SongbirdError::network("Request failed: {e}".to_string()))
             }
         }
     }
@@ -458,14 +450,14 @@ impl ConnectionProxy {
                 .ok_or_else(|| SongbirdError::Configuration {
                     message: "Service not found: {service_name}".to_string(),
                     suggestion: Some("Check if service is registered".to_string()),
-                    field: "service_name".to_string(),
+                    field: Some("service_name".to_string()),
                 })?;
 
         if service_instances.is_empty() {
             return Err(SongbirdError::Configuration {
                 message: "No instances available for service: {service_name}".to_string(),
                 suggestion: Some("Check service health and registration".to_string()),
-                field: "service_instances".to_string(),
+                field: Some("service_instances".to_string()),
             });
         }
 
@@ -494,7 +486,7 @@ impl ConnectionProxy {
                     message: "No service instances available for least connections selection"
                         .to_string(),
                     suggestion: Some("Check proxy configuration settings".to_string()),
-                    field: "service_instances".to_string(),
+                    field: Some("service_instances".to_string()),
                 })?,
             _ => &service_instances[0],
         };
@@ -678,7 +670,7 @@ async fn proxy_handler(
                     StatusCode::SERVICE_UNAVAILABLE,
                     "Service unavailable".to_string(),
                 ),
-                SongbirdError::Communication { .. } => {
+                SongbirdError::Network { .. } => {
                     (StatusCode::BAD_GATEWAY, "Gateway error".to_string())
                 }
                 _ => (

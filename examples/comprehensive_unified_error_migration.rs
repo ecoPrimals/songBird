@@ -156,7 +156,7 @@ pub fn new_json_serialization(data: &serde_json::Value) -> SongbirdResult<String
 /// ==================================================================================
 
 /// ❌ OLD: Panic-prone async join (MODERNIZED - DO NOT USE)
-pub fn old_async_operations_example(Result<String, Box<dyn std::error::Error>>) ->  {
+pub async fn old_async_operations_example() -> Result<String, Box<dyn std::error::Error>> {
     let handle = tokio::spawn(async { "result".to_string() });
     handle.await.map_err(|e| format!("Async task join failed: {}", e).into())
 }
@@ -172,7 +172,7 @@ pub async fn new_async_operations(&self) -> SongbirdResult<String> {
 /// ==================================================================================
 
 /// ❌ OLD: Panic-prone HTTP request (MODERNIZED - DO NOT USE)
-pub fn old_http_request_example(Result<String, Box<dyn std::error::Error>>) ->  {
+pub async fn old_http_request_example(url: &str) -> Result<String, Box<dyn std::error::Error>> {
     let response = reqwest::get(url).await
         .map_err(|e| format!("HTTP request failed: {}", e))?;
     response.text().await

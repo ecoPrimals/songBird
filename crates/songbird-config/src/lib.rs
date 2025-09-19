@@ -13,13 +13,18 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub mod canonical_network;
 pub mod config;
+pub mod environment_config;
 pub mod zero_touch;
 
 pub use config::*;
 
 // Re-export environment configuration from config module
 pub use config::environment::EnvironmentConfig;
+
+// Re-export environment configuration helper
+pub use environment_config::EnvironmentConfig as EnvConfig;
 
 /// Performance configuration for fine-tuning system behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]

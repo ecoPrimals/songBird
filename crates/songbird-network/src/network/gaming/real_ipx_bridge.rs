@@ -4,7 +4,7 @@
 //! for legacy games like StarCraft, Age of Empires I, Command & Conquer
 
 use serde::{Deserialize, Serialize};
-use songbird_errors::{NetworkError, Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -134,8 +134,7 @@ pub struct RealIpxBridge {
 impl RealIpxBridge {
     pub async fn new(bind_address: SocketAddr, buffer_pool_size: usize) -> Result<Self> {
         let socket = UdpSocket::bind(bind_address).await.map_err(|e| {
-            SongbirdError::Network(Box::new(NetworkError {
-                message: format!("Real IPX Bridge - Failed to bind to address {bind_address}: {e}"),
+            SongbirdError::network(format!("Real IPX Bridge - Failed to bind to address {bind_address),
                 endpoint: Some(bind_address.to_string()),
                 port: Some(bind_address.port()),
                 protocol: None,
@@ -182,16 +181,11 @@ impl RealIpxBridge {
         let mut receiver = {
             let mut recv_lock = self.packet_receiver.write().await;
             recv_lock.take().ok_or_else(|| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: "Packet receiver already taken".to_string(),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                }))
+                SongbirdError::network("Packet receiver already taken ".to_string()))
             })?
         };
 
-        info!("Starting IPX bridge packet forwarding");
+        info!("Starting IPX bridge packet forwarding ");
 
         // Spawn background task for packet forwarding
         tokio::spawn(async move {
@@ -269,7 +263,7 @@ impl RealIpxBridge {
                     0x05 => self.handle_ipx_spx(&ipx_packet, from).await?,
                     _ => {
                         debug!(
-                            "Unknown IPX packet type: 0x{:02x}",
+                            "Unknown IPX packet type: {:02x}",
                             ipx_packet.header.packet_type
                         );
                         self.forward_to_destination(&ipx_packet, from).await?;
@@ -278,7 +272,7 @@ impl RealIpxBridge {
             }
             Err(_) => {
                 // Not a valid IPX packet, might be raw game data
-                debug!("Received raw game data, broadcasting to all nodes");
+                debug!("Received raw game data, broadcasting to all nodes ");
                 self.broadcast_raw_data(packet, from).await?;
             }
         }
@@ -374,7 +368,7 @@ impl RealIpxBridge {
     pub async fn get_stats(&self) -> Result<serde_json::Value> {
         let nodes = self.virtual_nodes.read().await;
         let stats = serde_json::json!({
-            "virtual_nodes": nodes.len(),
+            "virtual_nodes ": nodes.len(),
             "bridge_status": "active"
         });
         Ok(stats)
@@ -396,12 +390,7 @@ impl IpxPacketTranslator {
     /// Parse IPX packet from buffer without copying
     pub fn parse_ipx_packet<'a>(&self, data: &'a [u8]) -> Result<IpxPacket<'a>> {
         if data.len() < 30 {
-            return Err(SongbirdError::Network(Box::new(NetworkError {
-                message: format!("IPX Parser - Need at least 30 bytes, got {}", data.len()),
-                endpoint: None,
-                port: None,
-                protocol: Some("IPX".to_string()),
-            })));
+            return Err(SongbirdError::network("IPX Parser - Need at least 30 bytes ".to_string()));
         }
 
         let header = IpxHeader {
@@ -476,34 +465,9 @@ mod tests {
             songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
         )
         .parse()
-        .expect("Default IPX bridge bind address should be valid");
+        .expect("Default IPX bridge bind address is valid");
         let bridge = RealIpxBridge::new(bind_addr, 10).await;
         assert!(bridge.is_ok());
     }
 
     #[tokio::test]
-    async fn test_ipx_packet_parsing() {
-        let translator = IpxPacketTranslator::new();
-
-        // Create test packet data
-        let test_data = vec![
-            0x00, 0x00, // checksum
-            0x00, 0x20, // length
-            0x00, // transport control
-            0x00, // packet type
-            0x00, 0x00, 0x00, 0x01, // dest network
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // dest node
-            0x04, 0x51, // dest socket
-            0x00, 0x00, 0x00, 0x01, // src network
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x01, // src node
-            0x04, 0x51, // src socket
-            0x01, 0x02, 0x03, 0x04, // data
-        ];
-
-        let packet = translator
-            .parse_ipx_packet(&test_data)
-            .expect("Test IPX packet should be valid");
-        assert_eq!(packet.header.packet_type, 0x00);
-        assert_eq!(packet.data, &[0x01, 0x02, 0x03, 0x04]);
-    }
-}

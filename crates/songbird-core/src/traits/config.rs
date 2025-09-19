@@ -7,7 +7,7 @@
 use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 // Import all concrete config types from the config module
 pub use songbird_config::*;
 /// Configuration provider trait
@@ -17,13 +17,13 @@ where
     T: serde::de::DeserializeOwned + Clone + Send + Sync,
 {
     /// Load configuration from the provider
-    async fn load_config(&self) -> Result<T>;
+    async fn load_config(&self) -> SongbirdResult<T>;
     /// Reload configuration (useful for file-based configs)
-    async fn reload_config(&self) -> Result<T>;
+    async fn reload_config(&self) -> SongbirdResult<T>;
     /// Watch for configuration changes
-    async fn watch_config(&self) -> impl Stream<Item = Result<T>>;
+    async fn watch_config(&self) -> impl Stream<Item = SongbirdResult<T>>;
     /// Validate configuration before loading
-    async fn validate_config(&self, config: &T) -> Result<()>;
+    async fn validate_config(&self, config: &T) -> SongbirdResult<()>;
     /// Get provider information
     fn provider_info(&self) -> ConfigProviderInfo;
 }

@@ -99,17 +99,10 @@ impl UniversalSecurityIntegration {
 
         // Verify the primal has security capability
         if primal_config.get_capability("security").is_none() {
-            return Err(SongbirdError::Config {
-                message: format!(
-                    "Primal {} does not have security capability",
-                    primal_config.primal_type
-                ),
-                field: Some("capabilities".to_string()),
-                context: Some("security_integration".to_string()),
-                suggestion: Some(
-                    "Ensure the primal configuration includes security capability".to_string(),
-                ),
-            });
+            return Err(SongbirdError::configuration(format!(
+                "Primal {} does not have security capability",
+                primal_config.primal_type
+            )));
         }
 
         let security_context = UniversalSecurityContext {

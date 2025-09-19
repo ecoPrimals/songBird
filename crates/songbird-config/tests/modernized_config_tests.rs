@@ -4,7 +4,8 @@
 
 #[cfg(test)]
 mod config_tests {
-    use songbird_config::constants::DEFAULT_CONFIG_PATH;
+    use songbird_config::config::constants::DEFAULT_CONFIG_PATH;
+    use songbird_config::environment_config::EnvironmentConfig;
 
     #[test]
     fn test_default_constants() {
@@ -22,11 +23,11 @@ mod config_tests {
         // let _env_config = songbird_config::EnvironmentConfig; // Removed unused variable
 
         // Test that endpoints are properly generated
-        let songbird_endpoint = songbird_config::EnvironmentConfig::songbird_endpoint();
+        let songbird_endpoint = EnvironmentConfig::songbird_endpoint();
         assert!(!songbird_endpoint.is_empty());
         assert!(songbird_endpoint.starts_with("http"));
 
-        let endpoints = songbird_config::EnvironmentConfig::get_all_endpoints();
+        let endpoints = EnvironmentConfig::get_all_endpoints();
         assert!(endpoints.contains_key("storage"));
         assert!(endpoints.contains_key("compute"));
         assert!(endpoints.contains_key("orchestration"));

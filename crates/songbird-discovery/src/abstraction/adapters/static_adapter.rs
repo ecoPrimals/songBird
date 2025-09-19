@@ -16,7 +16,7 @@ use crate::abstraction::{
 use crate::traits::discovery::ServiceHealthStatus;
 use crate::traits::{ServiceEvent, ServiceInfo, ServiceQuery};
 use futures::stream::Stream;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult; type Result<T> = SongbirdResult<T>;
 use std::pin::Pin;
 
 /// Factory for creating Static providers from configuration

@@ -2,7 +2,8 @@
 ///
 /// Provides standardized test fixtures, mock data, and common
 /// test utilities for use across the Songbird ecosystem.
-use songbird_errors::{SongbirdError, Result as SongbirdResult};
+use songbird_errors::SongbirdError;
+use songbird_types::errors::SongbirdResult;
 use std::net::SocketAddr;
 
 /// Create a test socket address with a random port
@@ -25,9 +26,8 @@ pub fn test_socket_addr_with_port(port: u16) -> SocketAddr {
 
 /// Create a temporary directory for testing
 pub fn create_test_temp_dir() -> SongbirdResult<tempfile::TempDir> {
-    tempfile::tempdir().map_err(|e| {
-        SongbirdError::service_error("test", format!("Failed to create temp dir: {e}"))
-    })
+    tempfile::tempdir()
+        .map_err(|e| SongbirdError::service("test", format!("Failed to create temp dir: {e}")))
 }
 
 /// Mock peer information for testing

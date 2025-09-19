@@ -265,6 +265,7 @@ pub struct PerformanceSnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+use songbird_errors::SongbirdResult;
 
     // Mock implementations for testing
     struct MockDiscovery;

@@ -1,0 +1,26 @@
+[package]
+name = "songbird-hypothesis-test"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.0"
+
+[[bin]]
+name = "hypothesis_test"
+path = "src/main.rs"
+
+[[bin]]
+name = "compilation_test"
+path = "src/compilation_test_main.rs" 

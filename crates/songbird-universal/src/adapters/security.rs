@@ -192,7 +192,7 @@ impl UniversalSecurityAdapter {
             .json(&request)
             .send()
             .await
-            .map_err(|e| SongbirdError::network_error(format!("Failed to call provider {}: {}", provider.name, e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to call provider {}: {}", provider.name, e)))?;
 
         if !response.status().is_success() {
             return Err(SongbirdError::internal_error(service_error(
@@ -217,7 +217,7 @@ impl UniversalSecurityAdapter {
             .json(encrypted_data)
             .send()
             .await
-            .map_err(|e| SongbirdError::network_error(format!("Failed to call provider {}: {}", provider.name, e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to call provider {}: {}", provider.name, e)))?;
 
         if !response.status().is_success() {
             return Err(SongbirdError::internal_error(service_error(
@@ -242,7 +242,7 @@ impl UniversalSecurityAdapter {
             .json(credentials)
             .send()
             .await
-            .map_err(|e| SongbirdError::network_error(format!("Failed to call provider {}: {}", provider.name, e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to call provider {}: {}", provider.name, e)))?;
 
         if !response.status().is_success() {
             return Err(SongbirdError::internal_error(authentication_error(
@@ -274,7 +274,7 @@ impl UniversalSecurityAdapter {
             .json(&request)
             .send()
             .await
-            .map_err(|e| SongbirdError::network_error(format!("Failed to call provider {}: {}", provider.name, e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to call provider {}: {}", provider.name, e)))?;
 
         if !response.status().is_success() {
             return Ok(false); // Deny on error

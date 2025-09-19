@@ -3,12 +3,13 @@
 //! Core manager implementation for universal service registration
 
 use crate::api::ai_first_response::{
-    AIErrorCategory, AIFirstError, AIFirstResponse, AIResponseMetadata, ActionPriority,
-    HumanInteractionContext, SuggestedAction,
+    AIFirstResponse, AIResponseMetadata, ActionPriority, HumanInteractionContext, SuggestedAction,
 };
 use crate::api::universal_service_registration::ai_components::*;
 use crate::api::universal_service_registration::types::*;
 use chrono::Utc;
+use songbird_errors::SongbirdError;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -99,7 +100,7 @@ impl UniversalServiceRegistrationManager {
                         predicted_reliability_percentage: 0.0,
                     },
                 },
-                validation_error,
+                validation_error.into(),
                 request_id,
                 start_time.elapsed().as_millis() as u64,
             );
@@ -265,7 +266,7 @@ impl UniversalServiceRegistrationManager {
                         predicted_reliability_percentage: 0.0,
                     },
                 },
-                registration_error,
+                registration_error.into(),
                 request_id,
                 start_time.elapsed().as_millis() as u64,
             ),
@@ -283,7 +284,7 @@ impl UniversalServiceRegistrationManager {
     }
 
     /// Deregister a service
-    pub async fn deregister_service(&mut self, service_id: &str) -> Result<(), String> {
+    pub async fn deregister_service(&mut self, service_id: &str) -> SongbirdResult<()> {
         if self.registered_services.remove(service_id).is_some() {
             let _ = self
                 .service_mesh_integrator
@@ -291,7 +292,9 @@ impl UniversalServiceRegistrationManager {
                 .await;
             Ok(())
         } else {
-            Err(format!("Service '{service_id}' not found"))
+            Err(SongbirdError::configuration(&format!(
+                "Service '{service_id}' not found"
+            )))
         }
     }
 
@@ -299,78 +302,25 @@ impl UniversalServiceRegistrationManager {
     async fn validate_service_request(
         &self,
         request: &UniversalServiceRegistrationRequest,
-    ) -> Result<(), AIFirstError> {
+    ) -> SongbirdResult<()> {
         // Validate service ID format
         if request.service_id.is_empty() {
-            return Err(AIFirstError {
-                code: "INVALID_SERVICE_ID".to_string(),
-                message: "Service ID cannot be empty".to_string(),
-                category: AIErrorCategory::ConfigurationIssue,
-                retry_strategy: crate::api::ai_first_response::RetryStrategy {
-                    should_retry: false,
-                    delay_ms: 0,
-                    max_attempts: 0,
-                    backoff_strategy: crate::api::ai_first_response::BackoffType::Linear,
-                    retry_conditions: vec![],
-                    success_probability: 0.0,
-                },
-                automation_hints: vec!["Provide a valid service ID".to_string()],
-                severity: crate::api::ai_first_response::ErrorSeverity::High,
-                requires_human_intervention: true,
-                context: HashMap::new(),
-            });
+            return Err(SongbirdError::configuration("Service ID cannot be empty"));
         }
 
         // Validate primary endpoint
         if request.endpoints.primary.is_empty() {
-            return Err(AIFirstError {
-                code: "INVALID_PRIMARY_ENDPOINT".to_string(),
-                message: "Primary endpoint cannot be empty".to_string(),
-                category: AIErrorCategory::ConfigurationIssue,
-                retry_strategy: crate::api::ai_first_response::RetryStrategy {
-                    should_retry: false,
-                    delay_ms: 0,
-                    max_attempts: 0,
-                    backoff_strategy: crate::api::ai_first_response::BackoffType::Linear,
-                    retry_conditions: vec![],
-                    success_probability: 0.0,
-                },
-                automation_hints: vec!["Provide a valid primary endpoint URL".to_string()],
-                severity: crate::api::ai_first_response::ErrorSeverity::High,
-                requires_human_intervention: true,
-                context: HashMap::new(),
-            });
+            return Err(SongbirdError::configuration(
+                "Primary endpoint cannot be empty",
+            ));
         }
 
         // Check for duplicate service ID
         if self.registered_services.contains_key(&request.service_id) {
-            return Err(AIFirstError {
-                code: "DUPLICATE_SERVICE_ID".to_string(),
-                message: format!("Service ID '{}' is already registered", request.service_id),
-                category: AIErrorCategory::ConfigurationIssue,
-                retry_strategy: crate::api::ai_first_response::RetryStrategy {
-                    should_retry: false,
-                    delay_ms: 0,
-                    max_attempts: 0,
-                    backoff_strategy: crate::api::ai_first_response::BackoffType::Linear,
-                    retry_conditions: vec!["use_different_service_id".to_string()],
-                    success_probability: 1.0,
-                },
-                automation_hints: vec![
-                    "Use a different service ID".to_string(),
-                    "Consider versioning the service ID".to_string(),
-                ],
-                severity: crate::api::ai_first_response::ErrorSeverity::Medium,
-                requires_human_intervention: false,
-                context: {
-                    let mut ctx = HashMap::new();
-                    ctx.insert(
-                        "existing_service_id".to_string(),
-                        serde_json::Value::String(request.service_id.clone()),
-                    );
-                    ctx
-                },
-            });
+            return Err(SongbirdError::configuration(&format!(
+                "Service ID '{}' is already registered",
+                request.service_id
+            )));
         }
 
         Ok(())
@@ -411,7 +361,7 @@ impl UniversalServiceRegistrationManager {
     async fn perform_service_registration(
         &mut self,
         request: UniversalServiceRegistrationRequest,
-    ) -> Result<ServiceRegistrationData, AIFirstError> {
+    ) -> SongbirdResult<ServiceRegistrationData> {
         // Generate performance predictions
         let performance_predictions = self
             .performance_predictor

@@ -2,7 +2,7 @@
 
 use super::client::BiomeOSClient;
 use super::types::BiomeOSServiceRegistration;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
@@ -26,7 +26,7 @@ impl ServiceRegistrationManager {
     pub async fn register_service(
         &mut self,
         registration: BiomeOSServiceRegistration,
-    ) -> Result<()> {
+    ) -> SongbirdResult<()> {
         info!("Registering service: {}", registration.service_name);
 
         // Register with BiomeOS
@@ -43,7 +43,7 @@ impl ServiceRegistrationManager {
     }
 
     /// Deregister service from BiomeOS
-    pub async fn deregister_service(&self, service_id: &str) -> Result<()> {
+    pub async fn deregister_service(&self, service_id: &str) -> SongbirdResult<()> {
         info!("Deregistering service: {}", service_id);
 
         // Deregister from BiomeOS
@@ -63,7 +63,7 @@ impl ServiceRegistrationManager {
     pub async fn update_registration(
         &mut self,
         mut registration: BiomeOSServiceRegistration,
-    ) -> Result<()> {
+    ) -> SongbirdResult<()> {
         debug!(
             "Updating service registration: {}",
             registration.service_name

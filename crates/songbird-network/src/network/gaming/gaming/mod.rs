@@ -41,7 +41,7 @@ pub use songbird_network::network::gaming::{
 };
 
 // Additional functionality specific to the main crate
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::time::SystemTime;

@@ -159,13 +159,7 @@ impl ConnectionPool {
         
         // Try to acquire total connection limit
         let _permit = self.total_connections.acquire().await
-            .map_err(|_| songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                service: Some("ConnectionPool".to_string()),
-                message: "Connection pool exhausted".to_string(),
-                details: None,
-                endpoint: None,
-                suggestion: Some("Increase pool size or implement connection queuing".to_string()),
-            })))?;
+            .map_err(|_| songbird_errors::SongbirdError::network("Connection pool exhausted".to_string())))?;
 
         // Get or create interned host key
         let host_key = {
@@ -212,9 +206,7 @@ impl ConnectionPool {
         }
 
         // Pool is full, return error
-        Err(songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-            service: Some("ConnectionPool".to_string()),
-            message: format!("Connection pool full for host: {}", host),
+        Err(songbird_errors::SongbirdError::network(format!("Connection pool full for host: {),
             details: Some(format!("Max connections per host: {}", self.config.max_connections_per_host)),
             endpoint: Some(host.to_string()),
             suggestion: Some("Increase per-host connection limit or implement connection queuing".to_string()),

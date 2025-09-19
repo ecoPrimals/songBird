@@ -24,7 +24,7 @@
 //! ## Usage
 //!
 //! ```rust,no_run
-//! use songbird_errors::{SongbirdError, Result, ValidationError, ServiceError, DiscoveryError};
+//! use songbird_errors::{SongbirdError, Result, ValidationError, DiscoveryError};
 //!
 //! fn example_function() -> Result<String> {
 //!     // Function that might fail
@@ -108,25 +108,30 @@
 //! }
 //! ```
 
-pub mod songbird_errors;
 pub mod validation;
 
-pub use songbird_errors::*;
+// Re-export canonical error types from songbird-types
+pub use songbird_types::errors::*;
 pub use validation::*;
 
 /// Helper function to create config errors with proper context
 pub fn config_error(
     message: &str,
     field: Option<&str>,
-    context: Option<&str>,
+    _context: Option<&str>,
     suggestion: Option<&str>,
 ) -> SongbirdError {
-    SongbirdError::Config {
-        message: message.to_string(),
-        field: field.map(|f| f.to_string()),
-        context: context.map(|c| c.to_string()),
-        suggestion: suggestion.map(|s| s.to_string()),
+    let mut error = SongbirdError::configuration(message);
+    if let SongbirdError::Configuration {
+        field: f,
+        suggestion: s,
+        ..
+    } = &mut error
+    {
+        *f = field.map(|field_str| field_str.to_string());
+        *s = suggestion.map(|sug_str| sug_str.to_string());
     }
+    error
 }
 
 /// Helper function to create config errors with just message and field
@@ -139,19 +144,17 @@ pub fn simple_config_error(message: &str, field: Option<&str>) -> SongbirdError 
     )
 }
 
-/// Helper function to create discovery errors
+/// Helper function to create discovery errors (using service error as closest match)
 pub fn discovery_error(
     message: &str,
     service: Option<&str>,
-    timeout: Option<u64>,
-    suggestion: Option<&str>,
+    _timeout: Option<u64>,
+    _suggestion: Option<&str>,
 ) -> SongbirdError {
-    SongbirdError::Discovery(Box::new(DiscoveryError {
-        message: message.to_string(),
-        service: service.map(|s| s.to_string()),
-        timeout,
-        suggestion: suggestion.map(|s| s.to_string()),
-    }))
+    SongbirdError::service(
+        service.unwrap_or("discovery"),
+        format!("Discovery error: {}", message),
+    )
 }
 
 /// Helper function to create simple discovery errors
@@ -168,26 +171,20 @@ pub fn simple_discovery_error(message: &str, service: Option<&str>) -> SongbirdE
 pub fn service_error(
     service: &str,
     message: &str,
-    status: Option<&str>,
-    suggestion: Option<&str>,
+    _status: Option<&str>,
+    _suggestion: Option<&str>,
 ) -> SongbirdError {
-    SongbirdError::Service(Box::new(ServiceError {
-        service: service.to_string(),
-        message: message.to_string(),
-        status: status.map(|s| s.to_string()),
-        suggestion: suggestion.map(|s| s.to_string()),
-    }))
+    SongbirdError::service(service, message)
 }
 
-/// Helper function to create load balancer errors
+/// Helper function to create load balancer errors (using service error as closest match)
 pub fn load_balancer_error(
     message: &str,
     backend: Option<&str>,
-    suggestion: Option<&str>,
+    _suggestion: Option<&str>,
 ) -> SongbirdError {
-    SongbirdError::LoadBalancer {
-        message: message.to_string(),
-        backend: backend.map(|b| b.to_string()),
-        suggestion: suggestion.map(|s| s.to_string()),
-    }
+    SongbirdError::service(
+        backend.unwrap_or("load_balancer"),
+        format!("Load balancer error: {}", message),
+    )
 }

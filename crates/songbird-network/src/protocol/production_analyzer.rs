@@ -282,7 +282,7 @@ impl ProductionProtocolAnalyzer {
     /// Analyze UDP-based protocol
     async fn analyze_udp_protocol(&self, address: SocketAddr) -> NetworkResult<ProtocolAnalysisResult> {
         let socket = UdpSocket::bind("0.0.0.0:0").await
-            .map_err(|e| SongbirdError::network_error(&format!("UDP bind failed: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("UDP bind failed: {}", e)))?;
         
         // Send discovery probe
         let discovery_probe = b"SONGBIRD_PROTOCOL_PROBE";
@@ -323,7 +323,7 @@ impl ProductionProtocolAnalyzer {
         let client = reqwest::Client::builder()
             .timeout(self.config.analysis_timeout)
             .build()
-            .map_err(|e| SongbirdError::network_error(&format!("HTTP client creation failed: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("HTTP client creation failed: {}", e)))?;
         
         let url = format!("http://{}", address);
         

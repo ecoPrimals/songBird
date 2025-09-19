@@ -1,5 +1,5 @@
 use byteorder::{NetworkEndian, ReadBytesExt};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::io::Cursor;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::UdpSocket;
@@ -48,7 +48,7 @@ impl StunClient {
     /// Create a new STUN client
     pub async fn new(local_addr: SocketAddr) -> Result<Self> {
         let socket = UdpSocket::bind(local_addr).await.map_err(|e| {
-            SongbirdError::network_error(format!("STUN Client - Failed to bind socket: {e}"))
+            SongbirdError::network(format!("STUN Client - Failed to bind socket: {e}"))
         })?;
 
         Ok(Self {
@@ -73,7 +73,7 @@ impl StunClient {
             .send_to(&request_data, stun_server)
             .await
             .map_err(|e| {
-                SongbirdError::network_error(format!(
+                SongbirdError::network(format!(
                     "STUN Client - Failed to send request to {stun_server}: {e}"
                 ))
             })?;
@@ -83,19 +83,19 @@ impl StunClient {
         let len = match timeout(self.timeout_duration, self.socket.recv_from(&mut buffer)).await {
             Ok(Ok((len, _))) => {
                 if len < 20 {
-                    return Err(SongbirdError::network_error(format!(
+                    return Err(SongbirdError::network(format!(
                         "STUN Client - Response too short from {stun_server}"
                     )));
                 }
                 len
             }
             Ok(Err(e)) => {
-                return Err(SongbirdError::network_error(format!(
+                return Err(SongbirdError::network(format!(
                     "STUN Client - Failed to receive response from {stun_server}: {e}"
                 )));
             }
             Err(_) => {
-                return Err(SongbirdError::network_error(format!(
+                return Err(SongbirdError::network(format!(
                     "STUN Client - Request timed out to {stun_server}"
                 )));
             }
@@ -104,7 +104,7 @@ impl StunClient {
         let response = self.decode_message(&buffer[..len])?;
 
         if response.transaction_id != transaction_id {
-            return Err(SongbirdError::network_error(format!(
+            return Err(SongbirdError::network(format!(
                 "STUN Client - Transaction ID mismatch in STUN response from {stun_server}"
             )));
         }
@@ -161,8 +161,7 @@ impl StunClient {
     /// Decode STUN message from bytes
     fn decode_message(&self, data: &[u8]) -> Result<StunMessage> {
         if data.len() < 20 {
-            return Err(SongbirdError::network_error(
-                "STUN Client - STUN message too short",
+            return Err(SongbirdError::network("STUN Client - STUN message too short",
             ));
         }
 
@@ -172,7 +171,7 @@ impl StunClient {
         let msg_type = u16::from_be_bytes([data[0], data[1]]);
 
         if msg_type != 0x0101 {
-            return Err(SongbirdError::network_error(format!(
+            return Err(SongbirdError::network(format!(
                 "STUN Client - Unknown STUN message type: {msg_type}"
             )));
         }
@@ -183,8 +182,7 @@ impl StunClient {
 
         let transaction_id = &data[8..20];
         if transaction_id.len() != 12 {
-            return Err(SongbirdError::network_error(
-                "STUN Client - Failed to read transaction ID: invalid length".to_string(),
+            return Err(SongbirdError::network("STUN Client - Failed to read transaction ID: invalid length".to_string(),
             ));
         }
 
@@ -268,14 +266,14 @@ impl StunClient {
 
                 // Skip reserved byte
                 let _reserved = cursor.read_u8().map_err(|e| {
-                    SongbirdError::network_error(format!(
+                    SongbirdError::network(format!(
                         "STUN Client - Failed to read reserved byte: {e}"
                     ))
                 })?;
 
                 // Address family
                 let family = cursor.read_u8().map_err(|e| {
-                    SongbirdError::network_error(format!(
+                    SongbirdError::network(format!(
                         "STUN Client - Failed to read address family: {e}"
                     ))
                 })?;
@@ -287,13 +285,13 @@ impl StunClient {
 
                 // Port
                 let mut port = cursor.read_u16::<NetworkEndian>().map_err(|e| {
-                    SongbirdError::network_error(format!("STUN Client - Failed to read port: {e}"))
+                    SongbirdError::network(format!("STUN Client - Failed to read port: {e}"))
                 })?;
 
                 // Address
                 let mut addr_bytes = [0u8; 4];
                 std::io::Read::read_exact(&mut cursor, &mut addr_bytes).map_err(|e| {
-                    SongbirdError::network_error(format!(
+                    SongbirdError::network(format!(
                         "STUN Client - Failed to read address bytes: {e}"
                     ))
                 })?;
@@ -318,7 +316,7 @@ impl StunClient {
             }
         }
 
-        Err(SongbirdError::network_error(format!(
+        Err(SongbirdError::network(format!(
             "STUN Client - No mapped address found in STUN response from {}",
             "unknown_server"
         )))
@@ -334,7 +332,7 @@ impl StunServer {
     /// Create a new STUN server
     pub async fn new(bind_addr: SocketAddr) -> Result<Self> {
         let socket = UdpSocket::bind(bind_addr).await.map_err(|e| {
-            SongbirdError::network_error(format!("STUN Server - Failed to bind socket: {e}"))
+            SongbirdError::network(format!("STUN Server - Failed to bind socket: {e}"))
         })?;
 
         Ok(Self { socket })
@@ -346,7 +344,7 @@ impl StunServer {
 
         loop {
             let (size, client_addr) = self.socket.recv_from(&mut buffer).await.map_err(|e| {
-                SongbirdError::network_error(format!(
+                SongbirdError::network(format!(
                     "STUN Server - Failed to receive request: {e}"
                 ))
             })?;
@@ -363,8 +361,7 @@ impl StunServer {
 
         // Simple implementation - just echo back the client address
         if data.len() < 20 {
-            return Err(SongbirdError::network_error(
-                "STUN Server - STUN request too short",
+            return Err(SongbirdError::network("STUN Server - STUN request too short",
             ));
         }
 
@@ -378,7 +375,7 @@ impl StunServer {
             .send_to(&response, client_addr)
             .await
             .map_err(|e| {
-                SongbirdError::network_error(format!("STUN Server - Failed to send response: {e}"))
+                SongbirdError::network(format!("STUN Server - Failed to send response: {e}"))
             })?;
 
         Ok(())
@@ -418,8 +415,7 @@ impl StunServer {
                 response.extend_from_slice(&ipv4.octets());
             }
             IpAddr::V6(_) => {
-                return Err(SongbirdError::network_error(
-                    "STUN Server - IPv6 not supported",
+                return Err(SongbirdError::network("STUN Server - IPv6 not supported",
                 ));
             }
         }

@@ -30,7 +30,7 @@ impl From<ServiceError> for SongbirdError {
                 service_error!("unknown", format!("Shutdown failed: {msg}"))
             }
             ServiceError::RequestTimeout(msg) => {
-                SongbirdError::network_error(format!("Request timeout: {msg}"))
+                SongbirdError::network(format!("Request timeout: {msg}"))
             }
             ServiceError::InvalidRequest(msg) => {
                 SongbirdError::validation_error(format!("Invalid request: {msg}"))
@@ -126,8 +126,7 @@ impl From<LoadBalancingError> for SongbirdError {
             LoadBalancingError::NoSuitableInstance => {
                 service_error!("load_balancer", "No suitable service instance")
             }
-            LoadBalancingError::UnknownStrategy(strategy) => SongbirdError::config_field(
-                "strategy",
+            LoadBalancingError::UnknownStrategy(strategy) => SongbirdError::configuration("strategy",
                 format!("Unknown load balancing strategy: {strategy}"),
             ),
             LoadBalancingError::StrategyError(msg) => {
@@ -166,7 +165,7 @@ impl From<DiscoveryError> for SongbirdError {
                 SongbirdError::discovery_error(format!("Discovery watch error: {msg}"))
             }
             DiscoveryError::ConnectionError(msg) => {
-                SongbirdError::network_error(format!("Discovery connection error: {msg}"))
+                SongbirdError::network(format!("Discovery connection error: {msg}"))
             }
             DiscoveryError::SerializationError(err) => {
                 SongbirdError::validation_error(format!("Discovery serialization error: {err}"))
@@ -185,7 +184,7 @@ impl From<ProtocolError> for SongbirdError {
                 SongbirdError::protocol_error(format!("Protocol not supported: {protocol}"))
             }
             ProtocolError::ConnectionError(msg) => {
-                SongbirdError::network_error(format!("Protocol connection error: {msg}"))
+                SongbirdError::network(format!("Protocol connection error: {msg}"))
             }
             ProtocolError::SerializationError(err) => {
                 SongbirdError::validation_error(format!("Protocol serialization error: {err}"))
@@ -197,11 +196,11 @@ impl From<ProtocolError> for SongbirdError {
                 SongbirdError::protocol_error(format!("Protocol response error: {msg}"))
             }
             ProtocolError::TimeoutError(msg) => {
-                SongbirdError::network_error(format!("Protocol timeout: {msg}"))
+                SongbirdError::network(format!("Protocol timeout: {msg}"))
             }
             ProtocolError::SecurityError(err) => err.into(),
             ProtocolError::InvalidEndpoint(endpoint) => {
-                SongbirdError::network_error(format!("Invalid protocol endpoint: {endpoint}"))
+                SongbirdError::network(format!("Invalid protocol endpoint: {endpoint}"))
             }
             ProtocolError::ConfigurationError(msg) => {
                 SongbirdError::configuration_error(format!("Protocol configuration error: {msg}"))
@@ -228,10 +227,10 @@ impl From<SecurityError> for SongbirdError {
             SecurityError::EncryptionError(msg) => SongbirdError::encryption_failed(msg),
             SecurityError::DecryptionError(msg) => SongbirdError::decryption_failed(msg),
             SecurityError::KeyManagementError(msg) => {
-                SongbirdError::security_error(format!("Key management error: {msg}"))
+                SongbirdError::security(format!("Key management error: {msg}"))
             }
             SecurityError::SecurityLevelInsufficient { required, provided } => {
-                SongbirdError::security_error(format!(
+                SongbirdError::security(format!(
                     "Security level insufficient: required {required}, provided {provided}"
                 ))
             }
@@ -277,10 +276,10 @@ impl From<EventError> for SongbirdError {
                 SongbirdError::validation_error(format!("Event serialization failed: {err}"))
             }
             EventError::DeliveryFailed(msg) => {
-                SongbirdError::network_error(format!("Event delivery failed: {msg}"))
+                SongbirdError::network(format!("Event delivery failed: {msg}"))
             }
             EventError::EventTimeout(msg) => {
-                SongbirdError::network_error(format!("Event timeout: {msg}"))
+                SongbirdError::network(format!("Event timeout: {msg}"))
             }
             EventError::InvalidEvent(msg) => {
                 SongbirdError::validation_error(format!("Invalid event: {msg}"))
@@ -298,8 +297,7 @@ impl From<EventError> for SongbirdError {
 impl From<ConfigError> for SongbirdError {
     fn from(err: ConfigError) -> Self {
         match err {
-            ConfigError::ConfigNotFound(path) => SongbirdError::config_field(
-                "config_path",
+            ConfigError::ConfigNotFound(path) => SongbirdError::configuration("config_path",
                 format!("Configuration not found: {path}"),
             ),
             ConfigError::InvalidConfig(msg) => {
@@ -352,7 +350,7 @@ impl From<CoordinationError> for SongbirdError {
     fn from(err: CoordinationError) -> Self {
         match err {
             CoordinationError::CoordinationTimeout(msg) => {
-                SongbirdError::network_error(format!("Coordination timeout: {msg}"))
+                SongbirdError::network(format!("Coordination timeout: {msg}"))
             }
             CoordinationError::ParticipantNotFound(participant) => SongbirdError::not_found_error(
                 format!("Coordination participant not found: {participant}"),

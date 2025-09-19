@@ -90,33 +90,32 @@
 //!
 //! ## Error Handling
 //!
-//! All discovery operations return `Result<T, SongbirdError>` with detailed
+//! All discovery operations return `Result<T>` with detailed
 //! error information including network errors, timeout handling, and recovery
 //! suggestions for common discovery failures.
 
 pub mod discovery;
 pub mod traits;
 
-// Re-export discovery functionality
+// Re-export universal discovery functionality
 pub use discovery::{
-    ConsulServiceDiscovery, DiscoveryConfig, KubernetesServiceDiscovery, ServiceDiscovery,
-    ServiceDiscoveryFactory, ServiceInstance, SongbirdDiscovery, StaticServiceDiscovery,
+    DiscoveryConfig, ServiceInstance, SongbirdDiscovery, StaticServiceDiscovery,
+    UniversalContainerOrchestration, UniversalDiscoveryFactory, UniversalServiceDiscovery,
 };
 
 // Re-export commonly used types from discovery
 pub use discovery::{
     ComputeResources, DatasetInfo, FederationHealth, FederationMessage, FederationStats,
-    InteractionResult, LocalNode, NetworkMeasurement, NetworkPartition, NetworkTopology, NodeId,
-    NodeInfo, NodeType, ResourceQuery, ResourceUpdate, ResourceUsage, StorageInfo, TrustLevel,
+    NetworkMeasurement, NetworkPartition, NetworkTopology, NodeId, NodeInfo, NodeType,
+    ResourceQuery, ResourceUpdate, ResourceUsage, StorageInfo, TrustLevel,
 };
 
 // Re-export traits
 pub use traits::{
     CommunicationLayer, ComposablePlugin, ComposedSystem, CompositionPlan, ConfigProvider,
-    HealthCheck, HealthMonitor, HealthState, HealthStatus, IntegrationResult, LoadBalancer,
-    PluginCapability, PluginHealth, PluginRegistry, PluginRequirement, ServiceInfo, ServiceStatus,
-    SystemHealth,
+    HealthCheck, HealthMonitor, HealthState, HealthStatus, PluginCapability, PluginHealth,
+    PluginRegistry, PluginRequirement, ServiceInfo, ServiceStatus, SystemHealth,
 };
 
 // Re-export service discovery trait
-pub use traits::ServiceDiscovery as ServiceDiscoveryTrait;
+pub use traits::ServiceDiscovery;

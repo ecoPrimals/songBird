@@ -19,7 +19,7 @@ use songbird_federation::{
 };
 use songbird_network::gaming::GamingManager;
 use songbird_observability::ObservabilityManager;
-use songbird_security::UniversalSecurityIntegration;
+// use songbird_security::UniversalSecurityIntegration; // Temporarily disabled
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;

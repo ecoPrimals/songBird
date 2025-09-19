@@ -205,14 +205,26 @@ async fn probe_directory_for_primal_service(
         songbird_config::config::hardcoded_elimination::replace::orchestrator_endpoint().to_string()
     });
 
-    match api_discovery::discover_service_capabilities_via_api(
-        http_client,
-        &primary_endpoint,
-        dir_name,
-    )
-    .await
-    {
-        Ok((primal_type, capabilities)) => {
+    match api_discovery::discover_service_capabilities_via_api(&primary_endpoint, dir_name).await {
+        Ok((primal_type_str, capabilities_str)) => {
+            // Convert string to PrimalType
+            let primal_type = match primal_type_str.as_str() {
+                "security" => songbird_universal::PrimalType::new("security"),
+                "storage" => songbird_universal::PrimalType::new("storage"),
+                "compute" => songbird_universal::PrimalType::new("compute"),
+                "ai" => songbird_universal::PrimalType::new("ai"),
+                _ => songbird_universal::PrimalType::new("generic"),
+            };
+
+            // Convert Vec<String> to Vec<PrimalCapability>
+            let capabilities = capabilities_str
+                .into_iter()
+                .map(|cap_str| crate::PrimalCapability::Custom {
+                    name: cap_str,
+                    properties: vec![],
+                })
+                .collect();
+
             let discovered = DiscoveredPrimal {
                 primal_id: uuid::Uuid::new_v4().to_string(),
                 primal_type,

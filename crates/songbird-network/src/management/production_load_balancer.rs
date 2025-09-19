@@ -243,7 +243,7 @@ impl ProductionLoadBalancer {
         let selected = nodes
             .iter()
             .min_by_key(|node| node.active_connections)
-            .ok_or_else(|| SongbirdError::network_error("No nodes available"))?;
+            .ok_or_else(|| SongbirdError::network("No nodes available"))?;
         
         Ok(songbird_errors::evolved_success(selected.clone()))
     }
@@ -257,7 +257,7 @@ impl ProductionLoadBalancer {
                 let b_ratio = b.active_connections as f64 / b.weight as f64;
                 a_ratio.partial_cmp(&b_ratio).unwrap_or(std::cmp::Ordering::Equal)
             })
-            .ok_or_else(|| SongbirdError::network_error("No nodes available"))?;
+            .ok_or_else(|| SongbirdError::network("No nodes available"))?;
         
         Ok(songbird_errors::evolved_success(selected.clone()))
     }
@@ -273,7 +273,7 @@ impl ProductionLoadBalancer {
                 a_score.partial_cmp(&b_score).unwrap_or(std::cmp::Ordering::Equal)
             })
             .or_else(|| nodes.first()) // Fallback to first node
-            .ok_or_else(|| SongbirdError::network_error("No nodes available"))?;
+            .ok_or_else(|| SongbirdError::network("No nodes available"))?;
         
         Ok(songbird_errors::evolved_success(selected.clone()))
     }
@@ -283,7 +283,7 @@ impl ProductionLoadBalancer {
         let selected = nodes
             .iter()
             .min_by_key(|node| node.avg_response_time)
-            .ok_or_else(|| SongbirdError::network_error("No nodes available"))?;
+            .ok_or_else(|| SongbirdError::network("No nodes available"))?;
         
         Ok(songbird_errors::evolved_success(selected.clone()))
     }
@@ -297,7 +297,7 @@ impl ProductionLoadBalancer {
                 let b_load = (b.cpu_usage + b.memory_usage) / 2.0;
                 a_load.partial_cmp(&b_load).unwrap_or(std::cmp::Ordering::Equal)
             })
-            .ok_or_else(|| SongbirdError::network_error("No nodes available"))?;
+            .ok_or_else(|| SongbirdError::network("No nodes available"))?;
         
         Ok(songbird_errors::evolved_success(selected.clone()))
     }
@@ -332,12 +332,12 @@ impl ProductionLoadBalancer {
             .iter()
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(node_id, _)| node_id)
-            .ok_or_else(|| SongbirdError::network_error("No suitable node found"))?;
+            .ok_or_else(|| SongbirdError::network("No suitable node found"))?;
         
         let selected_node = nodes
             .iter()
             .find(|node| &node.node_id == best_node_id)
-            .ok_or_else(|| SongbirdError::network_error("Selected node not found"))?;
+            .ok_or_else(|| SongbirdError::network("Selected node not found"))?;
         
         Ok(songbird_errors::evolved_success(selected_node.clone()))
     }

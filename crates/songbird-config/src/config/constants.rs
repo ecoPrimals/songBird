@@ -6,13 +6,26 @@
 use std::env;
 use std::time::Duration;
 
+/// Default configuration file path
+pub const DEFAULT_CONFIG_PATH: &str = "songbird.toml";
+
+/// IPv4 localhost address constant
+pub const LOCALHOST_IPV4: &str = "127.0.0.1";
+
+/// Default bind address constant
+pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
+
+/// Default localhost constant
+pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
+
 /// Get bind address from environment or calculate from system capabilities
 pub fn get_bind_address() -> String {
     env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
         // Detect if running in container/kubernetes or production
-        if env::var("KUBERNETES_SERVICE_HOST").is_ok() 
-            || env::var("CONTAINER").is_ok() 
-            || env::var("SONGBIRD_ENV").as_deref() == Ok("production") {
+        if env::var("KUBERNETES_SERVICE_HOST").is_ok()
+            || env::var("CONTAINER").is_ok()
+            || env::var("SONGBIRD_ENV").as_deref() == Ok("production")
+        {
             "0.0.0.0".to_string() // Container/production environment
         } else {
             "127.0.0.1".to_string() // Development/local environment

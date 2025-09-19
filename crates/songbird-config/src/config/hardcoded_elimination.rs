@@ -7,6 +7,9 @@ use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
+// Import types from the correct locations
+use crate::config::network::PortRange;
+
 /// Central configuration for eliminating hardcoded values
 #[derive(Debug, Clone, Default)]
 pub struct HardcodingEliminationConfig {
@@ -54,6 +57,7 @@ pub struct NetworkConfig {
     pub gaming_endpoint: Arc<str>,
     pub federation_endpoint: Arc<str>,
     pub dashboard_endpoint: Arc<str>,
+    pub gaming_port_range: PortRange,
 }
 
 #[derive(Debug, Clone)]
@@ -166,6 +170,10 @@ impl Default for NetworkConfig {
             gaming_endpoint: Arc::from(format!("http://{bind_ip}:{gaming_port}")),
             federation_endpoint: Arc::from(format!("http://{bind_ip}:{federation_port}")),
             dashboard_endpoint: Arc::from(format!("http://{bind_ip}:{dashboard_port}")),
+            gaming_port_range: PortRange {
+                start: 7000,
+                end: 7100,
+            },
         }
     }
 }
@@ -449,5 +457,17 @@ pub mod replace {
             base.trim_end_matches('/'),
             path.trim_start_matches('/')
         )
+    }
+
+    /// Replace hardcoded gaming port
+    #[must_use]
+    pub fn gaming_port() -> u16 {
+        get_config().network.gaming_port_range.start
+    }
+
+    /// Replace hardcoded timeout configuration
+    #[must_use]
+    pub fn timeout_config() -> super::TimeoutConfig {
+        get_config().timeouts.clone()
     }
 }

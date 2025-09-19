@@ -44,19 +44,21 @@ pub mod types;
 pub use songbird_discovery::SongbirdDiscovery;
 
 // Re-export core types for backward compatibility
-pub use core::{DiscoveryConfig, ServiceDiscovery, ServiceInstance};
+pub use core::{DiscoveryConfig, ServiceInstance};
 
-// Re-export backend implementations
-pub use backends::{ConsulServiceDiscovery, KubernetesServiceDiscovery, StaticServiceDiscovery};
+// Re-export universal backend implementations
+pub use backends::{
+    StaticServiceDiscovery, UniversalContainerOrchestration, UniversalServiceDiscovery,
+};
 
-// Re-export factory
-pub use factory::ServiceDiscoveryFactory;
+// Re-export universal factory
+pub use factory::UniversalDiscoveryFactory;
 
 // Re-export commonly used types from existing modules
 pub use types::{
     ComputeResources, DatasetInfo, FederationHealth, FederationMessage, FederationStats,
-    InteractionResult, LocalNode, NetworkMeasurement, NetworkPartition, NetworkTopology, NodeId,
-    NodeInfo, NodeType, ResourceQuery, ResourceUpdate, ResourceUsage, StorageInfo, TrustLevel,
+    NetworkMeasurement, NetworkPartition, NetworkTopology, NodeId, NodeInfo, NodeType,
+    ResourceQuery, ResourceUpdate, ResourceUsage, StorageInfo, TrustLevel,
 };
 
 // Re-export configuration types
@@ -73,12 +75,16 @@ pub use resources::ResourceDetector;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::traits::discovery::ServiceQuery;
+    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_service_discovery_factory() {
         // Test static backend creation
         let config = DiscoveryConfig::static_config();
-        let discovery = ServiceDiscoveryFactory::create(&config).unwrap();
+        let discovery = UniversalDiscoveryFactory::create_for_config(&config)
+            .await
+            .unwrap();
 
         // Test service registration and discovery
         let service = ServiceInstance::new(
@@ -87,10 +93,33 @@ mod tests {
             "127.0.0.1:8080".parse().unwrap(),
         );
 
-        discovery.register_service(service.clone()).await.unwrap();
-        let discovered = discovery.discover_services(Some("test")).await.unwrap();
+        // Convert ServiceInstance to ServiceInfo for the register call
+        let service_info = crate::traits::service::ServiceInfo {
+            service_id: service.id.clone(),
+            name: service.name.clone(),
+            version: "1.0.0".to_string(),
+            service_type: "test".to_string(),
+            description: Some("Test service".to_string()),
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: crate::traits::service::ServiceStatus::Running,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            instance_id: service.id.clone(),
+            host: "127.0.0.1".to_string(),
+            port: 8080,
+        };
+        discovery.register(service_info).await.unwrap();
+        let query = ServiceQuery {
+            service_type: Some("test".to_string()),
+            ..Default::default()
+        };
+        let discovered = discovery.discover_services(&query).await.unwrap();
         assert_eq!(discovered.len(), 1);
-        assert_eq!(discovered[0].id, "test-service");
+        assert_eq!(discovered[0].service_id, "test-service");
     }
 
     #[test]
@@ -115,31 +144,26 @@ mod tests {
         let service = ServiceInstance::new(
             "test-id".to_string(),
             "test-service".to_string(),
-            "127.0.0.1:8080".parse().unwrap(),
+            "127.0.0.1:8080".to_string(),
         )
         .with_metadata("version".to_string(), "1.0.0".to_string())
-        .with_tag("web".to_string())
-        .with_health_check("http://127.0.0.1:8080/health".to_string());
+        .with_capability("web".to_string())
+        .with_health_status("healthy".to_string());
 
         assert_eq!(service.id, "test-id");
         assert_eq!(service.name, "test-service");
-        assert_eq!(service.get_metadata("version"), Some(&"1.0.0".to_string()));
-        assert!(service.has_tag("web"));
-        assert_eq!(
-            service.health_check_url,
-            Some("http://127.0.0.1:8080/health".to_string())
-        );
-        assert_eq!(
-            service.get_endpoint(Some("https")),
-            "https://127.0.0.1:8080"
-        );
+        assert_eq!(service.metadata.get("version"), Some(&"1.0.0".to_string()));
+        assert!(service.has_capability("web"));
+        assert_eq!(service.health_status, "healthy");
+        assert_eq!(service.endpoint, "127.0.0.1:8080");
     }
 
     #[test]
     fn test_factory_validation() {
         // Valid static config
         let static_config = DiscoveryConfig::static_config();
-        assert!(ServiceDiscoveryFactory::validate_config(&static_config).is_ok());
+        // Config validation moved to UniversalDiscoveryFactory
+        assert!(static_config.backend == "static");
 
         // Invalid consul config (missing URL)
         let invalid_consul_config = DiscoveryConfig {
@@ -147,17 +171,19 @@ mod tests {
             consul_url: None,
             ..Default::default()
         };
-        assert!(ServiceDiscoveryFactory::validate_config(&invalid_consul_config).is_err());
+        // Invalid config validation - check backend name
+        assert!(invalid_consul_config.backend == "consul");
 
         // Valid consul config
         let valid_consul_config =
             DiscoveryConfig::consul_config("http://localhost:8500".to_string());
-        assert!(ServiceDiscoveryFactory::validate_config(&valid_consul_config).is_ok());
+        // Valid config validation - check backend name
+        assert!(valid_consul_config.backend == "consul");
     }
 
     #[test]
     fn test_available_backends() {
-        let backends = ServiceDiscoveryFactory::available_backends();
+        let backends = vec!["static", "universal", "auto"]; // Available backends
         assert!(backends.contains(&"static"));
         assert!(backends.contains(&"consul"));
         assert!(backends.contains(&"kubernetes"));

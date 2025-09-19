@@ -19,7 +19,7 @@
 
 use serde::{Deserialize, Serialize};
 use songbird_config::SongbirdConfig;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;

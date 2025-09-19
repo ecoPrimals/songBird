@@ -4,7 +4,8 @@
 
 use crate::config::SongbirdConfig;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZeroTouchConfig {

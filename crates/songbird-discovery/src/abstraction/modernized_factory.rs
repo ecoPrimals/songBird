@@ -8,7 +8,7 @@ use crate::abstraction::{
     providers::{ProviderConfig, ProviderFactory},
     registry::ProviderRegistry,
 };
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError};
 use std::collections::HashMap;
 
 /// Modernized discovery factory that eliminates hardcoding

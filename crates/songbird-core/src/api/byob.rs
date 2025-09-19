@@ -277,6 +277,7 @@ mod tests {
     use super::*;
     use crate::biome::OrchestratorConfig;
     use axum_test::TestServer;
+    use songbird_errors::SongbirdResult;
 
     #[tokio::test]
     async fn test_byob_api_health_check() {

@@ -4,7 +4,7 @@
 
 use crate::performance::*;
 use crate::production_benchmarks::types::*;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::time::Instant;
 
 /// Batch processing benchmark implementation
@@ -25,7 +25,7 @@ impl<'a> BatchProcessingBenchmarker<'a> {
     }
 
     /// Benchmark batch processing performance
-    pub async fn benchmark_batch_processing(&self) -> Result<BatchProcessingBenchmark> {
+    pub async fn benchmark_batch_processing(&self) -> SongbirdResult<BatchProcessingBenchmark> {
         println!("📦 Benchmarking Batch Processing Performance...");
 
         // Benchmark individual item processing
@@ -52,7 +52,7 @@ impl<'a> BatchProcessingBenchmarker<'a> {
     }
 
     /// Benchmark individual item processing (non-batched)
-    async fn benchmark_individual_processing(&self) -> Result<f64> {
+    async fn benchmark_individual_processing(&self) -> SongbirdResult<f64> {
         // Simulate individual processing since we don't have process_single method
         let start = Instant::now();
         let batch_size = self.config.batch_test_size;
@@ -69,7 +69,7 @@ impl<'a> BatchProcessingBenchmarker<'a> {
     }
 
     /// Benchmark batch processing
-    async fn benchmark_batched_processing(&self) -> Result<(f64, f64)> {
+    async fn benchmark_batched_processing(&self) -> SongbirdResult<(f64, f64)> {
         // Create test batch
         let batch_size = self.config.batch_test_size;
         let mut batch = Vec::with_capacity(batch_size);
@@ -90,7 +90,9 @@ impl<'a> BatchProcessingBenchmarker<'a> {
     }
 
     /// Benchmark different batch sizes to find optimal size
-    pub async fn benchmark_batch_size_optimization(&self) -> Result<BatchSizeOptimizationResult> {
+    pub async fn benchmark_batch_size_optimization(
+        &self,
+    ) -> SongbirdResult<BatchSizeOptimizationResult> {
         println!("🔍 Benchmarking Batch Size Optimization...");
 
         let batch_sizes = vec![1, 10, 50, 100, 500, 1000, 2000];
@@ -150,7 +152,9 @@ impl<'a> BatchProcessingBenchmarker<'a> {
     }
 
     /// Benchmark concurrent batch processing
-    pub async fn benchmark_concurrent_batch_processing(&self) -> Result<ConcurrentBatchBenchmark> {
+    pub async fn benchmark_concurrent_batch_processing(
+        &self,
+    ) -> SongbirdResult<ConcurrentBatchBenchmark> {
         println!("⚡ Benchmarking Concurrent Batch Processing...");
 
         let worker_count = self.config.concurrent_workers;

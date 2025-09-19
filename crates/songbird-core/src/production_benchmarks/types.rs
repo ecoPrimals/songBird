@@ -3,6 +3,7 @@
 //! Type definitions, configuration structures, and benchmark result types
 
 use serde::{Deserialize, Serialize};
+use songbird_errors::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 
 /// Production benchmark suite configuration
@@ -144,18 +145,26 @@ impl BenchmarkConfig {
     }
 
     /// Validate configuration parameters
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> SongbirdResult<()> {
         if self.service_instance_count == 0 {
-            return Err("service_instance_count must be greater than 0".to_string());
+            return Err(SongbirdError::configuration(
+                "service_instance_count must be greater than 0",
+            ));
         }
         if self.requests_per_test == 0 {
-            return Err("requests_per_test must be greater than 0".to_string());
+            return Err(SongbirdError::configuration(
+                "requests_per_test must be greater than 0",
+            ));
         }
         if self.concurrent_workers == 0 {
-            return Err("concurrent_workers must be greater than 0".to_string());
+            return Err(SongbirdError::configuration(
+                "concurrent_workers must be greater than 0",
+            ));
         }
         if self.concurrent_workers > self.requests_per_test {
-            return Err("concurrent_workers should not exceed requests_per_test".to_string());
+            return Err(SongbirdError::configuration(
+                "concurrent_workers should not exceed requests_per_test",
+            ));
         }
         Ok(())
     }

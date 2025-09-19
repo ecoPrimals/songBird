@@ -6,7 +6,7 @@
 //! Extracted from the large songbird_discovery.rs for better maintainability.
 
 use crate::traits::{ServiceEvent, ServiceQuery};
-use songbird_errors::{SongbirdError, SongbirdResult, SongbirdResponse, evolved_success};
+use songbird_errors::{SongbirdError, SongbirdSongbirdResponse, evolved_success};
 // use songbird_universal::  // TEMPORARILY DISABLED - {ServiceInfo, UniversalHealthStatus};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -101,7 +101,7 @@ impl ServiceRegistry {
     }
 
     /// Query services with filtering capabilities  
-    pub async fn query_services(&self) -> SongbirdResult<()> {debug!("🔍 ServiceRegistry: Querying services: {:?}", query);
+    pub async fn query_services(&self) -> SongbirdResult<()> {debug!("🔍 ServiceRegistry: Querying services: {:?}", query);,
 
         let services = self.registered_services.read().await;
         let mut filtered = Vec::new();

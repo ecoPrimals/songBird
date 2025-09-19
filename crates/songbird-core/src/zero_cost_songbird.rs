@@ -49,7 +49,7 @@ impl<const MS: usize, const EM: bool> ZeroCostSongbird<MS, EM> {
         // Direct method call to registry - no trait object
         self.registry
             .register_service(service.id.clone(), service)
-            .map_err(|e| SongbirdError::service_error("registry", e.to_string()))?;
+            .map_err(|e| SongbirdError::service("registry", e.to_string()))?;
 
         // Optional caching with compile-time decision
         if EM {
@@ -178,6 +178,7 @@ impl<const MS: usize, const EM: bool> ZeroCostSongbird<MS, EM> {
     fn generate_service_id(&self) -> String {
         // Simple counter-based ID generation
         use std::sync::atomic::{AtomicU64, Ordering};
+use songbird_errors::SongbirdResult;
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         COUNTER.fetch_add(1, Ordering::Relaxed).to_string()
     }

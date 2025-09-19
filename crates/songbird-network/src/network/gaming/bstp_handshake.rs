@@ -9,7 +9,7 @@ use aes_gcm::{
 };
 use rand::{rngs::OsRng, RngCore};
 use sha2::{Digest, Sha256};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use std::time::{Duration, Instant};
 use tracing::{debug, info, warn};
 
@@ -115,9 +115,7 @@ impl BSTPHandshakeManager {
     /// Start BearDog handshake protocol
     pub fn start_handshake(&mut self) -> Result<BearDogGreeting> {
         if self.state != HandshakeState::Initial {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Handshake already in progress".to_string(),
-                context: Some(format!("Current state: {:?}", self.state)),
+            return Err(songbird_errors::SongbirdError::security("Handshake already in progress")", self.state)),
                 severity: Some("error".to_string()),
                 suggestion: Some(
                     "Reset the handshake manager before starting a new handshake".to_string(),
@@ -158,9 +156,7 @@ impl BSTPHandshakeManager {
         response: BearDogGreeting,
     ) -> Result<KeyExchangeMessage> {
         if self.state != HandshakeState::GreetingSent {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Invalid handshake state for greeting response".to_string(),
-                context: Some(format!("Expected GreetingSent, got {:?}", self.state)),
+            return Err(songbird_errors::SongbirdError::security("Invalid handshake state for greeting response")", self.state)),
                 severity: Some("error".to_string()),
                 suggestion: Some(
                     "Ensure handshake is in GreetingSent state before processing response"
@@ -190,9 +186,7 @@ impl BSTPHandshakeManager {
     /// Complete handshake with key confirmation
     pub fn complete_handshake(&mut self, confirmation: &[u8]) -> Result<()> {
         if self.state != HandshakeState::KeyExchange {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Invalid handshake state for completion".to_string(),
-                context: Some(format!("Expected KeyExchange, got {:?}", self.state)),
+            return Err(songbird_errors::SongbirdError::security("Invalid handshake state for completion")", self.state)),
                 severity: Some("error".to_string()),
                 suggestion: Some(
                     "Ensure handshake is in KeyExchange state before completion".to_string(),
@@ -214,17 +208,10 @@ impl BSTPHandshakeManager {
         let keys =
             self.session_keys
                 .as_mut()
-                .ok_or_else(|| songbird_errors::SongbirdError::Security {
-                    message: "No session keys available".to_string(),
-                    context: Some("Handshake not completed".to_string()),
-                    severity: Some("error".to_string()),
-                    suggestion: Some("Complete the handshake before encrypting data".to_string()),
-                })?;
+                .ok_or_else(|| songbird_errors::SongbirdError::security("No session keys available"))?;
 
         if self.state != HandshakeState::Established {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Handshake not established".to_string(),
-                context: Some(format!("Current state: {:?}", self.state)),
+            return Err(songbird_errors::SongbirdError::security("Handshake not established")", self.state)),
                 severity: Some("error".to_string()),
                 suggestion: Some("Complete the handshake before encrypting data".to_string()),
             });
@@ -240,8 +227,7 @@ impl BSTPHandshakeManager {
         // Encrypt the data
         cipher
             .encrypt(nonce, plaintext)
-            .map_err(|e| songbird_errors::SongbirdError::Security {
-                message: format!("Encryption failed: {e}"),
+            .map_err(|e| songbird_errors::SongbirdError::security(format!("Encryption failed: {e)"),
                 context: Some("AES-256-GCM encryption error".to_string()),
                 severity: Some("error".to_string()),
                 suggestion: Some("Check session keys and retry".to_string()),
@@ -253,17 +239,10 @@ impl BSTPHandshakeManager {
         let keys =
             self.session_keys
                 .as_mut()
-                .ok_or_else(|| songbird_errors::SongbirdError::Security {
-                    message: "No session keys available".to_string(),
-                    context: Some("Handshake not completed".to_string()),
-                    severity: Some("error".to_string()),
-                    suggestion: Some("Complete the handshake before decrypting data".to_string()),
-                })?;
+                .ok_or_else(|| songbird_errors::SongbirdError::security("No session keys available"))?;
 
         if self.state != HandshakeState::Established {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Handshake not established".to_string(),
-                context: Some(format!("Current state: {:?}", self.state)),
+            return Err(songbird_errors::SongbirdError::security("Handshake not established")", self.state)),
                 severity: Some("error".to_string()),
                 suggestion: Some("Complete the handshake before decrypting data".to_string()),
             });
@@ -278,8 +257,7 @@ impl BSTPHandshakeManager {
 
         // Decrypt the data
         cipher.decrypt(nonce, &ciphertext[12..]).map_err(|e| {
-            songbird_errors::SongbirdError::Security {
-                message: format!("Decryption failed: {e}"),
+            songbird_errors::SongbirdError::security(format!("Decryption failed: {e)"),
                 context: Some("AES-256-GCM decryption error".to_string()),
                 severity: Some("error".to_string()),
                 suggestion: Some("Check session keys and ciphertext integrity".to_string()),
@@ -330,9 +308,7 @@ impl BSTPHandshakeManager {
     fn verify_greeting(&self, greeting: &BearDogGreeting) -> Result<()> {
         // Verify protocol version
         if greeting.version != 1 {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Unsupported protocol version".to_string(),
-                context: Some(format!("Got version {}, expected 1", greeting.version)),
+            return Err(songbird_errors::SongbirdError::security("Unsupported protocol version"), expected 1", greeting.version)),
                 severity: Some("error".to_string()),
                 suggestion: Some("Update the protocol version to 1".to_string()),
             });
@@ -345,9 +321,7 @@ impl BSTPHandshakeManager {
             .as_secs();
 
         if greeting.timestamp.abs_diff(now) > 300 {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Greeting timestamp too old".to_string(),
-                context: Some(format!("Timestamp: {}, now: {}", greeting.timestamp, now)),
+            return Err(songbird_errors::SongbirdError::security("Greeting timestamp too old"), now: {}", greeting.timestamp, now)),
                 severity: Some("error".to_string()),
                 suggestion: Some("Ensure the system clock is synchronized".to_string()),
             });
@@ -356,12 +330,7 @@ impl BSTPHandshakeManager {
         // Verify signature (simplified)
         let expected_sig = self.sign_greeting(&greeting.public_key)?;
         if greeting.signature != expected_sig {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Invalid greeting signature".to_string(),
-                context: None,
-                severity: Some("error".to_string()),
-                suggestion: Some("Re-establish the handshake with the correct peer".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::security("Invalid greeting signature"));
         }
 
         Ok(())
@@ -438,14 +407,7 @@ impl BSTPHandshakeManager {
         let keys =
             self.session_keys
                 .as_ref()
-                .ok_or_else(|| songbird_errors::SongbirdError::Security {
-                    message: "No session keys for confirmation".to_string(),
-                    context: None,
-                    severity: Some("error".to_string()),
-                    suggestion: Some(
-                        "Complete the handshake before verifying confirmation".to_string(),
-                    ),
-                })?;
+                .ok_or_else(|| songbird_errors::SongbirdError::security("No session keys for confirmation"))?;
 
         // Verify confirmation matches expected value
         let mut hasher = Sha256::new();
@@ -454,12 +416,7 @@ impl BSTPHandshakeManager {
         let expected = hasher.finalize();
 
         if confirmation != &expected[..16] {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Invalid key confirmation".to_string(),
-                context: None,
-                severity: Some("error".to_string()),
-                suggestion: Some("Re-establish the handshake with the correct peer".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::security("Invalid key confirmation"));
         }
 
         Ok(())
@@ -470,14 +427,7 @@ impl BSTPHandshakeManager {
         let keys =
             self.session_keys
                 .as_ref()
-                .ok_or_else(|| songbird_errors::SongbirdError::Security {
-                    message: "No session keys available".to_string(),
-                    context: Some("Handshake not completed".to_string()),
-                    severity: Some("error".to_string()),
-                    suggestion: Some(
-                        "Complete the handshake before accessing session keys".to_string(),
-                    ),
-                })?;
+                .ok_or_else(|| songbird_errors::SongbirdError::security("No session keys available"))?;
 
         Ok(keys.encrypt_key.clone())
     }
@@ -498,12 +448,7 @@ impl BSTPHandshakeManager {
     /// Get cipher suite information
     pub fn get_cipher_suite(&self) -> Result<String> {
         if self.state != HandshakeState::Established {
-            return Err(songbird_errors::SongbirdError::Security {
-                message: "Handshake not established".to_string(),
-                context: Some("Cannot get cipher suite before handshake completion".to_string()),
-                severity: Some("error".to_string()),
-                suggestion: Some("Complete the handshake before getting cipher suite".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::security("Handshake not established"));
         }
 
         Ok("AES-256-GCM".to_string())

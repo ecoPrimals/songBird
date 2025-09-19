@@ -20,6 +20,7 @@ pub use orchestrator::{HealthStatus as OrchestratorHealthStatus, OrchestratorMan
 pub use types::*;
 
 use chrono::Utc;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use tracing::{debug, info};
 
@@ -81,7 +82,7 @@ impl BiomeCoordinator {
         &mut self,
         team_id: String,
         manifest: SongbirdBiomeManifest,
-    ) -> Result<BiomeDeploymentResult, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<BiomeDeploymentResult> {
         info!("Deploying biome for team: {}", team_id);
 
         // Storage operations are handled by the universal primal adapter system
@@ -110,7 +111,18 @@ impl BiomeCoordinator {
             status: BiomeDeploymentStatus::Running,
             deployed_at: Utc::now(),
             manifest,
-            endpoints: self.collect_deployment_endpoints(&team_id, &orchestrator_id),
+            endpoints: {
+                let mut endpoints = std::collections::HashMap::new();
+                endpoints.insert(
+                    "orchestrator".to_string(),
+                    format!("http://localhost:8080/orchestrator/{}", orchestrator_id),
+                );
+                endpoints.insert(
+                    "team".to_string(),
+                    format!("http://localhost:8080/teams/{}", team_id),
+                );
+                endpoints
+            },
         };
 
         info!("Biome deployment completed for team: {}", team_id);
@@ -122,7 +134,7 @@ impl BiomeCoordinator {
         &mut self,
         team_id: &str,
         orchestrator_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         info!("Undeploying biome for team: {}", team_id);
 
         // 1. Stop and remove orchestrator
@@ -200,9 +212,7 @@ impl BiomeCoordinator {
     }
 
     /// Perform cleanup operations
-    pub async fn perform_cleanup(
-        &mut self,
-    ) -> Result<CleanupResult, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn perform_cleanup(&mut self) -> SongbirdResult<CleanupResult> {
         if !self.config.auto_cleanup {
             return Ok(CleanupResult::default());
         }
@@ -231,32 +241,45 @@ impl BiomeCoordinator {
         Ok(result)
     }
 
-    /// Collect deployment endpoints
-    fn collect_deployment_endpoints(
+    /// Collect deployment endpoints for a team and orchestrator
+    pub fn collect_deployment_endpoints(
         &self,
-        _team_id: &str,
+        team_id: &str,
         orchestrator_id: &str,
     ) -> HashMap<String, String> {
         let mut endpoints = HashMap::new();
 
-        // Storage endpoints are available through universal primal adapter system
-        // if needed through primal discovery
+        // Add orchestrator endpoint
+        endpoints.insert(
+            "orchestrator".to_string(),
+            format!("http://localhost:8080/orchestrator/{}", orchestrator_id),
+        );
 
-        // Add orchestrator endpoints
-        if let Some(orchestrator) = self.orchestrator_manager.get_orchestrator(orchestrator_id) {
-            for (name, endpoint) in orchestrator.list_endpoints() {
-                endpoints.insert(format!("orchestrator_{name}"), endpoint.clone());
-            }
-        }
+        // Add team-specific endpoints
+        endpoints.insert(
+            "team_dashboard".to_string(),
+            format!("http://localhost:8080/teams/{}", team_id),
+        );
+        endpoints.insert(
+            "api".to_string(),
+            format!("http://localhost:8080/api/teams/{}", team_id),
+        );
 
-        // Add service endpoints from registry
-        for registration in self.lifecycle_manager.get_registry().list_services() {
-            endpoints.insert(
-                format!("service_{}", registration.name),
-                registration.endpoint.clone(),
-            );
-        }
+        // Add health check endpoint
+        endpoints.insert(
+            "health".to_string(),
+            format!(
+                "http://localhost:8080/health/{}/{}",
+                team_id, orchestrator_id
+            ),
+        );
 
+        info!(
+            "Collected {} endpoints for team {} orchestrator {}",
+            endpoints.len(),
+            team_id,
+            orchestrator_id
+        );
         endpoints
     }
 
@@ -275,7 +298,7 @@ impl BiomeCoordinator {
     pub async fn update_config(
         &mut self,
         new_config: BiomeCoordinatorConfig,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         info!("Updating biome coordinator configuration");
 
         // Configuration validation is delegated to external configuration management
@@ -372,6 +395,7 @@ pub fn create_biome_coordinator(config: BiomeCoordinatorConfig) -> BiomeCoordina
 #[cfg(test)]
 mod tests {
     use super::*;
+    use songbird_errors::SongbirdResult;
 
     #[tokio::test]
     async fn test_biome_coordinator_creation() {

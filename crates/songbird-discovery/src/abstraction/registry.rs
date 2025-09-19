@@ -10,7 +10,7 @@ use crate::abstraction::{
     capabilities::{CapabilityQuery, DiscoveryCapability},
     providers::{DiscoveryProvider, ProviderConfig, ProviderFactory, ProviderMetadata},
 };
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError};
 
 /// Registry error types
 #[derive(Debug, thiserror::Error)]

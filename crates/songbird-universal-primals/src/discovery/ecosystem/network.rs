@@ -40,10 +40,9 @@ impl CapabilityAdapter {
                 protocols: vec!["http".to_string(), "grpc".to_string()],
             },
             PrimalCapability::Orchestration {
-                features: vec![
-                    "federation".to_string(),
-                    "health_monitoring".to_string(),
-                    "load_balancing".to_string(),
+                platforms: vec![
+                    "universal_orchestration".to_string(),
+                    "network_coordination".to_string(),
                 ],
             },
         ];

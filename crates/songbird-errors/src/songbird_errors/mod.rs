@@ -1,5 +1,4 @@
 pub mod conversions;
-pub mod core;
 pub mod specific;
 pub mod constructors;
 
@@ -7,6 +6,6 @@ pub mod constructors;
 pub use specific::*;
 pub use constructors::*;
 
-// Re-export the main error type and Result
-pub use core::SongbirdError;
-pub type Result<T> = std::result::Result<T, SongbirdError>;
+// Re-export the canonical error type from songbird-types
+pub use songbird_types::errors::{SongbirdError, SongbirdResult};
+pub type Result<T> = SongbirdResult<T>;

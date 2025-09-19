@@ -18,8 +18,7 @@ mod canonical_framework_tests {
         let success_result: SongbirdResult<String> = Ok("test success".to_string());
         CanonicalAssertions::assert_success(&success_result)?;
 
-        let error_result: SongbirdResult<String> =
-            Err(ErrorType::service_error("test", "test error"));
+        let error_result: SongbirdResult<String> = Err(ErrorType::service("test", "test error"));
         CanonicalAssertions::assert_error(&error_result)?;
 
         // Test duration assertions
@@ -134,10 +133,8 @@ mod canonical_framework_tests {
     async fn test_error_message_matching() -> TestResult<()> {
         TestEnvironment::setup()?;
 
-        let error_result: SongbirdResult<String> = Err(ErrorType::service_error(
-            "test_service",
-            "specific error message",
-        ));
+        let error_result: SongbirdResult<String> =
+            Err(ErrorType::service("test_service", "specific error message"));
 
         CanonicalAssertions::assert_error(&error_result)?;
         CanonicalAssertions::assert_error_contains(&error_result, "specific")?;

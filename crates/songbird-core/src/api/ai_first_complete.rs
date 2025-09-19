@@ -19,6 +19,7 @@ use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use songbird_errors::SongbirdResult;
 
 // Re-export canonical AI-First types
 pub use songbird_errors::ai_first::{AIErrorCategory, AIFirstError, AIResponseMetadata, ErrorSeverity, HumanInteractionContext, IntoSongbirdResponse, RetryStrategy, SongbirdResponse, SuggestedAction};
@@ -173,7 +174,7 @@ impl AIFirstServiceMesh {
     }
 
     // Implementation methods would continue...
-    async fn process_interactive<T, R>(&self, request: &T, context: Option<HumanInteractionContext>) -> Result<R, AIFirstError>
+    async fn process_interactive<T, R>(&self, request: &T, context: Option<HumanInteractionContext>) -> SongbirdResult<R>
     where
         R: Default,
     {
@@ -181,7 +182,7 @@ impl AIFirstServiceMesh {
         Ok(songbird_errors::evolved_success(R::default()))
     }
 
-    async fn process_autonomous<T, R>(&self, request: &T) -> Result<R, AIFirstError>
+    async fn process_autonomous<T, R>(&self, request: &T) -> SongbirdResult<R>
     where
         R: Default,
     {
@@ -293,7 +294,7 @@ impl AIStreamingManager {
         }
     }
 
-    pub async fn process_streaming<T, R>(&self, request: &T) -> Result<R, AIFirstError>
+    pub async fn process_streaming<T, R>(&self, request: &T) -> SongbirdResult<R>
     where
         R: Default,
     {
@@ -314,7 +315,7 @@ impl AIBatchProcessor {
         }
     }
 
-    pub async fn process_batch<T, R>(&self, request: &T) -> Result<R, AIFirstError>
+    pub async fn process_batch<T, R>(&self, request: &T) -> SongbirdResult<R>
     where
         R: Default,
     {

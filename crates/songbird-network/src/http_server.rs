@@ -11,7 +11,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use songbird_errors::{NetworkError, Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult as Result};
 use std::collections::HashMap;
 use std::{
     net::SocketAddr,
@@ -94,29 +94,19 @@ impl HttpServer {
     /// Start the HTTP server
     pub async fn start(&self) -> Result<()> {
         let listener = TcpListener::bind(self.addr).await.map_err(|e| {
-            SongbirdError::Network(Box::new(NetworkError {
-                message: format!(
-                    "HTTP Server - Failed to bind to address {}: {}",
-                    self.addr, e
-                ),
-                endpoint: Some(self.addr.to_string()),
-                port: Some(self.addr.port()),
-                protocol: Some("HTTP".to_string()),
-            }))
+            SongbirdError::network(format!(
+                "HTTP Server - Failed to bind to address {}: {}",
+                self.addr, e
+            ))
         })?;
 
         info!("HTTP server starting on {}", self.addr);
 
         let app = self.build_router();
 
-        axum::serve(listener, app).await.map_err(|e| {
-            SongbirdError::Network(Box::new(NetworkError {
-                message: format!("HTTP Server - Server error: {e}").to_string(),
-                endpoint: Some(self.addr.to_string()),
-                port: Some(self.addr.port()),
-                protocol: Some("HTTP".to_string()),
-            }))
-        })?;
+        axum::serve(listener, app)
+            .await
+            .map_err(|e| SongbirdError::network(format!("HTTP Server - Server error: {}", e)))?;
 
         Ok(())
     }

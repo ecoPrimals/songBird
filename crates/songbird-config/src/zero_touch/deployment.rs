@@ -10,7 +10,7 @@ use tokio::process::Command;
 use tokio::time::timeout;
 use tracing::{info, warn, error};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult}; type Result<T> = SongbirdResult<T>;
 
 /// Deployment engine for zero-touch deployment
 pub struct DeploymentEngine {

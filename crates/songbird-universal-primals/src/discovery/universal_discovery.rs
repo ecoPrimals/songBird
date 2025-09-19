@@ -729,8 +729,28 @@ impl DiscoveryChannel for NetworkScanChannel {
         Box<dyn std::future::Future<Output = SongbirdResult<Vec<DiscoveredService>>> + Send>,
     > {
         Box::pin(async move {
-            // Placeholder - would implement actual network scanning
-            Ok(success(Vec::new()))
+            // Basic network scanning implementation
+            let mut discovered_services = Vec::new();
+            
+            // Scan common service ports on localhost
+            let common_ports = [8080, 8081, 8082, 3000, 3001, 5000, 9000];
+            
+            for &port in &common_ports {
+                let endpoint = format!("http://localhost:{}", port);
+                if let Ok(response) = tokio::time::timeout(
+                    std::time::Duration::from_millis(100),
+                    reqwest::get(&endpoint)
+                ).await {
+                    if response.is_ok() {
+                        discovered_services.push(PrimalProviderEnum::Squirrel(
+                            crate::squirrel::SquirrelPrimal::new(endpoint)
+                        ));
+                    }
+                }
+            }
+            
+            tracing::debug!("Network scan discovered {} services", discovered_services.len());
+            Ok(success(discovered_services))
         })
     }
 }
@@ -762,8 +782,35 @@ impl DiscoveryChannel for DnsDiscoveryChannel {
         Box<dyn std::future::Future<Output = SongbirdResult<Vec<DiscoveredService>>> + Send>,
     > {
         Box::pin(async move {
-            // Placeholder - would implement DNS-based discovery
-            Ok(success(Vec::new()))
+            // Basic DNS-based discovery implementation
+            let mut discovered_services = Vec::new();
+            
+            // Check for common service hostnames
+            let service_names = ["songbird", "primal", "api", "service"];
+            
+            for domain in &self.search_domains {
+                for service_name in &service_names {
+                    for &port in &self.ports {
+                        let hostname = format!("{}.{}", service_name, domain);
+                        
+                        // Simple hostname resolution check
+                        if let Ok(_) = tokio::net::lookup_host(format!("{}:{}", hostname, port)).await {
+                            let service = DiscoveredService {
+                                id: format!("dns-{}-{}", hostname, port),
+                                name: format!("{} Service", service_name),
+                                endpoint: format!("http://{}:{}", hostname, port),
+                                capabilities: vec![service_name.to_string()],
+                                health_status: CanonicalHealthStatus::Unknown,
+                                metadata: std::collections::HashMap::new(),
+                            };
+                            discovered_services.push(service);
+                        }
+                    }
+                }
+            }
+            
+            tracing::debug!("DNS discovery found {} services", discovered_services.len());
+            Ok(success(discovered_services))
         })
     }
 }
@@ -793,8 +840,41 @@ impl DiscoveryChannel for EnvironmentDiscoveryChannel {
         Box<dyn std::future::Future<Output = SongbirdResult<Vec<DiscoveredService>>> + Send>,
     > {
         Box::pin(async move {
-            // Placeholder - would scan environment variables for service endpoints
-            Ok(success(Vec::new()))
+            // Environment variable-based discovery implementation
+            let mut discovered_services = Vec::new();
+            
+            // Common environment variable patterns for service discovery
+            let env_patterns = [
+                "SONGBIRD_SERVICE_URL",
+                "PRIMAL_ENDPOINT", 
+                "API_BASE_URL",
+                "SERVICE_URL",
+                "ENDPOINT_URL",
+            ];
+            
+            for pattern in &env_patterns {
+                if let Ok(endpoint) = std::env::var(pattern) {
+                    if endpoint.starts_with("http") {
+                        let service = DiscoveredService {
+                            id: format!("env-{}", pattern.to_lowercase()),
+                            name: format!("Environment Service ({})", pattern),
+                            endpoint: endpoint.clone(),
+                            capabilities: vec!["api".to_string()],
+                            health_status: CanonicalHealthStatus::Unknown,
+                            metadata: {
+                                let mut meta = std::collections::HashMap::new();
+                                meta.insert("source".to_string(), "environment".to_string());
+                                meta.insert("env_var".to_string(), pattern.to_string());
+                                meta
+                            },
+                        };
+                        discovered_services.push(service);
+                    }
+                }
+            }
+            
+            tracing::debug!("Environment discovery found {} services", discovered_services.len());
+            Ok(success(discovered_services))
         })
     }
 }

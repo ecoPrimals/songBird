@@ -29,5 +29,5 @@ pub use circuit_breaker::*;
 pub use clients::*;
 pub use connection_pool::*;
 pub use metrics::*;
-pub use os_substrate::*;
-pub use types::*;
+pub use os_substrate::{PrimalClient, OSSubstrate, HttpPrimalClient, SubstrateError};
+pub use types::{NetworkRequest as SubstrateNetworkRequest, SystemInfo as SubstrateSystemInfo};

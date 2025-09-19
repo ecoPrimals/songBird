@@ -359,31 +359,25 @@ impl NetworkManager {
     /// Validate configuration
     pub fn validate_config(&self) -> Result<(), SongbirdError> {
         if self.config.reverse_proxy_port == 0 {
-            return Err(SongbirdError::config_field(
-                "reverse_proxy_port",
-                "Port cannot be 0",
-            ));
+            return Err(SongbirdError::configuration("Port cannot be 0"));
         }
 
         // Note: No need to check > 65535 since reverse_proxy_port is u16 (max 65535)
 
         if self.config.ssl_termination_enabled && self.config.ssl_cert_dir.is_empty() {
-            return Err(SongbirdError::config_field(
-                "ssl_cert_dir",
+            return Err(SongbirdError::configuration(
                 "SSL certificate directory cannot be empty when SSL is enabled",
             ));
         }
 
         if self.config.load_balancing_enabled && self.config.upstream_servers.is_empty() {
-            return Err(SongbirdError::config_field(
-                "upstream_servers",
+            return Err(SongbirdError::configuration(
                 "Upstream servers cannot be empty when load balancing is enabled",
             ));
         }
 
         if self.config.max_request_size == 0 {
-            return Err(SongbirdError::config_field(
-                "max_request_size",
+            return Err(SongbirdError::configuration(
                 "Maximum request size cannot be 0",
             ));
         }

@@ -104,7 +104,7 @@ impl BearDogSecurityIntegration {
             }
         }
         
-        Err(SongbirdError::security_error("BearDog not available at expected endpoints"))
+        Err(SongbirdError::security("BearDog not available at expected endpoints"))
     }
     
     /// Test a specific BearDog endpoint
@@ -234,14 +234,14 @@ impl BearDogSecurityIntegration {
             Ok(PrimalResponse { success: true, data: response_data, .. }) => {
                 let encrypted_b64 = response_data.get("encrypted")
                     .and_then(|e| e.as_str())
-                    .ok_or_else(|| SongbirdError::security_error("Invalid encryption response"))?;
+                    .ok_or_else(|| SongbirdError::security("Invalid encryption response"))?;
                     
                 let encrypted = base64::decode(encrypted_b64)
-                    .map_err(|_| SongbirdError::security_error("Invalid base64 in encryption response"))?;
+                    .map_err(|_| SongbirdError::security("Invalid base64 in encryption response"))?;
                     
                 Ok(encrypted)
             }
-            _ => Err(SongbirdError::security_error("BearDog encryption failed")),
+            _ => Err(SongbirdError::security("BearDog encryption failed")),
         }
     }
 }
@@ -386,7 +386,7 @@ impl FallbackSecurityProvider {
         thread_rng().fill(&mut key_bytes); // Generate a random key
         
         let unbound_key = UnboundKey::new(&CHACHA20_POLY1305, &key_bytes)
-            .map_err(|_| SongbirdError::security_error("Failed to create fallback encryption key"))?;
+            .map_err(|_| SongbirdError::security("Failed to create fallback encryption key"))?;
         let key = LessSafeKey::new(unbound_key);
         
         // Generate secure random nonce
@@ -397,7 +397,7 @@ impl FallbackSecurityProvider {
         // Encrypt with authentication
         let mut encrypted_data = data.to_vec();
         key.seal_in_place_append_tag(nonce, Aad::empty(), &mut encrypted_data)
-            .map_err(|_| SongbirdError::security_error("Fallback encryption failed"))?;
+            .map_err(|_| SongbirdError::security("Fallback encryption failed"))?;
             
         // Prepend nonce and key for decryption (simple format for fallback)
         let mut result = Vec::new();

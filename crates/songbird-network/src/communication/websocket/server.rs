@@ -17,7 +17,7 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio_tungstenite::{accept_async, tungstenite::Message as WsMessage};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-use songbird_errors::{NetworkError, Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use songbird_discovery::traits::communication::{
     CommunicationLayer, CommunicationResponse, CommunicationStats,
     ServiceAddress, ServiceMessage
@@ -60,7 +60,7 @@ impl WebSocketCommunication {
         let bind_addr = format!("{}:{}", self.address, self.port);
         let listener = TcpListener::bind(&bind_addr)
             .await
-            .map_err(|e| SongbirdError::Network(Box::new(NetworkError { message: e.to_string() })))?;
+            .map_err(|e| SongbirdError::network(e.to_string() )))?;
         info!("WebSocket server listening on {}", bind_addr);
         let connections = Arc::clone(&self.connections);
         let message_sender = Arc::clone(&self.message_sender);
@@ -219,7 +219,7 @@ impl CommunicationLayer for WebSocketCommunication {
             // Send message
             conn.outgoing_tx
                 .send(WsMessage::Text(message_json))
-                .map_err(|_| SongbirdError::Network(Box::new(NetworkError { message: "Connection closed".to_string() })))?;
+                .map_err(|_| SongbirdError::network("Connection closed".to_string() )))?;
             self.metrics
                 .bytes_sent
                 .fetch_add(message.payload.to_string().len() as u64, Ordering::Relaxed);
@@ -231,7 +231,7 @@ impl CommunicationLayer for WebSocketCommunication {
                 timestamp: Utc::now(),
             })
         } else {
-            Err(SongbirdError::Network(Box::new(NetworkError { message: "Connection not found".to_string() })))
+            Err(SongbirdError::network("Connection not found".to_string() )))
     async fn broadcast(&self, message: ServiceMessage) -> Result<Vec<CommunicationResponse>> {
         let message_json = serde_json::to_string(&message)
             .map_err(|e| SongbirdError::Serialization { message: e.to_string() })?;

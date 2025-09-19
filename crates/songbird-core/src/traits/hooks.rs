@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_discovery::traits::service::{ServiceInfo, ServiceRequest, ServiceResponse};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 
 /// Universal event hook trait
@@ -25,13 +25,13 @@ pub trait EventHook: Send + Sync {
     fn is_enabled(&self) -> bool;
 
     /// Initialize the hook
-    async fn initialize(&mut self, context: &HookContext) -> Result<()>;
+    async fn initialize(&mut self, context: &HookContext) -> SongbirdResult<()>;
 
     /// Handle an orchestrator event
-    async fn handle_event(&self, event: &OrchestratorEvent) -> Result<HookResult>;
+    async fn handle_event(&self, event: &OrchestratorEvent) -> SongbirdResult<HookResult>;
 
     /// Cleanup hook resources
-    async fn cleanup(&self) -> Result<()>;
+    async fn cleanup(&self) -> SongbirdResult<()>;
 
     /// Get hook configuration
     fn get_config(&self) -> HookConfig;
@@ -268,25 +268,25 @@ pub struct RetryConfig {
 #[async_trait]
 pub trait HookManager: Send + Sync {
     /// Register a new hook
-    async fn register_hook(&mut self, hook: Box<dyn EventHook>) -> Result<()>;
+    async fn register_hook(&mut self, hook: Box<dyn EventHook>) -> SongbirdResult<()>;
 
     /// Unregister a hook by name
-    async fn unregister_hook(&mut self, hook_name: &str) -> Result<()>;
+    async fn unregister_hook(&mut self, hook_name: &str) -> SongbirdResult<()>;
 
     /// Get list of registered hooks
     fn list_hooks(&self) -> Vec<HookInfo>;
 
     /// Execute hooks for an event
-    async fn execute_hooks(&self, event: &OrchestratorEvent) -> Result<Vec<HookResult>>;
+    async fn execute_hooks(&self, event: &OrchestratorEvent) -> SongbirdResult<Vec<HookResult>>;
 
     /// Enable/disable a hook
-    async fn set_hook_enabled(&mut self, hook_name: &str, enabled: bool) -> Result<()>;
+    async fn set_hook_enabled(&mut self, hook_name: &str, enabled: bool) -> SongbirdResult<()>;
 
     /// Get hook statistics
-    async fn get_hook_stats(&self) -> Result<HashMap<String, HookStats>>;
+    async fn get_hook_stats(&self) -> SongbirdResult<HashMap<String, u64>>;
 
     /// Cleanup all hooks
-    async fn cleanup_all(&self) -> Result<()>;
+    async fn cleanup_all(&self) -> SongbirdResult<()>;
 }
 
 /// Information about a registered hook
@@ -315,33 +315,36 @@ pub struct HookStats {
 #[async_trait]
 pub trait LifecycleHook: Send + Sync {
     /// Before service registration
-    async fn before_service_register(&self, service_info: &ServiceInfo) -> Result<HookResult>;
+    async fn before_service_register(
+        &self,
+        service_info: &ServiceInfo,
+    ) -> SongbirdResult<HookResult>;
 
     /// After service registration
     async fn after_service_register(
         &self,
         service_id: &str,
         service_info: &ServiceInfo,
-    ) -> Result<HookResult>;
+    ) -> SongbirdResult<HookResult>;
 
     /// Before service start
-    async fn before_service_start(&self, service_id: &str) -> Result<HookResult>;
+    async fn before_service_start(&self, service_id: &str) -> SongbirdResult<HookResult>;
 
     /// After service start
-    async fn after_service_start(&self, service_id: &str) -> Result<HookResult>;
+    async fn after_service_start(&self, service_id: &str) -> SongbirdResult<HookResult>;
 
     /// Before service stop
-    async fn before_service_stop(&self, service_id: &str) -> Result<HookResult>;
+    async fn before_service_stop(&self, service_id: &str) -> SongbirdResult<HookResult>;
 
     /// After service stop
-    async fn after_service_stop(&self, service_id: &str) -> Result<HookResult>;
+    async fn after_service_stop(&self, service_id: &str) -> SongbirdResult<HookResult>;
 
     /// Before request processing
     async fn before_request(
         &self,
         service_id: &str,
         request: &ServiceRequest,
-    ) -> Result<HookResult>;
+    ) -> SongbirdResult<HookResult>;
 
     /// After request processing
     async fn after_request(
@@ -349,13 +352,17 @@ pub trait LifecycleHook: Send + Sync {
         service_id: &str,
         request: &ServiceRequest,
         response: &ServiceResponse,
-    ) -> Result<HookResult>;
+    ) -> SongbirdResult<HookResult>;
 
     /// Before health check
-    async fn before_health_check(&self, service_id: &str) -> Result<HookResult>;
+    async fn before_health_check(&self, service_id: &str) -> SongbirdResult<HookResult>;
 
     /// After health check
-    async fn after_health_check(&self, service_id: &str, healthy: bool) -> Result<HookResult>;
+    async fn after_health_check(
+        &self,
+        service_id: &str,
+        healthy: bool,
+    ) -> SongbirdResult<HookResult>;
 }
 
 /// Hook system configuration

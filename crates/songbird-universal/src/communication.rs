@@ -385,7 +385,7 @@ impl Default for SongbirdIntegrationConfig {
             health_endpoint: "http://localhost:8080/health".to_string(),
             metrics_endpoint: "http://localhost:8080/metrics".to_string(),
             auth_token: None,
-            auth_method: AuthMethod::JWT,
+            auth_method: AuthMethod::Jwt,
             retry_config: crate::RetryConfig::default(),
             circuit_breaker: crate::CircuitBreakerConfig::default(),
             load_balancing: crate::LoadBalancingConfig::default(),

@@ -1,6 +1,7 @@
 //! Bulkhead pattern implementation for resource isolation
 
 use super::config::BulkheadConfig;
+use songbird_errors::{SongbirdError, SongbirdResult};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -32,7 +33,7 @@ impl BulkheadInstance {
     }
 
     /// Try to acquire a permit for processing
-    pub async fn try_acquire_permit(&mut self) -> Result<BulkheadPermit, BulkheadError> {
+    pub async fn try_acquire_permit(&mut self) -> SongbirdResult<BulkheadPermit> {
         self.total_requests += 1;
 
         // Try to acquire a permit without waiting
@@ -44,7 +45,7 @@ impl BulkheadInstance {
         // If no immediate permit available, check queue capacity
         if self.queued_requests >= self.config.max_queue_size {
             self.rejected_requests += 1;
-            return Err(BulkheadError::QueueFull);
+            return Err(BulkheadError::QueueFull.into());
         }
 
         // Wait for permit with timeout
@@ -65,12 +66,12 @@ impl BulkheadInstance {
             Ok(Err(_)) => {
                 self.queued_requests -= 1;
                 self.rejected_requests += 1;
-                Err(BulkheadError::SemaphoreError)
+                Err(BulkheadError::SemaphoreError.into())
             }
             Err(_) => {
                 self.queued_requests -= 1;
                 self.rejected_requests += 1;
-                Err(BulkheadError::QueueTimeout)
+                Err(BulkheadError::QueueTimeout.into())
             }
         }
     }
@@ -126,4 +127,29 @@ pub enum BulkheadError {
     QueueFull,
     QueueTimeout,
     SemaphoreError,
+}
+
+impl From<BulkheadError> for SongbirdError {
+    fn from(error: BulkheadError) -> Self {
+        match error {
+            BulkheadError::QueueFull => SongbirdError::Service {
+                service: "Bulkhead".to_string(),
+                message: "Bulkhead queue is full".to_string(),
+                suggested_alternatives: Vec::new(),
+                recovery_actions: vec!["Reduce load or increase bulkhead capacity".to_string()],
+            },
+            BulkheadError::QueueTimeout => SongbirdError::Service {
+                service: "Bulkhead".to_string(),
+                message: "Bulkhead queue timeout".to_string(),
+                suggested_alternatives: Vec::new(),
+                recovery_actions: vec!["Increase timeout or reduce load".to_string()],
+            },
+            BulkheadError::SemaphoreError => SongbirdError::Service {
+                service: "Bulkhead".to_string(),
+                message: "Bulkhead semaphore error".to_string(),
+                suggested_alternatives: Vec::new(),
+                recovery_actions: vec!["Check bulkhead configuration".to_string()],
+            },
+        }
+    }
 }

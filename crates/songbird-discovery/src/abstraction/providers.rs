@@ -12,7 +12,7 @@ use std::pin::Pin;
 use crate::abstraction::capabilities::DiscoveryCapability;
 use crate::traits::discovery::ServiceHealthStatus;
 use crate::traits::{ServiceEvent, ServiceInfo, ServiceQuery};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult; type Result<T> = SongbirdResult<T>;
 
 /// Provider configuration that's completely agnostic
 #[derive(Debug, Clone, Serialize, Deserialize)]

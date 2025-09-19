@@ -5,7 +5,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 
 /// Request context for tracing
@@ -131,19 +131,23 @@ pub enum MetricType {
 #[async_trait]
 pub trait Observability: Send + Sync {
     /// Start a new span
-    async fn start_span(&self, context: RequestContext) -> Result<Span>;
+    async fn start_span(&self, context: RequestContext) -> SongbirdResult<Span>;
 
     /// Finish a span
-    async fn finish_span(&self, span: &mut Span) -> Result<()>;
+    async fn finish_span(&self, span: &mut Span) -> SongbirdResult<()>;
 
     /// Log a message within a span
-    async fn log(&self, span: &Span, level: LogLevel, message: String) -> Result<()>;
+    async fn log(&self, span: &Span, level: LogLevel, message: String) -> SongbirdResult<()>;
 
     /// Record a metric
-    async fn record_metric(&self, metric: MetricPoint) -> Result<()>;
+    async fn record_metric(&self, metric: MetricPoint) -> SongbirdResult<()>;
 
     /// Increment a counter
-    async fn increment_counter(&self, name: String, tags: HashMap<String, String>) -> Result<()>;
+    async fn increment_counter(
+        &self,
+        name: String,
+        tags: HashMap<String, String>,
+    ) -> SongbirdResult<()>;
 
     /// Set a gauge value
     async fn set_gauge(
@@ -151,7 +155,7 @@ pub trait Observability: Send + Sync {
         name: String,
         value: f64,
         tags: HashMap<String, String>,
-    ) -> Result<()>;
+    ) -> SongbirdResult<()>;
 
     /// Record a histogram value
     async fn record_histogram(
@@ -159,13 +163,13 @@ pub trait Observability: Send + Sync {
         name: String,
         value: f64,
         tags: HashMap<String, String>,
-    ) -> Result<()>;
+    ) -> SongbirdResult<()>;
 
     /// Get metrics summary
-    async fn get_metrics_summary(&self) -> Result<MetricsSummary>;
+    async fn get_metrics_summary(&self) -> SongbirdResult<MetricsSummary>;
 
     /// Export traces
-    async fn export_traces(&self, traces: Vec<Span>) -> Result<()>;
+    async fn export_traces(&self, traces: Vec<Span>) -> SongbirdResult<()>;
 }
 
 /// Metrics summary
@@ -209,7 +213,7 @@ impl DefaultObservability {
 
 #[async_trait]
 impl Observability for DefaultObservability {
-    async fn start_span(&self, context: RequestContext) -> Result<Span> {
+    async fn start_span(&self, context: RequestContext) -> SongbirdResult<Span> {
         Ok(Span {
             trace_id: context.trace_id,
             span_id: context.span_id,
@@ -224,7 +228,7 @@ impl Observability for DefaultObservability {
         })
     }
 
-    async fn finish_span(&self, span: &mut Span) -> Result<()> {
+    async fn finish_span(&self, span: &mut Span) -> SongbirdResult<()> {
         let now = Utc::now();
         span.end_time = Some(now);
         span.duration = Some((now - span.start_time).to_std().unwrap_or_default());
@@ -236,7 +240,7 @@ impl Observability for DefaultObservability {
         Ok(())
     }
 
-    async fn log(&self, span: &Span, level: LogLevel, message: String) -> Result<()> {
+    async fn log(&self, span: &Span, level: LogLevel, message: String) -> SongbirdResult<()> {
         let _log_entry = SpanLog {
             timestamp: Utc::now(),
             level,
@@ -255,7 +259,7 @@ impl Observability for DefaultObservability {
         Ok(())
     }
 
-    async fn record_metric(&self, metric: MetricPoint) -> Result<()> {
+    async fn record_metric(&self, metric: MetricPoint) -> SongbirdResult<()> {
         tracing::debug!(
             "Recorded metric: {} = {} ({})",
             metric.name,
@@ -265,7 +269,11 @@ impl Observability for DefaultObservability {
         Ok(())
     }
 
-    async fn increment_counter(&self, name: String, tags: HashMap<String, String>) -> Result<()> {
+    async fn increment_counter(
+        &self,
+        name: String,
+        tags: HashMap<String, String>,
+    ) -> SongbirdResult<()> {
         tracing::debug!("Incremented counter: {} (tags: {:?})", name, tags);
         Ok(())
     }
@@ -275,7 +283,7 @@ impl Observability for DefaultObservability {
         name: String,
         value: f64,
         tags: HashMap<String, String>,
-    ) -> Result<()> {
+    ) -> SongbirdResult<()> {
         tracing::debug!("Set gauge: {} = {} (tags: {:?})", name, value, tags);
         Ok(())
     }
@@ -285,7 +293,7 @@ impl Observability for DefaultObservability {
         name: String,
         value: f64,
         tags: HashMap<String, String>,
-    ) -> Result<()> {
+    ) -> SongbirdResult<()> {
         tracing::debug!(
             "Recorded histogram: {} = {} (tags: {:?})",
             name,
@@ -295,11 +303,11 @@ impl Observability for DefaultObservability {
         Ok(())
     }
 
-    async fn get_metrics_summary(&self) -> Result<MetricsSummary> {
+    async fn get_metrics_summary(&self) -> SongbirdResult<MetricsSummary> {
         Ok(self.metrics.clone())
     }
 
-    async fn export_traces(&self, traces: Vec<Span>) -> Result<()> {
+    async fn export_traces(&self, traces: Vec<Span>) -> SongbirdResult<()> {
         tracing::info!("Exported {} traces", traces.len());
         Ok(())
     }

@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing;
+use songbird_errors::SongbirdResult;
 
 /// Round-robin load balancer
 #[derive(Debug)]

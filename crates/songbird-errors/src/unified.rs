@@ -281,12 +281,7 @@ impl SongbirdError {
 
     /// Create a configuration error (compatibility method)
     pub fn configuration_error(message: impl Into<String>) -> Self {
-        SongbirdError::Config {
-            field: None,
-            message: message.into(),
-            context: None,
-            suggestion: None,
-        }
+        SongbirdError::configuration(message.into())
     }
 
     /// Create a network error (compatibility method)
@@ -337,12 +332,7 @@ impl SongbirdError {
 
     /// Create a config field error (backward compatibility)
     pub fn config_field(message: impl Into<String>) -> Self {
-        SongbirdError::Config {
-            field: Some("configuration".to_string()),
-            message: message.into(),
-            context: Some("field_validation".to_string()),
-            suggestion: Some("Check configuration field values".to_string()),
-        }
+        SongbirdError::configuration(message.into())
     }
 
     /// Create a rate limit error (backward compatibility)

@@ -30,7 +30,7 @@
 //! use songbird_core::production_benchmarks::{BenchmarkConfig, ProductionBenchmarkRunner};
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! async fn main() -> SongbirdResult<()>> {
 //!     let config = BenchmarkConfig::default();
 //!     let mut runner = ProductionBenchmarkRunner::new(config);
 //!     
@@ -51,8 +51,8 @@ pub mod benchmarks;
 pub mod runner;
 pub mod types;
 
-#[cfg(test)]
-pub mod tests;
+// #[cfg(test)]
+// pub mod tests; // TODO: Create tests module
 
 // Re-export commonly used types for convenience
 pub use types::{

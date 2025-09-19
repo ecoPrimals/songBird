@@ -4,9 +4,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::time::{timeout, Duration};
 
 use songbird_discovery::traits::load_balancer::{LoadBalancer, ServiceInstance};
+use songbird_universal::ServiceError;
 use songbird_discovery::traits::communication::CommunicationLayer;
 use songbird_discovery::traits::service::{ServiceRequest, ServiceResponse, ResponseStatus};
-use songbird_errors::{Result, SongbirdError, ServiceError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 
 #[derive(Clone)]
 pub struct RequestRouter {
@@ -52,7 +53,7 @@ impl RequestRouter {
         &self,
         service_instances: &[ServiceInstance],
         mut request: ServiceRequest,
-    ) -> Result<ServiceResponse> {
+    ) -> SongbirdResult<ServiceResponse> {
         let start_time = std::time::Instant::now();
         
         // Add tracing information
@@ -126,8 +127,9 @@ impl RequestRouter {
         &self,
         instance: &ServiceInstance,
         request: &ServiceRequest,
-    ) -> Result<ServiceResponse> {
+    ) -> SongbirdResult<ServiceResponse> {
         use songbird_discovery::traits::communication::{ServiceAddress, ServiceMessage, MessageType};
+use songbird_errors::SongbirdResult;
 
         let service_address = ServiceAddress {
             service_id: instance.service_info.id.clone(),

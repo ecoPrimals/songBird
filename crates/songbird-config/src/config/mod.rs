@@ -47,20 +47,8 @@ pub struct SongbirdConfig {
     /// Custom configuration parameters
     pub custom: Option<HashMap<String, serde_json::Value>>,
 
-    // Legacy fields for backward compatibility (deprecated)
-    // TODO: Remove these in next major version
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[deprecated(note = "Use primal_registry instead")]
-    pub beardog: Option<serde_json::Value>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[deprecated(note = "Use primal_registry instead")]
-    pub toadstool: Option<serde_json::Value>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[deprecated(note = "Use primal_registry instead")]
-    pub nestgate: Option<serde_json::Value>,
-
+    // Note: Legacy primal fields removed in favor of universal primal_registry
+    // All primal configurations now use the capability-based registry system
     #[serde(skip_serializing_if = "Option::is_none")]
     #[deprecated(note = "Use primal_registry instead")]
     pub squirrel: Option<serde_json::Value>,
@@ -79,10 +67,7 @@ impl Default for SongbirdConfig {
             observability: ObservabilityConfig::default(),
             primal_registry: Some(universal_primals::PrimalRegistry::default()),
             custom: None,
-            // Legacy fields - deprecated but kept for backward compatibility
-            beardog: None,
-            toadstool: None,
-            nestgate: None,
+            // Note: Legacy fields removed - use primal_registry instead
             squirrel: None,
         }
     }
@@ -274,7 +259,7 @@ impl Default for AuthConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            method: AuthMethod::JWT,
+            method: AuthMethod::Jwt,
             token_lifetime_seconds: 3600, // 1 hour
             refresh_enabled: true,
         }
@@ -283,7 +268,7 @@ impl Default for AuthConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AuthMethod {
-    JWT,
+    Jwt,
     OAuth2,
     ApiKey,
     Mutual,
@@ -300,7 +285,7 @@ impl Default for AuthzConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            model: AuthzModel::RBAC,
+            model: AuthzModel::Rbac,
             policy_file: None,
         }
     }
@@ -308,9 +293,9 @@ impl Default for AuthzConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AuthzModel {
-    RBAC, // Role-Based Access Control
-    ABAC, // Attribute-Based Access Control
-    ACL,  // Access Control List
+    Rbac, // Role-Based Access Control
+    Abac, // Attribute-Based Access Control
+    Acl,  // Access Control List
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -405,7 +390,7 @@ pub struct DiscoveryConfig {
 impl Default for DiscoveryConfig {
     fn default() -> Self {
         Self {
-            mechanism: DiscoveryMechanism::DNS,
+            mechanism: DiscoveryMechanism::Dns,
             interval_seconds: 30,
             health_check: HealthCheckConfig::default(),
             registration: RegistrationConfig::default(),
@@ -415,7 +400,7 @@ impl Default for DiscoveryConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DiscoveryMechanism {
-    DNS,
+    Dns,
     Consul,
     Etcd,
     Kubernetes,
@@ -542,7 +527,7 @@ impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
             level: LogLevel::Info,
-            format: LogFormat::JSON,
+            format: LogFormat::Json,
             output: LogOutput::Stdout,
             rotation: LogRotation::default(),
         }
@@ -560,7 +545,7 @@ pub enum LogLevel {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LogFormat {
-    JSON,
+    Json,
     Plain,
     Structured,
 }

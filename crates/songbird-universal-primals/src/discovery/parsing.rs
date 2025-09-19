@@ -80,7 +80,11 @@ fn detect_security_capabilities(service_info: &serde_json::Value) -> Vec<PrimalC
     // Check for key management
     if has_key_management(service_info) {
         capabilities.push(PrimalCapability::KeyManagement {
-            hsm_support: detect_hsm_support(service_info),
+            key_types: if detect_hsm_support(service_info) {
+                vec!["hsm".to_string()]
+            } else {
+                vec!["software".to_string()]
+            },
         });
     }
 
@@ -115,7 +119,11 @@ fn detect_compute_capabilities(service_info: &serde_json::Value) -> Vec<PrimalCa
     // Check for GPU acceleration
     if has_gpu_support(service_info) {
         capabilities.push(PrimalCapability::GpuAcceleration {
-            cuda_support: detect_cuda_support(service_info),
+            gpu_types: if detect_cuda_support(service_info) {
+                vec!["cuda".to_string()]
+            } else {
+                vec!["generic".to_string()]
+            },
         });
     }
 
@@ -185,7 +193,7 @@ fn detect_orchestration_capabilities(service_info: &serde_json::Value) -> Vec<Pr
 
     if has_orchestration_support(service_info) {
         capabilities.push(PrimalCapability::Orchestration {
-            features: detect_managed_primals(service_info),
+            platforms: detect_managed_primals(service_info),
         });
     }
 
@@ -574,19 +582,19 @@ fn get_default_security_capabilities() -> Vec<PrimalCapability> {
 }
 
 fn get_default_compute_capabilities() -> Vec<PrimalCapability> {
-    vec![PrimalCapability::ContainerRuntime {
-        orchestrators: vec!["kubernetes".to_string()],
+    vec![PrimalCapability::ContainerOrchestration {
+        platforms: vec!["kubernetes".to_string()],
     }]
 }
 
 fn get_default_storage_capabilities() -> Vec<PrimalCapability> {
-    vec![PrimalCapability::FileSystem {
-        supports_zfs: false,
+    vec![PrimalCapability::NetworkDiscovery {
+        protocols: vec!["file".to_string()],
     }]
 }
 
 fn get_default_network_capabilities() -> Vec<PrimalCapability> {
-    vec![PrimalCapability::ServiceDiscovery {
+    vec![PrimalCapability::NetworkDiscovery {
         protocols: vec!["http".to_string()],
     }]
 }
@@ -599,10 +607,10 @@ fn get_default_ai_capabilities() -> Vec<PrimalCapability> {
 
 fn get_default_orchestration_capabilities() -> Vec<PrimalCapability> {
     vec![
-        PrimalCapability::Orchestration {
-            features: vec!["universal".to_string()],
+        PrimalCapability::ContainerOrchestration {
+            platforms: vec!["universal".to_string()],
         },
-        PrimalCapability::ServiceDiscovery {
+        PrimalCapability::NetworkDiscovery {
             protocols: vec!["http".to_string()],
         },
     ]

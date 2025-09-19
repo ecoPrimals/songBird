@@ -4,7 +4,7 @@
 
 use crate::performance::*;
 use crate::production_benchmarks::types::*;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::time::Instant;
 
 /// Object pool benchmark implementation
@@ -25,7 +25,7 @@ impl<'a> ObjectPoolBenchmarker<'a> {
     }
 
     /// Benchmark object pool performance
-    pub async fn benchmark_object_pool(&self) -> Result<ObjectPoolBenchmark> {
+    pub async fn benchmark_object_pool(&self) -> SongbirdResult<ObjectPoolBenchmark> {
         println!("🏊 Benchmarking Object Pool Performance...");
 
         let pool = self.performance_optimizer.get_byte_pool();
@@ -78,7 +78,9 @@ impl<'a> ObjectPoolBenchmarker<'a> {
     }
 
     /// Benchmark pool contention under concurrent load
-    pub async fn benchmark_concurrent_pool_access(&self) -> Result<PoolConcurrencyBenchmark> {
+    pub async fn benchmark_concurrent_pool_access(
+        &self,
+    ) -> SongbirdResult<PoolConcurrencyBenchmark> {
         println!("🔀 Benchmarking Concurrent Pool Access...");
 
         let pool = self.performance_optimizer.get_byte_pool();

@@ -425,23 +425,13 @@ impl ZeroTrustMiddleware {
     #[allow(dead_code)]
     fn extract_credentials(&self, headers: &HeaderMap) -> Result<Credentials> {
         if let Some(auth_header) = headers.get("authorization") {
-            let auth_str = auth_header.to_str().map_err(|_| SongbirdError::Security {
-                message: "Invalid authorization header".to_string(),
-                context: Some("bearer_token".to_string()),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration".to_string()),
-            })?;
+            let auth_str = auth_header.to_str().map_err(|_| SongbirdError::security("Invalid authorization header"))?;
 
             if auth_str.starts_with("Bearer ") {
                 let token =
                     auth_str
                         .strip_prefix("Bearer ")
-                        .ok_or_else(|| SongbirdError::Security {
-                            message: "Malformed Bearer token".to_string(),
-                            context: Some("authentication".to_string()),
-                            severity: Some("medium".to_string()),
-                            suggestion: Some("Check security configuration".to_string()),
-                        })?;
+                        .ok_or_else(|| SongbirdError::security("Malformed Bearer token"))?;
                 return Ok(Credentials::Token(token.to_string()));
             }
 
@@ -449,25 +439,13 @@ impl ZeroTrustMiddleware {
                 let encoded =
                     auth_str
                         .strip_prefix("Basic ")
-                        .ok_or_else(|| SongbirdError::Security {
-                            message: "Malformed Basic auth".to_string(),
-                            context: Some("authentication".to_string()),
-                            severity: Some("medium".to_string()),
-                            suggestion: Some("Check security configuration".to_string()),
-                        })?;
+                        .ok_or_else(|| SongbirdError::security("Malformed Basic auth"))?;
                 // Simplified basic auth parsing
                 return Ok(Credentials::Token(encoded.to_string()));
             }
         }
 
-        Err(SongbirdError::Security {
-            message: "No valid credentials found".to_string(),
-            context: Some("authentication".to_string()),
-            severity: Some("medium".to_string()),
-            suggestion: Some(
-                "Provide valid authorization header with Bearer or Basic auth".to_string(),
-            ),
-        })
+        Err(SongbirdError::security("No valid credentials found"))
     }
 
     /// Determine resource type from path

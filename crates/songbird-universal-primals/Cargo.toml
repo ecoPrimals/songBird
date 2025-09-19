@@ -26,6 +26,7 @@ thiserror = "1.0"
 # Internal dependencies
 songbird-config = { path = "../songbird-config" }
 songbird-errors = { path = "../songbird-errors" }
+songbird-types = { path = "../songbird-types" }
 songbird-discovery = { path = "../songbird-discovery" }
 songbird-universal = { path = "../songbird-universal" }
 

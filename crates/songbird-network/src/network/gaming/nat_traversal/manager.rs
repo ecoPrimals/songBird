@@ -1,6 +1,6 @@
 use super::stun::StunClient;
 use super::types::*;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -83,7 +83,7 @@ impl NatTraversalManager {
 
         // Bind local socket
         let socket = UdpSocket::bind(local_addr).await.map_err(|e| {
-            SongbirdError::network_error(format!(
+            SongbirdError::network(format!(
                 "NAT Traversal - Failed to bind local socket at {local_addr}: {e}"
             ))
         })?;
@@ -116,13 +116,12 @@ impl NatTraversalManager {
             .local_socket
             .as_ref()
             .ok_or_else(|| {
-                SongbirdError::network_error(
-                    "NAT Traversal - No local socket available".to_string(),
+                SongbirdError::network("NAT Traversal - No local socket available".to_string(),
                 )
             })?
             .local_addr()
             .map_err(|e| {
-                SongbirdError::network_error(format!(
+                SongbirdError::network(format!(
                     "NAT Traversal - Failed to get local address: {e}"
                 ))
             })?;
@@ -160,13 +159,12 @@ impl NatTraversalManager {
                 .local_socket
                 .as_ref()
                 .ok_or_else(|| {
-                    SongbirdError::network_error(
-                        "NAT Traversal - No local socket available".to_string(),
+                    SongbirdError::network("NAT Traversal - No local socket available".to_string(),
                     )
                 })?
                 .local_addr()
                 .map_err(|e| {
-                    SongbirdError::network_error(format!(
+                    SongbirdError::network(format!(
                         "NAT Traversal - Failed to get local address: {e}"
                     ))
                 })?;
@@ -188,8 +186,7 @@ impl NatTraversalManager {
             }
         }
 
-        Err(SongbirdError::network_error(
-            "NAT Traversal - Failed to discover external address via any STUN server",
+        Err(SongbirdError::network("NAT Traversal - Failed to discover external address via any STUN server",
         ))
     }
 
@@ -363,13 +360,13 @@ impl NatTraversalManager {
     /// Try direct connection to peer
     async fn try_direct_connection(&self, peer_address: SocketAddr) -> Result<()> {
         let socket = self.local_socket.as_ref().ok_or_else(|| {
-            SongbirdError::network_error("NAT Traversal - No local socket available".to_string())
+            SongbirdError::network("NAT Traversal - No local socket available".to_string())
         })?;
 
         // Send a simple ping packet
         let ping_data = b"PING";
         socket.send_to(ping_data, peer_address).await.map_err(|e| {
-            SongbirdError::network_error(format!("NAT Traversal - Failed to send ping: {e}"))
+            SongbirdError::network(format!("NAT Traversal - Failed to send ping: {e}"))
         })?;
 
         // For simplicity, assume success if we can send
@@ -402,7 +399,7 @@ impl NatTraversalManager {
         }
 
         let socket = self.local_socket.as_ref().ok_or_else(|| {
-            SongbirdError::network_error("NAT Traversal - No local socket available".to_string())
+            SongbirdError::network("NAT Traversal - No local socket available".to_string())
         })?;
 
         // Simplified hole punching - send packets periodically
@@ -415,7 +412,7 @@ impl NatTraversalManager {
                 .send_to(hole_punch_data.as_bytes(), peer_address)
                 .await
                 .map_err(|e| {
-                    SongbirdError::network_error(format!(
+                    SongbirdError::network(format!(
                         "NAT Traversal - Failed to send hole punch packet: {e}"
                     ))
                 })?;
@@ -478,8 +475,7 @@ impl NatTraversalManager {
     /// Try TURN relay connection
     async fn try_turn_relay(&self, _peer_id: &str, peer_address: SocketAddr) -> Result<SocketAddr> {
         if self.turn_servers.is_empty() {
-            return Err(SongbirdError::network_error(
-                "NAT Traversal - No TURN servers configured".to_string(),
+            return Err(SongbirdError::network("NAT Traversal - No TURN servers configured".to_string(),
             ));
         }
 

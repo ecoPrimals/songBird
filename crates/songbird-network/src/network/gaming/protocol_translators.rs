@@ -80,10 +80,7 @@ impl IPXTranslator {
     /// Parse IPX packet header (basic implementation)
     fn parse_ipx_header(&self, packet: &[u8]) -> Result<IPXHeader> {
         if packet.len() < 30 {
-            return Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: Some("IPX".to_string()),
-                message: "Packet too short for IPX header".to_string(),
-            })));
+            return Err(SongbirdError::network("Packet too short for IPX header".to_string()));
         }
 
         // Parse IPX header (simplified)
@@ -176,10 +173,7 @@ impl ProtocolTranslator for IPXTranslator {
                 ipx_packet.extend_from_slice(&header.payload);
                 Ok(ipx_packet)
             }
-            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: Some("IPX".to_string()),
-                message: "IPX only supports UDP translation".to_string(),
-            }))),
+            _ => Err(SongbirdError::network("IPX only supports UDP translation ".to_string())),
         }
     }
 
@@ -340,10 +334,7 @@ impl DirectPlayTranslator {
             );
             Ok(())
         } else {
-            Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: Some("DirectPlay".to_string()),
-                message: "Session not found: {session_id}".to_string(),
-            })))
+            Err(SongbirdError::network(format!("Session not found: {}", session_id)))
         }
     }
 
@@ -380,10 +371,7 @@ impl DirectPlayTranslator {
     /// Parse DirectPlay packet
     fn parse_dp_packet(&self, packet: &[u8]) -> Result<DirectPlayPacket> {
         if packet.len() < 8 {
-            return Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: Some("DirectPlay".to_string()),
-                message: "Packet too short for DirectPlay header".to_string(),
-            })));
+            return Err(SongbirdError::network("Packet too short for DirectPlay header ".to_string()));
         }
 
         let message_type = u32::from_le_bytes([packet[0], packet[1], packet[2], packet[3]]);
@@ -454,7 +442,7 @@ mod dp_message_types {
 #[async_trait]
 impl ProtocolTranslator for DirectPlayTranslator {
     async fn translate_to_internet(&self, dp_packet: &[u8]) -> Result<InternetPacket> {
-        tracing::debug!("🔄 Translating DirectPlay packet");
+        tracing::debug!("🔄 Translating DirectPlay packet ");
 
         // Parse DirectPlay packet
         let dp_packet_parsed = self.parse_dp_packet(dp_packet)?;
@@ -469,7 +457,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
         match dp_packet_parsed.message_type {
             dp_message_types::DPMSG_ENUMSESSIONS => {
                 // Session enumeration request
-                info!("🔍 DirectPlay session enumeration request");
+                info!("🔍 DirectPlay session enumeration request ");
                 Ok(InternetPacket::UDP {
                     src_port: directplay_port,
                     dst_port: directplay_port,
@@ -510,10 +498,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
                 self.update_metrics(0, payload.len() as u64).await;
                 Ok(payload.clone())
             }
-            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: Some("DirectPlay".to_string()),
-                message: "Unsupported packet type for DirectPlay".to_string(),
-            }))),
+            _ => Err(SongbirdError::network("Unsupported packet type for DirectPlay ".to_string())),
         }
     }
 
@@ -522,10 +507,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
         let host_player = players
             .first()
             .ok_or_else(|| {
-                SongbirdError::Protocol(Box::new(ProtocolError {
-                    protocol: Some("DirectPlay".to_string()),
-                    message: "No players specified".to_string(),
-                }))
+                SongbirdError::network("No players specified ".to_string())
             })?
             .player_id
             .clone();
@@ -535,7 +517,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
             dp_players.insert(
                 player.player_id.clone(),
                 DirectPlayAddress {
-                    service_user: "TCP/IP".to_string(),
+                    service_user: "TCP/IP ".to_string(),
                     address_data: player.real_address.to_string().into_bytes(),
                 },
             );
@@ -568,10 +550,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
                         Ok(DiscoveryResponse::DirectPlay { sessions: vec![] })
                     }
                 }
-                Err(_) => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                    protocol: Some("DirectPlay".to_string()),
-                    message: "Invalid DirectPlay discovery packet".to_string(),
-                }))),
+                Err(_) => Err(SongbirdError::network("Invalid DirectPlay discovery packet ".to_string())),
             }
         } else {
             // Check for DirectPlay signature in small packets
@@ -579,7 +558,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
                 let external_addr = songbird_config::config::constants::external_address();
 
                 let sessions = vec![DirectPlaySession {
-                    session_name: "Game Session".to_string(),
+                    session_name: "Game Session ".to_string(),
                     session_id: uuid::Uuid::new_v4().to_string(),
                     host_address: external_addr.parse().unwrap_or_else(|_| {
                         format!(
@@ -596,10 +575,7 @@ impl ProtocolTranslator for DirectPlayTranslator {
 
                 Ok(DiscoveryResponse::DirectPlay { sessions })
             } else {
-                Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                    protocol: Some("DirectPlay".to_string()),
-                    message: "Invalid DirectPlay discovery packet".to_string(),
-                })))
+                Err(SongbirdError::network("Invalid DirectPlay discovery packet ".to_string()))
             }
         }
     }
@@ -650,10 +626,7 @@ impl ProtocolTranslator for NetBIOSTranslator {
     async fn translate_from_internet(&self, internet_packet: &InternetPacket) -> Result<Vec<u8>> {
         match internet_packet {
             InternetPacket::UDP { payload, .. } => Ok(payload.clone()),
-            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: Some("NetBIOS".to_string()),
-                message: "NetBIOS only supports UDP translation".to_string(),
-            }))),
+            _ => Err(SongbirdError::network("NetBIOS only supports UDP translation ".to_string())),
         }
     }
 
@@ -727,10 +700,7 @@ impl ProtocolTranslator for UDPTranslator {
     async fn translate_from_internet(&self, internet_packet: &InternetPacket) -> Result<Vec<u8>> {
         match internet_packet {
             InternetPacket::UDP { payload, .. } => Ok(payload.clone()),
-            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: Some("UDP".to_string()),
-                message: "UDP translator only supports UDP packets".to_string(),
-            }))),
+            _ => Err(SongbirdError::network("UDP translator only supports UDP packets ".to_string())),
         }
     }
 
@@ -760,7 +730,7 @@ impl ProtocolTranslator for UDPTranslator {
 
             Ok(DiscoveryResponse::LegacyGames {
                 games: vec![LegacyGameInfo {
-                    name: "UDP Game".to_string(),
+                    name: "UDP Game ".to_string(),
                     protocol: "UDP".to_string(),
                     players: 1,
                     max_players: 16,
@@ -806,10 +776,7 @@ impl ProtocolTranslator for TCPTranslator {
     async fn translate_from_internet(&self, internet_packet: &InternetPacket) -> Result<Vec<u8>> {
         match internet_packet {
             InternetPacket::TCP { payload, .. } => Ok(payload.clone()),
-            _ => Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: Some("TCP".to_string()),
-                message: "TCP translator only supports TCP packets".to_string(),
-            }))),
+            _ => Err(SongbirdError::network("TCP translator only supports TCP packets ".to_string())),
         }
     }
 
@@ -824,7 +791,7 @@ impl ProtocolTranslator for TCPTranslator {
             "🔧 Protocol translator binding to address: {}",
             bind_address
         );
-        let server_address = format!("{bind_address}:0")
+        let server_address = format!("{}:0", bind_address)
             .parse()
             .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], 0)));
 

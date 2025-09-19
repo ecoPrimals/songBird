@@ -7,7 +7,7 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult}; type Result<T> = SongbirdResult<T>;
 
 /// Environment detector for zero-touch deployment
 pub struct EnvironmentDetector {

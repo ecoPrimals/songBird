@@ -1,5 +1,5 @@
 use serde_json::Value;
-use songbird_errors::Result as SongbirdResult;
+use songbird_types::errors::SongbirdResult;
 /// Network mocking utilities
 ///
 /// Provides mock network services, simulated network conditions,
@@ -72,13 +72,13 @@ impl NetworkMockManager {
             if let Some(delay_ms) = response.delay_ms {
                 sleep(Duration::from_millis(delay_ms)).await;
             }
-            Ok(response.clone()))
+            Ok(response.clone())
         } else {
             Ok(MockResponse {
                 success: false,
                 data: serde_json::json!({"error": "No mock response configured"}),
                 delay_ms: None,
-            }))
+            })
         }
     }
 

@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::task::JoinHandle;
 
-use songbird_errors::Result;
+use songbird_types::errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Health monitor managing service health checks
 pub struct HealthMonitor {
@@ -307,7 +308,7 @@ async fn perform_http_check(service_id: &str, path: &str) -> Result<()> {
         .timeout(Duration::from_secs(5))
         .build()
         .map_err(|e| {
-            songbird_errors::SongbirdError::service_error(
+            songbird_errors::SongbirdError::service(
                 "registry",
                 format!("Failed to create HTTP client: {e}"),
             )
@@ -317,13 +318,13 @@ async fn perform_http_check(service_id: &str, path: &str) -> Result<()> {
     let response = timeout(Duration::from_secs(10), client.get(path).send())
         .await
         .map_err(|_| {
-            songbird_errors::SongbirdError::service_error(
+            songbird_errors::SongbirdError::service(
                 "registry",
                 "HTTP health check timeout".to_string(),
             )
         })?
         .map_err(|e| {
-            songbird_errors::SongbirdError::service_error(
+            songbird_errors::SongbirdError::service(
                 "registry",
                 format!("HTTP health check failed: {e}"),
             )
@@ -337,7 +338,7 @@ async fn perform_http_check(service_id: &str, path: &str) -> Result<()> {
         );
         Ok(())
     } else {
-        Err(songbird_errors::SongbirdError::service_error(
+        Err(songbird_errors::SongbirdError::service(
             "registry",
             format!(
                 "HTTP health check for {} failed: {}",

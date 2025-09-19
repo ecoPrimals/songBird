@@ -17,7 +17,7 @@ use crate::abstraction::{
 };
 
 use crate::traits::{ServiceEvent, ServiceInfo, ServiceQuery};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError};
 
 /// Factory for creating Consul providers from configuration
 pub struct ConsulProviderFactory;
@@ -269,7 +269,7 @@ impl DiscoveryProvider for ConsulProviderAdapter {
 
         let response =
             self.client.get(&url).send().await.map_err(|e| {
-                SongbirdError::network_error(format!("Failed to query Consul: {e}"))
+                SongbirdError::network(format!("Failed to query Consul: {e}"))
             })?;
 
         if !response.status().is_success() {
@@ -280,7 +280,7 @@ impl DiscoveryProvider for ConsulProviderAdapter {
         }
 
         let consul_response: serde_json::Value = response.json().await.map_err(|e| {
-            SongbirdError::network_error(format!("Failed to parse Consul response: {e}"))
+            SongbirdError::network(format!("Failed to parse Consul response: {e}"))
         })?;
 
         // Parse consul response into ServiceInfo

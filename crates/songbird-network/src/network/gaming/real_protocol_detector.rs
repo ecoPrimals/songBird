@@ -8,7 +8,7 @@ use super::privilege_manager::{
 };
 use super::types::{DetectedGameSession, GameProtocolClass, PacketPattern};
 use pnet::datalink::{self, NetworkInterface};
-use songbird_errors::{NetworkError, Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 // Removed unused packet parsing imports - focusing on gaming protocol detection
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -442,12 +442,7 @@ impl RealProtocolDetector {
             }
         }
 
-        Err(SongbirdError::Network(Box::new(NetworkError {
-            message: "Protocol Detector - No suitable network interface found".to_string(),
-            endpoint: None,
-            port: None,
-            protocol: None,
-        })))
+        Err(SongbirdError::network("Protocol Detector - No suitable network interface found".to_string())))
     }
 
     /// Get network interface by name
@@ -460,12 +455,7 @@ impl RealProtocolDetector {
             }
         }
 
-        Err(SongbirdError::Network(Box::new(NetworkError {
-            message: "Protocol Detector - No suitable network interface found".to_string(),
-            endpoint: None,
-            port: None,
-            protocol: None,
-        })))
+        Err(SongbirdError::network("Protocol Detector - No suitable network interface found".to_string())))
     }
 
     /// Clone detector for packet capture task
@@ -577,13 +567,8 @@ impl RealProtocolDetectorCapture {
                 .into_iter()
                 .find(|iface| iface.is_up() && !iface.is_loopback())
                 .ok_or_else(|| {
-                    SongbirdError::Network(Box::new(NetworkError {
-                        message: "Protocol Detector - No suitable network interface found"
-                            .to_string(),
-                        endpoint: None,
-                        port: None,
-                        protocol: None,
-                    }))
+                    SongbirdError::network("Protocol Detector - No suitable network interface found"
+                            .to_string()))
                 })?;
 
             // Create a channel to receive on

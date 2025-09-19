@@ -7,8 +7,8 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-use super::types::DiscoveryConfig;
-use songbird_errors::Result;
+use super::types::{DiscoveredPeer, DiscoveryConfig};
+use songbird_errors::SongbirdResult as Result;
 use songbird_universal_primals::PrimalCapability;
 
 /// STUN client for NAT traversal
@@ -33,7 +33,7 @@ impl STUNClient {
     }
 
     /// Discover peers via STUN
-    pub async fn discover_peers(&self) -> Result<Vec<Vec<PrimalCapability>>> {
+    pub async fn discover_peers(&self) -> Result<Vec<DiscoveredPeer>> {
         debug!("Discovering peers via STUN...");
 
         let mut peers = Vec::new();
@@ -45,11 +45,16 @@ impl STUNClient {
         // Discover network capabilities through each STUN server
         for server in &self.stun_servers {
             match self.discover_capabilities(server).await {
-                Ok(capabilities) if !capabilities.is_empty() => {
-                    peers.push(capabilities);
-                }
-                Ok(_) => {
-                    debug!("No capabilities discovered from STUN server: {}", server);
+                Ok(_capabilities) => {
+                    let peer = DiscoveredPeer::new(
+                        format!("stun-{}", server),
+                        server
+                            .parse()
+                            .unwrap_or_else(|_| "0.0.0.0:3478".parse().unwrap()),
+                        super::types::PeerType::Service,
+                        super::types::DiscoveryMethod::STUN,
+                    );
+                    peers.push(peer);
                 }
                 Err(e) => {
                     debug!(
@@ -188,7 +193,7 @@ impl STUNClient {
             }
         }
 
-        Err(songbird_errors::SongbirdError::network_error(
+        Err(songbird_errors::SongbirdError::network(
             "Failed to determine external address via STUN",
         ))
     }
@@ -215,13 +220,13 @@ impl STUNClient {
                     debug!("External address discovered: {}", external_addr);
                     Ok(external_addr)
                 } else {
-                    Err(songbird_errors::SongbirdError::network_error(
+                    Err(songbird_errors::SongbirdError::network(
                         "Failed to parse STUN response",
                     ))
                 }
             }
             Ok(Err(e)) => Err(e.into()),
-            Err(_) => Err(songbird_errors::SongbirdError::network_error(
+            Err(_) => Err(songbird_errors::SongbirdError::network(
                 "STUN query timed out",
             )),
         }

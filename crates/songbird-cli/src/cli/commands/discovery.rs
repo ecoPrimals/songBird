@@ -94,12 +94,7 @@ async fn perform_real_discovery(subnet: &str, timeout_ms: u64) -> Result<Vec<Dis
     let socket =
         UdpSocket::bind(&bind_addr)
             .await
-            .map_err(|e| songbird_errors::SongbirdError::Config {
-                message: format!("Failed to bind discovery socket to {bind_addr}: {e}"),
-                field: Some("discovery_bind_address".to_string()),
-                context: Some("Discovery socket binding".to_string()),
-                suggestion: Some("Check your network configuration and try again".to_string()),
-            })?;
+            .map_err(|e| songbird_errors::SongbirdError::configuration(&format!("Failed to bind discovery socket to {bind_addr}: {e}")))?;
     socket.set_broadcast(true)?;
 
     // Send discovery broadcast to the subnet
@@ -137,23 +132,15 @@ async fn perform_real_discovery(subnet: &str, timeout_ms: u64) -> Result<Vec<Dis
 fn parse_subnet(subnet: &str) -> Result<(IpAddr, u8)> {
     let parts: Vec<&str> = subnet.split('/').collect();
     if parts.len() != 2 {
-        return Err(songbird_errors::SongbirdError::Config {
-            message: format!("Invalid subnet format: {subnet}"),
-            field: Some("subnet".to_string()),
-            context: Some("Subnet parsing".to_string()),
-            suggestion: Some(
-                "Ensure subnet is in CIDR notation (e.g., 192.168.1.0/24)".to_string(),
-            ),
-        });
+        return Err(songbird_errors::SongbirdError::configuration(&format!("Invalid subnet format: {subnet}")));
     }
 
     let ip: IpAddr = parts[0].parse()?;
     let mask: u8 = parts[1]
         .parse()
-        .map_err(|_| songbird_errors::SongbirdError::Config {
-            message: format!("Invalid subnet mask: {}", parts[1]),
+        .map_err(|_| songbird_errors::SongbirdError::Configuration {
             field: Some("subnet_mask".to_string()),
-            context: Some("Subnet mask parsing".to_string()),
+            message: format!("Invalid subnet mask: {}", parts[1]),
             suggestion: Some("Ensure mask is a valid integer between 0 and 32".to_string()),
         })?;
 

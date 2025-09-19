@@ -3,10 +3,11 @@
 //! This test suite provides extensive coverage for the songbird-config crate
 //! to achieve the target 90% test coverage for production readiness.
 
+use songbird_config::config::constants::{DEFAULT_BIND_ADDRESS, DEFAULT_LOCALHOST, LOCALHOST_IPV4};
 use songbird_config::config::universal_primals::QosMetrics;
+// use songbird_config::constants::network::*; // Unused import removed
 use songbird_config::{
     config::{constants::*, hardcoded_elimination::*, universal_primals::*},
-    constants::network::*,
     EnvironmentConfig,
 };
 use std::collections::HashMap;
@@ -217,39 +218,32 @@ mod comprehensive_config_tests {
 
     // Test Module 6: Environment Configuration
     #[test]
-    fn test_environment_config_endpoints() {
-        let songbird_endpoint = EnvironmentConfig::songbird_endpoint();
-        assert!(songbird_endpoint.contains("http"));
-        assert!(songbird_endpoint.contains("8080") || songbird_endpoint.contains("3000"));
-
-        let nestgate_endpoint = EnvironmentConfig::nestgate_endpoint();
-        assert!(nestgate_endpoint.contains("http"));
-
-        let toadstool_endpoint = EnvironmentConfig::toadstool_endpoint();
-        assert!(toadstool_endpoint.contains("http"));
+    fn test_environment_config_creation() {
+        let config = EnvironmentConfig::default();
+        assert!(!config.bind_address.is_empty());
+        assert!(config.connection_timeout_secs > 0);
+        assert!(config.dashboard_port > 0);
     }
 
     #[test]
-    fn test_environment_config_all_endpoints() {
-        let endpoints = EnvironmentConfig::get_all_endpoints();
-        assert!(endpoints.contains_key("storage"));
-        assert!(endpoints.contains_key("compute"));
-        assert!(endpoints.contains_key("orchestration"));
-        assert!(endpoints.contains_key("ai"));
-        // Security endpoint is only present if SECURITY_ENDPOINT env var is set
-        // This is the canonical modernization behavior - no hardcoded security provider
+    fn test_environment_config_service_endpoints() {
+        let config = EnvironmentConfig::default();
+        // Test that service endpoints are properly configured
+        assert!(!config.service_endpoints.nestgate_endpoint.is_empty());
+        assert!(!config.service_endpoints.beardog_endpoint.is_empty());
+        assert!(!config.service_endpoints.discovery_endpoint.is_empty());
+        // Health and metrics endpoints should be configurable
+        assert!(!config.service_endpoints.health_endpoint.is_empty());
+        assert!(!config.service_endpoints.metrics_endpoint.is_empty());
     }
 
     #[test]
-    fn test_environment_config_providers() {
-        let security_providers = EnvironmentConfig::security_providers();
-        assert!(!security_providers.is_empty());
-
-        let storage_providers = EnvironmentConfig::storage_providers();
-        assert!(!storage_providers.is_empty());
-
-        let compute_providers = EnvironmentConfig::compute_providers();
-        assert!(!compute_providers.is_empty());
+    fn test_environment_config_performance() {
+        let config = EnvironmentConfig::default();
+        assert!(config.performance_config.worker_threads > 0);
+        assert!(config.performance_config.buffer_pool_size > 0);
+        assert!(config.performance_config.connection_pool_size > 0);
+        assert!(config.performance_config.request_timeout_ms > 0);
     }
 
     // Test Module 7: Configuration Validation
@@ -276,14 +270,15 @@ mod comprehensive_config_tests {
     #[test]
     fn test_invalid_environment_variables() {
         // Test that we get reasonable endpoints even with no environment variables
-        let beardog_endpoint = EnvironmentConfig::beardog_endpoint();
+        let config = EnvironmentConfig::default();
+        let security_endpoint = &config.service_endpoints.beardog_endpoint;
         // Accept any valid endpoint format, including environment-specific ones
         assert!(
-            beardog_endpoint.contains("localhost")
-                || beardog_endpoint.contains("127.0.0.1")
-                || beardog_endpoint.starts_with("http")
-                || !beardog_endpoint.is_empty(),
-            "Expected valid endpoint, got: {beardog_endpoint}"
+            security_endpoint.contains("localhost")
+                || security_endpoint.contains("127.0.0.1")
+                || security_endpoint.starts_with("http")
+                || !security_endpoint.is_empty(),
+            "Expected valid endpoint, got: {security_endpoint}"
         );
     }
 

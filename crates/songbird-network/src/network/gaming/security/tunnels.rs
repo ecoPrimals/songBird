@@ -4,7 +4,7 @@
 
 use super::types::{SecureTunnel, TunnelStatus, TunnelType};
 use async_trait::async_trait;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use std::time::Instant;
 use tracing::info;
 

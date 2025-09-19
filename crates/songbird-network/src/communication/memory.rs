@@ -5,7 +5,7 @@
 
 use async_trait::async_trait;
 use futures_util::Stream;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use songbird_discovery::traits::communication::{
     CommunicationLayer, CommunicationResponse, CommunicationStats, 
     ServiceAddress, ServiceMessage

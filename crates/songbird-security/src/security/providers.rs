@@ -121,10 +121,9 @@ impl InMemoryAuthProvider {
                 if let Some(ref passphrase_policy) = policy.passphrase_policy {
                     self.validate_passphrase(password, passphrase_policy)
                 } else {
-                    Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                        message: "Passphrase policy not configured".to_string(),
-                        provider: Some("PasswordValidator".to_string()),
-                    })))
+                    Err(songbird_errors::SongbirdError::security(
+                        "Passphrase policy not configured"
+                    ))
                 }
             }
             PasswordValidationStrategy::Traditional => {
@@ -132,10 +131,9 @@ impl InMemoryAuthProvider {
                     self.validate_traditional_password(password, traditional_policy)?;
                     Ok(())
                 } else {
-                    Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                        message: "Traditional password policy not configured".to_string(),
-                        provider: Some("PasswordValidator".to_string()),
-                    })))
+                    Err(songbird_errors::SongbirdError::security(
+                        "Traditional password policy not configured"
+                    ))
                 }
             }
             PasswordValidationStrategy::TraditionalPolicy(ref policy) => {
@@ -155,11 +153,9 @@ impl InMemoryAuthProvider {
                 if let Some(ref traditional_policy) = policy.traditional_policy {
                     self.validate_traditional_password(password, traditional_policy)
                 } else {
-                    Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                        message: "No valid password policy configured for flexible validation"
-                            .to_string(),
-                        provider: Some("PasswordValidator".to_string()),
-                    })))
+                    Err(songbird_errors::SongbirdError::security(
+                        "No valid password policy configured for flexible validation"
+                    ))
                 }
             }
             PasswordValidationStrategy::Custom => {
@@ -169,10 +165,7 @@ impl InMemoryAuthProvider {
                     tracing::info!("Using minimal fallback password validation - recommend integrating with BearDog primal");
                     Ok(())
                 } else {
-                    Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                        message: "Password too short (minimum 8 characters). For comprehensive password policies, integrate with BearDog primal.".to_string(),
-                        provider: Some("Songbird-Fallback-Validator".to_string()),
-                    })))
+                    Err(songbird_errors::SongbirdError::security("Password too short (minimum 8 characters). For comprehensive password policies, integrate with BearDog primal."))
                 }
             }
         }
@@ -221,26 +214,17 @@ impl InMemoryAuthProvider {
 
         // Check for numbers if required
         if policy.require_number && !passphrase.chars().any(|c| c.is_numeric()) {
-            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                message: "Passphrase must contain at least one number".to_string(),
-                provider: Some("SimplePassphraseValidator".to_string()),
-            })));
+            return Err(songbird_errors::SongbirdError::security("Passphrase must contain at least one number"));
         }
 
         // Check for uppercase if required
         if policy.require_uppercase && !passphrase.chars().any(|c| c.is_uppercase()) {
-            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                message: "Passphrase must contain at least one uppercase letter".to_string(),
-                provider: Some("SimplePassphraseValidator".to_string()),
-            })));
+            return Err(songbird_errors::SongbirdError::security("Passphrase must contain at least one uppercase letter"));
         }
 
         // Check against common passwords if enabled
         if policy.check_common_passwords && self.is_common_password(passphrase) {
-            return Err(songbird_errors::SongbirdError::Auth(Box::new(AuthError {
-                    message: "This passphrase is too common. Please choose a more unique combination of words".to_string(),
-                    provider: Some("SimplePassphraseValidator".to_string()),
-                })));
+            return Err(songbird_errors::SongbirdError::security("This passphrase is too common. Please choose a more unique combination of words"));
         }
 
         // Basic entropy check (simplified - in production, use proper entropy calculation)

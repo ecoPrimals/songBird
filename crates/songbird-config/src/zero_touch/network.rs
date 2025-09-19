@@ -7,7 +7,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult}; type Result<T> = SongbirdResult<T>;
 
 /// Network discoverer for zero-touch deployment
 pub struct NetworkDiscoverer {

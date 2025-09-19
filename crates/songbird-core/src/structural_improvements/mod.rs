@@ -5,7 +5,7 @@ pub mod resource_tracker;
 pub use config::*;
 pub use resource_tracker::*;
 
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -37,7 +37,7 @@ impl StructuralImprovementsManager {
     }
 
     /// Initialize the structural improvements system
-    pub async fn initialize(&self) -> Result<()> {
+    pub async fn initialize(&self) -> SongbirdResult<()> {
         // Initialize resource tracking if enabled
         if self.config.enable_resource_tracking {
             let tracker = self.resource_tracker.read().await;
@@ -51,7 +51,7 @@ impl StructuralImprovementsManager {
     }
 
     /// Shutdown the structural improvements system
-    pub async fn shutdown(&self) -> Result<()> {
+    pub async fn shutdown(&self) -> SongbirdResult<()> {
         // Clean up resources
         if self.config.enable_resource_tracking {
             let mut tracker = self.resource_tracker.write().await;

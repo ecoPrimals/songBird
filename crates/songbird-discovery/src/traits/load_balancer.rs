@@ -5,7 +5,8 @@
 use crate::traits::service::{ServiceInfo, ServiceRequest};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -92,11 +93,10 @@ impl LoadBalancer for RoundRobinLoadBalancer {
         _request: &ServiceRequest,
     ) -> Result<ServiceInfo> {
         if services.is_empty() {
-            return Err(songbird_errors::SongbirdError::LoadBalancer {
-                message: "No healthy instances available for load balancing".to_string(),
-                backend: Some("round_robin".to_string()),
-                suggestion: Some("Check service health and availability".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::service(
+                "load_balancer",
+                "No healthy instances available for load balancing".to_string(),
+            ));
         }
 
         let index = self.counter.fetch_add(1, Ordering::Relaxed) % services.len();
@@ -156,11 +156,10 @@ impl LoadBalancer for WeightedRoundRobinLoadBalancer {
         _request: &ServiceRequest,
     ) -> Result<ServiceInfo> {
         if services.is_empty() {
-            return Err(songbird_errors::SongbirdError::LoadBalancer {
-                message: "No healthy instances available for load balancing".to_string(),
-                backend: Some("latency_optimized".to_string()),
-                suggestion: Some("Check service health and latency metrics".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::service(
+                "load_balancer",
+                "No healthy instances available for load balancing".to_string(),
+            ));
         }
 
         // Simplified weighted selection - just return first service for now

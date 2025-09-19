@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use songbird_errors::SongbirdResult;
 
 /// AI-Enhanced Service Mesh Manager
 pub struct AIServiceMesh {
@@ -144,7 +145,7 @@ impl AIServiceMesh {
     }
 
     /// Register service with the mesh
-    pub async fn register_service(&self, service_id: String, endpoints: Vec<ServiceEndpoint>) -> Result<(), String> {
+    pub async fn register_service(&self, service_id: String, endpoints: Vec<ServiceEndpoint>) -> SongbirdResult<()> {
         let registration = ServiceRegistration {
             service_id: service_id.clone(),
             endpoints,
@@ -179,12 +180,12 @@ impl AIServiceMesh {
     }
 
     /// Route request using AI decision making
-    pub async fn route_request(&self, request_context: RequestContext) -> Result<AIRoutingDecision, String> {
+    pub async fn route_request(&self, request_context: RequestContext) -> SongbirdResult<AIRoutingDecision> {
         self.routing_engine.make_routing_decision(request_context, &self.services).await
     }
 
     /// Update service health data
-    pub async fn update_service_health(&self, service_id: &str, health_data: AIServiceHealthData) -> Result<(), String> {
+    pub async fn update_service_health(&self, service_id: &str, health_data: AIServiceHealthData) -> SongbirdResult<()> {
         let mut services = self.services.write().await;
         
         if let Some(service) = services.get_mut(service_id) {
@@ -292,7 +293,7 @@ impl AIRoutingEngine {
         &self, 
         context: RequestContext,
         services: &Arc<RwLock<HashMap<String, ServiceRegistration>>>
-    ) -> Result<AIRoutingDecision, String> {
+    ) -> SongbirdResult<AIRoutingDecision> {
         let services_guard = services.read().await;
         let available_services: Vec<_> = services_guard.values()
             .flat_map(|s| &s.endpoints)

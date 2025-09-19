@@ -30,7 +30,7 @@
 //! use songbird_core::load_balancer::LoadBalancer;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! async fn main() -> SongbirdResult<()>> {
 //!     let orchestrator = Orchestrator::new().await?;
 //!     let load_balancer = LoadBalancer::new().await?;
 //!     
@@ -80,7 +80,7 @@
 #![allow(dead_code)]
 
 pub mod api;
-pub mod basic_iot;
+// pub mod basic_iot; // Temporarily disabled due to syntax corruption
 pub mod benchmarks;
 pub mod biome;
 pub mod biomeos;

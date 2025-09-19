@@ -7,7 +7,7 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 
 /// Environment detector for zero-touch deployment
 pub struct EnvironmentDetector {
@@ -21,7 +21,7 @@ impl EnvironmentDetector {
     }
 
     /// Detect the current environment
-    pub async fn detect(&self) -> Result<EnvironmentInfo> {
+    pub async fn detect(&self) -> SongbirdResult<EnvironmentInfo> {
         info!("Detecting environment...");
 
         // Detect system resources
@@ -53,7 +53,7 @@ impl EnvironmentDetector {
     }
 
     /// Detect system resources
-    async fn detect_system_resources(&self) -> Result<SystemResources> {
+    async fn detect_system_resources(&self) -> SongbirdResult<SystemResources> {
         let cpu_cores = num_cpus::get() as u32;
         
         // Get memory information
@@ -75,7 +75,7 @@ impl EnvironmentDetector {
     }
 
     /// Detect platform information
-    async fn detect_platform_info(&self) -> Result<PlatformInfo> {
+    async fn detect_platform_info(&self) -> SongbirdResult<PlatformInfo> {
         Ok(PlatformInfo {
             os: std::env::consts::OS.to_string(),
             os_version: self.get_os_version()?,
@@ -87,7 +87,7 @@ impl EnvironmentDetector {
     }
 
     /// Detect network configuration
-    async fn detect_network_config(&self) -> Result<NetworkConfig> {
+    async fn detect_network_config(&self) -> SongbirdResult<NetworkConfig> {
         Ok(NetworkConfig {
             interfaces: self.get_network_interfaces().await?,
             default_gateway: self.get_default_gateway().await?,
@@ -98,7 +98,7 @@ impl EnvironmentDetector {
     }
 
     /// Detect container runtime
-    async fn detect_container_runtime(&self) -> Result<Option<ContainerRuntime>> {
+    async fn detect_container_runtime(&self) -> SongbirdResult<Option<ContainerRuntime>> {
         // Check for Docker
         if self.is_docker_available().await {
             return Ok(Some(ContainerRuntime {
@@ -121,7 +121,7 @@ impl EnvironmentDetector {
     }
 
     /// Detect orchestration platform
-    async fn detect_orchestration_platform(&self) -> Result<Option<OrchestrationPlatform>> {
+    async fn detect_orchestration_platform(&self) -> SongbirdResult<Option<OrchestrationPlatform>> {
         // Check for Kubernetes
         if self.is_kubernetes_available().await {
             return Ok(Some(OrchestrationPlatform {
@@ -146,35 +146,35 @@ impl EnvironmentDetector {
     }
 
     // Helper methods for system information gathering
-    fn get_total_memory(&self) -> Result<u32> {
+    fn get_total_memory(&self) -> SongbirdResult<u32> {
         // Simplified implementation - would use sysinfo crate in real implementation
         Ok(8192) // 8GB default
     }
 
-    fn get_available_memory(&self) -> Result<u32> {
+    fn get_available_memory(&self) -> SongbirdResult<u32> {
         // Simplified implementation
         Ok(4096) // 4GB default
     }
 
-    fn get_disk_space(&self) -> Result<u32> {
+    fn get_disk_space(&self) -> SongbirdResult<u32> {
         // Simplified implementation
         Ok(100) // 100GB default
     }
 
-    fn get_available_disk_space(&self) -> Result<u32> {
+    fn get_available_disk_space(&self) -> SongbirdResult<u32> {
         // Simplified implementation
         Ok(50) // 50GB default
     }
 
-    fn get_os_version(&self) -> Result<String> {
+    fn get_os_version(&self) -> SongbirdResult<String> {
         Ok("unknown".to_string()) // Would implement actual OS version detection
     }
 
-    fn get_kernel_version(&self) -> Result<String> {
+    fn get_kernel_version(&self) -> SongbirdResult<String> {
         Ok("unknown".to_string()) // Would implement actual kernel version detection
     }
 
-    fn get_hostname(&self) -> Result<String> {
+    fn get_hostname(&self) -> SongbirdResult<String> {
         Ok(gethostname::gethostname().to_string_lossy().to_string())
     }
 
@@ -189,20 +189,20 @@ impl EnvironmentDetector {
         false // Would implement actual VM detection
     }
 
-    async fn get_network_interfaces(&self) -> Result<Vec<String>> {
+    async fn get_network_interfaces(&self) -> SongbirdResult<Vec<String>> {
         // Simplified network interface detection
         Ok(vec!["eth0".to_string(), "lo".to_string()])
     }
 
-    async fn get_default_gateway(&self) -> Result<String> {
+    async fn get_default_gateway(&self) -> SongbirdResult<String> {
         Ok("192.168.1.1".to_string()) // Simplified
     }
 
-    async fn get_dns_servers(&self) -> Result<Vec<String>> {
+    async fn get_dns_servers(&self) -> SongbirdResult<Vec<String>> {
         Ok(vec!["8.8.8.8".to_string(), "8.8.4.4".to_string()]) // Simplified
     }
 
-    async fn get_public_ip(&self) -> Result<String> {
+    async fn get_public_ip(&self) -> SongbirdResult<String> {
         // Would implement actual public IP detection
         Ok("unknown".to_string())
     }
@@ -378,6 +378,7 @@ pub struct OrchestrationPlatform {
 #[cfg(test)]
 mod tests {
     use super::*;
+use songbird_errors::SongbirdResult;
 
     #[tokio::test]
     async fn test_environment_detector_creation() {

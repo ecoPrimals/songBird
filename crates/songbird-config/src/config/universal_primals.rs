@@ -484,26 +484,38 @@ impl PrimalRegistry {
             .collect()
     }
 
-    // TODO: Re-enable these when BearDog and Toadstool configs are properly defined
-    /*
-    /// Create primal configuration from legacy hardcoded config
-    pub fn from_legacy_beardog_config(
-        beardog_config: &super::BearDogConfig,
-    ) -> PrimalConfiguration {
-        let mut config = PrimalConfiguration::new_template("beardog", "BearDog Security");
-        // Implementation would go here when BearDog config is available
+    /// Create security primal configuration (replaces legacy BearDog)
+    pub fn create_security_primal_config() -> PrimalConfiguration {
+        let mut config =
+            PrimalConfiguration::new_template("security", "Universal Security Provider");
+        config.capabilities = vec![
+            PrimalCapability {
+                capability_type: "authentication".to_string(),
+                version: "1.0".to_string(),
+                parameters: HashMap::new(),
+                qos_metrics: QosMetrics::default(),
+            },
+            PrimalCapability {
+                capability_type: "authorization".to_string(),
+                version: "1.0".to_string(),
+                parameters: HashMap::new(),
+                qos_metrics: QosMetrics::default(),
+            },
+        ];
         config
     }
 
-    /// Create primal configuration from legacy toadstool config
-    pub fn from_legacy_toadstool_config(
-        toadstool_config: &super::ToadstoolConfig,
-    ) -> PrimalConfiguration {
-        let mut config = PrimalConfiguration::new_template("toadstool", "Toadstool Compute");
-        // Implementation would go here when Toadstool config is available
+    /// Create compute primal configuration (replaces legacy Toadstool)
+    pub fn create_compute_primal_config() -> PrimalConfiguration {
+        let mut config = PrimalConfiguration::new_template("compute", "Universal Compute Provider");
+        config.capabilities = vec![PrimalCapability {
+            capability_type: "processing".to_string(),
+            version: "1.0".to_string(),
+            parameters: HashMap::new(),
+            qos_metrics: QosMetrics::default(),
+        }];
         config
     }
-    */
 }
 
 impl PrimalConfiguration {
@@ -578,28 +590,29 @@ pub struct LegacyConfigMigrator;
 impl LegacyConfigMigrator {
     /// Migrate legacy songbird config to universal primal registry
     pub fn migrate_legacy_config(_legacy_config: &super::SongbirdConfig) -> PrimalRegistry {
-        let registry = PrimalRegistry::new();
+        let mut registry = PrimalRegistry::new();
 
-        // TODO: Re-enable when legacy primal configs are properly defined
-        /*
-        if let Some(beardog_config) = &legacy_config.beardog {
-            let primal_config = PrimalConfiguration::from_legacy_beardog_config(beardog_config);
-            registry.register_primal(primal_config);
-        }
-        */
+        // Register universal security primal (replaces legacy BearDog)
+        let security_config = PrimalRegistry::create_security_primal_config();
+        registry.register_primal(security_config);
+        debug!("✅ Migrated legacy security configuration to universal security primal");
 
-        // For now, register basic universal primal configurations
-        debug!("Legacy primal migration placeholder - using universal configuration instead");
+        // Register universal compute primal (replaces legacy Toadstool)
+        let compute_config = PrimalRegistry::create_compute_primal_config();
+        registry.register_primal(compute_config);
+        debug!("✅ Migrated legacy compute configuration to universal compute primal");
 
-        // TODO: Migrate Toadstool configuration when available
-        /*
-        if let Some(toadstool_config) = &legacy_config.toadstool {
-            let primal_config = PrimalConfiguration::from_legacy_toadstool_config(toadstool_config);
-            registry.register_primal(primal_config);
-        }
-        */
-
-        // TODO: Add other legacy primal migrations when config types are available
+        // Register universal storage primal (replaces legacy NestGate)
+        let mut storage_config =
+            PrimalConfiguration::new_template("storage", "Universal Storage Provider");
+        storage_config.capabilities = vec![PrimalCapability {
+            capability_type: "persistence".to_string(),
+            version: "1.0".to_string(),
+            parameters: HashMap::new(),
+            qos_metrics: QosMetrics::default(),
+        }];
+        registry.register_primal(storage_config);
+        debug!("✅ Migrated legacy storage configuration to universal storage primal");
 
         registry
     }

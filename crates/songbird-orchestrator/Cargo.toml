@@ -18,10 +18,10 @@ path = "src/main.rs"
 # All workspace crates
 songbird-core = { path = "../songbird-core" }
 songbird-network = { path = "../songbird-network" }
-songbird-security = { path = "../songbird-security" }
+# songbird-security = { path = "../songbird-security" } # Temporarily disabled
 songbird-discovery = { path = "../songbird-discovery" }
 songbird-observability = { path = "../songbird-observability" }
-songbird-federation = { path = "../songbird-federation" }
+# songbird-federation = { path = "../songbird-federation" } # Temporarily disabled
 songbird-config = { path = "../songbird-config" }
 songbird-cli = { path = "../songbird-cli" }
 songbird-errors = { path = "../songbird-errors" }

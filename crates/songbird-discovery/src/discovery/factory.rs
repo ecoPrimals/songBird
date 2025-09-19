@@ -1,177 +1,118 @@
-//! Service discovery factory for creating backend instances
+//! Universal service discovery factory for creating capability-based adapters
 
-use super::backends::{ConsulServiceDiscovery, KubernetesServiceDiscovery, StaticServiceDiscovery};
-use super::core::{DiscoveryConfig, ServiceDiscovery};
-use songbird_errors::{DiscoveryError, Result, SongbirdError};
+use super::backends::{
+    StaticServiceDiscovery, UniversalContainerOrchestration, UniversalServiceDiscovery,
+};
+use super::core::DiscoveryConfig;
+use crate::traits::ServiceDiscovery;
+use songbird_types::errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
+use tracing::{debug, info};
 
-/// Service discovery factory
-pub struct ServiceDiscoveryFactory;
+/// Universal service discovery factory that creates capability-based adapters
+pub struct UniversalDiscoveryFactory;
 
-impl ServiceDiscoveryFactory {
-    /// Create service discovery backend based on configuration
-    pub fn create(config: &DiscoveryConfig) -> Result<Box<dyn ServiceDiscovery>> {
-        match config.backend.as_str() {
-            "static" => {
-                tracing::info!("Creating static service discovery backend");
+impl UniversalDiscoveryFactory {
+    /// Create universal service discovery with auto-detection
+    pub async fn create_auto_detect() -> Result<Box<dyn ServiceDiscovery>> {
+        info!("🔍 Creating universal service discovery with auto-detection");
+
+        // Try universal service discovery first
+        if let Ok(universal) = UniversalServiceDiscovery::new().await {
+            info!("✅ Universal service discovery initialized");
+            return Ok(Box::new(universal));
+        }
+
+        // Fallback to container orchestration discovery
+        if let Ok(container) = UniversalContainerOrchestration::new().await {
+            info!("✅ Universal container orchestration initialized");
+            return Ok(Box::new(container));
+        }
+
+        // Final fallback to static discovery
+        info!("⚠️ Falling back to static service discovery");
+        Ok(Box::new(StaticServiceDiscovery::new()))
+    }
+
+    /// Create service discovery based on capability requirements
+    pub async fn create_for_capability(capability: &str) -> Result<Box<dyn ServiceDiscovery>> {
+        match capability {
+            "service_discovery" | "http_registry" => {
+                debug!(
+                    "Creating universal service discovery for capability: {}",
+                    capability
+                );
+                Ok(Box::new(UniversalServiceDiscovery::new().await?))
+            }
+            "container_orchestration" | "kubernetes" | "docker" => {
+                debug!(
+                    "Creating universal container orchestration for capability: {}",
+                    capability
+                );
+                Ok(Box::new(UniversalContainerOrchestration::new().await?))
+            }
+            "static" | "file_based" => {
+                debug!(
+                    "Creating static service discovery for capability: {}",
+                    capability
+                );
                 Ok(Box::new(StaticServiceDiscovery::new()))
             }
-            "consul" => {
-                let consul_url = config.consul_url.as_ref().ok_or_else(|| {
-                    SongbirdError::Discovery(Box::new(DiscoveryError {
-                        message: "Consul URL not provided for consul backend".to_string(),
-                        service: None,
-                        timeout: None,
-                        suggestion: Some("Set consul_url in discovery configuration".to_string()),
-                    }))
-                })?;
-
-                tracing::info!("Creating Consul service discovery backend: {}", consul_url);
-                Ok(Box::new(ConsulServiceDiscovery::new(consul_url.clone())))
+            _ => {
+                debug!("Unknown capability '{}', using auto-detection", capability);
+                Self::create_auto_detect().await
             }
-            "kubernetes" => {
-                let namespace = config.kubernetes_namespace.as_ref().ok_or_else(|| {
-                    SongbirdError::Discovery(Box::new(DiscoveryError {
-                        message: "Kubernetes namespace not provided for kubernetes backend"
-                            .to_string(),
-                        service: None,
-                        timeout: None,
-                        suggestion: Some(
-                            "Set kubernetes_namespace in discovery configuration".to_string(),
-                        ),
-                    }))
-                })?;
-
-                tracing::info!(
-                    "Creating Kubernetes service discovery backend: {}",
-                    namespace
-                );
-                Ok(Box::new(KubernetesServiceDiscovery::new(
-                    namespace.clone(),
-                )?))
-            }
-            _ => Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Unsupported discovery backend: {}", config.backend),
-                service: None,
-                timeout: None,
-                suggestion: Some("Use 'static', 'consul', or 'kubernetes' backend".to_string()),
-            }))),
         }
     }
 
-    /// Create static backend with predefined services
-    pub fn create_static_with_services(
-        services: Vec<super::core::ServiceInstance>,
-    ) -> Result<Box<dyn ServiceDiscovery>> {
-        tracing::info!(
-            "Creating static service discovery with {} predefined services",
-            services.len()
-        );
+    /// Create service discovery with environment-based detection
+    pub async fn create_from_environment() -> Result<Box<dyn ServiceDiscovery>> {
+        info!("🌍 Creating service discovery from environment detection");
 
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                // Convert ServiceInstance to ServiceInfo
-                let service_infos: Vec<crate::traits::service::ServiceInfo> = services
-                    .into_iter()
-                    .map(|service| {
-                        use chrono::Utc;
-                        use crate::traits::service::ServiceStatus;
-                        
-                        crate::traits::service::ServiceInfo {
-                            service_id: service.id,
-                            name: service.name,
-                            version: "1.0.0".to_string(),
-                            service_type: "static-service".to_string(),
-                            description: None,
-                            endpoints: vec![],
-                            health_check_endpoint: service.health_check_url,
-                            metadata: service.metadata.into_iter().map(|(k, v)| (k, serde_json::Value::String(v))).collect(),
-                            tags: service.tags,
-                            dependencies: vec![],
-                            status: ServiceStatus::Running,
-                            created_at: Utc::now(),
-                            updated_at: Utc::now(),
-                            instance_id: format!("static-{}", uuid::Uuid::new_v4()),
-                            host: service.address.ip().to_string(),
-                            port: service.address.port(),
-                        }
-                    })
-                    .collect();
-                
-                let discovery = StaticServiceDiscovery::with_services(service_infos).await;
-                Ok(Box::new(discovery) as Box<dyn ServiceDiscovery>)
-            })
-        })
+        // Check for service registry environment variables
+        if std::env::var("SERVICE_REGISTRY_URL").is_ok()
+            || std::env::var("CONSUL_HTTP_ADDR").is_ok()
+            || std::env::var("EUREKA_SERVER_URL").is_ok()
+        {
+            debug!("Detected service registry environment variables");
+            return Ok(Box::new(UniversalServiceDiscovery::new().await?));
+        }
+
+        // Check for container orchestration environment variables
+        if std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
+            || std::env::var("DOCKER_HOST").is_ok()
+            || std::path::Path::new("/.dockerenv").exists()
+        {
+            debug!("Detected container orchestration environment");
+            return Ok(Box::new(UniversalContainerOrchestration::new().await?));
+        }
+
+        // Default to auto-detection
+        Self::create_auto_detect().await
     }
 
-    /// Create backend from environment variables
-    pub fn create_from_env() -> Result<Box<dyn ServiceDiscovery>> {
-        let backend =
-            std::env::var("SONGBIRD_DISCOVERY_BACKEND").unwrap_or_else(|_| "static".to_string());
-
-        let config = match backend.as_str() {
-            "consul" => {
-                let consul_url = std::env::var("CONSUL_URL")
-                    .or_else(|_| std::env::var("CONSUL_HTTP_ADDR"))
-                    .unwrap_or_else(|_| "http://localhost:8500".to_string());
-
-                DiscoveryConfig::consul_config(consul_url)
-            }
-            "kubernetes" => {
-                let namespace =
-                    std::env::var("KUBERNETES_NAMESPACE").unwrap_or_else(|_| "default".to_string());
-
-                DiscoveryConfig::kubernetes_config(namespace)
-            }
-            _ => DiscoveryConfig::static_config(),
-        };
-
-        Self::create(&config)
-    }
-
-    /// Get available backend names
-    pub fn available_backends() -> Vec<&'static str> {
-        vec!["static", "consul", "kubernetes"]
-    }
-
-    /// Validate configuration
-    pub fn validate_config(config: &DiscoveryConfig) -> Result<()> {
+    /// Create service discovery based on configuration
+    pub async fn create_for_config(config: &DiscoveryConfig) -> Result<Box<dyn ServiceDiscovery>> {
         match config.backend.as_str() {
             "static" => {
-                // Static backend doesn't need additional validation
-                Ok(())
+                info!("Creating static service discovery backend");
+                Ok(Box::new(StaticServiceDiscovery::new()))
             }
-            "consul" => {
-                if config.consul_url.is_none() {
-                    return Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                        message: "Consul URL is required for consul backend".to_string(),
-                        service: None,
-                        timeout: None,
-                        suggestion: Some("Set consul_url in configuration".to_string()),
-                    })));
-                }
-                Ok(())
+            "universal" => {
+                info!("Creating universal service discovery backend");
+                Ok(Box::new(UniversalServiceDiscovery::new().await?))
             }
-            "kubernetes" => {
-                if config.kubernetes_namespace.is_none() {
-                    return Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                        message: "Kubernetes namespace is required for kubernetes backend"
-                            .to_string(),
-                        service: None,
-                        timeout: None,
-                        suggestion: Some("Set kubernetes_namespace in configuration".to_string()),
-                    })));
-                }
-                Ok(())
+            "container" | "kubernetes" | "docker" => {
+                info!("Creating universal container orchestration backend");
+                Ok(Box::new(UniversalContainerOrchestration::new().await?))
             }
-            _ => Err(SongbirdError::Discovery(Box::new(DiscoveryError {
-                message: format!("Unsupported backend: {}", config.backend),
-                service: None,
-                timeout: None,
-                suggestion: Some(format!(
-                    "Use one of: {}",
-                    Self::available_backends().join(", ")
-                )),
-            }))),
+            _ => {
+                info!(
+                    "Unknown backend '{}' - using auto-detection",
+                    config.backend
+                );
+                Self::create_auto_detect().await
+            }
         }
     }
 }

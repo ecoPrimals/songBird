@@ -72,12 +72,7 @@ fn test_songbird_error_discovery() {
 
 #[test]
 fn test_songbird_error_auth() {
-    let auth_error = SongbirdError::Auth(Box::new(AuthError {
-        message: "Login failed".to_string(),
-        user: Some("john_doe".to_string()),
-        reason: Some("Invalid password".to_string()),
-        suggestion: Some("Check username and password".to_string()),
-    }));
+    let auth_error = SongbirdError::security("Login failed");
 
     assert!(matches!(auth_error, SongbirdError::Auth(_)));
     

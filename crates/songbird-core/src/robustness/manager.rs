@@ -1,6 +1,6 @@
 //! Main robustness manager that coordinates all reliability patterns
 
-use super::bulkhead::{BulkheadError, BulkheadInstance};
+use super::bulkhead::BulkheadInstance;
 use super::circuit_breaker::CircuitBreakerInstance;
 use super::config::RobustnessConfig;
 use super::error_types::{CircuitBreakerState, HealthStatus};
@@ -10,7 +10,7 @@ use super::stats::{
     BulkheadStats, CircuitBreakerStats, HealthCheckStats, RateLimitStats, RetryStats,
     RobustnessStatus,
 };
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -82,9 +82,13 @@ impl RobustnessManager {
     }
 
     /// Execute a request with circuit breaker protection
-    pub async fn with_circuit_breaker<F, T>(&self, service_name: &str, operation: F) -> Result<T>
+    pub async fn with_circuit_breaker<F, T>(
+        &self,
+        service_name: &str,
+        operation: F,
+    ) -> SongbirdResult<T>
     where
-        F: std::future::Future<Output = Result<T>>,
+        F: std::future::Future<Output = SongbirdResult<T>>,
     {
         // Check if request is allowed by circuit breaker
         {
@@ -92,10 +96,9 @@ impl RobustnessManager {
             if let Some(breaker) = breakers.get_mut(service_name) {
                 breaker.allow_request()?;
             } else {
-                return Err(SongbirdError::config_field(
-                    "circuit_breaker".to_string(),
-                    format!("Circuit breaker '{service_name}' not found"),
-                ));
+                return Err(SongbirdError::configuration(format!(
+                    "Circuit breaker '{service_name}' not found"
+                )));
             }
         }
 
@@ -117,27 +120,29 @@ impl RobustnessManager {
     }
 
     /// Execute a request with rate limiting
-    pub async fn with_rate_limiting<F, T>(&self, service_name: &str, operation: F) -> Result<T>
+    pub async fn with_rate_limiting<F, T>(
+        &self,
+        service_name: &str,
+        operation: F,
+    ) -> SongbirdResult<T>
     where
-        F: std::future::Future<Output = Result<T>>,
+        F: std::future::Future<Output = SongbirdResult<T>>,
     {
         // Check rate limit
         {
             let mut limiters = self.rate_limiters.write().await;
             if let Some(limiter) = limiters.get_mut(service_name) {
                 if !limiter.allow_request() {
-                    return Err(SongbirdError::rate_limit_error(format!(
-                        "Rate limit exceeded for {}: {}/{}",
-                        service_name,
-                        limiter.get_current_rate(),
-                        limiter.config.requests_per_window
+                    return Err(SongbirdError::configuration(format!(
+                        "Rate limit exceeded for service: {}",
+                        service_name
                     )));
                 }
             } else {
-                return Err(SongbirdError::config_field(
-                    "rate_limiter".to_string(),
-                    format!("Rate limiter '{service_name}' not found"),
-                ));
+                return Err(SongbirdError::configuration(format!(
+                    "Rate limiter '{}' not found",
+                    service_name
+                )));
             }
         }
 
@@ -145,9 +150,9 @@ impl RobustnessManager {
     }
 
     /// Execute a request with bulkhead protection
-    pub async fn with_bulkhead<F, T>(&self, service_name: &str, operation: F) -> Result<T>
+    pub async fn with_bulkhead<F, T>(&self, service_name: &str, operation: F) -> SongbirdResult<T>
     where
-        F: std::future::Future<Output = Result<T>>,
+        F: std::future::Future<Output = SongbirdResult<T>>,
     {
         // Acquire bulkhead permit
         let permit = {
@@ -155,29 +160,14 @@ impl RobustnessManager {
             if let Some(bulkhead) = bulkheads.get_mut(service_name) {
                 match bulkhead.try_acquire_permit().await {
                     Ok(permit) => permit,
-                    Err(BulkheadError::QueueFull) => {
-                        return Err(SongbirdError::resource_exhausted_error(format!(
-                            "Bulkhead queue full: {}/{}",
-                            bulkhead.queued_requests, bulkhead.config.max_queue_size
-                        )));
-                    }
-                    Err(BulkheadError::QueueTimeout) => {
-                        return Err(SongbirdError::io_error(format!(
-                            "Bulkhead queue wait timeout: {}ms",
-                            bulkhead.config.queue_timeout.as_millis()
-                        )));
-                    }
-                    Err(BulkheadError::SemaphoreError) => {
-                        return Err(SongbirdError::io_error(
-                            "Bulkhead semaphore error".to_string(),
-                        ));
+                    Err(err) => {
+                        return Err(err);
                     }
                 }
             } else {
-                return Err(SongbirdError::config_field(
-                    "bulkhead".to_string(),
-                    format!("Bulkhead '{service_name}' not found"),
-                ));
+                return Err(SongbirdError::configuration(format!(
+                    "Bulkhead '{service_name}' not found"
+                )));
             }
         };
 
@@ -191,9 +181,13 @@ impl RobustnessManager {
     }
 
     /// Execute a request with comprehensive robustness patterns
-    pub async fn execute_with_robustness<F, T>(&self, service_name: &str, operation: F) -> Result<T>
+    pub async fn execute_with_robustness<F, T>(
+        &self,
+        service_name: &str,
+        operation: F,
+    ) -> SongbirdResult<T>
     where
-        F: std::future::Future<Output = Result<T>> + Clone,
+        F: std::future::Future<Output = SongbirdResult<T>> + Clone,
     {
         self.with_circuit_breaker(service_name, async {
             self.with_rate_limiting(service_name, async {
@@ -209,7 +203,7 @@ impl RobustnessManager {
         &self,
         service_name: &str,
         check_fn: F,
-    ) -> Result<HealthStatus>
+    ) -> SongbirdResult<HealthStatus>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = bool>,
@@ -218,10 +212,9 @@ impl RobustnessManager {
         if let Some(checker) = checkers.get_mut(service_name) {
             Ok(checker.perform_health_check(check_fn).await)
         } else {
-            Err(SongbirdError::config_field(
-                "health_checker".to_string(),
-                format!("Health checker '{service_name}' not found"),
-            ))
+            Err(SongbirdError::configuration(format!(
+                "Health checker '{service_name}' not found"
+            )))
         }
     }
 

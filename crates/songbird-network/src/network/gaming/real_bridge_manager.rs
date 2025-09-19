@@ -294,12 +294,7 @@ impl RealBridgeManager {
         // Initialize NAT traversal
         let mut nat_manager = NatTraversalManager::new(NatTraversalConfig::default());
         let bind_addr = "0.0.0.0:0".parse().map_err(|e| {
-            songbird_errors::SongbirdError::Network(Box::new(songbird_errors::NetworkError {
-                message: format!("Failed to parse NAT manager bind address: {e}"),
-                endpoint: Some("0.0.0.0:0".to_string()),
-                port: Some(0),
-                protocol: Some("UDP".to_string()),
-            }))
+            songbird_errors::SongbirdError::network(format!("Failed to parse NAT manager bind address: {}", e))
         })?;
         nat_manager.initialize(bind_addr).await?;
 
@@ -321,7 +316,7 @@ impl RealBridgeManager {
         // Initialize metrics collector
         let metrics_collector = MetricsCollector::new();
 
-        info!("✅ Real Bridge Manager initialized successfully");
+        info!("✅ Real Bridge Manager initialized successfully ");
 
         Ok(Self {
             config,
@@ -349,14 +344,11 @@ impl RealBridgeManager {
             protocol_type: "IPX".to_string(),
             ports: vec![host_port],
             confidence: 0.9,
-            packet_patterns: vec!["IPX Protocol Signature".to_string()],
+            packet_patterns: vec!["IPX Protocol Signature ".to_string()],
         }];
 
         if detected_protocols.is_empty() {
-            return Err(SongbirdError::Protocol(Box::new(ProtocolError {
-                protocol: Some(game_name.clone()),
-                message: "No gaming protocol detected on specified port".to_string(),
-            })));
+            return Err(SongbirdError::network("No gaming protocol detected on specified port ".to_string()));
         }
 
         let primary_protocol = &detected_protocols[0];
@@ -396,12 +388,7 @@ impl RealBridgeManager {
                 )
                 .parse()
                 .map_err(|_| {
-                    SongbirdError::Network(Box::new(NetworkError {
-                        message: "Failed to parse local IP address".to_string(),
-                        endpoint: None,
-                        port: None,
-                        protocol: None,
-                    }))
+                    SongbirdError::network("Failed to parse local IP address ".to_string())
                 })?,
                 external_address: nat_info.external_address,
                 game_executable: Some(game_name.clone()),
@@ -446,12 +433,7 @@ impl RealBridgeManager {
 
         let mut sessions = self.active_sessions.write().await;
         let session = sessions.get_mut(&session_code).ok_or_else(|| {
-            SongbirdError::Network(Box::new(NetworkError {
-                message: "Session not found: {session_code}".to_string(),
-                endpoint: None,
-                port: None,
-                protocol: None,
-            }))
+            SongbirdError::network(format!("Session not found: {}", session_code))
         })?;
 
         // Generate player info
@@ -526,10 +508,7 @@ impl RealBridgeManager {
             .translators
             .get(&session.protocol_class)
             .ok_or_else(|| {
-                SongbirdError::Protocol(Box::new(ProtocolError {
-                    protocol: Some(session.protocol_class.to_string()),
-                    message: "No translator available for protocol".to_string(),
-                }))
+                SongbirdError::network("No translator available for protocol".to_string())
             })?;
 
         // Setup socket listeners based on protocol
@@ -777,13 +756,8 @@ impl SocketPool {
         // Use configurable binding instead of hardcoded 0.0.0.0
         let bind_addr = if env_config.bind_address == "0.0.0.0" {
             if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
-                return Err(SongbirdError::Config {
-                    field: Some("gaming_bind_address".to_string()),
-                    message: "Gaming bridge binding to 0.0.0.0 requires explicit approval"
-                        .to_string(),
-                    context: Some("network_configuration".to_string()),
-                    suggestion: Some("Check configuration values and network settings".to_string()),
-                });
+                return Err(SongbirdError::configuration("Gaming bridge binding to 0.0.0.0 requires explicit approval"
+                        .to_string()));
             }
             format!("0.0.0.0:{}", self.next_port)
         } else {
@@ -800,12 +774,7 @@ impl SocketPool {
                 }
                 Ok(self.next_port - 1)
             }
-            Err(_) => Err(SongbirdError::Network(Box::new(NetworkError {
-                message: "Failed to bind to UDP port".to_string(),
-                endpoint: None,
-                port: None,
-                protocol: None,
-            }))),
+            Err(_) => Err(SongbirdError::network("Failed to bind to UDP port ".to_string())),
         }
     }
 
@@ -826,15 +795,8 @@ impl SocketPool {
             let env_config = songbird_config::config::environment::EnvironmentConfig::default();
             let bind_addr = if env_config.bind_address == "0.0.0.0" {
                 if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
-                    return Err(SongbirdError::Config {
-                        field: Some("tcp_bind_address".to_string()),
-                        message: "TCP bridge binding to 0.0.0.0 requires explicit approval"
-                            .to_string(),
-                        context: Some("network_configuration".to_string()),
-                        suggestion: Some(
-                            "Check configuration values and network settings".to_string(),
-                        ),
-                    });
+                    return Err(SongbirdError::configuration("TCP bridge binding to 0.0.0.0 requires explicit approval"
+                            .to_string()));
                 }
                 "0.0.0.0:{port}".to_string()
             } else {
@@ -851,12 +813,7 @@ impl SocketPool {
             }
         }
 
-        Err(SongbirdError::Network(Box::new(NetworkError {
-            message: "No available TCP ports".to_string(),
-            endpoint: None,
-            port: None,
-            protocol: None,
-        })))
+        Err(SongbirdError::network("No available TCP ports".to_string()))
     }
 
     async fn deallocate_port(&mut self, port: u16) {

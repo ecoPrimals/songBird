@@ -105,17 +105,11 @@ pub fn create_universal_context(
     session_id: String,
 ) -> PrimalContext {
     PrimalContext {
-        primal_id: "ecosystem_discovery".to_string(),
-        user_id,
-        device_id,
-        session_id,
-        security_level: crate::traits::SecurityLevel::User, // Changed from Standard to User
-        network_location: crate::traits::NetworkLocation {
-            ip_address: "127.0.0.1".to_string(),
-            subnet: None,
-            network_id: None,
-            geo_location: None,
-        },
+        org_id: Some("ecosystem_discovery".to_string()),
+        user_id: Some(user_id),
+        device_id: Some(device_id),
+        session_id: Some(session_id),
+        request_id: Some(uuid::Uuid::new_v4().to_string()),
         metadata: HashMap::new(),
     }
 }

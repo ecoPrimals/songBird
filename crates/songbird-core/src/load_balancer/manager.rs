@@ -11,7 +11,8 @@ use songbird_errors::{SongbirdError, SongbirdResponse, SongbirdResult, success};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::info;
-use songbird_network::CommunicationLayer;
+use songbird_errors::SongbirdResult;
+// use songbird_network::CommunicationLayer; // Temporarily disabled for deep work
 
 /// Load balancer manager - handles service discovery and load balancing
 pub struct LoadBalancerManager {
@@ -166,7 +167,7 @@ impl LoadBalancerManager {
     }
 
     /// Perform health check on all instances
-    pub fn health_check(SongbirdResult<Vec<(String, bool)>>) -> SongbirdResult<()> {
+    pub fn health_check(SongbirdResult<Vec<(String>>) -> SongbirdResult<()> {
         let instances = self.instances.read().await;
         let mut health_results = Vec::new();
 

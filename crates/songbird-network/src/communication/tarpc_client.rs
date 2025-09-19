@@ -7,7 +7,7 @@
 use crate::communication::{
     CommunicationLayer, CommunicationResponse, CommunicationStats, ServiceAddress, ServiceMessage,
 };
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
@@ -116,7 +116,7 @@ impl TarpcCommunicationClient {
             tarpc::tokio_serde::formats::Json::default()
         })
         .await
-        .map_err(|e| SongbirdError::network_error(format!("Failed to connect to {addr}: {e}")))?;
+        .map_err(|e| SongbirdError::network(format!("Failed to connect to {addr}: {e}")))?;
 
         let client =
             SongbirdCommunicationClient::new(tarpc::client::Config::default(), transport).spawn();
@@ -353,14 +353,14 @@ pub async fn start_tarpc_server(bind_addr: &str, service_impl: TarpcServiceImpl)
     let listener = tokio::net::TcpListener::bind(bind_addr)
         .await
         .map_err(|e| {
-            SongbirdError::network_error(&format!("Failed to bind to {}: {}", bind_addr, e))
+            SongbirdError::network(&format!("Failed to bind to {}: {}", bind_addr, e))
         })?;
 
     info!("✅ Canonical tarpc server listening on {}", bind_addr);
 
     loop {
         let (stream, addr) = listener.accept().await.map_err(|e| {
-            SongbirdError::network_error(&format!("Failed to accept connection: {}", e))
+            SongbirdError::network(&format!("Failed to accept connection: {}", e))
         })?;
 
         debug!("🔗 New canonical tarpc connection from {}", addr);

@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use songbird_config::SongbirdConfig;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::time::Instant;
 use tracing::info;
 
@@ -21,7 +21,7 @@ impl ProductionBenchmarkRunner {
     }
 
     /// Run full benchmark suite
-    pub async fn run_full_benchmark_suite(&mut self) -> Result<BenchmarkResults> {
+    pub async fn run_full_benchmark_suite(&mut self) -> SongbirdResult<BenchmarkResults> {
         info!("🚀 Starting full production benchmark suite");
 
         let start_time = Instant::now();
@@ -55,7 +55,7 @@ impl ProductionBenchmarkRunner {
     }
 
     /// Run load balancer benchmark
-    async fn run_load_balancer_benchmark(&self) -> Result<LoadBalancerBenchmark> {
+    async fn run_load_balancer_benchmark(&self) -> SongbirdResult<LoadBalancerBenchmark> {
         info!("🔄 Running load balancer benchmark");
 
         // Basic load balancer performance test
@@ -67,7 +67,7 @@ impl ProductionBenchmarkRunner {
     }
 
     /// Run cache benchmark
-    async fn run_cache_benchmark(&self) -> Result<CacheBenchmark> {
+    async fn run_cache_benchmark(&self) -> SongbirdResult<CacheBenchmark> {
         info!("💾 Running cache benchmark");
 
         // Basic cache performance test
@@ -79,7 +79,7 @@ impl ProductionBenchmarkRunner {
     }
 
     /// Run object pool benchmark
-    async fn run_object_pool_benchmark(&self) -> Result<ObjectPoolBenchmark> {
+    async fn run_object_pool_benchmark(&self) -> SongbirdResult<ObjectPoolBenchmark> {
         info!("🏊 Running object pool benchmark");
 
         // Basic object pool performance test
@@ -91,7 +91,7 @@ impl ProductionBenchmarkRunner {
     }
 
     /// Run batch processing benchmark
-    async fn run_batch_processing_benchmark(&self) -> Result<BatchProcessingBenchmark> {
+    async fn run_batch_processing_benchmark(&self) -> SongbirdResult<BatchProcessingBenchmark> {
         info!("📦 Running batch processing benchmark");
 
         // Basic batch processing performance test
@@ -103,7 +103,7 @@ impl ProductionBenchmarkRunner {
     }
 
     /// Run memory benchmark
-    async fn run_memory_benchmark(&self) -> Result<MemoryBenchmark> {
+    async fn run_memory_benchmark(&self) -> SongbirdResult<MemoryBenchmark> {
         info!("🧠 Running memory benchmark");
 
         // Basic memory performance test

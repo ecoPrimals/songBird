@@ -3,7 +3,8 @@
 //!
 //! Comprehensive health monitoring system
 
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::sync::Arc;
 
 /// Health monitor trait for implementing custom health monitoring

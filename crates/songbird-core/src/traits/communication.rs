@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 /// Communication layer trait
 #[async_trait]
@@ -15,25 +15,27 @@ pub trait CommunicationLayer: Send + Sync {
         &self,
         target: ServiceAddress,
         message: ServiceMessage,
-    ) -> Result<CommunicationResponse>;
+    ) -> SongbirdResult<CommunicationResponse>;
     /// Broadcast a message to all services
-    async fn broadcast(&self, message: ServiceMessage) -> Result<Vec<CommunicationResponse>>;
-    /// Listen for incoming messages
-    async fn listen(
+    async fn broadcast(
         &self,
-    ) -> Result<Box<dyn Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>>;
+        message: ServiceMessage,
+    ) -> SongbirdResult<Vec<CommunicationResponse>>;
+    /// Listen for incoming messages
+    async fn listen(&self)
+        -> SongbirdResult<Box<dyn Stream<Item = ServiceAddress> + Send + Unpin>>;
     /// Subscribe to a topic
-    async fn subscribe(&self, topic: &str) -> Result<()>;
+    async fn subscribe(&self, topic: &str) -> SongbirdResult<()>;
     /// Unsubscribe from a topic
-    async fn unsubscribe(&self, topic: &str) -> Result<()>;
+    async fn unsubscribe(&self, topic: &str) -> SongbirdResult<()>;
     /// Connect to the communication layer
-    async fn connect(&self) -> Result<()>;
+    async fn connect(&self) -> SongbirdResult<()>;
     /// Disconnect from the communication layer  
-    async fn disconnect(&self) -> Result<()>;
+    async fn disconnect(&self) -> SongbirdResult<()>;
     /// Check if connected
     async fn is_connected(&self) -> bool;
     /// Get communication statistics
-    async fn get_stats(&self) -> Result<CommunicationStats>;
+    async fn get_stats(&self) -> SongbirdResult<CommunicationStats>;
 }
 /// Service address for routing messages
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

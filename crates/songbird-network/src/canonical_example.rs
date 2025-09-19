@@ -131,7 +131,7 @@ mod tests {
         assert!(result.is_ok());
 
         let response = result
-            .map_err(|e| SongbirdError::network_error(format!("Test operation failed: {e}")))?;
+            .map_err(|e| SongbirdError::network(format!("Test operation failed: {e}")))?;
         assert!(response.confidence > 0.9);
         assert!(matches!(response.data.status, NetworkStatus::Healthy));
 
@@ -148,7 +148,7 @@ mod tests {
         assert!(result.is_ok());
 
         let response = result
-            .map_err(|e| SongbirdError::network_error(format!("Test operation failed: {e}")))?;
+            .map_err(|e| SongbirdError::network(format!("Test operation failed: {e}")))?;
         assert!(!response.data.is_empty());
         assert!(response.confidence > 0.8);
     }

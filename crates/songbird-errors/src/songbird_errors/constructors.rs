@@ -3,7 +3,7 @@
 /// This module contains all the convenient constructor methods for creating
 /// different types of SongbirdError instances.
 
-use super::core::SongbirdError;
+use songbird_types::errors::SongbirdError;
 use super::specific::*;
 
 impl SongbirdError {
@@ -14,12 +14,7 @@ impl SongbirdError {
 
     /// Create a new configuration error
     pub fn config(message: impl Into<String>) -> Self {
-        SongbirdError::Config {
-            message: message.into(),
-            field: None,
-            suggestion: None,
-            context: None,
-        }
+        SongbirdError::configuration(message.into())
     }
 
     /// Create a new configuration error with field
@@ -42,18 +37,12 @@ impl SongbirdError {
 
     /// Create a new network error
     pub fn network_error(message: impl Into<String>) -> Self {
-        SongbirdError::Network(Box::new(NetworkError {
-            message: message.into(),
-            endpoint: None,
-            port: None,
-            protocol: None,
-        }))
+        SongbirdError::network(message.into()))
     }
 
     /// Create a connection limit exceeded error
     pub fn connection_limit_exceeded(max_connections: usize) -> Self {
-        SongbirdError::Network(Box::new(NetworkError {
-            message: format!("Connection limit exceeded: {max_connections} maximum connections"),
+        SongbirdError::network(format!("Connection limit exceeded: {max_connections),
             endpoint: None,
             port: None,
             protocol: Some("RPC".to_string()),
@@ -62,8 +51,7 @@ impl SongbirdError {
 
     /// Create a connection not found error
     pub fn connection_not_found(connection_id: impl Into<String>) -> Self {
-        SongbirdError::Network(Box::new(NetworkError {
-            message: format!("Connection not found: {}", connection_id.into()),
+        SongbirdError::network(format!("Connection not found: {)),
             endpoint: None,
             port: None,
             protocol: Some("RPC".to_string()),
@@ -72,38 +60,22 @@ impl SongbirdError {
 
     /// Create a new service error
     pub fn service_error(service: impl Into<String>, message: impl Into<String>) -> Self {
-        SongbirdError::Service(Box::new(ServiceError {
-            service: service.into(),
-            message: message.into(),
-            status: None,
-            suggestion: None,
-        }))
+        SongbirdError::service(service.into(), message.into())
     }
 
     /// Create a new discovery error
     pub fn discovery_error(message: impl Into<String>) -> Self {
-        SongbirdError::Discovery(Box::new(DiscoveryError {
-            message: message.into(),
-            service: None,
-            timeout: None,
-            suggestion: None,
-        }))
+        SongbirdError::service("discovery", message.into())
     }
 
     /// Create a new protocol error
     pub fn protocol_error(message: impl Into<String>) -> Self {
-        SongbirdError::Protocol(Box::new(ProtocolError {
-            message: message.into(),
-            protocol: None,
-        }))
+        SongbirdError::network(message.into()))
     }
 
     /// Create a new authentication error
     pub fn auth_error(message: impl Into<String>) -> Self {
-        SongbirdError::Auth(Box::new(AuthError {
-            message: message.into(),
-            provider: None,
-        }))
+        SongbirdError::security(message.into())
     }
 
     /// Create a new gaming error
@@ -202,12 +174,7 @@ impl SongbirdError {
 
     /// Create a security error
     pub fn security_error(message: impl Into<String>) -> Self {
-        SongbirdError::Security {
-            message: message.into(),
-            context: None,
-            severity: None,
-            suggestion: None,
-        }
+        SongbirdError::security(message.into())
     }
 
     /// Create a tunnel creation error
@@ -240,11 +207,7 @@ impl SongbirdError {
 
     /// Create a network detection error
     pub fn network_detection_error(message: impl Into<String>) -> Self {
-        SongbirdError::NetworkDetection {
-            message: message.into(),
-            interface: None,
-            suggestion: None,
-        }
+        SongbirdError::network(message.into())
     }
 
     /// Create an unsupported channel type error
@@ -266,11 +229,7 @@ impl SongbirdError {
 
     /// Create a load balancer error
     pub fn load_balancer_error(message: impl Into<String>) -> Self {
-        SongbirdError::LoadBalancer {
-            message: message.into(),
-            backend: None,
-            suggestion: None,
-        }
+        SongbirdError::service("load_balancer", message.into())
     }
 
     /// Create a circuit breaker failure error

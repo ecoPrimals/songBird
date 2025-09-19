@@ -32,6 +32,7 @@ mod traditional_pattern {
     use super::*;
     use async_trait::async_trait;
     use std::sync::Arc;
+use songbird_errors::SongbirdResult;
 
     #[async_trait]
     pub trait TraditionalCacheProvider {

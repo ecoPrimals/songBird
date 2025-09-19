@@ -1,0 +1,14 @@
+/home/eastgate/Development/ecoPrimals/songbird/my_experiment/target/debug/deps/serde-99652f658306af79.d: /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/lib.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/integer128.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/mod.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/de.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/ser.rs /home/eastgate/Development/ecoPrimals/songbird/my_experiment/target/debug/build/serde-01809af93331cc5b/out/private.rs
+
+/home/eastgate/Development/ecoPrimals/songbird/my_experiment/target/debug/deps/libserde-99652f658306af79.rlib: /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/lib.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/integer128.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/mod.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/de.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/ser.rs /home/eastgate/Development/ecoPrimals/songbird/my_experiment/target/debug/build/serde-01809af93331cc5b/out/private.rs
+
+/home/eastgate/Development/ecoPrimals/songbird/my_experiment/target/debug/deps/libserde-99652f658306af79.rmeta: /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/lib.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/integer128.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/mod.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/de.rs /home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/ser.rs /home/eastgate/Development/ecoPrimals/songbird/my_experiment/target/debug/build/serde-01809af93331cc5b/out/private.rs
+
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/lib.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/integer128.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/mod.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/de.rs:
+/home/eastgate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.225/src/private/ser.rs:
+/home/eastgate/Development/ecoPrimals/songbird/my_experiment/target/debug/build/serde-01809af93331cc5b/out/private.rs:
+
+# env-dep:OUT_DIR=/home/eastgate/Development/ecoPrimals/songbird/my_experiment/target/debug/build/serde-01809af93331cc5b/out

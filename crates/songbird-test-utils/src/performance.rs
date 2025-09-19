@@ -106,17 +106,14 @@ where
         let start = Instant::now();
 
         operation().await.map_err(|e| {
-            SongbirdError::service_error("service", 
-                "benchmark",
-                format!("Benchmark iteration {i} failed: {e}"),
-            )
+            SongbirdError::service("benchmark", format!("Benchmark iteration {i} failed: {e}"))
         })?;
 
         let duration = start.elapsed();
         measurement.record(duration);
     }
 
-    Ok(measurement))
+    Ok(measurement)
 }
 
 /// Benchmark a synchronous function multiple times
@@ -134,17 +131,14 @@ where
         let start = Instant::now();
 
         operation().map_err(|e| {
-            SongbirdError::service_error("service", 
-                "benchmark",
-                format!("Benchmark iteration {i} failed: {e}"),
-            )
+            SongbirdError::service("benchmark", format!("Benchmark iteration {i} failed: {e}"))
         })?;
 
         let duration = start.elapsed();
         measurement.record(duration);
     }
 
-    Ok(measurement))
+    Ok(measurement)
 }
 
 /// Load testing utilities
@@ -238,7 +232,7 @@ impl LoadTester {
         // Collect results from all users
         for handle in handles {
             let user_samples = handle.await.map_err(|e| {
-                SongbirdError::service_error("load-test", format!("Load test task failed: {e}"))
+                SongbirdError::service("load-test", format!("Load test task failed: {e}"))
             })?;
 
             results.samples.extend(user_samples);
@@ -247,7 +241,7 @@ impl LoadTester {
         results.total_duration = start_time.elapsed();
         results.calculate_metrics();
 
-        Ok(results))
+        Ok(results)
     }
 }
 

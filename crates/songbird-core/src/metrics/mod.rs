@@ -10,6 +10,7 @@ pub use capability_adapters::UniversalMetricsAdapter;
 
 // Temporary stub types for backward compatibility
 use serde::{Deserialize, Serialize};
+use songbird_errors::SongbirdResult;
 
 /// Stub for ComputeMetrics (delegated to capability adapters)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,9 +54,7 @@ pub trait MetricsCapabilityAdapter: Send + Sync {
     fn get_compute_metrics(&self) -> ComputeMetrics;
 
     /// Collect compute metrics asynchronously
-    async fn collect_compute_metrics(
-        &self,
-    ) -> Result<ComputeMetrics, Box<dyn std::error::Error + Send + Sync>>;
+    async fn collect_compute_metrics(&self) -> SongbirdResult<ComputeMetrics>;
 }
 
 /// Implement the trait for UniversalMetricsAdapter
@@ -66,9 +65,7 @@ impl MetricsCapabilityAdapter for UniversalMetricsAdapter {
         ComputeMetrics::default()
     }
 
-    async fn collect_compute_metrics(
-        &self,
-    ) -> Result<ComputeMetrics, Box<dyn std::error::Error + Send + Sync>> {
+    async fn collect_compute_metrics(&self) -> SongbirdResult<ComputeMetrics> {
         // Default implementation - would collect from primals
         Ok(ComputeMetrics::default())
     }

@@ -123,7 +123,7 @@ fn get_compute_capabilities() -> Vec<PrimalCapability> {
             algorithms: vec!["round_robin".to_string()],
         },
         PrimalCapability::AutoScaling {
-            metrics: vec!["cpu".to_string(), "memory".to_string()],
+            strategies: vec!["cpu".to_string(), "memory".to_string()],
         },
     ]
 }
@@ -138,7 +138,7 @@ fn get_ai_capabilities() -> Vec<PrimalCapability> {
             mcp_support: false, // Default to false, let primal advertise if supported
         },
         PrimalCapability::MachineLearning {
-            training_support: false, // Default inference only
+            frameworks: vec!["inference".to_string()], // Default inference only
         },
         PrimalCapability::NaturalLanguage {
             languages: vec!["en".to_string()], // Default English
@@ -150,7 +150,7 @@ fn get_ai_capabilities() -> Vec<PrimalCapability> {
 fn get_orchestration_capabilities() -> Vec<PrimalCapability> {
     vec![
         PrimalCapability::Orchestration {
-            features: vec!["universal".to_string()], // Changed from primals to features
+            platforms: vec!["universal".to_string()], // Changed from primals to features
         },
         PrimalCapability::ServiceDiscovery {
             protocols: vec!["http".to_string()], // Most common standard
@@ -168,7 +168,7 @@ fn get_network_capabilities() -> Vec<PrimalCapability> {
             protocols: vec!["tcp".to_string(), "udp".to_string()],
         },
         PrimalCapability::ProxyServices {
-            types: vec!["http".to_string(), "tcp".to_string()],
+            protocols: vec!["http".to_string(), "tcp".to_string()],
         },
         PrimalCapability::VpnServices {
             protocols: vec!["wireguard".to_string()],
@@ -241,7 +241,7 @@ pub fn infer_capabilities_from_context(
         || dir_lower.contains("os")
     {
         capabilities.push(PrimalCapability::Orchestration {
-            features: vec!["universal".to_string()],
+            platforms: vec!["universal".to_string()],
         });
     }
 

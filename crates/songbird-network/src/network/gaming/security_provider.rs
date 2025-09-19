@@ -15,7 +15,7 @@
 use crate::network::gaming::wireguard_integration::GamingTunnelManager;
 use async_trait::async_trait;
 use songbird_config::universal_primals::{PrimalConfiguration, PrimalRegistry};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -717,14 +717,7 @@ impl BSTPSecurityProvider {
             info!("🐕 BearDog crypto provider initialized successfully");
             Ok(Self {})
         } else {
-            Err(songbird_errors::SongbirdError::Security {
-                message: "BearDog not available".to_string(),
-                context: Some("Set BEARDOG_AVAILABLE=true to simulate".to_string()),
-                severity: Some("error".to_string()),
-                suggestion: Some(
-                    "Enable BearDog integration or use alternative security provider".to_string(),
-                ),
-            })
+            Err(songbird_errors::SongbirdError::security("BearDog not available"))
         }
     }
 }

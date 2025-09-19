@@ -1,4 +1,3 @@
-
 // Chaos Engineering Configuration Types
 //
 // Canonical configuration types for chaos engineering experiments.

@@ -17,7 +17,6 @@
 pub mod ecosystem;
 pub mod engine;
 pub mod legacy;
-pub mod network_scan;
 pub mod parsing;
 pub mod types;
 
@@ -28,10 +27,7 @@ pub use legacy::{
     discover_from_well_known_locations, get_configured_service_endpoints,
     query_universal_primal_services, register_configured_primals,
 };
-pub use network_scan::{
-    get_common_primal_ports, perform_network_scan, probe_primal_endpoint, scan_for_primal_type,
-    scan_network_range, test_endpoint_connectivity,
-};
+// Network scan functionality removed - using legacy discovery methods
 pub use parsing::{
     discover_capabilities_from_service, extract_metadata_from_info,
     get_default_capabilities_for_type, infer_primal_type_from_capabilities,

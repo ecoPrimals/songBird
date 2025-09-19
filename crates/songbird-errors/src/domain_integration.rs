@@ -87,7 +87,7 @@ pub fn network_error_with_context(
         context.domain,
         context.operation
     );
-    SongbirdError::network_error(&full_message)
+    SongbirdError::network(&full_message)
 }
 
 /// Helper function to create service errors with context
@@ -120,7 +120,7 @@ where
                 ))
             }
             SongbirdError::Network { message, .. } => {
-                SongbirdError::network_error(&format!(
+                SongbirdError::network(&format!(
                     "{} (context: {} -> {})",
                     message, context.domain, context.operation
                 ))

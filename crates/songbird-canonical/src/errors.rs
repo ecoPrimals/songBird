@@ -80,6 +80,10 @@ pub const fn success_result<T>(data: T) -> T {
 }
 
 /// Create a successful unit result
+///
+/// # Errors
+/// This function never returns an error - it always succeeds with `Ok(())`
+#[allow(clippy::unnecessary_wraps)]
 pub fn unit_success() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }

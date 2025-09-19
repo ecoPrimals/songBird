@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use songbird_config::SongbirdConfig;
-use songbird_errors::{Result, ServiceError};
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -135,7 +135,7 @@ impl Orchestrator {
     ///
     /// # Returns
     /// Result containing the new orchestrator instance or an error
-    pub fn new(config: SongbirdConfig) -> Result<Self> {
+    pub fn new(config: SongbirdConfig) -> SongbirdResult<Self> {
         Ok(Self {
             config,
             start_time: std::time::SystemTime::now(),
@@ -191,7 +191,7 @@ impl Orchestrator {
     ///
     /// # Returns  
     /// Result indicating successful startup or error
-    pub async fn start(&self) -> Result<()> {
+    pub async fn start(&self) -> SongbirdResult<()> {
         tracing::info!("🎼 Songbird Orchestrator starting...");
         Ok(())
     }
@@ -202,7 +202,7 @@ impl Orchestrator {
     ///
     /// # Returns
     /// Returns the result of the operation
-    pub async fn stop(&self) -> Result<()> {
+    pub async fn stop(&self) -> SongbirdResult<()> {
         tracing::info!("🛑 Songbird Orchestrator stopping...");
         Ok(())
     }
@@ -223,7 +223,7 @@ impl Orchestrator {
     ///
     /// # Returns
     /// Returns a vector of discovered service names
-    pub async fn discover_services(&self) -> Result<Vec<String>> {
+    pub async fn discover_services(&self) -> SongbirdResult<Vec<String>> {
         // Basic service discovery implementation
         Ok(vec!["orchestrator".to_string(), "health".to_string()])
     }
@@ -245,7 +245,7 @@ impl Orchestrator {
     pub async fn register_service(
         &self,
         service_info: songbird_discovery::traits::service::ServiceInfo,
-    ) -> Result<()> {
+    ) -> SongbirdResult<()> {
         let service_id = service_info.service_id.clone();
 
         // Add service to registry
@@ -288,7 +288,7 @@ impl Orchestrator {
     }
 
     /// Unregister a service
-    pub async fn unregister_service(&self, service_id: &str) -> Result<()> {
+    pub async fn unregister_service(&self, service_id: &str) -> SongbirdResult<()> {
         self.services.write().remove(service_id);
         self.service_health.write().remove(service_id);
         self.service_metrics.write().remove(service_id);
@@ -305,21 +305,17 @@ impl Orchestrator {
         &self,
         service_id: &str,
         health: ServiceHealth,
-    ) -> Result<()> {
+    ) -> SongbirdResult<()> {
         if self.services.read().contains_key(service_id) {
             self.service_health
                 .write()
                 .insert(service_id.to_string(), health);
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::Service(Box::new(
-                ServiceError {
-                    service: "orchestrator".to_string(),
-                    message: "Failed to update service health".to_string(),
-                    status: Some("error".to_string()),
-                    suggestion: Some("Check service configuration".to_string()),
-                },
-            )))
+            Err(songbird_errors::SongbirdError::service(
+                "orchestrator",
+                "Failed to update service health",
+            ))
         }
     }
 
@@ -343,21 +339,17 @@ impl Orchestrator {
         &self,
         service_id: &str,
         metrics: songbird_discovery::traits::service::ServiceMetrics,
-    ) -> Result<()> {
+    ) -> SongbirdResult<()> {
         if self.services.read().contains_key(service_id) {
             self.service_metrics
                 .write()
                 .insert(service_id.to_string(), metrics);
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::Service(Box::new(
-                ServiceError {
-                    service: "orchestrator".to_string(),
-                    message: "Failed to update service metrics".to_string(),
-                    status: Some("error".to_string()),
-                    suggestion: Some("Check metrics configuration".to_string()),
-                },
-            )))
+            Err(songbird_errors::SongbirdError::service(
+                "orchestrator",
+                "Failed to update service metrics",
+            ))
         }
     }
 }

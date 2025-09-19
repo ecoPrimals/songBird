@@ -2,7 +2,7 @@
 
 use super::config::CircuitBreakerConfig;
 use super::error_types::CircuitBreakerState;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 use std::time::Instant;
 
 /// Circuit breaker instance
@@ -37,7 +37,7 @@ impl CircuitBreakerInstance {
     }
 
     /// Check if a request is allowed through the circuit breaker
-    pub fn allow_request(&mut self) -> Result<()> {
+    pub fn allow_request(&mut self) -> SongbirdResult<()> {
         self.total_requests += 1;
 
         match self.state {
@@ -47,10 +47,7 @@ impl CircuitBreakerInstance {
                     self.transition_to_half_open();
                     Ok(())
                 } else {
-                    Err(SongbirdError::circuit_breaker_error(
-                        self.config.service_name.clone(),
-                        "Circuit breaker is open".to_string(),
-                    ))
+                    Err(SongbirdError::configuration("Circuit breaker is open"))
                 }
             }
             CircuitBreakerState::HalfOpen => {

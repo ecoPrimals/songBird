@@ -18,7 +18,7 @@ use jsonrpsee::{
 use reqwest::Client as JsonRpcClient;
 use serde::{Deserialize, Serialize};
 use songbird_errors::SongbirdResult;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -115,7 +115,7 @@ impl JsonRpcCommunicationClient {
             .request_timeout(self.config.request_timeout)
             .build(url)
             .map_err(|e| {
-                SongbirdError::network_error(format!("Failed to create HTTP client: {e}"))
+                SongbirdError::network(format!("Failed to create HTTP client: {e}"))
             })?;
 
         self.http_client = Some(client);
@@ -134,7 +134,7 @@ impl JsonRpcCommunicationClient {
             .build(url)
             .await
             .map_err(|e| {
-                SongbirdError::network_error(format!("Failed to create WebSocket client: {e}"))
+                SongbirdError::network(format!("Failed to create WebSocket client: {e}"))
             })?;
 
         self.ws_client = Some(client);
@@ -150,7 +150,7 @@ impl JsonRpcCommunicationClient {
                     .request("songbird_sendMessage", [message])
                     .await
                     .map_err(|e| {
-                        SongbirdError::network_error(format!("WebSocket request failed: {e}"))
+                        SongbirdError::network(format!("WebSocket request failed: {e}"))
                     })?;
                 Ok(response)
             } else {
@@ -162,7 +162,7 @@ impl JsonRpcCommunicationClient {
             let response: CommunicationResponse = client
                 .request("songbird_sendMessage", [message])
                 .await
-                .map_err(|e| SongbirdError::network_error(format!("HTTP request failed: {e}")))?;
+                .map_err(|e| SongbirdError::network(format!("HTTP request failed: {e}")))?;
             Ok(response)
         } else {
             Err(SongbirdError::internal_error(network_error("HTTP client not connected"))
@@ -398,12 +398,12 @@ pub async fn start_jsonrpc_http_server(
         .build(bind_addr)
         .await
         .map_err(|e| {
-            SongbirdError::network_error(format!("Failed to start JSON-RPC server: {e}"))
+            SongbirdError::network(format!("Failed to start JSON-RPC server: {e}"))
         })?;
 
     let addr = server
         .local_addr()
-        .map_err(|e| SongbirdError::network_error(format!("Failed to get server address: {e}")))?;
+        .map_err(|e| SongbirdError::network(format!("Failed to get server address: {e}")))?;
 
     let handle = server.start(service_impl.into_rpc());
 
@@ -427,12 +427,12 @@ pub async fn start_jsonrpc_ws_server(
         .build(bind_addr)
         .await
         .map_err(|e| {
-            SongbirdError::network_error(format!("Failed to start JSON-RPC WebSocket server: {e}"))
+            SongbirdError::network(format!("Failed to start JSON-RPC WebSocket server: {e}"))
         })?;
 
     let addr = server
         .local_addr()
-        .map_err(|e| SongbirdError::network_error(format!("Failed to get server address: {e}")))?;
+        .map_err(|e| SongbirdError::network(format!("Failed to get server address: {e}")))?;
 
     let handle = server.start(service_impl.into_rpc());
 

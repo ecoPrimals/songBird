@@ -5,7 +5,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 
 /// Universal configuration validator trait
@@ -16,14 +16,14 @@ pub trait ConfigValidator: Send + Sync {
         &self,
         value: &serde_json::Value,
         context: &ValidationContext,
-    ) -> Result<ValidationResult>;
+    ) -> SongbirdResult<ValidationResult>;
 
     /// Validate a complete configuration object
     async fn validate_config(
         &self,
         config: &serde_json::Value,
         schema: &ValidationSchema,
-    ) -> Result<ConfigValidationResult>;
+    ) -> SongbirdResult<ConfigValidationResult>;
 
     /// Get supported validation types
     fn supported_types(&self) -> Vec<ValidationType>;
@@ -366,33 +366,33 @@ pub trait ValidationManager: Send + Sync {
         &mut self,
         name: &str,
         validator: Box<dyn ConfigValidator>,
-    ) -> Result<()>;
+    ) -> SongbirdResult<()>;
 
     /// Validate configuration with schema
     async fn validate_with_schema(
         &self,
         config: &serde_json::Value,
         schema: &ValidationSchema,
-    ) -> Result<ConfigValidationResult>;
+    ) -> SongbirdResult<ConfigValidationResult>;
 
     /// Validate configuration against multiple schemas
     async fn validate_multi_schema(
         &self,
         config: &serde_json::Value,
         schemas: &[&ValidationSchema],
-    ) -> Result<Vec<ConfigValidationResult>>;
+    ) -> SongbirdResult<Vec<ConfigValidationResult>>;
 
     /// Get validation schema for a configuration type
-    async fn get_schema(&self, config_type: &str) -> Result<Option<ValidationSchema>>;
+    async fn get_schema(&self, config_type: &str) -> SongbirdResult<Option<ValidationSchema>>;
 
     /// Register a validation schema
-    async fn register_schema(&mut self, schema: ValidationSchema) -> Result<()>;
+    async fn register_schema(&mut self, schema: ValidationSchema) -> SongbirdResult<()>;
 
     /// Get validation statistics
-    async fn get_validation_stats(&self) -> Result<ValidationStats>;
+    async fn get_validation_stats(&self) -> SongbirdResult<ValidationStats>;
 
     /// Clear validation cache
-    async fn clear_cache(&self) -> Result<()>;
+    async fn clear_cache(&self) -> SongbirdResult<()>;
 }
 
 /// Validation statistics

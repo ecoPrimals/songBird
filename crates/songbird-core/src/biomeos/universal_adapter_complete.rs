@@ -28,6 +28,7 @@ use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
+use songbird_errors::SongbirdResult;
 
 /// **🎯 COMPLETE BIOMEOS UNIVERSAL ADAPTER**: Full ecosystem integration
 pub struct CompleteBiomeOSUniversalAdapter {

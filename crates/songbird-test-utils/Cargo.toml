@@ -24,6 +24,7 @@ async-trait = "0.1"
 reqwest = { version = "0.11", features = ["json"] }
 colored = "2.0"
 songbird-errors = { path = "../songbird-errors" }
+songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 # songbird-core = { path = "../songbird-core" }  # TEMPORARILY DISABLED: compilation issues
 # songbird-network = { path = "../songbird-network" }  # TEMPORARILY DISABLED: 842 compilation errors

@@ -83,12 +83,7 @@ impl ZeroTouchCommand {
     async fn save_config_file(&self, path: &std::path::Path) -> Result<()> {
         let config = ZeroTouchConfig::default();
         let config_yaml =
-            serde_yaml::to_string(&config).map_err(|e| songbird_errors::SongbirdError::Config {
-                message: format!("Failed to serialize configuration: {e}"),
-                field: Some("config_file".to_string()),
-                context: Some("Zero-touch configuration serialization".to_string()),
-                suggestion: Some("Check your configuration values and try again".to_string()),
-            })?;
+            serde_yaml::to_string(&config).map_err(|e| songbird_errors::SongbirdError::configuration(format!("Failed to serialize configuration: {}", e)))?;
 
         tokio::fs::write(path, config_yaml).await.map_err(|e| {
             songbird_errors::SongbirdError::Io(Box::new(IoError {
@@ -110,12 +105,7 @@ impl ZeroTouchCommand {
         });
 
         let summary_json = serde_json::to_string(&summary).map_err(|e| {
-            songbird_errors::SongbirdError::Config {
-                message: format!("Failed to serialize summary: {e}"),
-                field: Some("summary_file".to_string()),
-                context: Some("Deployment summary serialization".to_string()),
-                suggestion: Some("Check your summary data and try again".to_string()),
-            }
+            songbird_errors::SongbirdError::configuration(format!("Failed to serialize summary: {}", e))
         })?;
 
         tokio::fs::write(path, summary_json).await.map_err(|e| {
@@ -288,12 +278,7 @@ async fn save_songbird_configuration(
     path: &std::path::Path,
 ) -> Result<()> {
     let config_yaml =
-        serde_yaml::to_string(config).map_err(|e| songbird_errors::SongbirdError::Config {
-            message: format!("Failed to serialize configuration: {e}"),
-            field: Some("config_file".to_string()),
-            context: Some("Songbird configuration serialization".to_string()),
-            suggestion: Some("Check your configuration values and try again".to_string()),
-        })?;
+        serde_yaml::to_string(config).map_err(|e| songbird_errors::SongbirdError::configuration(format!("Failed to serialize configuration: {}", e)))?;
 
     tokio::fs::write(path, config_yaml).await.map_err(|e| {
         songbird_errors::SongbirdError::Io(Box::new(IoError {
@@ -316,12 +301,7 @@ async fn save_deployment_summary(_result: &DeploymentResult, path: &std::path::P
     });
 
     let summary_json =
-        serde_json::to_string(&summary).map_err(|e| songbird_errors::SongbirdError::Config {
-            message: format!("Failed to serialize summary: {e}"),
-            field: Some("summary_file".to_string()),
-            context: Some("Deployment summary serialization".to_string()),
-            suggestion: Some("Check your summary data and try again".to_string()),
-        })?;
+        serde_json::to_string(&summary).map_err(|e| songbird_errors::SongbirdError::configuration(format!("Failed to serialize summary: {}", e)))?;
 
     tokio::fs::write(path, summary_json).await.map_err(|e| {
         songbird_errors::SongbirdError::Io(Box::new(IoError {

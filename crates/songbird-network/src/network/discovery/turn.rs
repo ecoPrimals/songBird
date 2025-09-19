@@ -7,8 +7,8 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-use super::types::{DiscoveryConfig, TURNRelay};
-use songbird_errors::Result;
+use super::types::{DiscoveredPeer, DiscoveryConfig, TURNRelay};
+use songbird_errors::{SongbirdError, SongbirdResult as Result};
 use songbird_universal_primals::PrimalCapability;
 
 /// TURN client for relay connectivity
@@ -48,7 +48,7 @@ impl TURNClient {
     }
 
     /// Discover peers via TURN relay
-    pub async fn discover_peers(&self) -> Result<Vec<Vec<PrimalCapability>>> {
+    pub async fn discover_peers(&self) -> Result<Vec<DiscoveredPeer>> {
         debug!("Discovering peers via TURN...");
 
         let mut peers = Vec::new();
@@ -60,11 +60,16 @@ impl TURNClient {
             // Discover relay capabilities through each TURN server
             for server in &self.turn_servers {
                 match self.discover_relay_capabilities(server).await {
-                    Ok(capabilities) if !capabilities.is_empty() => {
-                        peers.push(capabilities);
-                    }
-                    Ok(_) => {
-                        debug!("No capabilities discovered from TURN server: {}", server);
+                    Ok(_capabilities) => {
+                        let peer = DiscoveredPeer::new(
+                            format!("turn-{}", server),
+                            server
+                                .parse()
+                                .unwrap_or_else(|_| "0.0.0.0:3478".parse().unwrap()),
+                            super::types::PeerType::Service,
+                            super::types::DiscoveryMethod::TURN,
+                        );
+                        peers.push(peer);
                     }
                     Err(e) => {
                         debug!(
@@ -244,15 +249,13 @@ impl TURNClient {
                         expires_at: std::time::Instant::now() + Duration::from_secs(600),
                     })
                 } else {
-                    Err(songbird_errors::SongbirdError::network_error(
+                    Err(SongbirdError::network(
                         "Failed to parse TURN allocation response",
                     ))
                 }
             }
             Ok(Err(e)) => Err(e.into()),
-            Err(_) => Err(songbird_errors::SongbirdError::network_error(
-                "TURN allocation timed out",
-            )),
+            Err(_) => Err(SongbirdError::network("TURN allocation timed out")),
         }
     }
 
@@ -381,14 +384,10 @@ impl TURNClient {
                 // Implementation would use TURN Send indication
                 Ok(())
             } else {
-                Err(songbird_errors::SongbirdError::network_error(
-                    "TURN relay has expired",
-                ))
+                Err(SongbirdError::network("TURN relay has expired"))
             }
         } else {
-            Err(songbird_errors::SongbirdError::network_error(
-                "TURN relay not found",
-            ))
+            Err(SongbirdError::network("TURN relay not found"))
         }
     }
 
@@ -407,9 +406,7 @@ impl TURNClient {
             debug!("Released TURN relay: {}", relay_id);
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::network_error(
-                "TURN relay not found for release",
-            ))
+            Err(SongbirdError::network("TURN relay not found for release"))
         }
     }
 

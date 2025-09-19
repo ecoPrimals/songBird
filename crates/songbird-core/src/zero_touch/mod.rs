@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use songbird_config::SongbirdConfig;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ZeroTouchConfig {
@@ -32,7 +32,7 @@ impl ZeroTouchDeployment {
         Self { config }
     }
 
-    pub async fn deploy(&self) -> Result<()> {
+    pub async fn deploy(&self) -> SongbirdResult<()> {
         // Minimal implementation
         Ok(())
     }
@@ -57,7 +57,7 @@ impl ZeroTouchOrchestrator {
         Self {}
     }
 
-    pub async fn deploy(&mut self) -> Result<DeploymentResult> {
+    pub async fn deploy(&mut self) -> SongbirdResult<DeploymentResult> {
         // Basic deployment logic
         let config = SongbirdConfig::default();
 

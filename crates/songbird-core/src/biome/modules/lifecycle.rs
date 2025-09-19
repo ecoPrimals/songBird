@@ -9,6 +9,7 @@
 use super::types::{HealthCheckSpec, ServiceSpec, SongbirdBiomeManifest, SongbirdOrchestrator};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_errors::SongbirdResult;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use tokio::time::{interval, timeout};
@@ -112,7 +113,7 @@ impl ServiceLifecycleManager {
     pub async fn start_lifecycle_management(
         &mut self,
         orchestrator: &SongbirdOrchestrator,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         info!(
             "Starting lifecycle management for orchestrator: {}",
             orchestrator.id
@@ -132,9 +133,7 @@ impl ServiceLifecycleManager {
     }
 
     /// Setup service registry
-    async fn setup_service_registry(
-        &mut self,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn setup_service_registry(&mut self) -> SongbirdResult<()> {
         info!("Setting up service registry");
 
         // Initialize registry
@@ -162,9 +161,7 @@ impl ServiceLifecycleManager {
     }
 
     /// Setup health monitoring system
-    async fn setup_health_monitoring(
-        &self,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn setup_health_monitoring(&self) -> SongbirdResult<()> {
         info!("Setting up health monitoring system");
 
         // Start health monitoring task
@@ -188,16 +185,16 @@ impl ServiceLifecycleManager {
     async fn orchestrate_services(
         &mut self,
         manifest: &SongbirdBiomeManifest,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         info!("Starting service orchestration");
 
         // Resolve service dependencies
         let ordered_services = self.resolve_service_dependencies(manifest)?;
 
         // Start services in dependency order
-        for service_name in ordered_services {
-            if let Some(service_spec) = manifest.services.get(&service_name) {
-                self.orchestrate_single_service(&service_name, service_spec)
+        for service_name in &ordered_services {
+            if let Some(service_spec) = manifest.services.get(service_name) {
+                self.orchestrate_single_service(service_name, service_spec)
                     .await?;
             }
         }
@@ -210,7 +207,7 @@ impl ServiceLifecycleManager {
     fn resolve_service_dependencies(
         &self,
         manifest: &SongbirdBiomeManifest,
-    ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<Vec<String>> {
         let mut visited = HashSet::new();
         let mut visiting = HashSet::new();
         let mut ordered_services = Vec::new();
@@ -239,7 +236,7 @@ impl ServiceLifecycleManager {
         visited: &mut HashSet<String>,
         visiting: &mut HashSet<String>,
         ordered_services: &mut Vec<String>,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         if visiting.contains(service_name) {
             return Err(format!("Circular dependency detected for service: {service_name}").into());
         }
@@ -274,7 +271,7 @@ impl ServiceLifecycleManager {
         &mut self,
         service_name: &str,
         service_spec: &ServiceSpec,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         info!("Orchestrating service: {}", service_name);
 
         // Check if dependencies are ready
@@ -352,7 +349,7 @@ impl ServiceLifecycleManager {
         &self,
         service_name: &str,
         service_spec: &ServiceSpec,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         if let Some(health_check) = &service_spec.health_check {
             info!("Starting health monitoring for service: {}", service_name);
 
@@ -380,10 +377,16 @@ impl ServiceLifecycleManager {
     async fn check_service_health(
         service_name: &str,
         health_check: &HealthCheckSpec,
-    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<bool> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(health_check.timeout_secs))
-            .build()?;
+            .build()
+            .map_err(|e| {
+                songbird_errors::SongbirdError::network(format!(
+                    "Failed to build HTTP client: {}",
+                    e
+                ))
+            })?;
 
         let start_time = std::time::Instant::now();
 
@@ -406,7 +409,10 @@ impl ServiceLifecycleManager {
             }
             Err(e) => {
                 error!("Health check error for service {}: {}", service_name, e);
-                Err(e.into())
+                Err(songbird_errors::SongbirdError::network(format!(
+                    "Health check failed: {}",
+                    e
+                )))
             }
         }
     }
@@ -416,7 +422,7 @@ impl ServiceLifecycleManager {
         &self,
         service_name: &str,
         service_spec: &ServiceSpec,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         if let Some(health_check) = &service_spec.health_check {
             info!("Waiting for service {} to be ready", service_name);
 
@@ -467,10 +473,7 @@ impl ServiceLifecycleManager {
     }
 
     /// Restart a service
-    pub async fn restart_service(
-        &mut self,
-        service_name: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn restart_service(&mut self, service_name: &str) -> SongbirdResult<()> {
         if let Some(service) = self.services.get_mut(service_name) {
             info!("Restarting service: {}", service_name);
 
@@ -490,10 +493,7 @@ impl ServiceLifecycleManager {
     }
 
     /// Stop a service
-    pub async fn stop_service(
-        &mut self,
-        service_name: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn stop_service(&mut self, service_name: &str) -> SongbirdResult<()> {
         if let Some(service) = self.services.get_mut(service_name) {
             info!("Stopping service: {}", service_name);
 
@@ -537,9 +537,7 @@ impl ServiceLifecycleManager {
     }
 
     /// Clean up stopped services
-    pub async fn cleanup_stopped_services(
-        &mut self,
-    ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn cleanup_stopped_services(&mut self) -> SongbirdResult<u32> {
         let mut cleaned_count = 0;
         let mut to_remove = Vec::new();
 
@@ -616,6 +614,7 @@ impl Default for ServiceRegistry {
 mod tests {
     use super::*;
     use crate::biome::modules::types::*;
+    use songbird_errors::SongbirdResult;
 
     #[tokio::test]
     async fn test_lifecycle_manager_creation() {

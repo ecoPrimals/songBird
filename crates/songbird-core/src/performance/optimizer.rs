@@ -6,7 +6,7 @@ use super::config::{PerformanceConfig, PerformanceTuningResult};
 use super::load_balancer::{FastLoadBalancer, LoadBalancerStats};
 use super::monitor::{PerformanceMonitor, SystemMetrics};
 use super::object_pool::ObjectPool;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::sync::Arc;
 
 /// Production performance optimizer - main coordinator
@@ -54,7 +54,7 @@ impl ProductionPerformanceOptimizer {
     }
 
     /// Start the performance optimizer
-    pub async fn start(&self) -> Result<()> {
+    pub async fn start(&self) -> SongbirdResult<()> {
         // Start performance monitoring
         self.monitor.start_monitoring().await;
 
@@ -63,7 +63,7 @@ impl ProductionPerformanceOptimizer {
     }
 
     /// Stop the performance optimizer
-    pub async fn stop(&self) -> Result<()> {
+    pub async fn stop(&self) -> SongbirdResult<()> {
         tracing::info!("Production Performance Optimizer stopped");
         Ok(())
     }
@@ -112,7 +112,7 @@ impl ProductionPerformanceOptimizer {
     where
         T: Send + 'static,
         R: Send + 'static,
-        F: Fn(Vec<T>) -> std::result::Result<Vec<R>, String> + Send + Sync + 'static,
+        F: Fn(Vec<T>) -> SongbirdResult<Vec<R>> + Send + Sync + 'static,
     {
         let timeout = std::time::Duration::from_millis(50); // Default 50ms batch timeout
         AsyncBatchProcessor::new(batch_size, timeout, processor)
@@ -143,7 +143,7 @@ impl ProductionPerformanceOptimizer {
     }
 
     /// Perform automatic performance tuning
-    pub async fn auto_tune(&self) -> Result<PerformanceTuningResult> {
+    pub async fn auto_tune(&self) -> SongbirdResult<PerformanceTuningResult> {
         let tuning_result = self.monitor.generate_tuning_recommendations().await;
 
         // Apply automatic tuning based on recommendations
@@ -155,7 +155,7 @@ impl ProductionPerformanceOptimizer {
     }
 
     /// Apply automatic tuning recommendations
-    async fn apply_auto_tuning(&self, result: &PerformanceTuningResult) -> Result<()> {
+    async fn apply_auto_tuning(&self, result: &PerformanceTuningResult) -> SongbirdResult<()> {
         // Auto-tuning implementation would go here
         // For example:
         // - Adjust cache sizes based on hit ratios

@@ -34,7 +34,8 @@ pub use validation::*;
 
 // Health check trait definition
 use async_trait::async_trait;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Health check trait for services
 #[async_trait]

@@ -1,4 +1,3 @@
-
 // Configuration test helpers
 ///
 /// Centralizes common configuration creation patterns used across tests

@@ -7,10 +7,10 @@ use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult as Result};
 
 pub mod discovery;
-pub mod gaming;
+// pub mod gaming; // TODO: Fix persistent string encoding issues in real_ipx_bridge.rs
 
 /// Songbird Discovery Service - acts as the primary discovery coordinator
 #[derive(Debug, Clone)]
@@ -327,33 +327,23 @@ impl NetworkManager {
     /// Validate a proxy route
     pub fn validate_proxy_route(&self, route: &ProxyRoute) -> Result<()> {
         if route.path.is_empty() {
-            return Err(SongbirdError::Config {
-                field: Some("proxy_route.path".to_string()),
-                message: "Proxy route path cannot be empty".to_string(),
-                context: Some("network_configuration".to_string()),
-                suggestion: Some("Check configuration values and network settings".to_string()),
-            });
+            return Err(SongbirdError::configuration(
+                "Proxy route path cannot be empty".to_string(),
+            ));
         }
 
         if route.target.is_empty() {
-            return Err(SongbirdError::Config {
-                field: Some("proxy_route.target".to_string()),
-                message: "Proxy route target cannot be empty".to_string(),
-                context: Some("network_configuration".to_string()),
-                suggestion: Some("Check configuration values and network settings".to_string()),
-            });
+            return Err(SongbirdError::configuration(
+                "Proxy route target cannot be empty".to_string(),
+            ));
         }
 
         // Validate target URL format
         if !route.target.starts_with("http://") && !route.target.starts_with("https://") {
-            return Err(SongbirdError::Config {
-                field: Some("proxy_route.target".to_string()),
-                message: format!("Invalid proxy target URL: {}", route.target),
-                context: Some("proxy_route_validation".to_string()),
-                suggestion: Some(
-                    "Ensure proxy target URL starts with http:// or https://".to_string(),
-                ),
-            });
+            return Err(SongbirdError::configuration(format!(
+                "Invalid proxy target URL: {}",
+                route.target
+            )));
         }
 
         Ok(())
@@ -443,52 +433,31 @@ pub mod utils {
     /// Get the local IP address
     pub fn get_local_ip() -> Result<IpAddr> {
         // Try to connect to a remote address to determine local IP
-        let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| {
-            SongbirdError::NetworkDetection {
-                message: format!("Failed to create socket: {e}").to_string(),
-                interface: None,
-                suggestion: Some("Check network permissions and socket availability".to_string()),
-            }
-        })?;
+        let socket = std::net::UdpSocket::bind("0.0.0.0:0")
+            .map_err(|e| SongbirdError::network(format!("Failed to create socket: {}", e)))?;
 
-        socket
-            .connect("8.8.8.8:80")
-            .map_err(|e| SongbirdError::NetworkDetection {
-                message: format!("Failed to connect to determine local IP: {e}").to_string(),
-                interface: None,
-                suggestion: Some("Check network connectivity and DNS resolution".to_string()),
-            })?;
+        socket.connect("8.8.8.8:80").map_err(|e| {
+            SongbirdError::network(format!("Failed to connect to determine local IP: {}", e))
+        })?;
 
         let local_addr = socket
             .local_addr()
-            .map_err(|e| SongbirdError::NetworkDetection {
-                message: format!("Failed to get local address: {e}").to_string(),
-                interface: None,
-                suggestion: Some("Check socket binding and network interface status".to_string()),
-            })?;
+            .map_err(|e| SongbirdError::network(format!("Failed to get local address: {}", e)))?;
 
         Ok(local_addr.ip())
     }
 
     /// Validate an IP address string
     pub fn validate_ip_address(ip_str: &str) -> Result<IpAddr> {
-        ip_str.parse().map_err(|e| SongbirdError::Config {
-            field: Some("ip_address".to_string()),
-            message: format!("Invalid IP address '{ip_str}': {e}").to_string(),
-            context: Some("ip_address_validation".to_string()),
-            suggestion: Some("Ensure IP address format is valid (e.g., 192.168.1.1)".to_string()),
+        ip_str.parse().map_err(|e| {
+            SongbirdError::configuration(format!("Invalid IP address '{}': {}", ip_str, e))
         })
     }
 
     /// Validate a port number
     pub fn validate_port(port: u16) -> Result<()> {
         if port == 0 {
-            return Err(SongbirdError::Config {
-                field: Some("port".to_string()),
-                message: "Port cannot be 0".to_string(),
-                context: Some("network_configuration".to_string()),
-                suggestion: Some("Check configuration values and network settings".to_string()),
-            });
+            return Err(SongbirdError::configuration("Port cannot be 0".to_string()));
         }
         if port < 1024 {
             tracing::warn!(

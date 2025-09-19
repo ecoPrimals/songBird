@@ -13,7 +13,7 @@ use crate::abstraction::{
 };
 use crate::traits::discovery::ServiceHealthStatus;
 use crate::traits::{ServiceEvent, ServiceInfo, ServiceQuery};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError};
 
 /// Delegation strategy for choosing providers
 #[derive(Debug, Clone, PartialEq)]

@@ -406,12 +406,7 @@ impl SecurityHardeningManager {
 
         // Fail if there are critical security errors
         if !validation_result.is_secure {
-            return Err(SongbirdError::Security {
-                message: "Security validation failed".to_string(),
-                context: Some("security_hardening".to_string()),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration".to_string()),
-            });
+            return Err(SongbirdError::security("Security validation failed"));
         }
 
         // Apply hardening measures
@@ -574,21 +569,11 @@ pub fn validate_production_environment() -> Result<()> {
     if environment == "production" {
         // Critical production validations
         if env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default() != "true" {
-            return Err(SongbirdError::Security {
-                message: "Security must be enabled in production".to_string(),
-                context: Some("production_validation".to_string()),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration".to_string()),
-            });
+            return Err(SongbirdError::security("Security must be enabled in production"));
         }
 
         if env::var("SONGBIRD_DEBUG").unwrap_or_default() == "true" {
-            return Err(SongbirdError::Security {
-                message: "Debug mode must be disabled in production".to_string(),
-                context: Some("production_validation".to_string()),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security configuration".to_string()),
-            });
+            return Err(SongbirdError::security("Debug mode must be disabled in production"));
         }
 
         info!("✅ Production environment validation passed");
