@@ -52,9 +52,7 @@ impl HealthChecker {
             .timeout(target.timeout)
             .build()
             .map_err(|e| {
-                SongbirdError::network_error(
-                    format!("Failed to create HTTP client: {e}").to_string(),
-                )
+                SongbirdError::network(format!("Failed to create HTTP client: {e}").to_string())
             })?;
 
         let result = match client.get(&target.url).send().await {

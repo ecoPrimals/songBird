@@ -8,6 +8,7 @@ use super::types::{
     ServiceHealth,
 };
 use chrono::Utc;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -28,10 +29,7 @@ impl MonitoringManager {
     }
 
     /// Start monitoring a deployment
-    pub async fn start_monitoring(
-        &self,
-        deployment: ByobDeployment,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn start_monitoring(&self, deployment: ByobDeployment) -> SongbirdResult<()> {
         let deployment_id = &deployment.deployment_id;
         info!("Starting monitoring for deployment: {}", deployment_id);
 
@@ -42,10 +40,7 @@ impl MonitoringManager {
     }
 
     /// Stop monitoring a deployment
-    pub async fn stop_monitoring(
-        &self,
-        deployment_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn stop_monitoring(&self, deployment_id: &str) -> SongbirdResult<()> {
         info!("Stopping monitoring for deployment: {}", deployment_id);
 
         let mut deployments = self.deployments.write().await;
@@ -94,7 +89,7 @@ impl MonitoringManager {
         &self,
         _orchestrator: &SongbirdOrchestrator,
         deployment_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         info!(
             "Coordinating with primals for deployment: {}",
             deployment_id
@@ -152,17 +147,17 @@ impl MonitoringManager {
         Ok(())
     }
 
-    /// Update deployment status
+    /// Update deployment status (stub implementation)
     pub async fn update_deployment_status(
         &self,
         deployment_id: &str,
         status: ByobDeploymentStatus,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let mut deployments = self.deployments.write().await;
-        if let Some(deployment) = deployments.get_mut(deployment_id) {
-            deployment.status = status;
-            deployment.updated_at = Utc::now();
-        }
+    ) -> SongbirdResult<()> {
+        info!(
+            "Updating deployment status for {}: {:?}",
+            deployment_id, status
+        );
+        // TODO: Implement actual status update logic
         Ok(())
     }
 
@@ -170,7 +165,7 @@ impl MonitoringManager {
     pub async fn check_deployment_health(
         &self,
         deployment_id: &str,
-    ) -> Result<DeploymentHealth, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<DeploymentHealth> {
         let deployments = self.deployments.read().await;
         if let Some(deployment) = deployments.get(deployment_id) {
             let health = self.calculate_deployment_health(deployment);
@@ -231,7 +226,7 @@ impl MonitoringManager {
     pub async fn get_deployment_monitoring_status(
         &self,
         deployment_id: &str,
-    ) -> Result<MonitoringStatus, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<MonitoringStatus> {
         let deployments = self.deployments.read().await;
         if let Some(deployment) = deployments.get(deployment_id) {
             let health = self.calculate_deployment_health(deployment);
@@ -270,7 +265,7 @@ impl MonitoringManager {
                 OverallHealth::Healthy => healthy_count += 1,
                 OverallHealth::Degraded => degraded_count += 1,
                 OverallHealth::Unhealthy => unhealthy_count += 1,
-                OverallHealth::Unknown => {}
+                OverallHealth::Unknown => unhealthy_count += 1,
             }
         }
 

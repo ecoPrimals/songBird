@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
-use songbird_errors::{NetworkError, Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 
 use super::circuit_breaker::{CircuitBreaker, CircuitState};
 use super::connection_pool::ConnectionPool;
@@ -20,19 +20,14 @@ pub struct ToadstoolClient {
 
 impl ToadstoolClient {
     /// Create new toadstool client with performance optimizations
-    pub async fn new(endpoint: String) -> Result<Self> {
+    pub async fn new(endpoint: String) -> SongbirdResult<Self> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .pool_max_idle_per_host(10)
             .pool_idle_timeout(Duration::from_secs(90))
             .build()
             .map_err(|e| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Substrate Module - Network error: {e}"),
-                    endpoint: Some(endpoint.clone()),
-                    port: None,
-                    protocol: Some("HTTP".to_string()),
-                }))
+                SongbirdError::network(format!("Substrate Module - Network error: {}", e))
             })?;
 
         let circuit_breaker = CircuitBreaker::new(5, Duration::from_secs(30));
@@ -47,17 +42,14 @@ impl ToadstoolClient {
     }
 
     /// Make a request to the toadstool service
-    pub async fn request(&self, payload: serde_json::Value) -> Result<serde_json::Value> {
+    pub async fn request(&self, payload: serde_json::Value) -> SongbirdResult<serde_json::Value> {
         // Check circuit breaker
         {
             let mut cb = self.circuit_breaker.write().await;
             if !cb.allow_request() {
-                return Err(SongbirdError::Network(Box::new(NetworkError {
-                    message: "Circuit breaker is open".to_string(),
-                    endpoint: Some(self.endpoint.clone()),
-                    port: None,
-                    protocol: Some("HTTP".to_string()),
-                })));
+                return Err(SongbirdError::network(
+                    "Circuit breaker is open".to_string(),
+                ));
             }
         }
 
@@ -93,43 +85,30 @@ impl ToadstoolClient {
         &self,
         client: &reqwest::Client,
         payload: serde_json::Value,
-    ) -> Result<serde_json::Value> {
+    ) -> SongbirdResult<serde_json::Value> {
         let response = client
             .post(&self.endpoint)
             .json(&payload)
             .send()
             .await
-            .map_err(|e| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Request failed: {e}"),
-                    endpoint: Some(self.endpoint.clone()),
-                    port: None,
-                    protocol: Some("HTTP".to_string()),
-                }))
-            })?;
+            .map_err(|e| SongbirdError::network(format!("Request failed: {}", e)))?;
 
         if response.status().is_success() {
-            let body: serde_json::Value = response.json().await.map_err(|e| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Failed to parse response: {e}"),
-                    endpoint: Some(self.endpoint.clone()),
-                    port: None,
-                    protocol: Some("HTTP".to_string()),
-                }))
-            })?;
+            let body: serde_json::Value = response
+                .json()
+                .await
+                .map_err(|e| SongbirdError::network(format!("Failed to parse response: {}", e)))?;
             Ok(body)
         } else {
-            Err(SongbirdError::Network(Box::new(NetworkError {
-                message: format!("HTTP error: {}", response.status()),
-                endpoint: Some(self.endpoint.clone()),
-                port: None,
-                protocol: Some("HTTP".to_string()),
-            })))
+            Err(SongbirdError::network(format!(
+                "HTTP error: {}",
+                response.status()
+            )))
         }
     }
 
     /// Get client health status
-    pub async fn health_check(&self) -> Result<bool> {
+    pub async fn health_check(&self) -> SongbirdResult<bool> {
         let health_payload = serde_json::json!({"action": "health_check"});
         match self.request(health_payload).await {
             Ok(_) => Ok(true),

@@ -1,5 +1,6 @@
 use crate::canonical_test_framework::{MockService, TestEnvironment};
-use songbird_errors::{SongbirdError, Result as SongbirdResult};
+use songbird_errors::SongbirdError;
+use songbird_types::errors::SongbirdResult;
 /// Integration testing utilities
 ///
 /// Provides utilities for end-to-end testing, integration testing,
@@ -104,9 +105,10 @@ impl IntegrationTestContext {
             };
             Ok(status)
         } else {
-            Err(SongbirdError::internal_error(format!(
-                "Service '{name}' not found"
-            )))
+            Err(SongbirdError::service(
+                "test-utils",
+                format!("Service '{name}' not found"),
+            ))
         }
     }
 

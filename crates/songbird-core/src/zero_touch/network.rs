@@ -7,7 +7,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 
 /// Network discoverer for zero-touch deployment
 pub struct NetworkDiscoverer {
@@ -21,7 +21,7 @@ impl NetworkDiscoverer {
     }
 
     /// Discover network configuration
-    pub async fn discover(&self) -> Result<NetworkInfo> {
+    pub async fn discover(&self) -> SongbirdResult<NetworkInfo> {
         info!("Discovering network configuration...");
 
         let interfaces = self.discover_network_interfaces().await?;
@@ -47,7 +47,7 @@ impl NetworkDiscoverer {
     }
 
     /// Discover network interfaces
-    async fn discover_network_interfaces(&self) -> Result<Vec<NetworkInterface>> {
+    async fn discover_network_interfaces(&self) -> SongbirdResult<Vec<NetworkInterface>> {
         // Simplified network interface discovery
         // In a real implementation, this would use system APIs or libraries like nix
         let mut interfaces = Vec::with_capacity(8); // Pre-allocate for typical interface count
@@ -80,7 +80,7 @@ impl NetworkDiscoverer {
     }
 
     /// Discover network routes
-    async fn discover_routes(&self) -> Result<Vec<NetworkRoute>> {
+    async fn discover_routes(&self) -> SongbirdResult<Vec<NetworkRoute>> {
         let mut routes = Vec::with_capacity(16); // Pre-allocate for typical route count
 
         // Add default route
@@ -107,7 +107,7 @@ impl NetworkDiscoverer {
     }
 
     /// Discover DNS configuration
-    async fn discover_dns_configuration(&self) -> Result<DnsConfiguration> {
+    async fn discover_dns_configuration(&self) -> SongbirdResult<DnsConfiguration> {
         Ok(DnsConfiguration {
             nameservers: vec![
                 "8.8.8.8".to_string(),
@@ -120,7 +120,7 @@ impl NetworkDiscoverer {
     }
 
     /// Discover firewall rules
-    async fn discover_firewall_rules(&self) -> Result<Vec<FirewallRule>> {
+    async fn discover_firewall_rules(&self) -> SongbirdResult<Vec<FirewallRule>> {
         // Simplified firewall rule discovery
         let mut rules = Vec::new();
 
@@ -164,7 +164,7 @@ impl NetworkDiscoverer {
     }
 
     /// Check port availability
-    async fn check_port_availability(&self) -> Result<HashMap<u16, bool>> {
+    async fn check_port_availability(&self) -> SongbirdResult<HashMap<u16>> {
         let mut port_availability = HashMap::new();
         let env_config = songbird_config::environment::EnvironmentConfig::default();
         let common_ports = vec![
@@ -363,6 +363,7 @@ pub struct NetworkRecommendations {
 #[cfg(test)]
 mod tests {
     use super::*;
+use songbird_errors::SongbirdResult;
 
     #[tokio::test]
     async fn test_network_discoverer_creation() {

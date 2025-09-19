@@ -5,43 +5,50 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 
 /// Universal feature flag provider trait
 #[async_trait]
 pub trait FeatureFlagProvider: Send + Sync {
     /// Initialize the feature flag provider
-    async fn initialize(&mut self, config: &FeatureFlagConfig) -> Result<()>;
+    async fn initialize(&mut self, config: &FeatureFlagConfig) -> SongbirdResult<()>;
 
     /// Check if a feature is enabled
     async fn is_enabled(
         &self,
         feature_name: &str,
         context: Option<&EvaluationContext>,
-    ) -> Result<bool>;
+    ) -> SongbirdResult<bool>;
 
     /// Get feature flag value
     async fn get_flag_value(
         &self,
         feature_name: &str,
         context: Option<&EvaluationContext>,
-    ) -> Result<Option<serde_json::Value>>;
+    ) -> SongbirdResult<Option<serde_json::Value>>;
 
     /// Set feature flag value (if provider supports updates)
-    async fn set_flag_value(&self, feature_name: &str, value: serde_json::Value) -> Result<()>;
+    async fn set_flag_value(
+        &self,
+        feature_name: &str,
+        value: serde_json::Value,
+    ) -> SongbirdResult<()>;
 
     /// Get all feature flags
-    async fn get_all_flags(&self) -> Result<HashMap<String, FeatureFlag>>;
+    async fn get_all_flags(&self) -> SongbirdResult<HashMap<String, bool>>;
 
     /// Register a new feature flag
-    async fn register_flag(&self, flag: &FeatureFlag) -> Result<()>;
+    async fn register_flag(&self, flag: &FeatureFlag) -> SongbirdResult<()>;
 
     /// Remove a feature flag
-    async fn remove_flag(&self, feature_name: &str) -> Result<()>;
+    async fn remove_flag(&self, feature_name: &str) -> SongbirdResult<()>;
 
     /// Get flag evaluation history
-    async fn get_evaluation_history(&self, feature_name: &str) -> Result<Vec<FlagEvaluation>>;
+    async fn get_evaluation_history(
+        &self,
+        feature_name: &str,
+    ) -> SongbirdResult<Vec<FlagEvaluation>>;
 
     /// Get provider information
     fn provider_info(&self) -> FeatureFlagProviderInfo;
@@ -262,43 +269,43 @@ pub struct FlagStats {
 #[async_trait]
 pub trait FeatureFlagManager: Send + Sync {
     /// Initialize the manager
-    async fn initialize(&mut self, config: &FeatureFlagConfig) -> Result<()>;
+    async fn initialize(&mut self, config: &FeatureFlagConfig) -> SongbirdResult<()>;
 
     /// Register a feature flag provider
     async fn register_provider(
         &mut self,
         name: &str,
         user: Box<dyn FeatureFlagProvider>,
-    ) -> Result<()>;
+    ) -> SongbirdResult<()>;
 
     /// Evaluate a feature flag
     async fn evaluate_flag(
         &self,
         feature_name: &str,
         context: Option<&EvaluationContext>,
-    ) -> Result<FlagEvaluation>;
+    ) -> SongbirdResult<FlagEvaluation>;
 
     /// Evaluate multiple flags at once
     async fn evaluate_flags(
         &self,
         feature_names: &[&str],
         context: Option<&EvaluationContext>,
-    ) -> Result<HashMap<String, FlagEvaluation>>;
+    ) -> SongbirdResult<HashMap<String, bool>>;
 
     /// Get all flags and their current states
     async fn get_all_flags_state(
         &self,
         context: Option<&EvaluationContext>,
-    ) -> Result<HashMap<String, serde_json::Value>>;
+    ) -> SongbirdResult<HashMap<String, bool>>;
 
     /// Get flag statistics
-    async fn get_flag_stats(&self, feature_name: &str) -> Result<FlagStats>;
+    async fn get_flag_stats(&self, feature_name: &str) -> SongbirdResult<FlagStats>;
 
     /// Refresh flags from provider
-    async fn refresh_flags(&self) -> Result<()>;
+    async fn refresh_flags(&self) -> SongbirdResult<()>;
 
     /// Get manager status
-    async fn get_status(&self) -> Result<ManagerStatus>;
+    async fn get_status(&self) -> SongbirdResult<ManagerStatus>;
 }
 
 /// Feature flag manager status

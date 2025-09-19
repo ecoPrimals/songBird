@@ -227,12 +227,7 @@ impl GamingManager {
         let mut sessions = self.lan_sessions.write().await;
 
         let session = sessions.get_mut(session_code).ok_or_else(|| {
-            songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                message: "Gaming Manager - Session not found: {session_code}".to_string(),
-                endpoint: None,
-                port: None,
-                protocol: None,
-            }))
+            songbird_errors::SongbirdError::network(format!("Gaming Manager - Session not found: {}", session_code))
         })?;
 
         // Add player if not already in session
@@ -254,12 +249,7 @@ impl GamingManager {
             .find(|(code, _)| *code == session_code)
             .map(|(_, session)| session.clone())
             .ok_or_else(|| {
-                songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                    message: "Gaming Manager - Session not found: {session_code}".to_string(),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                }))
+                songbird_errors::SongbirdError::network(format!("Gaming Manager - Session not found: {}", session_code))
             })
             .map(Some)
     }
@@ -277,24 +267,14 @@ impl GamingManager {
         // Get the session from our storage
         let sessions = self.lan_sessions.read().await;
         let session = sessions.get(session_code).ok_or_else(|| {
-            songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                message: "Gaming Manager - Session not found: {session_code}".to_string(),
-                endpoint: None,
-                port: None,
-                protocol: None,
-            }))
+            songbird_errors::SongbirdError::network(format!("Gaming Manager - Session not found: {}", session_code))
         })?;
 
         // Use configurable binding address - NO MORE HARDCODING 0.0.0.0!
         let bind_addr = if env_config.bind_address == "0.0.0.0" {
             // Only allow 0.0.0.0 if explicitly approved
             if std::env::var("SONGBIRD_GAMING_BIND_ALL_APPROVED").is_err() {
-                return Err(songbird_errors::SongbirdError::Config {
-                    field: Some("gaming_bind_address".to_string()),
-                    message: "Gaming services binding to 0.0.0.0 requires explicit approval via SONGBIRD_GAMING_BIND_ALL_APPROVED=true".to_string(),
-                context: Some("network_configuration".to_string()),
-                suggestion: Some("Check configuration values and network settings".to_string()),
-                });
+                return Err(songbird_errors::SongbirdError::configuration("Gaming services binding to 0.0.0.0 requires explicit approval via SONGBIRD_GAMING_BIND_ALL_APPROVED=true ".to_string()));
             }
             "0.0.0.0"
         } else {
@@ -322,14 +302,14 @@ impl GamingManager {
             )
             .parse()
             .unwrap_or_else(|_| {
-                tracing::warn!("Failed to parse IPX bridge address, using configurable default");
+                tracing::warn!("Failed to parse IPX bridge address, using configurable default ");
                 let addr_str = format!(
                     "{}:0",
                     songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS
                 );
                 addr_str.parse().unwrap_or_else(|e| {
                     tracing::error!(
-                        "Critical: Default IPX bridge address '{}' is invalid: {}",
+                        "Critical: Default IPX bridge address \"{}\" is invalid: {}",
                         addr_str,
                         e
                     );
@@ -362,7 +342,7 @@ impl GamingManager {
 
         match session.game_type.as_str() {
             // Use game_type instead of protocol_class for matching
-            "StarCraft" | "Warcraft" | "Age of Empires" => {
+            "StarCraft" | "Warcraft" | "Age of Empires " => {
                 tracing::info!(
                     "🎮 Configured IPX-based game bridge for {}",
                     session.game_type
@@ -459,7 +439,7 @@ impl GamingManager {
         }
 
         info!(
-            "📊 LAN scan complete, found {} sessions",
+            "📊 LAN scan complete, found {} sessions ",
             discovered_sessions.len()
         );
         Ok(discovered_sessions)

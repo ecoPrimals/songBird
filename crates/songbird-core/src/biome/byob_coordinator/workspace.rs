@@ -3,6 +3,7 @@
 //! Handles team workspace registration, management, and resource allocation.
 
 use super::types::{ByobDeployment, ByobTeamWorkspace, TeamResourceQuota};
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -27,7 +28,7 @@ impl WorkspaceManager {
         &self,
         team_id: String,
         resource_quota: TeamResourceQuota,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         let mut workspaces = self.workspaces.write().await;
 
         // Check if workspace already exists
@@ -54,7 +55,7 @@ impl WorkspaceManager {
     pub async fn get_team_workspace(
         &self,
         team_id: &str,
-    ) -> Result<Option<ByobTeamWorkspace>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<Option<ByobTeamWorkspace>> {
         let workspaces = self.workspaces.read().await;
         Ok(workspaces.get(team_id).cloned())
     }
@@ -64,7 +65,7 @@ impl WorkspaceManager {
         &self,
         team_id: &str,
         workspace: ByobTeamWorkspace,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         let mut workspaces = self.workspaces.write().await;
 
         if workspaces.contains_key(team_id) {
@@ -82,7 +83,7 @@ impl WorkspaceManager {
         &self,
         team_id: &str,
         deployment: ByobDeployment,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         let mut workspaces = self.workspaces.write().await;
 
         if let Some(workspace) = workspaces.get_mut(team_id) {
@@ -103,7 +104,7 @@ impl WorkspaceManager {
         &self,
         team_id: &str,
         deployment_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         let mut workspaces = self.workspaces.write().await;
 
         if let Some(workspace) = workspaces.get_mut(team_id) {
@@ -125,7 +126,7 @@ impl WorkspaceManager {
         &self,
         team_id: &str,
         required_quota: &TeamResourceQuota,
-    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<bool> {
         let workspaces = self.workspaces.read().await;
 
         if let Some(workspace) = workspaces.get(team_id) {
@@ -152,18 +153,13 @@ impl WorkspaceManager {
     }
 
     /// List all team workspaces
-    pub async fn list_team_workspaces(
-        &self,
-    ) -> Result<Vec<ByobTeamWorkspace>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn list_team_workspaces(&self) -> SongbirdResult<Vec<ByobTeamWorkspace>> {
         let workspaces = self.workspaces.read().await;
         Ok(workspaces.values().cloned().collect())
     }
 
     /// Get workspace statistics
-    pub async fn get_workspace_stats(
-        &self,
-        team_id: &str,
-    ) -> Result<WorkspaceStats, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn get_workspace_stats(&self, team_id: &str) -> SongbirdResult<WorkspaceStats> {
         let workspaces = self.workspaces.read().await;
 
         if let Some(workspace) = workspaces.get(team_id) {

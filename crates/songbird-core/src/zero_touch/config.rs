@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 use super::ZeroTouchConfig;
 
 /// Configuration generator for zero-touch deployment
@@ -31,10 +31,9 @@ impl ConfigGenerator {
         &self,
         environment: &str,
         resources: &ResourceRequirements,
-    ) -> Result<ZeroTouchConfig> {
+    ) -> SongbirdResult<ZeroTouchConfig> {
         let template = self.templates.get(environment)
-            .ok_or_else(|| SongbirdError::Config {
-                message: format!("No template found for environment: {}", environment),
+            .ok_or_else(|| SongbirdError::configuration(format!("No template found for environment: {)", environment),
             })?;
 
         let config = ZeroTouchConfig {
@@ -90,7 +89,7 @@ impl ConfigGenerator {
     }
 
     /// Generate configuration templates based on resource requirements
-    fn generate_config_templates(&self, resources: &ResourceRequirements) -> Result<HashMap<String, PathBuf>> {
+    fn generate_config_templates(&self, resources: &ResourceRequirements) -> SongbirdResult<HashMap<String>> {
         let mut templates = HashMap::new();
 
         // Generate service configuration
@@ -329,40 +328,30 @@ pub struct ConfigValidator;
 
 impl ConfigValidator {
     /// Validate a zero-touch configuration
-    pub fn validate(config: &ZeroTouchConfig) -> Result<()> {
+    pub fn validate(config: &ZeroTouchConfig) -> SongbirdResult<()> {
         if config.deployment_timeout == 0 {
-            return Err(SongbirdError::Config {
-                message: "Deployment timeout cannot be zero".to_string(),
-            });
+            return Err(SongbirdError::configuration("Deployment timeout cannot be zero".to_string()));
         }
 
         if config.target_environment.is_empty() {
-            return Err(SongbirdError::Config {
-                message: "Target environment cannot be empty".to_string(),
-            });
+            return Err(SongbirdError::configuration("Target environment cannot be empty".to_string()));
         }
 
         Ok(())
     }
 
     /// Validate resource requirements
-    pub fn validate_resources(requirements: &ResourceRequirements) -> Result<()> {
+    pub fn validate_resources(requirements: &ResourceRequirements) -> SongbirdResult<()> {
         if requirements.cpu_cores == 0 {
-            return Err(SongbirdError::Config {
-                message: "CPU cores cannot be zero".to_string(),
-            });
+            return Err(SongbirdError::configuration("CPU cores cannot be zero".to_string()));
         }
 
         if requirements.memory_mb == 0 {
-            return Err(SongbirdError::Config {
-                message: "Memory cannot be zero".to_string(),
-            });
+            return Err(SongbirdError::configuration("Memory cannot be zero".to_string()));
         }
 
         if requirements.storage_gb == 0 {
-            return Err(SongbirdError::Config {
-                message: "Storage cannot be zero".to_string(),
-            });
+            return Err(SongbirdError::configuration("Storage cannot be zero".to_string()));
         }
 
         Ok(())
@@ -392,6 +381,7 @@ impl Default for ZeroTouchConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+use songbird_errors::SongbirdResult;
 
     #[test]
     fn test_config_generator_creation() {

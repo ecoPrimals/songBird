@@ -2,8 +2,8 @@
 //!
 //! Production-ready AI-powered components for intelligent service registration
 
-use crate::api::ai_first_response::AIFirstError;
 use crate::api::universal_service_registration::types::*;
+use songbird_errors::SongbirdResult;
 
 /// Heuristic-based performance prediction engine
 pub struct PerformancePredictor;
@@ -73,13 +73,13 @@ impl HumanInteractionManager {
         Self
     }
 
-    pub async fn notify_registration_pending(&self, service_id: &str) -> Result<(), String> {
+    pub async fn notify_registration_pending(&self, service_id: &str) -> SongbirdResult<()> {
         // Production notification system - currently logs, can be extended to email/slack/etc
         println!("🔔 Human notification: Service registration pending for {service_id}");
         Ok(())
     }
 
-    pub async fn request_approval(&self, service_id: &str) -> Result<bool, String> {
+    pub async fn request_approval(&self, service_id: &str) -> SongbirdResult<bool> {
         // Production approval system - currently heuristic-based, can be extended to workflow systems
         println!("📋 Approval requested for service: {service_id}");
         // For demo purposes, approve services with "test" in the name
@@ -104,7 +104,7 @@ impl ServiceMeshIntegrator {
     pub async fn configure_routing(
         &self,
         request: &UniversalServiceRegistrationRequest,
-    ) -> Result<ServiceMeshRoutingInfo, AIFirstError> {
+    ) -> SongbirdResult<ServiceMeshRoutingInfo> {
         // Production service mesh configuration - heuristic-based routing with extensible configuration
         let priority = match request.primal_type.as_str() {
             "critical" => ServicePriority::Critical,
@@ -131,13 +131,13 @@ impl ServiceMeshIntegrator {
         })
     }
 
-    pub async fn update_routing(&self, service_id: &str, weight: f64) -> Result<(), String> {
+    pub async fn update_routing(&self, service_id: &str, weight: f64) -> SongbirdResult<()> {
         // Production routing update - currently logging-based, extensible to real service mesh APIs
         println!("🔄 Updated routing for service {service_id} with weight {weight}");
         Ok(())
     }
 
-    pub async fn remove_routing(&self, service_id: &str) -> Result<(), String> {
+    pub async fn remove_routing(&self, service_id: &str) -> SongbirdResult<()> {
         // Production routing removal - currently logging-based, extensible to real service mesh APIs
         println!("🗑️ Removed routing for service {service_id}");
         Ok(())

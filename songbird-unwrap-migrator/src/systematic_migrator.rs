@@ -515,7 +515,7 @@ impl SystematicUnwrapMigrator {
     }
     
     /// Discover all Rust files in the codebase (iterative approach to avoid async recursion)
-    pub fn discover_rust_files(Result<Vec<PathBuf>, MigrationError>) ->  {
+    pub async fn discover_rust_files(root_path: &Path) -> Result<Vec<PathBuf>, MigrationError> {
         let mut rust_files = Vec::new();
         let mut directories_to_process = vec![root_path.to_path_buf()];
         

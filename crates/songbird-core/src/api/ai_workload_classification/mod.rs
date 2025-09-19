@@ -4,11 +4,10 @@
 //! requests to any primal that provides AI capabilities, maintaining Songbird's role
 //! as an orchestrator rather than implementing AI functionality directly.
 
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use songbird_universal::capabilities::UniversalCapabilityAdapter;
 use songbird_universal::DiscoveryConfig;
-use std::collections::HashMap;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 // Re-export types that are still needed for interface compatibility
 pub use types::*;
@@ -46,7 +45,7 @@ impl AIWorkloadClassificationDelegate {
     pub async fn classify_workload(
         &self,
         workload: &WorkloadRequest,
-    ) -> Result<WorkloadClassification> {
+    ) -> SongbirdResult<WorkloadClassification> {
         match self.get_ai_provider_endpoint().await {
             Some((provider_name, endpoint)) => {
                 debug!(
@@ -66,7 +65,7 @@ impl AIWorkloadClassificationDelegate {
     pub async fn predict_resources(
         &self,
         workload_type: &WorkloadType,
-    ) -> Result<ResourceRequirements> {
+    ) -> SongbirdResult<ResourceRequirements> {
         match self.get_ai_provider_endpoint().await {
             Some((provider_name, endpoint)) => {
                 debug!("🤖 Delegating resource prediction to: {}", provider_name);
@@ -85,7 +84,7 @@ impl AIWorkloadClassificationDelegate {
         &self,
         workload: &WorkloadRequest,
         resources: &ResourceRequirements,
-    ) -> Result<RiskAssessment> {
+    ) -> SongbirdResult<RiskAssessment> {
         match self.get_ai_provider_endpoint().await {
             Some((provider_name, endpoint)) => {
                 debug!("🤖 Delegating risk assessment to: {}", provider_name);
@@ -138,9 +137,18 @@ impl AIWorkloadClassificationDelegate {
             return Some((provider_name, endpoint));
         }
 
-        // Get the best AI provider (for now, just use the first one)
-        // TODO: Implement QoS-based selection using capability_adapter.get_best_primal_for_capability()
-        let provider_name = ai_providers.into_iter().next()?;
+        // Get the best AI provider using QoS-based selection
+        let best_provider = self
+            .capability_adapter
+            .get_best_primal_for_capability("ai_inference")
+            .await;
+
+        let provider_name = if let Some(provider) = best_provider {
+            provider
+        } else {
+            // Fallback to first available provider
+            ai_providers.into_iter().next()?
+        };
         let endpoint = self.get_primal_endpoint(&provider_name);
 
         Some((provider_name, endpoint))
@@ -156,23 +164,23 @@ impl AIWorkloadClassificationDelegate {
         &self,
         endpoint: &str,
         workload: &WorkloadRequest,
-    ) -> Result<WorkloadClassification> {
+    ) -> SongbirdResult<WorkloadClassification> {
         let response = self
             .http_client
             .post(&format!("{}/api/classify-workload", endpoint))
             .json(workload)
             .send()
             .await
-            .map_err(|e| songbird_errors::SongbirdError::network_error(e.to_string()))?;
+            .map_err(|e| songbird_errors::SongbirdError::network(e.to_string()))?;
 
         if response.status().is_success() {
             let classification: WorkloadClassification = response
                 .json()
                 .await
-                .map_err(|e| songbird_errors::SongbirdError::io_error(e.to_string()))?;
+                .map_err(|e| songbird_errors::SongbirdError::network(e.to_string()))?;
             Ok(classification)
         } else {
-            Err(songbird_errors::SongbirdError::service_error(
+            Err(songbird_errors::SongbirdError::service(
                 "ai_provider",
                 format!("Classification failed: {}", response.status()),
             ))
@@ -184,23 +192,23 @@ impl AIWorkloadClassificationDelegate {
         &self,
         endpoint: &str,
         workload_type: &WorkloadType,
-    ) -> Result<ResourceRequirements> {
+    ) -> SongbirdResult<ResourceRequirements> {
         let response = self
             .http_client
             .post(&format!("{}/api/predict-resources", endpoint))
             .json(workload_type)
             .send()
             .await
-            .map_err(|e| songbird_errors::SongbirdError::network_error(e.to_string()))?;
+            .map_err(|e| songbird_errors::SongbirdError::network(e.to_string()))?;
 
         if response.status().is_success() {
             let requirements: ResourceRequirements = response
                 .json()
                 .await
-                .map_err(|e| songbird_errors::SongbirdError::io_error(e.to_string()))?;
+                .map_err(|e| songbird_errors::SongbirdError::network(e.to_string()))?;
             Ok(requirements)
         } else {
-            Err(songbird_errors::SongbirdError::service_error(
+            Err(songbird_errors::SongbirdError::service(
                 "ai_provider",
                 format!("Resource prediction failed: {}", response.status()),
             ))
@@ -213,7 +221,7 @@ impl AIWorkloadClassificationDelegate {
         endpoint: &str,
         workload: &WorkloadRequest,
         resources: &ResourceRequirements,
-    ) -> Result<RiskAssessment> {
+    ) -> SongbirdResult<RiskAssessment> {
         let payload = serde_json::json!({
             "workload": workload,
             "resources": resources
@@ -225,16 +233,16 @@ impl AIWorkloadClassificationDelegate {
             .json(&payload)
             .send()
             .await
-            .map_err(|e| songbird_errors::SongbirdError::network_error(e.to_string()))?;
+            .map_err(|e| songbird_errors::SongbirdError::network(e.to_string()))?;
 
         if response.status().is_success() {
             let assessment: RiskAssessment = response
                 .json()
                 .await
-                .map_err(|e| songbird_errors::SongbirdError::io_error(e.to_string()))?;
+                .map_err(|e| songbird_errors::SongbirdError::network(e.to_string()))?;
             Ok(assessment)
         } else {
-            Err(songbird_errors::SongbirdError::service_error(
+            Err(songbird_errors::SongbirdError::service(
                 "ai_provider",
                 format!("Risk assessment failed: {}", response.status()),
             ))

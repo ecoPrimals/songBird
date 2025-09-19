@@ -3,9 +3,8 @@
 //! This module provides the single, canonical NetworkConfig definition that replaces
 //! all fragmented and deprecated network configuration structs across the codebase.
 
-use crate::canonical::constants::{get_canonical_bind_address, get_canonical_cors_origins, is_production_environment};
 use serde::{Deserialize, Serialize};
-use songbird_errors::{SongbirdError, SongbirdResponse, SongbirdResult};
+use songbird_errors::{SongbirdError, SongbirdResult};
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 use tracing::warn;
@@ -163,10 +162,12 @@ impl CanonicalNetworkConfig {
     /// Create canonical network configuration from environment variables
     pub async fn from_env() -> SongbirdResult<Self> {
         let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
-            .unwrap_or_else(|_| get_canonical_bind_address())
+            .unwrap_or_else(|_| "0.0.0.0".to_string())
             .parse()
-            .map_err(|e| {
-                SongbirdError::configuration_error(format!("Invalid bind address: {e}"))
+            .map_err(|e| SongbirdError::Configuration {
+                message: format!("Invalid bind address: {e}"),
+                field: Some("bind_address".to_string()),
+                suggestion: Some("Provide a valid IP address".to_string()),
             })?;
 
         let config = Self {
@@ -210,18 +211,20 @@ impl CanonicalNetworkConfig {
             federation_bind_address: bind_address,
         };
 
-        Ok(songbird_errors::evolved_success(SongbirdResponse::success(config)))
+        Ok(config)
     }
 
     /// Validate production readiness
     pub async fn validate_production_readiness(&self) -> SongbirdResult<()> {
         let localhost_v4 = std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1));
         if self.bind_address == localhost_v4 {
-            return Err(SongbirdError::internal_error(configuration_error(
-                "Production deployment should not use localhost bind address",
-            ));
+            return Err(SongbirdError::Configuration {
+                message: "Production deployment should not use localhost bind address".to_string(),
+                field: Some("bind_address".to_string()),
+                suggestion: Some("Use 0.0.0.0 or a specific IP address for production".to_string()),
+            });
         }
-        Ok(SongbirdResponse::success(()))
+        Ok(())
     }
 
     /// Get local bind socket address
@@ -229,8 +232,12 @@ impl CanonicalNetworkConfig {
         let addr = format!("{}:{}", self.bind_address, self.orchestrator_port);
         let socket_addr = addr
             .parse::<SocketAddr>()
-            .map_err(|e| SongbirdError::configuration_error(format!("Invalid address: {e}")))?;
-        Ok(songbird_errors::evolved_success(SongbirdResponse::success(socket_addr)))
+            .map_err(|e| SongbirdError::Configuration {
+                message: format!("Invalid address: {e}"),
+                field: Some("address".to_string()),
+                suggestion: Some("Provide a valid IP:port combination".to_string()),
+            })?;
+        Ok(socket_addr)
     }
 
     /// Get gaming port for specific protocol
@@ -239,12 +246,14 @@ impl CanonicalNetworkConfig {
             "starcraft" | "ipx" => self.gaming.starcraft_port,
             "aoe2" | "udp" => self.gaming.aoe2_port,
             _ => {
-                return Err(SongbirdError::internal_error(configuration_error(format!(
-                    "Unknown protocol: {protocol}"
-                )))
+                return Err(SongbirdError::Configuration {
+                    message: format!("Unknown protocol: {protocol}"),
+                    field: Some("protocol".to_string()),
+                    suggestion: Some("Use 'starcraft', 'aoe2', or 'udp'".to_string()),
+                });
             }
         };
-        Ok(songbird_errors::evolved_success(SongbirdResponse::success(port)))
+        Ok(port)
     }
 
     /// Get orchestrator endpoint
@@ -270,18 +279,14 @@ impl CanonicalNetworkConfig {
 
 impl Default for CanonicalNetworkConfig {
     fn default() -> Self {
-        let bind_address = get_canonical_bind_address().parse().unwrap_or_else(|_| {
+        let bind_address = "0.0.0.0".parse().unwrap_or_else(|_| {
             warn!("Failed to parse bind address, using development default");
             std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
         });
 
         Self {
             bind_address,
-            production_bind_address: if is_production_environment() {
-                "0.0.0.0".parse().unwrap()
-            } else {
-                "127.0.0.1".parse().unwrap()
-            },
+            production_bind_address: "0.0.0.0".parse().unwrap(),
             orchestrator_port: 8080,
             discovery_port: 8001,
             health_port: 8002,
@@ -296,17 +301,26 @@ impl Default for CanonicalNetworkConfig {
             max_connections: 50,
             max_bandwidth_mbps: 50,
             worker_threads: 2,
-            require_tls: is_production_environment(),
+            require_tls: false,
             cors: CorsConfig {
                 enabled: true,
-                origins: get_canonical_cors_origins(),
-                allowed_methods: vec!["GET".to_string(), "POST".to_string(), "PUT".to_string(), "DELETE".to_string()],
+                origins: vec!["http://localhost:3000".to_string()],
+                allowed_methods: vec![
+                    "GET".to_string(),
+                    "POST".to_string(),
+                    "PUT".to_string(),
+                    "DELETE".to_string(),
+                ],
                 allowed_headers: vec!["Content-Type".to_string(), "Authorization".to_string()],
             },
             discovery_ports: vec![8001],
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
-            allowed_networks: crate::canonical::constants::CanonicalNetworkDefaults::allowed_networks(),
+            allowed_networks: vec![
+                "10.0.0.0/8".to_string(),
+                "172.16.0.0/12".to_string(),
+                "192.168.0.0/16".to_string(),
+            ],
             timeouts: NetworkTimeouts::default(),
             connection_limits: ConnectionLimits::default(),
             metrics_bind_address: bind_address,

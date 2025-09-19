@@ -8,7 +8,7 @@ use crate::network::gaming::types::*;
 /// - Clean separation of concerns
 /// - Well-documented public API
 /// - Manageable size (under 1000 lines)
-use songbird_errors::{NetworkError, Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
@@ -56,42 +56,20 @@ impl ProductionLanManager {
     /// Validate configuration
     fn validate_config(config: &ProductionLanConfig) -> Result<()> {
         if config.discovery.discovery_ports.is_empty() {
-            return Err(SongbirdError::Config {
-                field: Some("discovery_ports".to_string()),
-                message: "At least one discovery port must be specified".to_string(),
-                context: Some("network_configuration".to_string()),
-                suggestion: Some(
-                    "Add at least one discovery port to the configuration".to_string(),
-                ),
-            });
+            return Err(SongbirdError::configuration("At least one discovery port must be specified".to_string()));
         }
 
         if config.security.max_players_per_session == 0 {
-            return Err(SongbirdError::Config {
-                field: Some("max_players_per_session".to_string()),
-                message: "Max players per session must be greater than 0".to_string(),
-                context: Some("security_configuration".to_string()),
-                suggestion: Some("Set max_players_per_session to a positive value".to_string()),
-            });
+            return Err(SongbirdError::configuration("Max players per session must be greater than 0".to_string()));
         }
 
         if config.security.session_timeout_seconds == 0 {
-            return Err(SongbirdError::Config {
-                field: Some("session_timeout_seconds".to_string()),
-                message: "Session timeout must be greater than 0".to_string(),
-                context: Some("security_configuration".to_string()),
-                suggestion: Some("Set session_timeout_seconds to a positive value".to_string()),
-            });
+            return Err(SongbirdError::configuration("Session timeout must be greater than 0".to_string()));
         }
 
         let (min_port, max_port) = config.network.game_port_range;
         if min_port >= max_port {
-            return Err(SongbirdError::Config {
-                field: Some("game_port_range".to_string()),
-                message: "Invalid game port range".to_string(),
-                context: Some("network_configuration".to_string()),
-                suggestion: Some("Ensure min_port < max_port".to_string()),
-            });
+            return Err(SongbirdError::configuration("Invalid game port range".to_string()));
         }
 
         Ok(())
@@ -171,14 +149,7 @@ impl ProductionLanManager {
         let env_config = songbird_config::config::environment::EnvironmentConfig::default();
         let host_address = format!("{}:{}", env_config.bind_address, env_config.bind_port)
             .parse()
-            .map_err(|e| SongbirdError::Config {
-                field: Some("host_address".to_string()),
-                message: format!("Invalid host address configuration: {e}").to_string(),
-                context: Some("production_lan_manager".to_string()),
-                suggestion: Some(
-                    "Check the bind address and port configuration format".to_string(),
-                ),
-            })?;
+            .map_err(|e| SongbirdError::configuration(format!("Invalid host address configuration: {}", e)))?;
 
         let session = ProductionGameSession {
             id: session_id,
@@ -264,12 +235,7 @@ impl ProductionLanManager {
     pub async fn get_session(&self, session_code: &str) -> Result<ProductionGameSession> {
         let sessions = self.sessions.read().await;
         sessions.get(session_code).cloned().ok_or_else(|| {
-            SongbirdError::Network(Box::new(NetworkError {
-                message: "Production LAN Manager - Session not found: {session_code}".to_string(),
-                port: None,
-                endpoint: None,
-                protocol: None,
-            }))
+            SongbirdError::network(format!("Production LAN Manager - Session not found: {}", session_code))
         })
     }
 
@@ -280,12 +246,7 @@ impl ProductionLanManager {
             info!("🛑 Shut down gaming session: {}", session_code);
             Ok(())
         } else {
-            Err(SongbirdError::Network(Box::new(NetworkError {
-                message: "Production LAN Manager - Session not found: {session_code}".to_string(),
-                port: None,
-                endpoint: None,
-                protocol: None,
-            })))
+            Err(SongbirdError::network(format!("Production LAN Manager - Session not found: {}", session_code)))
         }
     }
 

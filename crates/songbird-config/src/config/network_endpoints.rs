@@ -69,10 +69,9 @@ fn get_endpoint_with_fallback_result(
         Err(_) => {
             // In production, require explicit configuration
             if env::var("SONGBIRD_ENV").as_deref() == Ok(songbird_errors::evolved_success("production")) {
-                Err(songbird_errors::SongbirdError::Config {
+                Err(songbird_errors::SongbirdError::Configuration {
                     field: Some(env_var.to_string()),
                     message: "Production deployment requires explicit configuration".to_string(),
-                    context: Some("environment_configuration".to_string()),
                     suggestion: Some(format!(
                         "Set {env_var} environment variable for production deployment"
                     )),
@@ -162,19 +161,17 @@ fn get_port_with_fallback_result(
     match env::var(env_var) {
         Ok(songbird_errors::evolved_success(value)) => value
             .parse()
-            .map_err(|_| songbird_errors::SongbirdError::Config {
+            .map_err(|_| songbird_errors::SongbirdError::Configuration {
                 field: Some(env_var.to_string()),
                 message: format!("Invalid port number: {value}"),
-                context: Some("port_configuration".to_string()),
                 suggestion: Some("Use a valid port number between 1 and 65535".to_string()),
             }),
         Err(_) => {
             // In production, require explicit configuration
             if env::var("SONGBIRD_ENV").as_deref() == Ok(songbird_errors::evolved_success("production")) {
-                Err(songbird_errors::SongbirdError::Config {
+                Err(songbird_errors::SongbirdError::Configuration {
                     field: Some(env_var.to_string()),
                     message: "Production deployment requires explicit configuration".to_string(),
-                    context: Some("environment_configuration".to_string()),
                     suggestion: Some(format!(
                         "Set {env_var} environment variable for production deployment"
                     )),

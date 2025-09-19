@@ -12,7 +12,8 @@ use songbird_discovery::traits::{
     ComposablePlugin, ComposedSystem, CompositionPlan, PerformanceEstimate, PluginCapability,
     PluginRegistry, PluginRequirement, SystemHealth,
 };
-use songbird_errors::Result;
+use songbird_types::errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Dynamic Plugin Registry Implementation
 ///
@@ -265,7 +266,7 @@ impl PluginRegistry for DynamicPluginRegistry {
             .await?;
 
         plans.into_iter().next().ok_or_else(|| {
-            songbird_errors::SongbirdError::service_error(
+            songbird_errors::SongbirdError::service(
                 "plugin-registry",
                 "No viable composition found".to_string(),
             )

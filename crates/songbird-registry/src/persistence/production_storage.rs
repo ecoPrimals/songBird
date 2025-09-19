@@ -203,7 +203,7 @@ impl ProductionServicePersistence {
     async fn save_to_filesystem(&self, data_dir: &PathBuf) -> ServiceResult<()> {
         // Ensure directory exists
         fs::create_dir_all(data_dir).await
-            .map_err(|e| SongbirdError::service_error("persistence", &format!("Failed to create data directory: {}", e)))?;
+            .map_err(|e| SongbirdError::service("persistence", &format!("Failed to create data directory: {}", e)))?;
         
         let cache = self.cache.read().await;
         let data = cache.clone();
@@ -211,7 +211,7 @@ impl ProductionServicePersistence {
         
         // Serialize data
         let json_data = serde_json::to_string_pretty(&data)
-            .map_err(|e| SongbirdError::service_error("persistence", &format!("Serialization failed: {}", e)))?;
+            .map_err(|e| SongbirdError::service("persistence", &format!("Serialization failed: {}", e)))?;
         
         // Write to file with backup
         let main_file = data_dir.join("registry.json");
@@ -220,12 +220,12 @@ impl ProductionServicePersistence {
         // Create backup of existing file
         if main_file.exists() {
             fs::copy(&main_file, &backup_file).await
-                .map_err(|e| SongbirdError::service_error("persistence", &format!("Backup creation failed: {}", e)))?;
+                .map_err(|e| SongbirdError::service("persistence", &format!("Backup creation failed: {}", e)))?;
         }
         
         // Write new data
         fs::write(&main_file, json_data).await
-            .map_err(|e| SongbirdError::service_error("persistence", &format!("File write failed: {}", e)))?;
+            .map_err(|e| SongbirdError::service("persistence", &format!("File write failed: {}", e)))?;
         
         // Cleanup old backups
         self.cleanup_old_backups(data_dir).await?;
@@ -276,10 +276,10 @@ impl ProductionServicePersistence {
         
         // Read and deserialize data
         let json_data = fs::read_to_string(&main_file).await
-            .map_err(|e| SongbirdError::service_error("persistence", &format!("File read failed: {}", e)))?;
+            .map_err(|e| SongbirdError::service("persistence", &format!("File read failed: {}", e)))?;
         
         let data: PersistentServiceData = serde_json::from_str(&json_data)
-            .map_err(|e| SongbirdError::service_error("persistence", &format!("Deserialization failed: {}", e)))?;
+            .map_err(|e| SongbirdError::service("persistence", &format!("Deserialization failed: {}", e)))?;
         
         // Update cache
         let mut cache = self.cache.write().await;

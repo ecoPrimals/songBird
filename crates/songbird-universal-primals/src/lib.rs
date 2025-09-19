@@ -7,9 +7,6 @@ pub mod beardog;
 pub mod config;
 pub mod discovery;
 pub mod errors;
-// Replace the large universal_registry.rs with modular structure
-pub mod nestgate;
-pub mod router;
 pub mod squirrel;
 pub mod toadstool;
 pub mod traits;
@@ -20,7 +17,6 @@ pub mod universal_registry;
 pub use beardog::*;
 pub use discovery::*;
 pub use errors::*;
-pub use nestgate::*;
 pub use squirrel::*;
 pub use toadstool::*;
 pub use types::*;
@@ -34,7 +30,7 @@ pub use universal_registry::{
 // Re-export traits but be specific about what we need
 pub use traits::{
     DynamicPortInfo, PrimalCapability, PrimalContext, PrimalDependency, PrimalHealth,
-    PrimalProvider, SecurityLevel,
+    PrimalProvider,
 };
 
 // Re-export config but be specific

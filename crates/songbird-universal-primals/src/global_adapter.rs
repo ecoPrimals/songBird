@@ -55,9 +55,7 @@ pub async fn initialize_global_adapter(&self) -> SongbirdResult<()> {
     // Initialize the adapter
     let adapter = UniversalPrimalAdapter::new(config.data)
         .await
-        .map_err(|e| SongbirdError::Config {
-            field: Some("universal_adapter".to_string()),
-            message: format!("Failed to initialize Universal Adapter: {}", e),
+        .map_err(|e| SongbirdError::configuration(format!("Failed to initialize Universal Adapter: {)", e),
             context: Some("global_adapter_initialization".to_string()),
             suggestion: Some("Check adapter configuration".to_string()),
         })?;
@@ -65,12 +63,7 @@ pub async fn initialize_global_adapter(&self) -> SongbirdResult<()> {
     // Set global singleton - happens exactly once
     GLOBAL_ADAPTER
         .set(adapter.data)
-        .map_err(|_| SongbirdError::Config {
-            field: Some("global_state".to_string()),
-            message: "Universal Adapter already initialized".to_string(),
-            context: Some("adapter_singleton".to_string()),
-            suggestion: Some("Check if adapter is already running".to_string()),
-        })?;
+        .map_err(|_| SongbirdError::configuration("Universal Adapter already initialized".to_string()))?;
 
     info!("✅ Global Universal Adapter initialized successfully");
         Ok(())

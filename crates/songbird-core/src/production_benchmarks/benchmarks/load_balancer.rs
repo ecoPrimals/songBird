@@ -4,7 +4,7 @@
 
 use crate::performance::*;
 use crate::production_benchmarks::types::*;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::time::Instant;
 
 /// Load balancer benchmark implementation
@@ -25,7 +25,7 @@ impl<'a> LoadBalancerBenchmarker<'a> {
     }
 
     /// Benchmark load balancer performance comparing fast vs standard algorithms
-    pub async fn benchmark_load_balancer(&self) -> Result<LoadBalancerBenchmark> {
+    pub async fn benchmark_load_balancer(&self) -> SongbirdResult<LoadBalancerBenchmark> {
         println!("⚖️  Benchmarking Load Balancer Performance...");
 
         // Create test service instances (pre-allocated for performance)
@@ -34,6 +34,7 @@ impl<'a> LoadBalancerBenchmarker<'a> {
         // Benchmark fast algorithm
         let (fast_ops_per_second, selection_times) =
             self.benchmark_fast_algorithm(&instances).await?;
+        let selection_times: Vec<u64> = selection_times;
 
         // Benchmark standard algorithm
         let standard_ops_per_second = self.benchmark_standard_algorithm(&instances).await?;
@@ -69,7 +70,7 @@ impl<'a> LoadBalancerBenchmarker<'a> {
     async fn benchmark_fast_algorithm(
         &self,
         _instances: &[ServiceInstanceMeta],
-    ) -> Result<(f64, Vec<u64>)> {
+    ) -> SongbirdResult<(f64, Vec<u64>)> {
         let fast_start = Instant::now();
         let mut fast_selections = 0;
         let mut selection_times = Vec::with_capacity(self.config.requests_per_test);
@@ -90,7 +91,10 @@ impl<'a> LoadBalancerBenchmarker<'a> {
     }
 
     /// Benchmark the standard load balancer algorithm
-    async fn benchmark_standard_algorithm(&self, instances: &[ServiceInstanceMeta]) -> Result<f64> {
+    async fn benchmark_standard_algorithm(
+        &self,
+        instances: &[ServiceInstanceMeta],
+    ) -> SongbirdResult<f64> {
         let standard_lb = FastLoadBalancer::new(
             LoadBalancingStrategy::WeightedRoundRobin,
             1000, // Cache size
@@ -179,7 +183,10 @@ impl<'a> LoadBalancerBenchmarker<'a> {
     }
 
     /// Run load balancer stress test
-    pub async fn stress_test(&self, duration_secs: u64) -> Result<LoadBalancerStressTestResult> {
+    pub async fn stress_test(
+        &self,
+        duration_secs: u64,
+    ) -> SongbirdResult<LoadBalancerStressTestResult> {
         println!("🔥 Running Load Balancer Stress Test...");
 
         let start_time = Instant::now();

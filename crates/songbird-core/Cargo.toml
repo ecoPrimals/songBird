@@ -14,7 +14,8 @@ categories = ["game-engines", "network-programming", "concurrency"]
 songbird-errors = { path = "../songbird-errors" }
 songbird-config = { path = "../songbird-config" }
 songbird-discovery = { path = "../songbird-discovery" }
-songbird-network = { path = "../songbird-network" }
+songbird-types = { path = "../songbird-types" }
+# songbird-network = { path = "../songbird-network" } # Temporarily disabled for deep work
 songbird-observability = { path = "../songbird-observability" }
 songbird-registry = { path = "../songbird-registry" }
 songbird-universal = { path = "../songbird-universal" }

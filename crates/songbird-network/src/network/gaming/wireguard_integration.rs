@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -111,19 +111,18 @@ impl WireGuardSecurityProvider {
                 .output()
         })
         .await
-        .map_err(|e| SongbirdError::network_error(format!("Failed to spawn key generation: {e}")))?
+        .map_err(|e| SongbirdError::network(format!("Failed to spawn key generation: {e}")))?
         .map_err(|e| {
-            SongbirdError::network_error(format!("Failed to generate private key: {e}"))
+            SongbirdError::network(format!("Failed to generate private key: {e}"))
         })?;
 
         if !output.status.success() {
-            return Err(SongbirdError::network_error(
-                "WireGuard key generation failed",
+            return Err(SongbirdError::network("WireGuard key generation failed",
             ));
         }
 
         let key = String::from_utf8(output.stdout)
-            .map_err(|e| SongbirdError::network_error(format!("Invalid key format: {e}")))?
+            .map_err(|e| SongbirdError::network(format!("Invalid key format: {e}")))?
             .trim()
             .to_string();
 
@@ -150,18 +149,17 @@ impl WireGuardSecurityProvider {
         })
         .await
         .map_err(|e| {
-            SongbirdError::network_error(format!("Failed to spawn pubkey derivation: {e}"))
+            SongbirdError::network(format!("Failed to spawn pubkey derivation: {e}"))
         })?
-        .map_err(|e| SongbirdError::network_error(format!("Failed to derive public key: {e}")))?;
+        .map_err(|e| SongbirdError::network(format!("Failed to derive public key: {e}")))?;
 
         if !output.status.success() {
-            return Err(SongbirdError::network_error(
-                "WireGuard pubkey derivation failed",
+            return Err(SongbirdError::network("WireGuard pubkey derivation failed",
             ));
         }
 
         let key = String::from_utf8(output.stdout)
-            .map_err(|e| SongbirdError::network_error(format!("Invalid pubkey format: {e}")))?
+            .map_err(|e| SongbirdError::network(format!("Invalid pubkey format: {e}")))?
             .trim()
             .to_string();
 
@@ -206,19 +204,19 @@ impl WireGuardTunnel {
 
         tokio::fs::write(&config_path, config_content)
             .await
-            .map_err(|e| SongbirdError::network_error(format!("Failed to write config: {e}")))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to write config: {e}")))?;
 
         // Bring up the interface
         let output = Command::new("wg-quick")
             .args(["up", &config_path])
             .output()
             .map_err(|e| {
-                SongbirdError::network_error(format!("Failed to execute wg-quick: {e}"))
+                SongbirdError::network(format!("Failed to execute wg-quick: {e}"))
             })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(SongbirdError::network_error(format!(
+            return Err(SongbirdError::network(format!(
                 "WireGuard activation failed: {stderr}"
             )));
         }
@@ -264,7 +262,7 @@ PersistentKeepalive = {}
             .args(["down", &config_path])
             .output()
             .map_err(|e| {
-                SongbirdError::network_error(format!("Failed to execute wg-quick: {e}"))
+                SongbirdError::network(format!("Failed to execute wg-quick: {e}"))
             })?;
 
         if !output.status.success() {
@@ -442,7 +440,7 @@ impl BSTPTunnel {
     pub fn decrypt_gaming_packet_bstp(&mut self, encrypted: &[u8]) -> Result<Vec<u8>> {
         // Validate BSTP header
         if encrypted.len() < 24 || &encrypted[0..4] != b"BSTP" {
-            return Err(SongbirdError::network_error("Invalid BSTP packet format"));
+            return Err(SongbirdError::network("Invalid BSTP packet format"));
         }
 
         // Extract length
@@ -450,7 +448,7 @@ impl BSTPTunnel {
             u32::from_le_bytes([encrypted[4], encrypted[5], encrypted[6], encrypted[7]]) as usize;
 
         if encrypted.len() < 8 + length + 16 {
-            return Err(SongbirdError::network_error("BSTP packet too short"));
+            return Err(SongbirdError::network("BSTP packet too short"));
         }
 
         // Extract the original data (placeholder - would be decrypted)

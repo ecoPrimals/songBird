@@ -14,11 +14,11 @@ pub use management::{
 // Re-export network types except for conflicting NetworkManager
 pub use network::{NetworkConfig as NetworkNetworkConfig, NetworkManager as NetworkNetworkManager};
 
-// Re-export gaming module
-pub use network::gaming;
+// Re-export gaming module (TODO: Re-enable after fixing encoding issues)
+// pub use network::gaming;
 
-// Re-export for easier access in examples and external usage
-pub use network::gaming::security_provider;
+// Re-export for easier access in examples and external usage  
+// pub use network::gaming::security_provider;
 
 #[cfg(test)]
 mod universal_layer23_networking_tests {

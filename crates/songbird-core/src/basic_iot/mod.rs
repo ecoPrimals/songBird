@@ -18,6 +18,7 @@ use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::sync::RwLock;
 use tokio::time::timeout;
+use songbird_errors::SongbirdResult;
 
 /// Universal IoT device manager with REAL discovery capabilities
 pub struct IoTManager {
@@ -121,7 +122,7 @@ impl IoTManager {
     pub async fn discover_devices(
         &self,
         device_type: Option<&str>,
-    ) -> Result<Vec<ConnectedDevice>> {
+    ) -> SongbirdResult<Vec<ConnectedDevice>> {
         let mut discovered = Vec::new();
 
         // Get local network range for scanning
@@ -171,7 +172,7 @@ impl IoTManager {
     }
 
     /// Get local network range for scanning
-    async fn get_local_network_range(&self) -> Result<Vec<Ipv4Addr>> {
+    async fn get_local_network_range(&self) -> SongbirdResult<Vec<Ipv4Addr>> {
         // Get local IP and generate scan range
         let _local_ip = self.get_local_ip().await?;
         let mut range = Vec::new();
@@ -186,17 +187,12 @@ impl IoTManager {
     }
 
     /// Get local IP address
-    async fn get_local_ip(&self) -> Result<Ipv4Addr> {
+    async fn get_local_ip(&self) -> SongbirdResult<Ipv4Addr> {
         // Use configurable binding - NO MORE HARDCODING 0.0.0.0!
         let env_config = songbird_config::environment::EnvironmentConfig::default();
         let bind_addr = if env_config.bind_address == "0.0.0.0" {
             if std::env::var("SONGBIRD_IOT_BIND_ALL_APPROVED").is_err() {
-                return Err(songbird_errors::SongbirdError::Config {
-                    field: Some("iot_bind_address".to_string()),
-                    message: "IoT discovery binding to 0.0.0.0 requires explicit approval via SONGBIRD_IOT_BIND_ALL_APPROVED=true".to_string(),
-                    suggestion: Some("Set SONGBIRD_IOT_BIND_ALL_APPROVED=true environment variable or use specific bind address".to_string()),
-                    context: Some("IoT discovery security binding validation".to_string()),
-                });
+                return Err(songbird_errors::SongbirdError::configuration("IoT discovery binding to 0.0.0.0 requires explicit approval via SONGBIRD_IOT_BIND_ALL_APPROVED=true".to_string()));
             }
             "0.0.0.0:0"
         } else {
@@ -227,7 +223,7 @@ impl IoTManager {
     async fn scan_network_devices(
         ips: Vec<Ipv4Addr>,
         config: DiscoveryConfig,
-    ) -> Result<Vec<ConnectedDevice>> {
+    ) -> SongbirdResult<Vec<ConnectedDevice>> {
         let mut devices = Vec::new();
 
         // Scan each IP concurrently (limited concurrency to avoid flooding)
@@ -241,12 +237,7 @@ impl IoTManager {
             tasks.push(tokio::spawn(async move {
                 let _permit = sem.acquire().await.map_err(|e| {
                     tracing::error!("IoT semaphore acquisition failed: {}", e);
-                    songbird_errors::SongbirdError::Network(Box::new(NetworkError {
-                        message: format!("Semaphore acquisition failed: {e}"),
-                        endpoint: None,
-                        port: None,
-                        protocol: Some("IoT Discovery".to_string()),
-                    }))
+                    songbird_errors::SongbirdError::network(format!("Semaphore acquisition failed: {}", e))
                 })?;
                 Self::scan_device_ports(ip, &config).await
             }));
@@ -266,7 +257,7 @@ impl IoTManager {
     async fn scan_device_ports(
         ip: Ipv4Addr,
         config: &DiscoveryConfig,
-    ) -> Result<Option<ConnectedDevice>> {
+    ) -> SongbirdResult<Option<ConnectedDevice>> {
         for &port in &config.common_ports {
             let addr = SocketAddr::new(IpAddr::V4(ip), port);
 
@@ -286,7 +277,7 @@ impl IoTManager {
     }
 
     /// Identify device by its port
-    async fn identify_device_by_port(ip: Ipv4Addr, port: u16) -> Result<ConnectedDevice> {
+    async fn identify_device_by_port(ip: Ipv4Addr, port: u16) -> SongbirdResult<ConnectedDevice> {
         let (device_type, capabilities, protocol) = match port {
             80 | 8080 => {
                 // HTTP device - try to get device info
@@ -374,7 +365,7 @@ impl IoTManager {
         _ip: Ipv4Addr,
         port: u16,
         secure: bool,
-    ) -> Result<(String, Vec<String>, DetectedProtocol)> {
+    ) -> SongbirdResult<(String>, DetectedProtocol)> {
         // Try to detect device type from HTTP response
         // This would make actual HTTP requests to detect printers, cameras, etc.
 
@@ -393,7 +384,7 @@ impl IoTManager {
     }
 
     /// Discover devices using mDNS/Bonjour
-    async fn discover_mdns_devices() -> Result<Vec<ConnectedDevice>> {
+    async fn discover_mdns_devices() -> SongbirdResult<Vec<ConnectedDevice>> {
         // Real mDNS discovery would use a library like mdns or zeroconf
         // For now, return empty but this would scan for:
         // - _ipp._tcp.local (printers)
@@ -405,7 +396,7 @@ impl IoTManager {
     }
 
     /// Discover devices using UPnP
-    async fn discover_upnp_devices() -> Result<Vec<ConnectedDevice>> {
+    async fn discover_upnp_devices() -> SongbirdResult<Vec<ConnectedDevice>> {
         // Real UPnP discovery would send SSDP multicast messages
         // and parse device descriptions
 
@@ -413,7 +404,7 @@ impl IoTManager {
     }
 
     /// Connect to a device with real protocol negotiation
-    pub async fn connect_device(&self, address: &str, device_type: &str, name: &str) -> Result<()> {
+    pub async fn connect_device(&self, address: &str, device_type: &str, name: &str) -> SongbirdResult<()> {
         // Parse address and detect optimal protocol
         let detected_device = self.detect_device_protocol(address).await?;
 
@@ -435,17 +426,10 @@ impl IoTManager {
     }
 
     /// Detect device protocol and capabilities
-    async fn detect_device_protocol(&self, address: &str) -> Result<ConnectedDevice> {
+    async fn detect_device_protocol(&self, address: &str) -> SongbirdResult<ConnectedDevice> {
         let ip: Ipv4Addr = address
             .parse()
-            .map_err(|_| songbird_errors::SongbirdError::Config {
-                field: Some("address".to_string()),
-                message: "Invalid IP address".to_string(),
-                suggestion: Some(
-                    "Provide a valid IPv4 address format (e.g., 192.168.1.1)".to_string(),
-                ),
-                context: Some("IoT device address parsing".to_string()),
-            })?;
+            .map_err(|_| songbird_errors::SongbirdError::configuration("Invalid IP address".to_string()))?;
 
         // Try common ports to detect device type
         for &port in &self.discovery_config.common_ports {
@@ -471,14 +455,12 @@ impl IoTManager {
     }
 
     /// Send command to a device
-    pub async fn send_command(&self, device_name: &str, command: &str) -> Result<String> {
+    pub async fn send_command(&self, device_name: &str, command: &str) -> SongbirdResult<String> {
         let devices = self.devices.read().await;
         let device =
             devices
                 .get(device_name)
-                .ok_or_else(|| songbird_errors::SongbirdError::Config {
-                    field: Some("device".to_string()),
-                    message: format!("Device '{device_name}' not found"),
+                .ok_or_else(|| songbird_errors::SongbirdError::configuration(format!("Device '{device_name}' not found"),
                     suggestion: Some(
                         "Check device name and ensure device is registered".to_string(),
                     ),
@@ -499,9 +481,7 @@ impl IoTManager {
                 self.send_custom_command(device, command, protocol.clone(), *port)
                     .await
             }
-            _ => Err(songbird_errors::SongbirdError::Config {
-                field: Some("protocol".to_string()),
-                message: format!("Protocol not supported for device {device_name}"),
+            _ => Err(songbird_errors::SongbirdError::configuration(format!("Protocol not supported for device {device_name}"),
                 suggestion: Some("Use HTTP, MQTT, SNMP, or custom protocol".to_string()),
                 context: Some("IoT protocol routing".to_string()),
             }),
@@ -515,7 +495,7 @@ impl IoTManager {
         command: &str,
         port: u16,
         secure: bool,
-    ) -> Result<String> {
+    ) -> SongbirdResult<String> {
         let protocol = if secure { "https" } else { "http" };
         let url = format!("{}://{}:{}", protocol, device.address, port);
 
@@ -527,9 +507,7 @@ impl IoTManager {
             "print" if device.device_type == "printer" => {
                 Ok(format!("Printing to {}", device.name))
             }
-            _ => Err(songbird_errors::SongbirdError::Config {
-                field: Some("command".to_string()),
-                message: format!("Command '{command}' not supported for HTTP device"),
+            _ => Err(songbird_errors::SongbirdError::configuration(format!("Command '{command}' not supported for HTTP device"),
                 suggestion: Some(
                     "Use 'status', 'scan' (for scanners), or 'print' (for printers)".to_string(),
                 ),
@@ -539,13 +517,11 @@ impl IoTManager {
     }
 
     /// Send IPP command to printer
-    async fn send_ipp_command(&self, device: &ConnectedDevice, command: &str) -> Result<String> {
+    async fn send_ipp_command(&self, device: &ConnectedDevice, command: &str) -> SongbirdResult<String> {
         match command {
             "print" => Ok(format!("IPP print job sent to {}", device.name)),
             "status" => Ok(format!("IPP printer {} is ready", device.name)),
-            _ => Err(songbird_errors::SongbirdError::Config {
-                field: Some("command".to_string()),
-                message: format!("Command '{command}' not supported for IPP device"),
+            _ => Err(songbird_errors::SongbirdError::configuration(format!("Command '{command}' not supported for IPP device"),
                 suggestion: Some("Use 'print' or 'status' for IPP printers".to_string()),
                 context: Some("IoT IPP command routing".to_string()),
             }),
@@ -558,15 +534,13 @@ impl IoTManager {
         device: &ConnectedDevice,
         command: &str,
         community: &str,
-    ) -> Result<String> {
+    ) -> SongbirdResult<String> {
         match command {
             "status" => Ok(format!(
                 "SNMP query to {} with community '{}'",
                 device.address, community
             )),
-            _ => Err(songbird_errors::SongbirdError::Config {
-                field: Some("command".to_string()),
-                message: format!("Command '{command}' not supported for SNMP device"),
+            _ => Err(songbird_errors::SongbirdError::configuration(format!("Command '{command}' not supported for SNMP device"),
                 suggestion: Some("Use 'status' for SNMP device queries".to_string()),
                 context: Some("IoT SNMP command routing".to_string()),
             }),
@@ -580,7 +554,7 @@ impl IoTManager {
         command: &str,
         protocol: String,
         port: u16,
-    ) -> Result<String> {
+    ) -> SongbirdResult<String> {
         Ok(format!(
             "Custom command '{}' sent to {} via {} on port {}",
             command, device.address, protocol, port
@@ -588,7 +562,7 @@ impl IoTManager {
     }
 
     /// List connected devices
-    pub async fn list_devices(&self) -> Result<Vec<ConnectedDevice>> {
+    pub async fn list_devices(&self) -> SongbirdResult<Vec<ConnectedDevice>> {
         let devices = self.devices.read().await;
         Ok(devices.values().cloned().collect())
     }
@@ -599,7 +573,7 @@ impl IoTManager {
         &self,
         __device: &ConnectedDevice,
         __command: &str,
-    ) -> Result<String> {
+    ) -> SongbirdResult<String> {
         // Implementation of execute_device_command method
         Ok(String::new())
     }

@@ -27,12 +27,7 @@ impl BearDogClient {
         
         // Verify BearDog availability
         if !self.is_beardog_available().await {
-            return Err(SongbirdError::Security {
-                message: "BearDog service not available".to_string(),
-                context: Some("Client initialization failed".to_string()),
-                severity: Some("High".to_string()),
-                suggestion: Some("Ensure BearDog service is running".to_string()),
-            });
+            return Err(SongbirdError::security("BearDog service not available"));
         }
 
         // Initialize security genetics

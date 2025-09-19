@@ -4,7 +4,7 @@
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};

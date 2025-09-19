@@ -268,13 +268,13 @@ impl ProductionTunnelManager {
         // Write configuration to temporary file
         let config_path = format!("/tmp/wg-{}.conf", tunnel_id);
         tokio::fs::write(&config_path, wg_config).await
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to write WireGuard config: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to write WireGuard config: {}", e)))?;
         
         // Start WireGuard interface
         let output = Command::new("wg-quick")
             .args(&["up", &config_path])
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to start WireGuard: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to start WireGuard: {}", e)))?;
         
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
@@ -298,13 +298,13 @@ impl ProductionTunnelManager {
         
         let config_path = format!("/tmp/ovpn-{}.conf", tunnel_id);
         tokio::fs::write(&config_path, ovpn_config).await
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to write OpenVPN config: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to write OpenVPN config: {}", e)))?;
         
         // Start OpenVPN
         let output = Command::new("openvpn")
             .args(&["--config", &config_path, "--daemon"])
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to start OpenVPN: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to start OpenVPN: {}", e)))?;
         
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
@@ -329,13 +329,13 @@ impl ProductionTunnelManager {
         
         let config_path = format!("/etc/ipsec.d/{}.conf", tunnel_id);
         tokio::fs::write(&config_path, ipsec_config).await
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to write IPSec config: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to write IPSec config: {}", e)))?;
         
         // Start IPSec connection
         let output = Command::new("ipsec")
             .args(&["up", tunnel_id])
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to start IPSec: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to start IPSec: {}", e)))?;
         
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
@@ -380,7 +380,7 @@ impl ProductionTunnelManager {
             .json(&bstp_request)
             .send()
             .await
-            .map_err(|e| SongbirdError::network_error(&format!("BearDog BSTP request failed: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("BearDog BSTP request failed: {}", e)))?;
         
         if response.status().is_success() {
             info!("✅ BSTP tunnel established via BearDog: {}", tunnel_id);
@@ -399,7 +399,7 @@ impl ProductionTunnelManager {
         
         // Custom tunnel implementation based on parameters
         let tunnel_script = config.parameters.get("script_path")
-            .ok_or_else(|| SongbirdError::network_error("Custom tunnel requires script_path parameter"))?;
+            .ok_or_else(|| SongbirdError::network("Custom tunnel requires script_path parameter"))?;
         
         let output = Command::new(tunnel_script)
             .args(&[
@@ -409,7 +409,7 @@ impl ProductionTunnelManager {
                 "--remote", &config.remote_endpoint.to_string(),
             ])
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Custom tunnel script failed: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Custom tunnel script failed: {}", e)))?;
         
         if output.status.success() {
             info!("✅ Custom tunnel established: {}", tunnel_id);
@@ -438,7 +438,7 @@ impl ProductionTunnelManager {
         let output = Command::new("wg")
             .args(&["genkey"])
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to generate WireGuard key: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to generate WireGuard key: {}", e)))?;
         
         if output.status.success() {
             Ok(songbird_errors::evolved_success(String::from_utf8_lossy(&output.stdout)).trim().to_string())
@@ -453,7 +453,7 @@ impl ProductionTunnelManager {
             .args(&["pubkey"])
             .arg(private_key)
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to derive WireGuard public key: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to derive WireGuard public key: {}", e)))?;
         
         if output.status.success() {
             Ok(songbird_errors::evolved_success(String::from_utf8_lossy(&output.stdout)).trim().to_string())
@@ -594,7 +594,7 @@ impl ProductionTunnelManager {
         let output = Command::new("ping")
             .args(&["-c", "1", "-W", "2", "8.8.8.8"]) // Google DNS
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Ping test failed: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Ping test failed: {}", e)))?;
         
         if output.status.success() {
             debug!("✅ Tunnel health check passed: {}", tunnel_id);

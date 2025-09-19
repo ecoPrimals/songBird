@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::api::ai_first_response::{
     AIFirstResponse, AIResponseMetadata, ActionPriority, SuggestedAction,
 };
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 
 use super::connection::{
     ConnectionConfig, ConnectionQualityMetrics, ConnectionRequest, ConnectionResponse,
@@ -57,7 +57,7 @@ impl MessageRouter {
         &self,
         _message: &str,
         source_connection: &str,
-    ) -> Result<Vec<String>> {
+    ) -> SongbirdResult<Vec<String>> {
         // Get all connections that should receive this message
         let recipients = self
             .route_table
@@ -102,7 +102,7 @@ impl CollaborationCoordinator {
         &mut self,
         workspace_id: String,
         _config: WorkspaceConfiguration,
-    ) -> Result<CollaborationWorkspace> {
+    ) -> SongbirdResult<CollaborationWorkspace> {
         let workspace = CollaborationWorkspace {
             workspace_id: workspace_id.clone(),
             name: format!("Workspace-{workspace_id}"), // Generated name since config doesn't have name
@@ -245,7 +245,7 @@ impl AIStreamingConnectionManager {
     async fn create_connection(
         &mut self,
         request: &ConnectionRequest,
-    ) -> Result<ConnectionResponse> {
+    ) -> SongbirdResult<ConnectionResponse> {
         let connection_id = Uuid::new_v4().to_string();
 
         // Determine connection type

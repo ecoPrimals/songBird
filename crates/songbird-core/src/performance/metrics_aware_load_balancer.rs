@@ -5,8 +5,7 @@
 
 use crate::load_balancer::LoadBalancer;
 use crate::metrics::{ComputeMetrics, MetricsCapabilityAdapter};
-use songbird_errors::{Result, SongbirdError};
-use songbird_universal_primals::types::{PrimalRequest, PrimalRequestType};
+use songbird_errors::{SongbirdError, SongbirdResult};
 use songbird_universal_primals::PrimalProvider;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -93,7 +92,10 @@ impl MetricsAwareLoadBalancer {
     }
 
     /// Route compute request based on real ToadStool metrics
-    pub async fn route_compute_request(&self, request: ComputeRequest) -> Result<ComputeResponse> {
+    pub async fn route_compute_request(
+        &self,
+        request: ComputeRequest,
+    ) -> SongbirdResult<ComputeResponse> {
         info!(
             "🎯 Routing compute request {} based on real metrics",
             request.request_id
@@ -114,7 +116,7 @@ impl MetricsAwareLoadBalancer {
         let available_primals = self.find_compute_primals().await?;
 
         if available_primals.is_empty() {
-            return Err(SongbirdError::service_error(
+            return Err(SongbirdError::service(
                 "load_balancer",
                 "No compute primals available for routing",
             ));
@@ -136,7 +138,7 @@ impl MetricsAwareLoadBalancer {
     }
 
     /// Get cached compute metrics or fetch fresh ones
-    async fn get_cached_compute_metrics(&self) -> Result<ComputeMetrics> {
+    async fn get_cached_compute_metrics(&self) -> SongbirdResult<ComputeMetrics> {
         let cache = self.metrics_cache.read().await;
 
         // Check if we have recent cached metrics
@@ -155,7 +157,7 @@ impl MetricsAwareLoadBalancer {
             .metrics_adapter
             .collect_compute_metrics()
             .await
-            .map_err(|e| songbird_errors::SongbirdError::io_error(e.to_string()))?;
+            .map_err(|e| songbird_errors::SongbirdError::network(e.to_string()))?;
 
         // Update cache
         let mut cache = self.metrics_cache.write().await;
@@ -171,7 +173,7 @@ impl MetricsAwareLoadBalancer {
     }
 
     /// Find available compute primals using capability-based discovery
-    async fn find_compute_primals(&self) -> Result<Vec<Arc<dyn PrimalProvider>>> {
+    async fn find_compute_primals(&self) -> SongbirdResult<Vec<Arc<dyn PrimalProvider>>> {
         // Use our universal primal registry to find compute capabilities
         // This is capability-based, not hardcoded to specific primal names
 
@@ -191,9 +193,9 @@ impl MetricsAwareLoadBalancer {
         available_primals: &[Arc<dyn PrimalProvider>],
         compute_metrics: &ComputeMetrics,
         request: &ComputeRequest,
-    ) -> Result<Arc<dyn PrimalProvider>> {
+    ) -> SongbirdResult<Arc<dyn PrimalProvider>> {
         if available_primals.is_empty() {
-            return Err(SongbirdError::service_error(
+            return Err(SongbirdError::service(
                 "load_balancer",
                 "No compute primals available for selection",
             ));
@@ -216,9 +218,10 @@ impl MetricsAwareLoadBalancer {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        let (best_primal, best_score) = primal_scores.into_iter().next().ok_or_else(|| {
-            SongbirdError::service_error("load_balancer", "No suitable primal found")
-        })?;
+        let (best_primal, best_score) = primal_scores
+            .into_iter()
+            .next()
+            .ok_or_else(|| SongbirdError::service("load_balancer", "No suitable primal found"))?;
 
         info!(
             "🏆 Best primal '{}' selected with score {:.2}",
@@ -243,7 +246,7 @@ impl MetricsAwareLoadBalancer {
         primal: &Arc<dyn PrimalProvider>,
         compute_metrics: &ComputeMetrics,
         request: &ComputeRequest,
-    ) -> Result<PrimalScore> {
+    ) -> SongbirdResult<PrimalScore> {
         // CPU availability score (0.0-1.0, higher is better)
         let cpu_available_percent = 100.0 - compute_metrics.cpu_usage_percent;
         let cpu_score = if cpu_available_percent >= request.cpu_requirement {
@@ -275,12 +278,16 @@ impl MetricsAwareLoadBalancer {
         let performance_score = compute_metrics.performance_score.clamp(0.0, 1.0);
 
         // Availability score based on primal health
-        let health = primal.health_check().await;
+        let health = primal.health().await;
         let availability_score = match health {
-            songbird_universal_primals::traits::PrimalHealth::Healthy => 1.0,
-            songbird_universal_primals::traits::PrimalHealth::Degraded { .. } => 0.5,
-            songbird_universal_primals::traits::PrimalHealth::Unhealthy { .. } => 0.0,
-            songbird_universal_primals::traits::PrimalHealth::Unknown => 0.2, // Conservative score for unknown state
+            Ok(health_status) => match health_status.status {
+                songbird_universal_primals::traits::health::HealthStatus::Healthy => 1.0,
+                songbird_universal_primals::traits::health::HealthStatus::Degraded => 0.5,
+                songbird_universal_primals::traits::health::HealthStatus::Unhealthy => 0.0,
+                songbird_universal_primals::traits::health::HealthStatus::Down => 0.0,
+                songbird_universal_primals::traits::health::HealthStatus::Unknown => 0.2,
+            },
+            Err(_) => 0.0, // Error getting health means unavailable
         };
 
         // Weight scores based on request priority
@@ -315,7 +322,7 @@ impl MetricsAwareLoadBalancer {
         &self,
         target_primal: Arc<dyn PrimalProvider>,
         request: ComputeRequest,
-    ) -> Result<ComputeResponse> {
+    ) -> SongbirdResult<ComputeResponse> {
         let start_time = std::time::Instant::now();
 
         info!(
@@ -347,25 +354,29 @@ impl MetricsAwareLoadBalancer {
             serde_json::json!(request.timeout_seconds),
         );
 
-        let primal_request = PrimalRequest {
-            id: Uuid::new_v4(),
-            request_type: PrimalRequestType::Compute,
-            payload,
+        let canonical_request = songbird_types::CanonicalRequest {
+            request_id: Uuid::new_v4().to_string(),
+            operation: "compute".to_string(),
+            payload: serde_json::json!(payload),
+            metadata: {
+                let mut meta = HashMap::new();
+                meta.insert(
+                    "context".to_string(),
+                    format!("songbird-request-{}", request.request_id),
+                );
+                meta.insert("priority".to_string(), "128".to_string());
+                meta.insert("security_level".to_string(), "standard".to_string());
+                meta
+            },
             timestamp: chrono::Utc::now(),
-            context: Some(format!("songbird-request-{}", request.request_id)),
-            priority: Some(128), // Medium priority
-            security_level: Some("standard".to_string()),
         };
 
         // Execute request on target primal
         let primal_response = target_primal
-            .handle_primal_request(primal_request)
+            .handle_request(canonical_request)
             .await
             .map_err(|e| {
-                SongbirdError::service_error(
-                    "primal_request",
-                    format!("Primal request failed: {e}"),
-                )
+                SongbirdError::service("primal_request", format!("Primal request failed: {e}"))
             })?;
 
         let processing_time_ms = start_time.elapsed().as_millis() as u64;
@@ -378,15 +389,15 @@ impl MetricsAwareLoadBalancer {
         // Convert PrimalResponse back to ComputeResponse
         Ok(ComputeResponse {
             request_id: request.request_id,
-            success: primal_response.success,
-            result_data: Some(serde_json::to_value(primal_response.payload).unwrap_or_default()),
+            success: primal_response.status == "success",
+            result_data: Some(serde_json::to_value(primal_response.data).unwrap_or_default()),
             processing_time_ms,
             handled_by_primal: target_primal.primal_id().to_string(),
         })
     }
 
     /// Get comprehensive metrics summary for monitoring
-    pub async fn get_metrics_summary(&self) -> Result<MetricsSummary> {
+    pub async fn get_metrics_summary(&self) -> SongbirdResult<MetricsSummary> {
         let compute_metrics = self.get_cached_compute_metrics().await?;
 
         Ok(MetricsSummary {

@@ -5,7 +5,8 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 
 /// Universal configuration validator trait

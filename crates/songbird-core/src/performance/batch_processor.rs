@@ -1,5 +1,7 @@
 //! Async batch processor for pipeline optimization
 
+use songbird_errors::SongbirdError;
+use songbird_errors::SongbirdResult;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
@@ -43,6 +45,31 @@ pub enum BatchError {
     Cancelled,
 }
 
+impl From<BatchError> for SongbirdError {
+    fn from(error: BatchError) -> Self {
+        match error {
+            BatchError::ProcessingFailed(msg) => SongbirdError::Service {
+                service: "BatchProcessor".to_string(),
+                message: format!("Batch processing failed: {msg}"),
+                suggested_alternatives: Vec::new(),
+                recovery_actions: vec!["Check batch processing configuration and retry".to_string()],
+            },
+            BatchError::Timeout => SongbirdError::Service {
+                service: "BatchProcessor".to_string(),
+                message: "Batch processing timed out".to_string(),
+                suggested_alternatives: Vec::new(),
+                recovery_actions: vec!["Increase timeout or reduce batch size".to_string()],
+            },
+            BatchError::Cancelled => SongbirdError::Service {
+                service: "BatchProcessor".to_string(),
+                message: "Batch processing was cancelled".to_string(),
+                suggested_alternatives: Vec::new(),
+                recovery_actions: vec!["Retry the operation if needed".to_string()],
+            },
+        }
+    }
+}
+
 impl<T, R> AsyncBatchProcessor<T, R>
 where
     T: Send + 'static,
@@ -51,7 +78,7 @@ where
     /// Create new async batch processor
     pub fn new<F>(batch_size: usize, batch_timeout: Duration, processor: F) -> Self
     where
-        F: Fn(Vec<T>) -> Result<Vec<R>, String> + Send + Sync + 'static,
+        F: Fn(Vec<T>) -> SongbirdResult<Vec<R>> + Send + Sync + 'static,
     {
         let (sender, receiver) = mpsc::unbounded_channel();
         let stats = Arc::new(Mutex::new(BatchStats::default()));
@@ -81,21 +108,19 @@ where
     }
 
     /// Submit item for batch processing
-    pub async fn submit(&self, item: T) -> Result<(), BatchError> {
+    pub async fn submit(&self, item: T) -> SongbirdResult<()> {
         let (response_tx, response_rx) = tokio::sync::oneshot::channel();
 
         let batch_item = BatchItem { item, response_tx };
 
         if self.sender.send(batch_item).is_err() {
-            return Err(BatchError::ProcessingFailed(
-                "Processor is shut down".to_string(),
-            ));
+            return Err(BatchError::ProcessingFailed("Processor is shut down".to_string()).into());
         }
 
         // Wait for processing result
         match response_rx.await {
-            Ok(result) => result,
-            Err(_) => Err(BatchError::Cancelled),
+            Ok(result) => result.map_err(|e| e.into()),
+            Err(_) => Err(BatchError::Cancelled.into()),
         }
     }
 
@@ -112,7 +137,7 @@ where
         processor: Arc<F>,
         stats: Arc<Mutex<BatchStats>>,
     ) where
-        F: Fn(Vec<T>) -> Result<Vec<R>, String> + Send + Sync,
+        F: Fn(Vec<T>) -> SongbirdResult<Vec<R>> + Send + Sync,
     {
         let mut current_batch = Vec::with_capacity(batch_size);
         let mut response_channels = Vec::with_capacity(batch_size);
@@ -174,7 +199,7 @@ where
         processor: &F,
         stats: &Arc<Mutex<BatchStats>>,
     ) where
-        F: Fn(Vec<T>) -> Result<Vec<R>, String> + Send + Sync,
+        F: Fn(Vec<T>) -> SongbirdResult<Vec<R>> + Send + Sync,
     {
         let start_time = std::time::Instant::now();
         let batch_size = batch.len();
@@ -198,7 +223,7 @@ where
             Err(error) => {
                 // Error - notify all clients of the failure
                 for tx in channels {
-                    let _ = tx.send(Err(BatchError::ProcessingFailed(error.clone())));
+                    let _ = tx.send(Err(BatchError::ProcessingFailed(error.to_string())));
                 }
 
                 // Update error stats
@@ -325,7 +350,7 @@ where
     /// Build the batch processor
     pub fn build<F>(self, processor: F) -> AsyncBatchProcessor<T, R>
     where
-        F: Fn(Vec<T>) -> Result<Vec<R>, String> + Send + Sync + 'static,
+        F: Fn(Vec<T>) -> SongbirdResult<Vec<R>> + Send + Sync + 'static,
     {
         AsyncBatchProcessor::new(self.batch_size, self.batch_timeout, processor)
     }

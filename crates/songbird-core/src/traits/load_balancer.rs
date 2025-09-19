@@ -5,7 +5,7 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use songbird_discovery::traits::service::{ServiceInfo, ServiceRequest};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -49,16 +49,17 @@ pub trait LoadBalancer: Send + Sync {
         &self,
         services: &[ServiceInfo],
         request: &ServiceRequest,
-    ) -> Result<ServiceInfo>;
+    ) -> SongbirdResult<ServiceInfo>;
 
     /// Update service health/availability
-    async fn update_service_health(&self, service_id: &str, is_healthy: bool) -> Result<()>;
+    async fn update_service_health(&self, service_id: &str, is_healthy: bool)
+        -> SongbirdResult<()>;
 
     /// Get load balancer statistics
-    async fn get_stats(&self) -> Result<LoadBalancerStats>;
+    async fn get_stats(&self) -> SongbirdResult<LoadBalancerStats>;
 
     /// Reset statistics
-    async fn reset_stats(&self) -> Result<()>;
+    async fn reset_stats(&self) -> SongbirdResult<()>;
 }
 
 /// Round-robin load balancer implementation
@@ -88,29 +89,32 @@ impl LoadBalancer for RoundRobinLoadBalancer {
         &self,
         services: &[ServiceInfo],
         _request: &ServiceRequest,
-    ) -> Result<ServiceInfo> {
+    ) -> SongbirdResult<ServiceInfo> {
         if services.is_empty() {
-            return Err(songbird_errors::SongbirdError::LoadBalancer {
-                message: "No services available".to_string(),
-                backend: None,
-                suggestion: Some("Register services with the load balancer".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::service(
+                "load_balancer",
+                "No services available".to_string(),
+            ));
         }
 
         let index = self.counter.fetch_add(1, Ordering::Relaxed) % services.len();
         Ok(services[index].clone())
     }
 
-    async fn update_service_health(&self, service_id: &str, is_healthy: bool) -> Result<()> {
+    async fn update_service_health(
+        &self,
+        service_id: &str,
+        is_healthy: bool,
+    ) -> SongbirdResult<()> {
         tracing::info!("Updated health for service {}: {}", service_id, is_healthy);
         Ok(())
     }
 
-    async fn get_stats(&self) -> Result<LoadBalancerStats> {
+    async fn get_stats(&self) -> SongbirdResult<LoadBalancerStats> {
         Ok(self.stats.clone())
     }
 
-    async fn reset_stats(&self) -> Result<()> {
+    async fn reset_stats(&self) -> SongbirdResult<()> {
         tracing::info!("Reset load balancer statistics");
         Ok(())
     }
@@ -150,13 +154,12 @@ impl LoadBalancer for WeightedRoundRobinLoadBalancer {
         &self,
         services: &[ServiceInfo],
         _request: &ServiceRequest,
-    ) -> Result<ServiceInfo> {
+    ) -> SongbirdResult<ServiceInfo> {
         if services.is_empty() {
-            return Err(songbird_errors::SongbirdError::LoadBalancer {
-                message: "No services available".to_string(),
-                backend: None,
-                suggestion: Some("Register services with the load balancer".to_string()),
-            });
+            return Err(songbird_errors::SongbirdError::service(
+                "load_balancer",
+                "No services available".to_string(),
+            ));
         }
 
         // Simplified weighted selection - just return first service for now
@@ -164,16 +167,20 @@ impl LoadBalancer for WeightedRoundRobinLoadBalancer {
         Ok(services[0].clone())
     }
 
-    async fn update_service_health(&self, service_id: &str, is_healthy: bool) -> Result<()> {
+    async fn update_service_health(
+        &self,
+        service_id: &str,
+        is_healthy: bool,
+    ) -> SongbirdResult<()> {
         tracing::info!("Updated health for service {}: {}", service_id, is_healthy);
         Ok(())
     }
 
-    async fn get_stats(&self) -> Result<LoadBalancerStats> {
+    async fn get_stats(&self) -> SongbirdResult<LoadBalancerStats> {
         Ok(self.stats.clone())
     }
 
-    async fn reset_stats(&self) -> Result<()> {
+    async fn reset_stats(&self) -> SongbirdResult<()> {
         tracing::info!("Reset weighted load balancer statistics");
         Ok(())
     }

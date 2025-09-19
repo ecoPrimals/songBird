@@ -8,7 +8,7 @@
 
 use crate::network::gaming::types::*;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::{mpsc, RwLock};

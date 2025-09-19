@@ -3,7 +3,7 @@
 //! Benchmarking memory efficiency and optimization
 
 use crate::production_benchmarks::types::*;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 
 /// Memory benchmark implementation
 pub struct MemoryBenchmarker<'a> {
@@ -16,7 +16,7 @@ impl<'a> MemoryBenchmarker<'a> {
     }
 
     /// Benchmark memory usage optimization
-    pub async fn benchmark_memory_usage(&self) -> Result<MemoryBenchmark> {
+    pub async fn benchmark_memory_usage(&self) -> SongbirdResult<MemoryBenchmark> {
         println!("💾 Benchmarking Memory Usage...");
 
         // Simulate baseline memory usage (without optimizations)
@@ -46,7 +46,7 @@ impl<'a> MemoryBenchmarker<'a> {
     }
 
     /// Calculate baseline memory usage (simulated)
-    async fn calculate_baseline_memory(&self) -> Result<f64> {
+    async fn calculate_baseline_memory(&self) -> SongbirdResult<f64> {
         // Simulate memory usage based on service count and data structures
         let base_per_service_mb = 0.1;
         let cache_overhead_mb = 32.0;
@@ -61,7 +61,7 @@ impl<'a> MemoryBenchmarker<'a> {
     }
 
     /// Calculate optimized memory usage (simulated)
-    async fn calculate_optimized_memory(&self) -> Result<f64> {
+    async fn calculate_optimized_memory(&self) -> SongbirdResult<f64> {
         // Simulate memory usage with optimizations
         let optimized_per_service_mb = 0.06; // 40% reduction per service
         let optimized_cache_mb = 20.0; // Better cache algorithms
@@ -85,7 +85,7 @@ impl<'a> MemoryBenchmarker<'a> {
     }
 
     /// Benchmark memory allocation patterns
-    pub async fn benchmark_allocation_patterns(&self) -> Result<AllocationBenchmark> {
+    pub async fn benchmark_allocation_patterns(&self) -> SongbirdResult<AllocationBenchmark> {
         println!("🔄 Benchmarking Memory Allocation Patterns...");
 
         // Benchmark without pooling (lots of allocations)
@@ -119,7 +119,7 @@ impl<'a> MemoryBenchmarker<'a> {
     }
 
     /// Simulate allocation patterns without object pooling
-    async fn simulate_allocations_without_pooling(&self) -> Result<AllocationPattern> {
+    async fn simulate_allocations_without_pooling(&self) -> SongbirdResult<AllocationPattern> {
         // Simulate high allocation rate without pooling
         // Each request creates new objects
         let requests_per_second = self.config.requests_per_test as f64 / 60.0; // Assume 60 second test
@@ -138,7 +138,7 @@ impl<'a> MemoryBenchmarker<'a> {
     }
 
     /// Simulate allocation patterns with object pooling
-    async fn simulate_allocations_with_pooling(&self) -> Result<AllocationPattern> {
+    async fn simulate_allocations_with_pooling(&self) -> SongbirdResult<AllocationPattern> {
         // Simulate reduced allocation rate with pooling
         let requests_per_second = self.config.requests_per_test as f64 / 60.0;
         let allocations_per_request = 4.0; // Much fewer new objects
@@ -156,7 +156,7 @@ impl<'a> MemoryBenchmarker<'a> {
     }
 
     /// Benchmark memory fragmentation
-    pub async fn benchmark_memory_fragmentation(&self) -> Result<FragmentationBenchmark> {
+    pub async fn benchmark_memory_fragmentation(&self) -> SongbirdResult<FragmentationBenchmark> {
         println!("🧩 Benchmarking Memory Fragmentation...");
 
         // Simulate fragmentation scenarios

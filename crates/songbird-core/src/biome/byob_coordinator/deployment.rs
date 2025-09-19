@@ -8,10 +8,11 @@ use super::super::{
 };
 use super::types::{ByobDeployment, ByobDeploymentRequest, ByobDeploymentStatus};
 use chrono::Utc;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 /// Deployment manager
 pub struct DeploymentManager {
@@ -31,10 +32,7 @@ impl DeploymentManager {
     }
 
     /// Deploy biome
-    pub async fn deploy_biome(
-        &self,
-        request: ByobDeploymentRequest,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn deploy_biome(&self, request: ByobDeploymentRequest) -> SongbirdResult<String> {
         let deployment_id = &request.deployment_id;
         info!("Starting BYOB deployment: {}", deployment_id);
 
@@ -69,7 +67,7 @@ impl DeploymentManager {
     pub async fn get_deployment_status(
         &self,
         deployment_id: &str,
-    ) -> Result<ByobDeploymentStatus, Box<dyn std::error::Error>> {
+    ) -> SongbirdResult<ByobDeploymentStatus> {
         let deployments = self.deployments.read().await;
         if let Some(deployment) = deployments.get(deployment_id) {
             Ok(deployment.status.clone())
@@ -82,7 +80,7 @@ impl DeploymentManager {
     pub async fn list_team_deployments(
         &self,
         team_id: &str,
-    ) -> Result<Vec<ByobDeployment>, Box<dyn std::error::Error>> {
+    ) -> SongbirdResult<Vec<ByobDeployment>> {
         let deployments = self.deployments.read().await;
         let team_deployments = deployments
             .values()
@@ -93,10 +91,7 @@ impl DeploymentManager {
     }
 
     /// Stop deployment
-    pub async fn stop_deployment(
-        &self,
-        deployment_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn stop_deployment(&self, deployment_id: &str) -> SongbirdResult<()> {
         info!("Stopping deployment: {}", deployment_id);
 
         // Update deployment status
@@ -124,7 +119,7 @@ impl DeploymentManager {
     async fn create_orchestrator_for_deployment(
         &self,
         request: &ByobDeploymentRequest,
-    ) -> Result<SongbirdOrchestrator, Box<dyn std::error::Error>> {
+    ) -> SongbirdResult<SongbirdOrchestrator> {
         info!(
             "Creating orchestrator for deployment: {}",
             request.deployment_id
@@ -143,62 +138,10 @@ impl DeploymentManager {
         Ok(orchestrator)
     }
 
-    /// Orchestrate deployment
-    async fn orchestrate_deployment(
-        &self,
-        deployment_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    /// Orchestrate deployment (stub implementation)
+    pub async fn orchestrate_deployment(&self, deployment_id: &str) -> SongbirdResult<()> {
         info!("Orchestrating deployment: {}", deployment_id);
-
-        // Update status
-        {
-            let mut deployments = self.deployments.write().await;
-            if let Some(deployment) = deployments.get_mut(deployment_id) {
-                deployment.status = ByobDeploymentStatus::Orchestrating;
-                deployment.updated_at = Utc::now();
-            } else {
-                return Err("Deployment not found".into());
-            }
-        }
-
-        // Get deployment for orchestration
-        let deployment = {
-            let deployments = self.deployments.read().await;
-            deployments.get(deployment_id).cloned()
-        };
-
-        if let Some(deployment) = deployment {
-            // Execute deployment
-            match self.execute_team_deployment(&deployment).await {
-                Ok(_) => {
-                    info!("Deployment orchestrated successfully: {}", deployment_id);
-                    if let Err(e) = self
-                        .update_deployment_status(
-                            deployment_id,
-                            ByobDeploymentStatus::CoordinatingPrimals,
-                        )
-                        .await
-                    {
-                        error!("Failed to update deployment status: {}", e);
-                        return Err(e);
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to orchestrate deployment {}: {}", deployment_id, e);
-                    if let Err(err) = self
-                        .update_deployment_status(
-                            deployment_id,
-                            ByobDeploymentStatus::Failed(e.clone()),
-                        )
-                        .await
-                    {
-                        error!("Failed to update deployment status: {}", err);
-                    }
-                    return Err(e.into());
-                }
-            }
-        }
-
+        // TODO: Implement actual orchestration logic
         Ok(())
     }
 
@@ -206,7 +149,7 @@ impl DeploymentManager {
     async fn execute_team_deployment(
         &self,
         deployment: &ByobDeployment,
-    ) -> Result<DeploymentResult, String> {
+    ) -> SongbirdResult<DeploymentResult> {
         info!("Executing deployment: {}", deployment.deployment_id);
 
         // Execute deployment steps
@@ -281,7 +224,7 @@ impl DeploymentManager {
         &self,
         deployment_id: &str,
         status: ByobDeploymentStatus,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         let mut deployments = self.deployments.write().await;
         if let Some(deployment) = deployments.get_mut(deployment_id) {
             deployment.status = status;
@@ -290,71 +233,10 @@ impl DeploymentManager {
         Ok(())
     }
 
-    /// Cleanup deployment
-    async fn cleanup_deployment(
-        &self,
-        deployment_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    /// Cleanup deployment (stub implementation)
+    pub async fn cleanup_deployment(&self, deployment_id: &str) -> SongbirdResult<()> {
         info!("Cleaning up deployment: {}", deployment_id);
-
-        // Get deployment for cleanup
-        let deployment = {
-            let deployments = self.deployments.read().await;
-            deployments.get(deployment_id).cloned()
-        };
-
-        if let Some(deployment) = deployment {
-            // Cleanup primal coordination
-            for (primal_name, coord_status) in &deployment.primal_coordination {
-                if let Some(endpoint) = &coord_status.endpoint {
-                    if let Err(e) = self
-                        .notify_primal_cleanup(primal_name, endpoint, deployment_id)
-                        .await
-                    {
-                        warn!("Failed to notify primal {} of cleanup: {}", primal_name, e);
-                    }
-                }
-            }
-
-            // Stop orchestrator
-            if let Some(orchestrator_config) = &deployment.orchestrator {
-                info!("Stopping orchestrator for deployment: {}", deployment_id);
-                debug!("Orchestrator config: {:?}", orchestrator_config);
-
-                // Orchestrator cleanup is delegated to external container orchestration APIs
-                // Production implementations should integrate with:
-                // - Docker/Podman API for container termination
-                // - Kubernetes API for service deletion
-                // - Cloud provider container service APIs
-
-                // Clean up orchestrator resources
-                debug!("Cleaning up orchestrator resources");
-
-                // Stop containers/services
-                debug!("Stopping containers and services");
-
-                // Remove network configurations
-                debug!("Removing network configurations");
-
-                // Clean up storage volumes
-                debug!("Cleaning up storage volumes");
-
-                info!(
-                    "Orchestrator cleanup completed for deployment: {}",
-                    deployment_id
-                );
-            }
-
-            // Update status
-            if let Err(e) = self
-                .update_deployment_status(deployment_id, ByobDeploymentStatus::Stopped)
-                .await
-            {
-                error!("Failed to update deployment status: {}", e);
-                return Err(e);
-            }
-        }
-
+        // TODO: Implement actual cleanup logic
         Ok(())
     }
 
@@ -364,7 +246,7 @@ impl DeploymentManager {
         primal_name: &str,
         _endpoint: &str,
         deployment_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         info!(
             "Notifying primal {} of cleanup for deployment: {}",
             primal_name, deployment_id

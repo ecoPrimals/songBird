@@ -11,6 +11,7 @@
 //! - Memory safety preserved
 //! - No undefined behavior possible
 
+use songbird_errors::SongbirdResult;
 use std::hint::black_box;
 use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -193,10 +194,15 @@ impl<T, const N: usize> FixedCircularBuffer<T, N> {
     }
 
     /// Push item with zero allocation - compile-time capacity checking
-    pub fn push(&mut self, item: T) -> Result<(), T> {
+    pub fn push(&mut self, item: T) -> SongbirdResult<()> {
         if self.len == N {
-            // Buffer full - return item safely
-            return Err(item);
+            // Buffer full - return error
+            return Err(songbird_errors::SongbirdError::Service {
+                service: "CircularBuffer".to_string(),
+                message: "Buffer is full".to_string(),
+                suggested_alternatives: vec!["Increase buffer size".to_string()],
+                recovery_actions: vec!["Clear buffer or process items".to_string()],
+            });
         }
 
         // SAFETY: We checked len < N, so tail is valid and within bounds
@@ -373,6 +379,7 @@ pub fn demonstrate_zero_cost_performance() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use songbird_errors::SongbirdResult;
 
     #[test]
     fn test_safe_string_interner() {

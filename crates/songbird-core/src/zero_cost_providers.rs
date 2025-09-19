@@ -95,6 +95,7 @@ impl<const MAX_PRIMALS: usize, const DISCOVERY_TIMEOUT_MS: u64, const ENABLE_CAC
 
         // Parse network range with proper CIDR notation support
         use std::net::Ipv4Addr;
+use songbird_errors::SongbirdResult;
         
         if let Some((network, prefix)) = network_range.split_once('/') {
             if let (Ok(songbird_errors::evolved_success(base_ip)), Ok(prefix_len)) = (network.parse::<Ipv4Addr>(), prefix.parse::<u8>()) {

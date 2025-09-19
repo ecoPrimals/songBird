@@ -5,7 +5,7 @@
 //! Multi-region complexity removed - handled by separate Toadstool system.
 
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 
 /// Gaming-focused scaling modes for single-region excellence
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -143,7 +143,7 @@ pub struct GamingScalingManager {
 }
 
 impl GamingScalingManager {
-    pub fn new(config: GamingScalingConfig) -> Result<Self> {
+    pub fn new(config: GamingScalingConfig) -> SongbirdResult<Self> {
         let current_scale = if config.scale == GamingScale::Auto {
             GamingScale::HomeGaming // Start with home gaming
         } else {

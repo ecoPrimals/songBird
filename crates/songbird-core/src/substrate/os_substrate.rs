@@ -4,6 +4,8 @@
 //! the universal capability adapter system for primal discovery and routing.
 
 use songbird_config::config::constants::get_primal_endpoint;
+use songbird_errors::SongbirdError;
+use songbird_errors::SongbirdResult;
 use songbird_universal::capabilities::UniversalCapabilityAdapter;
 use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
@@ -25,11 +27,8 @@ pub struct OSSubstrate {
 
 /// Universal primal client trait
 pub trait PrimalClient: Send + Sync {
-    async fn health_check(&self) -> Result<bool, SubstrateError>;
-    async fn request(
-        &self,
-        payload: serde_json::Value,
-    ) -> Result<serde_json::Value, SubstrateError>;
+    fn health_check(&self) -> impl std::future::Future<Output = SongbirdResult<bool>> + Send;
+    fn request(&self, payload: serde_json::Value) -> impl std::future::Future<Output = SongbirdResult<serde_json::Value>> + Send;
     fn endpoint(&self) -> &str;
 }
 
@@ -51,7 +50,7 @@ impl HttpPrimalClient {
 }
 
 impl PrimalClient for HttpPrimalClient {
-    async fn health_check(&self) -> Result<bool, SubstrateError> {
+    async fn health_check(&self) -> SongbirdResult<bool> {
         debug!(
             "🔍 Health checking {} primal at {}",
             self.primal_type, self.endpoint
@@ -83,10 +82,7 @@ impl PrimalClient for HttpPrimalClient {
         }
     }
 
-    async fn request(
-        &self,
-        payload: serde_json::Value,
-    ) -> Result<serde_json::Value, SubstrateError> {
+    async fn request(&self, payload: serde_json::Value) -> SongbirdResult<serde_json::Value> {
         debug!("📡 Sending request to {} primal", self.primal_type);
 
         let response = self
@@ -110,7 +106,7 @@ impl PrimalClient for HttpPrimalClient {
                 "❌ {} primal request failed: {}",
                 self.primal_type, error_msg
             );
-            Err(SubstrateError::NetworkError(error_msg))
+            Err(SubstrateError::NetworkError(error_msg).into())
         }
     }
 
@@ -121,7 +117,7 @@ impl PrimalClient for HttpPrimalClient {
 
 impl OSSubstrate {
     /// Create new OS substrate with universal capability discovery
-    pub async fn new() -> Result<Self, SubstrateError> {
+    pub async fn new() -> SongbirdResult<Self> {
         info!("🚀 Initializing OS Substrate with universal capability system");
 
         let discovery_config = songbird_universal::capabilities::DiscoveryConfig::default();
@@ -146,7 +142,7 @@ impl OSSubstrate {
     }
 
     /// Refresh compute capabilities discovery
-    async fn refresh_compute_capabilities(&mut self) -> Result<(), SubstrateError> {
+    async fn refresh_compute_capabilities(&mut self) -> SongbirdResult<()> {
         info!("🔍 Discovering compute capability primals...");
 
         // Find all primals with compute capabilities
@@ -215,7 +211,7 @@ impl OSSubstrate {
     }
 
     /// System information retrieval with universal compute integration
-    pub async fn get_system_info(&self) -> Result<SystemInfo, SubstrateError> {
+    pub async fn get_system_info(&self) -> SongbirdResult<SystemInfo> {
         debug!("📊 Retrieving system information");
 
         // Try to get enhanced system info from compute primals
@@ -247,7 +243,7 @@ impl OSSubstrate {
     pub async fn handle_request(
         &self,
         request: NetworkRequest,
-    ) -> Result<serde_json::Value, SubstrateError> {
+    ) -> SongbirdResult<serde_json::Value> {
         debug!("🔧 Handling request with universal compute routing");
 
         if let Some(compute_client) = self.get_compute_client().await {
@@ -287,6 +283,35 @@ impl std::fmt::Display for SubstrateError {
 
 impl std::error::Error for SubstrateError {}
 
+impl From<SubstrateError> for SongbirdError {
+    fn from(error: SubstrateError) -> Self {
+        match error {
+            SubstrateError::NetworkError(msg) => SongbirdError::Network {
+                message: msg,
+                interface: None,
+                suggestion: Some(
+                    "Check network connectivity and substrate availability".to_string(),
+                ),
+            },
+            SubstrateError::ParseError(msg) => SongbirdError::Configuration {
+                message: format!("Parse error: {msg}"),
+                field: None,
+                suggestion: Some("Check data format and structure".to_string()),
+            },
+            SubstrateError::ConfigError(msg) => SongbirdError::Configuration {
+                message: msg,
+                field: None,
+                suggestion: Some("Check substrate configuration".to_string()),
+            },
+            SubstrateError::CapabilityNotFound(cap) => SongbirdError::Configuration {
+                message: format!("Capability not found: {}", cap),
+                field: None,
+                suggestion: Some("Check capability configuration".to_string()),
+            },
+        }
+    }
+}
+
 // Placeholder types and functions for compilation
 #[derive(Debug)]
 pub struct SystemInfo {
@@ -300,7 +325,7 @@ pub struct NetworkRequest {
     pub payload: serde_json::Value,
 }
 
-fn parse_system_info_response(response: serde_json::Value) -> Result<SystemInfo, SubstrateError> {
+fn parse_system_info_response(response: serde_json::Value) -> SongbirdResult<SystemInfo> {
     Ok(SystemInfo {
         platform: response
             .get("platform")
@@ -327,7 +352,7 @@ fn get_local_system_info() -> SystemInfo {
     }
 }
 
-fn handle_request_locally(request: NetworkRequest) -> serde_json::Value {
+fn handle_request_locally(_request: NetworkRequest) -> serde_json::Value {
     serde_json::json!({
         "result": "processed_locally",
         "request_id": uuid::Uuid::new_v4(),

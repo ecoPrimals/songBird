@@ -4,7 +4,7 @@
 
 use crate::performance::*;
 use crate::production_benchmarks::types::*;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::time::{Duration, Instant};
 
 /// Cache benchmark implementation
@@ -25,7 +25,7 @@ impl<'a> CacheBenchmarker<'a> {
     }
 
     /// Benchmark cache performance with PUT and GET operations
-    pub async fn benchmark_cache(&self) -> Result<CacheBenchmark> {
+    pub async fn benchmark_cache(&self) -> SongbirdResult<CacheBenchmark> {
         println!("🧠 Benchmarking Cache Performance...");
 
         // Create cache configuration
@@ -66,7 +66,10 @@ impl<'a> CacheBenchmarker<'a> {
     }
 
     /// Benchmark cache PUT operations
-    async fn benchmark_put_operations(&self, cache: &AdaptiveCache<String, String>) -> Result<f64> {
+    async fn benchmark_put_operations(
+        &self,
+        cache: &AdaptiveCache<String, String>,
+    ) -> SongbirdResult<f64> {
         let put_start = Instant::now();
         for i in 0..self.config.cache_test_data_size {
             let key = format!("key-{i}");
@@ -84,7 +87,7 @@ impl<'a> CacheBenchmarker<'a> {
     async fn benchmark_get_operations(
         &self,
         cache: &AdaptiveCache<String, String>,
-    ) -> Result<(f64, f64, u64)> {
+    ) -> SongbirdResult<(f64, f64, u64)> {
         // Pre-generate access keys for performance (avoid allocations during benchmark)
         let access_keys = self.generate_realistic_access_pattern();
 
@@ -150,7 +153,7 @@ impl<'a> CacheBenchmarker<'a> {
     }
 
     /// Run cache eviction policy benchmark
-    pub async fn benchmark_eviction_policies(&self) -> Result<CacheEvictionBenchmark> {
+    pub async fn benchmark_eviction_policies(&self) -> SongbirdResult<CacheEvictionBenchmark> {
         println!("🔄 Benchmarking Cache Eviction Policies...");
 
         // Test LRU eviction
@@ -170,7 +173,7 @@ impl<'a> CacheBenchmarker<'a> {
     }
 
     /// Test LRU eviction performance
-    async fn test_lru_eviction(&self) -> Result<f64> {
+    async fn test_lru_eviction(&self) -> SongbirdResult<f64> {
         let cache = self.performance_optimizer.create_cache::<String, String>();
 
         // Fill cache to capacity
@@ -198,7 +201,7 @@ impl<'a> CacheBenchmarker<'a> {
     }
 
     /// Test LFU eviction performance (simulated)
-    async fn test_lfu_eviction(&self) -> Result<f64> {
+    async fn test_lfu_eviction(&self) -> SongbirdResult<f64> {
         // Simulate LFU behavior - in practice would use different cache
         let cache = self.performance_optimizer.create_cache::<String, String>();
 
@@ -235,7 +238,7 @@ impl<'a> CacheBenchmarker<'a> {
     }
 
     /// Test adaptive eviction performance
-    async fn test_adaptive_eviction(&self) -> Result<f64> {
+    async fn test_adaptive_eviction(&self) -> SongbirdResult<f64> {
         let cache = self.performance_optimizer.create_cache::<String, String>();
 
         // Mixed access pattern

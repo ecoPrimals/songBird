@@ -4,9 +4,10 @@
 //! without hardcoding specific primal names. Adapters discover and use primals
 //! based on their declared capabilities.
 
+use songbird_errors::SongbirdResult;
 use songbird_universal::capabilities::UniversalCapabilityAdapter;
 use std::collections::HashMap;
-use tracing::{debug, info, warn};
+use tracing::info;
 
 /// Universal metrics capability adapter
 #[derive(Debug, Clone)]
@@ -55,7 +56,7 @@ impl UniversalMetricsAdapter {
     }
 
     /// Discover and update all primal endpoints based on capabilities
-    pub async fn discover_and_update_endpoints(&mut self) -> Result<(), MetricsError> {
+    pub async fn discover_and_update_endpoints(&mut self) -> SongbirdResult<()> {
         info!("🔍 Discovering primals for metrics collection...");
 
         // Discover compute primals (anything with "compute" capability)
@@ -85,7 +86,7 @@ impl UniversalMetricsAdapter {
     async fn discover_primals_with_capability(
         &self,
         capability: &str,
-    ) -> Result<Vec<String>, MetricsError> {
+    ) -> SongbirdResult<Vec<String>> {
         let providers = self
             .capability_adapter
             .find_capability_providers(capability)

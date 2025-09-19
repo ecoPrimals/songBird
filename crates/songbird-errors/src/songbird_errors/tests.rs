@@ -10,12 +10,7 @@ mod error_tests {
 
     #[test]
     fn test_config_error_creation() {
-        let error = SongbirdError::Config {
-            message: "Invalid port".to_string(),
-            field: Some("port".to_string()),
-            suggestion: Some("Use port 8080".to_string()),
-            context: Some("network_config".to_string()),
-        };
+        let error = SongbirdError::configuration("Invalid port".to_string());
 
         assert!(matches!(error, SongbirdError::Config { .. }));
         assert_eq!(error.category(), "configuration");
@@ -23,12 +18,7 @@ mod error_tests {
 
     #[test]
     fn test_config_error_display() {
-        let error = SongbirdError::Config {
-            message: "Invalid configuration".to_string(),
-            field: Some("database_url".to_string()),
-            suggestion: Some("Check environment variables".to_string()),
-            context: Some("initialization".to_string()),
-        };
+        let error = SongbirdError::configuration("Invalid configuration".to_string());
 
         let display = format!("{error}");
         assert!(display.contains("Invalid configuration"));
@@ -92,11 +82,7 @@ mod error_tests {
 
     #[test]
     fn test_load_balancer_error() {
-        let error = SongbirdError::LoadBalancer {
-            message: "No healthy backends".to_string(),
-            backend: Some("backend-1".to_string()),
-            suggestion: Some("Check backend health".to_string()),
-        };
+        let error = SongbirdError::service("load_balancer", "No healthy backends".to_string());
 
         assert!(matches!(error, SongbirdError::LoadBalancer { .. }));
         assert_eq!(error.category(), "load_balancer");
@@ -104,12 +90,7 @@ mod error_tests {
 
     #[test]
     fn test_security_error() {
-        let error = SongbirdError::Security {
-            message: "Access denied".to_string(),
-            context: Some("user_authentication".to_string()),
-            severity: Some("high".to_string()),
-            suggestion: Some("Check permissions".to_string()),
-        };
+        let error = SongbirdError::security("Access denied");
 
         assert!(matches!(error, SongbirdError::Security { .. }));
         assert_eq!(error.category(), "security");
@@ -161,12 +142,7 @@ mod error_tests {
 
     #[test]
     fn test_error_debug_format() {
-        let error = SongbirdError::Config {
-            message: "Test error".to_string(),
-            field: Some("test_field".to_string()),
-            suggestion: None,
-            context: None,
-        };
+        let error = SongbirdError::configuration("Test error".to_string());
 
         let debug = format!("{error:?}");
         assert!(debug.contains("Config"));

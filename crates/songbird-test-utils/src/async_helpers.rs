@@ -1,6 +1,7 @@
 // Async test helpers for songbird testing
 
-use songbird_errors::{SongbirdError, Result as SongbirdResult};
+use songbird_errors::SongbirdError;
+use songbird_types::errors::SongbirdResult;
 use std::future::Future;
 use std::time::Duration;
 use tokio::time::{sleep, timeout};
@@ -16,7 +17,7 @@ pub async fn test_timeout<T>(
 ) -> Result<T, SongbirdError> {
     timeout(duration, future)
         .await
-        .map_err(|_| SongbirdError::operation_error("Test timeout exceeded"))
+        .map_err(|_| SongbirdError::service("test-utils", "Test timeout exceeded"))
 }
 
 /// Wait for a condition to become true with polling
@@ -38,9 +39,10 @@ where
         sleep(poll_interval).await;
     }
 
-    Err(SongbirdError::internal_error(format!(
-        "Condition not met within {max_wait:?}"
-    )))
+    Err(SongbirdError::service(
+        "test-utils",
+        format!("Condition not met within {max_wait:?}"),
+    ))
 }
 
 /// Retry an operation with exponential backoff
@@ -61,9 +63,10 @@ where
             Ok(result) => return Ok(result),
             Err(e) => {
                 if attempt == max_retries - 1 {
-                    return Err(SongbirdError::internal_error(format!(
-                        "Operation failed after {max_retries} retries: {e}"
-                    )));
+                    return Err(SongbirdError::service(
+                        "test-utils",
+                        format!("Operation failed after {max_retries} retries: {e}"),
+                    ));
                 }
                 sleep(delay).await;
                 delay *= 2; // Exponential backoff

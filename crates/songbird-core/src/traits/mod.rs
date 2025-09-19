@@ -35,13 +35,13 @@ pub use songbird_observability::HealthStatus as ObservabilityHealthStatus;
 
 // Health check trait definition
 use async_trait::async_trait;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 
 /// Health check trait for services
 #[async_trait]
 pub trait HealthCheck: Send + Sync {
     /// Perform health check
-    async fn check_health(&self) -> Result<HealthStatus>;
+    async fn check_health(&self) -> SongbirdResult<HealthStatus>;
 
     /// Get health check name
     fn health_check_name(&self) -> &str;
@@ -66,7 +66,7 @@ pub trait HealthMonitor: Send + Sync {
     async fn remove_health_check(&mut self, name: &str);
 
     /// Run all health checks
-    async fn run_all_checks(&self) -> Result<Vec<(String, HealthStatus)>>;
+    async fn run_all_checks(&self) -> SongbirdResult<Vec<(String, bool)>>;
 }
 
 /// Health state for backward compatibility
@@ -97,13 +97,13 @@ pub trait ComposablePlugin: Send + Sync {
         &mut self,
         other_id: &str,
         other_capabilities: &[PluginCapability],
-    ) -> Result<IntegrationResult>;
+    ) -> SongbirdResult<IntegrationResult>;
 
     /// Get plugin configuration schema (for dynamic UI generation)
     fn config_schema(&self) -> serde_json::Value;
 
     /// Apply configuration dynamically
-    fn apply_config(&mut self, config: serde_json::Value) -> Result<()>;
+    fn apply_config(&mut self, config: serde_json::Value) -> SongbirdResult<()>;
 
     /// Health check for this plugin
     async fn health_check(&self) -> PluginHealth;
@@ -248,19 +248,22 @@ pub trait PluginRegistry: Send + Sync {
         plugin_id: String,
         capabilities: Vec<PluginCapability>,
         requirements: Vec<PluginRequirement>,
-    ) -> Result<String>;
+    ) -> SongbirdResult<String>;
 
     /// Discover plugins that can satisfy requirements
-    async fn discover_plugins(&self, requirements: Vec<PluginRequirement>) -> Result<Vec<String>>;
+    async fn discover_plugins(
+        &self,
+        requirements: Vec<PluginRequirement>,
+    ) -> SongbirdResult<Vec<String>>;
 
     /// Auto-compose plugins based on capabilities and requirements
     async fn auto_compose(
         &self,
         target_capabilities: Vec<PluginCapability>,
-    ) -> Result<CompositionPlan>;
+    ) -> SongbirdResult<CompositionPlan>;
 
     /// Execute a composition plan
-    async fn execute_composition(&self, plan: CompositionPlan) -> Result<ComposedSystem>;
+    async fn execute_composition(&self, plan: CompositionPlan) -> SongbirdResult<ComposedSystem>;
 }
 
 /// Composition plan for combining plugins

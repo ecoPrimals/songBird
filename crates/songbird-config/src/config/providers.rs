@@ -4,7 +4,8 @@
 
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
+type Result<T> = SongbirdResult<T>;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 
@@ -63,36 +64,33 @@ where
     T: DeserializeOwned + serde::Serialize + Send + Sync,
 {
     async fn load(&self) -> Result<T> {
-        let content =
-            tokio::fs::read_to_string(&self.path)
-                .await
-                .map_err(|e| SongbirdError::Config {
-                    message: format!("Failed to read config file: {e}"),
-                    field: Some("config_file".to_string()),
-                    context: None,
-                    suggestion: Some("Check if the file exists and is readable".to_string()),
-                })?;
+        let content = tokio::fs::read_to_string(&self.path).await.map_err(|e| {
+            SongbirdError::Configuration {
+                message: format!("Failed to read config file: {e}"),
+                field: Some("config_file".to_string()),
+                suggestion: Some("Check if the file exists and is readable".to_string()),
+            }
+        })?;
 
         let config: T = match &self.format {
-            ConfigFormat::Toml => toml::from_str(&content).map_err(|e| SongbirdError::Config {
-                message: format!("Failed to parse TOML config: {e}"),
-                field: Some("config_parsing".to_string()),
-                context: None,
-                suggestion: Some("Check TOML syntax".to_string()),
-            })?,
+            ConfigFormat::Toml => {
+                toml::from_str(&content).map_err(|e| SongbirdError::Configuration {
+                    message: format!("Failed to parse TOML config: {e}"),
+                    field: Some("config_parsing".to_string()),
+                    suggestion: Some("Check TOML syntax".to_string()),
+                })?
+            }
             ConfigFormat::Json => {
-                serde_json::from_str(&content).map_err(|e| SongbirdError::Config {
+                serde_json::from_str(&content).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to parse JSON config: {e}"),
                     field: Some("config_parsing".to_string()),
-                    context: None,
                     suggestion: Some("Check JSON syntax".to_string()),
                 })?
             }
             ConfigFormat::Yaml => {
-                serde_yaml::from_str(&content).map_err(|e| SongbirdError::Config {
+                serde_yaml::from_str(&content).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to parse YAML config: {e}"),
                     field: Some("config_parsing".to_string()),
-                    context: None,
                     suggestion: Some("Check YAML syntax".to_string()),
                 })?
             }
@@ -104,26 +102,23 @@ where
     async fn save(&self, config: &T) -> Result<()> {
         let content = match &self.format {
             ConfigFormat::Toml => {
-                toml::to_string_pretty(config).map_err(|e| SongbirdError::Config {
+                toml::to_string_pretty(config).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to serialize config to TOML: {e}"),
                     field: Some("config_serialization".to_string()),
-                    context: None,
                     suggestion: Some("Check if the config structure is valid".to_string()),
                 })?
             }
             ConfigFormat::Json => {
-                serde_json::to_string_pretty(config).map_err(|e| SongbirdError::Config {
+                serde_json::to_string_pretty(config).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to serialize config to JSON: {e}"),
                     field: Some("config_serialization".to_string()),
-                    context: None,
                     suggestion: Some("Check if the config structure is valid".to_string()),
                 })?
             }
             ConfigFormat::Yaml => {
-                serde_yaml::to_string(config).map_err(|e| SongbirdError::Config {
+                serde_yaml::to_string(config).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to serialize config to YAML: {e}"),
                     field: Some("config_serialization".to_string()),
-                    context: None,
                     suggestion: Some("Check if the config structure is valid".to_string()),
                 })?
             }
@@ -131,10 +126,9 @@ where
 
         tokio::fs::write(&self.path, content)
             .await
-            .map_err(|e| SongbirdError::Config {
+            .map_err(|e| SongbirdError::Configuration {
                 message: format!("Failed to write config file: {e}"),
                 field: Some("config_file".to_string()),
-                context: None,
                 suggestion: Some("Check if you have write permissions for this file".to_string()),
             })?;
 

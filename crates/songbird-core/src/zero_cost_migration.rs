@@ -5,6 +5,7 @@ use crate::zero_cost_songbird::{ProductionSongbird, ZeroCostSongbird};
 // // use songbird_universal_primals  // TEMPORARILY DISABLED  // TEMPORARILY DISABLED::discovery::DiscoveredPrimal;
 // // use songbird_universal_primals  // TEMPORARILY DISABLED  // TEMPORARILY DISABLED::PrimalCapability;
 use std::collections::HashMap;
+use songbird_errors::SongbirdResult;
 
 /// Migration bridge between current universal adapter and zero-cost architecture
 pub struct UniversalAdapterMigration<

@@ -6,7 +6,8 @@ use tokio::sync::RwLock;
 use tracing::debug;
 
 use super::{HealthStatus, NodeHealth, ServiceHealth};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Health monitor for services and nodes
 #[derive(Debug)]

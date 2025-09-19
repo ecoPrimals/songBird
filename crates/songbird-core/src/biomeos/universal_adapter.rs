@@ -201,8 +201,7 @@ impl BiomeOSCapabilityProvider {
             .json(&registration)
             .send()
             .await
-            .map_err(|e| SongbirdError::Network(Box::new(songbird_errors::NetworkError {
-                message: format!("BiomeOS registration request failed: {}", e),
+            .map_err(|e| SongbirdError::network(format!("BiomeOS registration request failed: {),
                 endpoint: Some(endpoint.clone()),
                 port: None,
                 protocol: Some("HTTP".to_string()),
@@ -243,8 +242,7 @@ impl BiomeOSCapabilityProvider {
             .json(&request)
             .send()
             .await
-            .map_err(|e| SongbirdError::Network(Box::new(songbird_errors::NetworkError {
-                message: format!("BiomeOS deployment request failed: {}", e),
+            .map_err(|e| SongbirdError::network(format!("BiomeOS deployment request failed: {),
                 endpoint: Some(endpoint.clone()),
                 port: None,
                 protocol: Some("HTTP".to_string()),
@@ -297,8 +295,7 @@ impl BiomeOSCapabilityProvider {
             .json(&request)
             .send()
             .await
-            .map_err(|e| SongbirdError::Network(Box::new(songbird_errors::NetworkError {
-                message: format!("BiomeOS coordination request failed: {}", e),
+            .map_err(|e| SongbirdError::network(format!("BiomeOS coordination request failed: {),
                 endpoint: Some(endpoint.clone()),
                 port: None,
                 protocol: Some("HTTP".to_string()),
@@ -394,6 +391,7 @@ impl UniversalBiomeOSManager {
 mod tests {
     use super::*;
     use tokio_test;
+use songbird_errors::SongbirdResult;
 
     #[tokio::test]
     async fn test_biomeos_capability_provider_creation() {
@@ -424,7 +422,7 @@ mod tests {
     async fn test_biomeos_health_check_without_endpoint() {
         let provider = BiomeOSCapabilityProvider::new("test-biomeos".to_string());
         let connected = provider.test_connection().await.map_err(|e| {
-        songbird_errors::SongbirdError::service_error(
+        songbird_errors::SongbirdError::service(
             "async_operation_failed",
             format!("Async operation failed: {:?}", e)
         )

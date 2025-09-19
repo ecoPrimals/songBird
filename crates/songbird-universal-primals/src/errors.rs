@@ -123,14 +123,16 @@ impl From<std::io::Error> for PrimalError {
 impl From<songbird_errors::SongbirdError> for PrimalError {
     fn from(err: songbird_errors::SongbirdError) -> Self {
         match err {
-            songbird_errors::SongbirdError::Network(e) => Self::network_error(e.to_string()),
+            songbird_errors::SongbirdError::Network { message, .. } => Self::network_error(message),
             songbird_errors::SongbirdError::Configuration { message, .. } => {
                 Self::configuration_error(message)
             }
-            songbird_errors::SongbirdError::Security { message, .. } => {
-                Self::security_error(message)
+            songbird_errors::SongbirdError::Security(sec_err) => {
+                Self::security_error(sec_err.message.clone())
             }
-            songbird_errors::SongbirdError::Validation(e) => Self::validation_error(e.to_string()),
+            songbird_errors::SongbirdError::Validation { message, .. } => {
+                Self::validation_error(message)
+            }
             _ => Self::Internal {
                 message: err.to_string(),
             },

@@ -4,6 +4,7 @@
 //! using the universal capability adapter system for storage primal discovery.
 
 use songbird_config::config::constants::get_primal_endpoint;
+use songbird_errors::SongbirdResult;
 use songbird_universal::capabilities::UniversalCapabilityAdapter;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
@@ -49,7 +50,7 @@ pub enum HealthStatus {
 
 impl ByobCoordinator {
     /// Create new BYOB coordinator with universal storage discovery
-    pub async fn new() -> Result<Self, CoordinationError> {
+    pub async fn new() -> SongbirdResult<Self> {
         info!("🚀 Initializing BYOB Coordinator with universal storage system");
 
         let discovery_config = songbird_universal::capabilities::DiscoveryConfig::default();
@@ -78,7 +79,7 @@ impl ByobCoordinator {
     }
 
     /// Refresh storage capabilities discovery
-    async fn refresh_storage_capabilities(&mut self) -> Result<(), CoordinationError> {
+    async fn refresh_storage_capabilities(&mut self) -> SongbirdResult<()> {
         info!("🔍 Discovering storage capability primals...");
 
         // Find all primals with storage capabilities
@@ -219,16 +220,13 @@ impl ByobCoordinator {
     }
 
     /// Enable storage configuration (universal replacement for nestgate_config = Some(config))
-    pub async fn enable_storage_config(
-        &mut self,
-        primal_name: &str,
-    ) -> Result<(), CoordinationError> {
+    pub async fn enable_storage_config(&mut self, primal_name: &str) -> SongbirdResult<()> {
         info!("🔧 Enabling storage configuration for: {}", primal_name);
 
         if let Some(config) = self.storage_configs.get(primal_name) {
             // Extract endpoint before mutable borrow
             let endpoint = config.endpoint.clone();
-            drop(config); // Release the immutable borrow
+            let _ = config; // Release the immutable borrow
 
             // Test connectivity
             let is_active = self.test_storage_connectivity(&endpoint).await;
@@ -243,19 +241,18 @@ impl ByobCoordinator {
                     Ok(())
                 } else {
                     warn!("❌ Failed to connect to storage primal: {}", primal_name);
-                    Err(CoordinationError::StorageUnavailable(
-                        primal_name.to_string(),
-                    ))
+                    Err(CoordinationError::StorageUnavailable(primal_name.to_string()).into())
                 }
             } else {
                 Err(CoordinationError::StorageUnavailable(format!(
                     "Storage config disappeared for: {}",
                     primal_name
-                )))
+                ))
+                .into())
             }
         } else {
             warn!("❌ Storage configuration not found: {}", primal_name);
-            Err(CoordinationError::ConfigNotFound(primal_name.to_string()))
+            Err(CoordinationError::ConfigNotFound(primal_name.to_string()).into())
         }
     }
 }
@@ -285,3 +282,36 @@ impl std::fmt::Display for CoordinationError {
 }
 
 impl std::error::Error for CoordinationError {}
+
+impl From<CoordinationError> for songbird_errors::SongbirdError {
+    fn from(error: CoordinationError) -> Self {
+        match error {
+            CoordinationError::StorageUnavailable(name) => {
+                songbird_errors::SongbirdError::Service {
+                    service: "BYOB_Coordinator".to_string(),
+                    message: format!("Storage unavailable: {}", name),
+                    suggested_alternatives: vec!["Try alternative storage primal".to_string()],
+                    recovery_actions: vec!["Check storage primal connectivity".to_string()],
+                }
+            }
+            CoordinationError::ConfigNotFound(name) => {
+                songbird_errors::SongbirdError::Configuration {
+                    message: format!("Config not found: {}", name),
+                    field: Some("primal_config".to_string()),
+                    suggestion: Some("Check primal configuration".to_string()),
+                }
+            }
+            CoordinationError::NetworkError(msg) => songbird_errors::SongbirdError::Network {
+                message: format!("Network error: {}", msg),
+                interface: None,
+                suggestion: None,
+            },
+            CoordinationError::CapabilityNotFound(cap) => songbird_errors::SongbirdError::Service {
+                service: "BYOB_Coordinator".to_string(),
+                message: format!("Capability not found: {}", cap),
+                suggested_alternatives: vec!["Check available capabilities".to_string()],
+                recovery_actions: vec!["Update primal configuration".to_string()],
+            },
+        }
+    }
+}

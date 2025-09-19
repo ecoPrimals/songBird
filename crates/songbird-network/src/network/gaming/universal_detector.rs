@@ -115,14 +115,7 @@ impl UniversalGameProtocolDetector {
 
             Ok(sessions)
         } else {
-            Err(songbird_errors::SongbirdError::Network(Box::new(
-                NetworkError {
-                    message: "Universal Detector - Real detector not initialized".to_string(),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                },
-            )))
+            Err(songbird_errors::SongbirdError::network("Universal Detector - Real detector not initialized".to_string())))
         }
     }
 

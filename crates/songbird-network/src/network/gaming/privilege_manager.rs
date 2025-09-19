@@ -2,7 +2,7 @@
 ///
 /// This module provides secure, agnostic methods to obtain necessary privileges
 /// for network packet capture across different platforms and deployment scenarios.
-use songbird_errors::{NetworkError, Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::env;
 use std::process::Command;
 use tokio::process::Command as AsyncCommand;
@@ -118,14 +118,7 @@ impl PrivilegeManager {
                 self.current_method = PrivilegeMethod::Unprivileged;
                 return Ok(());
             } else {
-                return Err(SongbirdError::Network(Box::new(NetworkError {
-                    message:
-                        "Gaming Privilege Manager - No suitable privilege escalation method found"
-                            .to_string(),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                })));
+                return Err(SongbirdError::network("Gaming Privilege Manager - No suitable privilege escalation method found".to_string()));
             }
         }
 
@@ -356,13 +349,7 @@ impl PrivilegeManager {
             .output()
             .await
             .map_err(|e| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Command execution failed: {e}")
-                        .to_string(),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                }))
+                                SongbirdError::network(format!("Gaming Privilege Manager - Command execution failed: {}", e))
             })?;
 
         Ok(output)
@@ -381,27 +368,13 @@ impl PrivilegeManager {
             .output()
             .await
             .map_err(|e| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Sudo execution failed: {e}")
-                        .to_string(),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                }))
+                SongbirdError::network(format!("Gaming Privilege Manager - Sudo execution failed: {}", e))
             })?;
 
         if output.status.success() {
             Ok(output)
         } else {
-            Err(SongbirdError::Network(Box::new(NetworkError {
-                message: format!(
-                    "Gaming Privilege Manager - Sudo execution failed: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ),
-                endpoint: None,
-                port: None,
-                protocol: None,
-            })))
+            Err(SongbirdError::network("Gaming Privilege Manager - Sudo execution failed".to_string()))
         }
     }
 
@@ -418,13 +391,7 @@ impl PrivilegeManager {
             .output()
             .await
             .map_err(|e| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Pkexec execution failed: {e}")
-                        .to_string(),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                }))
+                SongbirdError::network(format!("Gaming Privilege Manager - Pkexec execution failed: {}", e))
             })?;
 
         Ok(output)
@@ -442,27 +409,13 @@ impl PrivilegeManager {
             .output()
             .await
             .map_err(|e| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Capabilities setting failed: {e}")
-                        .to_string(),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                }))
+                SongbirdError::network(format!("Gaming Privilege Manager - Capabilities setting failed: {}", e))
             })?;
 
         if output.status.success() {
             Ok(output)
         } else {
-            Err(SongbirdError::Network(Box::new(NetworkError {
-                message: format!(
-                    "Gaming Privilege Manager - Capabilities setting failed: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ),
-                endpoint: None,
-                port: None,
-                protocol: None,
-            })))
+            Err(SongbirdError::network("Gaming Privilege Manager - Capabilities setting failed".to_string()))
         }
     }
 
@@ -477,27 +430,13 @@ impl PrivilegeManager {
             .output()
             .await
             .map_err(|e| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: format!("Gaming Privilege Manager - Setuid execution failed: {e}")
-                        .to_string(),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                }))
+                SongbirdError::network(format!("Gaming Privilege Manager - Setuid execution failed: {}", e))
             })?;
 
         if output.status.success() {
             Ok(output)
         } else {
-            Err(SongbirdError::Network(Box::new(NetworkError {
-                message: format!(
-                    "Gaming Privilege Manager - Setuid execution failed: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ),
-                endpoint: None,
-                port: None,
-                protocol: None,
-            })))
+            Err(SongbirdError::network("Gaming Privilege Manager - Setuid execution failed".to_string()))
         }
     }
 
@@ -514,14 +453,7 @@ impl PrivilegeManager {
             .output()
             .await
             .map_err(|e| {
-                SongbirdError::Network(Box::new(NetworkError {
-                    message: format!(
-                        "Gaming Privilege Manager - Systemd service execution failed: {e}"
-                    ),
-                    endpoint: None,
-                    port: None,
-                    protocol: None,
-                }))
+                SongbirdError::network(format!("Gaming Privilege Manager - Systemd service execution failed: {}", e))
             })?;
 
         Ok(output)

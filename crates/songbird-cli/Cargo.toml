@@ -29,10 +29,10 @@ songbird-errors = { path = "../songbird-errors" }
 songbird-config = { path = "../songbird-config" }
 songbird-core = { path = "../songbird-core" }
 songbird-discovery = { path = "../songbird-discovery" }
-songbird-federation = { path = "../songbird-federation" }
+# songbird-federation = { path = "../songbird-federation" } # Temporarily disabled
 songbird-network = { path = "../songbird-network" }
 songbird-observability = { path = "../songbird-observability" }
-songbird-security = { path = "../songbird-security" }
+# songbird-security = { path = "../songbird-security" } # Temporarily disabled
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

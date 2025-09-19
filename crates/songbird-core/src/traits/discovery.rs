@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use songbird_config::constants::health::DEFAULT_CHECK_INTERVAL;
 use songbird_config::constants::network::{DEFAULT_CONNECTION_TIMEOUT, DEFAULT_RETRY_DELAY};
 use songbird_discovery::traits::service::ServiceInfo;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::pin::Pin;
 
@@ -16,16 +16,16 @@ use std::pin::Pin;
 #[async_trait]
 pub trait ServiceDiscovery: Send + Sync {
     /// Register a service with the discovery system
-    async fn register(&self, service: ServiceInfo) -> Result<()>;
+    async fn register(&self, service: ServiceInfo) -> SongbirdResult<()>;
 
     /// Unregister a service from the discovery system
-    async fn unregister(&self, service_id: &str) -> Result<()>;
+    async fn unregister(&self, service_id: &str) -> SongbirdResult<()>;
 
     /// Discover services matching the given query
-    async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>>;
+    async fn discover(&self, query: ServiceQuery) -> SongbirdResult<Vec<ServiceInfo>>;
 
     /// Discover services matching the given query (alias for compatibility)
-    async fn discover_services(&self, query: &ServiceQuery) -> Result<Vec<ServiceInfo>> {
+    async fn discover_services(&self, query: &ServiceQuery) -> SongbirdResult<Vec<ServiceInfo>> {
         self.discover(query.clone()).await
     }
 
@@ -33,26 +33,30 @@ pub trait ServiceDiscovery: Send + Sync {
     async fn watch(
         &self,
         query: ServiceQuery,
-    ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>>;
+    ) -> SongbirdResult<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>>;
 
     /// Update service health status
-    async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()>;
+    async fn update_health(
+        &self,
+        service_id: &str,
+        health: ServiceHealthStatus,
+    ) -> SongbirdResult<()>;
 
     /// List all registered services
-    async fn list_all(&self) -> Result<Vec<ServiceInfo>>;
+    async fn list_all(&self) -> SongbirdResult<Vec<ServiceInfo>>;
 
     /// Check if a service exists (legacy name)
-    async fn exists(&self, service_id: &str) -> Result<bool>;
+    async fn exists(&self, service_id: &str) -> SongbirdResult<bool>;
 
     /// Check if a service is registered (preferred name)
-    async fn is_registered(&self, service_id: &str) -> Result<bool>;
+    async fn is_registered(&self, service_id: &str) -> SongbirdResult<bool>;
 
     /// Bulk update service metadata
     async fn update_metadata(
         &self,
         service_id: &str,
         metadata: HashMap<String, String>,
-    ) -> Result<()>;
+    ) -> SongbirdResult<()>;
 
     /// Downcast support for accessing concrete implementations
     fn as_any(&self) -> &dyn std::any::Any;

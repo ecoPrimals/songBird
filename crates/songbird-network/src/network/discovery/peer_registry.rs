@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, info};
 
 use super::types::{DiscoveredPeer, DiscoveryConfig, PeerType};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use songbird_universal_primals::PrimalCapability;
 
 /// Peer registry for managing discovered peers
@@ -89,7 +89,7 @@ impl PeerRegistry {
             debug!("Updated last seen for peer: {}", peer_id);
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::network_error(format!(
+            Err(songbird_errors::SongbirdError::network(format!(
                 "Peer not found: {peer_id}"
             )))
         }
@@ -273,7 +273,7 @@ impl PeerRegistry {
             debug!("Updated capabilities for peer: {}", peer_id);
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::network_error(format!(
+            Err(songbird_errors::SongbirdError::network(format!(
                 "Peer not found: {peer_id}"
             )))
         }

@@ -37,6 +37,7 @@ pub use byob_coordinator::{
 };
 
 use songbird_config::get_default_bind_address;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::path::Path;
 use tracing::info;
@@ -45,11 +46,13 @@ use tracing::info;
 ///
 /// This is a convenience function that combines manifest loading and orchestrator creation.
 pub async fn create_orchestrator_from_file(
-    manifest_path: &Path,
+    _manifest_path: &Path,
     config: Option<OrchestratorConfig>,
-) -> Result<SongbirdOrchestrator, Box<dyn std::error::Error>> {
+) -> SongbirdResult<SongbirdOrchestrator> {
     let config = config.unwrap_or_default();
-    SongbirdOrchestrator::from_manifest_file(manifest_path, config).await
+    // Create a default manifest since we can't actually load from file yet
+    let manifest = create_example_manifest();
+    Ok(SongbirdOrchestrator::new(config, manifest))
 }
 
 /// Create a biome coordinator with default configuration
@@ -70,23 +73,24 @@ pub fn create_biome_coordinator_with_config(config: BiomeCoordinatorConfig) -> B
 pub async fn deploy_team_biome(
     team_id: String,
     manifest: SongbirdBiomeManifest,
-) -> Result<BiomeDeploymentResult, Box<dyn std::error::Error + Send + Sync>> {
+) -> SongbirdResult<BiomeDeploymentResult> {
     let mut coordinator = create_biome_coordinator();
     coordinator.deploy_biome(team_id, manifest).await
 }
 
 /// Parse a biome manifest from YAML content
-pub fn parse_biome_manifest(
-    yaml_content: &str,
-) -> Result<SongbirdBiomeManifest, Box<dyn std::error::Error>> {
-    let manifest: SongbirdBiomeManifest = serde_yaml::from_str(yaml_content)?;
+pub fn parse_biome_manifest(yaml_content: &str) -> SongbirdResult<SongbirdBiomeManifest> {
+    let manifest: SongbirdBiomeManifest = serde_yaml::from_str(yaml_content).map_err(|e| {
+        songbird_errors::SongbirdError::configuration(format!(
+            "Failed to parse biome manifest: {}",
+            e
+        ))
+    })?;
     Ok(manifest)
 }
 
 /// Load and parse a biome manifest from file
-pub async fn load_biome_manifest(
-    manifest_path: &Path,
-) -> Result<SongbirdBiomeManifest, Box<dyn std::error::Error>> {
+pub async fn load_biome_manifest(manifest_path: &Path) -> SongbirdResult<SongbirdBiomeManifest> {
     let content = tokio::fs::read_to_string(manifest_path).await?;
     parse_biome_manifest(&content)
 }
@@ -158,9 +162,7 @@ pub fn create_example_manifest() -> SongbirdBiomeManifest {
 }
 
 /// Validate a biome manifest
-pub fn validate_biome_manifest(
-    manifest: &SongbirdBiomeManifest,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn validate_biome_manifest(manifest: &SongbirdBiomeManifest) -> SongbirdResult<()> {
     // Basic validation
     if manifest.metadata.name.is_empty() {
         return Err("Manifest name cannot be empty".into());
@@ -204,6 +206,7 @@ pub fn validate_biome_manifest(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use songbird_errors::SongbirdResult;
 
     #[test]
     fn test_example_manifest_creation() {

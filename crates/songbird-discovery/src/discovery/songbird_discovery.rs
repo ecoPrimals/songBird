@@ -13,7 +13,8 @@ use crate::discovery::resources::ResourceDetector;
 use crate::discovery::types::*;
 use crate::traits::discovery::*;
 use crate::traits::service::ServiceInfo;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Main Songbird Discovery Service
 pub struct SongbirdDiscovery {

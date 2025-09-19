@@ -7,9 +7,8 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{debug, error};
 
-use super::types::{DiscoveryConfig, UPnPDevice};
-use songbird_errors::Result;
-use songbird_universal_primals::PrimalCapability;
+use super::types::{DiscoveredPeer, DiscoveryConfig, UPnPDevice};
+use songbird_errors::SongbirdResult as Result;
 
 /// UPnP client for local network discovery
 pub struct UPnPClient {
@@ -29,7 +28,7 @@ impl UPnPClient {
     }
 
     /// Discover peers via UPnP
-    pub async fn discover_peers(&self) -> Result<Vec<Vec<PrimalCapability>>> {
+    pub async fn discover_peers(&self) -> Result<Vec<DiscoveredPeer>> {
         debug!("Discovering peers via UPnP...");
 
         let mut peers = Vec::new();
@@ -94,30 +93,16 @@ impl UPnPClient {
                     debug!("Found Songbird orchestrator at: {}", addr);
 
                     // Extract capabilities from UPnP response
-                    let latency_ms = self.measure_latency(&addr).await.unwrap_or(10);
-                    let bandwidth_mbps = self.estimate_bandwidth(&addr).await.unwrap_or(100);
+                    let _latency_ms = self.measure_latency(&addr).await.unwrap_or(10);
+                    let _bandwidth_mbps = self.estimate_bandwidth(&addr).await.unwrap_or(100);
 
-                    peers.push(vec![
-                        PrimalCapability::NetworkRouting {
-                            protocols: vec![
-                                "UPnP".to_string(),
-                                "BSTP".to_string(),
-                                "HTTP".to_string(),
-                            ],
-                        },
-                        PrimalCapability::Custom {
-                            name: "Gaming".to_string(),
-                            properties: vec![("optimized".to_string(), "true".to_string())],
-                        },
-                        PrimalCapability::Custom {
-                            name: "NetworkConnectivity".to_string(),
-                            properties: [
-                                ("bandwidth_mbps".to_string(), bandwidth_mbps.to_string()),
-                                ("latency_ms".to_string(), latency_ms.to_string()),
-                            ]
-                            .to_vec(),
-                        },
-                    ]);
+                    let peer = DiscoveredPeer::new(
+                        format!("upnp-{}", addr),
+                        addr,
+                        super::types::PeerType::Service,
+                        super::types::DiscoveryMethod::UPnP,
+                    );
+                    peers.push(peer);
                 }
             }
         });

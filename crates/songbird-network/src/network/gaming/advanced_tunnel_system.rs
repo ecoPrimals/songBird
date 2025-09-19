@@ -1,7 +1,7 @@
 //! Advanced BearDog Secure Tunnel Protocol (BSTP) Implementation
 //! Enterprise-grade encrypted tunnels with gaming optimizations
 
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

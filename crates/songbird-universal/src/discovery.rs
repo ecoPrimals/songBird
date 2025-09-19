@@ -85,7 +85,7 @@ pub enum DiscoveryMethod {
     /// Discovered via network scanning
     NetworkScan,
     /// Discovered via mDNS/Bonjour
-    MDNS,
+    Mdns,
     /// Discovered via configuration file
     Configuration,
     /// Discovered via Kubernetes service discovery

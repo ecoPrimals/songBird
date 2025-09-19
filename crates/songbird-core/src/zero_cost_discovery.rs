@@ -93,6 +93,7 @@ where
     /// Set value with compile-time capacity enforcement
     pub fn set(&self, key: K, value: V) {
         use songbird_errors::safe_write_lock;
+use songbird_errors::SongbirdResult;
         match safe_write_lock(&self.data) {
             Ok(songbird_errors::evolved_success(mut data)) => {
                 // Enforce compile-time capacity limit

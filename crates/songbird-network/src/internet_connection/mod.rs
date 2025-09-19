@@ -2,7 +2,7 @@
 //!
 //! Basic internet connection management
 
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

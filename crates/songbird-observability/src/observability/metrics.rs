@@ -4,7 +4,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use super::SystemMetrics;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Metrics collector for system and application metrics
 #[derive(Debug)]

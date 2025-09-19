@@ -5,7 +5,8 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -311,10 +312,10 @@ impl ResourceTypeSet {
 /// Enforcement type configuration using enum-based approach instead of excessive booleans
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EnforcementType {
-    MemoryLimits,
-    CpuLimits,
-    ConnectionLimits,
-    FileHandleLimits,
+    Memory,
+    Cpu,
+    Connection,
+    FileHandle,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -330,24 +331,22 @@ impl EnforcementTypeSet {
 
     #[must_use]
     pub fn enforce_memory_limits(&self) -> bool {
-        self.enforced_types.contains(&EnforcementType::MemoryLimits)
+        self.enforced_types.contains(&EnforcementType::Memory)
     }
 
     #[must_use]
     pub fn enforce_cpu_limits(&self) -> bool {
-        self.enforced_types.contains(&EnforcementType::CpuLimits)
+        self.enforced_types.contains(&EnforcementType::Cpu)
     }
 
     #[must_use]
     pub fn enforce_connection_limits(&self) -> bool {
-        self.enforced_types
-            .contains(&EnforcementType::ConnectionLimits)
+        self.enforced_types.contains(&EnforcementType::Connection)
     }
 
     #[must_use]
     pub fn enforce_file_handle_limits(&self) -> bool {
-        self.enforced_types
-            .contains(&EnforcementType::FileHandleLimits)
+        self.enforced_types.contains(&EnforcementType::FileHandle)
     }
 }
 
@@ -437,9 +436,9 @@ impl Default for ResourceManagementConfig {
                 limit_enforcement: LimitEnforcement {
                     enforcement_types: EnforcementTypeSet {
                         enforced_types: vec![
-                            EnforcementType::MemoryLimits,
-                            EnforcementType::ConnectionLimits,
-                            EnforcementType::FileHandleLimits,
+                            EnforcementType::Memory,
+                            EnforcementType::Connection,
+                            EnforcementType::FileHandle,
                         ],
                     },
                 },

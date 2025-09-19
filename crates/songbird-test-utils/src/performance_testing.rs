@@ -2,7 +2,8 @@
 //
 // Canonical performance testing utilities for the Songbird ecosystem.
 
-use songbird_errors::{SongbirdError, Result as SongbirdResult};
+use songbird_errors::SongbirdError;
+use songbird_types::errors::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -93,7 +94,8 @@ impl PerformanceTestFramework {
         }
 
         if durations.is_empty() {
-            return Err(SongbirdError::internal_error(
+            return Err(SongbirdError::service(
+                "test-utils",
                 "No benchmark data collected",
             ));
         }
@@ -149,21 +151,27 @@ impl PerformanceTestFramework {
     ) -> SongbirdResult<()> {
         let results = self.results.read().await;
         let result = results.get(benchmark_name).ok_or_else(|| {
-            SongbirdError::internal_error(format!("Benchmark '{benchmark_name}' not found"))
+            SongbirdError::service(
+                "test-utils",
+                format!("Benchmark '{benchmark_name}' not found"),
+            )
         })?;
 
         if result.throughput < self.config.target_throughput {
-            return Err(SongbirdError::validation_error(format!(
-                "Throughput {} below target {}",
-                result.throughput, self.config.target_throughput
-            )));
+            return Err(SongbirdError::service(
+                "test-utils",
+                format!(
+                    "Throughput {} below target {}",
+                    result.throughput, self.config.target_throughput
+                ),
+            ));
         }
 
         if result.success_rate < 0.95 {
-            return Err(SongbirdError::validation_error(format!(
-                "Success rate {} below 95%",
-                result.success_rate
-            )));
+            return Err(SongbirdError::service(
+                "test-utils",
+                format!("Success rate {} below 95%", result.success_rate),
+            ));
         }
 
         Ok(())

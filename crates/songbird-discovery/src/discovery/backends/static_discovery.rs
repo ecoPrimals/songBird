@@ -5,9 +5,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::traits::discovery::{ServiceDiscovery, ServiceQuery, ServiceEvent, ServiceHealthStatus};
+use crate::traits::discovery::{ServiceDiscovery, ServiceEvent, ServiceHealthStatus, ServiceQuery};
 use crate::traits::service::ServiceInfo;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Static service discovery for development and testing
 pub struct StaticServiceDiscovery {
@@ -68,7 +69,11 @@ impl Default for StaticServiceDiscovery {
 #[async_trait]
 impl ServiceDiscovery for StaticServiceDiscovery {
     async fn register(&self, service: ServiceInfo) -> Result<()> {
-        tracing::info!("Registering service: {} ({})", service.name, service.service_id);
+        tracing::info!(
+            "Registering service: {} ({})",
+            service.name,
+            service.service_id
+        );
 
         let mut services = self.services.write().await;
         services.insert(service.service_id.clone(), service);
@@ -143,7 +148,11 @@ impl ServiceDiscovery for StaticServiceDiscovery {
     ) -> Result<()> {
         let mut services = self.services.write().await;
         if let Some(service) = services.get_mut(service_id) {
-            service.metadata.extend(metadata.into_iter().map(|(k, v)| (k, serde_json::Value::String(v))));
+            service.metadata.extend(
+                metadata
+                    .into_iter()
+                    .map(|(k, v)| (k, serde_json::Value::String(v))),
+            );
         }
         Ok(())
     }

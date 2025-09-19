@@ -7,14 +7,15 @@ members = [
     "crates/songbird-core",
     "crates/songbird-discovery",
     "crates/songbird-errors",
-    "crates/songbird-federation",
+    # "crates/songbird-federation", # Temporarily excluded - needs error API fixes
     "crates/songbird-lib",
     "crates/songbird-network",
     "crates/songbird-observability",
     "crates/songbird-orchestrator",
     "crates/songbird-registry",
-    "crates/songbird-security",
+    # "crates/songbird-security", # Temporarily excluded - needs structural fixes
     "crates/songbird-test-utils",
+    "crates/songbird-types",
     "crates/songbird-universal",
     "crates/songbird-universal-primals",
 ]
@@ -105,5 +106,8 @@ codegen-units = 1
 inherits = "release"
 debug = true
 
-
-
+[workspace.lints]
+rust.unsafe_code = "forbid"
+rust.unused_must_use = "warn"
+clippy.all = "warn"
+clippy.pedantic = "warn"

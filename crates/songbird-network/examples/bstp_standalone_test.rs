@@ -10,7 +10,7 @@ mod bstp_handshake {
     };
     use rand::{rngs::OsRng, RngCore};
     use sha2::{Digest, Sha256};
-    use songbird_errors::Result;
+    use songbird_errors::SongbirdResult as Result;
     use std::time::{Duration, Instant};
     use tracing::{debug, info};
 
@@ -63,14 +63,9 @@ mod bstp_handshake {
 
         pub fn start_handshake(&mut self) -> Result<BearDogGreeting> {
             if self.state != HandshakeState::Initial {
-                return Err(songbird_errors::SongbirdError::Security {
-                    message: "Handshake already in progress".to_string(),
-                    context: Some(format!("Current state: {:?}", self.state)),
-                    severity: Some("high".to_string()),
-                    suggestion: Some(
-                        "Reset handshake state before starting new handshake".to_string(),
-                    ),
-                });
+                return Err(songbird_errors::SongbirdError::security(
+                    "Handshake already in progress",
+                ));
             }
 
             info!(
@@ -93,7 +88,7 @@ mod bstp_handshake {
             };
 
             self.state = HandshakeState::GreetingSent;
-            debug!("🤝 BearDog greeting sent, waiting for response");
+            debug!("🤝 BearDog greeting sent, waiting for response ");
 
             Ok(greeting)
         }
@@ -104,27 +99,19 @@ mod bstp_handshake {
             let session_keys = self.derive_session_keys(&peer_key)?;
             self.session_keys = Some(session_keys);
             self.state = HandshakeState::Established;
-            info!("🎉 BearDog handshake completed successfully");
+            info!("🎉 BearDog handshake completed successfully ");
             Ok(())
         }
 
         pub fn encrypt_data(&mut self, plaintext: &[u8]) -> Result<Vec<u8>> {
             let keys = self.session_keys.as_mut().ok_or_else(|| {
-                songbird_errors::SongbirdError::Security {
-                    message: "No session keys available".to_string(),
-                    context: Some("Handshake not completed".to_string()),
-                    severity: Some("high".to_string()),
-                    suggestion: Some("Complete handshake before encrypting data".to_string()),
-                }
+                songbird_errors::SongbirdError::security("No session keys available")
             })?;
 
             if self.state != HandshakeState::Established {
-                return Err(songbird_errors::SongbirdError::Security {
-                    message: "Handshake not established".to_string(),
-                    context: Some(format!("Current state: {:?}", self.state)),
-                    severity: Some("high".to_string()),
-                    suggestion: Some("Complete handshake before encrypting data".to_string()),
-                });
+                return Err(songbird_errors::SongbirdError::security(
+                    "Handshake not established",
+                ));
             }
 
             let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&keys.encrypt_key));
@@ -133,19 +120,14 @@ mod bstp_handshake {
             nonce_bytes[4..].copy_from_slice(&keys.nonce_counter.to_le_bytes());
             let nonce = Nonce::from_slice(&nonce_bytes);
 
-            let ciphertext = cipher.encrypt(nonce, plaintext).map_err(|e| {
-                songbird_errors::SongbirdError::Security {
-                    message: "Encryption failed".to_string(),
-                    context: Some(format!("AES-GCM error: {e}")),
-                    severity: Some("high".to_string()),
-                    suggestion: Some("Check encryption key and nonce validity".to_string()),
-                }
-            })?;
+            let ciphertext = cipher
+                .encrypt(nonce, plaintext)
+                .map_err(|e| songbird_errors::SongbirdError::security("Encryption failed"))?;
 
             keys.nonce_counter = keys.nonce_counter.wrapping_add(1);
 
             debug!(
-                "🔐 Encrypted {} bytes to {} bytes",
+                "🔐 Encrypted {} bytes to {} bytes ",
                 plaintext.len(),
                 ciphertext.len()
             );
@@ -154,21 +136,13 @@ mod bstp_handshake {
 
         pub fn decrypt_data(&mut self, ciphertext: &[u8]) -> Result<Vec<u8>> {
             let keys = self.session_keys.as_ref().ok_or_else(|| {
-                songbird_errors::SongbirdError::Security {
-                    message: "No session keys available".to_string(),
-                    context: Some("Handshake not completed".to_string()),
-                    severity: Some("high".to_string()),
-                    suggestion: Some("Complete handshake before decrypting data".to_string()),
-                }
+                songbird_errors::SongbirdError::security("No session keys available")
             })?;
 
             if self.state != HandshakeState::Established {
-                return Err(songbird_errors::SongbirdError::Security {
-                    message: "Handshake not established".to_string(),
-                    context: Some(format!("Current state: {:?}", self.state)),
-                    severity: Some("high".to_string()),
-                    suggestion: Some("Complete handshake before decrypting data".to_string()),
-                });
+                return Err(songbird_errors::SongbirdError::security(
+                    "Handshake not established",
+                ));
             }
 
             let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&keys.decrypt_key));
@@ -176,14 +150,9 @@ mod bstp_handshake {
             let nonce_bytes = [0u8; 12];
             let nonce = Nonce::from_slice(&nonce_bytes);
 
-            let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| {
-                songbird_errors::SongbirdError::Security {
-                    message: "Decryption failed".to_string(),
-                    context: Some("AES-GCM error: {e}".to_string()),
-                    severity: Some("high".to_string()),
-                    suggestion: Some("Check decryption key and ciphertext validity".to_string()),
-                }
-            })?;
+            let plaintext = cipher
+                .decrypt(nonce, ciphertext)
+                .map_err(|e| songbird_errors::SongbirdError::security("Decryption failed"))?;
 
             debug!(
                 "🔓 Decrypted {} bytes to {} bytes",

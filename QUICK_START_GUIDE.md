@@ -1,73 +1,71 @@
-# 🚀 SONGBIRD QUICK START GUIDE
+# 🚀 Songbird Universal Orchestrator - Quick Start Guide
 
-**Post-Modernization Development Guide** | **Status**: Production-Ready Codebase ✅
-
----
-
-## ⚡ **IMMEDIATE COMMANDS**
-
-### **Verify Everything Works**
-```bash
-# Check compilation
-cargo check --workspace --quiet
-
-# Run tests
-cargo test --workspace --lib
-
-# Check formatting
-cargo fmt --check
-
-# Generate documentation
-cargo doc --workspace --no-deps --open
-```
-
-### **Development Workflow**
-```bash
-# Start development
-cd /home/eastgate/Development/ecoPrimals/songbird
-
-# Make changes, then verify
-cargo check && cargo test --lib
-
-# Before committing
-cargo fmt && cargo clippy --workspace -- -D warnings
-```
+**Get Songbird running in under 5 minutes!**
 
 ---
 
-## 🎯 **NEXT PHASE PRIORITIES**
+## 📋 **Prerequisites**
 
-### **1. Test Coverage Enhancement** (Priority: HIGH)
+- **Rust 1.70+** - Install from [rustup.rs](https://rustup.rs/)
+- **Docker** (optional) - For containerized deployment
+- **Git** - For cloning the repository
+
+---
+
+## 🚀 **Quick Start (Development)**
+
+### 1. **Clone and Build**
 ```bash
-# Install tarpaulin for coverage
-cargo install cargo-tarpaulin
-
-# Generate coverage report
-cargo tarpaulin --workspace --out Html --output-dir coverage-report
-
-# Target: Increase from ~75% to 90%+
-# Focus areas: Integration tests, error paths, edge cases
-```
-
-### **2. Complete Remaining TODOs** (Priority: MEDIUM)
-```bash
-# Find remaining TODOs
-grep -r "TODO\|FIXME" crates/ --include="*.rs" | head -10
-
-# Priority implementations:
-# - Federation message broadcasting
-# - Load balancing algorithms  
-# - Performance config re-enablement
-```
-
-### **3. Performance Optimization** (Priority: MEDIUM)
-```bash
-# Run benchmarks
-cargo bench --workspace
-
-# Profile performance
+git clone <repository-url>
+cd songbird
 cargo build --release
-# Focus: Memory allocation reduction, async batching
+```
+
+### 2. **Run Core Services**
+```bash
+# Start the main orchestrator
+cargo run --bin songbird-orchestrator
+
+# In another terminal, start network discovery
+cargo run --bin songbird-discovery
+
+# In another terminal, start the CLI
+cargo run --bin songbird-cli
+```
+
+### 3. **Verify Installation**
+```bash
+# Check service health
+songbird-cli health-check
+
+# List discovered capabilities
+songbird-cli list-capabilities
+
+# Test network discovery
+songbird-cli discover-network
+```
+
+---
+
+## 🐳 **Production Deployment (Docker)**
+
+### 1. **Build Production Image**
+```bash
+docker build -f docker/Dockerfile.production -t songbird:latest .
+```
+
+### 2. **Deploy with Docker Compose**
+```bash
+docker-compose -f docker/docker-compose.production.yml up -d
+```
+
+### 3. **Verify Production Deployment**
+```bash
+# Check all services are healthy
+curl http://localhost:8080/health
+
+# View service discovery
+curl http://localhost:8080/api/v1/capabilities
 ```
 
 ---

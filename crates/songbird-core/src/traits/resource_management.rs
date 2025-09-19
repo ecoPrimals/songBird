@@ -10,7 +10,7 @@ use songbird_config::constants::resources::{
     DEFAULT_MONITORING_INTERVAL, DEFAULT_TRACKING_INTERVAL,
 };
 use songbird_config::constants::services::DEFAULT_SHUTDOWN_TIMEOUT;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -18,28 +18,31 @@ use std::time::Duration;
 #[async_trait]
 pub trait ResourceManager: Send + Sync {
     /// Initialize resource tracking
-    async fn initialize(&mut self) -> Result<()>;
+    async fn initialize(&mut self) -> SongbirdResult<()>;
 
     /// Register a resource for tracking
-    async fn track_resource(&self, resource: ResourceInfo) -> Result<ResourceHandle>;
+    async fn track_resource(&self, resource: ResourceInfo) -> SongbirdResult<ResourceHandle>;
 
     /// Unregister and cleanup a resource
-    async fn cleanup_resource(&self, handle: &ResourceHandle) -> Result<()>;
+    async fn cleanup_resource(&self, handle: &ResourceHandle) -> SongbirdResult<()>;
 
     /// Cleanup all resources for a specific owner
-    async fn cleanup_resources_for_owner(&self, owner_id: &str) -> Result<Vec<ResourceInfo>>;
+    async fn cleanup_resources_for_owner(
+        &self,
+        owner_id: &str,
+    ) -> SongbirdResult<Vec<ResourceInfo>>;
 
     /// Cleanup all resources
-    async fn cleanup_all_resources(&self) -> Result<Vec<ResourceInfo>>;
+    async fn cleanup_all_resources(&self) -> SongbirdResult<Vec<ResourceInfo>>;
 
     /// Check for resource leaks
-    async fn check_resource_leaks(&self) -> Result<Vec<ResourceLeak>>;
+    async fn check_resource_leaks(&self) -> SongbirdResult<Vec<ResourceLeak>>;
 
     /// Get resource usage statistics
-    async fn get_resource_stats(&self) -> Result<ResourceStats>;
+    async fn get_resource_stats(&self) -> SongbirdResult<ResourceStats>;
 
     /// Enforce resource limits
-    async fn enforce_resource_limits(&self) -> Result<Vec<ResourceViolation>>;
+    async fn enforce_resource_limits(&self) -> SongbirdResult<Vec<ResourceViolation>>;
 
     /// Get manager information
     fn manager_info(&self) -> ResourceManagerInfo;
@@ -186,10 +189,10 @@ pub struct ResourceManagerInfo {
 #[async_trait]
 pub trait CleanupStrategy: Send + Sync {
     /// Determine if a resource should be cleaned up
-    async fn should_cleanup(&self, resource: &ResourceInfo) -> Result<bool>;
+    async fn should_cleanup(&self, resource: &ResourceInfo) -> SongbirdResult<bool>;
 
     /// Perform cleanup for a specific resource
-    async fn cleanup_resource(&self, resource: &ResourceInfo) -> Result<CleanupResult>;
+    async fn cleanup_resource(&self, resource: &ResourceInfo) -> SongbirdResult<CleanupResult>;
 
     /// Get strategy information
     fn strategy_info(&self) -> CleanupStrategyInfo;
@@ -218,19 +221,19 @@ pub struct CleanupStrategyInfo {
 #[async_trait]
 pub trait ResourceMonitor: Send + Sync {
     /// Start monitoring resources
-    async fn start_monitoring(&mut self) -> Result<()>;
+    async fn start_monitoring(&mut self) -> SongbirdResult<()>;
 
     /// Stop monitoring resources
-    async fn stop_monitoring(&mut self) -> Result<()>;
+    async fn stop_monitoring(&mut self) -> SongbirdResult<()>;
 
     /// Get current resource metrics
-    async fn get_metrics(&self) -> Result<HashMap<String, f64>>;
+    async fn get_metrics(&self) -> SongbirdResult<HashMap<String, f64>>;
 
     /// Set resource threshold alerts
-    async fn set_thresholds(&self, thresholds: HashMap<String, f64>) -> Result<()>;
+    async fn set_thresholds(&self, thresholds: HashMap<String, f64>) -> SongbirdResult<()>;
 
     /// Check if thresholds are exceeded
-    async fn check_thresholds(&self) -> Result<Vec<ThresholdViolation>>;
+    async fn check_thresholds(&self) -> SongbirdResult<Vec<ThresholdViolation>>;
 }
 
 /// Threshold violation information

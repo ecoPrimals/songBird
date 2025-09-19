@@ -1,0 +1,60 @@
+# Pedantic Rustfmt Configuration for Songbird
+# Stable Rust compatible configuration
+
+# Edition and stability
+edition = "2021"
+# Removed: unstable_features = true  # Only available on nightly
+
+# Basic formatting
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Unix"
+use_small_heuristics = "Default"
+
+# Imports (stable features only)
+reorder_imports = true
+# Removed nightly-only: imports_granularity, imports_layout, group_imports, merge_imports
+
+# Function formatting (stable features only)
+# Removed nightly-only: fn_args_layout, brace_style, control_brace_style, indent_style
+
+# Expressions and statements (stable features only)
+# Removed nightly-only: binop_separator, combine_control_expr, overflow_delimited_expr
+# Removed nightly-only: struct_field_align_threshold, enum_discrim_align_threshold
+
+# Comments and documentation (stable features only)
+# Removed nightly-only: comment_width, wrap_comments, format_code_in_doc_comments
+# Removed nightly-only: normalize_comments, normalize_doc_attributes
+
+# Strings and arrays (stable features only)
+# Removed nightly-only: format_strings, format_macro_matchers, format_macro_bodies
+# Removed nightly-only: hex_literal_case
+
+# Trailing elements (stable features only)
+# Removed nightly-only: trailing_comma, trailing_semicolon
+
+# Blank lines (stable features only)
+# Removed nightly-only: blank_lines_upper_bound, blank_lines_lower_bound
+
+# Advanced formatting (stable features only)
+# Removed nightly-only: condense_wildcard_suffixes, force_explicit_abi
+# Removed nightly-only: format_generated_files, skip_children, hide_parse_errors
+
+# Spacing and alignment (stable features only)
+# Removed nightly-only: space_before_colon, space_after_colon, spaces_around_ranges
+# Removed nightly-only: type_punctuation_density
+
+# Chain formatting (stable features only)
+# Keep stable features
+chain_width = 60
+single_line_if_else_max_width = 50
+
+# Match formatting (stable features only)
+match_block_trailing_comma = false
+short_array_element_width_threshold = 10
+
+# Miscellaneous (stable features only)
+# Removed nightly-only: empty_item_single_line, struct_lit_single_line
+# Removed nightly-only: fn_single_line, where_single_line, force_multiline_blocks
+# Removed nightly-only: version = "Two" 

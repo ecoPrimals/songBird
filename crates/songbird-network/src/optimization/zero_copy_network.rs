@@ -446,7 +446,7 @@ impl ZeroCopyNetworkManager {
         let bytes_read = reader
             .read(&mut bytes_mut)
             .await
-            .map_err(|e| SongbirdError::network_error(format!("Read error: {e}")))?;
+            .map_err(|e| SongbirdError::network(format!("Read error: {e}")))?;
 
         // Truncate to actual bytes read
         bytes_mut.truncate(bytes_read);
@@ -497,7 +497,7 @@ impl ZeroCopyNetworkManager {
         let bytes_written = writer
             .write(&buffer.data)
             .await
-            .map_err(|e| SongbirdError::network_error(format!("Write error: {e}")))?;
+            .map_err(|e| SongbirdError::network(format!("Write error: {e}")))?;
 
         let io_duration = io_start.elapsed();
 
@@ -533,7 +533,7 @@ impl ZeroCopyNetworkManager {
         if config.enable_nodelay {
             stream
                 .set_nodelay(true)
-                .map_err(|e| SongbirdError::network_error(format!("Failed to set nodelay: {e}")))?;
+                .map_err(|e| SongbirdError::network(format!("Failed to set nodelay: {e}")))?;
         }
 
         let stats = ZeroCopyStreamStats {
@@ -800,7 +800,7 @@ pub mod network_ops {
     pub async fn connect_zero_copy(address: &str) -> songbird_errors::Result<ZeroCopyStream> {
         let stream = TcpStream::connect(address)
             .await
-            .map_err(|e| SongbirdError::network_error(format!("Connection failed: {e}")))?;
+            .map_err(|e| SongbirdError::network(format!("Connection failed: {e}")))?;
 
         let config = StreamConfig::default();
         ZeroCopyNetworkManager::global()
@@ -846,7 +846,7 @@ pub mod network_ops {
     ) -> songbird_errors::Result<String> {
         let buffer = stream.read_zero_copy(max_length).await?;
         let result = String::from_utf8(buffer.data.to_vec())
-            .map_err(|e| SongbirdError::network_error(format!("UTF-8 decode error: {e}")))?;
+            .map_err(|e| SongbirdError::network(format!("UTF-8 decode error: {e}")))?;
 
         Ok(result)
     }

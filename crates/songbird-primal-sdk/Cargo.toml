@@ -1,0 +1,27 @@
+[package]
+name = "songbird-primal-sdk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Software Development Kit for building Songbird Primal integrations with type-safe APIs and zero-cost abstractions"
+readme = "README.md"
+keywords = ["songbird", "primal", "sdk", "integration", "orchestration"]
+categories = ["development-tools", "api-bindings", "network-programming"]
+
+[lints]
+workspace = true
+
+[dependencies]
+
+# Core types
+songbird-types = { path = "../songbird-types" }
+
+# Serialization
+serde.workspace = true
+
+[lib]
+name = "songbird_primal_sdk"
+path = "src/lib.rs" 

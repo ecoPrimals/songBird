@@ -6,7 +6,7 @@
 
 use crate::cli::commands::{FirewallAction, FirewallCommands};
 use crate::cli::CliError;
-use songbird_security::firewall::{FirewallConfig, FirewallWizard, SecurityValidator};
+// use songbird_security::firewall::{FirewallConfig, FirewallWizard, SecurityValidator}; // Temporarily disabled
 // Firewall CLI commands
 use crate::cli::ui;
 use colored::*;

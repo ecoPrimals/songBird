@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, info};
 
 use super::types::{NetworkConnection, NetworkMeasurement, NetworkNode, NetworkTopology, PeerType};
-use songbird_errors::Result;
+use songbird_errors::{SongbirdError, SongbirdResult as Result};
 use songbird_universal_primals::PrimalCapability;
 
 /// Network topology mapper
@@ -227,9 +227,7 @@ impl TopologyMapper {
 
                 Ok(latency_ms)
             }
-            _ => Err(songbird_errors::SongbirdError::network_error(
-                "Latency measurement timed out",
-            )),
+            _ => Err(SongbirdError::network("Latency measurement timed out")),
         }
     }
 

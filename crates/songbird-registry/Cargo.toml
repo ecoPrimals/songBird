@@ -27,6 +27,7 @@ reqwest = { version = "0.11", features = ["json"] }
 
 # Internal dependencies
 songbird-errors = { path = "../songbird-errors" }
+songbird-types = { path = "../songbird-types" }
 songbird-discovery = { path = "../songbird-discovery" }
 songbird-config = { path = "../songbird-config" }
 

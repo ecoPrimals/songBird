@@ -33,8 +33,7 @@ impl SslManager {
             tracing::info!("Auto-generating SSL certificates");
             self.generate_certificates().await?;
         } else {
-            return Err(SongbirdError::config_field(
-                "ssl_certificates",
+            return Err(SongbirdError::configuration(
                 "SSL certificates not found and auto-generation is disabled",
             ));
         }
@@ -47,23 +46,17 @@ impl SslManager {
         let cert_dir = Path::new(&self.config.ssl_cert_dir);
 
         if !cert_dir.exists() {
-            return Err(SongbirdError::config_field(
-                "ssl_cert_dir",
-                format!(
-                    "SSL certificate directory does not exist: {}",
-                    self.config.ssl_cert_dir
-                ),
-            ));
+            return Err(SongbirdError::configuration(format!(
+                "SSL certificate directory does not exist: {}",
+                self.config.ssl_cert_dir
+            )));
         }
 
         if !cert_dir.is_dir() {
-            return Err(SongbirdError::config_field(
-                "ssl_cert_dir",
-                format!(
-                    "SSL certificate path is not a directory: {}",
-                    self.config.ssl_cert_dir
-                ),
-            ));
+            return Err(SongbirdError::configuration(format!(
+                "SSL certificate path is not a directory: {}",
+                self.config.ssl_cert_dir
+            )));
         }
 
         Ok(())
@@ -83,19 +76,16 @@ impl SslManager {
         let key_path = Path::new(&self.config.ssl_cert_dir).join("key.pem");
 
         // Read certificate file
-        let cert_content = std::fs::read_to_string(&cert_path).map_err(|e| {
-            SongbirdError::io_error(format!("Failed to read certificate file: {e}"))
-        })?;
+        let cert_content = std::fs::read_to_string(&cert_path)
+            .map_err(|e| SongbirdError::network(format!("Failed to read certificate file: {e}")))?;
 
         // Read private key file
-        let key_content = std::fs::read_to_string(&key_path).map_err(|e| {
-            SongbirdError::io_error(format!("Failed to read private key file: {e}"))
-        })?;
+        let key_content = std::fs::read_to_string(&key_path)
+            .map_err(|e| SongbirdError::network(format!("Failed to read private key file: {e}")))?;
 
         // Basic validation - check if files contain PEM data
         if !cert_content.contains("-----BEGIN CERTIFICATE-----") {
-            return Err(SongbirdError::config_field(
-                "ssl_certificate",
+            return Err(SongbirdError::configuration(
                 "Invalid certificate file format",
             ));
         }
@@ -103,8 +93,7 @@ impl SslManager {
         if !key_content.contains("-----BEGIN PRIVATE KEY-----")
             && !key_content.contains("-----BEGIN RSA PRIVATE KEY-----")
         {
-            return Err(SongbirdError::config_field(
-                "ssl_private_key",
+            return Err(SongbirdError::configuration(
                 "Invalid private key file format",
             ));
         }
@@ -138,12 +127,10 @@ impl SslManager {
                 &format!("/CN={}", self.config.default_domain),
             ])
             .output()
-            .map_err(|e| {
-                SongbirdError::execution_error(format!("Failed to execute OpenSSL: {e}"))
-            })?;
+            .map_err(|e| SongbirdError::network(format!("Failed to execute OpenSSL: {e}")))?;
 
         if !output.status.success() {
-            return Err(SongbirdError::execution_error(format!(
+            return Err(SongbirdError::network(format!(
                 "OpenSSL command failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
@@ -156,8 +143,7 @@ impl SslManager {
     /// Get SSL certificate information
     pub async fn get_certificate_info(&self) -> Result<CertificateInfo, SongbirdError> {
         if !self.config.ssl_termination_enabled {
-            return Err(SongbirdError::config_field(
-                "ssl_termination",
+            return Err(SongbirdError::configuration(
                 "SSL termination is not enabled",
             ));
         }
@@ -174,12 +160,10 @@ impl SslManager {
                 "-noout",
             ])
             .output()
-            .map_err(|e| {
-                SongbirdError::execution_error(format!("Failed to read certificate info: {e}"))
-            })?;
+            .map_err(|e| SongbirdError::network(format!("Failed to read certificate info: {e}")))?;
 
         if !output.status.success() {
-            return Err(SongbirdError::execution_error(format!(
+            return Err(SongbirdError::network(format!(
                 "Failed to parse certificate: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
@@ -245,13 +229,13 @@ impl SslManager {
 
         if cert_path.exists() {
             std::fs::copy(&cert_path, &backup_cert_path).map_err(|e| {
-                SongbirdError::io_error(format!("Failed to backup certificate: {e}"))
+                SongbirdError::network(format!("Failed to backup certificate: {e}"))
             })?;
         }
 
         if key_path.exists() {
             std::fs::copy(&key_path, &backup_key_path).map_err(|e| {
-                SongbirdError::io_error(format!("Failed to backup private key: {e}"))
+                SongbirdError::network(format!("Failed to backup private key: {e}"))
             })?;
         }
 

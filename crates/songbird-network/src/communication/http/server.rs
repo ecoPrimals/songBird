@@ -2,7 +2,7 @@
 //!
 //! Production-ready HTTP server for handling incoming requests
 
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;

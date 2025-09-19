@@ -4,7 +4,7 @@
 
 use crate::scalability::types::*;
 use chrono::Utc;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::time::Duration;
 use tracing::info;
 
@@ -63,7 +63,7 @@ impl ScalabilityManager {
     }
 
     /// Evaluate scaling decision
-    pub async fn evaluate_scaling(&mut self) -> Result<ScalingAction> {
+    pub async fn evaluate_scaling(&mut self) -> SongbirdResult<ScalingAction> {
         let current_instances = self.current_instances.len() as u32;
 
         if let Some(latest_metrics) = self.metrics_history.last() {
@@ -107,7 +107,7 @@ impl ScalabilityManager {
     }
 
     /// Predict future load
-    pub async fn predict_future_load(&self, duration: Duration) -> Result<f64> {
+    pub async fn predict_future_load(&self, duration: Duration) -> SongbirdResult<f64> {
         // Simple prediction based on recent trend
         if self.metrics_history.len() < 2 {
             return Ok(0.0);
@@ -121,7 +121,7 @@ impl ScalabilityManager {
     }
 
     /// Execute scaling action
-    pub async fn execute_scaling_action(&mut self, action: ScalingAction) -> Result<()> {
+    pub async fn execute_scaling_action(&mut self, action: ScalingAction) -> SongbirdResult<()> {
         info!("Executing scaling action: {:?}", action);
 
         match action.action_type {

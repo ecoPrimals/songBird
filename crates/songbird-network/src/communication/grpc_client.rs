@@ -16,7 +16,7 @@ use super::{
     CommunicationLayer, CommunicationResponse, CommunicationStats, ServiceAddress, ServiceMessage,
 };
 use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 
 // Import generated gRPC types
 tonic::include_proto!("songbird.communication");
@@ -121,7 +121,7 @@ impl GrpcCommunication {
         debug!("🔗 Creating gRPC client for {}", endpoint_url);
 
         let endpoint = Endpoint::from_shared(endpoint_url.clone())
-            .map_err(|e| SongbirdError::network_error(format!("Invalid endpoint: {}", e)))?
+            .map_err(|e| SongbirdError::network(format!("Invalid endpoint: {}", e)))?
             .timeout(self.config.request_timeout)
             .keep_alive_timeout(self.config.keep_alive_timeout)
             .keep_alive_while_idle(true);
@@ -129,7 +129,7 @@ impl GrpcCommunication {
         let channel = endpoint
             .connect()
             .await
-            .map_err(|e| SongbirdError::network_error(format!("Failed to connect: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to connect: {}", e)))?;
 
         let mut client = CommunicationServiceClient::new(channel);
         
@@ -390,7 +390,7 @@ impl GrpcServer {
             .add_service(service)
             .serve(addr)
             .await
-            .map_err(|e| SongbirdError::network_error(format!("gRPC server error: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("gRPC server error: {}", e)))?;
 
         Ok(())
     }

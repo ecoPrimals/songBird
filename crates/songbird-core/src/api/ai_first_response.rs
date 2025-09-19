@@ -5,6 +5,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_errors::SongbirdError;
 use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
@@ -136,6 +137,108 @@ pub struct AIFirstError {
 
     /// Related error context for debugging
     pub context: HashMap<String, serde_json::Value>,
+}
+
+impl From<AIFirstError> for SongbirdError {
+    fn from(error: AIFirstError) -> Self {
+        SongbirdError::Service {
+            service: "AIFirst".to_string(),
+            message: format!("{}: {}", error.code, error.message),
+            suggested_alternatives: Vec::new(),
+            recovery_actions: error.automation_hints,
+        }
+    }
+}
+
+impl From<SongbirdError> for AIFirstError {
+    fn from(error: SongbirdError) -> Self {
+        match error {
+            SongbirdError::Configuration {
+                message,
+                field: _,
+                suggestion: _,
+            } => AIFirstError {
+                code: "CONFIGURATION_ERROR".to_string(),
+                message,
+                category: AIErrorCategory::ConfigurationIssue,
+                retry_strategy: RetryStrategy {
+                    should_retry: false,
+                    delay_ms: 0,
+                    max_attempts: 1,
+                    backoff_strategy: BackoffType::Linear,
+                    retry_conditions: vec![],
+                    success_probability: 0.0,
+                },
+                automation_hints: vec!["Check configuration parameters".to_string()],
+                severity: ErrorSeverity::Medium,
+                requires_human_intervention: true,
+                context: HashMap::new(),
+            },
+            SongbirdError::Service {
+                service,
+                message,
+                suggested_alternatives: _,
+                recovery_actions,
+            } => AIFirstError {
+                code: "SERVICE_ERROR".to_string(),
+                message: format!("{}: {}", service, message),
+                category: AIErrorCategory::ServiceMeshFailure,
+                retry_strategy: RetryStrategy {
+                    should_retry: true,
+                    delay_ms: 1000,
+                    max_attempts: 3,
+                    backoff_strategy: BackoffType::Exponential { base: 2.0 },
+                    retry_conditions: vec!["service_available".to_string()],
+                    success_probability: 0.7,
+                },
+                automation_hints: recovery_actions,
+                severity: ErrorSeverity::High,
+                requires_human_intervention: false,
+                context: HashMap::new(),
+            },
+            SongbirdError::Network {
+                message,
+                interface: _,
+                suggestion: _,
+            } => AIFirstError {
+                code: "NETWORK_ERROR".to_string(),
+                message,
+                category: AIErrorCategory::NetworkFailure,
+                retry_strategy: RetryStrategy {
+                    should_retry: true,
+                    delay_ms: 2000,
+                    max_attempts: 5,
+                    backoff_strategy: BackoffType::Exponential { base: 2.0 },
+                    retry_conditions: vec!["network_available".to_string()],
+                    success_probability: 0.8,
+                },
+                automation_hints: vec![
+                    "Check network connectivity".to_string(),
+                    "Try alternative endpoint".to_string(),
+                ],
+                severity: ErrorSeverity::High,
+                requires_human_intervention: false,
+                context: HashMap::new(),
+            },
+            _ => AIFirstError {
+                code: "UNKNOWN_ERROR".to_string(),
+                message: format!("{:?}", error),
+                category: AIErrorCategory::Unknown,
+                retry_strategy: RetryStrategy {
+                    should_retry: false,
+                    delay_ms: 0,
+                    max_attempts: 1,
+                    backoff_strategy: BackoffType::Linear,
+                    retry_conditions: vec![],
+                    success_probability: 0.0,
+                },
+                automation_hints: vec!["Contact support for assistance".to_string()],
+                severity: ErrorSeverity::Critical,
+                requires_human_intervention: true,
+                context: HashMap::new(),
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

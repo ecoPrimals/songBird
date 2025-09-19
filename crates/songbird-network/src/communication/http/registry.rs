@@ -6,7 +6,7 @@
 use async_trait::async_trait;
 use dashmap::DashMap;
 use std::sync::Arc;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 /// Service registry trait for HTTP communication
 #[async_trait]
 pub trait ServiceRegistry: Send + Sync {

@@ -11,7 +11,9 @@ use tokio::sync::{broadcast, RwLock};
 use crate::health::HealthCheckPolicy;
 use crate::scaling::AutoScalingPolicy;
 use songbird_discovery::traits::service::{ServiceInfo, UniversalService};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::SongbirdError;
+use songbird_types::errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Type alias for UniversalService with concrete error type
 pub type DynUniversalService = dyn UniversalService<Error = SongbirdError> + Send + Sync;
@@ -35,7 +37,7 @@ impl ServiceHandle {
         service
             .start()
             .await
-            .map_err(|e| SongbirdError::service_error(&self.info.service_id, e.to_string()))?;
+            .map_err(|e| SongbirdError::service(&self.info.service_id, e.to_string()))?;
         Ok(())
     }
 
@@ -44,17 +46,17 @@ impl ServiceHandle {
         service
             .stop()
             .await
-            .map_err(|e| SongbirdError::service_error(&self.info.service_id, e.to_string()))?;
+            .map_err(|e| SongbirdError::service(&self.info.service_id, e.to_string()))?;
         Ok(())
     }
 
     pub async fn health_check(&self) -> Result<serde_json::Value> {
         let service = self.service.read().await;
         let health = service.health_check().await.map_err(|e| {
-            SongbirdError::service_error(&self.info.service_id, format!("Health check failed: {e}"))
+            SongbirdError::service(&self.info.service_id, format!("Health check failed: {e}"))
         })?;
         serde_json::to_value(health)
-            .map_err(|e| SongbirdError::service_error(&self.info.service_id, e.to_string()))
+            .map_err(|e| SongbirdError::service(&self.info.service_id, e.to_string()))
     }
 }
 

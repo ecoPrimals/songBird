@@ -1,6 +1,6 @@
 //! Core types and structures for Universal Primal discovery
 
-use crate::router::PrimalHealth;
+use crate::traits::PrimalHealth;
 use crate::PrimalCapability;
 use songbird_universal::PrimalType;
 use std::collections::HashMap;
@@ -134,7 +134,7 @@ impl PrimalNode {
             endpoint,
             primal_type,
             capabilities: Vec::new(),
-            health_status: PrimalHealth::Unknown,
+            health_status: PrimalHealth::default(),
             last_seen: chrono::Utc::now(),
             version: "unknown".to_string(),
             metadata: HashMap::new(),
@@ -143,7 +143,7 @@ impl PrimalNode {
 
     /// Check if the primal node is healthy
     pub fn is_healthy(&self) -> bool {
-        matches!(self.health_status, PrimalHealth::Healthy)
+        self.health_status.is_healthy()
     }
 
     /// Update the last seen timestamp
@@ -215,9 +215,9 @@ impl DiscoveredPrimal {
             primal_type: self.primal_type.clone(),
             capabilities: self.capabilities.clone(),
             health_status: if self.is_healthy() {
-                PrimalHealth::Healthy
+                PrimalHealth::healthy()
             } else {
-                PrimalHealth::Unhealthy
+                PrimalHealth::unhealthy("Health check failed")
             },
             last_seen: chrono::Utc::now(),
             version: self

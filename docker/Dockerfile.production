@@ -1,0 +1,89 @@
+# Multi-stage production build for Songbird
+FROM rust:1.75-slim as builder
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user
+RUN useradd --create-home --shell /bin/bash songbird
+
+# Set working directory
+WORKDIR /app
+
+# Copy manifests
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ crates/
+
+# Build dependencies (this layer will be cached)
+RUN cargo build --release --lib
+
+# Build the application
+RUN cargo build --release
+
+# Runtime stage
+FROM debian:bookworm-slim as runtime
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user
+RUN useradd --create-home --shell /bin/bash --uid 1000 songbird
+
+# Create directories
+RUN mkdir -p /app/{data,logs,config,metrics} \
+    && chown -R songbird:songbird /app
+
+# Copy binary from builder
+COPY --from=builder /app/target/release/songbird-* /app/bin/
+COPY --from=builder /app/target/release/libsongbird_*.so /app/lib/ 2>/dev/null || true
+
+# Copy configuration files
+COPY config/ /app/config/
+COPY docker/entrypoint.sh /app/entrypoint.sh
+
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh \
+    && chown -R songbird:songbird /app
+
+# Switch to app user
+USER songbird
+
+# Set working directory
+WORKDIR /app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Default environment variables
+ENV RUST_ENV=production
+ENV SONGBIRD_ENVIRONMENT=production
+ENV SONGBIRD_BIND_ADDRESS=0.0.0.0
+ENV SONGBIRD_PORT=8080
+ENV SONGBIRD_LOG_LEVEL=info
+
+# Expose ports
+EXPOSE 8080 9090
+
+# Entry point
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["songbird-lib"]
+
+# Observability stage
+FROM runtime as observability
+ENV SONGBIRD_COMPONENT=observability
+EXPOSE 9091
+CMD ["songbird-observability"]
+
+# Discovery stage  
+FROM runtime as discovery
+ENV SONGBIRD_COMPONENT=discovery
+EXPOSE 8081
+CMD ["songbird-discovery"] 

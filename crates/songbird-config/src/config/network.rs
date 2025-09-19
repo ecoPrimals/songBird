@@ -4,7 +4,8 @@
 //! All network settings are configurable via environment variables.
 
 use serde::{Deserialize, Serialize};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
+type Result<T> = SongbirdResult<T>;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 use tracing::warn;
@@ -207,10 +208,9 @@ impl NetworkConfig {
         let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
             .unwrap_or_else(|_| "127.0.0.1".to_string())
             .parse()
-            .map_err(|e| SongbirdError::Config {
+            .map_err(|e| SongbirdError::Configuration {
                 field: Some("bind_address".to_string()),
                 message: format!("Invalid bind address: {e}"),
-                context: Some("Network configuration validation".to_string()),
                 suggestion: Some("Provide a valid IP address for bind_address".to_string()),
             })?;
 
@@ -346,10 +346,9 @@ impl NetworkConfig {
         if self.bind_address.to_string() == "0.0.0.0"
             && std::env::var("SONGBIRD_PRODUCTION_BINDING_APPROVED").is_err()
         {
-            return Err(SongbirdError::Config {
+            return Err(SongbirdError::Configuration {
                 field: Some("bind_address".to_string()),
                 message: "Production binding to 0.0.0.0 requires explicit approval via SONGBIRD_PRODUCTION_BINDING_APPROVED=true".to_string(),
-                context: Some("Production environment validation".to_string()),
                 suggestion: Some("Set SONGBIRD_PRODUCTION_BINDING_APPROVED=true or use a specific bind address".to_string()),
             });
         }
@@ -434,10 +433,9 @@ impl NetworkConfig {
         match protocol {
             "ipx" | "starcraft" => Ok(self.gaming_port),
             "aoe2" => Ok(self.gaming.aoe2_port),
-            _ => Err(SongbirdError::Config {
+            _ => Err(SongbirdError::Configuration {
                 field: Some("gaming_protocol".to_string()),
                 message: format!("Unknown gaming protocol: {protocol}"),
-                context: Some("Gaming protocol validation".to_string()),
                 suggestion: Some(
                     "Use a supported gaming protocol like 'ipx', 'starcraft', or 'aoe2'"
                         .to_string(),
@@ -474,10 +472,9 @@ impl NetworkConfig {
                 return Ok(port);
             }
         }
-        Err(SongbirdError::Config {
+        Err(SongbirdError::Configuration {
             field: Some("gaming_port_range".to_string()),
             message: "No available ports in gaming range".to_string(),
-            context: Some("Gaming port allocation".to_string()),
             suggestion: Some("Expand the gaming port range or release some ports".to_string()),
         })
     }
@@ -499,10 +496,9 @@ impl NetworkConfig {
         for (i, &port1) in all_ports.iter().enumerate() {
             for &port2 in all_ports.iter().skip(i + 1) {
                 if port1 == port2 {
-                    return Err(SongbirdError::Config {
+                    return Err(SongbirdError::Configuration {
                         field: Some("port_conflict".to_string()),
                         message: format!("Port {port1} is used multiple times"),
-                        context: Some("Port conflict validation".to_string()),
                         suggestion: Some(
                             "Ensure each port is used only once in the configuration".to_string(),
                         ),
@@ -513,13 +509,12 @@ impl NetworkConfig {
 
         // Validate port range
         if self.gaming_port_range.start > self.gaming_port_range.end {
-            return Err(SongbirdError::Config {
+            return Err(SongbirdError::Configuration {
                 field: Some("gaming_port_range".to_string()),
                 message: format!(
                     "Invalid port range: start ({}) > end ({})",
                     self.gaming_port_range.start, self.gaming_port_range.end
                 ),
-                context: Some("Port range validation".to_string()),
                 suggestion: Some(
                     "Ensure the start port is less than or equal to the end port".to_string(),
                 ),

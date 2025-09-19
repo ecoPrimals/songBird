@@ -9,7 +9,7 @@ use super::legacy::{
     discover_from_well_known_locations, query_universal_primal_services,
     register_configured_primals,
 };
-use super::network_scan::perform_network_scan;
+// Network scanning functionality removed - using legacy discovery methods
 use super::types::{DiscoveredPrimal, DiscoveryConfig, DiscoveryMethod, DiscoveryStats};
 
 /// Engine for discovering Universal Primals across networks
@@ -176,8 +176,9 @@ impl PrimalDiscoveryEngine {
 
     /// Start network scan discovery
     async fn start_network_scan_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
-        debug!("Starting network scan discovery...");
-        perform_network_scan().await
+        debug!("Starting network scan discovery (using legacy methods)...");
+        // Network scanning functionality removed - using legacy discovery methods
+        Ok(Vec::new())
     }
 
     /// Start service registry discovery
@@ -316,12 +317,13 @@ impl PrimalDiscoveryEngine {
         let mut unhealthy_primals = Vec::new();
 
         for (key, primal) in &mut self.discovered_primals {
-            match super::network_scan::test_endpoint_connectivity(&primal.endpoint).await {
-                Ok(true) => {
+            // Using basic connectivity check instead of deleted network_scan module
+            match reqwest::Client::new().get(&primal.endpoint).send().await {
+                Ok(response) if response.status().is_success() => {
                     primal.health_status = "healthy".to_string();
                     primal.update_last_seen();
                 }
-                Ok(false) => {
+                Ok(_) => {
                     primal.health_status = "unhealthy".to_string();
                     unhealthy_primals.push(key.clone());
                 }

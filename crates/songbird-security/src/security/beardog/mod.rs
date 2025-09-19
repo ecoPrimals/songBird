@@ -306,7 +306,7 @@ impl ProductionBearDogProvider {
             .timeout(std::time::Duration::from_secs(30))
             .build()
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Failed to create BearDog HTTP client: {}",
                     e
                 ))
@@ -326,7 +326,7 @@ impl ProductionBearDogProvider {
         };
 
         if api_key.is_empty() {
-            return Err(songbird_errors::SongbirdError::security_error(
+            return Err(songbird_errors::SongbirdError::security(
                 "BearDog API key not configured - set BEARDOG_API_KEY environment variable",
             ));
         }
@@ -381,7 +381,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
             .send()
             .await
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "BearDog encrypt request failed: {}",
                     e
                 ))
@@ -389,7 +389,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
 
         if response.status().is_success() {
             let result: serde_json::Value = response.json().await.map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Failed to parse BearDog encrypt response: {}",
                     e
                 ))
@@ -399,7 +399,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                 .get("encrypted_data")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| {
-                    songbird_errors::SongbirdError::security_error(
+                    songbird_errors::SongbirdError::security(
                         "Invalid BearDog encrypt response format",
                     )
                 })?;
@@ -412,7 +412,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
 
             Ok(BearDogEncryptedData {
                 ciphertext: base64::decode(encrypted_data).map_err(|e| {
-                    songbird_errors::SongbirdError::security_error(format!(
+                    songbird_errors::SongbirdError::security(format!(
                         "Invalid base64 in BearDog response: {}",
                         e
                     ))
@@ -422,7 +422,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                 metadata: HashMap::new(),
             })
         } else {
-            Err(songbird_errors::SongbirdError::security_error(format!(
+            Err(songbird_errors::SongbirdError::security(format!(
                 "BearDog encryption failed: {}",
                 response.status()
             )))
@@ -453,7 +453,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
             .send()
             .await
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "BearDog decrypt request failed: {}",
                     e
                 ))
@@ -461,7 +461,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
 
         if response.status().is_success() {
             let result: serde_json::Value = response.json().await.map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Failed to parse BearDog decrypt response: {}",
                     e
                 ))
@@ -471,19 +471,19 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                 .get("plaintext")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| {
-                    songbird_errors::SongbirdError::security_error(
+                    songbird_errors::SongbirdError::security(
                         "Invalid BearDog decrypt response format",
                     )
                 })?;
 
             base64::decode(plaintext).map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Invalid base64 in BearDog decrypt response: {}",
                     e
                 ))
             })
         } else {
-            Err(songbird_errors::SongbirdError::security_error(format!(
+            Err(songbird_errors::SongbirdError::security(format!(
                 "BearDog decryption failed: {}",
                 response.status()
             )))
@@ -509,7 +509,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
             .send()
             .await
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "BearDog key derivation request failed: {}",
                     e
                 ))
@@ -517,7 +517,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
 
         if response.status().is_success() {
             let result: serde_json::Value = response.json().await.map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Failed to parse BearDog key derivation response: {}",
                     e
                 ))
@@ -527,19 +527,19 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                 .get("derived_key")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| {
-                    songbird_errors::SongbirdError::security_error(
+                    songbird_errors::SongbirdError::security(
                         "Invalid BearDog key derivation response format",
                     )
                 })?;
 
             base64::decode(derived_key).map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Invalid base64 in BearDog key derivation response: {}",
                     e
                 ))
             })
         } else {
-            Err(songbird_errors::SongbirdError::security_error(format!(
+            Err(songbird_errors::SongbirdError::security(format!(
                 "BearDog key derivation failed: {}",
                 response.status()
             )))
@@ -565,7 +565,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
             .send()
             .await
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "BearDog key generation request failed: {}",
                     e
                 ))
@@ -573,7 +573,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
 
         if response.status().is_success() {
             let result: serde_json::Value = response.json().await.map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Failed to parse BearDog key generation response: {}",
                     e
                 ))
@@ -584,7 +584,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                     .get("key_id")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| {
-                        songbird_errors::SongbirdError::security_error(
+                        songbird_errors::SongbirdError::security(
                             "No key_id in BearDog key generation response",
                         )
                     })?
@@ -593,7 +593,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                 created_at: SystemTime::now(),
             })
         } else {
-            Err(songbird_errors::SongbirdError::security_error(format!(
+            Err(songbird_errors::SongbirdError::security(format!(
                 "BearDog key generation failed: {}",
                 response.status()
             )))
@@ -635,7 +635,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
             .send()
             .await
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "BearDog access verification request failed: {}",
                     e
                 ))
@@ -643,7 +643,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
 
         if response.status().is_success() {
             let result: serde_json::Value = response.json().await.map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Failed to parse BearDog access verification response: {}",
                     e
                 ))
@@ -676,7 +676,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
             .send()
             .await
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "BearDog secure channel establishment request failed: {}",
                     e
                 ))
@@ -684,7 +684,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
 
         if response.status().is_success() {
             let result: serde_json::Value = response.json().await.map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Failed to parse BearDog channel response: {}",
                     e
                 ))
@@ -694,7 +694,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                 .get("channel_id")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| {
-                    songbird_errors::SongbirdError::security_error(
+                    songbird_errors::SongbirdError::security(
                         "No channel_id in BearDog channel response",
                     )
                 })?
@@ -704,13 +704,13 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                 .get("encryption_key")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| {
-                    songbird_errors::SongbirdError::security_error(
+                    songbird_errors::SongbirdError::security(
                         "No encryption_key in BearDog channel response",
                     )
                 })?;
 
             let encryption_key = base64::decode(encryption_key_b64).map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Invalid base64 encryption key from BearDog: {}",
                     e
                 ))
@@ -723,7 +723,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                 encryption_key,
             })
         } else {
-            Err(songbird_errors::SongbirdError::security_error(format!(
+            Err(songbird_errors::SongbirdError::security(format!(
                 "BearDog secure channel establishment failed: {}",
                 response.status()
             )))
@@ -742,7 +742,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
             .send()
             .await
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "BearDog audit logging request failed: {}",
                     e
                 ))
@@ -751,7 +751,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
         if response.status().is_success() {
             Ok(())
         } else {
-            Err(songbird_errors::SongbirdError::security_error(format!(
+            Err(songbird_errors::SongbirdError::security(format!(
                 "BearDog audit logging failed: {}",
                 response.status()
             )))
@@ -769,7 +769,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
             .send()
             .await
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "BearDog key rotation request failed: {}",
                     e
                 ))
@@ -777,7 +777,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
 
         if response.status().is_success() {
             let result: serde_json::Value = response.json().await.map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Failed to parse BearDog key rotation response: {}",
                     e
                 ))
@@ -797,7 +797,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
                 created_at: SystemTime::now(),
             })
         } else {
-            Err(songbird_errors::SongbirdError::security_error(format!(
+            Err(songbird_errors::SongbirdError::security(format!(
                 "BearDog key rotation failed: {}",
                 response.status()
             )))
@@ -824,7 +824,7 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
             .send()
             .await
             .map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "BearDog compliance report request failed: {}",
                     e
                 ))
@@ -832,14 +832,14 @@ impl BearDogSecurityProvider for ProductionBearDogProvider {
 
         if response.status().is_success() {
             let report: BearDogComplianceReport = response.json().await.map_err(|e| {
-                songbird_errors::SongbirdError::security_error(format!(
+                songbird_errors::SongbirdError::security(format!(
                     "Failed to parse BearDog compliance report: {}",
                     e
                 ))
             })?;
             Ok(report)
         } else {
-            Err(songbird_errors::SongbirdError::security_error(format!(
+            Err(songbird_errors::SongbirdError::security(format!(
                 "BearDog compliance report failed: {}",
                 response.status()
             )))

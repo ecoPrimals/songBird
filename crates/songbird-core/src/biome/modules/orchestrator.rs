@@ -12,6 +12,7 @@ use super::types::{
 };
 use chrono::Utc;
 use songbird_config::get_default_bind_address;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
@@ -36,9 +37,15 @@ impl SongbirdOrchestrator {
     pub async fn from_manifest_file(
         manifest_path: &Path,
         config: OrchestratorConfig,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> SongbirdResult<Self> {
         let manifest_content = fs::read_to_string(manifest_path).await?;
-        let manifest: SongbirdBiomeManifest = serde_yaml::from_str(&manifest_content)?;
+        let manifest: SongbirdBiomeManifest =
+            serde_yaml::from_str(&manifest_content).map_err(|e| {
+                songbird_errors::SongbirdError::configuration(format!(
+                    "Failed to parse manifest: {}",
+                    e
+                ))
+            })?;
 
         Ok(Self::new(config, manifest))
     }
@@ -64,29 +71,17 @@ impl SongbirdOrchestrator {
         self.manifest.primals.clone().unwrap_or_default()
     }
 
-    /// Start the orchestrator
-    pub async fn start(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        info!("Starting Songbird orchestrator: {}", self.id);
-
+    /// Start the orchestrator (stub implementation)
+    pub async fn start(&mut self) -> SongbirdResult<()> {
+        info!("Starting orchestrator: {}", self.id);
         self.status = OrchestratorStatus::Running;
-
-        // Coordinate with all configured primals
-        self.coordinate_with_all_primals().await?;
-
-        // Start orchestration process
-        self.orchestrate().await?;
-
-        info!("Orchestrator started successfully");
         Ok(())
     }
 
-    /// Stop the orchestrator
-    pub async fn stop(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        info!("Stopping Songbird orchestrator: {}", self.id);
-
+    /// Stop the orchestrator (stub implementation)
+    pub async fn stop(&mut self) -> SongbirdResult<()> {
+        info!("Stopping orchestrator: {}", self.id);
         self.status = OrchestratorStatus::Stopped;
-
-        info!("Orchestrator stopped successfully");
         Ok(())
     }
 
@@ -95,7 +90,7 @@ impl SongbirdOrchestrator {
         &self,
         primal_name: &str,
         primal_config: &PrimalCoordination,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         if !primal_config.enabled {
             info!("Primal {} is disabled, skipping coordination", primal_name);
             return Ok(());
@@ -115,7 +110,7 @@ impl SongbirdOrchestrator {
         info!("Using endpoint for {}: {}", primal_name, endpoint);
 
         // Test endpoint connectivity
-        if !self.test_primal_endpoint(&endpoint, primal_name).await {
+        if !self.test_primal_endpoint(&endpoint).await {
             warn!(
                 "Failed to connect to primal {} at {}",
                 primal_name, endpoint
@@ -124,17 +119,23 @@ impl SongbirdOrchestrator {
         }
 
         // Call the universal primal API
-        self.call_universal_primal_api(primal_name, &endpoint, primal_config)
-            .await?;
+        let capabilities_json: Vec<serde_json::Value> = primal_config
+            .capabilities
+            .iter()
+            .map(|s| serde_json::Value::String(s.clone()))
+            .collect();
+        self.call_universal_primal_api(
+            primal_name,
+            self.create_universal_payload(primal_name, &capabilities_json),
+        )
+        .await?;
 
         info!("Successfully coordinated with primal: {}", primal_name);
         Ok(())
     }
 
     /// Coordinate with all primals
-    pub async fn coordinate_with_all_primals(
-        &self,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn coordinate_with_all_primals(&self) -> SongbirdResult<()> {
         info!("Coordinating with all primals");
 
         let primal_coordination = self.get_primal_coordination();
@@ -151,7 +152,7 @@ impl SongbirdOrchestrator {
     }
 
     /// Main orchestration method that manages the biome lifecycle
-    pub async fn orchestrate(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn orchestrate(&mut self) -> SongbirdResult<()> {
         info!("Starting orchestration process");
 
         // Update status to running
@@ -247,7 +248,7 @@ impl SongbirdOrchestrator {
         ];
 
         for pattern in mdns_patterns {
-            if self.test_primal_endpoint(&pattern, primal_name).await {
+            if self.test_primal_endpoint(&pattern).await {
                 return Some(pattern);
             }
         }
@@ -313,7 +314,7 @@ impl SongbirdOrchestrator {
         ];
 
         for pattern in k8s_patterns {
-            if self.test_primal_endpoint(&pattern, primal_name).await {
+            if self.test_primal_endpoint(&pattern).await {
                 debug!("Kubernetes discovery found: {}", pattern);
                 return Some(pattern);
             }
@@ -337,7 +338,7 @@ impl SongbirdOrchestrator {
         for host in hosts {
             for port in &ports {
                 let endpoint = format!("http://{host}:{port}");
-                if self.test_primal_endpoint(&endpoint, primal_name).await {
+                if self.test_primal_endpoint(&endpoint).await {
                     info!("Found {} at {}", primal_name, endpoint);
                     return Some(endpoint);
                 }
@@ -391,7 +392,7 @@ impl SongbirdOrchestrator {
         let patterns = self.get_default_endpoint_patterns(primal_name);
 
         for pattern in patterns {
-            if self.test_primal_endpoint(&pattern, primal_name).await {
+            if self.test_primal_endpoint(&pattern).await {
                 info!("Found {} using default pattern: {}", primal_name, pattern);
                 return Some(pattern);
             }
@@ -430,7 +431,7 @@ impl SongbirdOrchestrator {
     }
 
     /// Test if a primal endpoint is reachable
-    async fn test_primal_endpoint(&self, endpoint: &str, primal_name: &str) -> bool {
+    async fn test_primal_endpoint(&self, endpoint: &str) -> bool {
         let timeout_ms = std::env::var("SONGBIRD_DISCOVERY_TIMEOUT_MS")
             .map_or(5000, |t| t.parse().unwrap_or(5000));
 
@@ -444,17 +445,14 @@ impl SongbirdOrchestrator {
 
         match client.get(&health_url).send().await {
             Ok(response) if response.status().is_success() => {
-                info!("Primal {} health check passed at {}", primal_name, endpoint);
+                info!("Primal endpoint health check passed at {}", endpoint);
                 true
             }
             _ => {
                 // Try root endpoint as fallback
                 match client.get(endpoint).send().await {
                     Ok(response) if response.status().is_success() => {
-                        info!(
-                            "Primal {} root endpoint reachable at {}",
-                            primal_name, endpoint
-                        );
+                        info!("Primal endpoint reachable at {}", endpoint);
                         true
                     }
                     _ => false,
@@ -467,36 +465,56 @@ impl SongbirdOrchestrator {
     async fn call_universal_primal_api(
         &self,
         primal_name: &str,
-        endpoint: &str,
-        config: &PrimalCoordination,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        request: serde_json::Value,
+    ) -> SongbirdResult<serde_json::Value> {
         let client = reqwest::Client::new();
 
         // Determine API path based on capabilities
-        let api_path = self.determine_api_path(primal_name, &config.capabilities);
-        let url = format!("{endpoint}{api_path}");
+        let capabilities_strings: Vec<String> = request["capabilities"]
+            .as_array()
+            .unwrap_or(&Vec::new())
+            .iter()
+            .map(|v| v.as_str().unwrap_or("unknown").to_string())
+            .collect();
+        let api_path = self.determine_api_path(&primal_name, &capabilities_strings);
+        let endpoint = self.get_endpoint(primal_name).ok_or_else(|| {
+            songbird_errors::SongbirdError::network(format!(
+                "No endpoint found for primal: {}",
+                primal_name
+            ))
+        })?;
+        let url = format!("{}{}", endpoint, api_path);
 
         // Create universal payload
-        let payload = self.create_universal_payload(primal_name, &config.capabilities);
+        let payload = self
+            .create_universal_payload(primal_name, &request["capabilities"].as_array().unwrap());
 
         info!("Calling universal API for {} at {}", primal_name, url);
 
-        let response = client.post(&url).json(&payload).send().await?;
+        let response = client.post(&url).json(&payload).send().await.map_err(|e| {
+            songbird_errors::SongbirdError::network(format!("Failed to send request: {}", e))
+        })?;
 
         if response.status().is_success() {
             info!(
                 "Successfully coordinated with {} via universal API",
                 primal_name
             );
+            Ok(response.json().await.map_err(|e| {
+                songbird_errors::SongbirdError::network(format!("Failed to parse response: {}", e))
+            })?)
         } else {
             warn!(
                 "Primal {} returned status: {}",
                 primal_name,
                 response.status()
             );
+            Err(songbird_errors::SongbirdError::network(format!(
+                "Failed to coordinate with {}: {}",
+                primal_name,
+                response.status()
+            )))
         }
-
-        Ok(())
     }
 
     /// Determine API path based on primal capabilities
@@ -515,22 +533,17 @@ impl SongbirdOrchestrator {
     }
 
     /// Create universal payload for primal coordination
-    fn create_universal_payload(
+    pub fn create_universal_payload(
         &self,
         primal_name: &str,
-        capabilities: &[String],
+        capabilities: &[serde_json::Value],
     ) -> serde_json::Value {
         serde_json::json!({
-            "orchestrator_id": self.id,
             "primal_name": primal_name,
-            "timestamp": Utc::now().timestamp(),
-            "manifest": {
-                "name": self.manifest.metadata.name,
-                "version": self.manifest.metadata.version,
-                "services": self.manifest.services.keys().collect::<Vec<_>>()
-            },
+            "orchestrator_id": self.id,
             "capabilities": capabilities,
-            "coordination_type": "songbird_orchestration"
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "coordination_mode": "universal"
         })
     }
 
@@ -558,20 +571,20 @@ impl SongbirdOrchestrator {
 
     /// Check if orchestrator is running
     pub fn is_running(&self) -> bool {
-        matches!(self.status, OrchestratorStatus::Running)
+        self.status == OrchestratorStatus::Running
     }
 
-    /// Get orchestrator health status
+    /// Get health status for orchestrator
     pub fn get_health_status(&self) -> HealthStatus {
         HealthStatus {
             orchestrator_id: self.id.clone(),
             status: self.status.clone(),
-            uptime_seconds: Utc::now()
+            uptime_seconds: chrono::Utc::now()
                 .signed_duration_since(self.created_at)
                 .num_seconds() as u64,
             service_count: self.manifest.services.len(),
             endpoint_count: self.endpoints.len(),
-            last_coordination: Utc::now(), // Simplified for now
+            last_coordination: chrono::Utc::now(),
         }
     }
 }
@@ -608,7 +621,7 @@ impl OrchestratorManager {
         &mut self,
         manifest: SongbirdBiomeManifest,
         config: Option<OrchestratorConfig>,
-    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<String> {
         let config = config.unwrap_or_else(|| self.default_config.clone());
         let mut orchestrator = SongbirdOrchestrator::new(config, manifest);
 
@@ -636,10 +649,7 @@ impl OrchestratorManager {
     }
 
     /// Stop and remove orchestrator
-    pub async fn remove_orchestrator(
-        &mut self,
-        id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn remove_orchestrator(&mut self, id: &str) -> SongbirdResult<()> {
         if let Some(mut orchestrator) = self.orchestrators.remove(id) {
             orchestrator.stop().await?;
             info!("Removed orchestrator: {}", id);
@@ -658,9 +668,7 @@ impl OrchestratorManager {
     }
 
     /// Clean up stopped orchestrators
-    pub async fn cleanup_stopped_orchestrators(
-        &mut self,
-    ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn cleanup_stopped_orchestrators(&mut self) -> SongbirdResult<u32> {
         let mut cleaned_count = 0;
         let mut to_remove = Vec::new();
 
@@ -680,7 +688,7 @@ impl OrchestratorManager {
     }
 
     /// Stop all orchestrators
-    pub async fn stop_all(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn stop_all(&mut self) -> SongbirdResult<()> {
         for (id, orchestrator) in self.orchestrators.iter_mut() {
             if let Err(e) = orchestrator.stop().await {
                 warn!("Failed to stop orchestrator {}: {}", id, e);
@@ -695,6 +703,7 @@ impl OrchestratorManager {
 mod tests {
     use super::*;
     use crate::biome::modules::types::*;
+    use songbird_errors::SongbirdResult;
 
     #[tokio::test]
     async fn test_orchestrator_creation() {

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 
 /// Load balancer configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -398,17 +398,14 @@ impl LoadBalancerManager {
     }
 
     /// Add a service instance
-    pub async fn add_instance(&self, instance: ServiceInstance) -> Result<()> {
+    pub async fn add_instance(&self, instance: ServiceInstance) -> SongbirdResult<()> {
         let mut instances = self.instances.write().await;
 
         // Check if instance already exists
         if instances.iter().any(|i| i.id == instance.id) {
-            return Err(SongbirdError::Config {
-                message: "Invalid instance configuration".to_string(),
-                field: Some("instance_config".to_string()),
-                context: Some("load_balancer".to_string()),
-                suggestion: Some("Check instance configuration parameters".to_string()),
-            });
+            return Err(SongbirdError::configuration(
+                "Invalid instance configuration".to_string(),
+            ));
         }
 
         instances.push(instance);
@@ -416,37 +413,35 @@ impl LoadBalancerManager {
     }
 
     /// Remove a service instance
-    pub async fn remove_instance(&self, instance_id: &str) -> Result<()> {
+    pub async fn remove_instance(&self, instance_id: &str) -> SongbirdResult<()> {
         let mut instances = self.instances.write().await;
         let initial_len = instances.len();
         instances.retain(|i| i.id != instance_id);
 
         if instances.len() == initial_len {
-            return Err(SongbirdError::Config {
-                message: "Failed to remove instance from load balancer".to_string(),
-                field: Some("instance_id".to_string()),
-                context: Some("load_balancer".to_string()),
-                suggestion: Some("Check instance ID and try again".to_string()),
-            });
+            return Err(SongbirdError::configuration(
+                "Failed to remove instance from load balancer".to_string(),
+            ));
         }
 
         Ok(())
     }
 
     /// Update instance health status
-    pub async fn update_instance_health(&self, instance_id: &str, healthy: bool) -> Result<()> {
+    pub async fn update_instance_health(
+        &self,
+        instance_id: &str,
+        healthy: bool,
+    ) -> SongbirdResult<()> {
         let mut instances = self.instances.write().await;
 
         if let Some(instance) = instances.iter_mut().find(|i| i.id == instance_id) {
             instance.healthy = healthy;
             Ok(())
         } else {
-            Err(SongbirdError::Config {
-                message: "Failed to remove instance from load balancer".to_string(),
-                field: Some("instance_id".to_string()),
-                context: Some("load_balancer".to_string()),
-                suggestion: Some("Check instance ID and try again".to_string()),
-            })
+            Err(SongbirdError::configuration(
+                "Failed to remove instance from load balancer".to_string(),
+            ))
         }
     }
 

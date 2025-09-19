@@ -10,7 +10,7 @@ use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 
 // ============================================================================
 // FRAGO-SPECIFIED NETWORK EVENT TYPES
@@ -381,9 +381,7 @@ impl NetworkEventPublisher {
     pub async fn publish(&self, event: NetworkEvent) -> Result<()> {
         self.sender
             .send(event)
-            .map_err(|e| SongbirdError::Network(Box::new(NetworkError {
-                service: "BearDog".to_string(),
-                message: "Failed to send event: {e}".to_string(),
+            .map_err(|e| SongbirdError::network("Failed to send event: {e),
                 details: None,
             })))?;
 

@@ -11,7 +11,7 @@
 use async_trait::async_trait;
 use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
 use ring::rand::{SecureRandom, SystemRandom};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdResult as Result, SongbirdError};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::process::Command;
@@ -218,7 +218,7 @@ impl NativeWireGuardProvider {
         let output = Command::new("ip")
             .args(&["link", "add", &interface.name, "type", "wireguard"])
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to create interface: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to create interface: {}", e)))?;
 
         if !output.status.success() {
             return Err(SongbirdError::internal_error(network_error(&format!(
@@ -235,7 +235,7 @@ impl NativeWireGuardProvider {
             .args(&["set", &interface.name, "private-key", "/dev/stdin"])
             .input(private_key_b64.as_bytes())
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to set private key: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to set private key: {}", e)))?;
 
         if !output.status.success() {
             return Err(SongbirdError::internal_error(network_error(&format!(
@@ -248,7 +248,7 @@ impl NativeWireGuardProvider {
         let output = Command::new("wg")
             .args(&["set", &interface.name, "listen-port", &interface.port.to_string()])
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to set listen port: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to set listen port: {}", e)))?;
 
         if !output.status.success() {
             return Err(SongbirdError::internal_error(network_error(&format!(
@@ -261,7 +261,7 @@ impl NativeWireGuardProvider {
         let output = Command::new("ip")
             .args(&["link", "set", &interface.name, "up"])
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to bring interface up: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to bring interface up: {}", e)))?;
 
         if !output.status.success() {
             return Err(SongbirdError::internal_error(network_error(&format!(
@@ -413,7 +413,7 @@ impl super::security_provider::SecureTunnel for NativeWireGuardTunnel {
         let output = Command::new("ip")
             .args(&["link", "del", &self.interface.name])
             .output()
-            .map_err(|e| SongbirdError::network_error(&format!("Failed to delete interface: {}", e)))?;
+            .map_err(|e| SongbirdError::network(&format!("Failed to delete interface: {}", e)))?;
 
         if !output.status.success() {
             warn!("Failed to delete WireGuard interface: {}", 

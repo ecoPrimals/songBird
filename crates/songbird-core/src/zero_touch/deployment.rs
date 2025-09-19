@@ -10,7 +10,7 @@ use tokio::process::Command;
 use tokio::time::timeout;
 use tracing::{info, warn, error};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult};
 
 /// Deployment engine for zero-touch deployment
 pub struct DeploymentEngine {
@@ -30,7 +30,7 @@ impl DeploymentEngine {
         &mut self,
         services: Vec<ServiceConfig>,
         strategy: DeploymentStrategy,
-    ) -> Result<DeploymentResult> {
+    ) -> SongbirdResult<DeploymentResult> {
         let deployment_id = uuid::Uuid::new_v4().to_string();
         let start_time = chrono::Utc::now();
 
@@ -152,7 +152,7 @@ impl DeploymentEngine {
     }
 
     /// Deploy a single service
-    async fn deploy_single_service(&self, service: &ServiceConfig) -> Result<ServiceDeploymentInfo> {
+    async fn deploy_single_service(&self, service: &ServiceConfig) -> SongbirdResult<ServiceDeploymentInfo> {
         info!("Deploying service: {}", service.name);
 
         let deployment_method = service.deployment_method.as_deref().unwrap_or("docker");
@@ -169,7 +169,7 @@ impl DeploymentEngine {
     }
 
     /// Deploy service using Docker
-    async fn deploy_docker_service(&self, service: &ServiceConfig) -> Result<ServiceDeploymentInfo> {
+    async fn deploy_docker_service(&self, service: &ServiceConfig) -> SongbirdResult<ServiceDeploymentInfo> {
         let container_name = format!("songbird-{}", service.name);
 
         // Build docker run command
@@ -236,7 +236,7 @@ impl DeploymentEngine {
     }
 
     /// Deploy service using Kubernetes
-    async fn deploy_kubernetes_service(&self, service: &ServiceConfig) -> Result<ServiceDeploymentInfo> {
+    async fn deploy_kubernetes_service(&self, service: &ServiceConfig) -> SongbirdResult<ServiceDeploymentInfo> {
         // Generate Kubernetes manifests
         let deployment_manifest = self.generate_k8s_deployment(service)?;
         let service_manifest = self.generate_k8s_service(service)?;
@@ -269,7 +269,7 @@ impl DeploymentEngine {
     }
 
     /// Deploy service using systemd
-    async fn deploy_systemd_service(&self, service: &ServiceConfig) -> Result<ServiceDeploymentInfo> {
+    async fn deploy_systemd_service(&self, service: &ServiceConfig) -> SongbirdResult<ServiceDeploymentInfo> {
         let unit_content = self.generate_systemd_unit(service)?;
         let unit_file = format!("/etc/systemd/system/songbird-{}.service", service.name);
 
@@ -329,7 +329,7 @@ impl DeploymentEngine {
     }
 
     /// Validate deployment
-    async fn validate_deployment(&self, deployed_services: &[ServiceDeploymentInfo]) -> Result<()> {
+    async fn validate_deployment(&self, deployed_services: &[ServiceDeploymentInfo]) -> SongbirdResult<()> {
         info!("Validating deployment of {} services", deployed_services.len());
         
         for service in deployed_services {
@@ -375,7 +375,7 @@ impl DeploymentEngine {
     }
 
     /// Generate Kubernetes deployment manifest
-    fn generate_k8s_deployment(&self, service: &ServiceConfig) -> Result<String> {
+    fn generate_k8s_deployment(&self, service: &ServiceConfig) -> SongbirdResult<String> {
         let ports_yaml = service.ports.iter()
             .map(|p| format!("        - containerPort: {}", p))
             .collect::<Vec<_>>()
@@ -420,7 +420,7 @@ impl DeploymentEngine {
     }
 
     /// Generate Kubernetes service manifest
-    fn generate_k8s_service(&self, service: &ServiceConfig) -> Result<String> {
+    fn generate_k8s_service(&self, service: &ServiceConfig) -> SongbirdResult<String> {
         let ports_yaml = service.ports.iter()
             .map(|p| format!("  - port: {}\n    targetPort: {}", p, p))
             .collect::<Vec<_>>()
@@ -445,7 +445,7 @@ impl DeploymentEngine {
     }
 
     /// Apply Kubernetes manifest
-    async fn apply_k8s_manifest(&self, manifest: &str) -> Result<()> {
+    async fn apply_k8s_manifest(&self, manifest: &str) -> SongbirdResult<()> {
         let mut cmd = Command::new("kubectl");
         cmd.args(&["apply", "-f", "-"])
             .stdin(Stdio::piped())
@@ -485,7 +485,7 @@ impl DeploymentEngine {
     }
 
     /// Wait for Kubernetes deployment to be ready
-    async fn wait_for_k8s_deployment(&self, name: &str) -> Result<()> {
+    async fn wait_for_k8s_deployment(&self, name: &str) -> SongbirdResult<()> {
         Command::new("kubectl")
             .args(&["rollout", "status", "deployment", name, "-n", "songbird"])
             .status()
@@ -499,7 +499,7 @@ impl DeploymentEngine {
     }
 
     /// Generate systemd unit file
-    fn generate_systemd_unit(&self, service: &ServiceConfig) -> Result<String> {
+    fn generate_systemd_unit(&self, service: &ServiceConfig) -> SongbirdResult<String> {
         let env_vars = service.environment_variables.iter()
             .map(|(k, v)| format!("Environment={}={}", k, v))
             .collect::<Vec<_>>()
@@ -667,6 +667,7 @@ impl std::fmt::Display for HealthStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+use songbird_errors::SongbirdResult;
 
     #[test]
     fn test_deployment_engine_creation() {

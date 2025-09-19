@@ -223,12 +223,7 @@ impl FallbackSecurityProvider {
             info!("Removed fallback user: {}", username);
             Ok(())
         } else {
-            Err(SongbirdError::Security {
-                message: format!("User '{username}' not found"),
-                context: Some("fallback_provider".to_string()),
-                severity: Some("low".to_string()),
-                suggestion: Some("Check if username is correct".to_string()),
-            })
+            Err(SongbirdError::security(format!("User '{}' not found", username)))
         }
     }
 }
@@ -255,10 +250,7 @@ impl AuthenticationProvider for FallbackSecurityProvider {
                     user_info.permissions.clone(),
                 ))
             } else {
-                Err(SongbirdError::Auth(Box::new(AuthError {
-                    message: "Invalid credentials".to_string(),
-                    provider: Some("fallback".to_string()),
-                })))
+                Err(SongbirdError::security("Invalid credentials"))
             }
         } else {
             Err(SongbirdError::Auth(Box::new(AuthError {
@@ -287,10 +279,7 @@ impl AuthenticationProvider for FallbackSecurityProvider {
             }
         }
 
-        Err(SongbirdError::Auth(Box::new(AuthError {
-            message: "Invalid or expired token".to_string(),
-            provider: Some("fallback".to_string()),
-        })))
+        Err(SongbirdError::security("Invalid or expired token"))
     }
 
     async fn revoke_token(&self, _token: &str) -> Result<()> {
@@ -309,12 +298,11 @@ impl UniversalSecurityProvider {
     /// Create new universal security provider
     pub fn new(primal_registry: Arc<dyn UniversalServiceRegistry>, config: SecurityConfig) -> Self {
         let default_context = PrimalContext {
-            primal_id: "songbird-security".to_string(),
-            user_id: "system".to_string(),
-            device_id: "security-provider".to_string(),
-            security_level: SecurityLevel::System, // High security level for security provider
-            session_id: "security-session".to_string(),
-            network_location: Default::default(),
+            user_id: Some("system".to_string()),
+            org_id: None,
+            device_id: Some("security-provider".to_string()),
+            session_id: Some("security-session".to_string()),
+            request_id: None,
             metadata: std::collections::HashMap::new(),
         };
 
@@ -563,12 +551,7 @@ impl UniversalSecurityProvider {
         // Check if primal is healthy before making request
         if let Err(e) = self.check_primal_health(primal_info).await {
             warn!("Security primal unhealthy: {}, falling back", e);
-            return Err(SongbirdError::Security {
-                message: format!("Security primal unavailable: {e}"),
-                context: Some(primal_info.primal_id.clone()),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Will use fallback security provider".to_string()),
-            });
+            return Err(SongbirdError::security(format!("Security primal unavailable: {}", e)));
         }
 
         let request = PrimalRequest {
@@ -593,24 +576,13 @@ impl UniversalSecurityProvider {
             .json(&request)
             .send()
             .await
-            .map_err(|e| SongbirdError::Security {
-                message: format!("Security primal HTTP request failed: {e}"),
-                context: Some(primal_info.primal_id.clone()),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check security primal availability".to_string()),
-            })?;
+            .map_err(|e| SongbirdError::security(format!("Security primal HTTP request failed: {}", e)))?;
 
         // Parse response
-        let response_json =
-            response
-                .json::<serde_json::Value>()
-                .await
-                .map_err(|e| SongbirdError::Security {
-                    message: format!("Failed to parse security primal response: {e}"),
-                    context: Some(primal_info.primal_id.clone()),
-                    severity: Some("medium".to_string()),
-                    suggestion: Some("Check security primal response format".to_string()),
-                })?;
+        let response_json = response
+            .json::<serde_json::Value>()
+            .await
+                         .map_err(|e| SongbirdError::security(format!("Failed to parse security primal response: {}", e)))?;
 
         // Create proper PrimalResponse
         let primal_response = songbird_universal_primals::PrimalResponse {
@@ -667,20 +639,14 @@ impl UniversalSecurityProvider {
                 Ok(())
             }
             Ok(response) => {
-                let status = response.status();
-                Err(SongbirdError::Security {
-                    message: format!("Security primal health check failed with status: {status}"),
-                    context: Some(health_url),
-                    severity: Some("medium".to_string()),
-                    suggestion: Some("Check primal service status".to_string()),
-                })
+                if response.status().is_success() {
+                    Ok(())
+                } else {
+                    let status = response.status();
+                    Err(SongbirdError::security(format!("Security primal health check failed with status: {}", status)))
+                }
             }
-            Err(e) => Err(SongbirdError::Security {
-                message: format!("Security primal health check request failed: {e}"),
-                context: Some(health_url),
-                severity: Some("medium".to_string()),
-                suggestion: Some("Check network connectivity to primal".to_string()),
-            }),
+            Err(e) => Err(SongbirdError::security(format!("Security primal health check request failed: {}", e))),
         }
     }
 

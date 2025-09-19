@@ -27,7 +27,7 @@ pub mod ai_workload_classification;
 pub mod real_time_ai_streaming;
 
 // Import modules with conflict resolution
-pub use core::{types as core_types, ResourceUsage as CoreResourceUsage};
+pub use crate::api::core::{CoreApiConfig, CoreApiHandler, CoreApiRequest, CoreApiResponse};
 
 pub use ai_first_response::ResourceUsage as AiResourceUsage;
 

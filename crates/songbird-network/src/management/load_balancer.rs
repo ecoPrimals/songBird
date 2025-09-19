@@ -65,8 +65,7 @@ impl LoadBalancer {
         }
 
         if self.config.upstream_servers.is_empty() {
-            return Err(SongbirdError::config_field(
-                "upstream_servers",
+            return Err(SongbirdError::configuration(
                 "No upstream servers configured",
             ));
         }
@@ -170,9 +169,7 @@ impl LoadBalancer {
             .timeout(self.config.health_check.timeout)
             .build()
             .map_err(|e| {
-                SongbirdError::network_error(
-                    format!("Failed to create HTTP client: {e}").to_string(),
-                )
+                SongbirdError::network(format!("Failed to create HTTP client: {e}").to_string())
             })?;
 
         match client.get(&health_url).send().await {

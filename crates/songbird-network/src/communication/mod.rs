@@ -5,7 +5,7 @@
 use chrono;
 use parking_lot;
 use serde_json;
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult as Result};
 use std::collections::HashMap;
 use tracing::debug;
 
@@ -85,7 +85,7 @@ pub struct HttpCommunication {
 impl HttpCommunication {
     pub fn new(_base_url: String) -> Result<Self> {
         let client = self::hyper_client::HyperHttpClient::new().map_err(|e| {
-            SongbirdError::Communication(format!("Failed to create HTTP client: {e}").to_string())
+            SongbirdError::network(format!("Failed to create HTTP client: {e}").to_string())
         })?;
 
         let circuit_breaker = CircuitBreaker::new(CircuitBreakerConfig::default());
@@ -112,7 +112,7 @@ impl CommunicationLayer for HttpCommunication {
     ) -> Result<CommunicationResponse> {
         // Check circuit breaker
         if !self.circuit_breaker.should_allow_request().await {
-            return Err(SongbirdError::Communication(
+            return Err(SongbirdError::network(
                 "Circuit breaker is open, request rejected".to_string(),
             ));
         }
@@ -154,9 +154,7 @@ impl CommunicationLayer for HttpCommunication {
                 // Record failure
                 self.circuit_breaker.record_failure().await;
 
-                Err(SongbirdError::Communication(format!(
-                    "HTTP request failed: {e}"
-                )))
+                Err(SongbirdError::network(format!("HTTP request failed: {e}")))
             }
         }
     }
@@ -252,21 +250,21 @@ impl CommunicationLayer for WebSocketCommunication {
     ) -> Result<CommunicationResponse> {
         // Check circuit breaker
         if !self.circuit_breaker.should_allow_request().await {
-            return Err(SongbirdError::Communication(
+            return Err(SongbirdError::network(
                 "Circuit breaker is open, request rejected".to_string(),
             ));
         }
 
         // Check if connected
         if !self.is_connected().await {
-            return Err(SongbirdError::Communication(
+            return Err(SongbirdError::network(
                 "WebSocket not connected".to_string(),
             ));
         }
 
         // Simulate WebSocket message sending
         let payload = serde_json::to_string(&message).map_err(|e| {
-            SongbirdError::Communication(format!("Failed to serialize message: {e}").to_string())
+            SongbirdError::network(format!("Failed to serialize message: {e}").to_string())
         })?;
 
         // Update stats

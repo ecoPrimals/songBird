@@ -11,8 +11,16 @@ use std::collections::HashMap;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use super::network_scan::test_endpoint_connectivity;
+// Network scanning functionality removed - using basic connectivity checks
 use super::parsing::{discover_capabilities_from_service, infer_primal_type_from_capabilities};
+
+/// Simple connectivity test replacing the deleted network scan functionality
+async fn test_endpoint_connectivity(endpoint: &str) -> Result<bool, Box<dyn std::error::Error>> {
+    match reqwest::Client::new().get(endpoint).send().await {
+        Ok(response) => Ok(response.status().is_success()),
+        Err(_) => Ok(false),
+    }
+}
 use super::types::{DiscoveredPrimal, DiscoveryMethod};
 
 /// Query universal primal services using dynamic capability-based discovery

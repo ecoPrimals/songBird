@@ -14,6 +14,9 @@ use self::deployment::DeploymentManager;
 use self::monitoring::MonitoringManager;
 use self::workspace::WorkspaceManager;
 
+// Add missing imports
+use songbird_errors::SongbirdResult;
+
 /// Simple integration manager stub
 #[derive(Debug, Clone)]
 pub struct IntegrationManager {
@@ -36,7 +39,7 @@ impl IntegrationManager {
         &mut self,
         _primal_name: &str,
         _endpoint: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         // In a real implementation, this would add the endpoint to discovery
         Ok(())
     }
@@ -55,7 +58,6 @@ impl Default for IntegrationManager {
 }
 
 use super::{NestGateConfig, OrchestratorConfig};
-use std::collections::HashMap;
 use tracing::{error, info};
 
 /// BYOB Coordinator - manages team deployments with Songbird orchestration
@@ -92,7 +94,7 @@ impl ByobCoordinator {
         &self,
         team_id: String,
         resource_quota: types::TeamResourceQuota,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         info!("Registering team workspace: {}", team_id);
         self.workspace_manager
             .register_team_workspace(team_id, resource_quota)
@@ -103,7 +105,7 @@ impl ByobCoordinator {
     pub async fn deploy_biome(
         &self,
         request: types::ByobDeploymentRequest,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> SongbirdResult<String> {
         info!("Deploying biome for team: {}", request.team_id);
 
         // Check team capacity
@@ -169,7 +171,7 @@ impl ByobCoordinator {
     pub async fn get_deployment_status(
         &self,
         deployment_id: &str,
-    ) -> Result<types::ByobDeploymentStatus, Box<dyn std::error::Error>> {
+    ) -> SongbirdResult<types::ByobDeploymentStatus> {
         self.deployment_manager
             .get_deployment_status(deployment_id)
             .await
@@ -179,15 +181,12 @@ impl ByobCoordinator {
     pub async fn list_team_deployments(
         &self,
         team_id: &str,
-    ) -> Result<Vec<types::ByobDeployment>, Box<dyn std::error::Error>> {
+    ) -> SongbirdResult<Vec<types::ByobDeployment>> {
         self.deployment_manager.list_team_deployments(team_id).await
     }
 
     /// Stop deployment
-    pub async fn stop_deployment(
-        &self,
-        deployment_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn stop_deployment(&self, deployment_id: &str) -> SongbirdResult<()> {
         info!("Stopping deployment: {}", deployment_id);
 
         // Get deployment info before stopping
@@ -226,7 +225,7 @@ impl ByobCoordinator {
     pub async fn get_team_workspace(
         &self,
         team_id: &str,
-    ) -> Result<Option<types::ByobTeamWorkspace>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<Option<types::ByobTeamWorkspace>> {
         self.workspace_manager.get_team_workspace(team_id).await
     }
 
@@ -234,7 +233,7 @@ impl ByobCoordinator {
     pub async fn get_workspace_stats(
         &self,
         team_id: &str,
-    ) -> Result<workspace::WorkspaceStats, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<workspace::WorkspaceStats> {
         self.workspace_manager.get_workspace_stats(team_id).await
     }
 
@@ -243,7 +242,7 @@ impl ByobCoordinator {
         &mut self,
         primal_name: String,
         endpoint: String,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<()> {
         self.integration_manager
             .add_primal_discovery_endpoint(&primal_name, &endpoint)?;
 
@@ -259,7 +258,7 @@ impl ByobCoordinator {
     pub async fn check_deployment_health(
         &self,
         deployment_id: &str,
-    ) -> Result<monitoring::DeploymentHealth, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> SongbirdResult<monitoring::DeploymentHealth> {
         self.monitoring_manager
             .check_deployment_health(deployment_id)
             .await
@@ -271,9 +270,7 @@ impl ByobCoordinator {
     }
 
     /// List all team workspaces
-    pub async fn list_team_workspaces(
-        &self,
-    ) -> Result<Vec<types::ByobTeamWorkspace>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn list_team_workspaces(&self) -> SongbirdResult<Vec<types::ByobTeamWorkspace>> {
         self.workspace_manager.list_team_workspaces().await
     }
 
@@ -316,9 +313,10 @@ pub use workspace::WorkspaceStats;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use songbird_errors::SongbirdResult;
 
     #[tokio::test]
-    async fn test_byob_coordinator_creation() -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_byob_coordinator_creation() -> SongbirdResult<()> {
         let config = OrchestratorConfig::default();
         let coordinator = ByobCoordinator::new(config);
 

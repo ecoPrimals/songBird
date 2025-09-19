@@ -12,7 +12,7 @@ use super::types::*;
 use crate::biome::{BiomeMetadata, OrchestratorConfig, OrchestratorStatus, SongbirdOrchestrator};
 use crate::primal_integration::PrimalIntegrationManager;
 use songbird_config::SongbirdConfig;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 
 /// BiomeOS integration for Songbird orchestrator
 pub struct BiomeOSIntegration {
@@ -77,7 +77,7 @@ impl BiomeOSIntegration {
     }
 
     /// Initialize BiomeOS integration
-    pub async fn initialize(&mut self) -> Result<()> {
+    pub async fn initialize(&mut self) -> SongbirdResult<()> {
         info!(
             "Initializing BiomeOS integration for instance {}",
             self.instance_id
@@ -118,7 +118,7 @@ impl BiomeOSIntegration {
     }
 
     /// Initialize in standalone mode when BiomeOS is not available
-    async fn initialize_standalone_mode(&mut self) -> Result<()> {
+    async fn initialize_standalone_mode(&mut self) -> SongbirdResult<()> {
         info!("Initializing in standalone mode");
 
         {
@@ -131,7 +131,7 @@ impl BiomeOSIntegration {
     }
 
     /// Register with BiomeOS
-    async fn register_with_biomeos(&mut self) -> Result<()> {
+    async fn register_with_biomeos(&mut self) -> SongbirdResult<()> {
         info!("Registering Songbird orchestrator with BiomeOS");
 
         let registration = self.create_service_registration().await?;
@@ -144,7 +144,7 @@ impl BiomeOSIntegration {
     }
 
     /// Create service registration for BiomeOS
-    async fn create_service_registration(&self) -> Result<BiomeOSServiceRegistration> {
+    async fn create_service_registration(&self) -> SongbirdResult<BiomeOSServiceRegistration> {
         let orchestrator = self.orchestrator.read().await;
         let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
             .unwrap_or_else(|_| songbird_config::constants::default_bind_address().to_string());
@@ -191,7 +191,7 @@ impl BiomeOSIntegration {
     }
 
     /// Start BiomeOS integration
-    pub async fn start(&mut self) -> Result<()> {
+    pub async fn start(&mut self) -> SongbirdResult<()> {
         info!("Starting BiomeOS integration");
 
         self.initialize().await?;
@@ -202,7 +202,7 @@ impl BiomeOSIntegration {
     }
 
     /// Start background tasks
-    async fn start_background_tasks(&self) -> Result<()> {
+    async fn start_background_tasks(&self) -> SongbirdResult<()> {
         // Start heartbeat task
         self.start_heartbeat_task().await;
 
@@ -298,7 +298,7 @@ impl BiomeOSIntegration {
     }
 
     /// Stop BiomeOS integration
-    pub async fn stop(&mut self) -> Result<()> {
+    pub async fn stop(&mut self) -> SongbirdResult<()> {
         info!("Stopping BiomeOS integration");
 
         // Update orchestrator status
@@ -333,7 +333,7 @@ impl BiomeOSIntegration {
     }
 
     /// Get ecosystem status
-    pub async fn get_ecosystem_status(&self) -> Result<SongbirdEcosystemStatus> {
+    pub async fn get_ecosystem_status(&self) -> SongbirdResult<SongbirdEcosystemStatus> {
         let orchestrator = self.orchestrator.read().await;
 
         Ok(SongbirdEcosystemStatus {
@@ -359,7 +359,7 @@ impl BiomeOSIntegration {
     pub async fn deploy_byob_service(
         &self,
         request: BiomeOSByobDeploymentRequest,
-    ) -> Result<BiomeOSByobDeploymentResponse> {
+    ) -> SongbirdResult<BiomeOSByobDeploymentResponse> {
         info!("Deploying BYOB service: {}", request.service_name);
         self.biomeos_client.deploy_byob_service(&request).await
     }

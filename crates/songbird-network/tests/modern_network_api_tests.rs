@@ -4,7 +4,7 @@
 //! using up-to-date API patterns that work with the actual current API.
 
 use songbird_config::config::NetworkConfig;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use songbird_network::{
     communication::ServiceMessage,
     network::gaming::{GamingAutoConfig, UniversalGameBridge},

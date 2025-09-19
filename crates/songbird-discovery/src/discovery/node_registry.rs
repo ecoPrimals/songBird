@@ -9,7 +9,7 @@ use crate::discovery::config::SongbirdDiscoveryConfig;
 use crate::discovery::types::{FederationHealth, NodeId, NodeInfo, NodeType};
 use crate::traits::ServiceEvent;
 use songbird_config::UniversalHealthStatus;
-use songbird_errors::{SongbirdError, SongbirdResult, SongbirdResponse};
+use songbird_errors::{SongbirdError, SongbirdSongbirdResponse};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{RwLock, broadcast};

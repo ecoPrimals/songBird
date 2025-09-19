@@ -28,7 +28,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -227,7 +227,7 @@ impl AIServiceMeshCoordinator {
     pub async fn get_service_health_analysis(
         &self,
         service_id: &str,
-    ) -> Result<Option<AIServiceHealthData>> {
+    ) -> SongbirdResult<Option<AIServiceHealthData>> {
         debug!("🔍 Analyzing service health for: {}", service_id);
 
         let manager = self.manager.read().await;
@@ -243,7 +243,7 @@ impl AIServiceMeshCoordinator {
     }
 
     /// Get ecosystem-wide health overview
-    pub async fn get_ecosystem_overview(&self) -> Result<EcosystemHealth> {
+    pub async fn get_ecosystem_overview(&self) -> SongbirdResult<EcosystemHealth> {
         debug!("🌐 Retrieving ecosystem health overview");
 
         let manager = self.manager.read().await;
@@ -254,7 +254,7 @@ impl AIServiceMeshCoordinator {
     pub async fn analyze_service_discovery(
         &self,
         context: HashMap<String, String>,
-    ) -> Result<Vec<ServiceRecommendation>> {
+    ) -> SongbirdResult<Vec<ServiceRecommendation>> {
         debug!("🔍 Analyzing service discovery with context: {:?}", context);
 
         // In the full implementation, this would use the AI analysis engine
@@ -281,7 +281,7 @@ impl AIServiceMeshCoordinator {
         &self,
         service_id: &str,
         time_horizon_hours: f64,
-    ) -> Result<HashMap<String, f64>> {
+    ) -> SongbirdResult<HashMap<String, serde_json::Value>> {
         debug!(
             "📊 Generating performance predictions for: {} ({} hours)",
             service_id, time_horizon_hours
@@ -289,10 +289,10 @@ impl AIServiceMeshCoordinator {
 
         // Placeholder predictions - in full implementation would use ML models
         let mut predictions = HashMap::new();
-        predictions.insert("cpu_utilization".to_string(), 0.65);
-        predictions.insert("memory_utilization".to_string(), 0.48);
-        predictions.insert("response_time_p95".to_string(), 150.0);
-        predictions.insert("error_rate".to_string(), 0.02);
+        predictions.insert("cpu_utilization".to_string(), serde_json::json!(0.65));
+        predictions.insert("memory_utilization".to_string(), serde_json::json!(0.48));
+        predictions.insert("response_time_p95".to_string(), serde_json::json!(150.0));
+        predictions.insert("error_rate".to_string(), serde_json::json!(0.02));
 
         Ok(predictions)
     }
@@ -301,7 +301,7 @@ impl AIServiceMeshCoordinator {
     pub async fn process_health_recommendations(
         &self,
         service_id: &str,
-    ) -> Result<Vec<HealthRecommendation>> {
+    ) -> SongbirdResult<Vec<HealthRecommendation>> {
         debug!("💡 Processing health recommendations for: {}", service_id);
 
         // In full implementation, this would analyze current health data
@@ -342,7 +342,7 @@ impl AIServiceMeshCoordinator {
     }
 
     /// Shutdown coordinator and cleanup resources
-    pub async fn shutdown(&self) -> Result<()> {
+    pub async fn shutdown(&self) -> SongbirdResult<()> {
         info!("🔒 Shutting down AI Service Mesh Coordinator");
 
         // In full implementation, would cleanup all resources,

@@ -9,8 +9,8 @@
 use clap::{Parser, Subcommand};
 use colored::*;
 use songbird_errors::Result;
-use songbird_security::accessibility::{convenience, UniversalAccessManager};
-use songbird_security::security::UniversalSecurityManager;
+// use songbird_security::accessibility::{convenience, UniversalAccessManager}; // Temporarily disabled
+// use songbird_security::security::UniversalSecurityManager; // Temporarily disabled
 
 #[derive(Parser)]
 #[command(name = "universal")]

@@ -13,11 +13,11 @@ pub use songbird_config as config;
 pub use songbird_core as core;
 pub use songbird_discovery as discovery;
 pub use songbird_errors as errors;
-pub use songbird_federation as federation;
+// pub use songbird_federation as federation; // Temporarily disabled
 pub use songbird_network as network;
 pub use songbird_observability as observability;
 pub use songbird_registry as registry;
-pub use songbird_security as security;
+// pub use songbird_security as security; // Temporarily disabled
 pub use songbird_universal_primals as primals;
 
 // Re-export commonly used types (confirmed to exist)

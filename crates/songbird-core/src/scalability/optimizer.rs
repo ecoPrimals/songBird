@@ -4,7 +4,7 @@
 
 use crate::scalability::types::*;
 use chrono::Utc;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
 
 /// Performance optimizer for service configurations
 pub struct PerformanceOptimizer {
@@ -31,7 +31,7 @@ impl PerformanceOptimizer {
         &mut self,
         service_id: &str,
         metrics: &PerformanceMetrics,
-    ) -> Result<Vec<OptimizationRecommendation>> {
+    ) -> SongbirdResult<Vec<OptimizationRecommendation>> {
         let mut recommendations = Vec::new();
 
         // Optimize connection pool size

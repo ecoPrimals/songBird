@@ -17,7 +17,7 @@ use crate::abstraction::{
 };
 
 use crate::traits::{ServiceEvent, ServiceInfo, ServiceQuery};
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError};
 
 /// Factory for creating Kubernetes providers from configuration
 pub struct KubernetesProviderFactory;

@@ -1,5 +1,6 @@
 use crate::discovery::types::*;
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::process::Command;
 use std::str;
 

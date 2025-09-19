@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_errors::{SongbirdError, SongbirdResult}; type Result<T> = SongbirdResult<T>;
 use super::ZeroTouchConfig;
 
 /// Configuration generator for zero-touch deployment
@@ -33,7 +33,7 @@ impl ConfigGenerator {
         resources: &ResourceRequirements,
     ) -> Result<ZeroTouchConfig> {
         let template = self.templates.get(environment)
-            .ok_or_else(|| SongbirdError::Config {
+            .ok_or_else(|| SongbirdError::Configuration {
                 message: format!("No template found for environment: {environment}"),
             })?;
 
@@ -331,13 +331,13 @@ impl ConfigValidator {
     /// Validate a zero-touch configuration
     pub fn validate(config: &ZeroTouchConfig) -> Result<()> {
         if config.deployment_timeout == 0 {
-            return Err(SongbirdError::Config {
+            return Err(SongbirdError::Configuration {
                 message: "Deployment timeout cannot be zero".to_string(),
             });
         }
 
         if config.target_environment.is_empty() {
-            return Err(SongbirdError::Config {
+            return Err(SongbirdError::Configuration {
                 message: "Target environment cannot be empty".to_string(),
             });
         }
@@ -348,19 +348,19 @@ impl ConfigValidator {
     /// Validate resource requirements
     pub fn validate_resources(requirements: &ResourceRequirements) -> Result<()> {
         if requirements.cpu_cores == 0 {
-            return Err(SongbirdError::Config {
+            return Err(SongbirdError::Configuration {
                 message: "CPU cores cannot be zero".to_string(),
             });
         }
 
         if requirements.memory_mb == 0 {
-            return Err(SongbirdError::Config {
+            return Err(SongbirdError::Configuration {
                 message: "Memory cannot be zero".to_string(),
             });
         }
 
         if requirements.storage_gb == 0 {
-            return Err(SongbirdError::Config {
+            return Err(SongbirdError::Configuration {
                 message: "Storage cannot be zero".to_string(),
             });
         }

@@ -250,7 +250,7 @@ impl NetworkManager {
             .config
             .bind_address
             .parse()
-            .map_err(|e| SongbirdError::network_error(format!("Invalid bind address: {e}")))?;
+            .map_err(|e| SongbirdError::network(format!("Invalid bind address: {e}")))?;
         let port = self.config.port_range.start; // Use first port in range
         Ok(SocketAddr::new(addr, port))
     }

@@ -19,7 +19,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::network::gaming::PrivilegeManager;
 use serde::{Deserialize, Serialize};
 use songbird_config::universal_primals::{PrimalConfiguration, PrimalRegistry};
-use songbird_errors::Result;
+use songbird_errors::SongbirdResult as Result;
 use tokio::time::sleep;
 use tracing::{info, warn};
 

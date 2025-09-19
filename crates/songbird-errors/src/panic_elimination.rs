@@ -45,12 +45,7 @@ impl<T, E: std::fmt::Display + std::fmt::Debug> SafeUnwrap<T> for Result<T, E> {
     }
 
     fn or_config_error(self, context: &str) -> SongbirdResult<T> {
-        self.map_err(|e| SongbirdError::Config {
-            field: Some(context.to_string()),
-            message: e.to_string(),
-            context: Some(context.to_string()),
-            suggestion: Some("Verify configuration syntax and values".to_string()),
-        })
+        self.map_err(|e| SongbirdError::configuration(e.to_string()))
         .map(success)
     }
 
@@ -102,12 +97,7 @@ impl<T> SafeUnwrapOption<T> for Option<T> {
     }
 
     fn or_config_error(self, context: &str, message: &str) -> SongbirdResult<T> {
-        self.map(success).ok_or_else(|| SongbirdError::Config {
-            field: Some(context.to_string()),
-            message: message.to_string(),
-            context: Some(context.to_string()),
-            suggestion: Some("Provide required configuration value".to_string()),
-        })
+        self.map(success).ok_or_else(|| SongbirdError::configuration(message.to_string()))
     }
 
     fn or_internal_error(self, context: &str, message: &str) -> SongbirdResult<T> {
