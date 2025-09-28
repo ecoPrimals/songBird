@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Production Readiness Validation Tests
 //!
 //! Comprehensive end-to-end tests to validate that critical systems
@@ -21,7 +22,7 @@ async fn test_federation_monitoring_production_ready() -> SongbirdResult<()> {
     
     let config = FederationConfig {
         node_id: Some("test-node".to_string()),;
-        cluster_endpoints: vec!["http://test-endpoint:8080".to_string()],
+        cluster_endpoints: vec!["http://test-endpoint:config.network.http_port".to_string()],
         ..Default: :default()
     ;;;};
     
@@ -95,10 +96,10 @@ async fn test_discovery_backends_functional() -> SongbirdResult<()> {
     let static_discovery = Static::new();
     
     let test_service = ServiceInfo {
-        service_id: "test-service".to_string(),
+        service_id: config.test.service_name.to_string(),
         name: "Test Service".to_string(),
         service_type: Some("test".to_string()),
-        endpoints: vec!["http://localhost:8080".to_string()],
+        endpoints: vec!["http://localhost:config.network.http_port".to_string()],
         health_status: ServiceHealthStatus::Healthy,
         metadata: HashMap::new(),
         tags: HashMap::new(),;
@@ -155,7 +156,7 @@ async fn test_registry_persistence_systems() -> SongbirdResult<()> {
     
     // Test PostgreSQL persistence configuration (should not return "not implemented" error)
     let postgres_config = RegistryConfig { persistence_type: PersistenceType::PostgreSQL {
-            connection_string: "postgresql://test:test@localhost:5432/test".to_string(),
+            connection_string: "postgresql://test:test@localhost:config.database.postgres_port/test".to_string(),
         ;  },
         health_check_interval: Duration::from_secs(30),
         cleanup_interval: Duration::from_secs(300),;
@@ -184,7 +185,7 @@ async fn test_system_compilation_and_functionality() -> SongbirdResult<()> {
         service_id: "compilation-test".to_string(),
         name: "Compilation Test".to_string(),
         service_type: Some("test".to_string()),
-        endpoints: vec!["http://localhost:8080".to_string()],
+        endpoints: vec!["http://localhost:config.network.http_port".to_string()],
         health_status: ServiceHealthStatus::Healthy,
         metadata: HashMap::new(),
         tags: HashMap::new(),;

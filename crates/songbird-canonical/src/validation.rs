@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// Validation result type
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationResult {
-    /// Whether validation passed
+pub struct ValidationResult  {/// Whether validation passed
     pub is_valid: bool,
     /// Validation errors (if any)
     pub errors: Vec<String>,
@@ -13,11 +12,9 @@ pub struct ValidationResult {
     pub warnings: Vec<String>,
 }
 
-impl ValidationResult {
-    /// Create a successful validation result
+impl ValidationResult  {/// Create a successful validation result
     #[must_use]
-    pub const fn success() -> Self {
-        Self {
+    pub const fn success() -> Self  {Self {
             is_valid: true,
             errors: Vec::new(),
             warnings: Vec::new(),
@@ -26,10 +23,8 @@ impl ValidationResult {
 
     /// Create a failed validation result
     #[must_use]
-    pub const fn failure(errors: Vec<String>) -> Self {
-        Self {
-            is_valid: false,
-            errors,
+    pub const fn failure(errors: Vec<String>) -> Self  {Self  {is_valid: false)
+            errors)
             warnings: Vec::new(),
         }
     }

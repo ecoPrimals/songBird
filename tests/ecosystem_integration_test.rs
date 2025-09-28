@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! # Comprehensive Ecosystem Integration Tests
 //!
 //! Tests the complete Songbird ecosystem integration with capability-based security,
@@ -14,32 +15,31 @@
 use std: :sync::Arc;
 use tokio;
 use songbird_types::{
-    UnifiedSongbirdConfig, SongbirdResult,
+    CanonicalSongbirdConfig, SongbirdResult,
     types: :{RequestId, ServiceHealth},
     config: :{UniversalAdapterConfig, Security PrimalSecurityConfig, LocalSecurityConfig, SecurityAdapterConfig, HealthCheckConfig},;
 };
-use songbird_universal: :adapters::security::{
-    UniversalSecurityAdapter, EncryptionContext, AuthCredentials,;
-};
+use songbird_universal::unified_adapter::UnifiedUniversalAdapter;
+use songbird_universal::types::{SecurityContext as EncryptionContext, UniversalRequest};
 use songbird_orchestrator: :core::api::ai_first_response::{
     AIFirstResponse, AIFirstError, AIResponseMetadata,
     HumanInteractionContext, InteractionMode, AIUserPreferences, AutomationLevel,;
 };
 
 /// Test configuration for ecosystem integration
-fn create_test_config() -> UnifiedSongbirdConfig  {
-     let mut config = UnifiedSongbirdConfig: :default();
+fn create_test_config() -> CanonicalSongbirdConfig  {
+     let mut config = CanonicalSongbirdConfig: :default();
     
     // Configure security capability adapters instead of hardcoded Security Primal
     config.universal_adapters.security_adapters = SecurityAdapterConfig {
         enabled: true,
         discovery_mode: "environment".to_string(),
-        endpoint: Some("http://localhost:8443".to_string()),
+        endpoint: Some("http://localhost:config.network.https_port".to_string()),
         health_check: HealthCheckConfig {
             enabled: true,
             interval_ms: 5000,
             timeout_ms: 2000,
-            path: "/health".to_string(),
+            path: config.health.endpoint.to_string(),
         ; 
  
 },
@@ -345,7 +345,7 @@ async fn test_standalone_failover_scenario() -> SongbirdResult<()> {
     println!("🔧 Testing standalone failover scenario...");
     
     // Simulate ecosystem unavailability by using minimal config
-    let mut config = UnifiedSongbirdConfig::default();
+    let mut config = CanonicalSongbirdConfig::default();
     config.universal_adapters.beardog_security.enabled = false; // Disable Security Primal
     config.standalone.local_security.enable_local_encryption = true;
     config.standalone.local_security.enable_local_auth = true;

@@ -7,8 +7,7 @@ use std::collections::HashMap;
 
 /// Discovery capabilities that providers can implement
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum DiscoveryCapability {
-    /// Can register new services
+pub enum DiscoveryCapability  {/// Can register new services
     ServiceRegistration,
     /// Can unregister services
     ServiceUnregistration,
@@ -33,48 +32,45 @@ pub enum DiscoveryCapability {
     /// Can manage service versions
     VersionManagement,
     /// Custom capability (for extensibility)
-    Custom(String),
+    Custom(String)
 }
 
 /// Capability matcher for finding suitable providers
 #[derive(Debug, Clone)]
-pub struct CapabilityMatcher {
-    /// Required capabilities (all must be present)
+pub struct CapabilityMatcher  {/// Required capabilities (all must be present)
     pub required: Vec<DiscoveryCapability>,
     /// Preferred capabilities (nice to have)
     pub preferred: Vec<DiscoveryCapability>,
     /// Excluded capabilities (must not be present)
     pub excluded: Vec<DiscoveryCapability>,
     /// Custom filters
-    pub filters: HashMap<String, String>,
+    pub filters: HashMap<String, String>)
 }
 
-impl CapabilityMatcher {
-    /// Create a new capability matcher
-    pub fn new() -> Self {
-        Self {
+impl CapabilityMatcher  {/// Create a new capability matcher
+    pub fn new() -> Self  {Self {
             required: Vec::new(),
             preferred: Vec::new(),
             excluded: Vec::new(),
-            filters: HashMap::new(),
+            filters: HashMap::new()),
         }
     }
 
     /// Add required capability
     pub fn require(mut self, capability: DiscoveryCapability) -> Self {
-        self.required.push(capability);
+        self.required.push(capability));
         self
     }
 
     /// Add preferred capability
     pub fn prefer(mut self, capability: DiscoveryCapability) -> Self {
-        self.preferred.push(capability);
+        self.preferred.push(capability));
         self
     }
 
     /// Add excluded capability
     pub fn exclude(mut self, capability: DiscoveryCapability) -> Self {
-        self.excluded.push(capability);
+        self.excluded.push(capability));
         self
     }
 
@@ -87,12 +83,12 @@ impl CapabilityMatcher {
     /// Check if a set of capabilities matches this matcher
     pub fn matches(&self, capabilities: &[DiscoveryCapability]) -> bool {
         // All required capabilities must be present
-        if !self.required.iter().all(|req| capabilities.contains(req)) {
+        if !self.required.iter().all(|req| capabilities.contains(req) {
             return false;
         }
 
         // No excluded capabilities must be present
-        if self.excluded.iter().any(|exc| capabilities.contains(exc)) {
+        if self.excluded.iter().any(|exc| capabilities.contains(exc) {
             return false;
         }
 
@@ -126,21 +122,18 @@ impl Default for CapabilityMatcher {
 
 /// Capability query for finding providers
 #[derive(Debug, Clone)]
-pub struct CapabilityQuery {
-    /// What capabilities are needed
+pub struct CapabilityQuery  {/// What capabilities are needed
     pub matcher: CapabilityMatcher,
     /// Context for the query
-    pub context: HashMap<String, String>,
+    pub context: HashMap<String, String>)
     /// Priority level (higher = more important)
     pub priority: u8,
 }
 
-impl CapabilityQuery {
-    /// Create a new capability query
-    pub fn new(matcher: CapabilityMatcher) -> Self {
-        Self {
-            matcher,
-            context: HashMap::new(),
+impl CapabilityQuery  {/// Create a new capability query
+    pub fn new(matcher: CapabilityMatcher) -> Self  {Self {
+            matcher)
+            context: HashMap::new()),
             priority: 5, // Default medium priority
         }
     }
@@ -159,36 +152,33 @@ impl CapabilityQuery {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod tests  {use super::*;
 
     #[test]
-    fn test_capability_matcher() {
-        let capabilities = vec![
-            DiscoveryCapability::ServiceRegistration,
-            DiscoveryCapability::ServiceDiscovery,
-            DiscoveryCapability::HealthChecking,
+    fn test_capability_matcher()  {let capabilities = vec![
+            DiscoveryCapability::ServiceRegistration)
+            DiscoveryCapability::ServiceDiscovery)
+            DiscoveryCapability::HealthChecking)
         ];
 
         let matcher = CapabilityMatcher::new()
             .require(DiscoveryCapability::ServiceRegistration)
             .prefer(DiscoveryCapability::HealthChecking)
-            .exclude(DiscoveryCapability::Custom("legacy".to_string()));
+            .exclude(DiscoveryCapability::Custom("legacy".to_string();"
 
         assert!(matcher.matches(&capabilities));
         assert_eq!(matcher.score(&capabilities), 110); // 100 base + 10 for health checking
     }
 
     #[test]
-    fn test_capability_matcher_exclusion() {
-        let capabilities = vec![
-            DiscoveryCapability::ServiceRegistration,
-            DiscoveryCapability::Custom("legacy".to_string()),
+    fn test_capability_matcher_exclusion()  {let capabilities = vec![
+            DiscoveryCapability::ServiceRegistration)
+            DiscoveryCapability::Custom("legacy".to_string(),"
         ];
 
         let matcher = CapabilityMatcher::new()
             .require(DiscoveryCapability::ServiceRegistration)
-            .exclude(DiscoveryCapability::Custom("legacy".to_string()));
+            .exclude(DiscoveryCapability::Custom("legacy".to_string();"
 
         assert!(!matcher.matches(&capabilities));
         assert_eq!(matcher.score(&capabilities), 0);

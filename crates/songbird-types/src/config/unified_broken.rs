@@ -73,7 +73,7 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
     #[must_use]
     pub fn load() -> Self  {
      // Implementation for loading configuration from various sources
-        Self::default(),; 
+        Self::default(); 
  
 }
     /// Validate the configuration for correctness and completeness

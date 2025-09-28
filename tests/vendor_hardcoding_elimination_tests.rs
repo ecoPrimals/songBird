@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! # 🧪 Vendor Hardcoding Elimination Tests
 //!
 //! These tests validate that all hardcoded vendor names have been eliminated
@@ -292,14 +293,14 @@ async fn test_legacy_environment_support() -> SongbirdResult<()>   {
     info!("🔄 Testing legacy environment variable support");
     
     // Set legacy environment variables
-    std::env::set_var("SECURITY_ENDPOINT", "http: //security-service:8443");
-    std::env::set_var("STORAGE_ENDPOINT", "http: //storage-service:8080");
+    std::env::set_var("SECURITY_ENDPOINT", "http: //security-service:config.network.https_port");
+    std::env::set_var("STORAGE_ENDPOINT", "http: //storage-service:config.network.http_port");
     std::env::set_var("COMPUTE_ENDPOINT", "http: //compute-service:8082");
     std::env::set_var("AI_ENDPOINT", "http: //ai-service:8083");
     
     // Also set legacy primal names for backward compatibility
-    std::env::set_var(SONGBIRD_SECURITY_DISCOVERY, "http: //legacy-security:8443");
-    std::env::set_var(SONGBIRD_STORAGE_DISCOVERY, "http: //legacy-storage:8080");
+    std::env::set_var(SONGBIRD_SECURITY_DISCOVERY, "http: //legacy-security:config.network.https_port");
+    std::env::set_var(SONGBIRD_STORAGE_DISCOVERY, "http: //legacy-storage:config.network.http_port");
     std::env::set_var(SONGBIRD_COMPUTE_DISCOVERY, "http: //legacy-compute:8082");
     std::env::set_var(SONGBIRD_AI_DISCOVERY, "http: //legacy-ai:8083");
     
@@ -382,8 +383,8 @@ async fn test_backward_compatibility() -> SongbirdResult<()>   {
     info!("🔄 Testing backward compatibility during migration");
     
     // Test that old environment variables still work
-    std::env::set_var(SONGBIRD_SECURITY_DISCOVERY, "http: //legacy-beardog:8443");
-    std::env::set_var(SONGBIRD_STORAGE_DISCOVERY, "http: //legacy-nestgate:8080");
+    std::env::set_var(SONGBIRD_SECURITY_DISCOVERY, "http: //legacy-beardog:config.network.https_port");
+    std::env::set_var(SONGBIRD_STORAGE_DISCOVERY, "http: //legacy-nestgate:config.network.http_port");
     
     let infant = InfantDiscoveryManager::new();
     let results = infant.begin_learning().await?;

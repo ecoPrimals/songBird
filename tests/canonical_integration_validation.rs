@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! # 🎯 Canonical Integration Validation Tests
 //!
 //! **🚀 CANONICAL MODERNIZATION VALIDATION**
@@ -5,7 +6,7 @@
 //! This comprehensive test suite validates that our canonical modernization
 //! has achieved production readiness across all critical systems.
 
-use songbird_types: :UnifiedSongbirdConfig;
+use songbird_types: :CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std: :collections::HashMap;
 use std::time::Duration;
@@ -44,7 +45,7 @@ async fn test_canonical_configuration_patterns() -> SongbirdResult<()>   {
     
     
     // Test default configuration creation
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     assert!(!config.network.bind_address.is_empty());
     assert!(config.network.port_range.start > 0);
     assert!(config.network.port_range.end > config.network.port_range.start);
@@ -235,7 +236,7 @@ fn test_canonical_compilation_patterns() {
          
          
     // Test that canonical patterns compile correctly
-    let _config = UnifiedSongbirdConfig: :default();
+    let _config = CanonicalSongbirdConfig: :default();
     let _error = SongbirdError::config("field", "message");
     let _result: SongbirdResult<()> = Ok(());
 

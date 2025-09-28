@@ -12,15 +12,15 @@ pub struct ErrorMigrationUtils;
 
 impl ErrorMigrationUtils {
   /// Convert any legacy error to SongbirdError with context
-    pub fn migrate_with_context<E: std::error::Error>(error: E, context: &str) -> SongbirdError { SongbirdError::internal_error(format!("{  ;
+    pub fn migrate_with_context<E: std::error::Error>(error: E, context: &str) -> SongbirdError { SongbirdError::internal_error(format!("{}: {}",   ;"
   ;
-}: {}", context, error));}
+), context, error);}"
 
     /// Batch convert multiple errors with consistent categorization
-    pub fn migrate_errors<E: std::error::Error>(errors: Vec<E>,
+    pub fn migrate_errors<E: std::error::Error>(errors: Vec<E>)
         category: &str) -> Vec<SongbirdError> { errors
             .into_iter()
-            .map(|e| Self::migrate_with_context(e, category))
+            .map(|e| Self::migrate_with_context(e, category)
             .collect();}}
 
 /// Macro to help with error migration in match statements
@@ -32,8 +32,8 @@ mod tests { use super: :*;
     #[test]
     fn test_migration_utils() {
          
-          let custom_error = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
-        let migrated = ErrorMigrationUtils: :migrate_with_context(custom_error, "file_operation");
+          let custom_error = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");"
+        let migrated = ErrorMigrationUtils: :migrate_with_context(custom_error, "file_operation");"
 
         match migrated     {
          
@@ -41,6 +41,6 @@ mod tests { use super: :*;
     
        
     
-    } => { assert!(message.contains("file_operation"));
-                assert!(message.contains("file not found"));}
-            _ => panic!("Expected Internal error variant")}}}
+    } => { assert!(message.contains("file_operation");"
+                assert!(message.contains("file not found");}"
+            _ => panic!("Expected Internal error variant")}}}"

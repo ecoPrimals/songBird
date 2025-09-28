@@ -9,19 +9,18 @@ use serde::{Deserialize, Serialize};
 /// - `songbird-network/src/balancing/mod.rs`
 /// - `songbird-universal/src/load_balancing.rs`
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum LoadBalancingStrategy {
-    /// Round-robin distribution
+pub enum LoadBalancingStrategy  {/// Round-robin distribution
     RoundRobin,
     /// Weighted round-robin with service capacity
-    WeightedRoundRobin { weights: Vec<u32> },
+    WeightedRoundRobin { weights: Vec<u32> })
     /// Least connections strategy
     LeastConnections,
     /// Weighted least connections
-    WeightedLeastConnections { weights: Vec<u32> },
+    WeightedLeastConnections { weights: Vec<u32> })
     /// Random selection
     Random,
     /// Weighted random selection
-    WeightedRandom { weights: Vec<u32> },
+    WeightedRandom { weights: Vec<u32> })
     /// Response time based selection
     ResponseTime,
     /// Resource utilization based selection
@@ -33,10 +32,9 @@ pub enum LoadBalancingStrategy {
     /// Adaptive strategy that changes based on performance
     Adaptive,
     /// Custom strategy with user-defined logic
-    Custom {
-        name: String,
+    Custom  {name: String,
         config: serde_json::Value,
-    },
+    })
 }
 
 impl Default for LoadBalancingStrategy {
@@ -48,30 +46,29 @@ impl Default for LoadBalancingStrategy {
 impl std::fmt::Display for LoadBalancingStrategy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LoadBalancingStrategy::RoundRobin => write!(f, "round-robin"),
-            LoadBalancingStrategy::WeightedRoundRobin { .. } => write!(f, "weighted-round-robin"),
-            LoadBalancingStrategy::LeastConnections => write!(f, "least-connections"),
+            LoadBalancingStrategy::RoundRobin => write!(f, "round-robin"),"
+            LoadBalancingStrategy::WeightedRoundRobin { .. } => write!(f, "weighted-round-robin"),"
+            LoadBalancingStrategy::LeastConnections => write!(f, "least-connections"),"
             LoadBalancingStrategy::WeightedLeastConnections { .. } => {
-                write!(f, "weighted-least-connections")
+                write!(f, "weighted-least-connections")"
             }
-            LoadBalancingStrategy::Random => write!(f, "random"),
-            LoadBalancingStrategy::WeightedRandom { .. } => write!(f, "weighted-random"),
-            LoadBalancingStrategy::ResponseTime => write!(f, "response-time"),
-            LoadBalancingStrategy::ResourceBased => write!(f, "resource-based"),
-            LoadBalancingStrategy::ConsistentHashing => write!(f, "consistent-hashing"),
-            LoadBalancingStrategy::IpHash => write!(f, "ip-hash"),
-            LoadBalancingStrategy::Adaptive => write!(f, "adaptive"),
-            LoadBalancingStrategy::Custom { name, .. } => write!(f, "custom-{name}"),
+            LoadBalancingStrategy::Random => write!(f, "random"),"
+            LoadBalancingStrategy::WeightedRandom { .. } => write!(f, "weighted-random"),"
+            LoadBalancingStrategy::ResponseTime => write!(f, "response-time"),"
+            LoadBalancingStrategy::ResourceBased => write!(f, "resource-based"),"
+            LoadBalancingStrategy::ConsistentHashing => write!(f, "consistent-hashing"),"
+            LoadBalancingStrategy::IpHash => write!(f, "ip-hash"),"
+            LoadBalancingStrategy::Adaptive => write!(f, "adaptive"),"
+            LoadBalancingStrategy::Custom { name, .. } => write!(f, "custom-{name}"),"
         }
     }
 }
 
-impl LoadBalancingStrategy {
-    /// Check if this strategy requires weights
+impl LoadBalancingStrategy  {/// Check if this strategy requires weights
     #[must_use]
     pub fn requires_weights(&self) -> bool {
         matches!(
-            self,
+            self)
             LoadBalancingStrategy::WeightedRoundRobin { .. }
                 | LoadBalancingStrategy::WeightedLeastConnections { .. }
                 | LoadBalancingStrategy::WeightedRandom { .. }
@@ -80,18 +77,16 @@ impl LoadBalancingStrategy {
 
     /// Check if this strategy supports session affinity
     #[must_use]
-    pub fn supports_affinity(&self) -> bool {
-        matches!(
-            self,
+    pub fn supports_affinity(&self) -> bool  {matches!(
+            self)
             LoadBalancingStrategy::ConsistentHashing | LoadBalancingStrategy::IpHash
         )
     }
 
     /// Check if this strategy adapts to performance metrics
     #[must_use]
-    pub fn is_adaptive(&self) -> bool {
-        matches!(
-            self,
+    pub fn is_adaptive(&self) -> bool  {matches!(
+            self)
             LoadBalancingStrategy::ResponseTime
                 | LoadBalancingStrategy::ResourceBased
                 | LoadBalancingStrategy::Adaptive
@@ -100,26 +95,23 @@ impl LoadBalancingStrategy {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod tests  {use super::*;
 
     #[test]
-    fn test_load_balancing_strategy_display() {
-        assert_eq!(LoadBalancingStrategy::RoundRobin.to_string(), "round-robin");
+    fn test_load_balancing_strategy_display()  {assert_eq!(LoadBalancingStrategy::RoundRobin.to_string(), "round-robin");"
         assert_eq!(
-            LoadBalancingStrategy::LeastConnections.to_string(),
-            "least-connections"
+            LoadBalancingStrategy::LeastConnections.to_string()),
+            "least-connections""
         );
         assert_eq!(
-            LoadBalancingStrategy::ResponseTime.to_string(),
-            "response-time"
+            LoadBalancingStrategy::ResponseTime.to_string()),
+            "response-time""
         );
     }
 
     #[test]
-    fn test_strategy_characteristics() {
-        let weighted_rr = LoadBalancingStrategy::WeightedRoundRobin {
-            weights: vec![1, 2, 3],
+    fn test_strategy_characteristics()  {let weighted_rr = LoadBalancingStrategy::WeightedRoundRobin {
+            weights: vec![1, 2, 3])
         };
         assert!(weighted_rr.requires_weights());
         assert!(!weighted_rr.supports_affinity());
@@ -133,9 +125,8 @@ mod tests {
     }
 
     #[test]
-    fn test_default_strategy() {
-        assert_eq!(
-            LoadBalancingStrategy::default(),
+    fn test_default_strategy()  {assert_eq!(
+            LoadBalancingStrategy::default()
             LoadBalancingStrategy::RoundRobin
         );
     }

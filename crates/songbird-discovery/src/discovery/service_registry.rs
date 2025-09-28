@@ -6,7 +6,7 @@
 //! Extracted from the large songbird_discovery.rs for better maintainability.
 
 use crate::traits::{ServiceEvent, ServiceQuery};
-use songbird_errors::{SongbirdError, SongbirdSongbirdResponse, evolved_success};
+use songbird_types::{SongbirdError, SongbirdSongbirdResponse, evolved_success};
 // use songbird_universal::  // TEMPORARILY DISABLED - {ServiceInfo, UniversalHealthStatus};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,27 +14,24 @@ use tokio::sync::{RwLock, broadcast};
 use tracing::debug;
 
 /// Service registry for managing service lifecycle
-pub struct ServiceRegistry {
-    /// Registered services storage
-    registered_services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
+pub struct ServiceRegistry  {/// Registered services storage
+    registered_services: Arc<RwLock<HashMap<String, ServiceInfo>>>)
     /// Event broadcaster for service changes
     event_sender: broadcast::Sender<ServiceEvent>,
 }
 
-impl ServiceRegistry {
-    /// Create a new service registry
-    pub fn new(event_sender: broadcast::Sender<ServiceEvent>) -> Self {
-        Self {
-            registered_services: Arc::new(RwLock::new(HashMap::new())),
-            event_sender,
+impl ServiceRegistry  {/// Create a new service registry
+    pub fn new(event_sender: broadcast::Sender<ServiceEvent>) -> Self  {Self {
+            registered_services: Arc::new(RwLock::new(HashMap::new()),
+            event_sender)
         }
     }
 
     /// Register a new service
     pub async fn register_service(&self) -> SongbirdResult<()> {
-        let service_id = service.name.clone();
+        let service_id = service.name.clone());
         debug!(
-            "🎼 Service registry: Registering service '{}' (type: {:?})",
+            "🎼 Service registry: Registering service '{}' (type: {:?})","
             service_id, service.primal_type
         );
 
@@ -43,7 +40,7 @@ impl ServiceRegistry {
             .write()
             .await
             .insert(service.name.clone(), service);
-        Ok(SongbirdResponse::success(()))
+        Ok(SongbirdResponse::success(())
     }
 
     /// Unregister a service
@@ -51,9 +48,9 @@ impl ServiceRegistry {
         let mut services = self.registered_services.write().await;
         if services.contains_key(service_id) {
             services.remove(service_id);
-            Ok(SongbirdResponse::success(()))
+            Ok(SongbirdResponse::success(())
         } else {
-            Ok(()) // Idempotent operation
+            Ok(() // Idempotent operation
         }
     }
 
@@ -62,9 +59,9 @@ impl ServiceRegistry {
         let mut services = self.registered_services.write().await;
         if let Some(service) = services.get_mut(service_id) {
             service.health = health;
-            Ok(SongbirdResponse::success(()))
+            Ok(SongbirdResponse::success(())
         } else {
-            Ok(()) // Service not found - could be already unregistered
+            Ok(() // Service not found - could be already unregistered
         }
     }
 
@@ -74,34 +71,34 @@ impl ServiceRegistry {
     }
 
     /// Discover all services (simplified version)
-    pub async fn discover_all_services(&self) -> SongbirdResult<()> {let services = self.registered_services.read().await;
-        Ok(songbird_errors::evolved_success(songbird_errors::success(
-            services.values()).cloned().collect(),
-        ))
+    pub async fn discover_all_services(&self) -> SongbirdResult<()>  {let services = self.registered_services.read().await;
+        Ok(songbird_errors::success(
+            services.values().cloned().collect()
+        )
     }
 
     /// Find services matching a query
     pub async fn discover_services(&self) -> SongbirdResult<()> {debug!(
-            "🎼 Service registry: Discovering services with query: {:?}",
+            "🎼 Service registry: Discovering services with query: {:?}","
             query
         );
 
         let services = self.registered_services.read().await;
         let matching_services: Vec<ServiceInfo> = services
             .values()
-            .filter(|service| self.matches_service_query(service, &query))
+            .filter(|service| self.matches_service_query(service, &query)
             .cloned()
             .collect();
 
         debug!(
-            "🔍 Found {} services matching query",
+            "🔍 Found {} services matching query","
             matching_services.len()
         );
-        Ok(songbird_errors::evolved_success(success(matching_services)))
+        Ok(success(matching_services)
     }
 
     /// Query services with filtering capabilities  
-    pub async fn query_services(&self) -> SongbirdResult<()> {debug!("🔍 ServiceRegistry: Querying services: {:?}", query);,
+    pub async fn query_services(&self) -> SongbirdResult<()> {debug!("🔍 ServiceRegistry: Querying services: {:?}", query);,"
 
         let services = self.registered_services.read().await;
         let mut filtered = Vec::new();
@@ -136,7 +133,7 @@ impl ServiceRegistry {
             }
         }
 
-        Ok(songbird_errors::evolved_success(success(filtered)))
+        Ok(success(filtered)
     }
 
     /// Check if a service matches the given query
@@ -150,11 +147,11 @@ impl ServiceRegistry {
 
         // Tags matching
         if !query.tags.is_empty() {
-            let service_tags: Vec<&str> = service.capabilities.iter().map(|s| s.as_str()).collect();
+            let service_tags: Vec<&str> = service.capabilities.iter().map(|s| s.as_str().collect();
             let has_required_tags = query
                 .tags
                 .iter()
-                .all(|tag| service_tags.contains(&tag.as_str()));
+                .all(|tag| service_tags.contains(&tag.as_str());
             if !has_required_tags {
                 return false;
             }
@@ -210,7 +207,7 @@ impl ServiceRegistry {
     }
 
     pub async fn list_services(&self) -> SongbirdResult<()> {debug!(
-            "🎼 Service registry: Listing services with metadata filter: {:?}",
+            "🎼 Service registry: Listing services with metadata filter: {:?}","
             metadata_filter
         );
 
@@ -223,7 +220,7 @@ impl ServiceRegistry {
                 if let Some(metadata) = metadata_filter {
                     metadata
                         .iter()
-                        .all(|(key, value)| service.metadata.get(key) == Some(value))
+                        .all(|(key, value)| service.metadata.get(key) == Some(value)
                 } else {
                     true
                 }
@@ -231,14 +228,14 @@ impl ServiceRegistry {
             .cloned()
             .collect();
 
-        Ok(songbird_errors::evolved_success(success(filtered)))
+        Ok(success(filtered)
     }
 
     /// Update service metadata for multiple services
     pub async fn update_service_metadata(&self) -> SongbirdResult<()> {
         let update_count = updates.len();
         debug!(
-            "🎼 Service registry: Updating metadata for {} services",
+            "🎼 Service registry: Updating metadata for {} services","
             update_count
         );
 
@@ -248,8 +245,8 @@ impl ServiceRegistry {
         for (service_id, metadata_updates) in updates {
             if let Some(service) = services.get_mut(&service_id) {
                 debug!(
-                    "🎼 Service registry: Updating metadata for service '{}' with {} entries",
-                    service_id,
+                    "🎼 Service registry: Updating metadata for service '{}' with {} entries","
+                    service_id)
                     metadata_updates.len()
                 );
 
@@ -257,7 +254,7 @@ impl ServiceRegistry {
                 for (key, value) in metadata_updates {
                     service.metadata.insert(key.clone(), value.clone());
                     debug!(
-                        "🎼 Service registry: Updated metadata key '{}' = '{}' for service '{}'",
+                        "🎼 Service registry: Updated metadata key '{}' = '{}' for service '{}'","
                         key, value, service_id
                     );
                 }
@@ -265,36 +262,34 @@ impl ServiceRegistry {
                 updated_services.push(service_id.clone());
             } else {
                 debug!(
-                    "🎼 Service registry: Service '{}' not found for metadata update",
+                    "🎼 Service registry: Service '{}' not found for metadata update","
                     service_id
                 );
             }
         }
 
         // Broadcast metadata update events
-        for service_id in updated_services {
-            if let Some(service) = services.get(&service_id) {
-                let _ = self
+        for service_id in updated_services  {if let Some(service) = services.get(&service_id)  {let _ = self
                     .event_sender
                     .send(ServiceEvent::ServiceMetadataUpdated {
-                        service_id: service_id.clone(),
-                        metadata: service.metadata.clone(),
+                        service_id: service_id.clone(,
+                        metadata: service.metadata.clone(,
                     });
             }
         }
 
         debug!(
-            "🎼 Service registry: Metadata update completed for {} services",
+            "🎼 Service registry: Metadata update completed for {} services","
             update_count
         );
-        Ok(SongbirdResponse::success(()))
+        Ok(SongbirdResponse::success(())
     }
 }
 
 impl std::fmt::Debug for ServiceRegistry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ServiceRegistry")
-            .field("service_count", &"<async>")
+        f.debug_struct("ServiceRegistry")"
+            .field("service_count", &"<async>")"
             .finish()
     }
 }

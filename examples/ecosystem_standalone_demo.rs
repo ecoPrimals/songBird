@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! Ecosystem Standalone Demo - Canonical Implementation
 //!
 //! This example demonstrates the canonical patterns for running a standalone

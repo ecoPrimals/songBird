@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Circuit breaker state transition tests
 
 use std::time::Duration;

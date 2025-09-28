@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Unified Error System Migration Example
 //!
 //! This example shows how to properly migrate unwrap/expect calls to use

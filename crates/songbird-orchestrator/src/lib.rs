@@ -33,7 +33,7 @@
 //!     // Start the orchestrator
 //!     orchestrator.start().await?;
 //!     
-//!     Ok(())
+//!     Ok(()),
 //! }
 //! ```
 //!
@@ -61,7 +61,27 @@
 
 pub mod app;
 pub mod cli;
+pub mod core; // Consolidated core functionality
 pub mod integration;
 pub mod server;
 
+// Re-export main orchestrator
 pub use app::SongbirdOrchestrator;
+
+// Re-export all functionality from crates (consolidated from songbird-lib)
+pub use songbird_cli as cli_crate;
+pub use songbird_config as config;
+pub use songbird_discovery as discovery;
+pub use songbird_security_errors as errors;
+pub use songbird_observability as observability;
+pub use songbird_registry as registry;
+pub use songbird_security_errors as security;
+pub use songbird_universal_primals as primals;
+
+// Re-export commonly used types
+pub use songbird_config::SongbirdConfig;
+pub use songbird_types::{SongbirdError, SongbirdResult};
+
+// Re-export key types that are commonly used
+pub use songbird_universal_primals::{PrimalCapability, PrimalProvider};
+pub use songbird_universal::PrimalType;

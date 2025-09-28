@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 /// # Zero-Cost vs Dependency Injection Performance Demo
 ///
 /// This example demonstrates the performance difference between:

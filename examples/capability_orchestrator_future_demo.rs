@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 /// # 🚀 Capability Orchestrator Future Demo
 ///
 /// **Purpose**: Demonstrate the revolutionary capability-based orchestration

@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 use songbird_core::{
     ZeroCostSongbird, ZeroCostDiscovery, ZeroCostCache, ZeroCostRegistry,
     ServiceType, DiscoveryMetrics, PrimalService, ProductionSongbird
@@ -9,7 +10,7 @@ use tokio;
 /// Example implementation of zero-cost discovery
 struct NetworkDiscovery;
 
-impl ZeroCostDiscovery<10000, 3000, true> for NetworkDiscovery {
+impl ZeroCostDiscovery<10000, config.dashboard.port, true> for NetworkDiscovery {
     fn discover_capabilities(Vec<PrimalCapability>) ->  {
         // Simulate capability discovery based on endpoint
         if endpoint.contains("security") {
@@ -72,14 +73,14 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     
     // Benchmark 1: Single discovery operation
     let start = Instant::now();
-    let service_type = songbird.discover_and_register("https://security-service.local:8443").await?;
+    let service_type = songbird.discover_and_register("https://security-service.local:config.network.https_port").await?;
     let single_duration = start.elapsed();
     
     println!("✅ Single Discovery: {:?} in {:.2}ms", service_type, single_duration.as_secs_f64() * 1000.0);
     
     // Benchmark 2: Batch discovery operations
     let endpoints = [
-        "https://security-primary.local:8443",
+        "https://security-primary.local:config.network.https_port",
         "https://storage-primary.local:9000", 
         "https://ai-inference.local:8888",
                     &std::env::var("PRIMAL_COMPUTE_ENDPOINT")

@@ -10,8 +10,7 @@ use serde::{Deserialize, Serialize};
 /// - `songbird-config/src/security.rs`
 /// - `songbird-universal/src/security.rs`
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum SecurityLevel {
-    /// No security - for development/testing only
+pub enum SecurityLevel  {/// No security - for development/testing only
     None,
     /// Minimal security - basic validation
     Minimal,
@@ -50,55 +49,51 @@ impl Default for SecurityLevel {
 impl std::fmt::Display for SecurityLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SecurityLevel::None => write!(f, "none"),
-            SecurityLevel::Minimal => write!(f, "minimal"),
-            SecurityLevel::Basic => write!(f, "basic"),
-            SecurityLevel::Low => write!(f, "low"),
-            SecurityLevel::Medium => write!(f, "medium"),
-            SecurityLevel::Standard => write!(f, "standard"),
-            SecurityLevel::Public => write!(f, "public"),
-            SecurityLevel::High => write!(f, "high"),
-            SecurityLevel::Private => write!(f, "private"),
-            SecurityLevel::Critical => write!(f, "critical"),
-            SecurityLevel::Confidential => write!(f, "confidential"),
-            SecurityLevel::Enhanced => write!(f, "enhanced"),
-            SecurityLevel::Maximum => write!(f, "maximum"),
-            SecurityLevel::Classified => write!(f, "classified"),
+            SecurityLevel::None => write!(f, "none"),"
+            SecurityLevel::Minimal => write!(f, "minimal"),"
+            SecurityLevel::Basic => write!(f, "basic"),"
+            SecurityLevel::Low => write!(f, "low"),"
+            SecurityLevel::Medium => write!(f, "medium"),"
+            SecurityLevel::Standard => write!(f, "standard"),"
+            SecurityLevel::Public => write!(f, "public"),"
+            SecurityLevel::High => write!(f, "high"),"
+            SecurityLevel::Private => write!(f, "private"),"
+            SecurityLevel::Critical => write!(f, "critical"),"
+            SecurityLevel::Confidential => write!(f, "confidential"),"
+            SecurityLevel::Enhanced => write!(f, "enhanced"),"
+            SecurityLevel::Maximum => write!(f, "maximum"),"
+            SecurityLevel::Classified => write!(f, "classified"),"
         }
     }
 }
 
-impl std::str::FromStr for SecurityLevel {
-    type Err = String;
+impl std::str::FromStr for SecurityLevel  {type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "none" => Ok(songbird_errors::evolved_success(SecurityLevel::None)),
-            "minimal" => Ok(songbird_errors::evolved_success(SecurityLevel::Minimal)),
-            "basic" => Ok(songbird_errors::evolved_success(SecurityLevel::Basic)),
-            "low" => Ok(songbird_errors::evolved_success(SecurityLevel::Low)),
-            "medium" => Ok(songbird_errors::evolved_success(SecurityLevel::Medium)),
-            "standard" => Ok(songbird_errors::evolved_success(SecurityLevel::Standard)),
-            "public" => Ok(songbird_errors::evolved_success(SecurityLevel::Public)),
-            "high" => Ok(songbird_errors::evolved_success(SecurityLevel::High)),
-            "private" => Ok(songbird_errors::evolved_success(SecurityLevel::Private)),
-            "critical" => Ok(songbird_errors::evolved_success(SecurityLevel::Critical)),
-            "confidential" => Ok(songbird_errors::evolved_success(
-                SecurityLevel::Confidential,
-            )),
-            "enhanced" => Ok(songbird_errors::evolved_success(SecurityLevel::Enhanced)),
-            "maximum" => Ok(songbird_errors::evolved_success(SecurityLevel::Maximum)),
-            "classified" => Ok(songbird_errors::evolved_success(SecurityLevel::Classified)),
-            _ => Err(SongbirdError::internal_error(internal_error("Unknown security level: {s}")),
+    fn from_str(s: &str) -> Result<Self, Self::Err>  {match s.to_lowercase().as_str() {
+            "none" => Ok(songbird_errors::evolved_success(SecurityLevel::None),"
+            "minimal" => Ok(songbird_errors::evolved_success(SecurityLevel::Minimal),"
+            "basic" => Ok(songbird_errors::evolved_success(SecurityLevel::Basic),"
+            "low" => Ok(songbird_errors::evolved_success(SecurityLevel::Low),"
+            "medium" => Ok(songbird_errors::evolved_success(SecurityLevel::Medium),"
+            "standard" => Ok(songbird_errors::evolved_success(SecurityLevel::Standard),"
+            "public" => Ok(songbird_errors::evolved_success(SecurityLevel::Public),"
+            "high" => Ok(songbird_errors::evolved_success(SecurityLevel::High),"
+            "private" => Ok(songbird_errors::evolved_success(SecurityLevel::Private),"
+            "critical" => Ok(songbird_errors::evolved_success(SecurityLevel::Critical),"
+            "confidential" => Ok(songbird_errors::evolved_success("
+                SecurityLevel::Confidential)
+            ))
+            "enhanced" => Ok(songbird_errors::evolved_success(SecurityLevel::Enhanced),"
+            "maximum" => Ok(songbird_errors::evolved_success(SecurityLevel::Maximum),"
+            "classified" => Ok(songbird_errors::evolved_success(SecurityLevel::Classified),"
+            _ => Err(SongbirdError::internal_error(internal_error("Unknown security level: {s}"),"
         }
     }
 }
 
-impl SecurityLevel {
-    /// Get the numeric security level (higher = more secure)
+impl SecurityLevel  {/// Get the numeric security level (higher = more secure)
     #[must_use]
-    pub fn level(&self) -> u8 {
-        match self {
+    pub fn level(&self) -> u8  {match self {
             SecurityLevel::None => 0,
             SecurityLevel::Minimal | SecurityLevel::Basic => 1,
             SecurityLevel::Low => 2,
@@ -122,9 +117,8 @@ impl SecurityLevel {
 
     /// Check if this security level requires encryption
     #[must_use]
-    pub fn requires_encryption(&self) -> bool {
-        matches!(
-            self,
+    pub fn requires_encryption(&self) -> bool  {matches!(
+            self)
             SecurityLevel::Public
                 | SecurityLevel::Private
                 | SecurityLevel::Confidential
@@ -134,9 +128,8 @@ impl SecurityLevel {
 
     /// Check if this security level requires authentication
     #[must_use]
-    pub fn requires_authentication(&self) -> bool {
-        matches!(
-            self,
+    pub fn requires_authentication(&self) -> bool  {matches!(
+            self)
             SecurityLevel::Private | SecurityLevel::Confidential | SecurityLevel::Classified
         )
     }
@@ -145,35 +138,35 @@ impl SecurityLevel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use songbird_errors::SongbirdResult;
+    use songbird_types::SongbirdResult;
 
     #[test]
     fn test_security_level_ordering() {
-        assert!(SecurityLevel::Classified.level() > SecurityLevel::Public.level());
-        assert!(SecurityLevel::Public.level() > SecurityLevel::None.level());
+        assert!(SecurityLevel::Classified.level() > SecurityLevel::Public.level();
+        assert!(SecurityLevel::Public.level() > SecurityLevel::None.level();
     }
 
     #[test]
     fn test_security_level_parsing() -> SongbirdResult<()> {
         assert_eq!(
-            "none".parse::<SecurityLevel>().map_err(|e| {
-                songbird_errors::SongbirdError::operation_error(format!("Operation failed: {e}"))
-            })?,
+            "none".parse::<SecurityLevel>().map_err(|e| {"
+                songbird_errors::SongbirdError::operation_error(format!("Operation failed: {}", e))"
+            })?)
             SecurityLevel::None
         );
         assert_eq!(
-            "minimal".parse::<SecurityLevel>().map_err(|e| {
-                songbird_errors::SongbirdError::operation_error(format!("Operation failed: {e}"))
-            })?,
+            "minimal".parse::<SecurityLevel>().map_err(|e| {"
+                songbird_errors::SongbirdError::operation_error(format!("Operation failed: {}", e))"
+            })?)
             SecurityLevel::Minimal
         );
         assert_eq!(
-            "public".parse::<SecurityLevel>().map_err(|e| {
-                songbird_errors::SongbirdError::operation_error(format!("Operation failed: {e}"))
-            })?,
+            "public".parse::<SecurityLevel>().map_err(|e| {"
+                songbird_errors::SongbirdError::operation_error(format!("Operation failed: {}", e))"
+            })?)
             SecurityLevel::Public
         );
-        Ok(())
+        Ok(()),
     }
 
     #[test]

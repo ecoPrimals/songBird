@@ -1,0 +1,56 @@
+[package]
+name = "songbird-network-federation"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+description = "Consolidated network and federation layer for Songbird Universal Orchestrator"
+repository = "https://github.com/ecoPrimals/SongBird"
+homepage = "https://songbird-gaming.ecoprimals.dev"
+readme = "../../README.md"
+keywords = ["networking", "federation", "gaming", "distributed", "orchestration"]
+categories = ["network-programming", "game-engines", "distributed-systems"]
+
+
+[lints]
+workspace = true
+
+[dependencies]
+# Core async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+futures-util = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Networking
+reqwest = { version = "0.11", features = ["json"] }
+url = "2.5"
+
+# Random number generation (missing dependency that caused errors)
+fastrand = "2.0"
+
+# Logging
+tracing = { workspace = true }
+
+# Internal dependencies
+songbird-types = { path = "../songbird-types" }
+songbird-config = { path = "../songbird-config" }
+# songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
+songbird-discovery = { path = "../songbird-discovery" }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[features]
+default = ["gaming", "federation"]
+gaming = []
+federation = []
+# Removed legacy-compat feature flag - migration complete 

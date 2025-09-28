@@ -10,8 +10,7 @@ use std::time::Instant;
 /// This type unifies all response patterns across the ecosystem and provides
 /// AI-first metadata, performance tracking, and automation hints.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongbirdResponse<T> {
-    /// The actual response data (strongly typed)
+pub struct SongbirdResponse<T>  {/// The actual response data (strongly typed)
     pub data: T,
 
     /// AI-optimized metadata for decision making
@@ -33,14 +32,12 @@ pub struct SongbirdResponse<T> {
     pub human_context: Option<String>,
 }
 
-impl<T> SongbirdResponse<T> {
-    /// Create a successful response with default metadata
-    pub fn success(data: T) -> Self {
-        Self {
-            data,
+impl<T> SongbirdResponse<T>  {/// Create a successful response with default metadata
+    pub fn success(data: T) -> Self  {Self {
+            data)
             ai_metadata: AIResponseMetadata::default(),
             performance: ResponsePerformance::default(),
-            request_id: RequestId::new(),
+            request_id: RequestId::new(,
             confidence: ConfidenceScore::new(1.0), // High confidence for explicit success
             suggested_actions: Vec::new(),
             human_context: None,
@@ -57,7 +54,7 @@ impl<T> SongbirdResponse<T> {
     /// Add a suggested action
     #[must_use]
     pub fn with_suggestion(mut self, action: SuggestedAction) -> Self {
-        self.suggested_actions.push(action);
+        self.suggested_actions.push(action));
         self
     }
 
@@ -80,7 +77,7 @@ impl<T> SongbirdResponse<T> {
     #[allow(clippy::cast_possible_truncation)]
     pub fn finish_processing(mut self, start_time: Instant) -> Self {
         self.performance.processing_time_ms =
-            start_time.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+            start_time.elapsed().as_millis().min(u128::from(u64::MAX) as u64;
         self
     }
 
@@ -88,9 +85,7 @@ impl<T> SongbirdResponse<T> {
     pub fn map<U, F>(self, f: F) -> SongbirdResponse<U>
     where
         F: FnOnce(T) -> U,
-    {
-        SongbirdResponse {
-            data: f(self.data),
+     {SongbirdResponse  {data: f(self.data)
             ai_metadata: self.ai_metadata,
             performance: self.performance,
             request_id: self.request_id,
@@ -113,8 +108,7 @@ impl<T> SongbirdResponse<T> {
 
 /// Performance metrics for response tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResponsePerformance {
-    /// Processing time in milliseconds
+pub struct ResponsePerformance  {/// Processing time in milliseconds
     pub processing_time_ms: u64,
 
     /// Memory usage (if tracked)
@@ -130,9 +124,7 @@ pub struct ResponsePerformance {
     pub cache_status: CacheStatus,
 }
 
-impl Default for ResponsePerformance {
-    fn default() -> Self {
-        Self {
+impl Default for ResponsePerformance  {fn default() -> Self  {Self {
             processing_time_ms: 0,
             memory_usage_bytes: None,
             cpu_usage_percent: None,
@@ -144,8 +136,7 @@ impl Default for ResponsePerformance {
 
 /// Cache status for performance tracking
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CacheStatus {
-    /// Cache hit
+pub enum CacheStatus  {/// Cache hit
     Hit,
     /// Cache miss
     Miss,
@@ -166,6 +157,6 @@ impl SongbirdResponse<()> {
     /// Create a unit response (for operations that don't return data)
     #[must_use]
     pub fn unit() -> Self {
-        Self::success(())
+        Self::success(()
     }
 }

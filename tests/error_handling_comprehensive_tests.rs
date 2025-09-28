@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Error Handling Tests
 //!
 //! This test suite provides extensive coverage of the error handling system,
@@ -61,7 +62,7 @@ mod error_handling_tests { use super::*;
     fn test_network_error_creation() {
          
          
-        let error = SongbirdError: :network_error("Connection failed", Some("http: //localhost:8080"));
+        let error = SongbirdError: :network_error("Connection failed", Some("http: //localhost:config.network.http_port"));
         
         match error   {
           SongbirdError::Network { message, endpoint, ..    
@@ -70,7 +71,7 @@ mod error_handling_tests { use super::*;
     
     } => {
                 assert_eq!(message, "Connection failed");
-                assert_eq!(endpoint, Some("http: //localhost:8080".to_string()));
+                assert_eq!(endpoint, Some("http: //localhost:config.network.http_port".to_string()));
             ;;}
             _ => panic!("Expected Network error"),
         }
@@ -463,7 +464,7 @@ mod error_handling_tests { use super::*;
       
     }) => {
                 assert!(recovery_actions.is_some());
-                let actions = recovery_actions.unwrap();
+                let actions = recovery_actions.map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))?;
                 assert_eq!(actions[0], "Retry after delay");
             }
             _ => panic!("Expected recoverable network error"),

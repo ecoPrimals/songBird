@@ -4,27 +4,24 @@
 
 use crate::ServiceEvent;
 use futures_util::StreamExt;
-use songbird_errors::EvolvedResult;
+use songbird_types::EvolvedResult;
 // use songbird_universal::  // TEMPORARILY DISABLED - ServiceInfo;
 use tokio::sync::broadcast;
 use tracing::debug;
 
 /// Event streaming service for discovery system
-pub struct EventStreaming {
-    /// Event broadcaster
+pub struct EventStreaming  {/// Event broadcaster
     event_sender: broadcast::Sender<ServiceEvent>,
     /// Receiver for testing
     _event_receiver: broadcast::Receiver<ServiceEvent>,
 }
 
-impl EventStreaming {
-    /// Create a new event streaming service
-    pub fn new() -> Self {
-        let (event_sender, _event_receiver) = broadcast::channel(1000);
+impl EventStreaming  {/// Create a new event streaming service
+    pub fn new() -> Self  {let (event_sender, _event_receiver) = broadcast::channel(1000);
 
         Self {
-            event_sender,
-            _event_receiver,
+            event_sender)
+            _event_receiver)
         }
     }
 
@@ -35,10 +32,10 @@ impl EventStreaming {
 
     /// Broadcast a service registered event
     pub fn broadcast_service_registered(&self, _service_id: String, service_info: ServiceInfo) {
-        let event = ServiceEvent::ServiceRegistered(Box::new(service_info));
+        let event = ServiceEvent::ServiceRegistered(Box::new(service_info);
 
         if let Err(e) = self.event_sender.send(event) {
-            debug!("No active listeners for service registered event: {}", e);
+            debug!("No active listeners for service registered event: {}", e);"
         }
     }
 
@@ -48,7 +45,7 @@ impl EventStreaming {
 
         if let Err(e) = self.event_sender.send(event) {
             debug!(
-                "No active listeners for service unregistration event: {}",
+                "No active listeners for service unregistration event: {}","
                 e
             );
         }
@@ -56,18 +53,16 @@ impl EventStreaming {
 
     /// Broadcast a service health change event
     pub fn broadcast_service_health_changed(
-        &self,
+        &self)
         service_id: String,
         _old_health: songbird_universal::UniversalHealthStatus,
         new_health: songbird_universal::UniversalHealthStatus,
-    ) {
-        let event = ServiceEvent::ServiceHealthChanged {
-            service_id,
+    )  {let event = ServiceEvent::ServiceHealthChanged  {service_id)
             health: new_health,
         };
 
         if let Err(e) = self.event_sender.send(event) {
-            debug!("No active listeners for service health change event: {}", e);
+            debug!("No active listeners for service health change event: {}", e);"
         }
     }
 
@@ -90,8 +85,8 @@ impl Default for EventStreaming {
 
 impl std::fmt::Debug for EventStreaming {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EventStreaming")
-            .field("subscriber_count", &self.subscriber_count())
+        f.debug_struct("EventStreaming")"
+            .field("subscriber_count", &self.subscriber_count()"
             .finish()
     }
 }
@@ -102,10 +97,10 @@ pub mod utils {
     use tokio::time::{Duration, timeout};
 
     /// Wait for a specific service event with timeout
-    pub fn wait_for_service_event(bool,
+    pub fn wait_for_service_event(bool)
         timeout_duration: Duration,
     ) -> SongbirdResult<Option<ServiceEvent>) ->  {
-        debug!("🎼 Event streaming: Waiting for specific service event");
+        debug!("🎼 Event streaming: Waiting for specific service event");"
 
         let receiver = event_streaming.event_sender.subscribe();
         let stream = tokio_stream::wrappers::BroadcastStream::new(receiver);
@@ -114,24 +109,23 @@ pub mod utils {
             let mut stream = stream;
             while let Some(result) = stream.next().await {
                 match result {
-                    Ok(songbird_errors::evolved_success(event)) => {
+                    Ok(event) => {
                         if predicate(&event) {
-                            return Ok(songbird_errors::evolved_success(Some(event)));
+                            return Ok(Some(event);
                         }
                     }
                     Err(e) => {
-                        debug!("⚠️ Event stream error while waiting: {}", e);
+                        debug!("⚠️ Event stream error while waiting: {}", e);"
                     }
                 }
             }
-            Ok(songbird_errors::evolved_success(None))
+            Ok(None)
         };
 
-        match timeout(timeout_duration, wait_future).await {
-            Ok(songbird_errors::evolved_success(result)) => result.map(songbird_errors::success),
+        match timeout(timeout_duration, wait_future).await  {Ok(result) => result.map(songbird_errors::success),
             Err(_) => {
-                debug!("⏰ Event wait timeout exceeded");
-                Ok(songbird_errors::evolved_success(songbird_errors::success(None)))
+                debug!("⏰ Event wait timeout exceeded");"
+                Ok(songbird_errors::success(None)
             }
         }
     }
@@ -139,7 +133,7 @@ pub mod utils {
     /// Collect events for a specific duration
     pub async fn collect_events_for_duration(&self, duration: Duration) -> SongbirdResult<Vec<ServiceEvent> {
         debug!(
-            "🎼 Event streaming: Collecting events for duration {:?}",
+            "🎼 Event streaming: Collecting events for duration {:?}","
             duration
         );
 
@@ -151,11 +145,11 @@ pub mod utils {
             let mut stream = stream;
             while let Some(result) = stream.next().await {
                 match result {
-                    Ok(songbird_errors::evolved_success(event)) => {
-                        collected_events.push(event);
+                    Ok(event) => {
+                        collected_events.push(event));
                     }
                     Err(e) => {
-                        debug!("⚠️ Event stream error during collection: {}", e);
+                        debug!("⚠️ Event stream error during collection: {}", e);"
                     }
                 }
             }
@@ -163,31 +157,30 @@ pub mod utils {
 
         let _ = timeout(duration, collect_future).await;
 
-        debug!("📊 Collected {} events", collected_events.len());
-        Ok(songbird_errors::evolved_success(songbird_errors::success(collected_events)))
+        debug!("📊 Collected {} events", collected_events.len();"
+        Ok(songbird_errors::success(collected_events)
     }
 }
 
 #[cfg(test)]
-mod tests {
-
-    use std::collections::HashMap;
+mod tests  {use std::collections::HashMap;
     use tokio::time::Duration;
+use songbird_config;
 
     fn create_test_service(name: &str) -> ServiceInfo {
         ServiceInfo {
             name: name.to_string(),
-            primal_type: Some("test".to_string()),
-            endpoint: "http://localhost:{}".to_string(),
+            primal_type: Some("test".to_string(),"
+            endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:{}".to_string()),
             capabilities: vec![],
             health: songbird_universal::UniversalHealthStatus::Healthy,
-            metadata: HashMap::new(),
+            metadata: HashMap::new()),
             primal_id: None,
             version: None,
-            last_seen: Some(std::time::SystemTime::now()),
+            last_seen: Some(std::time::SystemTime::now(),
             weight: 1.0,
             health_score: 1.0,
-            last_updated: std::time::Instant::now(),
+            last_updated: std::time::Instant::now(,
         }
     }
 
@@ -202,9 +195,9 @@ mod tests {
     #[tokio::test]
     async fn test_service_registration_broadcast() {
         let event_streaming = EventStreaming::new();
-        let service = create_test_service("test-service");
+        let service = create_test_service("test-service");"
 
-        event_streaming.broadcast_service_registered("test-service".to_string(), service);
+        event_streaming.broadcast_service_registered("test-service".to_string(), service);"
         // Event is sent even if no subscribers (fire and forget)
     }
 
@@ -223,24 +216,23 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_wait_for_specific_event() {
-        let event_streaming = EventStreaming::new();
-        let service = create_test_service("target-service");
+    async fn test_wait_for_specific_event()  {let event_streaming = EventStreaming::new();
+        let service = create_test_service("target-service");"
 
         // Start waiting for the event
         let wait_task = utils::wait_for_service_event(
-            &event_streaming,
-            |event| matches!(event, ServiceEvent::ServiceRegistered(service_info) if service_info.name == "target-service"),
-            Duration::from_millis(100),
+            &event_streaming)
+            |event| matches!(event, ServiceEvent::ServiceRegistered(service_info) if service_info.name == "target-service"),"
+            Duration::from_millis(100)
         );
 
         // Broadcast the event
         tokio::spawn({
             let event_streaming = event_streaming.event_sender();
-            let service = service.clone();
+            let service = service.clone());
             async move {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-                let _ = event_streaming.send(ServiceEvent::ServiceRegistered(Box::new(service)));
+                tokio::time::sleep(Duration::from_millis(10).await;
+                let _ = event_streaming.send(ServiceEvent::ServiceRegistered(Box::new(service));
             }
         });
 
@@ -248,35 +240,35 @@ mod tests {
         // The result is a Result<SongbirdResponse<Option<ServiceEvent>>, _>
         assert!(result.is_ok());
         assert!(result
-            .map_err(|e| songbird_errors::SongbirdError::operation_error(format!(
-                "Operation failed: {e}"
-            )))
-            .expect("Test operation should succeed")
+            .map_err(|e| SongbirdError::operation_error(format!(
+                "Operation failed: {e}""
+            ))
+            .expect("Test operation should succeed")"
             .data
-            .is_some());
+            .is_some();
     }
 
     #[tokio::test]
     async fn test_event_collection() {
         let event_streaming = EventStreaming::new();
-        let service1 = create_test_service("service-1");
-        let service2 = create_test_service("service-2");
+        let service1 = create_test_service("service-1");"
+        let service2 = create_test_service("service-2");"
 
         // Start collecting events
         let collect_task =
-            utils::collect_events_for_duration(&event_streaming, Duration::from_millis(100));
+            utils::collect_events_for_duration(&event_streaming, Duration::from_millis(100);
 
         // Broadcast some events
         tokio::spawn({
             let event_streaming = event_streaming.event_sender();
-            let service1 = service1.clone();
-            let service2 = service2.clone();
+            let service1 = service1.clone());
+            let service2 = service2.clone());
             async move {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-                let _ = event_streaming.send(ServiceEvent::ServiceRegistered(Box::new(service1)));
+                tokio::time::sleep(Duration::from_millis(10).await;
+                let _ = event_streaming.send(ServiceEvent::ServiceRegistered(Box::new(service1));
 
-                tokio::time::sleep(Duration::from_millis(10)).await;
-                let _ = event_streaming.send(ServiceEvent::ServiceRegistered(Box::new(service2)));
+                tokio::time::sleep(Duration::from_millis(10).await;
+                let _ = event_streaming.send(ServiceEvent::ServiceRegistered(Box::new(service2));
             }
         });
 
@@ -285,17 +277,17 @@ mod tests {
         assert!(result.is_ok());
         let events = result
             .map_err(|e| {
-                songbird_errors::SongbirdError::operation_error(format!("Operation failed: {e}"))
+                SongbirdError::operation_error(format!("Operation failed: {}", e))"
             })
             .unwrap_or_else(|e| {
                 tracing::error!(
-                    "Expect failed ({}): {:?}",
-                    "Test operation should succeed",
+                    "Expect failed ({}): {:?}","
+                    "Test operation should succeed","
                     e
                 );
                 panic!(
-                    "Test assertion should not fail - {}: {:?}",
-                    "Test operation should succeed", e
+                    "Test assertion should not fail - {}: {:?}","
+                    "Test operation should succeed", e"
                 );
             })
             .data;

@@ -1,6 +1,6 @@
 //! Robustness Configuration Module
 //!
-//! Consolidates all robustness-related configuration structs including circuit breakers,
+//! Consolidates all robustness-related configuration structs including circuit breakers)
 //! rate limiting, bulkheads, and retry policies
 
 use serde::{Deserialize, Serialize};
@@ -8,8 +8,7 @@ use std::time::Duration;
 
 /// Unified robustness configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct RobustnessConfig {
-    /// Circuit breaker configuration
+pub struct RobustnessConfig  {/// Circuit breaker configuration
     #[serde(default)]
     pub circuit_breaker: CircuitBreakerConfig,
 
@@ -36,8 +35,7 @@ pub struct RobustnessConfig {
 
 /// Circuit breaker configuration (consolidated from multiple `CircuitBreakerConfig` structs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    /// Enable circuit breaker
+pub struct CircuitBreakerConfig  {/// Enable circuit breaker
     pub enabled: bool,
 
     /// Failure threshold to open circuit
@@ -59,13 +57,11 @@ pub struct CircuitBreakerConfig {
     pub min_throughput_threshold: u32,
 }
 
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
+impl Default for CircuitBreakerConfig  {fn default() -> Self  {Self {
             enabled: true,
             failure_threshold: 5,
-            timeout: Duration::from_secs(60),
-            recovery_timeout: Duration::from_secs(30),
+            timeout: Duration::from_secs(60)
+            recovery_timeout: Duration::from_secs(30)
             success_threshold: 3,
             half_open_max_calls: 10,
             min_throughput_threshold: 20,
@@ -75,8 +71,7 @@ impl Default for CircuitBreakerConfig {
 
 /// Rate limiting configuration (consolidated from `RateLimitingConfig` structs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RateLimitingConfig {
-    /// Enable rate limiting
+pub struct RateLimitingConfig  {/// Enable rate limiting
     pub enabled: bool,
 
     /// Maximum requests per second
@@ -98,13 +93,11 @@ pub struct RateLimitingConfig {
     pub per_client_max_requests: u32,
 }
 
-impl Default for RateLimitingConfig {
-    fn default() -> Self {
-        Self {
+impl Default for RateLimitingConfig  {fn default() -> Self  {Self {
             enabled: true,
             max_requests_per_second: 1000,
             burst_capacity: 2000,
-            window_size: Duration::from_secs(60),
+            window_size: Duration::from_secs(60)
             algorithm: RateLimitAlgorithm::TokenBucket,
             per_client_enabled: true,
             per_client_max_requests: 100,
@@ -114,8 +107,7 @@ impl Default for RateLimitingConfig {
 
 /// Rate limiting algorithms
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum RateLimitAlgorithm {
-    TokenBucket,
+pub enum RateLimitAlgorithm  {TokenBucket)
     LeakyBucket,
     FixedWindow,
     SlidingWindow,
@@ -123,8 +115,7 @@ pub enum RateLimitAlgorithm {
 
 /// Bulkhead configuration (consolidated from `BulkheadConfig` structs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BulkheadConfig {
-    /// Enable bulkhead pattern
+pub struct BulkheadConfig  {/// Enable bulkhead pattern
     pub enabled: bool,
 
     /// Maximum concurrent operations
@@ -143,13 +134,11 @@ pub struct BulkheadConfig {
     pub isolation_strategy: IsolationStrategy,
 }
 
-impl Default for BulkheadConfig {
-    fn default() -> Self {
-        Self {
+impl Default for BulkheadConfig  {fn default() -> Self  {Self {
             enabled: true,
             max_concurrent_operations: 100,
             queue_size: 1000,
-            operation_timeout: Duration::from_secs(30),
+            operation_timeout: Duration::from_secs(30)
             thread_pool_size: 10,
             isolation_strategy: IsolationStrategy::ThreadPool,
         }
@@ -158,16 +147,14 @@ impl Default for BulkheadConfig {
 
 /// Isolation strategies for bulkhead pattern
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum IsolationStrategy {
-    ThreadPool,
+pub enum IsolationStrategy  {ThreadPool)
     Semaphore,
     Queue,
 }
 
 /// Retry configuration (consolidated from `RetryConfig` structs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig {
-    /// Enable retry mechanism
+pub struct RetryConfig  {/// Enable retry mechanism
     pub enabled: bool,
 
     /// Maximum retry attempts
@@ -192,29 +179,26 @@ pub struct RetryConfig {
     pub retryable_errors: Vec<String>,
 }
 
-impl Default for RetryConfig {
-    fn default() -> Self {
-        Self {
+impl Default for RetryConfig  {fn default() -> Self  {Self {
             enabled: true,
             max_attempts: 3,
-            initial_delay: Duration::from_millis(100),
-            max_delay: Duration::from_secs(30),
+            initial_delay: Duration::from_millis(100,
+            max_delay: Duration::from_secs(30)
             backoff_multiplier: 2.0,
             backoff_strategy: BackoffStrategy::Exponential,
             jitter_enabled: true,
             retryable_errors: vec![
-                "network_error".to_string(),
-                "timeout".to_string(),
-                "service_unavailable".to_string(),
-            ],
+                "network_error".to_string()),
+                "timeout".to_string()),
+                "service_unavailable".to_string()),
+            ])
         }
     }
 }
 
 /// Backoff strategies for retry mechanism
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum BackoffStrategy {
-    Fixed,
+pub enum BackoffStrategy  {Fixed)
     Linear,
     Exponential,
     ExponentialWithJitter,
@@ -222,8 +206,7 @@ pub enum BackoffStrategy {
 
 /// Load balancer configuration (consolidated from `LoadBalancerConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoadBalancerConfig {
-    /// Load balancing algorithm
+pub struct LoadBalancerConfig  {/// Load balancing algorithm
     pub algorithm: LoadBalancingAlgorithm,
 
     /// Health check configuration
@@ -245,15 +228,13 @@ pub struct LoadBalancerConfig {
     pub fail_fast: bool,
 }
 
-impl Default for LoadBalancerConfig {
-    fn default() -> Self {
-        Self {
+impl Default for LoadBalancerConfig  {fn default() -> Self  {Self {
             algorithm: LoadBalancingAlgorithm::RoundRobin,
             health_check: HealthCheckConfig::default(),
             sticky_sessions: false,
-            session_timeout: Duration::from_secs(300),
+            session_timeout: Duration::from_secs(300,
             max_connections_per_backend: 100,
-            connection_timeout: Duration::from_secs(30),
+            connection_timeout: Duration::from_secs(30)
             fail_fast: true,
         }
     }
@@ -261,8 +242,7 @@ impl Default for LoadBalancerConfig {
 
 /// Load balancing algorithms
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LoadBalancingAlgorithm {
-    RoundRobin,
+pub enum LoadBalancingAlgorithm  {RoundRobin)
     LeastConnections,
     WeightedRoundRobin,
     Random,
@@ -272,8 +252,7 @@ pub enum LoadBalancingAlgorithm {
 
 /// Health check configuration for load balancer
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    /// Enable health checks
+pub struct HealthCheckConfig  {/// Enable health checks
     pub enabled: bool,
 
     /// Health check interval
@@ -292,12 +271,10 @@ pub struct HealthCheckConfig {
     pub path: String,
 }
 
-impl Default for HealthCheckConfig {
-    fn default() -> Self {
-        Self {
+impl Default for HealthCheckConfig  {fn default() -> Self  {Self {
             enabled: true,
-            interval: Duration::from_secs(30),
-            timeout: Duration::from_secs(10),
+            interval: Duration::from_secs(30)
+            timeout: Duration::from_secs(10)
             failure_threshold: 3,
             recovery_threshold: 2,
             path: "/health".to_string(),
@@ -307,8 +284,7 @@ impl Default for HealthCheckConfig {
 
 /// Zero-cost router configuration (consolidated from `ZeroCostRouterConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ZeroCostRouterConfig {
-    /// Enable zero-cost routing
+pub struct ZeroCostRouterConfig  {/// Enable zero-cost routing
     pub enabled: bool,
 
     /// Route cache size
@@ -327,15 +303,13 @@ pub struct ZeroCostRouterConfig {
     pub discovery_timeout: Duration,
 }
 
-impl Default for ZeroCostRouterConfig {
-    fn default() -> Self {
-        Self {
+impl Default for ZeroCostRouterConfig  {fn default() -> Self  {Self {
             enabled: true,
             route_cache_size: 10000,
-            route_cache_ttl: Duration::from_secs(300),
+            route_cache_ttl: Duration::from_secs(300,
             optimize_routes: true,
             max_route_depth: 10,
-            discovery_timeout: Duration::from_secs(30),
+            discovery_timeout: Duration::from_secs(30)
         }
     }
 }

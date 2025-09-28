@@ -5,7 +5,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::SongbirdError;
 use songbird_types::errors::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
@@ -13,18 +12,16 @@ use std::time::Duration;
 
 /// Health check result
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckResult {
-    pub service_id: String,
+pub struct HealthCheckResult  {pub service_id: String,
     pub status: HealthStatus,
     pub message: Option<String>,
     pub timestamp: DateTime<Utc>,
-    pub details: HashMap<String, serde_json::Value>,
+    pub details: HashMap<String, serde_json::Value>)
 }
 
 /// Health check configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    pub interval: Duration,
+pub struct HealthCheckConfig  {pub interval: Duration,
     pub timeout: Duration,
     pub retries: u32,
     pub endpoint: Option<String>,
@@ -33,8 +30,7 @@ pub struct HealthCheckConfig {
 
 /// Health status enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Copy)]
-pub enum HealthStatus {
-    Healthy,
+pub enum HealthStatus  {Healthy)
     Degraded,
     Unhealthy,
     Unknown,
@@ -69,44 +65,37 @@ pub trait HealthMonitor: Send + Sync {
 }
 
 /// Default health monitor implementation
-pub struct DefaultHealthMonitor {
-    health_checks: HashMap<String, HealthCheckConfig>,
-    last_results: HashMap<String, HealthCheckResult>,
+pub struct DefaultHealthMonitor  {health_checks: HashMap<String, HealthCheckConfig>)
+    last_results: HashMap<String, HealthCheckResult>)
     #[allow(dead_code)]
     monitoring_active: bool,
 }
 
-impl DefaultHealthMonitor {
-    /// Create a new health check provider
+impl DefaultHealthMonitor  {/// Create a new health check provider
     #[must_use]
-    pub fn new() -> Self {
-        Self {
-            health_checks: HashMap::new(),
-            last_results: HashMap::new(),
+    pub fn new() -> Self  {Self {
+            health_checks: HashMap::new()),
+            last_results: HashMap::new()),
             monitoring_active: false,
         }
     }
 
     /// Perform HTTP health check
-    fn perform_http_check(service_id: &str, _endpoint: &str) -> HealthCheckResult {
-        HealthCheckResult {
-            service_id: service_id.to_string(),
+    fn perform_http_check(service_id: &str, _endpoint: &str) -> HealthCheckResult  {HealthCheckResult  {service_id: service_id.to_string(),
             status: HealthStatus::Healthy, // Simplified for now
-            message: Some("HTTP health check completed".to_string()),
-            timestamp: chrono::Utc::now(),
-            details: std::collections::HashMap::new(),
+            message: Some("HTTP health check completed".to_string(),"
+            timestamp: Utc::now(,
+            details: HashMap::new()),
         }
     }
 
     /// Perform basic health check
-    fn perform_basic_check(service_id: &str) -> HealthCheckResult {
-        // Basic health check - assume healthy if service is registered
-        HealthCheckResult {
-            service_id: service_id.to_string(),
+    fn perform_basic_check(service_id: &str) -> HealthCheckResult  {// Basic health check - assume healthy if service is registered
+        HealthCheckResult  {service_id: service_id.to_string()),
             status: HealthStatus::Healthy,
-            message: Some("Basic connectivity check".to_string()),
-            timestamp: Utc::now(),
-            details: HashMap::new(),
+            message: Some("Basic connectivity check".to_string(),"
+            timestamp: Utc::now(,
+            details: HashMap::new()),
         }
     }
 }
@@ -118,16 +107,14 @@ impl Default for DefaultHealthMonitor {
 }
 
 #[async_trait]
-impl HealthMonitor for DefaultHealthMonitor {
-    async fn check_health(&self, service_id: &str) -> Result<HealthCheckResult> {
-        if let Some(config) = self.health_checks.get(service_id) {
+impl HealthMonitor for DefaultHealthMonitor  {async fn check_health(&self, service_id: &str) -> Result<HealthCheckResult>  {if let Some(config) = self.health_checks.get(service_id) {
             if !config.enabled {
                 return Ok(HealthCheckResult {
                     service_id: service_id.to_string(),
                     status: HealthStatus::Unknown,
-                    message: Some("Health check disabled".to_string()),
-                    timestamp: Utc::now(),
-                    details: HashMap::new(),
+                    message: Some("Health check disabled".to_string(),"
+                    timestamp: Utc::now(,
+                    details: HashMap::new()),
                 });
             }
 
@@ -139,10 +126,7 @@ impl HealthMonitor for DefaultHealthMonitor {
 
             Ok(result)
         } else {
-            Err(SongbirdError::service(
-                service_id,
-                format!("Service {service_id} is not healthy"),
-            ))
+            Err(SongbirdError::service(service_id, format!("Service {} is not healthy", service_id))"
         }
     }
 
@@ -166,16 +150,15 @@ impl HealthMonitor for DefaultHealthMonitor {
                 }
                 Err(e) => {
                     // Log error but continue with other services
-                    tracing::warn!("Health check failed for service {}: {}", service_id, e);
+                    tracing::warn!("Health check failed for service {}: {}", service_id, e);"
                     results.insert(
-                        service_id.clone(),
-                        HealthCheckResult {
-                            service_id: service_id.clone(),
+                        service_id.clone()
+                        HealthCheckResult  {service_id: service_id.clone()
                             status: HealthStatus::Unhealthy,
-                            message: Some(format!("Health check error: {e}")),
-                            timestamp: Utc::now(),
-                            details: HashMap::new(),
-                        },
+                            message: Some(format!("Health check error: {}", e)),"
+                            timestamp: Utc::now(,
+                            details: HashMap::new()),
+                        })
                     );
                 }
             }
@@ -187,35 +170,33 @@ impl HealthMonitor for DefaultHealthMonitor {
     async fn register_service(&self, service_id: &str, _config: HealthCheckConfig) -> Result<()> {
         // Note: In a real implementation, this would need interior mutability
         // For now, this is a simplified interface
-        tracing::info!("Registered service {} for health monitoring", service_id);
-        Ok(())
+        tracing::info!("Registered service {} for health monitoring", service_id);"
+        Ok(()),
     }
 
     async fn unregister_service(&self, service_id: &str) -> Result<()> {
-        tracing::info!("Unregistered service {} from health monitoring", service_id);
-        Ok(())
+        tracing::info!("Unregistered service {} from health monitoring", service_id);"
+        Ok(()),
     }
 
     async fn start_monitoring(&self) -> Result<()> {
-        tracing::info!("Started health monitoring");
-        Ok(())
+        tracing::info!("Started health monitoring");"
+        Ok(()),
     }
 
     async fn stop_monitoring(&self) -> Result<()> {
-        tracing::info!("Stopped health monitoring");
-        Ok(())
+        tracing::info!("Stopped health monitoring");"
+        Ok(()),
     }
 
     async fn update_config(&self, service_id: &str, _config: HealthCheckConfig) -> Result<()> {
-        tracing::info!("Updated health check config for service {}", service_id);
-        Ok(())
+        tracing::info!("Updated health check config for service {}", service_id);"
+        Ok(()),
     }
 }
 
-impl Default for HealthCheckConfig {
-    fn default() -> Self {
-        Self {
-            interval: Duration::from_secs(30),
+impl Default for HealthCheckConfig  {fn default() -> Self  {Self {
+            interval: Duration::from_secs(30)
             timeout: Duration::from_secs(5),
             retries: 3,
             endpoint: None,

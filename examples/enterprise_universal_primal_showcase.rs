@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Enterprise Universal Primal Showcase
 //!
 //! **🏢 REAL-WORLD ENTERPRISE DEMONSTRATION**

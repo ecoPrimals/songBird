@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Robust Security Tests
 //!
 //! Comprehensive security test suite covering:

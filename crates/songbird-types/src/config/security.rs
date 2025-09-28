@@ -147,7 +147,7 @@ impl Default for SecurityProviderConfig {
         Self {
             name: "default".to_string(),
             endpoint: "https://localhost:8443".to_string(),
-            credentials: HashMap::new(),
+            credentials: HashMap::new()),
         }
     }
 }

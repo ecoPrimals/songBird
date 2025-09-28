@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Configuration validator tests
 
 use songbird_errors::validation::ConfigValidator;
@@ -5,7 +6,7 @@ use songbird_errors::validation::ConfigValidator;
 #[test]
 fn test_config_validator_timeout() {
     // Valid timeout
-    let result = ConfigValidator::validate_timeout(5000, "connection_timeout");
+    let result = ConfigValidator::validate_timeout(config.timeouts.request_ms, "connection_timeout");
     assert!(result.is_ok());
 
     // Timeout too short
@@ -20,7 +21,7 @@ fn test_config_validator_timeout() {
 #[test]
 fn test_config_validator_port() {
     // Valid port
-    let result = ConfigValidator::validate_port(8080, "http_port");
+    let result = ConfigValidator::validate_port(config.network.http_port, "http_port");
     assert!(result.is_ok());
 
     // Valid high port

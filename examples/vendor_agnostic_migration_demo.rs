@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🔄 Vendor Agnostic Migration Demo
 //!
 //! **DEMONSTRATION**: Complete migration from hardcoded vendor connections
@@ -6,8 +7,8 @@
 //! ## Before (Hardcoded Hell) ❌
 //! ```rust
 //! // 2^n connection complexity - each service knows all others
-//! let beardog = BearDogClient: :new("http://beardog:8443").await?;
-//! let nestgate = NestGateClient::new("http://nestgate:8080").await?;  
+//! let beardog = BearDogClient: :new("http://beardog:config.network.https_port").await?;
+//! let nestgate = NestGateClient::new("http://nestgate:config.network.http_port").await?;  
 //! let toadstool = ToadstoolClient::new("http://toadstool:8082").await?;
 //! let squirrel = SquirrelClient::new("http://squirrel:8083").await?;
 //!
@@ -110,8 +111,8 @@ async fn demonstrate_hardcoded_problems() -> SongbirdResult<()>   {
 
     // This would be the old way (commented to show the problem)
     /*
-    let beardog_client = BearDogClient::new("http://capability_security:8443").await?;
-    let nestgate_client = NestGateClient::new("http://capability_storage:8080").await?;
+    let beardog_client = BearDogClient::new("http://capability_security:config.network.https_port").await?;
+    let nestgate_client = NestGateClient::new("http://capability_storage:config.network.http_port").await?;
 
     // What happens when beardog is down?
     match beardog_client.authenticate().await   {

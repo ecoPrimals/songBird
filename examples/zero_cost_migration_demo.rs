@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 use songbird_core::zero_cost_migration::{ProductionMigration, MigrationPhase};
 // // use songbird_universal_primals  // TEMPORARILY DISABLED  // TEMPORARILY DISABLED::discovery::engine::PrimalDiscoveryEngine;
 // // use songbird_universal_primals  // TEMPORARILY DISABLED  // TEMPORARILY DISABLED::traits::{DiscoveredPrimal, DiscoveryMethod};
@@ -209,7 +210,7 @@ fn create_sample_legacy_system() -> PrimalDiscoveryEngine {
                 "authentication".to_string(),
                 "encryption".to_string(),
             ],
-            endpoint: "https://security-main.local:8443".to_string(),
+            endpoint: "https://security-main.local:config.network.https_port".to_string(),
             discovery_method: DiscoveryMethod::Filesystem,
             health_status: "healthy".to_string(),
             last_seen: chrono::Utc::now(),

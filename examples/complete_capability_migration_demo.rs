@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🎯 Complete Capability Migration Demo
 //!
 //! **DEMONSTRATES COMPLETE VENDOR HARDCODING ELIMINATION**
@@ -10,8 +11,8 @@
 //! ### ❌ OLD - Hardcoded Vendor Dependencies
 //! ```rust
 //! // Hardcoded primal names everywhere
-//! let beardog = Security PrimalClient: :new("http://beardog:8443").await?;
-//! let nestgate = Storage PrimalClient::new("http://nestgate:8080").await?;
+//! let beardog = Security PrimalClient: :new("http://beardog:config.network.https_port").await?;
+//! let nestgate = Storage PrimalClient::new("http://nestgate:config.network.http_port").await?;
 //! let toadstool = ComputePrimalClient::new("http://toadstool:8082").await?;
 //! let squirrel = AIPrimalClient::new("http://squirrel:8083").await?;
 //!

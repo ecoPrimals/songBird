@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! Agnostic Migration Demonstration
 //!
 //! This demo shows how to migrate from hardcoded primal names to capability-based

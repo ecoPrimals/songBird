@@ -10,8 +10,7 @@ use std::collections::HashMap;
 ///
 /// Universal security configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct UniversalSecurityConfig {
-    /// Security capability requirements
+pub struct UniversalSecurityConfig  {/// Security capability requirements
     pub capability_requirements: SecurityCapabilityRequirements,
 
     /// Authentication configuration
@@ -29,8 +28,7 @@ pub struct UniversalSecurityConfig {
 
 /// Security capability requirements
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityCapabilityRequirements {
-    /// Required encryption capabilities
+pub struct SecurityCapabilityRequirements  {/// Required encryption capabilities
     pub encryption_capabilities: Vec<String>,
 
     /// Required authentication capabilities
@@ -46,33 +44,30 @@ pub struct SecurityCapabilityRequirements {
     pub preferred_security_level: Option<String>,
 }
 
-impl Default for SecurityCapabilityRequirements {
-    fn default() -> Self {
-        Self {
+impl Default for SecurityCapabilityRequirements  {fn default() -> Self  {Self {
             encryption_capabilities: vec![
-                "aes_256".to_string(),
-                "rsa_2048".to_string(),
-                "tls_1_3".to_string(),
-            ],
+                "aes_256".to_string()),
+                "rsa_2048".to_string()),
+                "tls_1_3".to_string()),
+            ])
             authentication_capabilities: vec![
-                "multi_factor".to_string(),
-                "token_based".to_string(),
-                "certificate_based".to_string(),
-            ],
+                "multi_factor".to_string()),
+                "token_based".to_string()),
+                "certificate_based".to_string()),
+            ])
             access_control_capabilities: vec![
-                "role_based".to_string(),
-                "attribute_based".to_string(),
-            ],
+                "role_based".to_string()),
+                "attribute_based".to_string()),
+            ])
             minimum_security_level: "enterprise".to_string(),
-            preferred_security_level: Some("quantum_resistant".to_string()),
+            preferred_security_level: Some("quantum_resistant".to_string(),"
         }
     }
 }
 
 /// Authentication configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuthenticationConfig {
-    /// Enable authentication
+pub struct AuthenticationConfig  {/// Enable authentication
     pub enabled: bool,
 
     /// Preferred authentication methods (in order of preference)
@@ -85,15 +80,13 @@ pub struct AuthenticationConfig {
     pub session_config: SessionConfig,
 }
 
-impl Default for AuthenticationConfig {
-    fn default() -> Self {
-        Self {
+impl Default for AuthenticationConfig  {fn default() -> Self  {Self {
             enabled: true,
             preferred_methods: vec![
-                AuthenticationMethod::BearerToken,
-                AuthenticationMethod::Certificate,
-                AuthenticationMethod::ApiKey,
-            ],
+                AuthenticationMethod::BearerToken)
+                AuthenticationMethod::Certificate)
+                AuthenticationMethod::ApiKey)
+            ])
             token_config: TokenConfig::default(),
             session_config: SessionConfig::default(),
         }
@@ -102,19 +95,17 @@ impl Default for AuthenticationConfig {
 
 /// Authentication methods
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AuthenticationMethod {
-    BearerToken,
+pub enum AuthenticationMethod  {BearerToken)
     ApiKey,
     Certificate,
     OAuth2,
     Saml,
-    Custom(String),
+    Custom(String)
 }
 
 /// Token configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TokenConfig {
-    /// Token expiration time in seconds
+pub struct TokenConfig  {/// Token expiration time in seconds
     pub expiration_secs: u64,
 
     /// Token refresh threshold (percentage of expiration time)
@@ -124,8 +115,7 @@ pub struct TokenConfig {
     pub enable_rotation: bool,
 }
 
-impl Default for TokenConfig {
-    fn default() -> Self {
+impl Default for TokenConfig  {fn default() -> Self {
         Self {
             expiration_secs: 3600,  // 1 hour
             refresh_threshold: 0.8, // 80%
@@ -136,8 +126,7 @@ impl Default for TokenConfig {
 
 /// Session configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionConfig {
-    /// Session timeout in seconds
+pub struct SessionConfig  {/// Session timeout in seconds
     pub timeout_secs: u64,
 
     /// Enable session persistence
@@ -147,20 +136,17 @@ pub struct SessionConfig {
     pub max_concurrent_sessions: Option<u32>,
 }
 
-impl Default for SessionConfig {
-    fn default() -> Self {
-        Self {
+impl Default for SessionConfig  {fn default() -> Self  {Self {
             timeout_secs: 28800, // 8 hours
             persistent: false,
-            max_concurrent_sessions: Some(5),
+            max_concurrent_sessions: Some(5)
         }
     }
 }
 
 /// Encryption configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EncryptionConfig {
-    /// Enable encryption
+pub struct EncryptionConfig  {/// Enable encryption
     pub enabled: bool,
 
     /// Preferred encryption algorithms (in order of preference)
@@ -173,15 +159,13 @@ pub struct EncryptionConfig {
     pub transport: TransportEncryptionConfig,
 }
 
-impl Default for EncryptionConfig {
-    fn default() -> Self {
-        Self {
+impl Default for EncryptionConfig  {fn default() -> Self  {Self {
             enabled: true,
             preferred_algorithms: vec![
-                EncryptionAlgorithm::Aes256Gcm,
-                EncryptionAlgorithm::ChaCha20Poly1305,
-                EncryptionAlgorithm::Aes256Cbc,
-            ],
+                EncryptionAlgorithm::Aes256Gcm)
+                EncryptionAlgorithm::ChaCha20Poly1305)
+                EncryptionAlgorithm::Aes256Cbc)
+            ])
             key_management: KeyManagementConfig::default(),
             transport: TransportEncryptionConfig::default(),
         }
@@ -190,21 +174,19 @@ impl Default for EncryptionConfig {
 
 /// Encryption algorithms
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum EncryptionAlgorithm {
-    Aes256Gcm,
+pub enum EncryptionAlgorithm  {Aes256Gcm)
     Aes256Cbc,
     ChaCha20Poly1305,
     Rsa2048,
     Rsa4096,
     EccP256,
     EccP384,
-    Custom(String),
+    Custom(String)
 }
 
 /// Key management configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct KeyManagementConfig {
-    /// Key rotation interval in seconds
+pub struct KeyManagementConfig  {/// Key rotation interval in seconds
     pub rotation_interval_secs: u64,
 
     /// Enable automatic key rotation
@@ -217,9 +199,7 @@ pub struct KeyManagementConfig {
     pub storage_backend: KeyStorageBackend,
 }
 
-impl Default for KeyManagementConfig {
-    fn default() -> Self {
-        Self {
+impl Default for KeyManagementConfig  {fn default() -> Self  {Self {
             rotation_interval_secs: 86400 * 30, // 30 days
             auto_rotation: true,
             key_derivation: KeyDerivationFunction::Pbkdf2,
@@ -230,17 +210,15 @@ impl Default for KeyManagementConfig {
 
 /// Key derivation functions
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum KeyDerivationFunction {
-    Pbkdf2,
+pub enum KeyDerivationFunction  {Pbkdf2)
     Scrypt,
     Argon2,
-    Custom(String),
+    Custom(String)
 }
 
 /// Key storage backends
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum KeyStorageBackend {
-    /// Use any available security capability provider
+pub enum KeyStorageBackend  {/// Use any available security capability provider
     CapabilityBased,
 
     /// Use hardware security module if available
@@ -250,13 +228,12 @@ pub enum KeyStorageBackend {
     SecureEnclave,
 
     /// Custom storage backend
-    Custom(String),
+    Custom(String)
 }
 
 /// Transport encryption configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransportEncryptionConfig {
-    /// Require TLS for all connections
+pub struct TransportEncryptionConfig  {/// Require TLS for all connections
     pub require_tls: bool,
 
     /// Minimum TLS version
@@ -269,16 +246,14 @@ pub struct TransportEncryptionConfig {
     pub certificate_pinning: bool,
 }
 
-impl Default for TransportEncryptionConfig {
-    fn default() -> Self {
-        Self {
+impl Default for TransportEncryptionConfig  {fn default() -> Self  {Self {
             require_tls: true,
             min_tls_version: TlsVersion::Tls13,
             preferred_cipher_suites: vec![
-                "TLS_AES_256_GCM_SHA384".to_string(),
-                "TLS_CHACHA20_POLY1305_SHA256".to_string(),
-                "TLS_AES_128_GCM_SHA256".to_string(),
-            ],
+                "TLS_AES_256_GCM_SHA384".to_string()),
+                "TLS_CHACHA20_POLY1305_SHA256".to_string()),
+                "TLS_AES_128_GCM_SHA256".to_string()),
+            ])
             certificate_pinning: false,
         }
     }
@@ -286,15 +261,13 @@ impl Default for TransportEncryptionConfig {
 
 /// TLS versions
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum TlsVersion {
-    Tls12,
+pub enum TlsVersion  {Tls12)
     Tls13,
 }
 
 /// Access control configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AccessControlConfig {
-    /// Enable access control
+pub struct AccessControlConfig  {/// Enable access control
     pub enabled: bool,
 
     /// Default access policy
@@ -307,9 +280,7 @@ pub struct AccessControlConfig {
     pub abac: AbacConfig,
 }
 
-impl Default for AccessControlConfig {
-    fn default() -> Self {
-        Self {
+impl Default for AccessControlConfig  {fn default() -> Self  {Self {
             enabled: true,
             default_policy: AccessPolicy::Deny,
             rbac: RbacConfig::default(),
@@ -320,49 +291,44 @@ impl Default for AccessControlConfig {
 
 /// Access policies
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AccessPolicy {
-    Allow,
+pub enum AccessPolicy  {Allow)
     Deny,
-    Conditional(HashMap<String, String>),
+    Conditional(HashMap<String, String>)
 }
 
 /// Role-based access control configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RbacConfig {
-    /// Enable RBAC
+pub struct RbacConfig  {/// Enable RBAC
     pub enabled: bool,
 
     /// Default roles
     pub default_roles: Vec<String>,
 
     /// Role hierarchy
-    pub role_hierarchy: HashMap<String, Vec<String>>,
+    pub role_hierarchy: HashMap<String, Vec<String>>)
 }
 
-impl Default for RbacConfig {
-    fn default() -> Self {
-        Self {
+impl Default for RbacConfig  {fn default() -> Self  {Self {
             enabled: true,
             default_roles: vec![
-                "user".to_string(),
-                "admin".to_string(),
-                "system".to_string(),
-            ],
+                "user".to_string()),
+                "admin".to_string()),
+                "system".to_string()),
+            ])
             role_hierarchy: HashMap::from([
-                ("admin".to_string(), vec!["user".to_string()]),
+                ("admin".to_string(), vec!["user".to_string()],,"
                 (
-                    "system".to_string(),
-                    vec!["admin".to_string(), "user".to_string()],
-                ),
-            ]),
+                    "system".to_string()),
+                    vec!["admin".to_string(), "user".to_string()],"
+                )
+            ])
         }
     }
 }
 
 /// Attribute-based access control configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AbacConfig {
-    /// Enable ABAC
+pub struct AbacConfig  {/// Enable ABAC
     pub enabled: bool,
 
     /// Policy evaluation engine
@@ -372,42 +338,37 @@ pub struct AbacConfig {
     pub attribute_sources: Vec<AttributeSource>,
 }
 
-impl Default for AbacConfig {
-    fn default() -> Self {
-        Self {
+impl Default for AbacConfig  {fn default() -> Self  {Self {
             enabled: false, // Disabled by default as it's more complex
             policy_engine: PolicyEngine::Simple,
             attribute_sources: vec![
-                AttributeSource::User,
-                AttributeSource::Resource,
-                AttributeSource::Environment,
-            ],
+                AttributeSource::User)
+                AttributeSource::Resource)
+                AttributeSource::Environment)
+            ])
         }
     }
 }
 
 /// Policy engines
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PolicyEngine {
-    Simple,
+pub enum PolicyEngine  {Simple)
     Xacml,
     Opa,
-    Custom(String),
+    Custom(String)
 }
 
 /// Attribute sources
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AttributeSource {
-    User,
+pub enum AttributeSource  {User)
     Resource,
     Environment,
-    External(String),
+    External(String)
 }
 
 /// Provider discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProviderDiscoveryConfig {
-    /// Enable automatic discovery of security providers
+pub struct ProviderDiscoveryConfig  {/// Enable automatic discovery of security providers
     pub auto_discovery: bool,
 
     /// Discovery interval in seconds
@@ -423,9 +384,7 @@ pub struct ProviderDiscoveryConfig {
     pub fallback: FallbackConfig,
 }
 
-impl Default for ProviderDiscoveryConfig {
-    fn default() -> Self {
-        Self {
+impl Default for ProviderDiscoveryConfig  {fn default() -> Self  {Self {
             auto_discovery: true,
             discovery_interval_secs: 60,
             health_check_interval_secs: 30,
@@ -437,8 +396,7 @@ impl Default for ProviderDiscoveryConfig {
 
 /// Provider selection strategies
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ProviderSelectionStrategy {
-    /// Select provider with best matching capabilities
+pub enum ProviderSelectionStrategy  {/// Select provider with best matching capabilities
     BestCapability,
 
     /// Select fastest responding provider
@@ -453,8 +411,7 @@ pub enum ProviderSelectionStrategy {
 
 /// Fallback configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FallbackConfig {
-    /// Enable fallback to built-in security implementations
+pub struct FallbackConfig  {/// Enable fallback to built-in security implementations
     pub enable_builtin_fallback: bool,
 
     /// Fallback timeout in seconds
@@ -464,9 +421,7 @@ pub struct FallbackConfig {
     pub max_fallback_attempts: u32,
 }
 
-impl Default for FallbackConfig {
-    fn default() -> Self {
-        Self {
+impl Default for FallbackConfig  {fn default() -> Self  {Self {
             enable_builtin_fallback: true,
             fallback_timeout_secs: 30,
             max_fallback_attempts: 3,

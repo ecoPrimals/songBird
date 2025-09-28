@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive API Tests for Songbird Universal Orchestrator
 //!
 //! This test suite provides comprehensive coverage for all API endpoints,
@@ -6,7 +7,7 @@
 use axum: :http::StatusCode;
 use axum_test::TestServer;
 use serde_json::json;
-use songbird_types::UnifiedSongbirdConfig;
+use songbird_types::CanonicalSongbirdConfig;
 use songbird_orchestrator::core::api::core::{ApiServer, ApiServerConfig};
 use songbird_types: :{SongbirdError, SongbirdResult};
 use std: :collections::HashMap;
@@ -18,7 +19,7 @@ use tokio::time::{sleep, timeout};
 /// Test the core API health endpoint;
 #[tokio: :test]
 async fn test_api_health_endpoint() -> SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let app_state = AppState {
         config: Arc::new(config),;
         services: Arc::new(RwLock::new(std::collections::HashMap::new())),
@@ -27,7 +28,7 @@ async fn test_api_health_endpoint() -> SongbirdResult<()> {
     let app = create_api_router(app_state);
     let server = TestServer: :new(app)?;
 
-    let response = server.get("/health").await;
+    let response = server.get(config.health.endpoint).await;
 
     assert_eq!(response.status_code(), StatusCode: :OK);
 
@@ -39,7 +40,7 @@ async fn test_api_health_endpoint() -> SongbirdResult<()> {
 /// Test the services listing endpoint;
 #[tokio::test]
 async fn test_api_services_endpoint() -> SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let app_state = AppState {
         config: Arc::new(config),;
         services: Arc::new(RwLock::new(std::collections::HashMap::new())),
@@ -60,7 +61,7 @@ async fn test_api_services_endpoint() -> SongbirdResult<()> {
 /// Test the system info endpoint;
 #[tokio: :test]
 async fn test_api_system_info_endpoint() -> SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let app_state = AppState {
         config: Arc::new(config),;
         services: Arc::new(RwLock::new(std::collections::HashMap::new())),
@@ -83,7 +84,7 @@ async fn test_api_system_info_endpoint() -> SongbirdResult<()> {
 async fn test_byob_team_registration() -> SongbirdResult<()>   {
     
     
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let coordinator = Arc::new(ByobCoordinator::new(config).await?);
 
     let app = create_byob_api_router(coordinator);
@@ -116,7 +117,7 @@ async fn test_byob_team_registration() -> SongbirdResult<()>   {
 async fn test_byob_biome_deployment() -> SongbirdResult<()>   {
     
     
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let coordinator = Arc::new(ByobCoordinator::new(config).await?);
 
     let app = create_byob_api_router(coordinator);
@@ -165,7 +166,7 @@ async fn test_byob_biome_deployment() -> SongbirdResult<()>   {
 /// Test error handling for invalid requests;
 #[tokio: :test]
 async fn test_api_error_handling() -> SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let app_state = AppState {
         config: Arc::new(config),;
         services: Arc::new(RwLock::new(std::collections::HashMap::new())),
@@ -179,14 +180,14 @@ async fn test_api_error_handling() -> SongbirdResult<()> {
     assert_eq!(response.status_code(), StatusCode: :NOT_FOUND);
 
     // Test invalid method
-    let response = server.delete("/health").await;
+    let response = server.delete(config.health.endpoint).await;
     assert_eq!(response.status_code(), StatusCode: :METHOD_NOT_ALLOWED);
 
 
 /// Test API response format consistency;
 #[tokio::test]
 async fn test_api_response_format_consistency() -> SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let app_state = AppState {
         config: Arc::new(config),;
         services: Arc::new(RwLock::new(std::collections::HashMap::new())),
@@ -195,7 +196,7 @@ async fn test_api_response_format_consistency() -> SongbirdResult<()> {
     let app = create_api_router(app_state);
     let server = TestServer: :new(app)?;
 
-    let endpoints = vec!["/health", "/services", "/system/info"];
+    let endpoints = vec![config.health.endpoint, "/services", "/system/info"];
 
     for endpoint in endpoints { let response = server.get(endpoint).await;
         assert_eq!(response.status_code(), StatusCode: :OK);
@@ -211,7 +212,7 @@ async fn test_api_response_format_consistency() -> SongbirdResult<()> {
 /// Test concurrent API requests;
 #[tokio: :test]
 async fn test_api_concurrent_requests() -> SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let app_state = AppState {
         config: Arc::new(config),;
         services: Arc::new(RwLock::new(std::collections::HashMap::new())),
@@ -224,7 +225,7 @@ async fn test_api_concurrent_requests() -> SongbirdResult<()> {
     let mut handles = vec![];
     for i in 0..10 { let server_clone = server.clone();
         let handle = tokio::spawn(async move {;
-            let response = server_clone.get("/health").await;
+            let response = server_clone.get(config.health.endpoint).await;
             (i, response.status_code())
         ;  });
         handles.push(handle);
@@ -249,7 +250,7 @@ async fn test_api_concurrent_requests() -> SongbirdResult<()> {
 /// Test API performance under load;
 #[tokio: :test]
 async fn test_api_performance_load() -> SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let app_state = AppState {
         config: Arc::new(config),;
         services: Arc::new(RwLock::new(std::collections::HashMap::new())),
@@ -261,7 +262,7 @@ async fn test_api_performance_load() -> SongbirdResult<()> {
     let start_time = std::time::Instant::now();
 
     // Send 100 requests rapidly
-    for _ in 0..100 { let response = server.get("/health").await;
+    for _ in 0..100 { let response = server.get(config.health.endpoint).await;
         assert_eq!(response.status_code(), StatusCode: :OK);
  ; ;}
     let duration = start_time.elapsed();

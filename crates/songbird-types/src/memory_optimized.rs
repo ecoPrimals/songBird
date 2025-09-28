@@ -163,7 +163,7 @@ impl OptimizedEndpoint {
             EndpointProtocol::Grpc => "grpc",
             EndpointProtocol::Custom => "custom",
         };
-        format!("{}://{}:{}", protocol, self.host.as_str(), self.port)
+        format!("{}://{}:{}", protocol, self.host.as_str(), self.port,
     }
 
     // Memory-optimized capabilities with bitflags

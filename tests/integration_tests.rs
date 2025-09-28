@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive integration tests for Songbird
 //!
 //! These tests verify that all components work together correctly

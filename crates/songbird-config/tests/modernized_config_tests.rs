@@ -11,10 +11,10 @@ mod config_tests {
     fn test_default_constants() {
         // Test that default constants are properly defined
         assert!(!DEFAULT_CONFIG_PATH.is_empty());
-        assert!(DEFAULT_CONFIG_PATH.contains("songbird"));
+        assert!(DEFAULT_CONFIG_PATH.contains("songbird");"
 
         let path = std::path::Path::new(DEFAULT_CONFIG_PATH);
-        assert!(path.extension().is_some());
+        assert!(path.extension().is_some();
     }
 
     #[test]
@@ -25,12 +25,12 @@ mod config_tests {
         // Test that endpoints are properly generated
         let songbird_endpoint = EnvironmentConfig::songbird_endpoint();
         assert!(!songbird_endpoint.is_empty());
-        assert!(songbird_endpoint.starts_with("http"));
+        assert!(songbird_endpoint.starts_with("http");"
 
         let endpoints = EnvironmentConfig::get_all_endpoints();
-        assert!(endpoints.contains_key("storage"));
-        assert!(endpoints.contains_key("compute"));
-        assert!(endpoints.contains_key("orchestration"));
-        assert!(endpoints.contains_key("ai"));
+        assert!(endpoints.contains_key("storage");"
+        assert!(endpoints.contains_key("compute");"
+        assert!(endpoints.contains_key("orchestration");"
+        assert!(endpoints.contains_key("ai");"
     }
 }

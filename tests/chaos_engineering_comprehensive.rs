@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Chaos Engineering Tests
 //!
 //! This test suite implements advanced chaos engineering patterns to validate

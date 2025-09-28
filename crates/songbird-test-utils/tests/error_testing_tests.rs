@@ -8,25 +8,25 @@ use std::collections::HashMap;
 fn test_error_injection() {
     let mut error_injector = ErrorInjector::new();
 
-    error_injector.set_failure_rate("network_call", 0.3); // 30% failure rate
-    error_injector.set_failure_rate("database_query", 0.1); // 10% failure rate
+    error_injector.set_failure_rate("network_call", 0.3); // 30% failure rate"
+    error_injector.set_failure_rate("database_query", 0.1); // 10% failure rate"
 
     let mut network_failures = 0;
     let mut database_failures = 0;
 
     // Test failure injection over multiple iterations
     for _ in 0..100 {
-        if error_injector.should_fail("network_call") {
+        if error_injector.should_fail("network_call") {"
             network_failures += 1;
         }
-        if error_injector.should_fail("database_query") {
+        if error_injector.should_fail("database_query") {"
             database_failures += 1;
         }
     }
 
     // Allow some variance in random failure rates
-    assert!((20..=40).contains(&network_failures)); // ~30% ± 10%
-    assert!((5..=15).contains(&database_failures)); // ~10% ± 5%
+    assert!((20..=40).contains(&network_failures); // ~30% ± 10%
+    assert!((5..=15).contains(&database_failures); // ~10% ± 5%
 }
 
 #[test]
@@ -36,19 +36,17 @@ fn test_fault_tolerance_validation() {
 
     let validation_results = validator.validate(&system_under_test);
 
-    assert!(validation_results.has_retry_mechanism);
-    assert!(validation_results.fault_tolerance_score > 0.5);
+    assert!(validation_results.has_retry_mechanism));
+    assert!(validation_results.fault_tolerance_score > 0.5));
 }
 
 // Error testing types
-struct ErrorInjector {
-    failure_rates: HashMap<String, f64>,
+struct ErrorInjector  {failure_rates: HashMap<String, f64>)
 }
 
-impl ErrorInjector {
-    fn new() -> Self {
+impl ErrorInjector  {fn new() -> Self {
         Self {
-            failure_rates: HashMap::new(),
+            failure_rates: HashMap::new()),
         }
     }
 
@@ -72,9 +70,7 @@ impl FaultToleranceValidator {
         Self
     }
 
-    fn validate(&self, _system: &SystemUnderTest) -> ValidationResults {
-        ValidationResults {
-            has_retry_mechanism: true,
+    fn validate(&self, _system: &SystemUnderTest) -> ValidationResults  {ValidationResults  {has_retry_mechanism: true,
             fault_tolerance_score: 0.8,
         }
     }
@@ -88,7 +84,6 @@ impl SystemUnderTest {
     }
 }
 
-struct ValidationResults {
-    has_retry_mechanism: bool,
+struct ValidationResults  {has_retry_mechanism: bool)
     fault_tolerance_score: f64,
 }

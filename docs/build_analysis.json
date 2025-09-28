@@ -1,0 +1,69 @@
+{
+  "total_crates": 13,
+  "compiling_crates": 4,
+  "failing_crates": 9,
+  "issues_by_type": {
+    "unused_imports": 5,
+    "E0765": 1
+  },
+  "issues_by_crate": {
+    "songbird-types": 5,
+    "songbird-config": 1
+  },
+  "issues": [
+    {
+      "crate": "songbird-types",
+      "file": "crates/songbird-types/src/unified_constants.rs",
+      "line": 16,
+      "type": "unused_imports",
+      "message": "unused import: `std::collections::HashMap`",
+      "severity": "WARNING",
+      "category": "unused"
+    },
+    {
+      "crate": "songbird-types",
+      "file": "crates/songbird-types/src/unified_constants.rs",
+      "line": 199,
+      "type": "unused_imports",
+      "message": "unused import: `super::timeouts::*`",
+      "severity": "WARNING",
+      "category": "unused"
+    },
+    {
+      "crate": "songbird-types",
+      "file": "crates/songbird-types/src/unified_constants.rs",
+      "line": 223,
+      "type": "unused_imports",
+      "message": "unused import: `super::timeouts::*`",
+      "severity": "WARNING",
+      "category": "unused"
+    },
+    {
+      "crate": "songbird-types",
+      "file": "crates/songbird-types/src/unified_constants.rs",
+      "line": 274,
+      "type": "unused_imports",
+      "message": "unused import: `super::timeouts::*`",
+      "severity": "WARNING",
+      "category": "unused"
+    },
+    {
+      "crate": "songbird-types",
+      "file": "crates/songbird-types/src/unified_constants.rs",
+      "line": 289,
+      "type": "unused_imports",
+      "message": "unused import: `super::timeouts::*`",
+      "severity": "WARNING",
+      "category": "unused"
+    },
+    {
+      "crate": "songbird-config",
+      "file": "crates/songbird-config/src/config/paths.rs",
+      "line": 514,
+      "type": "E0765",
+      "message": "unterminated double quote string",
+      "severity": "ERROR",
+      "category": "syntax"
+    }
+  ]
+}

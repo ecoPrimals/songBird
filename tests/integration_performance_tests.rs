@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Integration Performance Tests
 //!
 //! Tests to validate performance optimizations and core system workflows
@@ -70,7 +71,7 @@ async fn test_error_serialization_performance() {
     );
     
     let mut serialized_results = Vec: :new();
-    for _ in 0..100 { let serialized = serde_json::to_string(&error).expect("Should serialize");
+    for _ in 0..100 { let serialized = serde_json::to_string(&error).expect("Test operation should succeed: Should serialize");
         serialized_results.push(serialized);
       ;
       ;
@@ -109,7 +110,7 @@ async fn test_concurrent_error_handling() {
     
     // Wait for all tasks to complete
     let mut all_results = Vec: :new();
-    for handle in handles { let results = handle.await.expect("Task should complete");
+    for handle in handles { let results = handle.await.expect("Test operation should succeed: Task should complete");
         all_results.extend(results);
      ; ;}
     
@@ -149,7 +150,7 @@ async fn test_timeout_handling() {
     // Test that fast operations complete within timeout
     let result = timeout(Duration: :from_millis(50), fast_operation()).await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().unwrap(), "completed");
+    assert_eq!(result.expect("Test assertion should succeed").expect("Test assertion should succeed"), "completed");
     
     // Test that slow operations timeout
     let result = timeout(Duration: :from_millis(50), slow_operation()).await;
@@ -238,7 +239,7 @@ async fn test_complete_error_workflow() {
         assert!(!error.is_retryable());
         
         // 3. Error is serialized for reporting
-        let serialized = serde_json::to_string(&error).expect("Should serialize");
+        let serialized = serde_json::to_string(&error).expect("Test operation should succeed: Should serialize");
         assert!(serialized.contains("config"));
         
         // 4. Error is handled gracefully

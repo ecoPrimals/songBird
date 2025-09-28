@@ -5,18 +5,19 @@
 
 use std::env;
 use std::time::Duration;
+use songbird_types::unified_constants::*;
 
 /// Default configuration file path
 pub const DEFAULT_CONFIG_PATH: &str = "songbird.toml";
 
-/// IPv4 localhost address constant
-pub const LOCALHOST_IPV4: &str = "127.0.0.1";
+/// IPv4 songbird_config::constants::network::DEFAULT_HOST address constant
+pub const LOCALHOST_IPV4: &str = &songbird_config::constants::network::DEFAULT_HOST;
 
 /// Default bind address constant
-pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
+// MIGRATED: Use songbird_types::unified_constants::network::DEFAULT_BIND_ADDRESS instead
 
-/// Default localhost constant
-pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
+/// Default songbird_config::constants::network::DEFAULT_HOST constant
+// MIGRATED: Use songbird_types::unified_constants::network::DEFAULT_LOCALHOST instead
 
 /// Get bind address from environment or calculate from system capabilities
 pub fn get_bind_address() -> String {
@@ -28,7 +29,7 @@ pub fn get_bind_address() -> String {
         {
             "0.0.0.0".to_string() // Container/production environment
         } else {
-            "127.0.0.1".to_string() // Development/local environment
+            &songbird_config::constants::network::DEFAULT_HOST.to_string() // Development/local environment
         }
     })
 }
@@ -37,7 +38,7 @@ pub fn get_bind_address() -> String {
 pub fn get_port_range_start() -> u16 {
     env::var("SONGBIRD_PORT_START")
         .ok()
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse().ok()
         .unwrap_or_else(|| {
             // Calculate based on environment and user permissions
             if env::var("SONGBIRD_ALLOW_PRIVILEGED_PORTS").is_ok() {
@@ -52,7 +53,7 @@ pub fn get_port_range_start() -> u16 {
 pub fn get_port_range_end() -> u16 {
     env::var("SONGBIRD_PORT_END")
         .ok()
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse().ok()
         .unwrap_or_else(|| {
             let start = get_port_range_start();
             start + get_port_range_size()
@@ -60,9 +61,7 @@ pub fn get_port_range_end() -> u16 {
 }
 
 /// Calculate environment-specific port offset
-fn get_environment_offset() -> u16 {
-    match env::var("SONGBIRD_ENV").as_deref() {
-        Ok("production") => 0,
+fn get_environment_offset() -> u16  {match env::var("SONGBIRD_ENV").as_deref()  {Ok("production") => 0,
         Ok("staging") => 100,
         Ok("testing") => 200,
         Ok("development") => 300,
@@ -77,12 +76,12 @@ fn get_environment_offset() -> u16 {
 fn get_port_range_size() -> u16 {
     env::var("SONGBIRD_PORT_RANGE_SIZE")
         .ok()
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse().ok()
         .unwrap_or_else(|| {
             // Calculate based on enabled services and expected scale
             let base_size = 1000;
             let service_multiplier = get_expected_service_count();
-            (base_size + service_multiplier * 10).min(65535 - get_port_range_start())
+            (base_size + service_multiplier * 10).min(65535 - get_port_range_start()
         })
 }
 
@@ -90,11 +89,11 @@ fn get_port_range_size() -> u16 {
 fn calculate_user_port_offset() -> u16 {
     // Use user ID hash for deterministic but unique offset
     let user = env::var("USER")
-        .or_else(|_| env::var("USERNAME"))
+        .or_else(|_| env::var("USERNAME")
         .unwrap_or_else(|_| "default".to_string());
     let hash = user
         .bytes()
-        .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32));
+        .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32);
     (hash % 500) as u16 // Limit to reasonable range
 }
 
@@ -102,7 +101,7 @@ fn calculate_user_port_offset() -> u16 {
 fn get_expected_service_count() -> u16 {
     env::var("SONGBIRD_EXPECTED_SERVICES")
         .ok()
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse().ok()
         .unwrap_or_else(|| {
             // Calculate based on enabled primals and features
             let mut count = 1; // Base Songbird service
@@ -134,10 +133,9 @@ fn get_expected_service_count() -> u16 {
 }
 
 /// Get connection timeout from environment or calculate based on network conditions
-pub fn get_connection_timeout_ms() -> u64 {
-    env::var("SONGBIRD_CONNECTION_TIMEOUT_MS")
+pub fn get_connection_timeout_ms() -> u64  {env::var("SONGBIRD_CONNECTION_TIMEOUT_MS")
         .ok()
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse().ok()
         .unwrap_or_else(|| {
             match env::var("SONGBIRD_ENV").as_deref() {
                 Ok("production") => 30000,  // 30 seconds for production
@@ -166,9 +164,7 @@ fn calculate_network_based_timeout() -> u64 {
 // now using universal implementation that works with any primal name
 
 /// Get port offset for specific primal types
-fn get_primal_port_offset(primal_type: &str) -> u16 {
-    match primal_type.to_lowercase().as_str() {
-        "beardog" => 10,
+fn get_primal_port_offset(primal_type: &str) -> u16  {match primal_type.to_lowercase().as_str()  {"beardog" => 10,
         "nestgate" => 20,
         "toadstool" => 30,
         "squirrel" => 40,
@@ -180,22 +176,20 @@ fn get_primal_port_offset(primal_type: &str) -> u16 {
             // Calculate deterministic offset from name
             let hash = primal_type
                 .bytes()
-                .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32));
+                .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32);
             100 + (hash % 900) as u16 // Offset from base + 100
         }
     }
 }
 
 /// Get log level from environment or default
-pub fn get_log_level() -> String {
-    env::var("SONGBIRD_LOG_LEVEL")
-        .or_else(|_| env::var("LOG_LEVEL"))
-        .or_else(|_| env::var("RUST_LOG"))
-        .unwrap_or_else(|_| {
-            match env::var("SONGBIRD_ENV").as_deref() {
-                Ok("production") => "warn".to_string(),
-                Ok("staging") => "info".to_string(),
-                Ok("testing") => "debug".to_string(),
+pub fn get_log_level() -> String  {env::var("SONGBIRD_LOG_LEVEL")
+        .or_else(|_| env::var("LOG_LEVEL")
+        .or_else(|_| env::var("RUST_LOG")
+        .unwrap_or_else(|_|  {match env::var("SONGBIRD_ENV").as_deref() {
+                Ok("production") => "warn".to_string()),
+                Ok("staging") => "info".to_string()),
+                Ok("testing") => "debug".to_string()),
                 _ => "debug".to_string(), // Development default
             }
         })
@@ -211,12 +205,10 @@ pub const DEFAULT_EVALUATION_TIMEOUT: Duration = Duration::from_secs(30);
 pub const DEFAULT_METRICS_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Get maximum connections allowed
-pub fn get_max_connections() -> usize {
-    env::var("SONGBIRD_MAX_CONNECTIONS")
+pub fn get_max_connections() -> usize  {env::var("SONGBIRD_MAX_CONNECTIONS")
         .ok()
-        .and_then(|c| c.parse().ok())
-        .unwrap_or_else(|| {
-            match env::var("SONGBIRD_ENV").as_deref() {
+        .and_then(|c| c.parse().ok()
+        .unwrap_or_else(||  {match env::var("SONGBIRD_ENV").as_deref() {
                 Ok("production") => 10000,
                 Ok("staging") => 5000,
                 Ok("testing") => 1000,
@@ -229,22 +221,20 @@ pub fn get_max_connections() -> usize {
 pub fn get_worker_threads() -> usize {
     env::var("SONGBIRD_WORKER_THREADS")
         .ok()
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse().ok()
         .unwrap_or_else(|| {
             // Use CPU count or container limits
             std::thread::available_parallelism()
-                .map(|n| n.get())
+                .map(|n| n.get()
                 .unwrap_or(4) // Fallback to 4 threads
         })
 }
 
 /// Get buffer pool size based on available memory
-pub fn get_buffer_pool_size() -> usize {
-    env::var("SONGBIRD_BUFFER_POOL_SIZE")
+pub fn get_buffer_pool_size() -> usize  {env::var("SONGBIRD_BUFFER_POOL_SIZE")
         .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or_else(|| {
-            // Calculate based on available memory
+        .and_then(|s| s.parse().ok()
+        .unwrap_or_else(||  {// Calculate based on available memory
             let base_size = match env::var("SONGBIRD_ENV").as_deref() {
                 Ok("production") => 10000,
                 Ok("staging") => 5000,
@@ -270,7 +260,7 @@ pub fn get_buffer_pool_size() -> usize {
 pub fn get_batch_size() -> usize {
     env::var("SONGBIRD_BATCH_SIZE")
         .ok()
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse().ok()
         .unwrap_or_else(|| {
             // Calculate optimal batch size based on system characteristics
             let cpu_count = get_worker_threads();
@@ -285,12 +275,10 @@ pub fn get_batch_size() -> usize {
 }
 
 /// Check if zero-copy optimizations should be enabled
-pub fn enable_zero_copy() -> bool {
-    env::var("SONGBIRD_ENABLE_ZERO_COPY")
+pub fn enable_zero_copy() -> bool  {env::var("SONGBIRD_ENABLE_ZERO_COPY")
         .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or_else(|| {
-            // Enable zero-copy in production and for high-performance environments
+        .and_then(|s| s.parse().ok()
+        .unwrap_or_else(||  {// Enable zero-copy in production and for high-performance environments
             match env::var("SONGBIRD_ENV").as_deref() {
                 Ok("production") => true,
                 Ok("staging") => true,
@@ -298,7 +286,7 @@ pub fn enable_zero_copy() -> bool {
                     // Enable if system has sufficient memory
                     env::var("MEMORY_LIMIT")
                         .ok()
-                        .and_then(|s| s.parse::<u64>().ok())
+                        .and_then(|s| s.parse::<u64>().ok()
                         .map(|mb| mb > 2048) // Enable if > 2GB memory
                         .unwrap_or(true) // Default to enabled
                 }
@@ -329,12 +317,12 @@ pub fn get_common_primal_ports() -> Vec<u16> {
 
             ports
                 .into_iter()
-                .map(|p| p.to_string())
+                .map(|p| p.to_string()),
                 .collect::<Vec<_>>()
                 .join(",")
         })
         .split(',')
-        .filter_map(|s| s.trim().parse().ok())
+        .filter_map(|s| s.trim().parse().ok()
         .collect()
 }
 
@@ -344,13 +332,13 @@ pub fn get_log_dir() -> String {
         // Use platform-appropriate log directory
         if cfg!(windows) {
             format!(
-                "{}\\AppData\\Local\\Songbird\\logs",
-                env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string())
+                "{}\\AppData\\Local\\Songbird\\logs")
+                env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string()),
             )
         } else {
             format!(
-                "{}/.local/share/songbird/logs",
-                env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+                "{}/.local/share/songbird/logs")
+                env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
             )
         }
     })
@@ -362,13 +350,13 @@ pub fn get_cache_dir() -> String {
         // Use platform-appropriate cache directory
         if cfg!(windows) {
             format!(
-                "{}\\AppData\\Local\\Songbird\\cache",
-                env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string())
+                "{}\\AppData\\Local\\Songbird\\cache")
+                env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string()),
             )
         } else {
             format!(
-                "{}/.cache/songbird",
-                env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+                "{}/.cache/songbird")
+                env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
             )
         }
     })
@@ -380,13 +368,13 @@ pub fn get_data_dir() -> String {
         // Use platform-appropriate data directory
         if cfg!(windows) {
             format!(
-                "{}\\AppData\\Roaming\\Songbird",
-                env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string())
+                "{}\\AppData\\Roaming\\Songbird")
+                env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string()),
             )
         } else {
             format!(
-                "{}/.local/share/songbird",
-                env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+                "{}/.local/share/songbird")
+                env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
             )
         }
     })
@@ -398,13 +386,13 @@ pub fn get_config_dir() -> String {
         // Use platform-appropriate config directory
         if cfg!(windows) {
             format!(
-                "{}\\AppData\\Roaming\\Songbird\\config",
-                env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string())
+                "{}\\AppData\\Roaming\\Songbird\\config")
+                env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".to_string()),
             )
         } else {
             format!(
-                "{}/.config/songbird",
-                env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+                "{}/.config/songbird")
+                env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
             )
         }
     })
@@ -413,25 +401,25 @@ pub fn get_config_dir() -> String {
 /// Get temporary directory from environment or use system default
 pub fn get_temp_dir() -> String {
     env::var("SONGBIRD_TEMP_DIR")
-        .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().to_string())
+        .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().to_string()),
 }
 
 /// Universal primal endpoint discovery - works with any primal name
 pub fn get_primal_endpoint(primal_name: &str) -> String {
     // First try primal-specific environment variable
-    let env_var = format!("{}_ENDPOINT", primal_name.to_uppercase());
+    let env_var = format!("{}_ENDPOINT", primal_name.to_uppercase();
     if let Ok(endpoint) = env::var(&env_var) {
         return endpoint;
     }
 
     // Try generic primal endpoint pattern
-    let generic_env = format!("PRIMAL_{}_ENDPOINT", primal_name.to_uppercase());
+    let generic_env = format!("PRIMAL_{}_ENDPOINT", primal_name.to_uppercase();
     if let Ok(endpoint) = env::var(&generic_env) {
         return endpoint;
     }
 
     // Calculate default endpoint based on environment and primal name
-    calculate_default_primal_endpoint(primal_name)
+    calculate_default_primal_endpoint(primal_name,
 }
 
 /// Calculate default endpoint for any primal based on naming conventions
@@ -442,13 +430,13 @@ fn calculate_default_primal_endpoint(primal_name: &str) -> String {
 
     let host = if env::var("KUBERNETES_SERVICE_HOST").is_ok() {
         // Kubernetes service discovery pattern
-        format!("{}-service", primal_name.to_lowercase())
+        format!("{}-service", primal_name.to_lowercase()
     } else if env::var("DOCKER_HOST").is_ok() || env::var("CONTAINER").is_ok() {
         // Docker container pattern
         primal_name.to_lowercase()
     } else {
         // Local development pattern
-        "127.0.0.1".to_string()
+        &songbird_config::constants::network::DEFAULT_HOST.to_string()),
     };
 
     let protocol = if should_use_tls_for_primal(primal_name) {
@@ -478,7 +466,7 @@ fn calculate_primal_port_offset(primal_name: &str) -> u16 {
 /// Determine if primal should use TLS based on environment and naming
 fn should_use_tls_for_primal(primal_name: &str) -> bool {
     // Check primal-specific TLS setting
-    let tls_env = format!("{}_USE_TLS", primal_name.to_uppercase());
+    let tls_env = format!("{}_USE_TLS", primal_name.to_uppercase();
     if let Ok(use_tls) = env::var(&tls_env) {
         return use_tls.to_lowercase() == "true";
     }
@@ -488,8 +476,7 @@ fn should_use_tls_for_primal(primal_name: &str) -> bool {
         || primal_name.to_lowercase().contains("auth")
         || primal_name.to_lowercase().contains("crypto");
 
-    match env::var("SONGBIRD_ENV").as_deref() {
-        Ok("production") => true,
+    match env::var("SONGBIRD_ENV").as_deref()  {Ok("production") => true,
         Ok("staging") => is_security_primal,
         _ => false, // Development default
     }
@@ -504,7 +491,7 @@ pub fn get_configured_primal_names() -> Vec<String> {
         if key.ends_with("_ENDPOINT") && !key.starts_with("SONGBIRD_") {
             let primal_name = key.trim_end_matches("_ENDPOINT").to_lowercase();
             if !primal_names.contains(&primal_name) {
-                primal_names.push(primal_name);
+                primal_names.push(primal_name));
             }
         }
 
@@ -517,7 +504,7 @@ pub fn get_configured_primal_names() -> Vec<String> {
                 .unwrap();
             let primal_name = primal_part.to_lowercase();
             if !primal_names.contains(&primal_name) {
-                primal_names.push(primal_name);
+                primal_names.push(primal_name));
             }
         }
     }
@@ -530,7 +517,7 @@ pub fn get_configured_primal_names() -> Vec<String> {
 pub fn get_dashboard_port() -> u16 {
     env::var("SONGBIRD_DASHBOARD_PORT")
         .ok()
-        .and_then(|p| p.parse().ok())
+        .and_then(|p| p.parse().ok()
         .unwrap_or_else(|| {
             // Calculate based on environment
             match env::var("SONGBIRD_ENV").as_deref() {
@@ -554,12 +541,12 @@ pub fn protocol_port_mappings() -> std::collections::HashMap<String, u16> {
 
 /// Get external address for network configuration
 pub fn external_address() -> String {
-    env::var("SONGBIRD_EXTERNAL_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string())
+    env::var("SONGBIRD_EXTERNAL_ADDRESS").unwrap_or_else(|_| &songbird_config::constants::network::DEFAULT_HOST.to_string()),
 }
 
 /// Get default subnet configuration
 pub fn default_subnet() -> String {
-    env::var("SONGBIRD_SUBNET").unwrap_or_else(|_| "10.0.0.0/24".to_string())
+    env::var("SONGBIRD_SUBNET").unwrap_or_else(|_| "10.0.0.0/24".to_string()),
 }
 
 /// Universal capability query - works with any capability name
@@ -634,20 +621,20 @@ pub fn node_id() -> String {
     use std::hash::{Hash, Hasher};
 
     // Create a unique node ID based on hostname and process ID
-    let hostname = gethostname::gethostname().to_string_lossy().to_string();
+    let hostname = gethostname::gethostname().to_string_lossy().to_string());
     let pid = std::process::id();
 
     let mut hasher = DefaultHasher::new();
     hostname.hash(&mut hasher);
     pid.hash(&mut hasher);
 
-    format!("songbird-{:x}", hasher.finish())
+    format!("songbird-{:x}", hasher.finish()
 }
 
 /// Get default discovery port
 pub fn default_discovery_port() -> u16 {
     env::var("SONGBIRD_DISCOVERY_PORT")
-        .and_then(|p| p.parse().map_err(|_| env::VarError::NotPresent))
+        .and_then(|p| p.parse().map_err(|_| env::VarError::NotPresent)
         .unwrap_or(5678)
 }
 
@@ -659,45 +646,46 @@ pub fn default_bind_address() -> String {
 /// Network-related constants
 pub mod network {
     use std::time::Duration;
+use songbird_config;
 
     /// Default bind address constant
-    pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
+    // MIGRATED: Use songbird_types::unified_constants::network::DEFAULT_BIND_ADDRESS instead
 
     /// Default dashboard port
     pub const DEFAULT_DASHBOARD_PORT: u16 = 3000;
 
     /// Default Toadstool endpoint
-    pub const DEFAULT_TOADSTOOL_ENDPOINT: &str = "http://localhost:8001";
+    pub const DEFAULT_TOADSTOOL_ENDPOINT: &str = "http://songbird_config::constants::network::DEFAULT_HOST:8001";
 
     /// Default Toadstool port
     pub const DEFAULT_TOADSTOOL_PORT: u16 = 8001;
 
     /// Default Squirrel endpoint
-    pub const DEFAULT_SQUIRREL_ENDPOINT: &str = "http://localhost:8002";
+    pub const DEFAULT_SQUIRREL_ENDPOINT: &str = "http://songbird_config::constants::network::DEFAULT_HOST:8002";
 
     /// Default Squirrel port
     pub const DEFAULT_SQUIRREL_PORT: u16 = 8002;
 
     /// Default NestGate endpoint
-    pub const DEFAULT_NESTGATE_ENDPOINT: &str = "http://localhost:8003";
+    pub const DEFAULT_NESTGATE_ENDPOINT: &str = "http://songbird_config::constants::network::DEFAULT_HOST:8003";
 
     /// Default NestGate port
     pub const DEFAULT_NESTGATE_PORT: u16 = 8003;
 
     /// Default BearDog endpoint
-    pub const DEFAULT_BEARDOG_ENDPOINT: &str = "http://localhost:8004";
+    pub const DEFAULT_BEARDOG_ENDPOINT: &str = "http://songbird_config::constants::network::DEFAULT_HOST:8004";
 
     /// Default BearDog port
     pub const DEFAULT_BEARDOG_PORT: u16 = 8004;
 
     /// Default connection timeout
-    pub const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_millis(30000);
+    // MIGRATED: Use songbird_types::unified_constants::timeouts::DEFAULT_CONNECTION_TIMEOUT instead
 
     /// Default retry delay
     pub const DEFAULT_RETRY_DELAY: Duration = Duration::from_millis(1000);
 
-    /// Default localhost address
-    pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
+    /// Default songbird_config::constants::network::DEFAULT_HOST address
+    // MIGRATED: Use songbird_types::unified_constants::network::DEFAULT_LOCALHOST instead
 
     /// Production bind address
     pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";

@@ -2,62 +2,52 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::SystemTime;
-use uuid::Uuid;
-
 /// Universal health event types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum UniversalHealthEvent {
-    /// Service became healthy
-    ServiceHealthy {
-        service_id: Uuid,
+pub enum UniversalHealthEvent  {/// Service became healthy
+    ServiceHealthy  {service_id: Uuid,
         service_name: String,
         message: String,
         timestamp: SystemTime,
-    },
+    })
 
     /// Service became degraded
-    ServiceDegraded {
-        service_id: Uuid,
+    ServiceDegraded  {service_id: Uuid,
         service_name: String,
         severity: songbird_config::DegradationSeverity,
         message: String,
         timestamp: SystemTime,
-    },
+    })
 
     /// Service became unhealthy
-    ServiceUnhealthy {
-        service_id: Uuid,
+    ServiceUnhealthy  {service_id: Uuid,
         service_name: String,
         reason: String,
         timestamp: SystemTime,
-    },
+    })
 
     /// Service status unknown
-    ServiceUnknown {
-        service_id: Uuid,
+    ServiceUnknown  {service_id: Uuid,
         service_name: String,
         reason: String,
         timestamp: SystemTime,
-    },
+    })
 
     /// Service registered for monitoring
-    ServiceRegistered {
-        service_id: Uuid,
+    ServiceRegistered  {service_id: Uuid,
         service_name: String,
         capabilities: Vec<String>,
         timestamp: SystemTime,
-    },
+    })
 
     /// Service unregistered from monitoring
-    ServiceUnregistered {
-        service_id: Uuid,
+    ServiceUnregistered  {service_id: Uuid,
         service_name: String,
         timestamp: SystemTime,
-    },
+    })
 
     /// Performance alert triggered
-    PerformanceAlert {
-        service_id: Uuid,
+    PerformanceAlert  {service_id: Uuid,
         service_name: String,
         alert_level: AlertLevel,
         metric_name: String,
@@ -65,29 +55,26 @@ pub enum UniversalHealthEvent {
         threshold_value: f64,
         message: String,
         timestamp: SystemTime,
-    },
+    })
 
     /// Ecosystem health changed
-    EcosystemHealthChanged {
-        previous_health_score: f64,
+    EcosystemHealthChanged  {previous_health_score: f64)
         current_health_score: f64,
         affected_services: Vec<Uuid>,
         timestamp: SystemTime,
-    },
+    })
 
     /// Monitoring system event
-    MonitoringSystemEvent {
-        event_type: String,
+    MonitoringSystemEvent  {event_type: String,
         message: String,
-        metadata: HashMap<String, String>,
+        metadata: HashMap<String, String>)
         timestamp: SystemTime,
-    },
+    })
 }
 
 /// Alert severity levels
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub enum AlertLevel {
-    Info,
+pub enum AlertLevel  {Info)
     Warning,
     Critical,
     Emergency,
@@ -129,18 +116,16 @@ impl UniversalHealthEvent {
         match self {
             UniversalHealthEvent::ServiceHealthy { .. }
             | UniversalHealthEvent::ServiceRegistered { .. } => AlertLevel::Info,
-            UniversalHealthEvent::ServiceDegraded { severity, .. } => match severity {
-                songbird_config::DegradationSeverity::Low => AlertLevel::Info,
+            UniversalHealthEvent::ServiceDegraded { severity, .. } => match severity  {songbird_config::DegradationSeverity::Low => AlertLevel::Info,
                 songbird_config::DegradationSeverity::Medium => AlertLevel::Warning,
                 songbird_config::DegradationSeverity::High => AlertLevel::Critical,
                 songbird_config::DegradationSeverity::Critical => AlertLevel::Emergency,
-            },
+            })
             UniversalHealthEvent::ServiceUnhealthy { .. }
             | UniversalHealthEvent::ServiceUnknown { .. } => AlertLevel::Critical,
             UniversalHealthEvent::ServiceUnregistered { .. } => AlertLevel::Warning,
             UniversalHealthEvent::PerformanceAlert { alert_level, .. } => alert_level.clone(),
-            UniversalHealthEvent::EcosystemHealthChanged {
-                current_health_score,
+            UniversalHealthEvent::EcosystemHealthChanged  {current_health_score)
                 ..
             } => {
                 if *current_health_score < 0.5 {
@@ -156,64 +141,55 @@ impl UniversalHealthEvent {
     }
 
     /// Get a human-readable description of the event
-    pub fn description(&self) -> String {
-        match self {
-            UniversalHealthEvent::ServiceHealthy {
+    pub fn description(&self) -> String  {match self  {UniversalHealthEvent::ServiceHealthy {
                 service_name,
-                message,
+                message)
                 ..
-            } => format!("Service {service_name} is healthy: {message}"),
-            UniversalHealthEvent::ServiceDegraded {
-                service_name,
-                message,
+            } => format!("Service {} is healthy: {message}", service_name),"
+            UniversalHealthEvent::ServiceDegraded  {service_name,
+                message)
                 ..
-            } => format!("Service {service_name} is degraded: {message}"),
-            UniversalHealthEvent::ServiceUnhealthy {
-                service_name,
-                reason,
+            } => format!("Service {} is degraded: {message}", service_name),"
+            UniversalHealthEvent::ServiceUnhealthy  {service_name,
+                reason)
                 ..
-            } => format!("Service {service_name} is unhealthy: {reason}"),
-            UniversalHealthEvent::ServiceUnknown {
-                service_name,
-                reason,
+            } => format!("Service {} is unhealthy: {reason}", service_name),"
+            UniversalHealthEvent::ServiceUnknown  {service_name,
+                reason)
                 ..
-            } => format!("Service {service_name} status unknown: {reason}"),
-            UniversalHealthEvent::ServiceRegistered {
-                service_name,
-                capabilities,
+            } => format!("Service {} status unknown: {reason}", service_name),"
+            UniversalHealthEvent::ServiceRegistered  {service_name,
+                capabilities)
                 ..
             } => format!(
-                "Service {} registered with capabilities: {}",
+                "Service {} registered with capabilities: {}","
                 service_name,
-                capabilities.join(", ")
-            ),
+                capabilities.join(", ")"
+            )
             UniversalHealthEvent::ServiceUnregistered { service_name, .. } => {
-                format!("Service {service_name} unregistered from monitoring")
+                format!("Service {} unregistered from monitoring", service_name)"
             }
-            UniversalHealthEvent::PerformanceAlert {
-                service_name,
+            UniversalHealthEvent::PerformanceAlert  {service_name,
                 metric_name,
-                current_value,
-                threshold_value,
-                message,
+                current_value)
+                threshold_value)
+                message)
                 ..
             } => format!(
-                "Performance alert for {service_name}: {metric_name} = {current_value:.2} (threshold: {threshold_value:.2}) - {message}"
-            ),
-            UniversalHealthEvent::EcosystemHealthChanged {
-                current_health_score,
-                affected_services,
+                "Performance alert for {service_name}: {metric_name} = {current_value:.2} (threshold: {threshold_value:.2}) - {message}""
+            )
+            UniversalHealthEvent::EcosystemHealthChanged  {current_health_score)
+                affected_services)
                 ..
             } => format!(
-                "Ecosystem health changed to {:.1}% ({} services affected)",
-                current_health_score * 100.0,
+                "Ecosystem health changed to {:.1}% ({} services affected)","
+                current_health_score * 100.0)
                 affected_services.len()
-            ),
-            UniversalHealthEvent::MonitoringSystemEvent {
-                event_type,
-                message,
+            )
+            UniversalHealthEvent::MonitoringSystemEvent  {event_type)
+                message)
                 ..
-            } => format!("Monitoring system {event_type}: {message}"),
+            } => format!("Monitoring system {}: {message}", event_type),"
         }
     }
 }

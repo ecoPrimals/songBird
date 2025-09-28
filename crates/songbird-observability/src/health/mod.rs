@@ -3,7 +3,7 @@
 //!
 //! Comprehensive health monitoring system
 
-use songbird_errors::SongbirdResult;
+use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 use std::sync::Arc;
 
@@ -22,16 +22,14 @@ pub trait HealthMonitor: Send + Sync {
 
 /// Health status enumeration
 #[derive(Debug, Clone, PartialEq)]
-pub enum HealthStatus {
-    Healthy,
+pub enum HealthStatus  {Healthy)
     Degraded,
     Unhealthy,
 }
 
 /// Health check result
 #[derive(Debug, Clone)]
-pub struct HealthCheckResult {
-    pub name: String,
+pub struct HealthCheckResult  {pub name: String,
     pub status: HealthStatus,
     pub message: String,
     pub response_time_ms: u64,
@@ -39,19 +37,17 @@ pub struct HealthCheckResult {
 
 /// Health status details
 #[derive(Debug, Clone)]
-pub struct HealthStatusDetails {
-    pub state: HealthState,
+pub struct HealthStatusDetails  {pub state: HealthState,
     pub score: f64,
     pub checks_passed: u32,
     pub checks_failed: u32,
     pub last_updated: std::time::SystemTime,
-    pub metadata: std::collections::HashMap<String, serde_json::Value>,
+    pub metadata: std::collections::HashMap<String, serde_json::Value>)
 }
 
 /// Health state enumeration
 #[derive(Debug, Clone)]
-pub enum HealthState {
-    Healthy,
+pub enum HealthState  {Healthy)
     Degraded,
     Unhealthy,
     Critical,
@@ -60,16 +56,14 @@ pub enum HealthState {
 }
 
 /// Health record for history
-pub struct HealthRecord {
-    pub timestamp: std::time::SystemTime,
+pub struct HealthRecord  {pub timestamp: std::time::SystemTime,
     pub status: HealthState,
     pub checks: Vec<HealthCheckResult>,
     pub response_time: Option<std::time::Duration>,
 }
 
 /// Health thresholds
-pub struct HealthThresholds {
-    pub response_time_threshold: std::time::Duration,
+pub struct HealthThresholds  {pub response_time_threshold: std::time::Duration,
     pub error_rate_threshold: f64,
     pub cpu_threshold: f64,
     pub memory_threshold: f64,
@@ -78,8 +72,7 @@ pub struct HealthThresholds {
 }
 
 /// Collection of health checks
-pub struct HealthChecker {
-    checks: Vec<Arc<dyn HealthCheckAsync + Send + Sync>>,
+pub struct HealthChecker  {checks: Vec<Arc<dyn HealthCheckAsync + Send + Sync>>)
 }
 
 impl Default for HealthChecker {
@@ -88,27 +81,27 @@ impl Default for HealthChecker {
     }
 }
 
-impl HealthChecker {
+impl HealthChecker  {#[must_use]
     pub fn new() -> Self {
-        Self { checks: Vec::new() }
+        Self {
+            checks: Vec::new(),
+        }
     }
 
     pub fn add_check(&mut self, check: Arc<dyn HealthCheckAsync + Send + Sync>) {
-        self.checks.push(check);
+        self.checks.push(check));
     }
 
-    pub async fn check_all(&self) -> Vec<HealthCheckResult> {
-        let mut results = Vec::new();
+    pub async fn check_all(&self) -> Vec<HealthCheckResult>  {let mut results = Vec::new();
 
-        for check in &self.checks {
-            match check.check().await {
+        for check in &self.checks  {match check.check().await {
                 Ok(result) => results.push(result),
                 Err(err) => results.push(HealthCheckResult {
                     name: "Unknown".to_string(),
                     status: HealthStatus::Unhealthy,
-                    message: format!("Check failed: {err:?}"),
+                    message: format!("Check failed: {}", err:?),"
                     response_time_ms: 0,
-                }),
+                })
             }
         }
 

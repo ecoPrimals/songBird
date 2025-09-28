@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Zero-Cost Bridge Manager Performance Demo
 //!
 //! **🚀 PERFORMANCE DEMONSTRATION**: Shows 70-80% latency reduction through zero-cost architecture

@@ -9,16 +9,15 @@ use std: :collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std: :sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn, error};
 use uuid: :Uuid;
 
 use songbird_types::{SongbirdResult, SongbirdError};
+use songbird_config;
 
 /// Infant Discovery Engine - starts with zero knowledge
 #[derive(Debug)]
-pub struct InfantDiscoveryEngine {
-    /// Discovered capabilities (learned, not hardcoded)
-    discovered_capabilities: Arc<RwLock<HashMap<String, Vec<CapabilityProvider>>>>,
+pub struct InfantDiscoveryEngine  {/// Discovered capabilities (learned, not hardcoded)
+    discovered_capabilities: Arc<RwLock<HashMap<String, Vec<CapabilityProvider>>>>)
     /// Network topology map (built through exploration)
     network_topology: Arc<RwLock<NetworkTopology>>,
     /// Self-identity (only thing we know about ourselves)
@@ -27,44 +26,41 @@ pub struct InfantDiscoveryEngine {
     config: InfantConfig,
     /// HTTP client for capability probing
     http_client: reqwest::Client,
- ,
- ,
+ )
+ )
 }
 
 /// Self-identity - the only thing we know for certain
 #[derive(Debug, Clone)]
-pub struct SelfIdentity {
-    /// Our unique identifier
+pub struct SelfIdentity  {/// Our unique identifier
     pub id: String,
     /// Our own capabilities (what we provide)
     pub own_capabilities: Vec<String>,
     /// Our network endpoints
     pub endpoints: Vec<String>,
- ,
- ,
+ )
+ )
 }
 
 /// Minimal configuration for infant discovery
 #[derive(Debug, Clone)]
-pub struct InfantConfig {
-    /// How long to wait for responses during discovery
+pub struct InfantConfig  {/// How long to wait for responses during discovery
     pub discovery_timeout_ms: u64,
     /// Network ranges to explore (start with local)
     pub exploration_ranges: Vec<String>,
     /// Port ranges to probe
-    pub port_ranges: Vec<(u16, u16)>,
+    pub port_ranges: Vec<(u16, u16)>)
     /// Maximum concurrent discovery operations
     pub max_concurrent_probes: usize,
     /// How often to re-explore the network
     pub re_exploration_interval_ms: u64,
- ,
- ,
+ )
+ )
 }
 
 /// A capability provider discovered through exploration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapabilityProvider {
-    /// Unique identifier (discovered, not assumed)
+pub struct CapabilityProvider  {/// Unique identifier (discovered, not assumed)
     pub id: String,
     /// Network endpoint where this provider can be reached
     pub endpoint: String,
@@ -78,31 +74,29 @@ pub struct CapabilityProvider {
     pub response_time_ms: Option<u64>,
     /// Trust score (built through interactions)
     pub trust_score: f64,
- ,
- ,
+ )
+ )
 }
 
 /// A capability discovered through probing
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveredCapability {
-    /// Capability type (e.g., "compute", "storage", "security", "ai")
+pub struct DiscoveredCapability  {/// Capability type (e.g., "compute", "storage", "security", "ai")"
     pub capability_type: String,
     /// Specific operations supported
     pub operations: Vec<String>,
     /// API version
     pub version: String,
     /// Additional metadata discovered
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: HashMap<String, serde_json::Value>)
     /// Quality metrics observed
     pub quality_metrics: QualityMetrics,
- ,
- ,
+ )
+ )
 }
 
 /// Quality metrics observed through interaction
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QualityMetrics {
-    /// Average response time in milliseconds
+pub struct QualityMetrics  {/// Average response time in milliseconds
     pub avg_response_time_ms: f64,
     /// Success rate (0.0 to 1.0)
     pub success_rate: f64,
@@ -110,29 +104,27 @@ pub struct QualityMetrics {
     pub availability_score: f64,
     /// Last measurement timestamp
     pub last_measured: chrono::DateTime<chrono::Utc>,
- ,
- ,
+ )
+ )
 }
 
 /// Network topology discovered through exploration
 #[derive(Debug, Clone, Default)]
-pub struct NetworkTopology {
-    /// All discovered endpoints
-    pub endpoints: HashMap<String, EndpointInfo>,
+pub struct NetworkTopology  {/// All discovered endpoints
+    pub endpoints: HashMap<String, EndpointInfo>)
     /// Capability to provider mapping
-    pub capability_map: HashMap<String, Vec<String>>,
+    pub capability_map: HashMap<String, Vec<String>>)
     /// Network connectivity graph
-    pub connectivity_graph: HashMap<String, Vec<String>>,
+    pub connectivity_graph: HashMap<String, Vec<String>>)
     /// Last topology update
     pub last_updated: chrono::DateTime<chrono::Utc>,
- ,
- ,
+ )
+ )
 }
 
 /// Information about a discovered endpoint
 #[derive(Debug, Clone)]
-pub struct EndpointInfo {
-    /// Socket address
+pub struct EndpointInfo  {/// Socket address
     pub address: SocketAddr,
     /// Whether endpoint is currently reachable
     pub reachable: bool,
@@ -140,25 +132,22 @@ pub struct EndpointInfo {
     pub services: Vec<String>,
     /// Last probe time
     pub last_probed: chrono::DateTime<chrono::Utc>,
- ,
- ,
+ )
+ )
 }
 
-impl Default for InfantConfig { fn default() -> Self   {
-    
-    
-        Self {
+impl Default for InfantConfig  {fn default() -> Self    {Self {
             discovery_timeout_ms: 5000,
             exploration_ranges: vec![
-                "127.0.0.0/8".to_string(),    // Start with localhost
-                "10.0.0.0/8".to_string(),     // Private networks
-                "192.168.0.0/16".to_string(), // Private networks
-            ],
+                "127.0.0.0/8".to_string(),    // Start with songbird_config::constants::network::DEFAULT_HOST"
+                "10.0.0.0/8".to_string(),     // Private networks"
+                "192.168.0.0/16".to_string(), // Private networks"
+            ])
             port_ranges: vec![
                 (8000, 8099),  // Common service ports
                 (3000, 3010),  // Development ports
                 (5000, 5010),  // Alternative service ports
-            ],
+            ])
             max_concurrent_probes: 50,
             re_exploration_interval_ms: 300_000, // 5 minutes
         ; 
@@ -167,16 +156,12 @@ impl Default for InfantConfig { fn default() -> Self   {
     }
 }
 
-impl InfantDiscoveryEngine {
-  /// Create a new infant discovery engine with zero knowledge
-    pub fn new() -> Self   {
-    
-    
-        let self_id = Uuid: :new_v4().to_string();
+impl InfantDiscoveryEngine  {/// Create a new infant discovery engine with zero knowledge
+    pub fn new() -> Self    {let self_id = Uuid: :new_v4().to_string());
         
         Self {
-            discovered_capabilities: Arc::new(RwLock::new(HashMap::new())),
-            network_topology: Arc::new(RwLock::new(NetworkTopology::default())),
+            discovered_capabilities: Arc::new(RwLock::new(HashMap::new()),
+            network_topology: Arc::new(RwLock::new(NetworkTopology::default(),
             self_identity: SelfIdentity {
                 id: self_id,
                 own_capabilities: Vec::new(), // We'll discover our own capabilities
@@ -185,9 +170,9 @@ impl InfantDiscoveryEngine {
 
   
 
-},
+})
             config: InfantConfig::default(),
-            http_client: reqwest::Client::new(),
+            http_client: reqwest::Client::new(,
         ;}
     }
 
@@ -195,7 +180,7 @@ impl InfantDiscoveryEngine {
     pub async fn begin_discovery() -> SongbirdResult<()>   {
     
     
-        info!("👶 Infant Discovery Engine starting - zero knowledge bootstrap");
+        info!("👶 Infant Discovery Engine starting - zero knowledge bootstrap");"
         
         // Step 1: Discover ourselves
         self.discover_self_identity().await?;
@@ -209,8 +194,8 @@ impl InfantDiscoveryEngine {
         // Step 4: Build capability map
         self.build_capability_map().await?;
         
-        info!("👶 Initial discovery complete - ready for capability-based interactions");
-        Ok(())
+        info!("👶 Initial discovery complete - ready for capability-based interactions");"
+        Ok(()),
     ;
 ;
 }
@@ -219,7 +204,7 @@ impl InfantDiscoveryEngine {
     async fn discover_self_identity() -> SongbirdResult<()>   {
     
     
-        debug!("🔍 Discovering self-identity...");
+        debug!("🔍 Discovering self-identity...");"
         
         // Implement self-capability discovery
         // - Scan our own process for exposed ports
@@ -227,14 +212,14 @@ impl InfantDiscoveryEngine {
         // - Determine what capabilities we provide
         
         let self_capabilities = self.discover_self_capabilities().await?;
-        debug!("🎯 Discovered {} self-capabilities", self_capabilities.len());
+        debug!("🎯 Discovered {} self-capabilities", self_capabilities.len();"
         
         // Register ourselves with the discovered capabilities
         for capability in self_capabilities {
             self.register_self_capability(capability).await?;
         }
         
-        Ok(())
+        Ok(()),
     ;
 ;
 }
@@ -243,13 +228,13 @@ impl InfantDiscoveryEngine {
     async fn explore_local_network() -> SongbirdResult<()>   {
     
     
-        debug!("🌐 Exploring local network for capability providers...");
+        debug!("🌐 Exploring local network for capability providers...");"
         
         let mut discovery_tasks = Vec: :new();
         
         for network_range in &self.config.exploration_ranges { for (start_port, end_port) in &self.config.port_ranges {
                 let task = self.scan_network_range(network_range.clone(), *start_port, *end_port);
-                discovery_tasks.push(task);
+                discovery_tasks.push(task));
              
  
 }
@@ -259,30 +244,30 @@ impl InfantDiscoveryEngine {
         let results = futures: :future::join_all(discovery_tasks).await;
         
         let mut total_discovered = 0;
-        for result in results { match result     {
+        for result in results  {match result     {
          
          
                 Ok(count) => total_discovered += count,
-                Err(e) => warn!("Network scan failed: {  ;
+                Err(e) => warn!("Network scan failed: {  ;"
       ;
-    }", e),
+    }", e),"
             }
         }
         
-        info!("🌐 Network exploration complete - discovered {  } potential endpoints", total_discovered);
-        Ok(())
+        info!("🌐 Network exploration complete - discovered {  } potential endpoints", total_discovered);"
+        Ok(()),
     ;}
 
     /// Scan a specific network range and port range
     async fn scan_network_range() -> SongbirdResult<usize>   {
     
     
-        debug!("🔍 Scanning network {} ports {}-{}", network, start_port, end_port);
+        debug!("🔍 Scanning network {} ports {}-{}", network, start_port, end_port);"
         
         // Parse CIDR network range
         let network_parts: Vec<&str> = network.split('/').collect();
         if network_parts.len() != 2 {
-            warn!("Invalid CIDR format: {}", network);
+            warn!("Invalid CIDR format: {}", network);"
             return Ok(0);
         }
         
@@ -303,13 +288,13 @@ impl InfantDiscoveryEngine {
                     
                     // Probe common ports in the range
                     for port in start_port..=end_port.min(start_port + 10) { // Limit range for performance
-                        if let Ok(addr) = format!("{}:{}", target_ip, port).parse::<std::net::SocketAddr>() {
+                        if let Ok(addr) = format!("{}:{}", target_ip, port).parse::<std::net::SocketAddr>()  {"
                             // Quick TCP connection test
                             if let Ok(_) = tokio::time::timeout(
-                                std::time::Duration::from_millis(100),
+                                std::time::Duration::from_millis(100)
                                 tokio::net::TcpStream::connect(addr)
                             ).await {
-                                debug!("📡 Found responsive endpoint: {}:{}", target_ip, port);
+                                debug!("📡 Found responsive endpoint: {}:{}", target_ip, port);"
                                 discovered_count += 1;
                             }
                         }
@@ -325,7 +310,7 @@ impl InfantDiscoveryEngine {
     async fn probe_for_capabilities() -> SongbirdResult<()>   {
     
     
-        debug!("🔍 Probing endpoints for capabilities...");
+        debug!("🔍 Probing endpoints for capabilities...");"
         
         let topology = self.network_topology.read().await;
         let endpoints: Vec<_> = topology.endpoints.keys().cloned().collect();
@@ -334,7 +319,7 @@ impl InfantDiscoveryEngine {
         let mut probe_tasks = Vec::new();
         
         for endpoint in endpoints { let task = self.probe_endpoint_capabilities(endpoint);
-            probe_tasks.push(task);
+            probe_tasks.push(task));
          ;
  ;
 }
@@ -343,38 +328,38 @@ impl InfantDiscoveryEngine {
         let results = futures: :future::join_all(probe_tasks).await;
         
         let mut capabilities_discovered = 0;
-        for result in results { match result     {
+        for result in results  {match result     {
          
          
                 Ok(count) => capabilities_discovered += count,
-                Err(e) => debug!("Capability probe failed: {  ;
+                Err(e) => debug!("Capability probe failed: {  ;"
       ;
-    }", e),
+    }", e),"
             }
         }
         
-        info!("🔍 Capability probing complete - discovered {  } capabilities", capabilities_discovered);
-        Ok(())
+        info!("🔍 Capability probing complete - discovered {  } capabilities", capabilities_discovered);"
+        Ok(()),
     ;}
 
     /// Probe a specific endpoint for capabilities
     async fn probe_endpoint_capabilities() -> SongbirdResult<usize>   {
     
     
-        debug!("🔍 Probing endpoint { ;
+        debug!("🔍 Probing endpoint { ;"
  
-} for capabilities", endpoint);
+} for capabilities", endpoint);"
         
         let mut discovered_count = 0;
         
         // Try common capability discovery endpoints
         let discovery_paths = vec![
-            "/capabilities",
-            "/api/capabilities", 
-            "/health",
-            "/info",
-            "/status",
-            "/.well-known/capabilities",
+            "/capabilities","
+            "/api/capabilities", "
+            "/health","
+            "/info","
+            "/status","
+            "/.well-known/capabilities","
         ];
         
         for path in discovery_paths {
@@ -382,7 +367,7 @@ impl InfantDiscoveryEngine {
             
             match self.http_client
                 .get(&url)
-                .timeout(std::time::Duration::from_millis(self.config.discovery_timeout_ms))
+                .timeout(std::time::Duration::from_millis(self.config.discovery_timeout_ms)
                 .send()
                 .await   {
           Ok(response) if response.status().is_success() => {
@@ -394,9 +379,9 @@ impl InfantDiscoveryEngine {
       
     }
                     }
-                },
-                Ok(_) => debug!("Endpoint {  } path {  } returned non-success", endpoint, path),
-                Err(_) => debug!("Failed to probe {  } path {  }", endpoint, path),
+                })
+                Ok(_) => debug!("Endpoint {  } path {  } returned non-success", endpoint, path),"
+                Err(_) => debug!("Failed to probe {  } path {  }", endpoint, path),"
             }
         }
         
@@ -404,13 +389,11 @@ impl InfantDiscoveryEngine {
     }
 
     /// Parse capability information from endpoint response
-    async fn parse_capability_response(&self, response_text: &str, endpoint: &str) -> SongbirdResult<Vec<DiscoveredCapability>> {
-        let mut capabilities = Vec::new();
+    async fn parse_capability_response(&self, response_text: &str, endpoint: &str) -> SongbirdResult<Vec<DiscoveredCapability>>  {let mut capabilities = Vec::new();
         
         // Try to parse as JSON first
-        if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(response_text) {
-            // Look for explicit capability declarations
-            if let Some(caps) = json_value.get("capabilities") {
+        if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(response_text)  {// Look for explicit capability declarations
+            if let Some(caps) = json_value.get("capabilities") {"
                 if let Some(caps_array) = caps.as_array() {
                     for cap in caps_array {
                         if let Some(cap_name) = cap.as_str() {
@@ -418,7 +401,7 @@ impl InfantDiscoveryEngine {
                                 name: cap_name.to_string(),
                                 endpoint: endpoint.to_string(),
                                 confidence: 0.9, // High confidence for explicit declarations
-                                metadata: std::collections::HashMap::new(),
+                                metadata: std::collections::HashMap::new()),
                             });
                         }
                     }
@@ -426,51 +409,46 @@ impl InfantDiscoveryEngine {
             }
             
             // Infer capabilities from common JSON patterns
-            if json_value.get("version").is_some() || json_value.get("health").is_some() {
-                capabilities.push(DiscoveredCapability {
-                    name: "health_monitoring".to_string(),
+            if json_value.get("version").is_some() || json_value.get("health").is_some()  {"
+                capabilities.push(DiscoveredCapability  {name: "health_monitoring".to_string()),
                     endpoint: endpoint.to_string(),
                     confidence: 0.7,
-                    metadata: std::collections::HashMap::new(),
+                    metadata: std::collections::HashMap::new()),
                 });
             }
             
-            if json_value.get("services").is_some() || json_value.get("registry").is_some() {
-                capabilities.push(DiscoveredCapability {
-                    name: "service_registry".to_string(),
+            if json_value.get("services").is_some() || json_value.get("registry").is_some()  {"
+                capabilities.push(DiscoveredCapability  {name: "service_registry".to_string()),
                     endpoint: endpoint.to_string(),
                     confidence: 0.8,
-                    metadata: std::collections::HashMap::new(),
+                    metadata: std::collections::HashMap::new()),
                 });
             }
-        } else {
-            // Use heuristics for non-JSON responses
+        } else  {// Use heuristics for non-JSON responses
             let text_lower = response_text.to_lowercase();
             
-            if text_lower.contains("docker") || text_lower.contains("container") {
+            if text_lower.contains("docker") || text_lower.contains("container")  {"
                 capabilities.push(DiscoveredCapability {
                     name: "container_orchestration".to_string(),
                     endpoint: endpoint.to_string(),
                     confidence: 0.6,
-                    metadata: std::collections::HashMap::new(),
+                    metadata: std::collections::HashMap::new()),
                 });
             }
             
-            if text_lower.contains("nginx") || text_lower.contains("apache") || text_lower.contains("server") {
-                capabilities.push(DiscoveredCapability {
-                    name: "web_server".to_string(),
+            if text_lower.contains("nginx") || text_lower.contains("apache") || text_lower.contains("server")  {"
+                capabilities.push(DiscoveredCapability  {name: "web_server".to_string()),
                     endpoint: endpoint.to_string(),
                     confidence: 0.5,
-                    metadata: std::collections::HashMap::new(),
+                    metadata: std::collections::HashMap::new()),
                 });
             }
             
-            if text_lower.contains("database") || text_lower.contains("postgres") || text_lower.contains("mysql") {
-                capabilities.push(DiscoveredCapability {
-                    name: "database".to_string(),
+            if text_lower.contains("database") || text_lower.contains("postgres") || text_lower.contains("mysql")  {"
+                capabilities.push(DiscoveredCapability  {name: "database".to_string()),
                     endpoint: endpoint.to_string(),
                     confidence: 0.7,
-                    metadata: std::collections::HashMap::new(),
+                    metadata: std::collections::HashMap::new()),
                 });
             }
         }
@@ -483,34 +461,32 @@ impl InfantDiscoveryEngine {
         &self, 
         endpoint: &str, 
         capabilities: Vec<DiscoveredCapability>
-    ) -> SongbirdResult<()> {
-        let mut discovered = self.discovered_capabilities.write().await;
+    ) -> SongbirdResult<()>  {let mut discovered = self.discovered_capabilities.write().await;
         
-        for capability in capabilities {
-            let provider = CapabilityProvider {
+        for capability in capabilities  {let provider = CapabilityProvider {
                 id: Uuid::new_v4().to_string(),
                 endpoint: endpoint.to_string(),
                 capabilities: vec![capability.clone()],
-                discovered_at: chrono::Utc::now(),
-                last_seen: chrono::Utc::now(),
+                discovered_at: chrono::Utc::now(,
+                last_seen: chrono::Utc::now(,
                 response_time_ms: None,
                 trust_score: 0.5, // Neutral starting trust
             ;};
             
             discovered
-                .entry(capability.capability_type.clone())
+                .entry(capability.capability_type.clone()
                 .or_insert_with(Vec: :new)
-                .push(provider);
+                .push(provider));
         ;}
         
-        Ok(())
+        Ok(()),
     ;}
 
     /// Build the capability map from discovered providers
     async fn build_capability_map() -> SongbirdResult<()>   {
     
     
-        debug!("🗺️ Building capability map...");
+        debug!("🗺️ Building capability map...");"
         
         let discovered = self.discovered_capabilities.read().await;
         let mut topology = self.network_topology.write().await;
@@ -518,7 +494,7 @@ impl InfantDiscoveryEngine {
         topology.capability_map.clear();
         
         for (capability_type, providers) in discovered.iter() {
-            let provider_ids: Vec<String> = providers.iter().map(|p| p.id.clone()).collect();
+            let provider_ids: Vec<String> = providers.iter().map(|p| p.id.clone().collect();
             topology.capability_map.insert(capability_type.clone(), provider_ids);
         
 
@@ -526,37 +502,34 @@ impl InfantDiscoveryEngine {
         
         topology.last_updated = chrono: :Utc::now();
         
-        info!("🗺️ Capability map built with { ; ;} capability types", topology.capability_map.len());
-        Ok(())
+        info!("🗺️ Capability map built with { ; ;} capability types", topology.capability_map.len();"
+        Ok(()),
     ;}
 
     /// Request a capability without knowing which specific primal provides it
     pub async fn request_capability() -> SongbirdResult<serde_json::Value>   {
     
     
-        info!("🎯 Requesting capability '{;
+        info!("🎯 Requesting capability '{;"
 ;
-}' operation '{}'", capability_type, operation);
+}' operation '{}'", capability_type, operation);"
         
         // Find providers for this capability
         let discovered = self.discovered_capabilities.read().await;
-        let providers = match discovered.get(capability_type)     {
-         
-         
-            Some(providers) => providers.clone(),
+        let providers = match discovered.get(capability_type)      {Some(providers) => providers.clone(),
             None => {
                 return Err(SongbirdError: :service_error(
-                    format!("No providers found for capability '{ ;
+                    format!("No providers found for capability '{}'",  ;"
      ;
-    }'", capability_type)
-                ));
+    ), capability_type)"
+                );
             }
         };
         drop(discovered);
         
         // Try providers in order of trust score
         let mut sorted_providers = providers;
-        sorted_providers.sort_by(|a, b| b.trust_score.partial_cmp(&a.trust_score).unwrap_or(std: :cmp::Ordering::Equal));
+        sorted_providers.sort_by(|a, b| b.trust_score.partial_cmp(&a.trust_score).unwrap_or(std: :cmp::Ordering::Equal);
         
         for provider in sorted_providers { match self.send_capability_request(&provider, operation, &payload).await     {
          
@@ -567,9 +540,9 @@ impl InfantDiscoveryEngine {
                     return Ok(response);
                   
       
-    },
+    })
                 Err(e) => {
-                    warn!("Provider {  } failed: {;}", provider.id, e);
+                    warn!("Provider {  } failed: {;}", provider.id, e);"
                     // Decrease trust score on failure
                     self.update_provider_trust(&provider.id, -0.1).await;
                     continue;
@@ -578,35 +551,35 @@ impl InfantDiscoveryEngine {
         }
         
         Err(SongbirdError: :service_error(
-            format!("All providers for capability '{;}' failed", capability_type)
-        ))
+            format!("All providers for capability '{}' failed", );, capability_type)"
+        )
     ;}
 
     /// Send a request to a specific capability provider
     async fn send_capability_request() -> SongbirdResult<serde_json::Value>   {
     
     
-        let request_url = format!("{;
+        let request_url = format!("{}/api/{}", ;"
 ;
-}/api/{}", provider.endpoint, operation);
+), provider.endpoint, operation);"
         
         let response = self.http_client
             .post(&request_url)
             .json(payload)
-            .timeout(std: :time::Duration::from_millis(self.config.discovery_timeout_ms))
+            .timeout(std: :time::Duration::from_millis(self.config.discovery_timeout_ms)
             .send()
             .await
-            .map_err(|e| SongbirdError::network(format!("Request failed: {;}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("Request failed: {}", );, e))?;"
             
         if response.status().is_success() {
             let body = response.text().await
-                .map_err(|e| SongbirdError: :network_error(format!("Failed to read response: {;}", e)))?;
+                .map_err(|e| SongbirdError: :network_error(format!("Failed to read response: {}", );, e))?;"
                 
             serde_json::from_str(&body)
-                .map_err(|e| SongbirdError::parsing_error(format!("Invalid JSON response: {;}", e)))
+                .map_err(|e| SongbirdError::parsing_error(format!("Invalid JSON response: {}", );, e))"
         ;} else { Err(SongbirdError: :network_error(
-                format!("Request failed with status: { ; ;}", response.status())
-            ))
+                format!("Request failed with status: {}",  ; );, response.status()"
+            )
         ;}
     }
 
@@ -643,28 +616,28 @@ impl InfantDiscoveryEngine {
         let mut capabilities = Vec::new();
         
         // Check for common capability indicators
-        if std::env::var("SONGBIRD_AI_ENABLED").is_ok() {
-            capabilities.push("ai_inference".to_string());
+        if std::env::var("SONGBIRD_AI_ENABLED").is_ok() {"
+            capabilities.push("ai_inference".to_string();"
         }
         
-        if std::env::var("SONGBIRD_STORAGE_ENABLED").is_ok() {
-            capabilities.push("storage".to_string());
+        if std::env::var("SONGBIRD_STORAGE_ENABLED").is_ok() {"
+            capabilities.push("storage".to_string();"
         }
         
-        if std::env::var("SONGBIRD_NETWORKING_ENABLED").is_ok() {
-            capabilities.push("networking".to_string());
+        if std::env::var("SONGBIRD_NETWORKING_ENABLED").is_ok() {"
+            capabilities.push("networking".to_string();"
         }
         
         // Scan for exposed ports (basic implementation)
-        if let Ok(port_str) = std::env::var("SONGBIRD_HTTP_PORT") {
+        if let Ok(port_str) = std::env::var("SONGBIRD_HTTP_PORT") {"
             if port_str.parse::<u16>().is_ok() {
-                capabilities.push("http_server".to_string());
+                capabilities.push("http_server".to_string();"
             }
         }
         
         // Default to basic orchestration capability
         if capabilities.is_empty() {
-            capabilities.push("orchestration".to_string());
+            capabilities.push("orchestration".to_string();"
         }
         
         Ok(capabilities)
@@ -672,7 +645,7 @@ impl InfantDiscoveryEngine {
 
     /// Register a self-capability with the discovery system
     async fn register_self_capability(&self, capability: String) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        debug!("📝 Registering self-capability: {}", capability);
+        debug!("📝 Registering self-capability: {}", capability);"
         
         // In a real implementation, this would:
         // - Register with the local service registry
@@ -680,9 +653,9 @@ impl InfantDiscoveryEngine {
         // - Update internal capability maps
         
         // For now, just log the registration
-        tracing::info!("✅ Self-capability registered: {}", capability);
+        tracing::info!("✅ Self-capability registered: {}", capability);"
         
-        Ok(())
+        Ok(()),
     }
 }
 
@@ -713,8 +686,8 @@ mod tests {
         let engine = InfantDiscoveryEngine::new();
         
         let result = engine.request_capability(
-            "nonexistent_capability",
-            "test_operation", 
+            "nonexistent_capability","
+            "test_operation", "
             serde_json::json!({ ;
      ;
     })

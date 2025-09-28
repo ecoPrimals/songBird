@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 use songbird_errors::SongbirdResult;
 use songbird_network::gaming::production_lan::{ProductionLanConfig, ProductionLanManager};
 use songbird_network::gaming::types::IpxAddress;

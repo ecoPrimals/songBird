@@ -31,7 +31,7 @@ impl Default for CanonicalMigrationConfig { fn default() -> Self   {
             auto_migrate: true,
             generate_reports: true,
             backup_original: true,
-            log_level: "info".to_string()
+            log_level: "info".to_string()),
         }
     }
 }
@@ -172,14 +172,14 @@ impl ConfigMigrationUtils {
         
         
             let custom = unified.custom.get_or_insert_with(HashMap::new);
-            custom.insert("legacy_tls_enabled".to_string(), tls_enabled.clone(););
+            custom.insert("legacy_tls_enabled".to_string(), tls_enabled.clone());;
 
         // Extract authentication settings using functional composition
         security_map
             .get("authentication_enabled")
             .map(|auth_enabled| {
             let custom = unified.custom.get_or_insert_with(HashMap::new);
-                custom.insert("legacy_auth_enabled".to_string(), auth_enabled.clone(););
+                custom.insert("legacy_auth_enabled".to_string(), auth_enabled.clone());;
 
     /// Migrate performance configuration section
     fn migrate_performance_config() {
@@ -216,14 +216,14 @@ impl ConfigMigrationUtils {
     pub fn generate_migration_report() -> Result<String, std::fmt::Error>   {
         use std::fmt::Write;
 
-        let mut report = "Migration Report\n================\n\n".to_string();
+        let mut report = "Migration Report\n================\n\n".to_string());
 
         writeln!(report, "- Environment: {;
 }", migrated.system.environment)?;
         writeln!(report, "- System ID: {;}", migrated.system.system_id)?;
         writeln!(report,
             "- Bind Address: {;}",
-            migrated.orchestration.network.core.bind_address)?;
+            migrated.orchestration.network.core.bind_address,?;
         writeln!(report,
             "- Worker Threads: {;}",
             migrated.performance.threading.worker_threads)?;
@@ -279,7 +279,7 @@ mod tests { use super::*;
         let migrated = ConfigMigrationUtils::migrate_from_json(old_config).unwrap();
 
         assert_eq!(migrated.system.environment, "development");
-        assert!(migrated.custom.is_some();
+        assert!(migrated.custom.is_some());
 
         let custom = migrated.custom.unwrap();
         assert!(custom.contains_key("custom_field"));

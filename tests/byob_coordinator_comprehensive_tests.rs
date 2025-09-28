@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 use songbird_core::biome::{
     BiomeMetadata, ByobCoordinator, ByobDeploymentRequest, ByobDeploymentStatus, HealthCheckSpec,
     NestGateConfig, OrchestratorConfig, PrimalCoordination, ServiceSpec, ServiceStorageSpec,
@@ -263,7 +264,7 @@ async fn test_deployment_cleanup() {
 #[tokio::test]
 async fn test_configured_port_usage() {
     let config = OrchestratorConfig {
-        default_port: Some(9090),
+        default_port: Some(config.metrics.port),
         ..Default::default()
     };
 
@@ -374,7 +375,7 @@ fn create_test_manifest() -> SongbirdBiomeManifest {
             endpoint: Some("http://web-service:{}".to_string()),
             depends_on: vec!["database".to_string()],
             health_check: Some(HealthCheckSpec {
-                endpoint: "/health".to_string(),
+                endpoint: config.health.endpoint.to_string(),
                 interval_secs: 30,
                 timeout_secs: 5,
             }),
@@ -385,10 +386,10 @@ fn create_test_manifest() -> SongbirdBiomeManifest {
     services.insert(
         "database".to_string(),
         ServiceSpec {
-            endpoint: Some("postgresql://database:5432/app".to_string()),
+            endpoint: Some("postgresql://database:config.database.postgres_port/app".to_string()),
             depends_on: vec![],
             health_check: Some(HealthCheckSpec {
-                endpoint: "/health".to_string(),
+                endpoint: config.health.endpoint.to_string(),
                 interval_secs: 60,
                 timeout_secs: 10,
             }),

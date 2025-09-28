@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Performance Validation Tests
 //!
 //! Validates that the Songbird system meets its performance requirements

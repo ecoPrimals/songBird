@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 /// # Zero-Cost Performance Verification
 ///
 /// Simple test to verify our zero-cost patterns are working correctly

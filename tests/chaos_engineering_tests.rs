@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Chaos Engineering Tests for Songbird Universal Orchestrator
 //!
 //! This test suite validates system resilience under various failure scenarios:

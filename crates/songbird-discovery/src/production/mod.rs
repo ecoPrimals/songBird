@@ -5,8 +5,8 @@
 
 pub mod real_service_discovery;
 
-pub use real_service_discovery: :{ /// Production, Production,
-    /// ProductionDiscoveryConfig, ProductionDiscoveryConfig,
+pub use real_service_discovery: : {  /// Production, Production,
+    /// ProductionDiscoveryConfig, ProductionDiscoveryConfig)
     /// `RegisteredService`, RegisteredService,
-    /// HealthRecord, HealthRecord,
+    /// HealthRecord, HealthRecord)
     ServiceHealthStatus};

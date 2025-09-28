@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! End-to-End Integration Tests for Songbird Universal Orchestrator
 //!
 //! These tests validate complete user workflows and cross-component integration:

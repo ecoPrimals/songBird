@@ -4,8 +4,7 @@ use songbird_config::EnvironmentConfig;
 
 /// Configuration for Songbird Discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongbirdDiscoveryConfig {
-    pub node_id: Option<String>,
+pub struct SongbirdDiscoveryConfig  {pub node_id: Option<String>,
     pub node_type: NodeType,
     pub institution: Option<String>,
     pub federation_enabled: bool,
@@ -23,8 +22,7 @@ pub struct SongbirdDiscoveryConfig {
 
 /// Network configuration for federation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkConfig {
-    pub multicast_address: String,
+pub struct NetworkConfig  {pub multicast_address: String,
     pub federation_port: u16,
     pub service_port: u16,
     pub bind_address: String,
@@ -37,8 +35,7 @@ pub struct NetworkConfig {
 
 /// Resource monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MonitoringConfig {
-    pub resource_update_interval_secs: u64,
+pub struct MonitoringConfig  {pub resource_update_interval_secs: u64,
     pub network_stats_window_secs: u64,
     pub storage_stats_window_secs: u64,
     pub process_scan_enabled: bool,
@@ -48,8 +45,7 @@ pub struct MonitoringConfig {
 
 /// Trust calculation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrustConfig {
-    pub institutional_base_score: u32,
+pub struct TrustConfig  {pub institutional_base_score: u32,
     pub edu_domain_bonus: u32,
     pub gov_domain_bonus: u32,
     pub reputation_weight: f64,
@@ -61,8 +57,7 @@ pub struct TrustConfig {
 
 /// Trust level thresholds
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrustThresholds {
-    pub basic: u32,
+pub struct TrustThresholds  {pub basic: u32,
     pub verified: u32,
     pub institutional: u32,
     pub consortium: u32,
@@ -70,8 +65,7 @@ pub struct TrustThresholds {
 
 /// Interaction result penalties/bonuses
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InteractionPenalties {
-    pub success_bonus: f64,
+pub struct InteractionPenalties  {pub success_bonus: f64,
     pub slow_response_penalty: f64,
     pub failure_penalty: f64,
     pub timeout_penalty: f64,
@@ -80,8 +74,7 @@ pub struct InteractionPenalties {
 
 /// Network timing configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkTimingConfig {
-    pub same_subnet_latency_ms: f64,
+pub struct NetworkTimingConfig  {pub same_subnet_latency_ms: f64,
     pub same_region_latency_ms: f64,
     pub cross_region_latency_ms: f64,
     pub cross_continental_latency_ms: f64,
@@ -90,15 +83,13 @@ pub struct NetworkTimingConfig {
 }
 
 // Default implementations
-impl Default for NetworkConfig {
-    fn default() -> Self {
-        let env_config = EnvironmentConfig::default();
+impl Default for NetworkConfig  {fn default() -> Self  {let env_config = EnvironmentConfig::default();
 
         Self {
             multicast_address: "224.0.0.251".to_string(),
             federation_port: 8765,
             service_port: 8080, // Default discovery port since bind_port field doesn't exist
-            bind_address: env_config.bind_address.clone(),
+            bind_address: env_config.bind_address.clone(,
             announcement_interval_secs: 60,
             response_timeout_secs: 2,
             ping_timeout_secs: 5,
@@ -108,9 +99,7 @@ impl Default for NetworkConfig {
     }
 }
 
-impl Default for MonitoringConfig {
-    fn default() -> Self {
-        Self {
+impl Default for MonitoringConfig  {fn default() -> Self  {Self {
             resource_update_interval_secs: 15,
             network_stats_window_secs: 3600,
             storage_stats_window_secs: 3600,
@@ -121,9 +110,7 @@ impl Default for MonitoringConfig {
     }
 }
 
-impl Default for TrustConfig {
-    fn default() -> Self {
-        Self {
+impl Default for TrustConfig  {fn default() -> Self  {Self {
             institutional_base_score: 40,
             edu_domain_bonus: 30,
             gov_domain_bonus: 35,
@@ -136,9 +123,7 @@ impl Default for TrustConfig {
     }
 }
 
-impl Default for TrustThresholds {
-    fn default() -> Self {
-        Self {
+impl Default for TrustThresholds  {fn default() -> Self  {Self {
             basic: 20,
             verified: 40,
             institutional: 60,
@@ -147,9 +132,7 @@ impl Default for TrustThresholds {
     }
 }
 
-impl Default for InteractionPenalties {
-    fn default() -> Self {
-        Self {
+impl Default for InteractionPenalties  {fn default() -> Self  {Self {
             success_bonus: 0.01,
             slow_response_penalty: -0.005,
             failure_penalty: -0.02,
@@ -159,9 +142,7 @@ impl Default for InteractionPenalties {
     }
 }
 
-impl Default for NetworkTimingConfig {
-    fn default() -> Self {
-        Self {
+impl Default for NetworkTimingConfig  {fn default() -> Self  {Self {
             same_subnet_latency_ms: 5.0,
             same_region_latency_ms: 15.0,
             cross_region_latency_ms: 30.0,
@@ -172,9 +153,7 @@ impl Default for NetworkTimingConfig {
     }
 }
 
-impl Default for SongbirdDiscoveryConfig {
-    fn default() -> Self {
-        let env_config = EnvironmentConfig::default();
+impl Default for SongbirdDiscoveryConfig  {fn default() -> Self  {let env_config = EnvironmentConfig::default();
 
         Self {
             node_id: None,

@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Circuit breaker configuration tests
 
 use std::time::Duration;

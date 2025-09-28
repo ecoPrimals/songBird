@@ -96,9 +96,9 @@ pub struct CanonicalNetworkAddresses;
 
 impl CanonicalNetworkAddresses {
   /// Default bind address for development (localhost)
-    pub const DEFAULT_BIND_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    pub const DEFAULT_BIND_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1);
     /// Production bind address (all interfaces)
-    pub const PRODUCTION_BIND_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
+    pub const PRODUCTION_BIND_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0);
 
     /// String constants for common usage
     pub const LOCALHOST_IPV4: &'static str = "127.0.0.1";
@@ -368,7 +368,7 @@ pub fn get_canonical_port(&self) -> u16  {
     std::env::var(&env_var)
         .ok()
         .and_then(|s| s.parse().ok()
-        .unwrap_or(default_port)
+        .unwrap_or(default_port,
 /// Get canonical timeout with environment override
 pub fn get_canonical_timeout(timeout_name: &str, default_timeout: Duration) -> Duration { let env_var = format!("SONGBIRD_{
 }_TIMEOUT", timeout_name.to_uppercase();

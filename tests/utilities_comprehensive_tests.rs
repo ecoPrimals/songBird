@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Utilities Tests for Songbird Orchestrator
 //!
 //! This test suite covers utility functions, string operations, data processing,
@@ -240,7 +241,7 @@ fn test_helper_functions_validation() {
         port > 0 // Port 0 is reserved and not usable
     }
 
-    assert!(is_valid_port(8080));
+    assert!(is_valid_port(config.network.http_port));
     assert!(!is_valid_port(0));
     assert!(is_valid_port(65535));
 }
@@ -652,8 +653,8 @@ fn test_utility_configuration_helpers() {
     }
 
     // Test with non-existent env var
-    let port: u16 = parse_env_var("NONEXISTENT_PORT", 8080);
-    assert_eq!(port, 8080);
+    let port: u16 = parse_env_var("NONEXISTENT_PORT", config.network.http_port);
+    assert_eq!(port, config.network.http_port);
 
     fn merge_configs<T: Clone>(
         base: &HashMap<String, T>,
@@ -667,14 +668,14 @@ fn test_utility_configuration_helpers() {
     }
 
     let mut base_config = HashMap::new();
-    base_config.insert("port".to_string(), "8080".to_string());
+    base_config.insert("port".to_string(), "config.network.http_port".to_string());
     base_config.insert("host".to_string(), "localhost".to_string());
 
     let mut override_config = HashMap::new();
-    override_config.insert("port".to_string(), "9090".to_string());
+    override_config.insert("port".to_string(), "config.metrics.port".to_string());
 
     let merged = merge_configs(&base_config, &override_config);
-    assert_eq!(merged.get("port"), Some(&"9090".to_string()));
+    assert_eq!(merged.get("port"), Some(&"config.metrics.port".to_string()));
     assert_eq!(merged.get("host"), Some(&"localhost".to_string()));
 }
 

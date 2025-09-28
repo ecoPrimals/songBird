@@ -3,7 +3,7 @@
 //! Headless API for discovering Songbird networks that biomeOS can consume
 
 use super::{DiscoveredNetwork, DiscoveryParameters};
-use crate::cli::{CliError, CliResult};
+use crate::errors::{CliError, CliResult};
 use std::net::IpAddr;
 
 // Discovery configuration constants
@@ -18,28 +18,28 @@ pub async fn discover_networks_api(
 
     for method in &params.methods {
         match method.as_str() {
-            "subnet" => {
+            "subnet" => {"
                 networks.extend(discover_via_subnet_scan(params.timeout_ms).await?);
             }
-            "dns" => {
+            "dns" => {"
                 networks.extend(discover_via_dns(params.timeout_ms).await?);
             }
-            "multicast" => {
+            "multicast" => {"
                 networks.extend(discover_via_multicast(params.timeout_ms).await?);
             }
-            "mdns" => {
+            "mdns" => {"
                 networks.extend(discover_via_mdns(params.timeout_ms).await?);
             }
-            "broadcast" => {
+            "broadcast" => {"
                 networks.extend(discover_via_broadcast(params.timeout_ms).await?);
             }
             _ => {
                 return Err(CliError::Config {
-                    message: format!("Unknown discovery method: {method}"),
-                    field: Some("discovery_method".to_string()),
+                    message: format!("Unknown discovery method: {}", method),"
+                    field: "discovery_method".to_string(),
                     suggestion: Some(
-                        "Use 'subnet', 'dns', 'multicast', 'mdns', or 'broadcast'".to_string(),
-                    ),
+                        "Use 'subnet', 'dns', 'multicast', 'mdns', or 'broadcast'".to_string()),
+                    )
                 });
             }
         }
@@ -70,7 +70,7 @@ fn calculate_compatibility_score(network: &DiscoveredNetwork) -> f64 {
     }
 
     // Prefer academic or research networks
-    if network.network_type.contains("Academic") || network.network_type.contains("Research") {
+    if network.network_type.contains("Academic") || network.network_type.contains("Research") {"
         score += 0.2;
     }
 
@@ -85,14 +85,14 @@ fn calculate_compatibility_score(network: &DiscoveredNetwork) -> f64 {
 /// Discover networks via subnet scanning
 async fn discover_via_subnet_scan(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetwork>> {
     // Implementation would scan common ports on local subnet
-    tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000))).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000)).await;
     Ok(vec![])
 }
 
 /// Discover networks via DNS
 async fn discover_via_dns(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetwork>> {
     // DNS-SD discovery implementation
-    tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000))).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000)).await;
     Ok(vec![])
 }
 
@@ -101,25 +101,23 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
     use std::net::UdpSocket;
     use std::time::Duration;
 
-    let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| CliError::Network {
-        message: format!("Failed to create socket: {e}"),
-        endpoint: Some("0.0.0.0:0".to_string()),
-        suggestion: Some("Check network permissions and available ports".to_string()),
+    let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| CliError::Network {"
+        message: format!("Failed to create socket: {}", e),"
+        interface: Some("0.0.0.0:0".to_string(),"
+        suggestion: Some("Check network permissions and available ports".to_string(),"
     })?;
 
     socket
-        .set_read_timeout(Some(Duration::from_millis(
-            timeout_ms.min(MAX_DISCOVERY_TIMEOUT_MS),
-        )))
+        .set_read_timeout(Some(Duration::from_millis(timeout_ms.min(MAX_DISCOVERY_TIMEOUT_MS))
         .map_err(|e| CliError::Network {
-            message: format!("Failed to set timeout: {e}"),
-            endpoint: Some("socket".to_string()),
-            suggestion: Some("Check socket configuration".to_string()),
+            message: format!("Failed to set timeout: {}", e),"
+            interface: Some("socket".to_string(),"
+            suggestion: Some("Check socket configuration".to_string(),"
         })?;
 
     // Send multicast discovery packet
-    let multicast_addr = "224.0.0.251:5353"; // mDNS multicast address
-    let discovery_msg = b"SONGBIRD_DISCOVERY_v1";
+    let multicast_addr = "224.0.0.251:5353"; // mDNS multicast address"
+    let discovery_msg = b"SONGBIRD_DISCOVERY_v1";"
     let _ = socket.send_to(discovery_msg, multicast_addr);
 
     // Listen for responses
@@ -128,10 +126,10 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
 
     // Only try a few times to avoid blocking
     for _ in 0..3 {
-        if let Ok((len, addr)) = socket.recv_from(&mut buf) {
+        if let Ok((len, addr) = socket.recv_from(&mut buf) {
             if let Ok(response) = std::str::from_utf8(&buf[..len]) {
-                if let Some(network) = parse_discovery_response(response, addr.ip()) {
-                    networks.push(network);
+                if let Some(network) = parse_discovery_response(response, addr.ip() {
+                    networks.push(network));
                 }
             }
         }
@@ -142,32 +140,30 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
 
 /// Discover networks via mDNS
 async fn discover_via_mdns(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetwork>> {
-    tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000))).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000)).await;
     Ok(vec![])
 }
 
 /// Discover networks via broadcast
 async fn discover_via_broadcast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetwork>> {
-    tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000))).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000)).await;
     Ok(vec![])
 }
 
 /// Parse discovery response from network
 fn parse_discovery_response(response: &str, source_ip: IpAddr) -> Option<DiscoveredNetwork> {
     // Parse JSON response format:
-    // {"name": "Network-Name", "nodes": 5, "type": "Academic", "institution": "University"}
-    if let Ok(data) = serde_json::from_str::<serde_json::Value>(response) {
-        let name = data["name"].as_str()?.to_string();
-        let node_count = data["nodes"].as_u64()? as usize;
-        let network_type = data["type"].as_str()?.to_string();
-        let institution = data["institution"].as_str().map(|s| s.to_string());
+    // {"name": "Network-Name", "nodes": 5, "type": "Academic", "institution": "University"}"
+    if let Ok(data) = serde_json::from_str::<serde_json::Value>(response)  {let name = data["name"].as_str()?.to_string();"
+        let node_count = data["nodes"].as_u64()? as usize;"
+        let network_type = data["type"].as_str()?.to_string();"
+        let institution = data["institution"].as_str().map(|s| s.to_string();"
 
-        Some(DiscoveredNetwork {
-            name,
-            node_count,
-            network_type,
-            institution,
-            endpoint: format!("{source_ip}:{DEFAULT_DISCOVERY_HTTP_PORT}"), // Would get actual endpoint from response
+        Some(DiscoveredNetwork  {name,
+            node_count)
+            network_type)
+            institution)
+            endpoint: format!("{}:{DEFAULT_DISCOVERY_HTTP_PORT}", source_ip), // Would get actual endpoint from response"
             compatibility_score: 0.0, // Will be calculated later
         })
     } else {

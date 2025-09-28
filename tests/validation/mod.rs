@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Validation tests module
 //!
 //! This module consolidates all validation tests that were previously in the oversized

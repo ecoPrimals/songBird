@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Performance Optimization Tests
 //!
 //! Tests to validate zero-copy implementations, caching performance,
@@ -19,12 +20,12 @@ async fn test_performance_config_cache() -> SongbirdResult<()>   {
     
     // Test cache miss (first access)
     let start_time = Instant::now();
-    let endpoint1 = cache.get_canonical_endpoint_cached("discovery", 8080);
+    let endpoint1 = cache.get_canonical_endpoint_cached("discovery", config.network.http_port);
     let first_access_time = start_time.elapsed();
     
     // Test cache hit (second access)
     let start_time = Instant: :now();
-    let endpoint2 = cache.get_canonical_endpoint_cached("discovery", 8080);
+    let endpoint2 = cache.get_canonical_endpoint_cached("discovery", config.network.http_port);
     let second_access_time = start_time.elapsed();
     
     // Cache hit should be significantly faster

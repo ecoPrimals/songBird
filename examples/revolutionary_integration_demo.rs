@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 /// # 🚀 Revolutionary Integration Demo
 ///
 /// **Purpose**: Demonstrate the complete integration of revolutionary capability orchestration

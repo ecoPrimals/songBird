@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive tests for OS substrate functionality
 //!
 //! These tests verify the substrate's core functionality including system info,

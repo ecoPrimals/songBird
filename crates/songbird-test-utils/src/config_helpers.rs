@@ -6,6 +6,7 @@ pub mod performance {
     use songbird_config::config::SongbirdConfig;
 
     /// Create a performance-optimized test configuration
+    #[must_use]
     pub fn create_performance_test_config() -> SongbirdConfig {
         // Configure performance settings
         // NOTE: Performance config will be re-enabled in next phase of canonical modernization
@@ -16,6 +17,7 @@ pub mod performance {
     }
 
     /// Create a minimal test configuration for basic functionality
+    #[must_use]
     pub fn create_minimal_test_config() -> SongbirdConfig {
         // Configure minimal settings
         // NOTE: Performance config will be re-enabled in next phase of canonical modernization
@@ -26,6 +28,7 @@ pub mod performance {
     }
 
     /// Create a high-performance test configuration for load testing
+    #[must_use]
     pub fn create_high_performance_config() -> SongbirdConfig {
         // Configure high performance settings
         // NOTE: Performance config will be re-enabled in next phase of canonical modernization
@@ -41,26 +44,30 @@ pub mod network {
     use songbird_config::config::SongbirdConfig;
 
     /// Create a test configuration with custom network settings
+    #[must_use]
     pub fn create_network_test_config() -> SongbirdConfig {
         SongbirdConfig::default()
     }
 }
 
 /// Mock circuit breaker for testing
-pub mod circuit_breaker {
+pub mod circuit_breaker  {
     /// Mock circuit breaker implementation for testing
     pub struct MockCircuitBreaker {
         /// Whether the circuit is open
         pub is_open: bool,
     }
 
-    impl MockCircuitBreaker {
-        /// Create a new mock circuit breaker
+    impl MockCircuitBreaker  {/// Create a new mock circuit breaker
+        #[must_use]
         pub fn new() -> Self {
-            Self { is_open: false }
+            Self {
+                is_open: false,
+            }
         }
 
         /// Check if the circuit is open
+        #[must_use]
         pub fn is_open(&self) -> bool {
             self.is_open
         }

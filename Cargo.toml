@@ -1,23 +1,28 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/songbird-canonical",
-    "crates/songbird-cli",
-    "crates/songbird-config",
-    "crates/songbird-core",
-    "crates/songbird-discovery",
-    "crates/songbird-errors",
-    # "crates/songbird-federation", # Temporarily excluded - needs error API fixes
-    "crates/songbird-lib",
-    "crates/songbird-network",
-    "crates/songbird-observability",
-    "crates/songbird-orchestrator",
-    "crates/songbird-registry",
-    # "crates/songbird-security", # Temporarily excluded - needs structural fixes
-    "crates/songbird-test-utils",
+    # 🏗️ FOUNDATION LAYER (4 crates)
     "crates/songbird-types",
+    "crates/songbird-config",
+    "crates/songbird-canonical",
     "crates/songbird-universal",
-    "crates/songbird-universal-primals",
+    
+    # 🎯 CORE SERVICES (4 crates)
+    "crates/songbird-discovery",
+    "crates/songbird-registry",
+    "crates/songbird-network-federation",  # CONSOLIDATED: network + federation
+    # "crates/songbird-security-errors",     # REMOVED: Unified into songbird-types
+    
+    # 🚀 APPLICATIONS (2 crates)
+    "crates/songbird-orchestrator",        # ENHANCED: includes core functionality
+    "crates/songbird-cli",                 # MODERNIZED: gaming-focused
+    
+    # 🔧 DEVELOPMENT (2 crates)
+    "crates/songbird-observability",
+    "crates/songbird-test-utils",
+    
+    # 🌐 INTEGRATION (1 crate) - CONSOLIDATED
+    "crates/songbird-primal-sdk",        # ENHANCED: includes universal-primals functionality
 ]
 
 [workspace.package]
@@ -51,6 +56,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Configuration
 config = "0.14"
 toml = "0.8"
+
+# Random number generation
+fastrand = "2.0"
 
 # Concurrency
 parking_lot = "0.12"
@@ -111,3 +119,5 @@ rust.unsafe_code = "forbid"
 rust.unused_must_use = "warn"
 clippy.all = "warn"
 clippy.pedantic = "warn"
+
+# Duplicate lints section removed - using existing clippy configuration above

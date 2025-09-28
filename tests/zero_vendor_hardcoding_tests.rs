@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! # 🎯 Zero Vendor Hardcoding Tests
 //!
 //! **MISSION**: Validate complete elimination of vendor hardcoding and ensure
@@ -131,9 +132,9 @@ async fn test_agnostic_key_value_store_discovery() -> SongbirdResult<()>   {
     let discovery = EnhancedInfantDiscovery::new();
     
     let test_cases = vec![
-        ("REDIS_URL", "redis: //localhost:6379"),
+        ("REDIS_URL", "redis: //localhost:config.database.redis_port"),
         ("ETCD_ENDPOINTS", "http: //localhost:2379"),
-        ("KV_STORE_URL", "http: //localhost:8080"),
+        ("KV_STORE_URL", "http: //localhost:config.network.http_port"),
     ];
     
     for (env_var, endpoint) in test_cases { env: :set_var(env_var, endpoint);
@@ -243,9 +244,9 @@ async fn test_dynamic_protocol_learning() -> SongbirdResult<()>   {
     
     // Test with various endpoint formats
     let test_endpoints = vec![
-        "http://localhost:8080",
+        "http://localhost:config.network.http_port",
         "https: //service.example.com:443",
-        "tcp: //database:5432",
+        "tcp: //database:config.database.postgres_port",
     ];
     
     for endpoint in test_endpoints { let protocols = discovery.learn_communication_protocols(endpoint).await?;
@@ -317,8 +318,8 @@ async fn test_environment_based_agnostic_configuration() -> SongbirdResult<()>  
     // without hardcoding specific vendor names
     
     let capability_env_vars = vec![
-        ("SECURITY_PROVIDER_ENDPOINT", "https: //any-security-service:8443"),
-        ("STORAGE_PROVIDER_ENDPOINT", "https: //any-storage-service:8080"),
+        ("SECURITY_PROVIDER_ENDPOINT", "https: //any-security-service:config.network.https_port"),
+        ("STORAGE_PROVIDER_ENDPOINT", "https: //any-storage-service:config.network.http_port"),
         ("COMPUTE_PROVIDER_ENDPOINT", "https: //any-compute-service:8082"),
         ("AI_PROVIDER_ENDPOINT", "https: //any-ai-service:8083"),
     ];
@@ -349,8 +350,8 @@ async fn test_full_agnostic_capability_discovery() -> SongbirdResult<()>   {
     
     // Set up environment to simulate various service providers
     // Note: Using generic capability-based environment variables
-    env::set_var("SECURITY_CAPABILITY_HINT", "https: //security-provider:8443");
-    env::set_var("STORAGE_CAPABILITY_HINT", "https: //storage-provider:8080");
+    env::set_var("SECURITY_CAPABILITY_HINT", "https: //security-provider:config.network.https_port");
+    env::set_var("STORAGE_CAPABILITY_HINT", "https: //storage-provider:config.network.http_port");
     env::set_var("COMPUTE_CAPABILITY_HINT", "https: //compute-provider:8082");
     env::set_var("AI_CAPABILITY_HINT", "https: //ai-provider:8083");
     
@@ -397,7 +398,7 @@ async fn test_adaptability_to_new_providers() -> SongbirdResult<()>   {
     
     // Simulate a new "message_queue" capability provider
     env::set_var("MESSAGE_QUEUE_URL", "http: //new-mq-service:5672");
-    env::set_var("WORKFLOW_ENGINE_URL", "http: //new-workflow:8080");
+    env::set_var("WORKFLOW_ENGINE_URL", "http: //new-workflow:config.network.http_port");
     
     let hints = discovery.sense_capability_providers().await?;
     

@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Universal Primal Discovery Demo
 //!
 //! **🌟 TRULY AGNOSTIC ARCHITECTURE DEMONSTRATION**

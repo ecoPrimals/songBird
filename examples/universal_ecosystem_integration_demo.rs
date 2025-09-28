@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! Universal Ecosystem Integration Demo
 //!
 //! This demo shows how Songbird properly leverages the ecosystem primals using

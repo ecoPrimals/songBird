@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🍼 Agnostic Discovery Migration Demo
 //!
 //! **MISSION**: Demonstrate the migration from hardcoded vendor names to

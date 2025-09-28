@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Basic circuit breaker functionality tests
 
 use std::sync::Arc;

@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Simple Working Error Tests for Songbird Orchestrator
 //!
 //! This test suite covers basic error types using the actual SongbirdError structure.
@@ -16,12 +17,12 @@ async fn test_error_creation_and_display() -> Result<()> {
 
     // Test circuit breaker errors
     let open_error = SongbirdError::CircuitBreakerOpen(Box::new(CircuitBreakerError {
-        service: "test-service".to_string(),
+        service: config.test.service_name.to_string(),
         message: "Circuit breaker is open for test-service".to_string(),
     }));
 
     let failure_error = SongbirdError::CircuitBreakerFailure {
-        service: "test-service".to_string(),
+        service: config.test.service_name.to_string(),
         message: "Circuit breaker failed for test-service".to_string(),
         suggestion: Some("Check service health and restart if needed".to_string()),
     };
@@ -35,7 +36,7 @@ async fn test_error_creation_and_display() -> Result<()> {
     // Test discovery error
     let discovery_error = SongbirdError::Discovery(Box::new(DiscoveryError {
         message: "Service not found".to_string(),
-        service: Some("test-service".to_string()),
+        service: Some(config.test.service_name.to_string()),
         timeout: Some(30),
         suggestion: Some("Check service configuration and network connectivity".to_string()),
     }));
@@ -44,7 +45,7 @@ async fn test_error_creation_and_display() -> Result<()> {
     let network_error = SongbirdError::Network(Box::new(NetworkError {
         message: "Connection timeout".to_string(),
         endpoint: Some("192.168.1.100:{}".to_string()),
-        port: Some(8080),
+        port: Some(config.network.http_port),
         protocol: Some("HTTP".to_string()),
     }));
 
@@ -122,8 +123,8 @@ async fn test_error_conversion() -> Result<()> {
 #[tokio::test]
 async fn test_error_constructors() -> Result<()> {
     // Test convenience constructors
-    let service_error = SongbirdError::service_error("test-service", "Test failed".to_string());
-    assert!(service_error.to_string().contains("test-service"));
+    let service_error = SongbirdError::service_error(config.test.service_name, "Test failed".to_string());
+    assert!(service_error.to_string().contains(config.test.service_name));
     assert!(service_error.to_string().contains("Test failed"));
 
     let health_error = SongbirdError::Service(Box::new(ServiceError {

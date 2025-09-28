@@ -16,11 +16,10 @@ categories = ["data-structures", "api-bindings", "development-tools"]
 workspace = true
 
 [features]
-default = ["serde", "chrono"]
+default = ["serde", "chrono", "reqwest"]
 serde = ["dep:serde", "dep:serde_json"]
 chrono = ["dep:chrono"]
 reqwest = ["dep:reqwest"]
-tokio = ["dep:tokio"]
 
 [dependencies]
 # Foundation layer has minimal external dependencies
@@ -35,7 +34,15 @@ num_cpus = "1.0"
 bitflags = "2.0"
 regex = "1.0"
 reqwest = { version = "0.11", optional = true }
-tokio = { version = "1.0", features = ["full"], optional = true }
+tokio = { version = "1.0", features = ["full"] }
+toml = "0.8"
+serde_yaml = "0.9"
+# Performance optimizations
+arrayvec = "0.7"
+# Added for consolidated traits Stream support
+futures-util = "0.3"
+# Added for canonical adapters
+rand = "0.8"
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["full"] }
@@ -48,3 +55,5 @@ name = "comprehensive_unification_benchmarks"
 harness = false
 path = "../../benches/comprehensive_unification_benchmarks.rs"
 required-features = ["serde"]
+
+# Using workspace lints configuration

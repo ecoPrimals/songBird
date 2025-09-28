@@ -55,8 +55,8 @@ impl Default for CanonicalHealthCheck {
         Self {
             status: CanonicalHealthStatus::Unknown,
             message: None,
-            metrics: HashMap::new(),
-            components: HashMap::new(),
+            metrics: HashMap::new()),
+            components: HashMap::new()),
         }
     }
 }
@@ -68,8 +68,8 @@ impl CanonicalHealthCheck {
         Self {
             status: CanonicalHealthStatus::Healthy,
             message: Some("All systems operational".to_string()),
-            metrics: HashMap::new(),
-            components: HashMap::new(),
+            metrics: HashMap::new()),
+            components: HashMap::new()),
         }
     }
 
@@ -79,8 +79,8 @@ impl CanonicalHealthCheck {
         Self {
             status: CanonicalHealthStatus::Degraded,
             message: Some(message.into()),
-            metrics: HashMap::new(),
-            components: HashMap::new(),
+            metrics: HashMap::new()),
+            components: HashMap::new()),
         }
     }
 
@@ -90,8 +90,8 @@ impl CanonicalHealthCheck {
         Self {
             status: CanonicalHealthStatus::Unhealthy,
             message: Some(message.into()),
-            metrics: HashMap::new(),
-            components: HashMap::new(),
+            metrics: HashMap::new()),
+            components: HashMap::new()),
         }
     }
 

@@ -97,7 +97,7 @@ impl CanonicalEnvironmentConstants {
     #[must_use]
     pub fn get_bind_address() -> String {
         let bind_address = CanonicalNetworkAddresses::get_bind_address_string(false);
-        Self::get_env_or_default("SONGBIRD_BIND_ADDRESS", bind_address)
+        Self::get_env_or_default("SONGBIRD_BIND_ADDRESS", &bind_address,
     }
 
     /// Get port from environment
@@ -106,6 +106,6 @@ impl CanonicalEnvironmentConstants {
         env::var("SONGBIRD_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(default_port)
+            .unwrap_or(default_port,
     }
 }

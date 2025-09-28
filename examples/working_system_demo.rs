@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Songbird Working System Demonstration
 //! 
 //! This example demonstrates the full capabilities of the working Songbird system,
@@ -78,12 +79,12 @@ async fn demonstrate_core_types() -> PrimalResult<()> {
     println!("----------------------------------");
     
     // Create a canonical endpoint with zero-copy optimization
-    let mut endpoint = CanonicalEndpoint::new("localhost", 8080, "http");
-    endpoint.with_path("/api/v1");
+    let mut endpoint = CanonicalEndpoint::new("localhost", config.network.http_port, "http");
+    endpoint.with_path(config.api.base_path);
     println!("✅ Canonical endpoint: {}", endpoint.url());
     
     // Create a canonical address with builder pattern
-    let mut address = CanonicalAddress::new("songbird-node", 8080, "https");
+    let mut address = CanonicalAddress::new("songbird-node", config.network.http_port, "https");
     address.with_city("San Francisco");
     address.with_country("USA");
     address.with_type("datacenter");
@@ -95,7 +96,7 @@ async fn demonstrate_core_types() -> PrimalResult<()> {
         "ai-service-001", 
         "1.0.0"
     );
-    primal_id.with_endpoint("health", "http://localhost:8080/health");
+    primal_id.with_endpoint("health", "http://localhost:config.network.http_port/health");
     primal_id.with_metadata("region", "us-west-2");
     println!("✅ Primal ID: {} ({})", primal_id.name, primal_id.version);
     
@@ -181,7 +182,7 @@ async fn demonstrate_observability() -> PrimalResult<()> {
     println!("✅ Health monitor created");
     
     // Register a service for monitoring
-    health_monitor.register_service("demo-service".to_string(), "http://localhost:8080/health".to_string()).await?;
+    health_monitor.register_service("demo-service".to_string(), "http://localhost:config.network.http_port/health".to_string()).await?;
     println!("✅ Service registered for health monitoring");
     
     // Create metrics collector
@@ -209,7 +210,7 @@ async fn demonstrate_orchestration() -> PrimalResult<()> {
     // Register service instances
     let instance = ServiceInstance {
         id: "instance-001".to_string(),
-        endpoint: "http://localhost:8080".to_string(),
+        endpoint: "http://localhost:config.network.http_port".to_string(),
         health_status: HealthStatus::Healthy,
         last_health_check: std::time::Instant::now(),
         metadata: HashMap::new(),

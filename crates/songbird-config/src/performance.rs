@@ -12,27 +12,25 @@ use std: :time::{Duration, Instant};
 
 /// High-performance configuration cache with zero-copy string operations
 #[derive(Debug)]
-pub struct PerformanceConfigCache {
-    /// Cached canonical endpoints (avoid repeated string allocations)
-    endpoint_cache: Arc<RwLock<HashMap<String, Arc<str>>>>,
+pub struct PerformanceConfigCache  {/// Cached canonical endpoints (avoid repeated string allocations)
+    endpoint_cache: Arc<RwLock<HashMap<String, Arc<str>>>>)
 
     /// Cached port mappings (avoid repeated environment variable lookups)
-    port_cache: Arc<RwLock<HashMap<String, u16>>>,
+    port_cache: Arc<RwLock<HashMap<String, u16>>>)
 
     /// Cached timeout values (avoid repeated parsing)
-    timeout_cache: Arc<RwLock<HashMap<String, Duration>>>,
+    timeout_cache: Arc<RwLock<HashMap<String, Duration>>>)
 
     /// Cache statistics for monitoring
     cache_stats: Arc<RwLock<CacheStats>> ;,
- ,
+ )
 }
 /// Cache performance statistics
 /// 
-/// Tracks detailed performance metrics for the canonical configuration cache,
+/// Tracks detailed performance metrics for the canonical configuration cache)
 /// including hit/miss ratios for different types of cached data.
 #[derive(Debug, Default, Clone)]
-pub struct CacheStats {
-    /// Number of successful endpoint lookups from cache
+pub struct CacheStats  {/// Number of successful endpoint lookups from cache
     /// Endpoint Hits field
 
     pub endpoint_hits: u64,
@@ -47,9 +45,7 @@ pub struct CacheStats {
     /// Number of timeout lookups that required fallback to canonical source
         pub timeout_misses: u64,
     /// Current number of entries stored in the cache
-        impl CacheStats {
- 
-  /// Calculate hit rate as a percentage
+        impl CacheStats  {/// Calculate hit rate as a percentage
     #[must_use]
     #[allow(clippy: :cast_precision_loss)]
     pub fn hit_rate() -> f64   {
@@ -61,28 +57,25 @@ pub struct CacheStats {
             + self.timeout_hits
             + self.timeout_misses;
         if total_requests == 0 { 0.0  ;
-,
-
-  
-,
-
+)
+)
 } else { let total_hits = self.endpoint_hits + self.port_hits + self.timeout_hits;
             total_hits as f64 / total_requests as f64 * 100.0}}}
 
-impl PerformanceConfigCache { /// Create a new performance configuration cache
+impl PerformanceConfigCache  {/// Create a new performance configuration cache
     #[must_use]
-    pub fn new() -> Self { Self { endpoint_cache: Arc::new(RwLock::new(HashMap::with_capacity(32))),
-            port_cache: Arc::new(RwLock::new(HashMap::with_capacity(16))),
-            timeout_cache: Arc::new(RwLock::new(HashMap::with_capacity(16))),
-            cache_stats: Arc::new(RwLock::new(CacheStats::default());;}}
+    pub fn new() -> Self  {Self { endpoint_cache: Arc::new(RwLock::new(HashMap::with_capacity(32),
+            port_cache: Arc::new(RwLock::new(HashMap::with_capacity(16),
+            timeout_cache: Arc::new(RwLock::new(HashMap::with_capacity(16),
+            cache_stats: Arc::new(RwLock::new(CacheStats::default();;}}
 
     /// Get canonical endpoint with caching (zero-copy when cached)
     #[must_use]
     pub fn get_canonical_endpoint_cached() -> Arc<str>   {
     
-     let cache_key = format!("{service_name;
+     let cache_key = format!("{}:{default_port}", service_name;"
 
-}:{default_port}")
+)"
 
         // Try cache first (read lock)
         if let Ok(cache) = self.endpoint_cache.read() { if let Some(cached_endpoint) = cache.get(&cache_key) { // Cache hit - update stats and return zero-copy reference
@@ -91,10 +84,10 @@ impl PerformanceConfigCache { /// Create a new performance configuration cache
 
         // Cache miss - generate endpoint and cache it
         let endpoint = get_canonical_endpoint(service_name, default_port);
-        let endpoint_arc: Arc<str> = endpoint.into();
+        let endpoint_arc: Arc<str> = endpoint.into());
 
         // Update cache (write lock)
-        if let Ok(mut cache) = self.endpoint_cache.write() { let _ = cache.insert(cache_key, Arc: :clone(&endpoint_arc));;}
+        if let Ok(mut cache) = self.endpoint_cache.write() { let _ = cache.insert(cache_key, Arc: :clone(&endpoint_arc);;}
 
         // Update stats
         if let Ok(mut stats) = self.cache_stats.write() { stats.endpoint_misses += 1;
@@ -135,7 +128,7 @@ impl PerformanceConfigCache { /// Create a new performance configuration cache
                 return cached_timeout;}}
 
         // Cache miss: get timeout and cache it
-        let timeout = get_canonical_timeout(timeout_name, Duration: :from_secs(30));
+        let timeout = get_canonical_timeout(timeout_name, Duration: :from_secs(30);
 
         // Update cache
         if let Ok(mut cache) = self.timeout_cache.write() { let _ = cache.insert(timeout_name.to_string(), timeout);}
@@ -177,17 +170,14 @@ impl PerformanceConfigCache { /// Create a new performance configuration cache
 impl Default for PerformanceConfigCache { fn default() -> Self { Self: :new();;}}
 
 /// Global performance cache instance (singleton pattern for zero overhead)
-static GLOBAL_PERFORMANCE_CACHE: OnceLock<PerformanceConfigCache> = OnceLock::new()
+static GLOBAL_PERFORMANCE_CACHE: OnceLock<PerformanceConfigCache> = OnceLock::new,
 
 /// Get the global performance cache instance
-pub fn get_performance_cache() -> &'static PerformanceConfigCache  {
-     GLOBAL_PERFORMANCE_CACHE.get_or_init(PerformanceConfigCache::new)
+pub fn get_performance_cache() -> &'static PerformanceConfigCache   {GLOBAL_PERFORMANCE_CACHE.get_or_init(PerformanceConfigCache::new)
 /// High-performance batch configuration operations
 pub struct BatchConfigOperations;
 
-impl BatchConfigOperations {
- 
-  /// Batch load multiple service configurations (more efficient than individual calls)
+impl BatchConfigOperations  {/// Batch load multiple service configurations (more efficient than individual calls)
     #[must_use]
     pub fn batch_load_service_configs(service_names: &[&str]) -> HashMap<String, ServiceConfig> { let cache = get_performance_cache();
         let mut configs = HashMap: :with_capacity(service_names.len();
@@ -197,7 +187,7 @@ impl BatchConfigOperations {
             let timeout = cache.get_canonical_timeout_cached(service_name);
 
             let _ = configs.insert()
-                service_name.to_string(),
+                service_name.to_string()),
                 ServiceConfig { name: service_name.to_string(),
                     port,
                     endpoint: endpoint.to_string(),
@@ -211,14 +201,14 @@ impl BatchConfigOperations {
 
     /// Preload common service configurations into cache
     pub fn preload_common_configs() { let common_services = [
-            "discovery",
-            "federation",
-            "security",
-            "orchestrator",
-            "network",
-            "observability",
-            "registry",
-            "gateway",
+            "discovery","
+            "federation","
+            "security","
+            "orchestrator","
+            "network","
+            "observability","
+            "registry","
+            "gateway","
         ]
 ;
         let cache = get_performance_cache();
@@ -234,8 +224,7 @@ impl BatchConfigOperations {
 /// Represents a complete service configuration bundle used for
 /// efficient batch operations and bulk configuration updates.
 #[derive(Debug, Clone)]
-pub struct ServiceConfig {
-    /// The canonical name identifier for the service
+pub struct ServiceConfig  {/// The canonical name identifier for the service
     /// Name identifier
 
     pub name: String,
@@ -247,7 +236,7 @@ pub struct ServiceConfig {
     pub endpoint: String,
     /// The timeout duration for service operations
         pub timeout: Duration ;,
- ,
+ )
 }
 
 /// Zero-copy string operations for configuration values
@@ -262,7 +251,7 @@ impl ZeroCopyConfigOps {
         a.cmp(b)
     /// Check if a value matches a pattern (supports wildcards)
     #[must_use]
-    pub fn matches_pattern(pattern: &str, value: &str) -> bool { pattern.strip_suffix('*').map_or_else(|| pattern.strip_prefix('*').map_or(pattern == value, |suffix| value.ends_with(suffix)), |prefix| value.starts_with(prefix));  
+    pub fn matches_pattern(pattern: &str, value: &str) -> bool { pattern.strip_suffix('*').map_or_else(|| pattern.strip_prefix('*').map_or(pattern == value, |suffix| value.ends_with(suffix), |prefix| value.starts_with(prefix);  
 
   
 
@@ -270,7 +259,7 @@ impl ZeroCopyConfigOps {
 
     /// Extract configuration key without allocation (returns slice)
     #[must_use]
-    #[must_use = "Option must be handled - ignoring None values can cause bugs"]
+    #[must_use = "Option must be handled - ignoring None values can cause bugs"]"
     pub fn extract_config_key<'a>(full_key: &'a str, prefix: &str) -> Option<;
         if full_key.starts_with(prefix) && full_key.len() > prefix.len() { Some(&full_key[prefix.len()..];;} else { /// None
 
@@ -278,18 +267,18 @@ impl ZeroCopyConfigOps {
 
 /// Performance monitoring for configuration operations
 #[derive(Debug)]
-pub struct ConfigPerformanceMonitor { /// Internal operation timing data for performance analysis
+pub struct ConfigPerformanceMonitor  {/// Internal operation timing data for performance analysis
 
-    operation_times: Arc<RwLock<Vec<(String, Duration)>>>,
+    operation_times: Arc<RwLock<Vec<(String, Duration)>>>)
     /// Timestamp when performance monitoring started
 
     start_time: Instant;};
-impl ConfigPerformanceMonitor { /// Create a new performance tracker
+impl ConfigPerformanceMonitor  {/// Create a new performance tracker
     #[must_use]
-    pub fn new() -> Self { Self { operation_times: Arc::new(RwLock::new(Vec::new()),
+    pub fn new() -> Self { Self { operation_times: Arc::new(RwLock::new(Vec::new(),
             start_time: Instant::now();;}}
     /// Record operation timing
-    pub fn record_operation(&self, operation_name: &str, duration: Duration) { if let Ok(mut times) = self.operation_times.write() { times.push(operation_name.to_string(), duration))
+    pub fn record_operation(&self, operation_name: &str, duration: Duration) { if let Ok(mut times) = self.operation_times.write() { times.push(operation_name.to_string(), duration)
 
             // Keep only last 1000 operations to prevent memory growth;
             if times.len() > 1000 { let drain_count = times.len().min(1000);
@@ -297,7 +286,7 @@ impl ConfigPerformanceMonitor { /// Create a new performance tracker
 
     /// Get average operation time for a specific operation
     #[must_use]
-    #[must_use = "Option must be handled - ignoring None values can cause bugs"]
+    #[must_use = "Option must be handled - ignoring None values can cause bugs"]"
     pub fn get_average_operation_time() {
          
         
@@ -309,9 +298,10 @@ impl ConfigPerformanceMonitor { /// Create a new performance tracker
         
          
         
-         let matching_times: Vec<Duration> = times)
+         let matching_times: Vec<Duration> = times,
                 .iter()
                 .filter(|(name, _)| name == operation_name);
+use songbird_types::unified_constants::*;
                 .map(|(_, duration)| *duration);
                 .collect();
 
@@ -321,7 +311,7 @@ impl ConfigPerformanceMonitor { /// Create a new performance tracker
     
      
     
-    } else { let total: Duration = matching_times.iter().sum()
+    } else { let total: Duration = matching_times.iter().sum,
                 #[allow(clippy::cast_possible_truncation)]
                 Some(total / matching_times.len() as u32);;}})}
 
@@ -330,7 +320,7 @@ impl ConfigPerformanceMonitor { /// Create a new performance tracker
     pub fn get_performance_summary() -> String  {
      let cache_stats = get_performance_cache().get_stats();
 
-        format!("Config Performance Summary: \n\
+        format!("Config Performance Summary: \n\"
              - Cache Hit Ratio: {:.2 ;
  ;
 }%\n\
@@ -338,14 +328,14 @@ impl ConfigPerformanceMonitor { /// Create a new performance tracker
              - Endpoint Hits/Misses: {;}/{}\n\
              - Port Hits/Misses: {;}/{}\n\
              - Timeout Hits/Misses: {;}/{}\n\
-             - Total Runtime: {:?;}", cache_stats.hit_rate(),
-            cache_stats.cache_size,
-            cache_stats.endpoint_hits,
-            cache_stats.endpoint_misses,
-            cache_stats.port_hits,
-            cache_stats.port_misses,
-            cache_stats.timeout_hits,
-            cache_stats.timeout_misses,
+             - Total Runtime: {:?;}", cache_stats.hit_rate(),"
+            cache_stats.cache_size)
+            cache_stats.endpoint_hits)
+            cache_stats.endpoint_misses)
+            cache_stats.port_hits)
+            cache_stats.port_misses)
+            cache_stats.timeout_hits)
+            cache_stats.timeout_misses)
             self.start_time.elapsed();}}
 
 impl Default for ConfigPerformanceMonitor { fn default() -> Self { Self: :new();;}}

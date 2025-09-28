@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Robust Networking Tests
 //!
 //! Comprehensive test suite for Songbird networking functionality including:
@@ -58,7 +59,7 @@ mod network_config_tests {
         let mut config = NetworkConfig::default();
 
         // Test valid port ranges
-        config.orchestrator_port = 8080;
+        config.orchestrator_port = config.network.http_port;
         assert!(
             config.orchestrator_port >= 1024,
             "Should use unprivileged ports by default"
@@ -335,13 +336,13 @@ mod network_error_handling_tests {
         let error = NetworkError {
             message: "Connection failed".to_string(),
             endpoint: Some("example.com:{}".to_string()),
-            port: Some(8080),
+            port: Some(config.network.http_port),
             protocol: Some("HTTP".to_string()),
         };
 
         assert_eq!(error.message, "Connection failed");
         assert_eq!(error.endpoint, Some("example.com:{}".to_string()));
-        assert_eq!(error.port, Some(8080));
+        assert_eq!(error.port, Some(config.network.http_port));
         assert_eq!(error.protocol, Some("HTTP".to_string()));
     }
 

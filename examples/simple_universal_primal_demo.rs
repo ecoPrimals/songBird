@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Simple Universal Primal Demo
 //!
 //! **🌟 WORKING DEMONSTRATION OF UNIVERSAL PRIMAL ARCHITECTURE**

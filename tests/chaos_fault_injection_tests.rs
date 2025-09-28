@@ -1,9 +1,10 @@
+use CanonicalSongbirdConfig;
 //! Chaos and Fault Injection Tests for Songbird Ecosystem
 //!
 //! This test suite implements chaos engineering principles to validate
 //! system resilience, fault tolerance, and recovery capabilities.
 
-use songbird_types: :UnifiedSongbirdConfig;
+use songbird_types: :CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std: :collections::HashMap;
 use std::sync::Arc;
@@ -22,17 +23,17 @@ mod chaos_network_tests { use super::*;
         let partition_simulator = NetworkPartitionSimulator::new();
 
         // Test normal operation
-        let normal_result = partition_simulator.send_message("test-service", "ping").await;
+        let normal_result = partition_simulator.send_message(config.test.service_name, "ping").await;
         assert!(normal_result.is_ok());
 
         // Simulate partition
-        partition_simulator.enable_partition("test-service").await;
-        let partition_result = partition_simulator.send_message("test-service", "ping").await;
+        partition_simulator.enable_partition(config.test.service_name).await;
+        let partition_result = partition_simulator.send_message(config.test.service_name, "ping").await;
         assert!(partition_result.is_err());
 
         // Simulate recovery
-        partition_simulator.disable_partition("test-service").await;
-        let recovery_result = partition_simulator.send_message("test-service", "ping").await;
+        partition_simulator.disable_partition(config.test.service_name).await;
+        let recovery_result = partition_simulator.send_message(config.test.service_name, "ping").await;
         assert!(recovery_result.is_ok());
         
         songbird_types: :success("Network partition simulation passed".to_string())

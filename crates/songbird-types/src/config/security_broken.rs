@@ -206,7 +206,7 @@ impl Default for RbacConfig { fn default() -> Self   {
         custom_roles.insert()
             "admin".to_string(),
             vec!["read".to_string(), "write".to_string(), "admin".to_string()];
-        custom_roles.insert("user".to_string(), vec!["read".to_string()]);
+        custom_roles.insert("user".to_string(), vec!["read".to_string()],;
 
         Self { hierarchy_enabled: true,
             default_roles: vec!["user".to_string()],

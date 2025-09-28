@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive tests for performance optimizer implementation
 //!
 //! This test suite provides extensive coverage for communication performance

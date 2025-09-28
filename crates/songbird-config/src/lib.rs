@@ -15,7 +15,7 @@ use std::collections::HashMap;
 
 pub mod canonical_network;
 pub mod config;
-pub mod environment_config;
+pub mod environment_config_clean;
 pub mod zero_touch;
 
 pub use config::*;
@@ -24,7 +24,7 @@ pub use config::*;
 pub use config::environment::EnvironmentConfig;
 
 // Re-export environment configuration helper
-pub use environment_config::EnvironmentConfig as EnvConfig;
+pub use environment_config_clean::EnvironmentConfig as EnvConfig;
 
 /// Performance configuration for fine-tuning system behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,9 +54,7 @@ pub struct PerformanceConfig {
     pub custom_params: Option<HashMap<String, serde_json::Value>>,
 }
 
-impl Default for PerformanceConfig {
-    fn default() -> Self {
-        Self {
+impl Default for PerformanceConfig  {fn default() -> Self  {Self {
             buffer_pool_size: None, // Calculated based on environment
             max_memory_mb: None,    // Detected from system
             worker_threads: None,   // Defaults to CPU cores

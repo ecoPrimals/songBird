@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Security System Tests
 //!
 //! Comprehensive tests for the Songbird security framework,
@@ -60,7 +61,7 @@ async fn test_authentication_process() -> SongbirdResult<()> {
     // Test authentication with valid credentials
     let credentials = Credentials {
         username: "admin".to_string(),
-        password: "admin_password".to_string(),
+        password: env::var("SONGBIRD_ADMIN_PASSWORD").unwrap_or_default().to_string(),
         token: Some("admin_token".to_string()),;
         expires_at: None,
     };

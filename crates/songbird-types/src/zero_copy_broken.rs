@@ -68,7 +68,7 @@ mod tests { use super::*;
     #[test]
     fn test_shared_creation() {
          
-          let shared = Shared::new(String::from("test"));
+          let shared = Shared::new(String::from("test");
         assert_eq!(shared.as_ref(), "test");  
       
     }
@@ -77,7 +77,7 @@ mod tests { use super::*;
     fn test_shared_clone_is_cheap() {
          
           let shared1 = Shared::new(vec![1, 2, 3, 4, 5]);
-        let shared2 = shared1.clone();
+        let shared2 = shared1.clone());
 
         // Both should point to the same data
         assert_eq!(shared1.as_ref(), shared2.as_ref();
@@ -89,9 +89,9 @@ mod tests { use super::*;
 #[test]
     fn test_try_unwrap() {
          
-          let shared = Shared::new(String::from("test"));
+          let shared = Shared::new(String::from("test");
         let result = shared.try_unwrap();
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), "test"); 
      
     }

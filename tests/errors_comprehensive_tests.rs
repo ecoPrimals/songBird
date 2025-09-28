@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Error Tests for Songbird Orchestrator
 //!
 //! This test suite covers error handling, error types, error propagation,
@@ -27,7 +28,7 @@ fn test_songbird_error_types() -> Result<()> {
         SongbirdError::Network(Box::new(NetworkError {
             message: "Test network error".to_string(),
             endpoint: Some("http://test.example".to_string()),
-            port: Some(8080),
+            port: Some(config.network.http_port),
             protocol: Some("test_service".to_string()),
         })),
         SongbirdError::service_error("database", "Database error".to_string()),
@@ -59,7 +60,7 @@ fn test_error_display_formatting() -> Result<()> {
     let error = SongbirdError::Network(Box::new(NetworkError {
         message: "Connection refused".to_string(),
         endpoint: Some("192.168.1.100:{}".to_string()),
-        port: Some(8080),
+        port: Some(config.network.http_port),
         protocol: Some("http".to_string()),
     }));
 
@@ -385,7 +386,7 @@ fn test_error_logging_format() -> Result<()> {
     let error = SongbirdError::Network(Box::new(NetworkError {
         message: "Connection refused to 192.168.1.100:{}".to_string(),
         endpoint: Some("192.168.1.100:{}".to_string()),
-        port: Some(8080),
+        port: Some(config.network.http_port),
         protocol: Some("http".to_string()),
     }));
 

@@ -12,18 +12,18 @@ const _LARGE_DATASET: usize = 10_000;
 
 /// Performance benchmarks for comprehensive system operations
 fn benchmark_comprehensive_operations(c: &mut Criterion) {
-    let mut group = c.benchmark_group("comprehensive_operations");
+    let mut group = c.benchmark_group("comprehensive_operations");"
 
     // Benchmark error handling patterns
-    group.bench_function("error_patterns", |b| {
+    group.bench_function("error_patterns", |b| {"
         b.iter(|| {
-            let errors = vec!["Network error", "Config error", "Service error"];
+            let errors = vec!["Network error", "Config error", "Service error"];"
             black_box(errors)
         })
     });
 
     // Benchmark configuration operations
-    group.bench_function("config_operations", |b| {
+    group.bench_function("config_operations", |b| {"
         b.iter(|| {
             let config: std::collections::HashMap<String, String> =
                 std::collections::HashMap::new();
@@ -36,7 +36,7 @@ fn benchmark_comprehensive_operations(c: &mut Criterion) {
 
 /// Benchmark timeout operations
 fn benchmark_timeout_operations(c: &mut Criterion) {
-    c.bench_function("timeout_creation", |b| {
+    c.bench_function("timeout_creation", |b| {"
         b.iter(|| {
             let timeout = Duration::from_secs(30);
             black_box(timeout);
@@ -44,9 +44,5 @@ fn benchmark_timeout_operations(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    benches,
-    benchmark_comprehensive_operations,
-    benchmark_timeout_operations
-);
+criterion_group!(benches, benchmark_comprehensive_operations, benchmark_timeout_operations);
 criterion_main!(benches);

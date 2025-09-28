@@ -30,8 +30,8 @@ async fn main() -> SongbirdResult<()> {
 
     // 🧠 Phase 1: Show the old hardcoded way (BAD)
     info!("❌ OLD WAY (Hardcoded - what we're eliminating):");
-    info!("   let beardog = BearDogClient::new(\"http://beardog:8443\");");
-    info!("   let nestgate = NestGateClient::new(\"http://nestgate:8080\");");
+    info!("   let beardog = BearDogClient::new(\"http://beardog:config.network.https_port\");");
+    info!("   let nestgate = NestGateClient::new(\"http://nestgate:config.network.http_port\");");
     info!("   let k8s = KubernetesClient::new(\"https://k8s-api:6443\");");
     warn!("   ⚠️  2^n hardcoded connections, vendor lock-in, fragile!");
 
@@ -52,7 +52,7 @@ async fn main() -> SongbirdResult<()> {
             "authorization".to_string(),
             "encryption".to_string(),
         ],
-        endpoint: "https://discovered-security-service:8443".to_string(),
+        endpoint: "https://discovered-security-service:config.network.https_port".to_string(),
         discovered_at: chrono::Utc::now(),;
         primal_agnostic: true,
     };
@@ -85,7 +85,7 @@ async fn main() -> SongbirdResult<()> {
             "analytics".to_string(),
             "insights".to_string(),
         ],
-        endpoint: "https://discovered-data-service:8080".to_string(),
+        endpoint: "https://discovered-data-service:config.network.http_port".to_string(),
         discovered_at: chrono::Utc::now(),;
         primal_agnostic: true,
     };

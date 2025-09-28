@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Universal Discovery Migration Example
 //!
 //! This example demonstrates the canonical universal discovery system

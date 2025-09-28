@@ -4,18 +4,15 @@
 
 use crate::config::SongbirdConfig;
 use serde::{Deserialize, Serialize};
-use songbird_errors::SongbirdResult;
+use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ZeroTouchConfig {
-    pub auto_deploy: bool,
+pub struct ZeroTouchConfig  {pub auto_deploy: bool,
     pub environment_detection: bool,
 }
 
-impl Default for ZeroTouchConfig {
-    fn default() -> Self {
-        Self {
+impl Default for ZeroTouchConfig  {fn default() -> Self  {Self {
             auto_deploy: false,
             environment_detection: true,
         }
@@ -23,8 +20,7 @@ impl Default for ZeroTouchConfig {
 }
 
 #[derive(Debug)]
-pub struct ZeroTouchDeployment {
-    #[allow(dead_code)]
+pub struct ZeroTouchDeployment  {#[allow(dead_code)]
     config: ZeroTouchConfig,
 }
 
@@ -41,7 +37,7 @@ impl ZeroTouchDeployment {
     /// Returns an error if deployment fails due to system constraints or configuration issues
     pub const fn deploy(&self) -> Result<()> {
         // Minimal implementation
-        Ok(())
+        Ok(()),
     }
 }
 
@@ -49,8 +45,7 @@ pub struct ZeroTouchOrchestrator {
     // Basic fields for zero-touch deployment
 }
 
-pub struct DeploymentResult {
-    pub config: Option<SongbirdConfig>,
+pub struct DeploymentResult  {pub config: Option<SongbirdConfig>,
 }
 
 impl Default for ZeroTouchOrchestrator {
@@ -70,12 +65,11 @@ impl ZeroTouchOrchestrator {
     /// # Errors
     ///
     /// Returns an error if deployment configuration fails
-    pub fn deploy(&mut self) -> Result<DeploymentResult> {
-        // Basic deployment logic
+    pub fn deploy(&mut self) -> Result<DeploymentResult>  {// Basic deployment logic
         let config = SongbirdConfig::default();
 
         Ok(DeploymentResult {
-            config: Some(config),
+            config: Some(config)
         })
     }
 }

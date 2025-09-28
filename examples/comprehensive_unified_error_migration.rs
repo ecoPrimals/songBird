@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Comprehensive Unified Error System Migration Guide
 //!
 //! This example demonstrates how to migrate ALL types of unwrap/expect calls
@@ -314,7 +315,7 @@ mod tests {
     #[test]
     fn test_collection_migration() {
         let mut config = HashMap::new();
-        config.insert("service_name".to_string(), "test-service".to_string());
+        config.insert("service_name".to_string(), config.test.service_name.to_string());
         
         let result = new_map_access(&config);
         assert!(result.is_ok());

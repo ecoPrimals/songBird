@@ -1,0 +1,82 @@
+{
+  "scan_timestamp": "/home/eastgate/Development/ecoPrimals/songbird",
+  "total_items": 172,
+  "by_severity": {
+    "high": 141,
+    "low": 31
+  },
+  "by_type": {
+    "env_vars": 124,
+    "compatibility_layers": 33,
+    "deprecated_traits": 13,
+    "feature_flags": 1,
+    "feature_flag": 1
+  },
+  "high_priority_files": [
+    "/home/eastgate/Development/ecoPrimals/songbird/examples/zero_cost_migration_demo.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/examples/enterprise_universal_primal_showcase_simple.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-observability/src/health/config.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-network-federation/Cargo.toml",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-canonical/src/traits.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/tests/integration_unified_config_test.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-types/src/config/environment.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/examples/federation_migration_example.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/examples/infant_discovery_demo.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/examples/universal_primal_discovery_demo.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-types/src/generated_unified_constants.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-types/src/config/environment_corrupted.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-orchestrator/src/core/biome/modules/types.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-config/src/config/universal_primals.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/examples/config_unification_demo.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-canonical/src/providers.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-config/src/config/agnostic_primals.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-config/src/config/mod.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-network-federation/src/lib.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-config/src/migration/mod.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-discovery/src/migration.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-config/src/environment_config.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/examples/revolutionary_integration_demo.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-universal/src/traits.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/tests/vendor_hardcoding_elimination_tests.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-universal-primals/src/storage/config.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/examples/agnostic_network_effects_demo.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/examples/enterprise_universal_primal_showcase.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-observability/src/observability/advanced_dashboard.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/tools/vendor_pattern_migrator/src/main.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-discovery/src/lib.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-orchestrator/src/core/zero_cost_migration.rs",
+    "/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-types/src/config/final_consolidation.rs"
+  ],
+  "migration_priorities": [
+    {
+      "type": "feature_flags",
+      "count": 1,
+      "priority": 1,
+      "description": "Remove legacy feature flags from Cargo.toml files"
+    },
+    {
+      "type": "env_vars",
+      "count": 124,
+      "priority": 2,
+      "description": "Replace deprecated environment variables with canonical config"
+    },
+    {
+      "type": "compatibility_layers",
+      "count": 33,
+      "priority": 3,
+      "description": "Remove backward compatibility modules and wrappers"
+    },
+    {
+      "type": "deprecated_traits",
+      "count": 13,
+      "priority": 4,
+      "description": "Update trait usage to canonical implementations"
+    },
+    {
+      "type": "feature_flag",
+      "count": 1,
+      "priority": 5,
+      "description": "Update legacy code patterns"
+    }
+  ]
+}

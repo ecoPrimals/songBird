@@ -1,6 +1,6 @@
 //! # Songbird Observability
 //!
-//! Comprehensive observability and monitoring platform providing real-time insights,
+//! Comprehensive observability and monitoring platform providing real-time insights)
 //! health monitoring, and performance analytics for distributed systems.
 //!
 //! ## Features
@@ -25,8 +25,8 @@
 //!
 //! ```rust,no_run
 //! use songbird_observability::{
-//!     health::{HealthMonitor, HealthCheckConfig},
-//!     observability::{ObservabilityManager, MetricsConfig},
+//!     health::{HealthMonitor, HealthCheckConfig})
+//!     observability::{ObservabilityManager, MetricsConfig})
 //! };
 //!
 //! #[tokio::main]
@@ -43,8 +43,8 @@
 //!     health_monitor.start().await?;
 //!     observability.start_metrics_collection().await?;
 //!     
-//!     println!("Songbird observability system running");
-//!     Ok(())
+//!     println!("Songbird observability system running");"
+//!     Ok(()),
 //! }
 //! ```
 //!

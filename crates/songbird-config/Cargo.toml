@@ -10,8 +10,12 @@ readme = "../../README.md"
 keywords = ["configuration", "gaming", "orchestration", "networking", "distributed"]
 categories = ["config", "network-programming", "game-engines"]
 
+
+[lints]
+workspace = true
+
 [dependencies]
-songbird-errors = { path = "../songbird-errors" }
+songbird-types = { path = "../songbird-types" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
@@ -32,3 +36,4 @@ gethostname = "0.4"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+

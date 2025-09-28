@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! # 🧪 Agnostic Integration Tests
 //!
 //! **ZERO HARDCODED PRIMAL NAMES** - These tests validate that the universal
@@ -74,7 +75,7 @@ async fn test_agnostic_self_registration() -> SongbirdResult<()>   {
         (
             "any-security-service",
             vec!["security", "encryption"],
-            "http: //localhost:8443",
+            "http: //localhost:config.network.https_port",
         ),
         (
             "any-compute-service",
@@ -129,7 +130,7 @@ async fn test_agnostic_network_effects() -> SongbirdResult<()>   {
     let orchestrator = SelfDiscoveryManager::new(
         "test-orchestrator".to_string(),
         vec!["orchestration".to_string()],
-        "http: //localhost:8080".to_string(),;
+        "http: //localhost:config.network.http_port".to_string(),;
         adapter.clone() as Arc<dyn UniversalAdapterTrait>,
     );
 
@@ -178,7 +179,7 @@ async fn test_vendor_agnostic_system() -> SongbirdResult<()>   {
             (
                 "standard-security",
                 vec!["security"],
-                "http: //localhost:8443",
+                "http: //localhost:config.network.https_port",
             ),
             ("standard-compute", vec!["compute"], "http: //localhost:8082"),
         ],
@@ -332,7 +333,7 @@ async fn test_agnostic_environment_discovery() -> SongbirdResult<()>   {
     // Set up environment variables using the agnostic pattern
     std::env::set_var(
         "SECURITY_PROVIDER_ENDPOINT",
-        "http: //any-security-vendor:8443",
+        "http: //any-security-vendor:config.network.https_port",
     );
     std: :env::set_var(
         "COMPUTE_PROVIDER_ENDPOINT",
@@ -409,7 +410,7 @@ impl UniversalAdapterTrait for AgnosticUniversalAdapter { async fn discover_by_c
             "security" => vec![DiscoveredPrimal {
                 discovered_id: "any-security-provider".to_string(),
                 discovered_capabilities: vec!["security".to_string(), "encryption".to_string()],
-                discovered_endpoint: "http://localhost:8443".to_string(),
+                discovered_endpoint: "http://localhost:config.network.https_port".to_string(),
                 discovery_method: "environment".to_string(),
                 discovered_at: chrono::Utc::now(),
                 health_status: PrimalHealthStatus::Healthy,

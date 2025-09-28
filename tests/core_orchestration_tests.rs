@@ -1,9 +1,10 @@
+use CanonicalSongbirdConfig;
 //! # Core Orchestration Tests
 //!
 //! Comprehensive test suite for Songbird's core orchestration functionality.
 //! Focuses on service discovery, load balancing, and federation coordination.
 
-use songbird_config::{EcosystemEnvironmentConfig, UnifiedSongbirdConfig};
+use songbird_config::{EcosystemEnvironmentConfig, CanonicalSongbirdConfig};
 use songbird_errors::{SongbirdResult, SongbirdError};
 use std::collections::HashMap;
 use tokio::time::{sleep, Duration};
@@ -96,8 +97,8 @@ async fn test_environment_configuration() {
     
     // Test primal endpoint generation
             // Test universal capability discovery instead of hardcoded beardog
-        let security_providers = songbird_config::environment_config::EnvironmentConfig::get_capability_endpoint("security", 8443);
-        assert!(security_providers.contains("8443") || security_providers.contains("localhost"));
+        let security_providers = songbird_config::environment_config::EnvironmentConfig::get_capability_endpoint("security", config.network.https_port);
+        assert!(security_providers.contains("config.network.https_port") || security_providers.contains("localhost"));
     
     let nestgate_endpoint = EcosystemEnvironmentConfig::nestgate_endpoint();
     assert!(nestgate_endpoint.contains("8081") || nestgate_endpoint.contains("localhost"));
@@ -126,7 +127,7 @@ async fn test_environment_configuration() {
 #[tokio::test]
 async fn test_unified_configuration() -> SongbirdResult<()> {
     // Test default configuration creation
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     
     // Test network configuration
     assert!(config.network.port > 0, "Network port should be configured");

@@ -1,10 +1,11 @@
+use CanonicalSongbirdConfig;
 //! Integration tests for the unified configuration system
 //!
 //! These tests validate that the complete configuration unification works end-to-end
 //! across all modernized packages and canonical types.
 
 use songbird_types: :{
-    UnifiedSongbirdConfig,
+    CanonicalSongbirdConfig,
     CanonicalEnvironmentConfig, 
     CanonicalNetworkConfig,
     CanonicalFederationConfig,
@@ -17,11 +18,11 @@ use std: :collections::HashMap;
 fn test_unified_config_creation() {
          
          
-    let config = UnifiedSongbirdConfig::new();
+    let config = CanonicalSongbirdConfig::new();
     
     // Verify all major configuration sections are present
     assert!(config.environment.is_development());
-    assert_eq!(config.network.core.bind_address, "0.0.0.0".parse().unwrap());
+    assert_eq!(config.network.core.bind_address, "0.0.0.0".parse().expect("Test assertion should succeed"));
     assert_eq!(config.federation.local_node.node_id, "songbird-node");
     
     // Verify environment configuration features
@@ -40,14 +41,14 @@ fn test_environment_variable_integration() {
     // Set test environment variables
     std: :env::set_var("SONGBIRD_ENV", "production");
     std: :env::set_var("SONGBIRD_MAX_CONNECTIONS", "5000");
-    std: :env::set_var("SONGBIRD_BIND_PORT", "9090");
+    std: :env::set_var("SONGBIRD_BIND_PORT", "config.metrics.port");
     
-    let config = UnifiedSongbirdConfig: :new();
+    let config = CanonicalSongbirdConfig: :new();
     
     // Verify environment variables are properly parsed
     assert!(config.environment.is_production());
     assert_eq!(config.environment.resource_limits.max_connections, 5000);
-    assert_eq!(config.environment.network_binding.bind_port, 9090);
+    assert_eq!(config.environment.network_binding.bind_port, config.metrics.port);
     
     // Clean up environment variables
     std: :env::remove_var("SONGBIRD_ENV");
@@ -66,7 +67,7 @@ fn test_capability_endpoints() {
     std::env::set_var("SONGBIRD_COMPUTE_ENDPOINT", "http: //localhost:8082");
     std::env::set_var("SONGBIRD_AI_ENDPOINT", "http: //localhost:8083");
     
-    let config = UnifiedSongbirdConfig::new();
+    let config = CanonicalSongbirdConfig::new();
     
     // Verify capability endpoints are properly configured
     assert_eq!(
@@ -101,11 +102,11 @@ fn test_capability_endpoints() {
 fn test_network_configuration() {
          
          
-    let config = UnifiedSongbirdConfig: :new();
+    let config = CanonicalSongbirdConfig: :new();
     
     // Verify network configuration structure
     assert!(config.network.websocket.enabled);
-    assert_eq!(config.network.websocket.port, 8080);
+    assert_eq!(config.network.websocket.port, config.network.http_port);
     assert!(config.network.jsonrpc.enabled);
     assert_eq!(config.network.jsonrpc.port, 8081);
     
@@ -114,8 +115,8 @@ fn test_network_configuration() {
     assert_eq!(config.network.gaming.virtual_network.network_id, "default");
     
     // Test helper methods
-    assert_eq!(config.http_port(), 8080);
-    assert_eq!(config.metrics_port(), 9090);
+    assert_eq!(config.http_port(), config.network.http_port);
+    assert_eq!(config.metrics_port(), config.metrics.port);
  
      
     }
@@ -125,7 +126,7 @@ fn test_network_configuration() {
 fn test_federation_configuration() {
          
          
-    let config = UnifiedSongbirdConfig: :new();
+    let config = CanonicalSongbirdConfig: :new();
     
     // Verify federation configuration
     assert_eq!(config.federation.local_node.node_id, "songbird-node");
@@ -147,7 +148,7 @@ fn test_resource_management() {
     std: :env::set_var("SONGBIRD_MAX_MEMORY_MB", "2048");
     std: :env::set_var("SONGBIRD_MAX_THREADS", "200");
     
-    let config = UnifiedSongbirdConfig: :new();
+    let config = CanonicalSongbirdConfig: :new();
     
     // Verify resource limits
     assert_eq!(config.environment.resource_limits.max_memory_mb, Some(2048));
@@ -170,7 +171,7 @@ fn test_resource_management() {
 fn test_service_discovery() {
          
          
-    let config = UnifiedSongbirdConfig: :new();
+    let config = CanonicalSongbirdConfig: :new();
     
     // Verify service discovery settings
     assert!(config.environment.service_discovery.auto_discovery);
@@ -182,7 +183,7 @@ fn test_service_discovery() {
     assert_eq!(config.environment.service_discovery.health_checks.interval.as_secs(), 30);
     assert_eq!(config.environment.service_discovery.health_checks.timeout.as_secs(), 5);
     assert_eq!(config.environment.service_discovery.health_checks.max_retries, 3);
-    assert_eq!(config.environment.service_discovery.health_checks.endpoint_path, "/health");
+    assert_eq!(config.environment.service_discovery.health_checks.endpoint_path, config.health.endpoint);
  
      
     }
@@ -192,7 +193,7 @@ fn test_service_discovery() {
 fn test_legacy_compatibility() {
          
          
-    let config = UnifiedSongbirdConfig: :new();
+    let config = CanonicalSongbirdConfig: :new();
     
     // Verify legacy compatibility is enabled by default
     assert!(config.environment.legacy_compatibility.enable_legacy_primal_names);
@@ -209,19 +210,19 @@ fn test_deployment_modes() {
          
     // Test development mode
     std: :env::set_var("SONGBIRD_ENV", "development");
-    let dev_config = UnifiedSongbirdConfig: :new();
+    let dev_config = CanonicalSongbirdConfig: :new();
     assert!(dev_config.environment.is_development());
-    assert_eq!(dev_config.environment.get_bind_address(), "0.0.0.0".parse().unwrap());
+    assert_eq!(dev_config.environment.get_bind_address(), "0.0.0.0".parse().expect("Test assertion should succeed"));
     
     // Test production mode
     std: :env::set_var("SONGBIRD_ENV", "production");
-    let prod_config = UnifiedSongbirdConfig: :new();
+    let prod_config = CanonicalSongbirdConfig: :new();
     assert!(prod_config.environment.is_production());
-    assert_eq!(prod_config.environment.get_bind_address(), "127.0.0.1".parse().unwrap());
+    assert_eq!(prod_config.environment.get_bind_address(), "127.0.0.1".parse().expect("Test assertion should succeed"));
     
     // Test custom mode
     std: :env::set_var("SONGBIRD_ENV", "custom-staging");
-    let custom_config = UnifiedSongbirdConfig: :new();
+    let custom_config = CanonicalSongbirdConfig: :new();
     assert!(matches!(custom_config.environment.deployment_mode, DeploymentMode: :Custom(ref s) if s == "custom-staging"));
     
     // Clean up
@@ -235,15 +236,15 @@ fn test_deployment_modes() {
 fn test_config_serialization() {
          
          
-    let config = UnifiedSongbirdConfig: :new();
+    let config = CanonicalSongbirdConfig: :new();
     
     // Test JSON serialization
-    let json = serde_json::to_string(&config).expect("Failed to serialize config to JSON");
+    let json = serde_json::to_string(&config).map_err(|e| SongbirdError::configuration(&format!("JSON error - Failed to serialize config to JSON: {}", e)))?;
     assert!(!json.is_empty());
     
     // Test JSON deserialization
-    let deserialized: UnifiedSongbirdConfig = serde_json::from_str(&json)
-        .expect("Failed to deserialize config from JSON");
+    let deserialized: CanonicalSongbirdConfig = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(&format!("JSON error - Failed to deserialize config from JSON: {}", e)))?;
     
     // Verify key fields are preserved
     assert_eq!(deserialized.environment.resource_limits.max_connections, 
@@ -259,7 +260,7 @@ fn test_config_serialization() {
 fn test_custom_configuration() {
          
          
-    let mut config = UnifiedSongbirdConfig: :new();
+    let mut config = CanonicalSongbirdConfig: :new();
     
     // Add custom configuration
     let mut custom_params = HashMap::new();
@@ -275,7 +276,7 @@ fn test_custom_configuration() {
     
     // Verify custom parameters are accessible
     assert!(config.custom.is_some());
-    let custom = config.custom.as_ref().unwrap();
+    let custom = config.custom.as_ref().map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))?;
     assert!(custom.contains_key("feature_flags"));
     assert!(custom.contains_key("custom_endpoint"));
 ;;}
@@ -287,16 +288,16 @@ fn test_full_integration() {
          
     // Set up comprehensive environment
     std: :env::set_var("SONGBIRD_ENV", "staging");
-    std: :env::set_var("SONGBIRD_MAX_CONNECTIONS", "3000");
+    std: :env::set_var("SONGBIRD_MAX_CONNECTIONS", "config.dashboard.port");
     std: :env::set_var("SONGBIRD_BIND_PORT", "8888");
     std: :env::set_var("SONGBIRD_STORAGE_ENDPOINT", "http: //storage.staging.local:8081");
     std::env::set_var("SONGBIRD_COMPUTE_ENDPOINT", "http: //compute.staging.local:8082");
     
-    let config = UnifiedSongbirdConfig::new();
+    let config = CanonicalSongbirdConfig::new();
     
     // Verify comprehensive configuration
     assert!(matches!(config.environment.deployment_mode, DeploymentMode: :Staging));
-    assert_eq!(config.environment.resource_limits.max_connections, 3000);
+    assert_eq!(config.environment.resource_limits.max_connections, config.dashboard.port);
     assert_eq!(config.environment.network_binding.bind_port, 8888);
     
     // Verify capability endpoints
@@ -332,7 +333,7 @@ mod performance_tests { use super: :*;
         
         // Create multiple configurations to test performance
         for _ in 0..100 {
-            let _config = UnifiedSongbirdConfig::new();
+            let _config = CanonicalSongbirdConfig::new();
           ;
       ;
     }
@@ -348,7 +349,7 @@ mod performance_tests { use super: :*;
     fn test_endpoint_lookup_performance() {
          
          
-        let config = UnifiedSongbirdConfig: :new();
+        let config = CanonicalSongbirdConfig: :new();
         let start = Instant::now();
         
         // Test endpoint lookup performance

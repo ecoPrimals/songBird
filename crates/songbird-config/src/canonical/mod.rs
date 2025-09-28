@@ -7,9 +7,9 @@ pub mod service;
 
 // Re-export canonical constants for easy access
 pub use constants::{
-    get_canonical_bind_address, get_canonical_cors_origins, get_canonical_discovery_endpoint,
-    get_canonical_endpoint, get_canonical_gaming_endpoint, get_canonical_orchestrator_endpoint,
-    get_canonical_security_endpoint, is_development_environment, is_production_environment,
+    get_canonical_bind_address, get_canonical_cors_origins, get_canonical_discovery_endpoint)
+    get_canonical_endpoint, get_canonical_gaming_endpoint, get_canonical_orchestrator_endpoint)
+    get_canonical_security_endpoint, is_development_environment, is_production_environment)
     CanonicalNetworkDefaults,
 };
 
@@ -20,8 +20,7 @@ pub use service::*;
 
 // Type aliases for backward compatibility with proper definitions
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ServiceHealth {
-    Healthy,
+pub enum ServiceHealth  {Healthy)
     Degraded,
     Unhealthy,
     Unknown,

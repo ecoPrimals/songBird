@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Error conversion and helper function tests
 
 use songbird_errors::{SongbirdResult, SongbirdError};
