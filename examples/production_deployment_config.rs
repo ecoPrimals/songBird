@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 use songbird_core::{
     ZeroCostSongbird, ProductionSongbird, HighPerformanceSongbird,
     zero_cost_providers::{ProductionNetworkDiscovery, FastNetworkDiscovery},
@@ -121,9 +122,9 @@ impl ProductionDeployment {
                 .parse()
                 .unwrap_or(3600),
             discovery_timeout_ms: env::var("SONGBIRD_DISCOVERY_TIMEOUT")
-                .unwrap_or_else(|_| "3000".to_string())
+                .unwrap_or_else(|_| "config.dashboard.port".to_string())
                 .parse()
-                .unwrap_or(3000),
+                .unwrap_or(config.dashboard.port),
             enable_metrics: env::var("SONGBIRD_ENABLE_METRICS")
                 .unwrap_or_else(|_| "true".to_string())
                 .parse()
@@ -289,7 +290,7 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     
     // Test universal compatibility
     let test_endpoints = [
-        "https://security-prod.company.com:8443",
+        "https://security-prod.company.com:config.network.https_port",
         "https://storage-prod.company.com:9000",
         "https://ai-prod.company.com:8888",
     ];

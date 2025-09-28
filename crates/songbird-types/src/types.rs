@@ -140,7 +140,7 @@ impl CanonicalRequest {
             request_id: uuid::Uuid::new_v4().to_string(),
             operation: operation.into(),
             payload,
-            metadata: HashMap::new(),
+            metadata: HashMap::new()),
             timestamp: chrono::Utc::now(),
         }
     }
@@ -178,7 +178,7 @@ impl CanonicalResponse {
             status: "success".to_string(),
             data: Some(data),
             error_message: None,
-            metadata: HashMap::new(),
+            metadata: HashMap::new()),
             timestamp: chrono::Utc::now(),
         }
     }
@@ -191,7 +191,7 @@ impl CanonicalResponse {
             status: "error".to_string(),
             data: None,
             error_message: Some(error.into()),
-            metadata: HashMap::new(),
+            metadata: HashMap::new()),
             timestamp: chrono::Utc::now(),
         }
     }
@@ -291,8 +291,7 @@ mod tests {
     fn test_canonical_request() {
         let request = CanonicalRequest::new(
             "health_check".to_string(),
-            serde_json::json!({"status": "check"
-            }),
+            serde_json::json!({"status": "check"}),
         );
 
         assert_eq!(request.operation, "health_check");
@@ -304,8 +303,7 @@ mod tests {
         let request_id = uuid::Uuid::new_v4();
         let success_response = CanonicalResponse::success(
             request_id.to_string(),
-            serde_json::json!({"status": "healthy"
-            }),
+            serde_json::json!({"status": "healthy"}),
         );
 
         assert!(success_response.is_success());

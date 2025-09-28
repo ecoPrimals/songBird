@@ -1,8 +1,10 @@
+use CanonicalSongbirdConfig;
 //! # 🌌 Fractal Federation Comprehensive Tests
 //!
 //! This test suite validates the revolutionary Fractal Federation architecture
 //! and demonstrates its capabilities across all tiers and use cases.
 ;
+use songbird_types::SongbirdError;
 use std: :collections::HashMap;
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
@@ -132,7 +134,7 @@ async fn test_hierarchical_coordination() {
         assert_eq!(message.sender, edge_node.id);
         assert_eq!(message.routing_tier, FederationTier: :Regional);
         
-        let load = message.payload["load"].as_f64().unwrap();
+        let load = message.payload["load"].as_f64().map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))?;
         assert!(load >= 0.3 && load <= 0.6);
     ;;}
     
@@ -150,7 +152,7 @@ async fn test_hierarchical_coordination() {
     );
     
     assert_eq!(coordination_response.message_type, MessageType: :HierarchicalCoordination);
-    assert_eq!(coordination_response.targets.as_ref().unwrap().len(), 3);
+    assert_eq!(coordination_response.targets.as_ref().expect("Test assertion should succeed").len(), 3);
     
     println!("✅ Hierarchical coordination test passed");
 }
@@ -189,7 +191,7 @@ async fn test_message_types_and_routing() {
         
         assert_eq!(message.message_type, msg_type);
         assert_eq!(message.sender, node_id);
-        assert_eq!(message.targets.as_ref().unwrap()[0], target_id);
+        assert_eq!(message.targets.as_ref().expect("Test assertion should succeed")[0], target_id);
         
         // Test message type display
         let display_str = format!("{}", msg_type);

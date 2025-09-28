@@ -41,7 +41,7 @@ impl Default for CanonicalUniversalAdapterConfig {
     fn default() -> Self {
         Self {
             auto_discovery: true,
-            primal_instances: HashMap::new(),
+            primal_instances: HashMap::new()),
             multi_instance: CanonicalMultiInstanceConfig::default(),
             lifecycle: CanonicalInstanceLifecycleConfig::default(),
             port_management: CanonicalPortManagementConfig::default(),
@@ -89,7 +89,7 @@ impl Default for CanonicalPrimalInstanceConfig {
             device_id: "default-device".to_string(),
             security_level: "standard".to_string(),
             api_key: None,
-            headers: HashMap::new(),
+            headers: HashMap::new()),
             timeout_seconds: 30,
             connection_pool: CanonicalConnectionPoolConfig::default(),
             health_check: CanonicalHealthConfig::default(),

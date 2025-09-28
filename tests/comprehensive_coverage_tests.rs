@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! # 📊 Comprehensive Coverage Tests
 //!
 //! **🚀 90% TEST COVERAGE ACHIEVEMENT**
@@ -76,7 +77,7 @@ async fn test_comprehensive_gaming_coverage() -> SongbirdResult<()> {
     let gaming_manager = CanonicalGamingManager::new().await?;
     
     // Test gaming session management
-    let local_addr = "127.0.0.1:6112".parse().unwrap();
+    let local_addr = "127.0.0.1:6112".parse().map_err(|e| SongbirdError::configuration(&format!("Parse error: {}", e)))?;
     let session_id = gaming_manager.detect_and_bridge_session(local_addr).await?;
     
     // Test bridge status

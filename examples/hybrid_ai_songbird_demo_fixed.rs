@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Hybrid AI Songbird - Local + External AI Architecture Demo (Fixed)
 //!
 //! **🧠 HYBRID INTELLIGENT ARCHITECTURE**

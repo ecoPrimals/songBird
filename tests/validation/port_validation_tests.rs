@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Port validation tests
 //!
 //! Tests port validation functions from songbird_errors::validation::ConfigValidator
@@ -9,8 +10,8 @@ use songbird_errors::SongbirdError;
 #[test]
 fn test_validate_port_valid_ranges() {
     // Test valid unprivileged ports
-    assert!(ConfigValidator::validate_port(8080, "test_port").is_ok());
-    assert!(ConfigValidator::validate_port(3000, "test_port").is_ok());
+    assert!(ConfigValidator::validate_port(config.network.http_port, "test_port").is_ok());
+    assert!(ConfigValidator::validate_port(config.dashboard.port, "test_port").is_ok());
     assert!(ConfigValidator::validate_port(65535, "test_port").is_ok());
     assert!(ConfigValidator::validate_port(1024, "test_port").is_ok());
 }
@@ -59,7 +60,7 @@ fn test_validate_port_boundary_conditions() {
 fn test_validate_port_range_valid() {
     // Test valid port ranges
     assert!(ConfigValidator::validate_port_range(8000, 8100).is_ok());
-    assert!(ConfigValidator::validate_port_range(3000, 4000).is_ok());
+    assert!(ConfigValidator::validate_port_range(config.dashboard.port, 4000).is_ok());
     assert!(ConfigValidator::validate_port_range(1024, 65535).is_ok());
 }
 

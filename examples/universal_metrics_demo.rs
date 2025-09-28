@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 /// Universal Metrics Collection Demo
 ///
 /// HARD MIGRATION - NO LEGACY COMPATIBILITY

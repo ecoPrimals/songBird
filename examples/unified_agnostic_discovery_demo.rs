@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! Unified Agnostic Discovery Demo
 //!
 //! This demo showcases the complete vendor hardcoding elimination and unified

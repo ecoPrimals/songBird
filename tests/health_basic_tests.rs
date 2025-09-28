@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Basic Tests for Health Module
 
 use songbird_observability::health::{HealthCheckResult, HealthStatus};
@@ -27,13 +28,13 @@ async fn test_health_status_enum() {
 #[test]
 async fn test_health_check_result_creation() {
     let result = HealthCheckResult {
-        name: "test-service".to_string(),
+        name: config.test.service_name.to_string(),
         status: HealthStatus::Healthy,
         message: "OK".to_string(),
         response_time_ms: 100,
     };
 
-    assert_eq!(result.name, "test-service");
+    assert_eq!(result.name, config.test.service_name);
     assert_eq!(result.status, true);
     assert_eq!(result.message, "OK");
     assert_eq!(result.response_time_ms, 100);
@@ -89,7 +90,7 @@ async fn test_health_checker_check_all_empty() {
 #[test]
 async fn test_health_check_result_clone() {
     let result = HealthCheckResult {
-        name: "test-service".to_string(),
+        name: config.test.service_name.to_string(),
         status: HealthStatus::Healthy,
         message: "OK".to_string(),
         response_time_ms: 100,
@@ -126,7 +127,7 @@ async fn test_health_check_result_response_times() {
         );
 
         let result = HealthCheckResult {
-            name: "test-service".to_string(),
+            name: config.test.service_name.to_string(),
             status: HealthStatus::Healthy,
             message: "OK".to_string(),
             response_time_ms: time,

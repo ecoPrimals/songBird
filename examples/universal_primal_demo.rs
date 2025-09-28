@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! Universal Primal Integration Demo
 //!
 //! This example demonstrates how to use the Songbird Universal Primal Integration

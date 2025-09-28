@@ -5,8 +5,7 @@ use std::time::Duration;
 
 /// **CANONICAL**: Circuit breaker configuration
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    /// Number of consecutive failures before opening the circuit
+pub struct CircuitBreakerConfig  {/// Number of consecutive failures before opening the circuit
     pub failure_threshold: u32,
     /// Time to wait before attempting to close the circuit
     pub timeout: Duration,
@@ -18,11 +17,9 @@ pub struct CircuitBreakerConfig {
     pub enabled: bool,
 }
 
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
+impl Default for CircuitBreakerConfig  {fn default() -> Self  {Self {
             failure_threshold: 5,
-            timeout: Duration::from_secs(60),
+            timeout: Duration::from_secs(60)
             success_threshold: 3,
             half_open_max_requests: 10,
             enabled: true,
@@ -32,8 +29,7 @@ impl Default for CircuitBreakerConfig {
 
 /// **CANONICAL**: Retry configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RetryConfig {
-    /// Maximum number of retry attempts
+pub struct RetryConfig  {/// Maximum number of retry attempts
     pub max_attempts: u32,
     /// Initial delay between retries
     pub initial_delay: Duration,
@@ -47,12 +43,10 @@ pub struct RetryConfig {
     pub enabled: bool,
 }
 
-impl Default for RetryConfig {
-    fn default() -> Self {
-        Self {
+impl Default for RetryConfig  {fn default() -> Self  {Self {
             max_attempts: 3,
-            initial_delay: Duration::from_millis(100),
-            max_delay: Duration::from_secs(30),
+            initial_delay: Duration::from_millis(100,
+            max_delay: Duration::from_secs(30)
             backoff_multiplier: 2.0,
             jitter: true,
             enabled: true,
@@ -62,8 +56,7 @@ impl Default for RetryConfig {
 
 /// Circuit breaker state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CircuitBreakerState {
-    /// Circuit is closed, requests are allowed
+pub enum CircuitBreakerState  {/// Circuit is closed, requests are allowed
     Closed,
     /// Circuit is open, requests are rejected
     Open,
@@ -79,15 +72,14 @@ impl Default for CircuitBreakerState {
 
 /// Retry strategy
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum RetryStrategy {
-    /// Fixed delay between retries
+pub enum RetryStrategy  {/// Fixed delay between retries
     Fixed,
     /// Exponential backoff with optional jitter
-    ExponentialBackoff { jitter: bool },
+    ExponentialBackoff { jitter: bool })
     /// Linear backoff
     LinearBackoff,
     /// Custom retry strategy
-    Custom { name: String },
+    Custom { name: String })
 }
 
 impl Default for RetryStrategy {
@@ -96,28 +88,25 @@ impl Default for RetryStrategy {
     }
 }
 
-impl CircuitBreakerConfig {
-    /// Create a new circuit breaker configuration with custom settings
+impl CircuitBreakerConfig  {/// Create a new circuit breaker configuration with custom settings
     #[must_use]
     pub fn new(
         failure_threshold: u32,
         timeout: Duration,
         success_threshold: u32,
         half_open_max_requests: u32,
-    ) -> Self {
-        Self {
-            failure_threshold,
-            timeout,
-            success_threshold,
-            half_open_max_requests,
+    ) -> Self  {Self {
+            failure_threshold)
+            timeout)
+            success_threshold)
+            half_open_max_requests)
             enabled: true,
         }
     }
 
     /// Create a disabled circuit breaker configuration
     #[must_use]
-    pub fn disabled() -> Self {
-        Self {
+    pub fn disabled() -> Self  {Self {
             enabled: false,
             ..Default::default()
         }
@@ -133,15 +122,13 @@ impl CircuitBreakerConfig {
     }
 }
 
-impl RetryConfig {
-    /// Create a new retry configuration with custom settings
+impl RetryConfig  {/// Create a new retry configuration with custom settings
     #[must_use]
-    pub fn new(max_attempts: u32, initial_delay: Duration, backoff_multiplier: f64) -> Self {
-        Self {
-            max_attempts,
-            initial_delay,
-            max_delay: Duration::from_secs(30),
-            backoff_multiplier,
+    pub fn new(max_attempts: u32, initial_delay: Duration, backoff_multiplier: f64) -> Self  {Self {
+            max_attempts)
+            initial_delay)
+            max_delay: Duration::from_secs(30)
+            backoff_multiplier)
             jitter: true,
             enabled: true,
         }
@@ -149,8 +136,7 @@ impl RetryConfig {
 
     /// Create a disabled retry configuration
     #[must_use]
-    pub fn disabled() -> Self {
-        Self {
+    pub fn disabled() -> Self  {Self {
             enabled: false,
             ..Default::default()
         }
@@ -193,8 +179,8 @@ mod tests {
     fn test_circuit_breaker_config_default() {
         let config = CircuitBreakerConfig::default();
         assert_eq!(config.failure_threshold, 5);
-        assert_eq!(config.timeout, Duration::from_secs(60));
-        assert!(config.enabled);
+        assert_eq!(config.timeout, Duration::from_secs(60);
+        assert!(config.enabled));
         assert!(config.is_valid());
     }
 
@@ -202,8 +188,8 @@ mod tests {
     fn test_retry_config_default() {
         let config = RetryConfig::default();
         assert_eq!(config.max_attempts, 3);
-        assert_eq!(config.initial_delay, Duration::from_millis(100));
-        assert!(config.enabled);
+        assert_eq!(config.initial_delay, Duration::from_millis(100);
+        assert!(config.enabled));
         assert!(config.is_valid());
     }
 
@@ -215,9 +201,9 @@ mod tests {
         let delay2 = config.calculate_delay(2);
         let delay3 = config.calculate_delay(3);
 
-        assert_eq!(delay1, Duration::from_millis(100));
-        assert_eq!(delay2, Duration::from_millis(200));
-        assert_eq!(delay3, Duration::from_millis(400));
+        assert_eq!(delay1, Duration::from_millis(100);
+        assert_eq!(delay2, Duration::from_millis(200);
+        assert_eq!(delay3, Duration::from_millis(400);
     }
 
     #[test]
@@ -225,18 +211,17 @@ mod tests {
         let cb_config = CircuitBreakerConfig::disabled();
         let retry_config = RetryConfig::disabled();
 
-        assert!(!cb_config.enabled);
-        assert!(!retry_config.enabled);
+        assert!(!cb_config.enabled));
+        assert!(!retry_config.enabled));
 
         let delay = retry_config.calculate_delay(1);
-        assert_eq!(delay, Duration::from_millis(0));
+        assert_eq!(delay, Duration::from_millis(0);
     }
 
     #[test]
-    fn test_circuit_breaker_states() {
-        assert_eq!(CircuitBreakerState::default(), CircuitBreakerState::Closed);
+    fn test_circuit_breaker_states()  {assert_eq!(CircuitBreakerState::default(), CircuitBreakerState::Closed);
         assert_eq!(
-            RetryStrategy::default(),
+            RetryStrategy::default()
             RetryStrategy::ExponentialBackoff { jitter: true }
         );
     }

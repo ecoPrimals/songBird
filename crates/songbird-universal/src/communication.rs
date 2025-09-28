@@ -2,18 +2,22 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_config::AuthMethod;
-use std::collections::HashMap;
-use uuid::Uuid;
+// use songbird_config::AuthMethod;  // TEMPORARILY DISABLED
 
+// Temporary AuthMethod definition for testing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AuthMethod  {Jwt)
+    ApiKey,
+    None,
+}
+use std::collections::HashMap;
 use crate::{CapabilityRequirement, PrimalType, SecurityConfig, SecurityLevel, ServiceCapability};
 // Remove problematic import - will fix hardcoded values in a different way
 // use songbird_config::config::hardcoded_elimination::replace;
 
 /// Universal request format for all ecosystem communication
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalRequest {
-    /// Unique request identifier
+pub struct UniversalRequest  {/// Unique request identifier
     pub request_id: Uuid,
 
     /// Source service identifier
@@ -32,7 +36,7 @@ pub struct UniversalRequest {
     pub security_context: SecurityContext,
 
     /// Request metadata (extensible)
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: HashMap<String, serde_json::Value>)
 
     /// Request timestamp
     pub timestamp: DateTime<Utc>,
@@ -56,22 +60,21 @@ pub struct UniversalRequest {
     pub retry_config: Option<crate::RetryConfig>,
 }
 
-impl UniversalRequest {
+impl UniversalRequest  {#[must_use]
     pub fn new(
         source_service: String,
         target_service: String,
         operation: String,
         payload: serde_json::Value,
-    ) -> Self {
-        Self {
-            request_id: Uuid::new_v4(),
-            source_service,
-            target_service,
-            operation,
-            payload,
+    ) -> Self  {Self {
+            request_id: Uuid::new_v4(,
+            source_service)
+            target_service)
+            operation)
+            payload)
             security_context: SecurityContext::default(),
-            metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            metadata: HashMap::new()),
+            timestamp: Utc::now(,
             protocol_version: "1.0".to_string(),
             required_capabilities: Vec::new(),
             preferred_primal_type: None,
@@ -81,26 +84,31 @@ impl UniversalRequest {
         }
     }
 
+    #[must_use]
     pub fn with_capabilities(mut self, capabilities: Vec<CapabilityRequirement>) -> Self {
         self.required_capabilities = capabilities;
         self
     }
 
+    #[must_use]
     pub fn with_primal_preference(mut self, primal_type: PrimalType) -> Self {
         self.preferred_primal_type = Some(primal_type);
         self
     }
 
+    #[must_use]
     pub fn with_load_balancing_strategy(mut self, strategy: String) -> Self {
         self.load_balancing_strategy = Some(strategy);
         self
     }
 
+    #[must_use]
     pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = Some(timeout_ms);
         self
     }
 
+    #[must_use]
     pub fn with_metadata(mut self, key: String, value: serde_json::Value) -> Self {
         self.metadata.insert(key, value);
         self
@@ -109,8 +117,7 @@ impl UniversalRequest {
 
 /// Universal response format
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalResponse {
-    /// Request ID this response is for
+pub struct UniversalResponse  {/// Request ID this response is for
     pub request_id: Uuid,
 
     /// Response status (standardized)
@@ -120,7 +127,7 @@ pub struct UniversalResponse {
     pub payload: serde_json::Value,
 
     /// Response metadata (extensible)
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: HashMap<String, serde_json::Value>)
 
     /// Response timestamp
     pub timestamp: DateTime<Utc>,
@@ -135,42 +142,42 @@ pub struct UniversalResponse {
     pub handled_by: Option<String>,
 }
 
-impl UniversalResponse {
-    pub fn success(request_id: Uuid, payload: serde_json::Value) -> Self {
-        Self {
-            request_id,
+impl UniversalResponse  {#[must_use]
+    pub fn success(request_id: Uuid, payload: serde_json::Value) -> Self  {Self {
+            request_id)
             status: ResponseStatus::Success,
-            payload,
-            metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            payload)
+            metadata: HashMap::new()),
+            timestamp: Utc::now(,
             protocol_version: "1.0".to_string(),
             processing_time_ms: None,
             handled_by: None,
         }
     }
 
-    pub fn error(request_id: Uuid, code: String, message: String, retryable: bool) -> Self {
-        Self {
-            request_id,
+    #[must_use]
+    pub fn error(request_id: Uuid, code: String, message: String, retryable: bool) -> Self  {Self {request_id,
             status: ResponseStatus::Error {
-                code,
-                message,
-                retryable,
-            },
+                code)
+                message)
+                retryable)
+            })
             payload: serde_json::Value::Null,
-            metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            metadata: HashMap::new()),
+            timestamp: Utc::now(,
             protocol_version: "1.0".to_string(),
             processing_time_ms: None,
             handled_by: None,
         }
     }
 
+    #[must_use]
     pub fn with_processing_time(mut self, processing_time_ms: u64) -> Self {
         self.processing_time_ms = Some(processing_time_ms);
         self
     }
 
+    #[must_use]
     pub fn with_handled_by(mut self, service: String) -> Self {
         self.handled_by = Some(service);
         self
@@ -178,13 +185,11 @@ impl UniversalResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ResponseStatus {
-    Success,
-    Error {
-        code: String,
+pub enum ResponseStatus  {Success)
+    Error  {code: String,
         message: String,
         retryable: bool,
-    },
+    })
     Timeout,
     ServiceUnavailable,
     RateLimited,
@@ -192,8 +197,7 @@ pub enum ResponseStatus {
 
 /// Security context for all requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityContext {
-    /// Authentication token
+pub struct SecurityContext  {/// Authentication token
     pub auth_token: Option<String>,
 
     /// User/service identity
@@ -206,17 +210,15 @@ pub struct SecurityContext {
     pub security_level: SecurityLevel,
 
     /// Custom security metadata
-    pub custom_security: HashMap<String, serde_json::Value>,
+    pub custom_security: HashMap<String, serde_json::Value>)
 }
 
-impl Default for SecurityContext {
-    fn default() -> Self {
-        Self {
+impl Default for SecurityContext  {fn default() -> Self  {Self {
             auth_token: None,
             identity: "anonymous".to_string(),
             permissions: Vec::new(),
             security_level: SecurityLevel::None,
-            custom_security: HashMap::new(),
+            custom_security: HashMap::new()),
         }
     }
 }
@@ -225,43 +227,44 @@ impl Default for SecurityContext {
 
 /// Universal event for cross-primal coordination
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalEvent {
-    pub event_id: Uuid,
+pub struct UniversalEvent  {pub event_id: Uuid,
     pub event_type: String,
     pub source_service: String,
     pub target_services: Vec<String>,
     pub payload: serde_json::Value,
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: HashMap<String, serde_json::Value>)
     pub timestamp: DateTime<Utc>,
     pub correlation_id: Option<Uuid>,
     pub ttl_seconds: Option<u64>,
 }
 
-impl UniversalEvent {
-    pub fn new(event_type: String, source_service: String, payload: serde_json::Value) -> Self {
-        Self {
-            event_id: Uuid::new_v4(),
-            event_type,
-            source_service,
+impl UniversalEvent  {#[must_use]
+    pub fn new(event_type: String, source_service: String, payload: serde_json::Value) -> Self  {Self {
+            event_id: Uuid::new_v4(,
+            event_type)
+            source_service)
             target_services: Vec::new(),
-            payload,
-            metadata: HashMap::new(),
-            timestamp: Utc::now(),
+            payload)
+            metadata: HashMap::new()),
+            timestamp: Utc::now(,
             correlation_id: None,
             ttl_seconds: None,
         }
     }
 
+    #[must_use]
     pub fn with_targets(mut self, targets: Vec<String>) -> Self {
         self.target_services = targets;
         self
     }
 
+    #[must_use]
     pub fn with_correlation_id(mut self, correlation_id: Uuid) -> Self {
         self.correlation_id = Some(correlation_id);
         self
     }
 
+    #[must_use]
     pub fn with_ttl(mut self, ttl_seconds: u64) -> Self {
         self.ttl_seconds = Some(ttl_seconds);
         self
@@ -270,8 +273,7 @@ impl UniversalEvent {
 
 /// Universal protocol characteristics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProtocolCharacteristics {
-    pub latency: ProtocolLatency,
+pub struct ProtocolCharacteristics  {pub latency: ProtocolLatency,
     pub throughput: ProtocolThroughput,
     pub streaming: bool,
     pub bidirectional: bool,
@@ -293,16 +295,14 @@ pub enum ProtocolThroughput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ProtocolSecurity {
-    None,
+pub enum ProtocolSecurity  {None)
     Basic,
     Strong,
 }
 
 /// Universal service registration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalServiceRegistration {
-    /// Service identification
+pub struct UniversalServiceRegistration  {/// Service identification
     pub service: crate::ServiceIdentification,
 
     /// Primal type
@@ -327,13 +327,12 @@ pub struct UniversalServiceRegistration {
     pub health_check: crate::HealthCheckConfig,
 
     /// Extensible metadata for future primals
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: HashMap<String, serde_json::Value>)
 }
 
 /// Universal service configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalServiceConfig {
-    /// Service identification
+pub struct UniversalServiceConfig  {/// Service identification
     pub service: crate::ServiceIdentification,
 
     /// Songbird integration settings
@@ -349,15 +348,14 @@ pub struct UniversalServiceConfig {
     pub features: crate::FeatureFlags,
 
     /// Primal-specific configuration (completely agnostic)
-    pub primal_config: HashMap<String, serde_json::Value>,
+    pub primal_config: HashMap<String, serde_json::Value>)
 
     /// Environment overrides
-    pub environment: HashMap<String, String>,
+    pub environment: HashMap<String, String>)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongbirdIntegrationConfig {
-    /// Service mesh endpoints
+pub struct SongbirdIntegrationConfig  {/// Service mesh endpoints
     pub discovery_endpoint: String,
     pub registration_endpoint: String,
     pub health_endpoint: String,
@@ -377,13 +375,11 @@ pub struct SongbirdIntegrationConfig {
     pub load_balancing: crate::LoadBalancingConfig,
 }
 
-impl Default for SongbirdIntegrationConfig {
-    fn default() -> Self {
-        Self {
-            discovery_endpoint: "http://localhost:8080/discovery".to_string(),
-            registration_endpoint: "http://localhost:8080/register".to_string(),
-            health_endpoint: "http://localhost:8080/health".to_string(),
-            metrics_endpoint: "http://localhost:8080/metrics".to_string(),
+impl Default for SongbirdIntegrationConfig  {fn default() -> Self  {Self {
+            discovery_endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8080/discovery".to_string(),
+            registration_endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8080/register".to_string(),
+            health_endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8080/health".to_string(),
+            metrics_endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8080/metrics".to_string(),
             auth_token: None,
             auth_method: AuthMethod::Jwt,
             retry_config: crate::RetryConfig::default(),

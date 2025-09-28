@@ -13,6 +13,8 @@
 //! - **Cross-Platform Support**: Works across different operating systems
 //! - **Primal Coordination**: Automatic discovery and coordination with Primals
 //! - **Legacy Protocol Support**: Discovery of legacy network services
+//! - **🌐 Federation Awareness**: Enhanced discovery with sovereignty and network effects detection
+//! - **🔄 Migration Support**: Tools for migrating from old federation systems
 //!
 //! ## Architecture
 //!
@@ -20,13 +22,16 @@
 //!
 //! - `discovery`: Core discovery engine and service management
 //! - `traits`: Common traits and interfaces for discovery implementations
+//! - `federation_aware_discovery`: Enhanced discovery with federation awareness and network effects
+//! - `migration`: Tools for migrating from old federation systems to new discovery-based approach
 //!
 //! ## Usage
 //!
+//! ### Basic Discovery
 //! ```rust,no_run
 //! use songbird_discovery::{
-//!     discovery::{DiscoveryConfig, ServiceDiscovery},
-//!     traits::{ServiceInfo, ServiceStatus},
+//!     discovery::{DiscoveryConfig, UniversalDiscoveryFactory})
+//!     traits::ServiceDiscovery)
 //! };
 //!
 //! #[tokio::main]
@@ -35,13 +40,70 @@
 //!     let config = DiscoveryConfig::default();
 //!     
 //!     // Create discovery service
-//!     let discovery = songbird_discovery::discovery::ServiceDiscoveryFactory::create(&config)?;
+//!     let discovery = UniversalDiscoveryFactory::create_for_config(&config).await?;
 //!     
 //!     // Discover services
 //!     let services = discovery.discover_services(None).await?;
-//!     println!("Discovered {} services", services.len());
+//!     println!("Discovered {} services", services.len();"
 //!     
-//!     Ok(())
+//!     Ok(()),
+//! }
+//! ```
+//!
+//! ### Federation-Aware Discovery
+//! ```rust,no_run
+//! use songbird_discovery::{
+//!     discovery::{DiscoveryConfig, UniversalDiscoveryFactory})
+//!     federation_aware_discovery::{FederationAwareDiscovery, FederationDiscoveryConfig})
+//! };
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Create base discovery
+//!     let base_discovery = UniversalDiscoveryFactory::create_for_config(&DiscoveryConfig::default().await?;
+//!     
+//!     // Create federation-aware discovery
+//!     let config = FederationDiscoveryConfig::default();
+//!     let mut federation_discovery = FederationAwareDiscovery::new(base_discovery, config);
+//!     
+//!     // Discover services with federation awareness
+//!     let services = federation_discovery.discover_federation_aware_services().await?;
+//!     
+//!     // Calculate network effect potential
+//!     let network_potential = federation_discovery.calculate_network_effect_potential(&services);
+//!     println!("Network effect potential: {:.2}", network_potential);"
+//!     
+//!     Ok(()),
+//! }
+//! ```
+//!
+//! ### Migration from Old Federation System
+//! ```rust,no_run
+//! use songbird_discovery::migration::{//!     FederationMigrationHelper, LegacyFederationConfig, LegacyFederationMode,
+//! };
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>>  {//!     // Define your old federation config
+//!     let legacy_config = LegacyFederationConfig {
+//!         cluster_name: Some("my-cluster".to_string(),"
+//!         peer_discovery_enabled: true,
+//!         discovery_endpoints: vec![&format!("{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string()],"
+//!         // ... other legacy settings
+//!         ..Default::default()
+//!     };
+//!     
+//!     // Migrate to new system
+//!     let mut migration_helper = FederationMigrationHelper::default();
+//!     let migration_result = migration_helper.migrate_with_validation(legacy_config).await?;
+//!     
+//!     if migration_result.success {
+//!         println!("🎉 Migration successful!");"
+//!         println!("New config ready to use: {:?}", migration_result.new_discovery_config);"
+//!     } else {
+//!         println!("⚠️ Migration had issues: {:?}", migration_result.errors);"
+//!     }
+//!     
+//!     Ok(()),
 //! }
 //! ```
 //!
@@ -51,11 +113,12 @@
 //!
 //! - **Static Configuration**: File-based service definitions
 //! - **DNS-SD**: DNS Service Discovery (Bonjour/Avahi)
-//! - **Consul**: HashiCorp Consul service discovery
+//! - **Consul**: `HashiCorp` Consul service discovery
 //! - **Kubernetes**: Kubernetes service discovery
 //! - **etcd**: etcd-based service registry
 //! - **Network Scanning**: Active network scanning and probing
 //! - **mDNS**: Multicast DNS service discovery
+//! - **🧬 Pattern Recognition**: BearDog-inspired pattern detection for primal classification
 //!
 //! ## Service Types
 //!
@@ -68,6 +131,7 @@
 //! - **Gaming Services**: Gaming servers and lobbies
 //! - **Primal Services**: Ecosystem Primal services
 //! - **Custom Services**: User-defined service types
+//! - **🏛️ Sovereign Services**: Services with sovereignty and entropy assessment
 //!
 //! ## Health Monitoring
 //!
@@ -78,6 +142,7 @@
 //! - **Status Reporting**: Real-time service status reporting
 //! - **Metrics Collection**: Performance and availability metrics
 //! - **Alerting**: Health-based alerting and notifications
+//! - **🧬 Entropy Monitoring**: Ongoing entropy assessment for dynamic hierarchy adjustment
 //!
 //! ## Performance
 //!
@@ -87,6 +152,7 @@
 //! - **Caching**: Intelligent caching of discovery results
 //! - **Rate Limiting**: Respectful network scanning
 //! - **Incremental Updates**: Efficient delta-based updates
+//! - **🌐 Network Effects**: Optimized detection of emergent network capabilities
 //!
 //! ## Error Handling
 //!
@@ -94,28 +160,33 @@
 //! error information including network errors, timeout handling, and recovery
 //! suggestions for common discovery failures.
 
+use songbird_config;
 pub mod discovery;
 pub mod traits;
 
+// 🌐 Federation-aware discovery enhancement
+pub mod federation_aware_discovery;
+
+// 🔄 Migration support for old federation systems
+pub mod migration;
+
 // Re-export universal discovery functionality
-pub use discovery::{
-    DiscoveryConfig, ServiceInstance, SongbirdDiscovery, StaticServiceDiscovery,
-    UniversalContainerOrchestration, UniversalDiscoveryFactory, UniversalServiceDiscovery,
+pub use discovery::{DiscoveryConfig, UniversalDiscoveryFactory};
+pub use traits::{ServiceDiscovery, ServiceInfo, ServiceStatus};
+
+// Re-export federation-aware functionality
+pub use federation_aware_discovery::{
+    FederationAwareDiscovery, FederationAwareServiceInfo, FederationCapabilities,
+    FederationDiscoveryConfig, HierarchyPosition, NetworkEffectType, OverrideCapabilities,
+    PotentialNetworkEffect, PrimalCategory, PrimalPattern, SovereigntyAssessment, SovereigntyLevel,
 };
 
-// Re-export commonly used types from discovery
-pub use discovery::{
-    ComputeResources, DatasetInfo, FederationHealth, FederationMessage, FederationStats,
-    NetworkMeasurement, NetworkPartition, NetworkTopology, NodeId, NodeInfo, NodeType,
-    ResourceQuery, ResourceUpdate, ResourceUsage, StorageInfo, TrustLevel,
+// Re-export migration functionality
+pub use migration::{
+    FederationMigrationHelper, LegacyFederationConfig, LegacyFederationMode,
+    LegacyFederationWrapper, LegacyPeerInfo, LegacySovereigntyLevel, MigrationConfig,
+    MigrationResult, MigrationStats, PerformanceComparison,
 };
 
-// Re-export traits
-pub use traits::{
-    CommunicationLayer, ComposablePlugin, ComposedSystem, CompositionPlan, ConfigProvider,
-    HealthCheck, HealthMonitor, HealthState, HealthStatus, PluginCapability, PluginHealth,
-    PluginRegistry, PluginRequirement, ServiceInfo, ServiceStatus, SystemHealth,
-};
-
-// Re-export service discovery trait
-pub use traits::ServiceDiscovery;
+// Export consolidated traits
+pub use traits::feature_flags::FeatureFlagProvider;

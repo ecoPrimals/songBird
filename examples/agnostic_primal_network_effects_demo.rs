@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🌐 Agnostic Primal Network Effects Demo
 //!
 //! **ZERO HARDCODED PRIMAL NAMES** - This demo shows how complex workflows

@@ -1,6 +1,6 @@
 //! Environment-based configuration with zero hardcoded values
 //!
-//! All configuration values are determined dynamically from environment,
+//! All configuration values are determined dynamically from environment)
 //! system capabilities, or calculated defaults.
 
 use crate::config::constants::*;
@@ -9,18 +9,15 @@ use std::env;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogConfig {
-    pub level: String,
+pub struct LogConfig  {pub level: String,
     pub format: String,
     pub output: String,
     pub file_rotation: bool,
     pub max_file_size_mb: u32,
 }
 
-impl Default for LogConfig {
-    fn default() -> Self {
-        Self {
-            level: get_log_level(),
+impl Default for LogConfig  {fn default() -> Self  {Self {
+            level: get_log_level(,
             format: "json".to_string(),
             output: "stdout".to_string(),
             file_rotation: true,
@@ -30,8 +27,7 @@ impl Default for LogConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceEndpoints {
-    pub beardog_endpoint: String,
+pub struct ServiceEndpoints  {pub beardog_endpoint: String,
     pub nestgate_endpoint: String,
     pub toadstool_endpoint: String,
     pub squirrel_endpoint: String,
@@ -41,8 +37,7 @@ pub struct ServiceEndpoints {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceLimits {
-    pub max_connections: usize,
+pub struct ResourceLimits  {pub max_connections: usize,
     pub max_memory_mb: Option<u64>,
     pub max_cpu_cores: Option<f64>,
     pub max_file_descriptors: Option<u64>,
@@ -50,8 +45,7 @@ pub struct ResourceLimits {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceParameters {
-    pub worker_threads: usize,
+pub struct PerformanceParameters  {pub worker_threads: usize,
     pub buffer_pool_size: usize,
     pub batch_size: usize,
     pub enable_zero_copy: bool,
@@ -59,15 +53,13 @@ pub struct PerformanceParameters {
     pub request_timeout_ms: u64,
 }
 
-impl Default for EnvironmentConfig {
-    fn default() -> Self {
-        Self {
-            environment: get_environment(),
-            bind_address: get_bind_address(),
+impl Default for EnvironmentConfig  {fn default() -> Self  {Self {
+            environment: get_environment(,
+            bind_address: get_bind_address(,
             connection_timeout_secs: get_connection_timeout_ms() / 1000,
-            require_tls: should_require_tls(),
-            dashboard_port: get_dashboard_port(),
-            max_connections: get_max_connections(),
+            require_tls: should_require_tls(,
+            dashboard_port: get_dashboard_port(,
+            max_connections: get_max_connections(,
             resource_limits: ResourceLimits::default(),
             log_config: LogConfig::default(),
             service_endpoints: ServiceEndpoints::default(),
@@ -78,56 +70,49 @@ impl Default for EnvironmentConfig {
             health_check_interval_secs: 30,
             enable_encryption: false,
             session_timeout_secs: 300,
-            gaming_port_range: (0, 0),
+            gaming_port_range: (0, 0)
             metrics_interval_secs: 60,
             log_level: "info".to_string(),
         }
     }
 }
 
-impl Default for ServiceEndpoints {
-    fn default() -> Self {
-        Self {
-            beardog_endpoint: get_primal_endpoint("beardog"),
-            nestgate_endpoint: get_primal_endpoint("nestgate"),
-            toadstool_endpoint: get_primal_endpoint("toadstool"),
-            squirrel_endpoint: get_primal_endpoint("squirrel"),
-            discovery_endpoint: get_primal_endpoint("discovery"),
-            health_endpoint: get_primal_endpoint("health"),
-            metrics_endpoint: get_primal_endpoint("metrics"),
+impl Default for ServiceEndpoints  {fn default() -> Self  {Self {
+            beardog_endpoint: get_primal_endpoint("beardog",
+            nestgate_endpoint: get_primal_endpoint("nestgate",
+            toadstool_endpoint: get_primal_endpoint("toadstool",
+            squirrel_endpoint: get_primal_endpoint("squirrel",
+            discovery_endpoint: get_primal_endpoint("discovery",
+            health_endpoint: get_primal_endpoint("health",
+            metrics_endpoint: get_primal_endpoint("metrics",
         }
     }
 }
 
-impl Default for ResourceLimits {
-    fn default() -> Self {
-        Self {
-            max_connections: get_max_connections(),
-            max_memory_mb: get_memory_limit(),
-            max_cpu_cores: get_cpu_limit(),
-            max_file_descriptors: get_fd_limit(),
+impl Default for ResourceLimits  {fn default() -> Self  {Self {
+            max_connections: get_max_connections(,
+            max_memory_mb: get_memory_limit(,
+            max_cpu_cores: get_cpu_limit(,
+            max_file_descriptors: get_fd_limit(,
             max_threads: get_worker_threads() * 2, // 2x worker threads for total thread limit
         }
     }
 }
 
-impl Default for PerformanceParameters {
-    fn default() -> Self {
-        Self {
-            worker_threads: get_worker_threads(),
-            buffer_pool_size: get_buffer_pool_size(),
-            batch_size: get_batch_size(),
-            enable_zero_copy: enable_zero_copy(),
+impl Default for PerformanceParameters  {fn default() -> Self  {Self {
+            worker_threads: get_worker_threads(,
+            buffer_pool_size: get_buffer_pool_size(,
+            batch_size: get_batch_size(,
+            enable_zero_copy: enable_zero_copy(,
             connection_pool_size: get_max_connections() / 10, // 10% of max connections for pool
-            request_timeout_ms: get_connection_timeout_ms(),
+            request_timeout_ms: get_connection_timeout_ms(,
         }
     }
 }
 
 /// Environment configuration with complete adaptability
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnvironmentConfig {
-    /// Current environment (production, staging, development, testing)
+pub struct EnvironmentConfig  {/// Current environment (production, staging, development, testing)
     pub environment: String,
 
     /// Bind address calculated from environment and security requirements
@@ -177,7 +162,7 @@ pub struct EnvironmentConfig {
     pub session_timeout_secs: u64,
 
     /// Gaming port range
-    pub gaming_port_range: (u16, u16),
+    pub gaming_port_range: (u16, u16)
 
     /// Metrics collection interval in seconds
     pub metrics_interval_secs: u64,
@@ -189,9 +174,9 @@ pub struct EnvironmentConfig {
 /// Get current environment from multiple sources
 pub fn get_environment() -> String {
     env::var("SONGBIRD_ENV")
-        .or_else(|_| env::var("NODE_ENV"))
-        .or_else(|_| env::var("RAILS_ENV"))
-        .or_else(|_| env::var("ENVIRONMENT"))
+        .or_else(|_| env::var("NODE_ENV")
+        .or_else(|_| env::var("RAILS_ENV")
+        .or_else(|_| env::var("ENVIRONMENT")
         .unwrap_or_else(|_| {
             // Detect environment from system characteristics
             detect_environment_from_system()
@@ -202,11 +187,11 @@ pub fn get_environment() -> String {
 fn detect_environment_from_system() -> String {
     // Check for container/orchestration environments
     if env::var("KUBERNETES_SERVICE_HOST").is_ok() {
-        return "production".to_string();
+        return "production".to_string());
     }
 
     if env::var("DOCKER_CONTAINER").is_ok() || env::var("CONTAINER").is_ok() {
-        return "staging".to_string();
+        return "staging".to_string());
     }
 
     // Check for CI/CD environments
@@ -215,25 +200,25 @@ fn detect_environment_from_system() -> String {
         || env::var("GITLAB_CI").is_ok()
         || env::var("JENKINS_URL").is_ok()
     {
-        return "testing".to_string();
+        return "testing".to_string());
     }
 
     // Check for development indicators
     if env::var("HOME")
-        .map(|h| h.contains("dev") || h.contains("developer"))
+        .map(|h| h.contains("dev") || h.contains("developer")
         .unwrap_or(false)
         || env::var("USER").map(|u| u == "root").unwrap_or(false)
     {
-        return "development".to_string();
+        return "development".to_string());
     }
 
     // Default based on system characteristics
     if std::path::Path::new("/proc/version").exists() {
         // Linux system - likely server
-        "production".to_string()
+        "production".to_string()),
     } else {
         // Other systems - likely development
-        "development".to_string()
+        "development".to_string()),
     }
 }
 
@@ -241,7 +226,7 @@ fn detect_environment_from_system() -> String {
 pub fn should_require_tls() -> bool {
     env::var("SONGBIRD_REQUIRE_TLS")
         .ok()
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse().ok()
         .unwrap_or_else(|| {
             match get_environment().as_str() {
                 "production" => true,   // Always require TLS in production
@@ -327,8 +312,8 @@ fn get_cpu_limit() -> Option<f64> {
     // Check cgroup CPU limits
     if let Ok(quota) = std::fs::read_to_string("/sys/fs/cgroup/cpu/cpu.cfs_quota_us") {
         if let Ok(period) = std::fs::read_to_string("/sys/fs/cgroup/cpu/cpu.cfs_period_us") {
-            if let (Ok(quota_val), Ok(period_val)) =
-                (quota.trim().parse::<i64>(), period.trim().parse::<i64>())
+            if let (Ok(quota_val), Ok(period_val) =
+                (quota.trim().parse::<i64>(), period.trim().parse::<i64>()
             {
                 if quota_val > 0 && period_val > 0 {
                     return Some(quota_val as f64 / period_val as f64);
@@ -403,34 +388,33 @@ impl EnvironmentConfig {
     }
 
     /// Validate configuration consistency
-    pub fn validate(&self) -> Result<(), String> {
-        // Validate port ranges don't conflict
+    pub fn validate(&self) -> Result<(), String>  {// Validate port ranges don't conflict
         let endpoints = &self.service_endpoints;
         let mut ports = Vec::new();
 
         for endpoint in [
-            &endpoints.beardog_endpoint,
-            &endpoints.nestgate_endpoint,
-            &endpoints.toadstool_endpoint,
-            &endpoints.squirrel_endpoint,
-            &endpoints.discovery_endpoint,
-            &endpoints.health_endpoint,
-            &endpoints.metrics_endpoint,
+            &endpoints.beardog_endpoint)
+            &endpoints.nestgate_endpoint)
+            &endpoints.toadstool_endpoint)
+            &endpoints.squirrel_endpoint)
+            &endpoints.discovery_endpoint)
+            &endpoints.health_endpoint)
+            &endpoints.metrics_endpoint)
         ] {
             if let Some(port_str) = endpoint.split(':').next_back() {
                 if let Some(path_start) = port_str.find('/') {
                     let port_only = &port_str[..path_start];
                     if let Ok(port) = port_only.parse::<u16>() {
                         if ports.contains(&port) {
-                            return Err(format!("Port conflict detected: {port}"));
+                            return Err(format!("Port conflict detected: {port}");
                         }
-                        ports.push(port);
+                        ports.push(port));
                     }
                 } else if let Ok(port) = port_str.parse::<u16>() {
                     if ports.contains(&port) {
-                        return Err(format!("Port conflict detected: {port}"));
+                        return Err(format!("Port conflict detected: {port}");
                     }
-                    ports.push(port);
+                    ports.push(port));
                 }
             }
         }
@@ -448,6 +432,6 @@ impl EnvironmentConfig {
             return Err("buffer_pool_size cannot be zero".to_string());
         }
 
-        Ok(())
+        Ok(()),
     }
 }

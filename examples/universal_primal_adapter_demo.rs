@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 /// Universal Primal Adapter Demonstration
 ///
 /// This example shows how to use Songbird's universal primal adapter system
@@ -20,7 +21,7 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     // Create universal adapter with configuration
     let adapter = UniversalPrimalAdapterBuilder::new()
         .with_timeout(30000) // 30 second timeout
-        .with_retries(3) // 3 retry attempts
+        .with_retries(config.retry.max_attempts) // config.retry.max_attempts retry attempts
         .with_cache_ttl(300) // 5 minute cache TTL
         .enable_fallback(true) // Allow fallback to any available primal
         .build()
@@ -49,7 +50,7 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
             info!("💡 This is normal if no primals are configured");
             info!("💡 Set environment variables like:");
             info!("   PRIMAL_1_NAME=my-security-service");
-            info!("   PRIMAL_1_ENDPOINT=https://localhost:8443");
+            info!("   PRIMAL_1_ENDPOINT=https://localhost:config.network.https_port");
             info!("   PRIMAL_1_CAPABILITIES=security,encryption");
         }
     }

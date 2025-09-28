@@ -155,7 +155,7 @@ impl FromStr for OptimizedHost { type Err = SongbirdError;
          
           h if h == crate::CanonicalNetworkAddresses::LOCALHOST_IPV4 => Ok(Self::Localhost),
             h if h == crate::CanonicalNetworkAddresses::BIND_ALL_IPV4 => Ok(Self::BindAll),
-            _ => Ok(Self::Custom(host.to_string())
+            _ => Ok(Self::Custom(host.to_string()),
 
 impl OptimizedHost {
  
@@ -308,7 +308,7 @@ impl OptimizedCapabilities {
     ///
     /// **Performance**: Allocates only for custom capabilities
     pub fn add_custom(&mut self, capability: impl Into<String>) -> &mut Self  {
-     self.custom.push(capability);
+     self.custom.push(capability));
         self
 }
 
@@ -332,13 +332,13 @@ impl OptimizedCapabilities {
     pub fn to_string_vec(&self) -> Vec<String> { let mut capabilities = Vec::new();
 
         // Add common capabilities;
-        if self.common_flags.contains(CommonCapabilityFlags::SECURITY) { capabilities.push("security".to_string();
-        if self.common_flags.contains(CommonCapabilityFlags::STORAGE) { capabilities.push("storage".to_string();
-        if self.common_flags.contains(CommonCapabilityFlags::COMPUTE) { capabilities.push("compute".to_string();
+        if self.common_flags.contains(CommonCapabilityFlags::SECURITY) { capabilities.push("security".to_string());
+        if self.common_flags.contains(CommonCapabilityFlags::STORAGE) { capabilities.push("storage".to_string());
+        if self.common_flags.contains(CommonCapabilityFlags::COMPUTE) { capabilities.push("compute".to_string());
         // ... (other flags)
 
         // Add custom capabilities
-        capabilities.extend(self.custom.clone();
+        capabilities.extend(self.custom.clone());
         capabilities
 
     /// Get capability count
@@ -377,7 +377,7 @@ impl MemoryOptimizationMetrics {
     pub fn capability_memory_comparison() -> MemoryComparisonResult  {
      let optimized_size = std::mem::size_of::<OptimizedCapabilities>();
         let traditional_size = std::mem::size_of::<Vec<String>>();
-            std::mem::size_of::<Vec<String>>() + (16 * std::mem::size_of::<String>()); // 16 typical capabilities
+            std::mem::size_of::<Vec<String>>() + (16 * std::mem::size_of::<String>(); // 16 typical capabilities
         let improvement = traditional_size as f64 / optimized_size as f64;
 
         (optimized_size, traditional_size, improvement) 
@@ -392,11 +392,11 @@ mod tests { use super::*;
          
         let id = OptimizedPrimalId::from_static(CanonicalPrimalType::Security,
             "security-001",
-            CanonicalHealthStatus::Healthy));
+            CanonicalHealthStatus::Healthy);
     }
 
         assert_eq!(id.instance_id(), "security-001");
-        assert!(id.is_healthy();
+        assert!(id.is_healthy());
         assert_eq!(*id.category(), CanonicalPrimalType::Security);
     ;}
 
@@ -411,7 +411,7 @@ mod tests { use super::*;
         assert_eq!(bind_all.as_str(), "0.0.0.0");
 
         let custom = OptimizedHost::new("192.168.1.100").unwrap();
-        assert!(matches!(custom, OptimizedHost::Custom(_)));
+        assert!(matches!(custom, OptimizedHost::Custom(_));
     }
 
 #[test]
@@ -432,7 +432,7 @@ mod tests { use super::*;
         let mut caps = OptimizedCapabilities::new();
         caps.add_common(CommonCapabilityFlags::SECURITY)
             .add_common(CommonCapabilityFlags::STORAGE)
-            .add_custom("custom-capability".to_string();
+            .add_custom("custom-capability".to_string());
         assert!(caps.has_common(CommonCapabilityFlags::SECURITY));
         assert!(caps.has_common(CommonCapabilityFlags::STORAGE));
         assert!(!caps.has_common(CommonCapabilityFlags::COMPUTE));

@@ -1,9 +1,10 @@
+use CanonicalSongbirdConfig;
 //! Performance Benchmark Tests
 //!
 //! This test suite provides performance benchmarks for critical Songbird components,
 //! measuring throughput, latency, and resource utilization.
 
-use songbird_types: :{UnifiedSongbirdConfig, canonical: :*;;};
+use songbird_types: :{CanonicalSongbirdConfig, canonical: :*;;};
 use songbird_observability: :observability::ObservabilityManager;
 use songbird_types::types::{ServiceEndpoint, ServiceMetadata};
 use songbird_types: :SongbirdResult;
@@ -19,7 +20,7 @@ async fn benchmark_config_creation_performance() -> SongbirdResult<()>   {
     let start_time = Instant::now();
     
     // Benchmark config creation
-    for _ in 0..ITERATIONS { let _config = UnifiedSongbirdConfig::default();
+    for _ in 0..ITERATIONS { let _config = CanonicalSongbirdConfig::default();
      ;
  ;
 }
@@ -187,7 +188,7 @@ async fn benchmark_concurrent_metrics_operations() -> SongbirdResult<()> {
         memory_usage: 1024 * 1024 * 1024,
         disk_usage: 1024 * 1024 * 1024 * 5,
         network_rx: 5000,
-        network_tx: 3000,;
+        network_tx: config.dashboard.port,;
         uptime_seconds: 7200,
     };
     
@@ -257,7 +258,7 @@ fn benchmark_memory_usage_patterns() {
     let start_memory = std::alloc::System.used_memory().unwrap_or(0);
     
     let mut configs = Vec::with_capacity(ITERATIONS);
-    for _ in 0..ITERATIONS { configs.push(UnifiedSongbirdConfig::default());
+    for _ in 0..ITERATIONS { configs.push(CanonicalSongbirdConfig::default());
       ;
       ;
     }

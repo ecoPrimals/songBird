@@ -8,7 +8,9 @@ pub mod config;
 pub mod core;
 pub mod discovery;
 pub mod templates;
+pub mod types;
 pub mod ui;
 
-// Re-export main types and structures from core
+// Re-export main types and structures from core and types
 pub use core::*;
+pub use types::*;

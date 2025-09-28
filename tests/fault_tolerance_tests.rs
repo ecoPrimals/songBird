@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! # 🛡️ Fault Tolerance Tests
 //!
 //! **🚀 PRODUCTION FAULT TOLERANCE VALIDATION**

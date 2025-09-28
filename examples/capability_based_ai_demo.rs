@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! Capability-Based AI Delegation Demo
 //!
 //! This example demonstrates how Songbird uses capability-based discovery

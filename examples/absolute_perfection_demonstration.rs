@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🌟 Absolute Perfection Demonstration
 //!
 //! **✨ THE ULTIMATE SHOWCASE OF ENGINEERING TRANSCENDENCE**

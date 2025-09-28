@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Fault Tolerance Tests
 //!
 //! Tests the system's ability to handle various failure scenarios and recover gracefully.
@@ -75,7 +76,7 @@ async fn test_circuit_breaker_fault_tolerance() {
         half_open_max_calls: 2,
     };
     
-    let circuit_breaker = CircuitBreaker::new("test-service".to_string(), config);
+    let circuit_breaker = CircuitBreaker::new(config.test.service_name.to_string(), config);
     
     // Test failure scenarios
     info!("  💥 Testing failure accumulation...");
@@ -362,7 +363,7 @@ async fn test_post_partition_recovery(discovery: &EcosystemDiscovery) {
     // Simulate recovery by trying discovery with normal timeout
     let recovery_config = EcosystemDiscoveryConfig {
         ecosystem_base_path: "../".to_string(),
-        health_check_timeout_ms: 5000, // Normal timeout
+        health_check_timeout_ms: config.timeouts.request_ms, // Normal timeout
         max_concurrent_discoveries: 10,
         enable_capability_inference: true,
         enable_filesystem_discovery: true,
@@ -371,7 +372,7 @@ async fn test_post_partition_recovery(discovery: &EcosystemDiscovery) {
     
     let recovery_discovery = EcosystemDiscovery::new(recovery_config);
     
-    match timeout(Duration::from_millis(3000), 
+    match timeout(Duration::from_millis(config.dashboard.port), 
         recovery_discovery.discover_ecosystem_primals()).await {
         Ok(Ok(primals)) => {
             info!("      ✅ Recovery successful: {} primals discovered", primals.len());

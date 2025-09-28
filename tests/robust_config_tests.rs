@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Robust Configuration System Tests
 //!
 //! Comprehensive test suite for the Songbird configuration system including:
@@ -28,7 +29,7 @@ mod environment_config_tests {
 
         // Test reasonable defaults
         assert_eq!(config.bind_address, &get_bind_address()); // Localhost only by default
-        assert_eq!(config.bind_port, 8080);
+        assert_eq!(config.bind_port, config.network.http_port);
         // Note: TLS defaults to false for development ease, should be true in production
         assert!(!config.require_tls || config.require_tls); // Accept either default
         assert!(config.enable_encryption); // Should default to encrypted
@@ -93,8 +94,8 @@ mod primal_registry_tests {
             display_name: format!("Test {}", primal_type),
             enabled: true,
             endpoint: PrimalEndpoint {
-                primary_url: format!("https://localhost:8443/{}", primal_type),
-                fallback_urls: vec![format!("https://backup:8443/{}", primal_type)],
+                primary_url: format!("https://localhost:config.network.https_port/{}", primal_type),
+                fallback_urls: vec![format!("https://backup:config.network.https_port/{}", primal_type)],
                 use_tls: true,
                 custom_headers: HashMap::new(),
                 load_balancing: songbird_config::config::LoadBalancingStrategy::RoundRobin,
@@ -153,7 +154,7 @@ mod primal_registry_tests {
         assert!(registered.enabled);
         assert_eq!(
             registered.endpoint.primary_url,
-            "https://localhost:8443/security-provider"
+            "https://localhost:config.network.https_port/security-provider"
         );
     }
 
@@ -420,8 +421,8 @@ mod security_configuration_tests {
     #[test]
     fn test_primal_endpoint_security() {
         let endpoint = PrimalEndpoint {
-            primary_url: "https://secure.example.com:8443/api".to_string(),
-            fallback_urls: vec!["https://backup.example.com:8443/api".to_string()],
+            primary_url: "https://secure.example.com:config.network.https_port/api".to_string(),
+            fallback_urls: vec!["https://backup.example.com:config.network.https_port/api".to_string()],
             use_tls: true,
             custom_headers: {
                 let mut headers = HashMap::new();
@@ -475,7 +476,7 @@ mod performance_configuration_tests {
         assert!(health_config.interval > Duration::from_secs(0));
         assert!(health_config.timeout > Duration::from_secs(0));
         assert!(health_config.timeout < health_config.interval); // Timeout should be less than interval
-        assert_eq!(health_config.endpoint_path, "/health");
+        assert_eq!(health_config.endpoint_path, config.health.endpoint);
         assert!(health_config.expected_status_codes.contains(&200));
         assert!(health_config.failure_threshold > 0);
     }

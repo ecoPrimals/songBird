@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🌟 Transcendent Ecosystem Demonstration
 //!
 //! **🚀 DIVINE ORCHESTRATION SHOWCASE**

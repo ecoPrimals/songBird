@@ -3,7 +3,7 @@
 //! Provides comprehensive metrics collection, aggregation, and real-time updates
 
 use serde::{Deserialize, Serialize};
-use songbird_errors::{SongbirdError, SongbirdResponse, unified::success_result, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResponse, unified::success_result, SongbirdResult};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -18,13 +18,12 @@ static METRICS_DASHBOARD: once_cell::sync::Lazy<MetricsDashboard> =
 
 /// Main metrics dashboard for the Songbird ecosystem
 #[derive(Debug)]
-pub struct MetricsDashboard {
-    /// Core system metrics
+pub struct MetricsDashboard  {/// Core system metrics
     system_metrics: Arc<RwLock<SystemMetrics>>,
     /// Performance metrics including string interning
     performance_metrics: Arc<RwLock<PerformanceMetrics>>,
     /// Service-specific metrics
-    service_metrics: Arc<RwLock<HashMap<String, ServiceMetrics>>>,
+    service_metrics: Arc<RwLock<HashMap<String, ServiceMetrics>>>)
     /// Network and communication metrics
     network_metrics: Arc<RwLock<NetworkMetrics>>,
     /// Security and authentication metrics
@@ -37,8 +36,7 @@ pub struct MetricsDashboard {
 
 /// Core system metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SystemMetrics {
-    /// CPU usage percentage
+pub struct SystemMetrics  {/// CPU usage percentage
     pub cpu_usage: f64,
     /// Memory usage in bytes
     pub memory_usage: u64,
@@ -58,8 +56,7 @@ pub struct SystemMetrics {
 
 /// Performance metrics including optimizations
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceMetrics {
-    /// String interning statistics
+pub struct PerformanceMetrics  {/// String interning statistics
     pub string_interning: StringInterningMetrics,
     /// Request processing metrics
     pub request_processing: RequestProcessingMetrics,
@@ -73,8 +70,7 @@ pub struct PerformanceMetrics {
 
 /// String interning performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StringInterningMetrics {
-    /// Total intern() calls
+pub struct StringInterningMetrics  {/// Total intern() calls
     pub total_requests: usize,
     /// Cache hits
     pub cache_hits: usize,
@@ -92,8 +88,7 @@ pub struct StringInterningMetrics {
 
 /// Request processing metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RequestProcessingMetrics {
-    /// Total requests processed
+pub struct RequestProcessingMetrics  {/// Total requests processed
     pub total_requests: u64,
     /// Successful requests
     pub successful_requests: u64,
@@ -111,8 +106,7 @@ pub struct RequestProcessingMetrics {
 
 /// Cache performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CachePerformanceMetrics {
-    /// Total cache operations
+pub struct CachePerformanceMetrics  {/// Total cache operations
     pub total_operations: u64,
     /// Cache hits
     pub cache_hits: u64,
@@ -130,8 +124,7 @@ pub struct CachePerformanceMetrics {
 
 /// Zero-copy optimization metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ZeroCopyMetrics {
-    /// Total zero-copy operations
+pub struct ZeroCopyMetrics  {/// Total zero-copy operations
     pub total_operations: u64,
     /// Bytes processed with zero-copy
     pub bytes_zero_copy: u64,
@@ -145,8 +138,7 @@ pub struct ZeroCopyMetrics {
 
 /// Service-specific metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceMetrics {
-    /// Service identifier
+pub struct ServiceMetrics  {/// Service identifier
     pub service_id: String,
     /// Service health status
     pub health_status: ServiceHealthStatus,
@@ -164,8 +156,7 @@ pub struct ServiceMetrics {
 
 /// Service health status
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ServiceHealthStatus {
-    Healthy,
+pub enum ServiceHealthStatus  {Healthy)
     Degraded,
     Unhealthy,
     Unknown,
@@ -173,8 +164,7 @@ pub enum ServiceHealthStatus {
 
 /// Network and communication metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkMetrics {
-    /// Total bytes sent
+pub struct NetworkMetrics  {/// Total bytes sent
     pub bytes_sent: u64,
     /// Total bytes received
     pub bytes_received: u64,
@@ -192,8 +182,7 @@ pub struct NetworkMetrics {
 
 /// Security and authentication metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityMetrics {
-    /// Total authentication attempts
+pub struct SecurityMetrics  {/// Total authentication attempts
     pub auth_attempts: u64,
     /// Successful authentications
     pub auth_successes: u64,
@@ -211,25 +200,23 @@ pub struct SecurityMetrics {
 
 /// Metrics events for real-time updates
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum MetricsEvent {
-    /// System metrics updated
-    SystemUpdated(SystemMetrics),
+pub enum MetricsEvent  {/// System metrics updated
+    SystemUpdated(SystemMetrics)
     /// Performance metrics updated
-    PerformanceUpdated(PerformanceMetrics),
+    PerformanceUpdated(PerformanceMetrics)
     /// Service metrics updated
-    ServiceUpdated(String, ServiceMetrics),
+    ServiceUpdated(String, ServiceMetrics)
     /// Network metrics updated
-    NetworkUpdated(NetworkMetrics),
+    NetworkUpdated(NetworkMetrics)
     /// Security metrics updated
-    SecurityUpdated(SecurityMetrics),
+    SecurityUpdated(SecurityMetrics)
     /// Alert triggered
-    AlertTriggered(MetricsAlert),
+    AlertTriggered(MetricsAlert)
 }
 
 /// Metrics alert
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MetricsAlert {
-    /// Alert level
+pub struct MetricsAlert  {/// Alert level
     pub level: AlertLevel,
     /// Alert message
     pub message: String,
@@ -238,13 +225,12 @@ pub struct MetricsAlert {
     /// Alert timestamp
     pub timestamp: u64,
     /// Additional metadata
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, String>)
 }
 
 /// Alert severity levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AlertLevel {
-    Info,
+pub enum AlertLevel  {Info)
     Warning,
     Error,
     Critical,
@@ -256,19 +242,17 @@ impl Default for MetricsDashboard {
     }
 }
 
-impl MetricsDashboard {
-    /// Create a new metrics dashboard
-    pub fn new() -> Self {
-        let (event_broadcaster, _) = broadcast::channel(1000);
+impl MetricsDashboard  {/// Create a new metrics dashboard
+    pub fn new() -> Self  {let (event_broadcaster, _) = broadcast::channel(1000);
 
         Self {
-            system_metrics: Arc::new(RwLock::new(SystemMetrics::default())),
-            performance_metrics: Arc::new(RwLock::new(PerformanceMetrics::default())),
-            service_metrics: Arc::new(RwLock::new(HashMap::new())),
-            network_metrics: Arc::new(RwLock::new(NetworkMetrics::default())),
-            security_metrics: Arc::new(RwLock::new(SecurityMetrics::default())),
-            event_broadcaster,
-            start_time: Instant::now(),
+            system_metrics: Arc::new(RwLock::new(SystemMetrics::default(),
+            performance_metrics: Arc::new(RwLock::new(PerformanceMetrics::default(),
+            service_metrics: Arc::new(RwLock::new(HashMap::new()),
+            network_metrics: Arc::new(RwLock::new(NetworkMetrics::default(),
+            security_metrics: Arc::new(RwLock::new(SecurityMetrics::default(),
+            event_broadcaster)
+            start_time: Instant::now(,
         }
     }
 
@@ -283,16 +267,16 @@ impl MetricsDashboard {
             let mut system_metrics = self
                 .system_metrics
                 .write()
-                .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-            *system_metrics = metrics.clone();
+                .map_err(|e| SongbirdError::service_error("metrics"))?;"
+            *system_metrics = metrics.clone());
         }
 
         // Broadcast update
         let _ = self
             .event_broadcaster
-            .send(MetricsEvent::SystemUpdated(metrics));
+            .send(MetricsEvent::SystemUpdated(metrics);
 
-        Ok(success_result(()))
+        Ok(success_result(())
     }
 
     /// Update performance metrics
@@ -301,21 +285,21 @@ impl MetricsDashboard {
             let mut performance_metrics = self
                 .performance_metrics
                 .write()
-                .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-            *performance_metrics = metrics.clone();
+                .map_err(|e| SongbirdError::service_error("metrics"))?;"
+            *performance_metrics = metrics.clone());
         }
 
         // Broadcast update
         let _ = self
             .event_broadcaster
-            .send(MetricsEvent::PerformanceUpdated(metrics));
+            .send(MetricsEvent::PerformanceUpdated(metrics);
 
-        Ok(success_result(()))
+        Ok(success_result(())
     }
 
     /// Update service metrics
     pub async fn update_service_metrics(
-        &self,
+        &self)
         service_id: &str,
         metrics: ServiceMetrics,
     ) -> SongbirdResult<()> {
@@ -323,17 +307,17 @@ impl MetricsDashboard {
             let mut service_metrics = self
                 .service_metrics
                 .write()
-                .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
+                .map_err(|e| SongbirdError::service_error("metrics"))?;"
             service_metrics.insert(service_id.to_string(), metrics.clone());
         }
 
         // Broadcast update
         let _ = self.event_broadcaster.send(MetricsEvent::ServiceUpdated(
-            service_id.to_string(),
-            metrics,
-        ));
+            service_id.to_string()),
+            metrics)
+        );
 
-        Ok(success_result(()))
+        Ok(success_result(())
     }
 
     /// Update network metrics
@@ -342,16 +326,16 @@ impl MetricsDashboard {
             let mut network_metrics = self
                 .network_metrics
                 .write()
-                .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-            *network_metrics = metrics.clone();
+                .map_err(|e| SongbirdError::service_error("metrics"))?;"
+            *network_metrics = metrics.clone());
         }
 
         // Broadcast update
         let _ = self
             .event_broadcaster
-            .send(MetricsEvent::NetworkUpdated(metrics));
+            .send(MetricsEvent::NetworkUpdated(metrics);
 
-        Ok(success_result(()))
+        Ok(success_result(())
     }
 
     /// Update security metrics
@@ -360,16 +344,16 @@ impl MetricsDashboard {
             let mut security_metrics = self
                 .security_metrics
                 .write()
-                .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-            *security_metrics = metrics.clone();
+                .map_err(|e| SongbirdError::service_error("metrics"))?;"
+            *security_metrics = metrics.clone());
         }
 
         // Broadcast update
         let _ = self
             .event_broadcaster
-            .send(MetricsEvent::SecurityUpdated(metrics));
+            .send(MetricsEvent::SecurityUpdated(metrics);
 
-        Ok(success_result(()))
+        Ok(success_result(())
     }
 
     /// Get current system metrics
@@ -377,8 +361,8 @@ impl MetricsDashboard {
         let metrics = self
             .system_metrics
             .read()
-            .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-        Ok(SongbirdResponse::success(metrics.clone()))
+            .map_err(|e| SongbirdError::service_error("metrics"))?;"
+        Ok(SongbirdResponse::success(metrics.clone()),
     }
 
     /// Get current performance metrics
@@ -386,8 +370,8 @@ impl MetricsDashboard {
         let metrics = self
             .performance_metrics
             .read()
-            .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-        Ok(SongbirdResponse::success(metrics.clone()))
+            .map_err(|e| SongbirdError::service_error("metrics"))?;"
+        Ok(SongbirdResponse::success(metrics.clone()),
     }
 
     /// Get service metrics for a specific service
@@ -395,8 +379,8 @@ impl MetricsDashboard {
         let metrics = self
             .service_metrics
             .read()
-            .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-        Ok(songbird_errors::evolved_success(SongbirdResponse::success(metrics.get(service_id)).cloned()))
+            .map_err(|e| SongbirdError::service_error("metrics"))?;"
+        Ok(SongbirdResponse::success(metrics.get(service_id).cloned())
     }
 
     /// Get all service metrics
@@ -404,8 +388,8 @@ impl MetricsDashboard {
         let metrics = self
             .service_metrics
             .read()
-            .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-        Ok(SongbirdResponse::success(metrics.clone()))
+            .map_err(|e| SongbirdError::service_error("metrics"))?;"
+        Ok(SongbirdResponse::success(metrics.clone()),
     }
 
     /// Get current network metrics
@@ -413,8 +397,8 @@ impl MetricsDashboard {
         let metrics = self
             .network_metrics
             .read()
-            .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-        Ok(SongbirdResponse::success(metrics.clone()))
+            .map_err(|e| SongbirdError::service_error("metrics"))?;"
+        Ok(SongbirdResponse::success(metrics.clone()),
     }
 
     /// Get current security metrics
@@ -422,29 +406,27 @@ impl MetricsDashboard {
         let metrics = self
             .security_metrics
             .read()
-            .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
-        Ok(SongbirdResponse::success(metrics.clone()))
+            .map_err(|e| SongbirdError::service_error("metrics"))?;"
+        Ok(SongbirdResponse::success(metrics.clone()),
     }
 
     /// Get comprehensive dashboard summary
-    pub async fn get_dashboard_summary(&self) -> SongbirdResult<DashboardSummary> {
-        let system = self.get_system_metrics().await?.into_data();
+    pub async fn get_dashboard_summary(&self) -> SongbirdResult<DashboardSummary>  {let system = self.get_system_metrics().await?.into_data();
         let performance = self.get_performance_metrics().await?.into_data();
         let network = self.get_network_metrics().await?.into_data();
         let security = self.get_security_metrics().await?.into_data();
         let services = self.get_all_service_metrics()?.into_data();
 
-        let summary = DashboardSummary {
-            system,
-            performance,
-            network,
-            security,
-            services,
-            uptime_seconds: self.start_time.elapsed().as_secs(),
-            timestamp: current_timestamp(),
+        let summary = DashboardSummary  {system)
+            performance)
+            network)
+            security)
+            services)
+            uptime_seconds: self.start_time.elapsed().as_secs(,
+            timestamp: current_timestamp(,
         };
 
-        Ok(songbird_errors::evolved_success(SongbirdResponse::success(summary)))
+        Ok(SongbirdResponse::success(summary)
     }
 
     /// Subscribe to metrics events
@@ -456,16 +438,14 @@ impl MetricsDashboard {
     pub async fn trigger_alert(&self, alert: MetricsAlert) -> SongbirdResult<()> {
         let _ = self
             .event_broadcaster
-            .send(MetricsEvent::AlertTriggered(alert));
-        Ok(success_result(()))
+            .send(MetricsEvent::AlertTriggered(alert);
+        Ok(success_result(())
     }
 
     /// Update string interning metrics from the global interner
-    pub async fn update_string_interning_metrics(&self) -> SongbirdResult<()> {
-        // This would integrate with our string interning system
+    pub async fn update_string_interning_metrics(&self) -> SongbirdResult<()>  {// This would integrate with our string interning system
         // For now, we'll create sample metrics
-        let interning_metrics = StringInterningMetrics {
-            total_requests: 10000,
+        let interning_metrics = StringInterningMetrics  {total_requests: 10000)
             cache_hits: 8500,
             cache_misses: 1500,
             unique_strings: 1500,
@@ -477,16 +457,16 @@ impl MetricsDashboard {
         let mut performance = self
             .performance_metrics
             .write()
-            .map_err(|e| SongbirdError::service_error("metrics", format!("Lock error: {e}")))?;
+            .map_err(|e| SongbirdError::service_error("metrics"))?;"
         performance.string_interning = interning_metrics;
         performance.last_updated = current_timestamp();
 
-        Ok(success_result(()))
+        Ok(success_result(())
     }
 
     /// Start metrics collection process
     pub async fn start_metrics_collection(&mut self) -> SongbirdResult<()> {
-        info!("📊 Starting metrics collection...");
+        info!("📊 Starting metrics collection...");"
 
         // Implement actual metrics collection logic
         let system_metrics = self.collect_system_metrics();
@@ -505,34 +485,30 @@ impl MetricsDashboard {
             loop {
                 interval.tick().await;
                 // Periodic metrics collection would go here
-                debug!("📊 Periodic metrics collection tick");
+                debug!("📊 Periodic metrics collection tick");"
             }
         });
 
-        info!("✅ Metrics collection started successfully");
-        Ok(success_result(()))
+        info!("✅ Metrics collection started successfully");"
+        Ok(success_result(())
     }
 
     /// Collect current system metrics
-    fn collect_system_metrics(&self) -> SystemMetrics {
-        // In a real implementation, this would collect actual system metrics
-        SystemMetrics {
-            cpu_usage: 45.2,
+    fn collect_system_metrics(&self) -> SystemMetrics  {// In a real implementation, this would collect actual system metrics
+        SystemMetrics  {cpu_usage: 45.2)
             memory_usage: 2_147_483_648,     // 2GB
             memory_available: 6_442_450_944, // 6GB
             disk_usage: 67.5,
-            uptime_seconds: self.start_time.elapsed().as_secs(),
+            uptime_seconds: self.start_time.elapsed().as_secs(,
             active_threads: 24,
-            load_averages: [1.2, 1.1, 1.0],
-            last_updated: current_timestamp(),
+            load_averages: [1.2, 1.1, 1.0])
+            last_updated: current_timestamp(,
         }
     }
 
     /// Collect current performance metrics
-    async fn collect_performance_metrics(&self) -> SongbirdResult<PerformanceMetrics> {
-        // In a real implementation, this would collect actual performance metrics
-        let metrics = PerformanceMetrics {
-            string_interning: StringInterningMetrics {
+    async fn collect_performance_metrics(&self) -> SongbirdResult<PerformanceMetrics>  {// In a real implementation, this would collect actual performance metrics
+        let metrics = PerformanceMetrics  {string_interning: StringInterningMetrics {
                 total_requests: 15000,
                 cache_hits: 12750,
                 cache_misses: 2250,
@@ -540,43 +516,38 @@ impl MetricsDashboard {
                 memory_usage_bytes: 225_000,
                 memory_saved_bytes: 1_275_000,
                 hit_ratio_percent: 85.0,
-            },
-            request_processing: RequestProcessingMetrics {
-                total_requests: 50000,
+            })
+            request_processing: RequestProcessingMetrics  {total_requests: 50000,
                 successful_requests: 49500,
                 failed_requests: 500,
                 avg_response_time_ms: 25.5,
                 p95_response_time_ms: 45.0,
                 p99_response_time_ms: 85.0,
                 requests_per_second: 125.0,
-            },
-            cache_performance: CachePerformanceMetrics {
-                total_operations: 100000,
+            })
+            cache_performance: CachePerformanceMetrics  {total_operations: 100000,
                 cache_hits: 85000,
                 cache_misses: 15000,
                 cache_evictions: 500,
                 current_size: 5000,
                 max_size: 10000,
                 hit_ratio: 0.85,
-            },
-            zero_copy_metrics: ZeroCopyMetrics {
-                total_operations: 25000,
+            })
+            zero_copy_metrics: ZeroCopyMetrics  {total_operations: 25000,
                 bytes_zero_copy: 1_073_741_824,      // 1GB
                 bytes_traditional_copy: 268_435_456, // 256MB
                 zero_copy_efficiency: 80.0,
                 performance_improvement: 3.2,
-            },
-            last_updated: current_timestamp(),
+            })
+            last_updated: current_timestamp(,
         };
 
         Ok(metrics)
     }
 
     /// Collect current network metrics
-    async fn collect_network_metrics(&self) -> SongbirdResult<NetworkMetrics> {
-        // In a real implementation, this would collect actual network metrics
-        let metrics = NetworkMetrics {
-            bytes_sent: 1_000_000_000, // 1GB
+    async fn collect_network_metrics(&self) -> SongbirdResult<NetworkMetrics>  {// In a real implementation, this would collect actual network metrics
+        let metrics = NetworkMetrics  {bytes_sent: 1_000_000_000, // 1GB
             bytes_received: 500_000_000, // 500MB
             active_connections: 100,
             connection_pool_utilization: 0.8,
@@ -589,16 +560,14 @@ impl MetricsDashboard {
     }
 
     /// Collect current security metrics
-    async fn collect_security_metrics(&self) -> SongbirdResult<SecurityMetrics> {
-        // In a real implementation, this would collect actual security metrics
-        let metrics = SecurityMetrics {
-            auth_attempts: 10000,
+    async fn collect_security_metrics(&self) -> SongbirdResult<SecurityMetrics>  {// In a real implementation, this would collect actual security metrics
+        let metrics = SecurityMetrics  {auth_attempts: 10000)
             auth_successes: 9900,
             auth_failures: 100,
             active_sessions: 1000,
             security_violations: 50,
             threat_detections: 10,
-            last_security_scan: current_timestamp(),
+            last_security_scan: current_timestamp(,
         };
 
         Ok(metrics)
@@ -607,12 +576,11 @@ impl MetricsDashboard {
 
 /// Complete dashboard summary
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DashboardSummary {
-    pub system: SystemMetrics,
+pub struct DashboardSummary  {pub system: SystemMetrics,
     pub performance: PerformanceMetrics,
     pub network: NetworkMetrics,
     pub security: SecurityMetrics,
-    pub services: HashMap<String, ServiceMetrics>,
+    pub services: HashMap<String, ServiceMetrics>)
     pub uptime_seconds: u64,
     pub timestamp: u64,
 }
@@ -626,36 +594,30 @@ fn current_timestamp() -> u64 {
 }
 
 // Default implementations
-impl Default for SystemMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for SystemMetrics  {fn default() -> Self  {Self {
             cpu_usage: 0.0,
             memory_usage: 0,
             memory_available: 0,
             disk_usage: 0.0,
             uptime_seconds: 0,
             active_threads: 0,
-            load_averages: [0.0, 0.0, 0.0],
-            last_updated: current_timestamp(),
+            load_averages: [0.0, 0.0, 0.0])
+            last_updated: current_timestamp(,
         }
     }
 }
 
-impl Default for PerformanceMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for PerformanceMetrics  {fn default() -> Self  {Self {
             string_interning: StringInterningMetrics::default(),
             request_processing: RequestProcessingMetrics::default(),
             cache_performance: CachePerformanceMetrics::default(),
             zero_copy_metrics: ZeroCopyMetrics::default(),
-            last_updated: current_timestamp(),
+            last_updated: current_timestamp(,
         }
     }
 }
 
-impl Default for StringInterningMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for StringInterningMetrics  {fn default() -> Self  {Self {
             total_requests: 0,
             cache_hits: 0,
             cache_misses: 0,
@@ -667,9 +629,7 @@ impl Default for StringInterningMetrics {
     }
 }
 
-impl Default for RequestProcessingMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for RequestProcessingMetrics  {fn default() -> Self  {Self {
             total_requests: 0,
             successful_requests: 0,
             failed_requests: 0,
@@ -681,9 +641,7 @@ impl Default for RequestProcessingMetrics {
     }
 }
 
-impl Default for CachePerformanceMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for CachePerformanceMetrics  {fn default() -> Self  {Self {
             total_operations: 0,
             cache_hits: 0,
             cache_misses: 0,
@@ -695,9 +653,7 @@ impl Default for CachePerformanceMetrics {
     }
 }
 
-impl Default for ZeroCopyMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for ZeroCopyMetrics  {fn default() -> Self  {Self {
             total_operations: 0,
             bytes_zero_copy: 0,
             bytes_traditional_copy: 0,
@@ -707,9 +663,7 @@ impl Default for ZeroCopyMetrics {
     }
 }
 
-impl Default for NetworkMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for NetworkMetrics  {fn default() -> Self  {Self {
             bytes_sent: 0,
             bytes_received: 0,
             active_connections: 0,
@@ -721,16 +675,14 @@ impl Default for NetworkMetrics {
     }
 }
 
-impl Default for SecurityMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for SecurityMetrics  {fn default() -> Self  {Self {
             auth_attempts: 0,
             auth_successes: 0,
             auth_failures: 0,
             active_sessions: 0,
             security_violations: 0,
             threat_detections: 0,
-            last_security_scan: current_timestamp(),
+            last_security_scan: current_timestamp(,
         }
     }
 }

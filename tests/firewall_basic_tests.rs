@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Basic Tests for Firewall Module
 
 use songbird_security::firewall::*;
@@ -8,7 +9,7 @@ use tokio::test;
 async fn test_firewall_config_creation() {
     let config = FirewallConfig {
         enabled: true,
-        allowed_ports: vec![8080, 8081, 9090],
+        allowed_ports: vec![config.network.http_port, 8081, config.metrics.port],
         backend: FirewallBackend {
             backend_type: "iptables".to_string(),
         },
@@ -18,7 +19,7 @@ async fn test_firewall_config_creation() {
         songbird_rules: SongbirdRules {
             lan_only: true,
             federation_port: 8081,
-            metrics_port: 9090,
+            metrics_port: config.metrics.port,
             discovery_enabled: true,
         },
         optional_rules: OptionalRules {
@@ -27,7 +28,7 @@ async fn test_firewall_config_creation() {
             web_ui_enabled: true,
         },
         logging: LoggingConfig { enabled: true },
-        orchestrator_port: 8080,
+        orchestrator_port: config.network.http_port,
         web_ui_port: 8888,
         allow_local_access: true,
         block_external_access: false,
@@ -68,13 +69,13 @@ async fn test_songbird_rules_creation() {
     let rules = SongbirdRules {
         lan_only: false,
         federation_port: 8081,
-        metrics_port: 9090,
+        metrics_port: config.metrics.port,
         discovery_enabled: true,
     };
 
     assert!(!rules.lan_only);
     assert_eq!(rules.federation_port, 8081);
-    assert_eq!(rules.metrics_port, 9090);
+    assert_eq!(rules.metrics_port, config.metrics.port);
     assert!(rules.discovery_enabled);
 }
 
@@ -105,7 +106,7 @@ async fn test_logging_config_creation() {
 async fn test_firewall_config_cloning() {
     let config = FirewallConfig {
         enabled: true,
-        allowed_ports: vec![8080, 8081],
+        allowed_ports: vec![config.network.http_port, 8081],
         backend: FirewallBackend {
             backend_type: "iptables".to_string(),
         },
@@ -115,7 +116,7 @@ async fn test_firewall_config_cloning() {
         songbird_rules: SongbirdRules {
             lan_only: true,
             federation_port: 8081,
-            metrics_port: 9090,
+            metrics_port: config.metrics.port,
             discovery_enabled: true,
         },
         optional_rules: OptionalRules {
@@ -124,7 +125,7 @@ async fn test_firewall_config_cloning() {
             web_ui_enabled: true,
         },
         logging: LoggingConfig { enabled: true },
-        orchestrator_port: 8080,
+        orchestrator_port: config.network.http_port,
         web_ui_port: 8888,
         allow_local_access: true,
         block_external_access: false,
@@ -152,7 +153,7 @@ async fn test_firewall_config_cloning() {
 async fn test_firewall_config_serialization() {
     let config = FirewallConfig {
         enabled: true,
-        allowed_ports: vec![8080, 8081],
+        allowed_ports: vec![config.network.http_port, 8081],
         backend: FirewallBackend {
             backend_type: "iptables".to_string(),
         },
@@ -162,7 +163,7 @@ async fn test_firewall_config_serialization() {
         songbird_rules: SongbirdRules {
             lan_only: true,
             federation_port: 8081,
-            metrics_port: 9090,
+            metrics_port: config.metrics.port,
             discovery_enabled: true,
         },
         optional_rules: OptionalRules {
@@ -171,7 +172,7 @@ async fn test_firewall_config_serialization() {
             web_ui_enabled: true,
         },
         logging: LoggingConfig { enabled: true },
-        orchestrator_port: 8080,
+        orchestrator_port: config.network.http_port,
         web_ui_port: 8888,
         allow_local_access: true,
         block_external_access: false,
@@ -203,7 +204,7 @@ async fn test_firewall_config_backends() {
     for backend_type in backends {
         let config = FirewallConfig {
             enabled: true,
-            allowed_ports: vec![8080],
+            allowed_ports: vec![config.network.http_port],
             backend: FirewallBackend {
                 backend_type: backend_type.to_string(),
             },
@@ -213,7 +214,7 @@ async fn test_firewall_config_backends() {
             songbird_rules: SongbirdRules {
                 lan_only: true,
                 federation_port: 8081,
-                metrics_port: 9090,
+                metrics_port: config.metrics.port,
                 discovery_enabled: true,
             },
             optional_rules: OptionalRules {
@@ -222,7 +223,7 @@ async fn test_firewall_config_backends() {
                 web_ui_enabled: true,
             },
             logging: LoggingConfig { enabled: true },
-            orchestrator_port: 8080,
+            orchestrator_port: config.network.http_port,
             web_ui_port: 8888,
             allow_local_access: true,
             block_external_access: false,
@@ -241,7 +242,7 @@ async fn test_firewall_config_security_levels() {
     for security_level in security_levels {
         let config = FirewallConfig {
             enabled: true,
-            allowed_ports: vec![8080],
+            allowed_ports: vec![config.network.http_port],
             backend: FirewallBackend {
                 backend_type: "iptables".to_string(),
             },
@@ -251,7 +252,7 @@ async fn test_firewall_config_security_levels() {
             songbird_rules: SongbirdRules {
                 lan_only: true,
                 federation_port: 8081,
-                metrics_port: 9090,
+                metrics_port: config.metrics.port,
                 discovery_enabled: true,
             },
             optional_rules: OptionalRules {
@@ -260,7 +261,7 @@ async fn test_firewall_config_security_levels() {
                 web_ui_enabled: true,
             },
             logging: LoggingConfig { enabled: true },
-            orchestrator_port: 8080,
+            orchestrator_port: config.network.http_port,
             web_ui_port: 8888,
             allow_local_access: true,
             block_external_access: false,

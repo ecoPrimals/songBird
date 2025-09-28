@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Basic Tests for Communication Module
 
 use songbird_network::communication::*;
@@ -7,11 +8,11 @@ use tokio::test;
 #[test]
 async fn test_service_address_creation() {
     let address = ServiceAddress {
-        service_id: "test-service".to_string(),
+        service_id: config.test.service_name.to_string(),
         endpoint: Some("http://localhost:{}".to_string()),
     };
 
-    assert_eq!(address.service_id, "test-service");
+    assert_eq!(address.service_id, config.test.service_name);
     assert_eq!(address.endpoint, Some("http://localhost:{}".to_string()));
 }
 
@@ -75,7 +76,7 @@ async fn test_communication_stats_creation() {
 #[test]
 async fn test_service_address_cloning() {
     let address = ServiceAddress {
-        service_id: "test-service".to_string(),
+        service_id: config.test.service_name.to_string(),
         endpoint: Some("http://localhost:{}".to_string()),
     };
 
@@ -144,11 +145,11 @@ async fn test_communication_stats_cloning() {
 #[test]
 async fn test_service_address_no_endpoint() {
     let address = ServiceAddress {
-        service_id: "test-service".to_string(),
+        service_id: config.test.service_name.to_string(),
         endpoint: None,
     };
 
-    assert_eq!(address.service_id, "test-service");
+    assert_eq!(address.service_id, config.test.service_name);
     assert_eq!(address.endpoint, None);
 }
 

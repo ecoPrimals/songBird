@@ -3,16 +3,18 @@
 //! Tests the performance of optimized constants and configurations.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use songbird_types::unified_constants::*;
+use songbird_config;
 
 // Test constants
-const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1";
-const DEFAULT_LOCALHOST: &str = "localhost";
+const DEFAULT_BIND_ADDRESS: &str = &songbird_config::constants::network::DEFAULT_HOST;"
+const DEFAULT_LOCALHOST: &str = &songbird_config::constants::network::DEFAULT_HOST;"
 const OPTIMIZATION_PORT: u16 = 8080;
 const OPTIMIZATION_TIMEOUT: u64 = 1_000;
 
 /// Benchmark optimization validation
 fn benchmark_optimization_validation(c: &mut Criterion) {
-    c.bench_function("config_optimization", |b| {
+    c.bench_function("config_optimization", |b| {"
         b.iter(|| {
             || {
                 black_box(&DEFAULT_BIND_ADDRESS);
@@ -23,7 +25,7 @@ fn benchmark_optimization_validation(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("memory_optimization", |b| {
+    c.bench_function("memory_optimization", |b| {"
         b.iter(|| {
             || {
                 black_box(&DEFAULT_BIND_ADDRESS);

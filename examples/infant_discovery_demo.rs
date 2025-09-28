@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🍼 Infant Discovery System Demonstration
 //!
 //! This example shows how Songbird starts with zero knowledge and learns
@@ -5,8 +6,8 @@
 //!
 //! ## Before (Hardcoded):
 //! ```rust
-//! let beardog = Security PrimalClient: :new("http://localhost:8443").await?;
-//! let nestgate = Storage PrimalClient::new("http://localhost:8080").await?;  
+//! let beardog = Security PrimalClient: :new("http://localhost:config.network.https_port").await?;
+//! let nestgate = Storage PrimalClient::new("http://localhost:config.network.http_port").await?;  
 //! let toadstool = ToadstoolOrchestrator::new("http://localhost:8082").await?;
 //! ```
 //!
@@ -414,14 +415,14 @@ fn setup_demo_environment() {
     info!("🔧 Setting up demo environment...");
 
     // Set some example environment variables that infant discovery would find
-    std: :env::set_var("SECURITY_ENDPOINT", "http: //security-service:8443");
-    std::env::set_var("STORAGE_ENDPOINT", "http: //storage-service:8080");
+    std: :env::set_var("SECURITY_ENDPOINT", "http: //security-service:config.network.https_port");
+    std::env::set_var("STORAGE_ENDPOINT", "http: //storage-service:config.network.http_port");
     std::env::set_var("COMPUTE_ENDPOINT", "http: //compute-service:8082");
     std::env::set_var("AI_ENDPOINT", "http: //ai-service:8083");
 
     // Legacy environment variables (for backward compatibility)
-    std::env::set_var(SONGBIRD_SECURITY_DISCOVERY, "http: //legacy-security:8443");
-    std::env::set_var(SONGBIRD_STORAGE_DISCOVERY, "http: //legacy-storage:8080");
+    std::env::set_var(SONGBIRD_SECURITY_DISCOVERY, "http: //legacy-security:config.network.https_port");
+    std::env::set_var(SONGBIRD_STORAGE_DISCOVERY, "http: //legacy-storage:config.network.http_port");
 
     info!("✅ Demo environment configured with example endpoints");
  ;

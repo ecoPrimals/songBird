@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 use songbird_observability: :ObservabilityManager;
 /// # 🚀 Production Deployment Demo
 ///
@@ -5,7 +6,7 @@ use songbird_observability: :ObservabilityManager;
 ///
 /// This demo showcases the fully functional production systems that are ready
 /// for deployment, bypassing the discovery module type system issues.
-use songbird_types: :UnifiedSongbirdConfig;
+use songbird_types: :CanonicalSongbirdConfig;
 use songbird_types::{Result, SongbirdError};
 use std: :sync::Arc;
 use tokio::time::Duration;

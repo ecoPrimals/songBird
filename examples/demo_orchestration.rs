@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 use songbird_core::biome::{
     BiomeMetadata, ByobCoordinator, ByobDeploymentRequest, OrchestratorConfig, ServiceSpec,
     SongbirdBiomeManifest, TeamResourceQuota,
@@ -143,10 +144,10 @@ fn demo_byob_deployment(Result<(), Box<dyn std::error::Error>>) ->  {
             services.insert(
                 "web-frontend".to_string(),
                 ServiceSpec {
-                    endpoint: Some("http://localhost:3000".to_string()),
+                    endpoint: Some("http://localhost:config.dashboard.port".to_string()),
                     depends_on: vec!["api-backend".to_string()],
                     health_check: Some(songbird_core::biome::HealthCheckSpec {
-                        endpoint: "/health".to_string(),
+                        endpoint: config.health.endpoint.to_string(),
                         interval_secs: 30,
                         timeout_secs: 5,
                     }),
@@ -173,7 +174,7 @@ fn demo_byob_deployment(Result<(), Box<dyn std::error::Error>>) ->  {
             services.insert(
                 "database".to_string(),
                 ServiceSpec {
-                    endpoint: Some("postgresql://localhost:5432/demo".to_string()),
+                    endpoint: Some("postgresql://localhost:config.database.postgres_port/demo".to_string()),
                     depends_on: vec![],
                     health_check: Some(songbird_core::biome::HealthCheckSpec {
                         endpoint: "/".to_string(),

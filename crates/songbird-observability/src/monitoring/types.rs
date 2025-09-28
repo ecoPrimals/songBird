@@ -9,8 +9,7 @@ use std::time::{Duration, SystemTime};
 
 /// System metrics snapshot
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SystemMetrics {
-    /// CPU utilization percentage (0.0-100.0)
+pub struct SystemMetrics  {/// CPU utilization percentage (0.0-100.0)
     pub cpu_utilization: f64,
     /// Memory usage in bytes
     pub memory_usage: u64,
@@ -23,15 +22,14 @@ pub struct SystemMetrics {
     /// Process count
     pub process_count: u32,
     /// Load average (1, 5, 15 minutes)
-    pub load_average: (f64, f64, f64),
+    pub load_average: (f64, f64, f64)
     /// Timestamp of metrics collection
     pub timestamp: SystemTime,
 }
 
 /// Network I/O metrics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct NetworkIO {
-    /// Bytes received per second
+pub struct NetworkIO  {/// Bytes received per second
     pub bytes_received_per_sec: u64,
     /// Bytes sent per second
     pub bytes_sent_per_sec: u64,
@@ -47,8 +45,7 @@ pub struct NetworkIO {
 
 /// Performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceMetrics {
-    /// Request latency percentiles
+pub struct PerformanceMetrics  {/// Request latency percentiles
     pub latency_percentiles: LatencyPercentiles,
     /// Throughput metrics
     pub throughput: ThroughputMetrics,
@@ -62,8 +59,7 @@ pub struct PerformanceMetrics {
 
 /// Latency percentile measurements
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LatencyPercentiles {
-    /// 50th percentile (median) in milliseconds
+pub struct LatencyPercentiles  {/// 50th percentile (median) in milliseconds
     pub p50: f64,
     /// 90th percentile in milliseconds
     pub p90: f64,
@@ -77,8 +73,7 @@ pub struct LatencyPercentiles {
 
 /// Throughput metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ThroughputMetrics {
-    /// Requests per second
+pub struct ThroughputMetrics  {/// Requests per second
     pub requests_per_second: f64,
     /// Operations per second
     pub operations_per_second: f64,
@@ -88,8 +83,7 @@ pub struct ThroughputMetrics {
 
 /// Error rate metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ErrorRates {
-    /// Total error rate (0.0-1.0)
+pub struct ErrorRates  {/// Total error rate (0.0-1.0)
     pub total_error_rate: f64,
     /// 4xx error rate (0.0-1.0)
     pub client_error_rate: f64,
@@ -101,8 +95,7 @@ pub struct ErrorRates {
 
 /// Resource utilization metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceUtilization {
-    /// CPU utilization (0.0-1.0)
+pub struct ResourceUtilization  {/// CPU utilization (0.0-1.0)
     pub cpu: f64,
     /// Memory utilization (0.0-1.0)
     pub memory: f64,
@@ -114,51 +107,44 @@ pub struct ResourceUtilization {
 
 /// Metrics snapshot with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MetricsSnapshot {
-    /// Snapshot ID
+pub struct MetricsSnapshot  {/// Snapshot ID
     pub id: String,
     /// System metrics
     pub system_metrics: SystemMetrics,
     /// Performance metrics
     pub performance_metrics: PerformanceMetrics,
     /// Custom metrics
-    pub custom_metrics: HashMap<String, f64>,
+    pub custom_metrics: HashMap<String, f64>)
     /// Collection timestamp
     pub timestamp: SystemTime,
     /// Collection duration
     pub collection_duration: Duration,
 }
 
-impl Default for SystemMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for SystemMetrics  {fn default() -> Self  {Self {
             cpu_utilization: 0.0,
             memory_usage: 0,
             memory_available: 0,
             disk_utilization: 0.0,
             network_io: NetworkIO::default(),
             process_count: 0,
-            load_average: (0.0, 0.0, 0.0),
-            timestamp: SystemTime::now(),
+            load_average: (0.0, 0.0, 0.0)
+            timestamp: SystemTime::now(,
         }
     }
 }
 
-impl Default for PerformanceMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for PerformanceMetrics  {fn default() -> Self  {Self {
             latency_percentiles: LatencyPercentiles::default(),
             throughput: ThroughputMetrics::default(),
             error_rates: ErrorRates::default(),
             resource_utilization: ResourceUtilization::default(),
-            timestamp: SystemTime::now(),
+            timestamp: SystemTime::now(,
         }
     }
 }
 
-impl Default for LatencyPercentiles {
-    fn default() -> Self {
-        Self {
+impl Default for LatencyPercentiles  {fn default() -> Self  {Self {
             p50: 0.0,
             p90: 0.0,
             p95: 0.0,
@@ -168,9 +154,7 @@ impl Default for LatencyPercentiles {
     }
 }
 
-impl Default for ThroughputMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for ThroughputMetrics  {fn default() -> Self  {Self {
             requests_per_second: 0.0,
             operations_per_second: 0.0,
             data_processed_per_second: 0,
@@ -178,9 +162,7 @@ impl Default for ThroughputMetrics {
     }
 }
 
-impl Default for ErrorRates {
-    fn default() -> Self {
-        Self {
+impl Default for ErrorRates  {fn default() -> Self  {Self {
             total_error_rate: 0.0,
             client_error_rate: 0.0,
             server_error_rate: 0.0,
@@ -189,9 +171,7 @@ impl Default for ErrorRates {
     }
 }
 
-impl Default for ResourceUtilization {
-    fn default() -> Self {
-        Self {
+impl Default for ResourceUtilization  {fn default() -> Self  {Self {
             cpu: 0.0,
             memory: 0.0,
             disk: 0.0,

@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! Production System Demonstration
 //!
 //! This example demonstrates the complete production-ready Universal System
@@ -63,7 +64,7 @@ async fn demo_service_registration(system: &IntegratedUniversalSystem) -> Result
 
     // Register various services
     let services = vec![
-        ("beardog-security", "http://localhost:8080", vec!["security", "authentication", "encryption"]),
+        ("beardog-security", "http://localhost:config.network.http_port", vec!["security", "authentication", "encryption"]),
         ("toadstool-compute", "http://localhost:8081", vec!["compute", "processing", "analysis"]),
         ("nestgate-storage", "http://localhost:8082", vec!["storage", "persistence", "backup"]),
         ("squirrel-ai", "http://localhost:8083", vec!["ai", "ml", "inference", "training"]),
@@ -218,7 +219,7 @@ async fn demo_concurrent_operations(system: &IntegratedUniversalSystem) -> Resul
 async fn demo_environment_discovery() -> Result<(), Box<dyn std::error::Error>> {
     info!("🌍 Environment-based Discovery Demo");
     info!("Set these environment variables to test automatic discovery:");
-    info!("  export BEARDOG_ENDPOINT=http://localhost:8080");
+    info!("  export BEARDOG_ENDPOINT=http://localhost:config.network.http_port");
     info!("  export TOADSTOOL_ENDPOINT=http://localhost:8081");
     info!("  export NESTGATE_ENDPOINT=http://localhost:8082");
     info!("  export SQUIRREL_ENDPOINT=http://localhost:8083");

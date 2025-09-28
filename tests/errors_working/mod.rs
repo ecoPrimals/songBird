@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Error Tests for Songbird Orchestrator
 //!
 //! This test suite covers error types, error handling, validation,

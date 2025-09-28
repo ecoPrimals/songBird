@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 use songbird_core::{
     ZeroCostSongbird, ZeroCostCache, ZeroCostRegistry, ProductionSongbird,
     zero_cost_providers::{FastNetworkDiscovery, ProductionNetworkDiscovery}
@@ -30,7 +31,7 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     let mut zero_cost_times = Vec::new();
     for i in 0..1000 {
         let start = Instant::now();
-        let _ = zero_cost_system.discover_and_register(&format!("https://service-{}.local:8443", i)).await?;
+        let _ = zero_cost_system.discover_and_register(&format!("https://service-{}.local:config.network.https_port", i)).await?;
         zero_cost_times.push(start.elapsed());
     }
     
@@ -68,7 +69,7 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     
     // Benchmark batch operations
     let batch_endpoints = [
-        "https://security-1.local:8443",
+        "https://security-1.local:config.network.https_port",
         "https://storage-1.local:9000",
         "https://ai-1.local:8888",
         &env::var("SONGBIRD_COMPUTE_ENDPOINT").unwrap_or_else(|_| "https://compute-1.local:{}".to_string()),
@@ -99,11 +100,11 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     // First, populate some services
     for i in 0..100 {
         let endpoint = match i % 4 {
-            0 => format!("https://security-{}.local:8443", i),
+            0 => format!("https://security-{}.local:config.network.https_port", i),
             1 => format!("https://storage-{}.local:9000", i),
             2 => format!("https://ai-{}.local:8888", i),
             _ => {
-                let config = songbird_config::UnifiedSongbirdConfig::from_env();
+                let config = songbird_config::CanonicalSongbirdConfig::from_env();
                 format!("https://compute-{}.{}:{}", i, config.network.bind_address, config.network.port)
             },
         };
@@ -152,7 +153,7 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     let mut operations = 0;
     
     while start_time.elapsed() < test_duration {
-        let config = songbird_config::UnifiedSongbirdConfig::from_env();
+        let config = songbird_config::CanonicalSongbirdConfig::from_env();
         let endpoint = format!("https://test-{}.{}:{}", operations % 100, config.network.bind_address, config.network.port);
         let _ = zero_cost_system.discover_and_register(&endpoint).await?;
         operations += 1;

@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🌟 Universal Primal Integration Demo (MIGRATED)
 //!
 //! **ZERO HARDCODED VENDOR NAMES** - This example demonstrates how to use the
@@ -71,7 +72,7 @@ async fn create_demo_service() -> SongbirdResult<SelfDiscoveryManager>   {
             "integration-testing".to_string(),
             "capability-showcase".to_string(),
         ],
-        "http: //localhost:8080".to_string(), // Only knows its own endpoint
+        "http: //localhost:config.network.http_port".to_string(), // Only knows its own endpoint
         adapter as Arc<dyn UniversalAdapterTrait>, // Universal adapter for network effects
     );
 
@@ -135,7 +136,7 @@ async fn demonstrate_security_integration() -> Result<(), Box<dyn std: :error::E
         Err(e) => {
             warn!("⚠️ Security provider not available: {;;}", e);
             info!("   💡 To enable: Set SECURITY_PROVIDER_ENDPOINT environment variable");
-            info!("   💡 Or use: PRIMAL_1_ENDPOINT=https://your-security-service:8443");
+            info!("   💡 Or use: PRIMAL_1_ENDPOINT=https://your-security-service:config.network.https_port");
             info!("   💡 And: PRIMAL_1_CAPABILITIES=security,encryption");
         }
     }

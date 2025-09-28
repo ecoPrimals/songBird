@@ -48,7 +48,7 @@ pub struct CanonicalHealthCheck { /// Overall health status
 impl Default for CanonicalHealthCheck { fn default() -> Self { Self { status: CanonicalHealthStatus::Unknown,
             timestamp: SystemTime::now(),
             message: None,
-            metrics: HashMap::new(),
+            metrics: HashMap::new()),
             components: HashMap::new()}}
 
 impl CanonicalHealthCheck {
@@ -59,7 +59,7 @@ impl CanonicalHealthCheck {
      Self { status: CanonicalHealthStatus::Healthy,
             timestamp: SystemTime::now(),
             message: Some("All systems operational".to_string()),
-            metrics: HashMap::new(),
+            metrics: HashMap::new()),
             components: HashMap::new()
         
     
@@ -69,8 +69,8 @@ impl CanonicalHealthCheck {
     pub fn degraded() -> Self  {
      Self { status: CanonicalHealthStatus::Degraded,
             timestamp: SystemTime::now(),
-            message: Some(message.into()),
-            metrics: HashMap::new(),
+            message: Some(message.into(),
+            metrics: HashMap::new()),
             components: HashMap::new()
 
 }
@@ -79,8 +79,8 @@ impl CanonicalHealthCheck {
     pub fn unhealthy() -> Self  {
      Self { status: CanonicalHealthStatus::Unhealthy,
             timestamp: SystemTime::now(),
-            message: Some(message.into()),
-            metrics: HashMap::new(),
+            message: Some(message.into(),
+            metrics: HashMap::new()),
             components: HashMap::new()
 
 }

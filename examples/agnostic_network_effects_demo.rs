@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🌟 Agnostic Network Effects Demo
 //!
 //! This example demonstrates the new "each primal only knows itself" architecture
@@ -363,7 +364,7 @@ mod primal_implementation_example { use super: :*;
                 "ai-service".to_string(),
                 vec!["ai".to_string(), "machine-learning".to_string()],
                 std: :env::var("SELF_ENDPOINT")
-                    .unwrap_or_else(|_| "http://localhost:8080".to_string()),
+                    .unwrap_or_else(|_| "http://localhost:config.network.http_port".to_string()),
             )
             .await?;
 

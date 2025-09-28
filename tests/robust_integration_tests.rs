@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Robust Integration Tests
 //!
 //! End-to-end integration tests covering:
@@ -30,7 +31,7 @@ mod system_integration_tests {
         // Create a test configuration
         let test_config_content = r#"
             [network]
-            orchestrator_port = 8080
+            orchestrator_port = config.network.http_port
             bind_address = &get_bind_address()
             require_tls = false
             
@@ -45,7 +46,7 @@ mod system_integration_tests {
         // Test file content and default configuration
         let file_content = std::fs::read_to_string(&config_path)
     .map_err(|e| SongbirdError::io_error(&format!("Read failed: {}", e)))?;
-        assert!(file_content.contains("orchestrator_port = 8080"));
+        assert!(file_content.contains("orchestrator_port = config.network.http_port"));
         assert!(file_content.contains("SONGBIRD_TEST_"));
 
         // Test default configuration system
@@ -197,14 +198,14 @@ mod performance_integration_tests {
         // Create a larger configuration file
         let config_content = r#"
             [network]
-            orchestrator_port = 8080
+            orchestrator_port = config.network.http_port
             bind_address = &get_bind_address()
             require_tls = false
             
             [environment]
             prefix = "SONGBIRD_PERF_"
             use_defaults = true
-            bind_port = 8080
+            bind_port = config.network.http_port
             max_connections = 1000
             
             # Add more sections to test parsing performance
@@ -229,7 +230,7 @@ mod performance_integration_tests {
 
         // Test that file contains expected content
         let content = file_content.expect("Test operation should succeed");
-        assert!(content.contains("orchestrator_port = 8080"));
+        assert!(content.contains("orchestrator_port = config.network.http_port"));
         assert!(content.contains("SONGBIRD_PERF_"));
     }
 
@@ -347,7 +348,7 @@ mod error_recovery_tests {
         let network_error = NetworkError {
             message: "Connection timeout".to_string(),
             endpoint: Some("test.example.com:{}".to_string()),
-            port: Some(8080),
+            port: Some(config.network.http_port),
             protocol: Some("HTTP".to_string()),
         };
 
@@ -404,7 +405,7 @@ mod real_world_scenario_tests {
         // 1. Create configuration file
         let config_content = r#"
             [network]
-            orchestrator_port = 8080
+            orchestrator_port = config.network.http_port
             bind_address = &get_bind_address()
             require_tls = false
             
@@ -418,7 +419,7 @@ mod real_world_scenario_tests {
         // 2. Test configuration file content
         let file_content = std::fs::read_to_string(&config_path)
     .map_err(|e| SongbirdError::io_error(&format!("Read failed: {}", e)))?;
-        assert!(file_content.contains("orchestrator_port = 8080"));
+        assert!(file_content.contains("orchestrator_port = config.network.http_port"));
         assert!(file_content.contains("SONGBIRD_"));
 
         // 3. Test default configuration instead of parsing complex TOML
@@ -480,7 +481,7 @@ mod real_world_scenario_tests {
         // 1. Initial configuration
         let initial_config = r#"
             [network]
-            orchestrator_port = 8080
+            orchestrator_port = config.network.http_port
             bind_address = &get_bind_address()
         "#;
         std::fs::write(&config_path, initial_config)
@@ -489,12 +490,12 @@ mod real_world_scenario_tests {
         // Test basic file parsing without complex config structure
         let file_content1 = std::fs::read_to_string(&config_path)
     .map_err(|e| SongbirdError::io_error(&format!("Read failed: {}", e)))?;
-        assert!(file_content1.contains("orchestrator_port = 8080"));
+        assert!(file_content1.contains("orchestrator_port = config.network.http_port"));
 
         // 2. Update configuration
         let updated_config = r#"
             [network]
-            orchestrator_port = 9090
+            orchestrator_port = config.metrics.port
             bind_address = &get_bind_address()
         "#;
         std::fs::write(&config_path, updated_config)
@@ -503,7 +504,7 @@ mod real_world_scenario_tests {
         // 3. Verify hot reload by checking file content change
         let file_content2 = std::fs::read_to_string(&config_path)
     .map_err(|e| SongbirdError::io_error(&format!("Read failed: {}", e)))?;
-        assert!(file_content2.contains("orchestrator_port = 9090"));
+        assert!(file_content2.contains("orchestrator_port = config.metrics.port"));
 
         // 4. Verify change was detected
         assert_ne!(file_content1, file_content2);

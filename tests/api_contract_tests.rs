@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! API Contract Tests for Songbird Universal Orchestrator
 //!
 //! These tests validate API contract stability and backwards compatibility:

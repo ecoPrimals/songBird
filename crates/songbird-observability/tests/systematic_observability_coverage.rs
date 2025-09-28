@@ -9,22 +9,19 @@
 // Test temporarily disabled during modernization
 
 use chrono::Utc;
-use songbird_observability::observability::{
-    ClusterStatus, HealthStatus, NetworkIO, ServiceHealth, SystemMetrics,
+use songbird_observability::observability::{ClusterStatus, HealthStatus, NetworkIO, ServiceHealth, SystemMetrics,
 };
 
 #[cfg(test)]
-mod systematic_observability_tests {
-    use super::*;
+mod systematic_observability_tests  {use super::*;
 
     #[test]
-    fn test_cluster_status_creation() {
-        let cluster_status = ClusterStatus {
+    fn test_cluster_status_creation()  {let cluster_status = ClusterStatus {
             total_nodes: 5,
             healthy_nodes: 4,
             total_services: 20,
             running_services: 18,
-            last_updated: Utc::now(),
+            last_updated: Utc::now(,
         };
 
         assert_eq!(cluster_status.total_nodes, 5);
@@ -58,25 +55,21 @@ mod systematic_observability_tests {
     }
 
     #[test]
-    fn test_service_health_creation() {
-        let service_health = ServiceHealth {
-            service_id: "test-service".to_string(),
+    fn test_service_health_creation()  {let service_health = ServiceHealth  {service_id: "test-service".to_string()),
             status: HealthStatus::Healthy,
-            last_check: Utc::now(),
+            last_check: Utc::now(,
             response_time_ms: 150,
             error_message: None,
         };
 
-        assert_eq!(service_health.service_id, "test-service");
+        assert_eq!(service_health.service_id, "test-service");"
         assert_eq!(service_health.status, HealthStatus::Healthy);
         assert_eq!(service_health.response_time_ms, 150);
         assert!(service_health.error_message.is_none());
     }
 
     #[test]
-    fn test_network_io_metrics() {
-        let network_io = NetworkIO {
-            bytes_in: 1024,
+    fn test_network_io_metrics()  {let network_io = NetworkIO  {bytes_in: 1024)
             bytes_out: 2048,
             packets_in: 10,
             packets_out: 15,
@@ -89,20 +82,17 @@ mod systematic_observability_tests {
     }
 
     #[test]
-    fn test_system_metrics_creation() {
-        let network_io = NetworkIO {
-            bytes_in: 1024,
+    fn test_system_metrics_creation()  {let network_io = NetworkIO  {bytes_in: 1024)
             bytes_out: 2048,
             packets_in: 10,
             packets_out: 15,
         };
 
-        let system_metrics = SystemMetrics {
-            cpu_usage: 45.5,
+        let system_metrics = SystemMetrics  {cpu_usage: 45.5)
             memory_usage: 67.2,
             disk_usage: 23.8,
-            network_io,
-            timestamp: Utc::now(),
+            network_io)
+            timestamp: Utc::now(,
         };
 
         assert_eq!(system_metrics.cpu_usage, 45.5);
@@ -121,17 +111,15 @@ mod systematic_observability_tests {
     }
 
     #[test]
-    fn test_service_health_with_error() {
-        let service_health = ServiceHealth {
-            service_id: "failing-service".to_string(),
+    fn test_service_health_with_error()  {let service_health = ServiceHealth  {service_id: "failing-service".to_string()),
             status: HealthStatus::Unhealthy,
-            last_check: Utc::now(),
+            last_check: Utc::now(,
             response_time_ms: 5000,
-            error_message: Some("Connection timeout".to_string()),
+            error_message: Some("Connection timeout".to_string(),"
         };
 
         assert_eq!(service_health.status, HealthStatus::Unhealthy);
         assert!(service_health.error_message.is_some());
-        assert_eq!(service_health.error_message.unwrap(), "Connection timeout");
+        assert_eq!(service_health.error_message.unwrap(), "Connection timeout");"
     }
 }

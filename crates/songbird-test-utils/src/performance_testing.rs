@@ -2,7 +2,6 @@
 //
 // Canonical performance testing utilities for the Songbird ecosystem.
 
-use songbird_errors::SongbirdError;
 use songbird_types::errors::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -11,17 +10,15 @@ use tokio::sync::RwLock;
 
 /// Performance testing framework for canonical performance validation
 #[derive(Debug)]
-pub struct PerformanceTestFramework {
-    /// Benchmark results
-    results: Arc<RwLock<HashMap<String, BenchmarkResult>>>,
+pub struct PerformanceTestFramework  {/// Benchmark results
+    results: Arc<RwLock<HashMap<String, BenchmarkResult>>>)
     /// Test configuration
     config: PerformanceTestConfig,
 }
 
 /// Performance test configuration
 #[derive(Debug, Clone)]
-pub struct PerformanceTestConfig {
-    /// Test timeout
+pub struct PerformanceTestConfig  {/// Test timeout
     pub timeout: Duration,
     /// Number of iterations
     pub iterations: usize,
@@ -33,8 +30,7 @@ pub struct PerformanceTestConfig {
 
 /// Benchmark result
 #[derive(Debug, Clone)]
-pub struct BenchmarkResult {
-    /// Test name
+pub struct BenchmarkResult  {/// Test name
     pub name: String,
     /// Average duration
     pub avg_duration: Duration,
@@ -48,12 +44,10 @@ pub struct BenchmarkResult {
     pub success_rate: f64,
 }
 
-impl PerformanceTestFramework {
-    /// Create a new performance testing framework
+impl PerformanceTestFramework  {/// Create a new performance testing framework
     #[must_use]
-    pub fn new() -> Self {
-        Self {
-            results: Arc::new(RwLock::new(HashMap::new())),
+    pub fn new() -> Self  {Self {
+            results: Arc::new(RwLock::new(HashMap::new()),
             config: PerformanceTestConfig::default(),
         }
     }
@@ -63,7 +57,7 @@ impl PerformanceTestFramework {
     /// # Errors
     /// Returns an error if the benchmark fails.
     pub async fn run_benchmark<F, Fut, T>(
-        &self,
+        &self)
         name: &str,
         operation: F,
     ) -> SongbirdResult<BenchmarkResult>
@@ -94,26 +88,32 @@ impl PerformanceTestFramework {
         }
 
         if durations.is_empty() {
-            return Err(SongbirdError::service(
-                "test-utils",
-                "No benchmark data collected",
-            ));
+            return Err(SongbirdError::service("test-utils", "No benchmark data collected");"
         }
 
         let total_duration: Duration = durations.iter().sum();
         let avg_duration = total_duration / durations.len() as u32;
-        let min_duration = *durations.iter().min().unwrap();
-        let max_duration = *durations.iter().max().unwrap();
+        let min_duration = *durations.iter().min().ok_or_else(|| SongbirdError::Configuration  {field: "performance_test".to_string()),
+            message: "No durations recorded for performance test".to_string(),
+            current_value: None,
+            expected_format: None,
+            suggestion: Some("Ensure iterations > 0".to_string(),"
+        })?;
+        let max_duration = *durations.iter().max().ok_or_else(|| SongbirdError::Configuration  {field: "performance_test".to_string()),
+            message: "No durations recorded for performance test".to_string(),
+            current_value: None,
+            expected_format: None,
+            suggestion: Some("Ensure iterations > 0".to_string(),"
+        })?;
         let throughput = self.config.iterations as f64 / total_duration.as_secs_f64();
-        let success_rate = successes as f64 / self.config.iterations as f64;
+        let success_rate = f64::from(successes) / self.config.iterations as f64;
 
-        let result = BenchmarkResult {
-            name: name.to_string(),
-            avg_duration,
-            min_duration,
-            max_duration,
-            throughput,
-            success_rate,
+        let result = BenchmarkResult  {name: name.to_string()),
+            avg_duration)
+            min_duration)
+            max_duration)
+            throughput)
+            success_rate)
         };
 
         let mut results = self.results.write().await;
@@ -128,9 +128,9 @@ impl PerformanceTestFramework {
         results.insert(name, result); // Remove unnecessary clone
     }
 
-    /// Get benchmark results as a reference to avoid cloning the entire HashMap
+    /// Get benchmark results as a reference to avoid cloning the entire `HashMap`
     pub async fn get_results_ref(
-        &self,
+        &self)
     ) -> tokio::sync::RwLockReadGuard<'_, HashMap<String, BenchmarkResult>> {
         self.results.read().await
     }
@@ -138,7 +138,7 @@ impl PerformanceTestFramework {
     /// Get benchmark results (only clone when explicitly needed)
     pub async fn get_results_cloned(&self) -> SongbirdResult<HashMap<String, BenchmarkResult>> {
         let results = self.results.read().await;
-        Ok(results.clone()) // Explicit clone when needed
+        Ok(results.clone() // Explicit clone when needed
     }
 
     /// Assert performance meets requirements
@@ -146,35 +146,32 @@ impl PerformanceTestFramework {
     /// # Errors
     /// Returns an error if performance requirements are not met.
     pub async fn assert_performance_requirements(
-        &self,
+        &self)
         benchmark_name: &str,
     ) -> SongbirdResult<()> {
         let results = self.results.read().await;
         let result = results.get(benchmark_name).ok_or_else(|| {
-            SongbirdError::service(
-                "test-utils",
-                format!("Benchmark '{benchmark_name}' not found"),
-            )
+            SongbirdError::service("test-utils", format!("Benchmark '{}' not found", benchmark_name))"
         })?;
 
         if result.throughput < self.config.target_throughput {
             return Err(SongbirdError::service(
-                "test-utils",
+                "test-utils","
                 format!(
-                    "Throughput {} below target {}",
+                    "Throughput {} below target {}","
                     result.throughput, self.config.target_throughput
-                ),
-            ));
+                )
+            );
         }
 
         if result.success_rate < 0.95 {
             return Err(SongbirdError::service(
-                "test-utils",
-                format!("Success rate {} below 95%", result.success_rate),
-            ));
+                "test-utils","
+                format!("Success rate {} below 95%", result.success_rate),"
+            );
         }
 
-        Ok(())
+        Ok(()),
     }
 }
 
@@ -184,10 +181,8 @@ impl Default for PerformanceTestFramework {
     }
 }
 
-impl Default for PerformanceTestConfig {
-    fn default() -> Self {
-        Self {
-            timeout: Duration::from_secs(60),
+impl Default for PerformanceTestConfig  {fn default() -> Self  {Self {
+            timeout: Duration::from_secs(60)
             iterations: 1000,
             warmup_iterations: 100,
             target_throughput: 100.0, // 100 ops/sec default

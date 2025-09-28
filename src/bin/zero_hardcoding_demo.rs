@@ -37,11 +37,11 @@ async fn main() -> SongbirdResult<()>   {
     let hardcoded_examples = vec![
         (
             "beardog_client.rs",
-            "let client = BearDogClient: :new(\"http://beardog:8443\")",
+            "let client = BearDogClient: :new(\"http://beardog:config.network.https_port\")",
         ),
         (
             "nestgate_config.rs",
-            "let endpoint = \"http: //nestgate:8080/api\"",
+            "let endpoint = \"http: //nestgate:config.network.http_port/api\"",
         ),
         ("k8s_deploy.rs", "kubectl apply -f deployment.yaml"),
         (

@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 /// # 🌟 Universal OS Capabilities Migration Example
 ///
 /// **ARCHITECTURAL TRANSFORMATION**: From hardcoded BiomeOS to capability-based routing

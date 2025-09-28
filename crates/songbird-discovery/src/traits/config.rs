@@ -1,12 +1,12 @@
 // Module imports
 //! Configuration Provider Trait
 //!
-//! Defines the interface for pluggable configuration backends,
+//! Defines the interface for pluggable configuration backends)
 //! supporting file-based, environment, Consul, and other configuration sources.
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_errors::SongbirdResult;
+use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 // Import all concrete config types from the discovery config module
 pub use crate::discovery::config::*;
@@ -31,8 +31,7 @@ where
 
 /// Provider information struct
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigProviderInfo {
-    pub name: String,
+pub struct ConfigProviderInfo  {pub name: String,
     pub version: String,
     pub supports_reload: bool,
     pub description: String,
@@ -42,8 +41,7 @@ pub struct ConfigProviderInfo {
 
 /// Configuration metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigMetadata {
-    pub source: String,
+pub struct ConfigMetadata  {pub source: String,
     pub last_modified: chrono::DateTime<chrono::Utc>,
     pub checksum: String,
     pub version: u64,
@@ -51,8 +49,7 @@ pub struct ConfigMetadata {
 
 /// Configuration format enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ConfigFormat {
-    Json,
+pub enum ConfigFormat  {Json)
     Yaml,
     Toml,
     Env,

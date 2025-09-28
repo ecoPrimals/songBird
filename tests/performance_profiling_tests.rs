@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Performance Profiling Tests
 //!
 //! Tests to identify performance bottlenecks and optimize critical paths

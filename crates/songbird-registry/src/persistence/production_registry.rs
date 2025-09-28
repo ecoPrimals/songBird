@@ -12,22 +12,18 @@
 use crate::types::{ServiceInfo, ServiceStatus, RegistryEvent};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{broadcast, RwLock};
 use tokio::time::interval;
-use tracing::{debug, error, info, warn};
-use uuid::Uuid;
-
 /// Production service registry with real persistence
 /// 
 /// ## 🏭 PRODUCTION READY - NO MORE MOCKS
 /// This replaces all in-memory mock registries with real persistent storage
-pub struct ProductionServiceRegistry {
-    /// In-memory cache for fast access
-    services: Arc<RwLock<HashMap<String, RegisteredService>>>,
+pub struct ProductionServiceRegistry  {/// In-memory cache for fast access
+    services: Arc<RwLock<HashMap<String, RegisteredService>>>)
     /// Event broadcaster for real-time notifications
     event_broadcaster: broadcast::Sender<RegistryEvent>,
     /// Configuration
@@ -40,12 +36,11 @@ pub struct ProductionServiceRegistry {
 
 /// Registered service with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegisteredService {
-    pub info: ServiceInfo,
+pub struct RegisteredService  {pub info: ServiceInfo,
     pub registration_time: DateTime<Utc>,
     pub last_heartbeat: DateTime<Utc>,
     pub health_status: ServiceStatus,
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, String>)
     pub endpoints: Vec<ServiceEndpoint>,
     pub dependencies: Vec<String>,
     pub tags: Vec<String>,
@@ -53,8 +48,7 @@ pub struct RegisteredService {
 
 /// Service endpoint information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceEndpoint {
-    pub name: String,
+pub struct ServiceEndpoint  {pub name: String,
     pub url: String,
     pub protocol: String,
     pub health_check_path: Option<String>,
@@ -63,8 +57,7 @@ pub struct ServiceEndpoint {
 
 /// Registry configuration
 #[derive(Debug, Clone)]
-pub struct RegistryConfig {
-    /// Service TTL before considered stale
+pub struct RegistryConfig  {/// Service TTL before considered stale
     pub service_ttl: Duration,
     /// Health check interval
     pub health_check_interval: Duration,
@@ -80,16 +73,15 @@ pub struct RegistryConfig {
 #[derive(Debug, Clone)]
 pub enum PersistenceType {
     /// SQLite database (for single node)
-    SQLite { path: String },
+    SQLite { path: String })
     /// PostgreSQL database (for production)
-    PostgreSQL { connection_string: String },
+    PostgreSQL { connection_string: String })
     /// In-memory with periodic file backup
-    FileBackup { backup_path: String, backup_interval: Duration },
+    FileBackup { backup_path: String, backup_interval: Duration })
 }
 
 /// Health monitoring for registered services
-pub struct ServiceHealthMonitor {
-    client: reqwest::Client,
+pub struct ServiceHealthMonitor  {client: reqwest::Client)
     config: RegistryConfig,
 }
 
@@ -103,21 +95,18 @@ pub trait PersistenceLayer: Send + Sync {
 }
 
 /// File-based persistence implementation
-pub struct FileBackupPersistence {
-    backup_path: String,
+pub struct FileBackupPersistence  {backup_path: String,
 }
 
-impl Default for RegistryConfig {
-    fn default() -> Self {
-        Self {
+impl Default for RegistryConfig  {fn default() -> Self  {Self {
             service_ttl: Duration::from_secs(300), // 5 minutes
-            health_check_interval: Duration::from_secs(30),
+            health_check_interval: Duration::from_secs(30)
             max_services: 1000,
             enable_events: true,
             persistence_type: PersistenceType::FileBackup {
                 backup_path: "services.json".to_string(),
-                backup_interval: Duration::from_secs(60),
-            },
+                backup_interval: Duration::from_secs(60)
+            })
         }
     }
 }
@@ -125,9 +114,9 @@ impl Default for RegistryConfig {
 impl ServiceHealthMonitor {
     pub fn new(config: RegistryConfig) -> Self {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_millis(5000))
+            .timeout(Duration::from_millis(5000)
             .build()
-            .expect("Failed to create HTTP client");
+            .expect("Failed to create HTTP client");"
             
         Self { client, config }
     }
@@ -141,15 +130,15 @@ impl ServiceHealthMonitor {
                 match self.client.get(&health_url).send().await {
                     Ok(response) => {
                         if response.status().is_success() {
-                            debug!("✅ Health check passed for service: {}", service.info.name);
+                            debug!("✅ Health check passed for service: {}", service.info.name);"
                             return ServiceStatus::Healthy;
                         } else {
-                            warn!("⚠️ Health check failed for service: {} (status: {})", 
-                                  service.info.name, response.status());
+                            warn!("⚠️ Health check failed for service: {} (status: {})", "
+                                  service.info.name, response.status();
                         }
                     }
                     Err(e) => {
-                        warn!("❌ Health check error for service: {} ({})", service.info.name, e);
+                        warn!("❌ Health check error for service: {} ({})", service.info.name, e);"
                     }
                 }
             }
@@ -177,30 +166,30 @@ impl PersistenceLayer for FileBackupPersistence {
         
         // Update or add the service
         if let Some(existing) = services.iter_mut().find(|s| s.info.service_id == service.info.service_id) {
-            *existing = service.clone();
+            *existing = service.clone());
         } else {
             services.push(service.clone());
         }
         
         // Save back to file
         let json = serde_json::to_string_pretty(&services)
-            .map_err(|e| SongbirdError::serialization_error(format!("Failed to serialize services: {}", e)))?;
+            .map_err(|e| SongbirdError::serialization_error(format!("Failed to serialize services: {}", e))?;"
             
         tokio::fs::write(&self.backup_path, json).await
-            .map_err(|e| SongbirdError::io_error(format!("Failed to write services file: {}", e)))?;
+            .map_err(|e| SongbirdError::io_error(format!("Failed to write services file: {}", e))?;"
             
-        Ok(())
+        Ok(()),
     }
     
     async fn load_services(&self) -> SongbirdResult<Vec<RegisteredService>> {
         match tokio::fs::read_to_string(&self.backup_path).await {
             Ok(content) => {
                 serde_json::from_str(&content)
-                    .map_err(|e| SongbirdError::serialization_error(format!("Failed to parse services file: {}", e)))
+                    .map_err(|e| SongbirdError::serialization_error(format!("Failed to parse services file: {}", e))"
             }
             Err(_) => {
                 // File doesn't exist yet, return empty list
-                Ok(Vec::new())
+                Ok(Vec::new()
             }
         }
     }
@@ -210,12 +199,12 @@ impl PersistenceLayer for FileBackupPersistence {
         services.retain(|s| s.info.service_id != service_id);
         
         let json = serde_json::to_string_pretty(&services)
-            .map_err(|e| SongbirdError::serialization_error(format!("Failed to serialize services: {}", e)))?;
+            .map_err(|e| SongbirdError::serialization_error(format!("Failed to serialize services: {}", e))?;"
             
         tokio::fs::write(&self.backup_path, json).await
-            .map_err(|e| SongbirdError::io_error(format!("Failed to write services file: {}", e)))?;
+            .map_err(|e| SongbirdError::io_error(format!("Failed to write services file: {}", e))?;"
             
-        Ok(())
+        Ok(()),
     }
     
     async fn update_service(&self, service: &RegisteredService) -> SongbirdResult<()> {
@@ -233,18 +222,17 @@ impl ProductionServiceRegistry {
         
         // Create persistence layer based on configuration
         let persistence: Arc<dyn PersistenceLayer> = match &config.persistence_type {
-            PersistenceType::FileBackup { backup_path, .. } => {
-                Arc::new(FileBackupPersistence {
-                    backup_path: backup_path.clone(),
+            PersistenceType::FileBackup { backup_path, .. } =>  {Arc::new(FileBackupPersistence {
+                    backup_path: backup_path.clone(,
                 })
             }
             PersistenceType::SQLite { database_path, .. } => {
-                info!("🗄️ Initializing SQLite persistence at: {}", database_path);
-                Arc::new(SqlitePersistence::new(database_path.clone()).await?)
+                info!("🗄️ Initializing SQLite persistence at: {}", database_path);"
+                Arc::new(SqlitePersistence::new(database_path.clone().await?)
             }
             PersistenceType::PostgreSQL { connection_string, .. } => {
-                info!("🐘 Initializing PostgreSQL persistence: {}", connection_string);
-                Arc::new(PostgreSqlPersistence::new(connection_string.clone()).await?)
+                info!("🐘 Initializing PostgreSQL persistence: {}", connection_string);"
+                Arc::new(PostgreSqlPersistence::new(connection_string.clone().await?)
             }
         };
         
@@ -256,22 +244,21 @@ impl ProductionServiceRegistry {
             services_map.insert(service.info.service_id.clone(), service);
         }
         
-        let health_monitor = Arc::new(ServiceHealthMonitor::new(config.clone()));
+        let health_monitor = Arc::new(ServiceHealthMonitor::new(config.clone());
         
-        let registry = Self {
-            services: Arc::new(RwLock::new(services_map)),
-            event_broadcaster,
-            config: config.clone(),
-            health_monitor,
-            persistence,
+        let registry = Self  {services: Arc::new(RwLock::new(services_map))
+            event_broadcaster)
+            config: config.clone(,
+            health_monitor)
+            persistence)
         };
         
         // Start background tasks
         registry.start_health_monitoring().await;
         registry.start_cleanup_task().await;
         
-        info!("🏭 Production service registry initialized with {} services", 
-              registry.services.read().await.len());
+        info!("🏭 Production service registry initialized with {} services", "
+              registry.services.read().await.len();
         
         Ok(registry)
     }
@@ -283,17 +270,16 @@ impl ProductionServiceRegistry {
     pub async fn register_service(&self, mut service_info: ServiceInfo) -> SongbirdResult<String> {
         // Generate service ID if not provided
         if service_info.service_id.is_empty() {
-            service_info.service_id = Uuid::new_v4().to_string();
+            service_info.service_id = Uuid::new_v4().to_string());
         }
         
         let now = Utc::now();
-        let registered_service = RegisteredService {
-            info: service_info.clone(),
+        let registered_service = RegisteredService  {info: service_info.clone()
             registration_time: now,
             last_heartbeat: now,
             health_status: ServiceStatus::Unknown,
-            metadata: HashMap::new(),
-            endpoints: Vec::new(), // TODO: Extract from service_info
+            metadata: HashMap::new()),
+            endpoints: service_info.endpoints.keys().cloned().collect(,
             dependencies: Vec::new(),
             tags: Vec::new(),
         };
@@ -308,19 +294,17 @@ impl ProductionServiceRegistry {
         self.persistence.store_service(&registered_service).await?;
         
         // Broadcast registration event
-        if self.config.enable_events {
-            let event = RegistryEvent::ServiceRegistered {
-                service_id: service_info.service_id.clone(),
-                service_name: service_info.name.clone(),
+        if self.config.enable_events  {let event = RegistryEvent::ServiceRegistered  {service_id: service_info.service_id.clone()
+                service_name: service_info.name.clone(,
                 timestamp: now,
             };
             
             if let Err(_) = self.event_broadcaster.send(event) {
-                warn!("No event listeners for service registration");
+                warn!("No event listeners for service registration");"
             }
         }
         
-        info!("📝 Service registered: {} ({})", service_info.name, service_info.service_id);
+        info!("📝 Service registered: {} ({})", service_info.name, service_info.service_id);"
         Ok(service_info.service_id)
     }
     
@@ -343,7 +327,7 @@ impl ProductionServiceRegistry {
             results.push(registered_service.info.clone());
         }
         
-        debug!("🔍 Discovered {} services", results.len());
+        debug!("🔍 Discovered {} services", results.len();"
         Ok(results)
     }
     
@@ -360,10 +344,10 @@ impl ProductionServiceRegistry {
             // Update persistence
             self.persistence.update_service(service).await?;
             
-            debug!("💓 Heartbeat received from service: {}", service_id);
-            Ok(())
+            debug!("💓 Heartbeat received from service: {}", service_id);"
+            Ok(()),
         } else {
-            Err(SongbirdError::internal_error(not_found(format!("Service not found: {}", service_id)))
+            Err(SongbirdError::internal_error(not_found(format!("Service not found: {}", service_id))"
         }
     }
     
@@ -374,7 +358,7 @@ impl ProductionServiceRegistry {
             if let Some(service) = services.remove(service_id) {
                 service.info.name.clone()
             } else {
-                return Err(SongbirdError::internal_error(not_found(format!("Service not found: {}", service_id)));
+                return Err(SongbirdError::internal_error(not_found(format!("Service not found: {}", service_id));"
             }
         };
         
@@ -382,20 +366,18 @@ impl ProductionServiceRegistry {
         self.persistence.remove_service(service_id).await?;
         
         // Broadcast deregistration event
-        if self.config.enable_events {
-            let event = RegistryEvent::ServiceDeregistered {
-                service_id: service_id.to_string(),
-                service_name: service_name.clone(),
-                timestamp: Utc::now(),
+        if self.config.enable_events  {let event = RegistryEvent::ServiceDeregistered  {service_id: service_id.to_string()),
+                service_name: service_name.clone(,
+                timestamp: Utc::now(,
             };
             
             if let Err(_) = self.event_broadcaster.send(event) {
-                warn!("No event listeners for service deregistration");
+                warn!("No event listeners for service deregistration");"
             }
         }
         
-        info!("🗑️ Service deregistered: {} ({})", service_name, service_id);
-        Ok(())
+        info!("🗑️ Service deregistered: {} ({})", service_name, service_id);"
+        Ok(()),
     }
     
     /// Subscribe to registry events
@@ -437,10 +419,10 @@ impl ProductionServiceRegistry {
                         
                         // Update persistence
                         if let Err(e) = persistence.update_service(&service).await {
-                            error!("Failed to persist health status update: {}", e);
+                            error!("Failed to persist health status update: {}", e);"
                         }
                         
-                        info!("🏥 Health status changed for {}: {:?}", service.info.name, new_status);
+                        info!("🏥 Health status changed for {}: {:?}", service.info.name, new_status);"
                     }
                 }
             }
@@ -454,7 +436,7 @@ impl ProductionServiceRegistry {
         let ttl = self.config.service_ttl;
         
         tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(60)); // Check every minute
+            let mut interval = interval(Duration::from_secs(60); // Check every minute
             
             loop {
                 interval.tick().await;
@@ -480,10 +462,10 @@ impl ProductionServiceRegistry {
                     }
                     
                     if let Err(e) = persistence.remove_service(&service_id).await {
-                        error!("Failed to remove stale service from persistence: {}", e);
+                        error!("Failed to remove stale service from persistence: {}", e);"
                     }
                     
-                    warn!("🧹 Removed stale service: {}", service_id);
+                    warn!("🧹 Removed stale service: {}", service_id);"
                 }
             }
         });
@@ -517,36 +499,32 @@ impl ProductionServiceRegistry {
 
 /// Service discovery filters
 #[derive(Debug, Clone)]
-pub struct ServiceFilters {
-    pub service_type: Option<String>,
+pub struct ServiceFilters  {pub service_type: Option<String>,
     pub name_pattern: Option<String>,
     pub tags: Option<Vec<String>>,
     pub status: Option<ServiceStatus>,
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod tests  {use super::*;
     use tempfile::tempdir;
     
     #[tokio::test]
-    async fn test_service_registration_and_discovery() {
-        let temp_dir = tempdir().unwrap();
-        let backup_path = temp_dir.path().join("test_services.json");
+    async fn test_service_registration_and_discovery()  {let temp_dir = tempdir().unwrap();
+        let backup_path = temp_dir.path().join("test_services.json");"
         
         let config = RegistryConfig {
             persistence_type: PersistenceType::FileBackup {
                 backup_path: backup_path.to_string_lossy().to_string(),
-                backup_interval: Duration::from_secs(1),
-            },
+                backup_interval: Duration::from_secs(1,
+            })
             ..Default::default()
         };
         
         let registry = ProductionServiceRegistry::new(config).await.unwrap();
         
         // Register a test service
-        let service_info = ServiceInfo {
-            service_id: String::new(), // Will be auto-generated
+        let service_info = ServiceInfo  {service_id: String::new(), // Will be auto-generated
             name: "test-service".to_string(),
             service_type: "web".to_string(),
             // ... other fields with defaults
@@ -559,7 +537,7 @@ mod tests {
         // Discover services
         let services = registry.discover_services(None).await.unwrap();
         assert_eq!(services.len(), 1);
-        assert_eq!(services[0].name, "test-service");
+        assert_eq!(services[0].name, "test-service");"
         
         // Test heartbeat
         registry.heartbeat(&service_id).await.unwrap();
@@ -573,8 +551,7 @@ mod tests {
 }
 
 /// SQLite persistence implementation
-pub struct SqlitePersistence {
-    database_path: String,
+pub struct SqlitePersistence  {database_path: String,
 }
 
 impl SqlitePersistence {
@@ -585,44 +562,44 @@ impl SqlitePersistence {
         // Initialize database schema
         persistence.init_schema().await?;
         
-        info!("🗄️ SQLite persistence initialized at: {}", database_path);
+        info!("🗄️ SQLite persistence initialized at: {}", database_path);"
         Ok(persistence)
     }
     
     /// Initialize database schema
     async fn init_schema(&self) -> SongbirdResult<()> {
         // For now, return success - in a real implementation, this would create tables
-        debug!("📋 SQLite schema initialized");
-        Ok(())
+        debug!("📋 SQLite schema initialized");"
+        Ok(()),
     }
 }
 
 #[async_trait::async_trait]
 impl PersistenceLayer for SqlitePersistence {
     async fn save_service(&self, service: &RegisteredService) -> SongbirdResult<()> {
-        debug!("💾 Saving service to SQLite: {}", service.info.service_id);
+        debug!("💾 Saving service to SQLite: {}", service.info.service_id);"
         // Real implementation would use sqlx or rusqlite to save to database
         // For now, we'll use a simple file-based approach
         self.save_to_file(service).await
     }
     
     async fn load_services(&self) -> SongbirdResult<Vec<RegisteredService>> {
-        debug!("📖 Loading services from SQLite");
+        debug!("📖 Loading services from SQLite");"
         // Real implementation would query the database
         // For now, return empty vec - services will be registered as needed
         Ok(vec![])
     }
     
     async fn remove_service(&self, service_id: &str) -> SongbirdResult<()> {
-        debug!("🗑️ Removing service from SQLite: {}", service_id);
+        debug!("🗑️ Removing service from SQLite: {}", service_id);"
         // Real implementation would delete from database
-        Ok(())
+        Ok(()),
     }
     
     async fn update_service_health(&self, service_id: &str, status: ServiceStatus) -> SongbirdResult<()> {
-        debug!("❤️ Updating service health in SQLite: {} -> {:?}", service_id, status);
+        debug!("❤️ Updating service health in SQLite: {} -> {:?}", service_id, status);"
         // Real implementation would update database record
-        Ok(())
+        Ok(()),
     }
 }
 
@@ -638,19 +615,18 @@ impl SqlitePersistence {
         
         let file_path = format!("{}/{}.json", backup_dir, service.info.service_id);
         let service_json = serde_json::to_string_pretty(service)
-            .map_err(|e| SongbirdError::internal_error(&format!("Failed to serialize service: {}", e)))?;
+            .map_err(|e| SongbirdError::internal_error(&format!("Failed to serialize service: {}", e))?;"
         
         fs::write(&file_path, service_json).await
-            .map_err(|e| SongbirdError::internal_error(&format!("Failed to write service file: {}", e)))?;
+            .map_err(|e| SongbirdError::internal_error(&format!("Failed to write service file: {}", e))?;"
         
-        debug!("📁 Service saved to backup file: {}", file_path);
-        Ok(())
+        debug!("📁 Service saved to backup file: {}", file_path);"
+        Ok(()),
     }
 }
 
 /// PostgreSQL persistence implementation
-pub struct PostgreSqlPersistence {
-    connection_string: String,
+pub struct PostgreSqlPersistence  {connection_string: String,
 }
 
 impl PostgreSqlPersistence {
@@ -661,44 +637,44 @@ impl PostgreSqlPersistence {
         // Initialize database schema
         persistence.init_schema().await?;
         
-        info!("🐘 PostgreSQL persistence initialized");
+        info!("🐘 PostgreSQL persistence initialized");"
         Ok(persistence)
     }
     
     /// Initialize database schema
     async fn init_schema(&self) -> SongbirdResult<()> {
         // For now, return success - in a real implementation, this would create tables
-        debug!("📋 PostgreSQL schema initialized");
-        Ok(())
+        debug!("📋 PostgreSQL schema initialized");"
+        Ok(()),
     }
 }
 
 #[async_trait::async_trait]
 impl PersistenceLayer for PostgreSqlPersistence {
     async fn save_service(&self, service: &RegisteredService) -> SongbirdResult<()> {
-        debug!("💾 Saving service to PostgreSQL: {}", service.info.service_id);
+        debug!("💾 Saving service to PostgreSQL: {}", service.info.service_id);"
         // Real implementation would use sqlx to save to database
         // For now, we'll use a simple file-based approach as fallback
         self.save_to_file(service).await
     }
     
     async fn load_services(&self) -> SongbirdResult<Vec<RegisteredService>> {
-        debug!("📖 Loading services from PostgreSQL");
+        debug!("📖 Loading services from PostgreSQL");"
         // Real implementation would query the database
         // For now, return empty vec - services will be registered as needed
         Ok(vec![])
     }
     
     async fn remove_service(&self, service_id: &str) -> SongbirdResult<()> {
-        debug!("🗑️ Removing service from PostgreSQL: {}", service_id);
+        debug!("🗑️ Removing service from PostgreSQL: {}", service_id);"
         // Real implementation would delete from database
-        Ok(())
+        Ok(()),
     }
     
     async fn update_service_health(&self, service_id: &str, status: ServiceStatus) -> SongbirdResult<()> {
-        debug!("❤️ Updating service health in PostgreSQL: {} -> {:?}", service_id, status);
+        debug!("❤️ Updating service health in PostgreSQL: {} -> {:?}", service_id, status);"
         // Real implementation would update database record
-        Ok(())
+        Ok(()),
     }
 }
 
@@ -707,19 +683,19 @@ impl PostgreSqlPersistence {
     async fn save_to_file(&self, service: &RegisteredService) -> SongbirdResult<()> {
         use tokio::fs;
         
-        let backup_dir = "postgresql_backup";
+        let backup_dir = "postgresql_backup";"
         if let Err(_) = fs::create_dir_all(&backup_dir).await {
             // Directory might already exist
         }
         
         let file_path = format!("{}/{}.json", backup_dir, service.info.service_id);
         let service_json = serde_json::to_string_pretty(service)
-            .map_err(|e| SongbirdError::internal_error(&format!("Failed to serialize service: {}", e)))?;
+            .map_err(|e| SongbirdError::internal_error(&format!("Failed to serialize service: {}", e))?;"
         
         fs::write(&file_path, service_json).await
-            .map_err(|e| SongbirdError::internal_error(&format!("Failed to write service file: {}", e)))?;
+            .map_err(|e| SongbirdError::internal_error(&format!("Failed to write service file: {}", e))?;"
         
-        debug!("📁 Service saved to backup file: {}", file_path);
-        Ok(())
+        debug!("📁 Service saved to backup file: {}", file_path);"
+        Ok(()),
     }
 } 

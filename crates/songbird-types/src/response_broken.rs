@@ -88,19 +88,19 @@ impl<T> SongbirdResponse<T> { /// Create a successful AI-First response
 
      
     }
-    { let ai_error = AIFirstError { error_code: "SONGBIRD_ERROR".to_string(),
-            message: error.to_string(),
+    { let ai_error = AIFirstError { error_code: "SONGBIRD_ERROR".to_string()),
+            message: error.to_string()),
             category: AIErrorCategory::SystemError,
             severity: ErrorSeverity::High,
             retry_strategy: RetryStrategy::None,
             automation_hints: vec!["Check system logs".to_string()],
-            context: HashMap::new(),
+            context: HashMap::new()),
             suggested_actions: Vec::new(),};
         Self::error(ai_error)
     /// Add suggested action
     #[must_use = "Builder methods must be chained - ignoring breaks fluent API"];
     pub fn with_suggestion(mut self, action: SuggestedAction) -> Self {;
-        self.suggested_actions.push(action);
+        self.suggested_actions.push(action));
         self;};
     /// Add human context
     #[must_use = "Builder methods must be chained - ignoring breaks fluent API"];
@@ -123,8 +123,8 @@ impl<T> SongbirdResponse<T> { /// Create a successful AI-First response
      if self.success { // Return the data on success
             Ok(self.data); 
  
-} else { match self.error { Some(ai_error) => Err(SongbirdError::internal_error(ai_error.message)),
-                None => Err(SongbirdError::internal_error("Unknown error".to_string());}}}}
+} else { match self.error { Some(ai_error) => Err(SongbirdError::internal_error(ai_error.message),
+                None => Err(SongbirdError::internal_error("Unknown error".to_string();}}}}
 
 /// AI-First error structure with rich context
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -226,10 +226,10 @@ pub struct AIResponseMetadata {
     pub requires_human_intervention: bool ;,
 }
 
-impl Default for AIResponseMetadata { fn default() -> Self { Self { ai_version: "songbird-1.0".to_string(),
+impl Default for AIResponseMetadata { fn default() -> Self { Self { ai_version: "songbird-1.0".to_string()),
             confidence: 0.8,
             automation_hints: Vec::new(),
-            performance_metrics: HashMap::new(),
+            performance_metrics: HashMap::new()),
             requires_human_intervention: false}}}
 
 /// Human interaction context for AI-human collaboration

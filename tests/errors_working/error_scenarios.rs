@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Complex error scenarios and comprehensive async tests
 
 use std::time::Duration;
@@ -172,7 +173,7 @@ async fn test_complex_error_scenarios() -> Result<()> {
         service: Some("database".to_string()),
         message: "Connection failed".to_string(),
         details: Some("Timeout after 30 seconds".to_string()),
-        endpoint: Some("db.example.com:5432".to_string()),
+        endpoint: Some("db.example.com:config.database.postgres_port".to_string()),
         suggestion: Some("Check database connectivity".to_string()),
     }));
 

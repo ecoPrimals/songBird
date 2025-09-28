@@ -1,6 +1,6 @@
 //! Dynamic Service Registry for Songbird Universal Orchestrator
 //!
-//! This crate provides a comprehensive service registry system with health monitoring,
+//! This crate provides a comprehensive service registry system with health monitoring)
 //! plugin management, and dynamic service discovery capabilities.
 //!
 //! ## Features
@@ -31,12 +31,12 @@
 //!     let registry = ServiceRegistry::new().await?;
 //!     
 //!     // Register a service
-//!     registry.register_service("my-service", "http://localhost:8080").await?;
+//!     registry.register_service("my-service", &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).await?;"
 //!     
 //!     // Discover services
 //!     let services = registry.discover_services().await?;
 //!     
-//!     Ok(())
+//!     Ok(()),
 //! }
 //! ```
 //!
@@ -74,6 +74,7 @@
 //! error information including service registration failures, health check
 //! errors, and plugin loading issues.
 
+use songbird_config;
 #![allow(dead_code)]
 
 pub mod health;

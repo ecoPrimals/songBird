@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Quick Command Tests
 //!
 //! Tests for the `songbird quick` command functionality
@@ -13,7 +14,7 @@ async fn setup_quick_gaming_environment() -> Result<()> {
     let mut config = SongbirdConfig::default();
 
     // Set up gaming-specific configuration
-    config.network.orchestrator_port = 8080;
+    config.network.orchestrator_port = config.network.http_port;
     config.network.discovery_port = 8081;
     config.network.federation_port = 8082;
     config.network.health_port = 8083;
@@ -83,7 +84,7 @@ async fn setup_basic_networking() -> Result<()> {
     let mut config = SongbirdConfig::default();
 
     // Basic networking configuration
-    config.network.orchestrator_port = 8080;
+    config.network.orchestrator_port = config.network.http_port;
     config.network.bind_address = &get_bind_address().parse()
     .map_err(|e| SongbirdError::network_error(&format!("Invalid address '{}': {}", &get_bind_address(), e)))?;
 

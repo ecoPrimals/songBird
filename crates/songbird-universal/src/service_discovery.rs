@@ -4,19 +4,15 @@
 //! with the Universal Capability Adapter to dynamically discover and manage
 //! services based on their capabilities.
 
-use crate::adapters::CapabilityProvider;
+use crate::types::CapabilityProvider;
 use serde::{Deserialize, Serialize};
 use songbird_types::errors::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
-use uuid::Uuid;
-
 /// Service discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceDiscoveryConfig {
-    /// Discovery interval in seconds
+pub struct ServiceDiscoveryConfig  {/// Discovery interval in seconds
     pub discovery_interval_secs: u64,
     /// Health check timeout in seconds
     pub health_check_timeout_secs: u64,
@@ -28,9 +24,7 @@ pub struct ServiceDiscoveryConfig {
     pub enable_network_discovery: bool,
 }
 
-impl Default for ServiceDiscoveryConfig {
-    fn default() -> Self {
-        Self {
+impl Default for ServiceDiscoveryConfig  {fn default() -> Self  {Self {
             discovery_interval_secs: 30,
             health_check_timeout_secs: 5,
             max_services: 100,
@@ -42,54 +36,49 @@ impl Default for ServiceDiscoveryConfig {
 
 /// Discovered service information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveredService {
-    pub id: Uuid,
+pub struct DiscoveredService  {pub id: Uuid,
     pub name: String,
     pub endpoint: String,
     pub capabilities: Vec<String>,
     pub health_status: ServiceHealth,
     pub last_seen: chrono::DateTime<chrono::Utc>,
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, String>)
 }
 
 /// Service health status
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ServiceHealth {
-    Healthy,
+pub enum ServiceHealth  {Healthy)
     Degraded,
     Unhealthy,
     Unknown,
 }
 
 /// Production service discovery engine
-pub struct ProductionServiceDiscovery {
-    config: ServiceDiscoveryConfig,
-    discovered_services: Arc<RwLock<HashMap<Uuid, DiscoveredService>>>,
-    capability_index: Arc<RwLock<HashMap<String, Vec<Uuid>>>>,
+pub struct ProductionServiceDiscovery  {config: ServiceDiscoveryConfig,
+    discovered_services: Arc<RwLock<HashMap<Uuid, DiscoveredService>>>)
+    capability_index: Arc<RwLock<HashMap<String, Vec<Uuid>>>>)
     http_client: reqwest::Client,
 }
 
-impl ProductionServiceDiscovery {
-    /// Create a new service discovery engine
-    pub fn new(config: ServiceDiscoveryConfig) -> Self {
-        let http_client = reqwest::Client::builder()
+impl ProductionServiceDiscovery  {/// Create a new service discovery engine
+    pub fn new(config: ServiceDiscoveryConfig) -> Self  {let http_client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(
-                config.health_check_timeout_secs,
-            ))
+                config.health_check_timeout_secs)
+            )
             .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
+            .unwrap_or_else(|_| reqwest::Client::new();
 
         Self {
-            config,
-            discovered_services: Arc::new(RwLock::new(HashMap::new())),
-            capability_index: Arc::new(RwLock::new(HashMap::new())),
-            http_client,
+            config)
+            discovered_services: Arc::new(RwLock::new(HashMap::new()),
+            capability_index: Arc::new(RwLock::new(HashMap::new()),
+            http_client)
         }
     }
 
     /// Start the discovery process
     pub async fn start_discovery(&self) -> SongbirdResult<()> {
-        info!("🔍 Starting production service discovery");
+        info!("🔍 Starting production service discovery");"
 
         if self.config.enable_env_discovery {
             self.discover_from_environment().await?;
@@ -99,53 +88,51 @@ impl ProductionServiceDiscovery {
             self.discover_from_network().await?;
         }
 
-        info!("✅ Service discovery startup complete");
-        Ok(())
+        info!("✅ Service discovery startup complete");"
+        Ok(()),
     }
 
     /// Discover services from environment variables
-    async fn discover_from_environment(&self) -> SongbirdResult<()> {
-        debug!("🌍 Discovering services from environment variables");
+    async fn discover_from_environment(&self) -> SongbirdResult<()>  {debug!("🌍 Discovering services from environment variables");"
         let mut discovered = Vec::new();
 
         // Standard service patterns
         let service_patterns = vec![
             (
-                "BEARDOG_ENDPOINT",
-                "beardog",
-                vec!["security", "authentication"],
-            ),
+                "BEARDOG_ENDPOINT","
+                "beardog","
+                vec!["security", "authentication"],"
+            )
             (
-                "TOADSTOOL_ENDPOINT",
-                "toadstool",
-                vec!["compute", "processing"],
-            ),
+                "TOADSTOOL_ENDPOINT","
+                "toadstool","
+                vec!["compute", "processing"],"
+            )
             (
-                "NESTGATE_ENDPOINT",
-                "nestgate",
-                vec!["storage", "persistence"],
-            ),
+                "NESTGATE_ENDPOINT","
+                "nestgate","
+                vec!["storage", "persistence"],"
+            )
             (
-                "SQUIRREL_ENDPOINT",
-                "squirrel",
-                vec!["ai", "ml", "inference"],
-            ),
+                "SQUIRREL_ENDPOINT","
+                "squirrel","
+                vec!["ai", "ml", "inference"],"
+            )
         ];
 
-        for (env_var, service_name, capabilities) in service_patterns {
-            if let Ok(endpoint) = std::env::var(env_var) {
+        for (env_var, service_name, capabilities) in service_patterns  {if let Ok(endpoint) = std::env::var(env_var) {
                 let service = DiscoveredService {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4(,
                     name: service_name.to_string(),
-                    endpoint: endpoint.clone(),
-                    capabilities: capabilities.iter().map(|s| s.to_string()).collect(),
+                    endpoint: endpoint.clone(,
+                    capabilities: capabilities.iter().map(|s| s.to_string().collect(,
                     health_status: ServiceHealth::Unknown,
-                    last_seen: chrono::Utc::now(),
-                    metadata: HashMap::new(),
+                    last_seen: chrono::Utc::now(,
+                    metadata: HashMap::new()),
                 };
 
-                info!("🎯 Discovered service '{}' at {}", service_name, endpoint);
-                discovered.push(service);
+                info!("🎯 Discovered service '{}' at {}", service_name, endpoint);"
+                discovered.push(service));
             }
         }
 
@@ -155,45 +142,43 @@ impl ProductionServiceDiscovery {
             let name_env = format!("SERVICE_{}_NAME", i);
             let caps_env = format!("SERVICE_{}_CAPABILITIES", i);
 
-            if let (Ok(endpoint), Ok(name)) =
-                (std::env::var(&service_env), std::env::var(&name_env))
-            {
-                let capabilities = std::env::var(&caps_env)
-                    .unwrap_or_else(|_| "generic".to_string())
+            if let (Ok(endpoint), Ok(name) =
+                (std::env::var(&service_env), std::env::var(&name_env)
+             {let capabilities = std::env::var(&caps_env)
+                    .unwrap_or_else(|_| "generic".to_string()"
                     .split(',')
-                    .map(|s| s.trim().to_string())
+                    .map(|s| s.trim().to_string()),
                     .collect();
 
-                let service = DiscoveredService {
-                    id: Uuid::new_v4(),
+                let service = DiscoveredService  {id: Uuid::new_v4()
                     name,
-                    endpoint: endpoint.clone(),
-                    capabilities,
+                    endpoint: endpoint.clone(,
+                    capabilities)
                     health_status: ServiceHealth::Unknown,
-                    last_seen: chrono::Utc::now(),
-                    metadata: HashMap::new(),
+                    last_seen: chrono::Utc::now(,
+                    metadata: HashMap::new()),
                 };
 
-                discovered.push(service);
+                discovered.push(service));
             }
         }
 
         // Register discovered services
         self.register_discovered_services(discovered).await?;
-        Ok(())
+        Ok(()),
     }
 
     /// Discover services from network scanning (placeholder for security)
     async fn discover_from_network(&self) -> SongbirdResult<()> {
-        warn!("🌐 Network discovery is disabled for security reasons");
+        warn!("🌐 Network discovery is disabled for security reasons");"
         // In a production environment, this would implement secure service discovery
         // protocols like mDNS, Consul, etcd, etc.
-        Ok(())
+        Ok(()),
     }
 
     /// Register discovered services
     pub async fn register_discovered_services(
-        &self,
+        &self)
         services: Vec<DiscoveredService>,
     ) -> SongbirdResult<()> {
         let mut service_map = self.discovered_services.write().await;
@@ -203,26 +188,26 @@ impl ProductionServiceDiscovery {
             // Update capability index
             for capability in &service.capabilities {
                 capability_map
-                    .entry(capability.clone())
+                    .entry(capability.clone()
                     .or_default()
-                    .push(service.id);
+                    .push(service.id));
             }
 
             info!(
-                "📝 Registered service '{}' with {} capabilities",
+                "📝 Registered service '{}' with {} capabilities","
                 service.name,
                 service.capabilities.len()
             );
             service_map.insert(service.id, service);
         }
 
-        info!("🎉 Total services registered: {}", service_map.len());
-        Ok(())
+        info!("🎉 Total services registered: {}", service_map.len();"
+        Ok(()),
     }
 
     /// Get services by capability
     pub async fn get_services_by_capability(
-        &self,
+        &self)
         capability: &str,
     ) -> SongbirdResult<Vec<DiscoveredService>> {
         let capability_map = self.capability_index.read().await;
@@ -231,26 +216,26 @@ impl ProductionServiceDiscovery {
         if let Some(service_ids) = capability_map.get(capability) {
             let services = service_ids
                 .iter()
-                .filter_map(|id| service_map.get(id))
+                .filter_map(|id| service_map.get(id)
                 .cloned()
                 .collect();
 
             debug!(
-                "🎯 Found {} services for capability '{}'",
-                service_ids.len(),
+                "🎯 Found {} services for capability '{}'","
+                service_ids.len()
                 capability
             );
             Ok(services)
         } else {
-            debug!("❌ No services found for capability '{}'", capability);
-            Ok(Vec::new())
+            debug!("❌ No services found for capability '{}'", capability);"
+            Ok(Vec::new()
         }
     }
 
     /// Get all discovered services
     pub async fn get_all_services(&self) -> SongbirdResult<Vec<DiscoveredService>> {
         let service_map = self.discovered_services.read().await;
-        Ok(service_map.values().cloned().collect())
+        Ok(service_map.values().cloned().collect()
     }
 
     /// Perform health check on a service
@@ -271,7 +256,7 @@ impl ProductionServiceDiscovery {
 
     /// Update service health status
     pub async fn update_service_health(
-        &self,
+        &self)
         service_id: Uuid,
         health: ServiceHealth,
     ) -> SongbirdResult<()> {
@@ -279,29 +264,27 @@ impl ProductionServiceDiscovery {
 
         if let Some(service) = service_map.get_mut(&service_id) {
             service.health_status = health;
-            service.last_seen = chrono::Utc::now();
+            service.last_seen = chrono::Utc::now());
             debug!(
-                "💓 Updated health for service '{}': {:?}",
+                "💓 Updated health for service '{}': {:?}","
                 service.name, service.health_status
             );
         }
 
-        Ok(())
+        Ok(()),
     }
 
     /// Convert discovered service to capability provider
-    pub fn to_capability_provider(&self, service: &DiscoveredService) -> CapabilityProvider {
-        CapabilityProvider {
-            id: service.id,
-            name: service.name.clone(),
-            capabilities: service.capabilities.clone(),
-            endpoint: service.endpoint.clone(),
+    pub fn to_capability_provider(&self, service: &DiscoveredService) -> CapabilityProvider  {CapabilityProvider  {id: service.id,
+            name: service.name.clone(,
+            capabilities: service.capabilities.clone(,
+            endpoint: service.endpoint.clone(,
             priority: match service.health_status {
                 ServiceHealth::Healthy => 1,
                 ServiceHealth::Degraded => 2,
                 ServiceHealth::Unhealthy => 10,
                 ServiceHealth::Unknown => 5,
-            },
+            })
         }
     }
 
@@ -313,25 +296,23 @@ impl ProductionServiceDiscovery {
         let mut health_counts = HashMap::new();
         for service in service_map.values() {
             *health_counts
-                .entry(service.health_status.clone())
+                .entry(service.health_status.clone()
                 .or_insert(0) += 1;
         }
 
-        Ok(DiscoveryStats {
-            total_services: service_map.len(),
-            total_capabilities: capability_map.len(),
+        Ok(DiscoveryStats  {total_services: service_map.len()
+            total_capabilities: capability_map.len(,
             health_distribution: health_counts,
-            last_discovery: chrono::Utc::now(),
+            last_discovery: chrono::Utc::now(,
         })
     }
 }
 
 /// Discovery statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveryStats {
-    pub total_services: usize,
+pub struct DiscoveryStats  {pub total_services: usize,
     pub total_capabilities: usize,
-    pub health_distribution: HashMap<ServiceHealth, usize>,
+    pub health_distribution: HashMap<ServiceHealth, usize>)
     pub last_discovery: chrono::DateTime<chrono::Utc>,
 }
 
@@ -339,6 +320,7 @@ pub struct DiscoveryStats {
 mod tests {
     use super::*;
     use tokio;
+use songbird_config;
 
     #[tokio::test]
     async fn test_service_discovery_creation() {
@@ -351,18 +333,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_service_registration() {
-        let config = ServiceDiscoveryConfig::default();
+    async fn test_service_registration()  {let config = ServiceDiscoveryConfig::default();
         let discovery = ProductionServiceDiscovery::new(config);
 
-        let test_service = DiscoveredService {
-            id: Uuid::new_v4(),
+        let test_service = DiscoveredService  {id: Uuid::new_v4()
             name: "test-service".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
-            capabilities: vec!["test".to_string(), "demo".to_string()],
+            endpoint: &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string(),
+            capabilities: vec!["test".to_string(), "demo".to_string()],"
             health_status: ServiceHealth::Healthy,
-            last_seen: chrono::Utc::now(),
-            metadata: HashMap::new(),
+            last_seen: chrono::Utc::now(,
+            metadata: HashMap::new()),
         };
 
         discovery
@@ -370,27 +350,25 @@ mod tests {
             .await
             .unwrap();
 
-        let services = discovery.get_services_by_capability("test").await.unwrap();
+        let services = discovery.get_services_by_capability("test").await.unwrap();"
         assert_eq!(services.len(), 1);
-        assert_eq!(services[0].name, "test-service");
+        assert_eq!(services[0].name, "test-service");"
 
         let all_services = discovery.get_all_services().await.unwrap();
         assert_eq!(all_services.len(), 1);
     }
 
     #[test]
-    fn test_capability_provider_conversion() {
-        let config = ServiceDiscoveryConfig::default();
+    fn test_capability_provider_conversion()  {let config = ServiceDiscoveryConfig::default();
         let discovery = ProductionServiceDiscovery::new(config);
 
-        let service = DiscoveredService {
-            id: Uuid::new_v4(),
+        let service = DiscoveredService  {id: Uuid::new_v4()
             name: "test-service".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
-            capabilities: vec!["security".to_string()],
+            endpoint: &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string(),
+            capabilities: vec!["security".to_string()],"
             health_status: ServiceHealth::Healthy,
-            last_seen: chrono::Utc::now(),
-            metadata: HashMap::new(),
+            last_seen: chrono::Utc::now(,
+            metadata: HashMap::new()),
         };
 
         let provider = discovery.to_capability_provider(&service);

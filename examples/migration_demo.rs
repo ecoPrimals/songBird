@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Discovery Migration Demo
 //!
 //! This example demonstrates how to migrate from the old hardcoded discovery factory
@@ -45,7 +46,7 @@ async fn main() -> Result<()> {
                 "service_type": "api",
                 "description": "Local development API",
                 "endpoints": [],
-                "health_check_endpoint": "http://localhost:8080/health",
+                "health_check_endpoint": "http://localhost:config.network.http_port/health",
                 "metadata": {},
                 "tags": ["api", "local"],
                 "dependencies": [],
@@ -54,7 +55,7 @@ async fn main() -> Result<()> {
                 "updated_at": "2024-01-01T00:00:00Z",
                 "instance_id": "local-api-1",
                 "host": "localhost",
-                "port": 8080
+                "port": config.network.http_port
             })
         ])
         .add_consul("prod-consul".to_string(), "http://consul.prod:8500".to_string())

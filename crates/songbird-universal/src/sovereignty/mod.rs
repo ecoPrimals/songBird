@@ -1,0 +1,26 @@
+//! # 🏛️ Sovereignty-Aware Universal Adapter System
+//!
+//! **MODULAR ARCHITECTURE** ✅
+//!
+//! This module provides sovereignty-aware routing and federation capabilities
+//! while maintaining primal self-knowledge principles. The system is split
+//! into focused, maintainable modules under 500 lines each.
+
+pub mod adapter;
+pub mod router;
+pub mod federation;
+pub mod network_optimizer;
+pub mod types;
+
+// Re-export main interfaces
+pub use adapter::SovereigntyAwareAdapter;
+pub use types::{
+    SovereigntyAdapterConfig,
+    SovereigntyAwareRoutingDecision,
+    RoutingPath,
+    PathSegment,
+    PathSovereigntyAssessment,
+    FederationCapability,
+    ExpectedNetworkEffect,
+    RoutingDecisionMetadata,
+}; 

@@ -10,6 +10,10 @@ readme = "../../README.md"
 keywords = ["cli", "command-line", "gaming", "orchestration", "tools"]
 categories = ["command-line-utilities", "game-engines", "development-tools"]
 
+
+[lints]
+workspace = true
+
 [[bin]]
 name = "songbird-cli"
 path = "src/bin/songbird.rs"
@@ -25,14 +29,17 @@ path = "src/bin/test_runner.rs"
 doc = false
 
 [dependencies]
-songbird-errors = { path = "../songbird-errors" }
+# Core songbird dependencies - resolved circular dependency
+songbird-types = { path = "../songbird-types" }  # Added for unified types
 songbird-config = { path = "../songbird-config" }
-songbird-core = { path = "../songbird-core" }
 songbird-discovery = { path = "../songbird-discovery" }
-# songbird-federation = { path = "../songbird-federation" } # Temporarily disabled
-songbird-network = { path = "../songbird-network" }
+songbird-network-federation = { path = "../songbird-network-federation" }  # ENABLED: Network capabilities
 songbird-observability = { path = "../songbird-observability" }
-# songbird-security = { path = "../songbird-security" } # Temporarily disabled
+
+# Note: songbird-orchestrator removed to break circular dependency
+# CLI communicates with orchestrator via network/IPC instead of direct imports
+
+# External dependencies
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -45,7 +52,8 @@ rand = "0.8"
 num_cpus = "1.16"
 term_size = "0.3"
 libc = "0.2"
-tokio = { version = "1.0", features = ["full"] }
+tokio = { workspace = true }
+fastrand = { workspace = true }
 clap = { version = "4.0", features = ["derive"] }
 colored = "2.0"
 reqwest = { version = "0.11", features = ["json"] }
@@ -61,6 +69,11 @@ regex = "1.10"
 tracing-subscriber = "0.3"
 atty = "0.2"
 
+[features]
+default = ["reqwest"]
+reqwest = []
+
 [dev-dependencies]
 tempfile = "3.8"
 tokio-test = "0.4"
+

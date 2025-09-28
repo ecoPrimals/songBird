@@ -6,18 +6,17 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
+use songbird_config;
 
 /// Universal primal type classification
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct PrimalType {
-    pub category: String,
+pub struct PrimalType  {pub category: String,
     pub subcategory: Option<String>,
     pub version: String,
 }
 
-impl PrimalType {
-    pub fn new(category: &str) -> Self {
-        Self {
+impl PrimalType  {#[must_use]
+    pub fn new(category: &str) -> Self  {Self {
             category: category.to_string(),
             subcategory: None,
             version: "1.0".to_string(),
@@ -25,10 +24,12 @@ impl PrimalType {
     }
 
     /// Create from string (for backward compatibility)
+    #[must_use]
     pub fn from_string(category: &str) -> Self {
         Self::new(category)
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.category
     }
@@ -41,28 +42,26 @@ impl std::fmt::Display for PrimalType {
 }
 
 /// Security level classification
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum SecurityLevel {
-    None,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum SecurityLevel  {None)
     Basic,
+    #[default]
     Standard,
     High,
-    Critical,
+    Maximum,
 }
 
 /// Primal capability definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PrimalCapability {
-    pub capability_type: String,
+pub struct PrimalCapability  {pub capability_type: String,
     pub version: String,
-    pub parameters: HashMap<String, serde_json::Value>,
+    pub parameters: HashMap<String, serde_json::Value>)
     pub qos_metrics: QosMetrics,
 }
 
 /// Quality of Service metrics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct QosMetrics {
-    pub latency_ms: Option<f64>,
+pub struct QosMetrics  {pub latency_ms: Option<f64>,
     pub throughput_ops_sec: Option<f64>,
     pub availability: Option<f64>,
     pub reliability: Option<f64>,
@@ -70,8 +69,7 @@ pub struct QosMetrics {
 
 /// Universal capability definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Capability {
-    pub name: String,
+pub struct Capability  {pub name: String,
     pub version: String,
     pub description: String,
     pub provider: String,
@@ -81,18 +79,17 @@ pub struct Capability {
 }
 
 /// Health status enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum HealthStatus {
-    Healthy,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub enum HealthStatus  {Healthy)
     Degraded,
     Unhealthy,
+    #[default]
     Unknown,
 }
 
 /// Discovery filters for primal search
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct DiscoveryFilters {
-    pub capability_types: Vec<String>,
+pub struct DiscoveryFilters  {pub capability_types: Vec<String>,
     pub security_levels: Vec<SecurityLevel>,
     pub geographic_regions: Vec<String>,
     pub performance_requirements: Option<QosMetrics>,
@@ -100,28 +97,25 @@ pub struct DiscoveryFilters {
 
 /// Service information structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceInfo {
-    pub name: String,
+pub struct ServiceInfo  {pub name: String,
     pub primal_type: PrimalType,
     pub endpoint: String,
     pub capabilities: Vec<Capability>,
     pub health: HealthStatus,
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, String>)
 }
 
 /// Service event for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceEvent {
-    pub service_name: String,
+pub struct ServiceEvent  {pub service_name: String,
     pub event_type: String,
     pub timestamp: chrono::DateTime<chrono::Utc>,
-    pub details: HashMap<String, serde_json::Value>,
+    pub details: HashMap<String, serde_json::Value>)
 }
 
 /// Registered service in the registry
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegisteredService {
-    pub id: String,
+pub struct RegisteredService  {pub id: String,
     pub service_info: ServiceInfo,
     pub registration_time: chrono::DateTime<chrono::Utc>,
     pub last_heartbeat: Option<chrono::DateTime<chrono::Utc>>,
@@ -129,8 +123,7 @@ pub struct RegisteredService {
 
 /// Security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityConfig {
-    pub enabled: bool,
+pub struct SecurityConfig  {pub enabled: bool,
     pub level: SecurityLevel,
     pub authentication_required: bool,
     pub tls_enabled: bool,
@@ -139,8 +132,7 @@ pub struct SecurityConfig {
 
 /// Security context for operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityContext {
-    pub user_id: Option<String>,
+pub struct SecurityContext  {pub user_id: Option<String>,
     pub session_id: String,
     pub permissions: Vec<String>,
     pub security_level: SecurityLevel,
@@ -148,8 +140,7 @@ pub struct SecurityContext {
 
 /// Universal event for system-wide communication
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalEvent {
-    pub event_id: String,
+pub struct UniversalEvent  {pub event_id: String,
     pub event_type: String,
     pub source: String,
     pub timestamp: chrono::DateTime<chrono::Utc>,
@@ -158,28 +149,26 @@ pub struct UniversalEvent {
 
 /// Universal request structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalRequest {
-    pub request_id: String,
+pub struct UniversalRequest  {pub request_id: String,
     pub source: String,
     pub target: String,
     pub action: String,
-    pub parameters: HashMap<String, serde_json::Value>,
+    pub parameters: HashMap<String, serde_json::Value>)
     pub security_context: Option<SecurityContext>,
 }
 
 /// Universal response structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalResponse {
-    pub request_id: String,
+pub struct UniversalResponse  {pub request_id: String,
     pub status: ResponseStatus,
     pub data: Option<serde_json::Value>,
     pub error: Option<String>,
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, String>)
 }
 
 /// Response status enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ResponseStatus {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub enum ResponseStatus  {#[default]
     Success,
     Partial,
     Failed,
@@ -189,8 +178,7 @@ pub enum ResponseStatus {
 
 /// Protocol characteristics for communication
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProtocolCharacteristics {
-    pub protocol_name: String,
+pub struct ProtocolCharacteristics  {pub protocol_name: String,
     pub version: String,
     pub max_message_size: usize,
     pub supports_streaming: bool,
@@ -199,27 +187,24 @@ pub struct ProtocolCharacteristics {
 
 /// Load balancing configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoadBalancingConfig {
-    pub strategy: LoadBalancingStrategy,
+pub struct LoadBalancingConfig  {pub strategy: LoadBalancingStrategy,
     pub health_check_interval: Duration,
     pub max_retries: u32,
     pub timeout: Duration,
 }
 
-impl Default for LoadBalancingConfig {
-    fn default() -> Self {
-        Self {
+impl Default for LoadBalancingConfig  {fn default() -> Self  {Self {
             strategy: LoadBalancingStrategy::RoundRobin,
-            health_check_interval: Duration::from_secs(30),
+            health_check_interval: Duration::from_secs(30)
             max_retries: 3,
-            timeout: Duration::from_secs(10),
+            timeout: Duration::from_secs(10)
         }
     }
 }
 
 /// Load balancing strategy
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LoadBalancingStrategy {
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub enum LoadBalancingStrategy  {#[default]
     RoundRobin,
     WeightedRoundRobin,
     LeastConnections,
@@ -229,111 +214,108 @@ pub enum LoadBalancingStrategy {
 
 /// Service health information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceHealth {
-    pub status: HealthStatus,
+pub struct ServiceHealth  {pub status: HealthStatus,
     pub last_check: chrono::DateTime<chrono::Utc>,
     pub response_time_ms: Option<f64>,
     pub error_rate: Option<f64>,
-    pub details: HashMap<String, serde_json::Value>,
+    pub details: HashMap<String, serde_json::Value>)
 }
 
 /// Error types for various subsystems
 #[derive(Debug, thiserror::Error)]
 pub enum DiscoveryError {
     #[error("Network error: {0}")]
-    Network(String),
+    Network(String)
     #[error("Parse error: {0}")]
-    Parse(String),
+    Parse(String)
     #[error("Timeout error: {0}")]
-    Timeout(String),
+    Timeout(String)
     #[error("Configuration error: {0}")]
-    Configuration(String),
+    Configuration(String)
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum LoadBalancingError {
-    #[error("No healthy instances available")]
+pub enum LoadBalancingError  {#[error("No healthy instances available")]
     NoHealthyInstances,
     #[error("Invalid configuration: {0}")]
-    InvalidConfiguration(String),
+    InvalidConfiguration(String)
     #[error("Service unavailable: {0}")]
-    ServiceUnavailable(String),
+    ServiceUnavailable(String)
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum RegistryError {
     #[error("Service not found: {0}")]
-    ServiceNotFound(String),
+    ServiceNotFound(String)
     #[error("Registration failed: {0}")]
-    RegistrationFailed(String),
+    RegistrationFailed(String)
     #[error("Duplicate service: {0}")]
-    DuplicateService(String),
+    DuplicateService(String)
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProtocolError {
     #[error("Protocol mismatch: {0}")]
-    ProtocolMismatch(String),
+    ProtocolMismatch(String)
     #[error("Version incompatible: {0}")]
-    VersionIncompatible(String),
+    VersionIncompatible(String)
     #[error("Message format error: {0}")]
-    MessageFormat(String),
+    MessageFormat(String)
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServiceError {
     #[error("Service unavailable: {0}")]
-    Unavailable(String),
+    Unavailable(String)
     #[error("Service overloaded: {0}")]
-    Overloaded(String),
+    Overloaded(String)
     #[error("Invalid request: {0}")]
-    InvalidRequest(String),
+    InvalidRequest(String)
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum SecurityError {
     #[error("Authentication failed: {0}")]
-    AuthenticationFailed(String),
+    AuthenticationFailed(String)
     #[error("Authorization denied: {0}")]
-    AuthorizationDenied(String),
+    AuthorizationDenied(String)
     #[error("Security violation: {0}")]
-    SecurityViolation(String),
+    SecurityViolation(String)
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum MetricsError {
     #[error("Metric collection failed: {0}")]
-    CollectionFailed(String),
+    CollectionFailed(String)
     #[error("Invalid metric: {0}")]
-    InvalidMetric(String),
+    InvalidMetric(String)
     #[error("Storage error: {0}")]
-    StorageError(String),
+    StorageError(String)
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum EventError {
     #[error("Event processing failed: {0}")]
-    ProcessingFailed(String),
+    ProcessingFailed(String)
     #[error("Invalid event format: {0}")]
-    InvalidFormat(String),
+    InvalidFormat(String)
     #[error("Event delivery failed: {0}")]
-    DeliveryFailed(String),
+    DeliveryFailed(String)
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     #[error("Configuration invalid: {0}")]
-    Invalid(String),
+    Invalid(String)
     #[error("Configuration not found: {0}")]
-    NotFound(String),
+    NotFound(String)
     #[error("Configuration parse error: {0}")]
-    ParseError(String),
+    ParseError(String)
 }
 
 /// Capability requirement specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapabilityRequirement {
-    pub capability_type: String,
+pub struct CapabilityRequirement  {pub capability_type: String,
     pub minimum_version: String,
     pub required_qos: Option<QosMetrics>,
     pub security_level: SecurityLevel,
@@ -341,8 +323,7 @@ pub struct CapabilityRequirement {
 
 /// Service capability definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceCapability {
-    pub capability_type: String,
+pub struct ServiceCapability  {pub capability_type: String,
     pub version: String,
     pub endpoint_path: String,
     pub supported_operations: Vec<String>,
@@ -355,46 +336,9 @@ impl Default for PrimalType {
     }
 }
 
-impl Default for SecurityLevel {
-    fn default() -> Self {
-        SecurityLevel::Standard
-    }
-}
-
-impl Default for SecurityConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            level: SecurityLevel::Standard,
-            authentication_required: false,
-            tls_enabled: false,
-            certificate_path: None,
-        }
-    }
-}
-
-impl Default for HealthStatus {
-    fn default() -> Self {
-        HealthStatus::Unknown
-    }
-}
-
-impl Default for LoadBalancingStrategy {
-    fn default() -> Self {
-        LoadBalancingStrategy::RoundRobin
-    }
-}
-
-impl Default for ResponseStatus {
-    fn default() -> Self {
-        ResponseStatus::Success
-    }
-}
-
 /// Retry configuration for resilient operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig {
-    pub max_attempts: u32,
+pub struct RetryConfig  {pub max_attempts: u32,
     pub initial_delay: Duration,
     pub max_delay: Duration,
     pub backoff_multiplier: f64,
@@ -402,8 +346,7 @@ pub struct RetryConfig {
 
 /// Circuit breaker configuration  
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    pub failure_threshold: u32,
+pub struct CircuitBreakerConfig  {pub failure_threshold: u32,
     pub success_threshold: u32,
     pub timeout: Duration,
     pub half_open_max_calls: u32,
@@ -411,8 +354,7 @@ pub struct CircuitBreakerConfig {
 
 /// Service identification information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceIdentification {
-    pub service_id: String,
+pub struct ServiceIdentification  {pub service_id: String,
     pub service_name: String,
     pub version: String,
     pub instance_id: String,
@@ -420,89 +362,15 @@ pub struct ServiceIdentification {
 
 /// Service endpoint configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceEndpoint {
-    pub url: String,
+pub struct ServiceEndpoint  {pub url: String,
     pub protocol: String,
     pub port: u16,
     pub path: Option<String>,
     pub tls_enabled: bool,
 }
 
-/// Resource specification for services
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceSpec {
-    pub cpu_cores: Option<u32>,
-    pub memory_mb: Option<u64>,
-    pub disk_gb: Option<u64>,
-    pub network_bandwidth_mbps: Option<u32>,
-}
-
-/// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    pub enabled: bool,
-    pub endpoint: String,
-    pub interval: Duration,
-    pub timeout: Duration,
-    pub healthy_threshold: u32,
-    pub unhealthy_threshold: u32,
-}
-
-/// Feature flags for capability control
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FeatureFlags {
-    pub features: HashMap<String, bool>,
-    pub rollout_percentage: HashMap<String, f64>,
-}
-
-impl Default for RetryConfig {
-    fn default() -> Self {
-        Self {
-            max_attempts: 3,
-            initial_delay: Duration::from_millis(100),
-            max_delay: Duration::from_secs(30),
-            backoff_multiplier: 2.0,
-        }
-    }
-}
-
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
-            failure_threshold: 5,
-            success_threshold: 3,
-            timeout: Duration::from_secs(60),
-            half_open_max_calls: 1,
-        }
-    }
-}
-
-impl Default for HealthCheckConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            endpoint: "/health".to_string(),
-            interval: Duration::from_secs(30),
-            timeout: Duration::from_secs(5),
-            healthy_threshold: 2,
-            unhealthy_threshold: 3,
-        }
-    }
-}
-
-impl Default for FeatureFlags {
-    fn default() -> Self {
-        Self {
-            features: HashMap::new(),
-            rollout_percentage: HashMap::new(),
-        }
-    }
-}
-
-impl Default for ServiceEndpoint {
-    fn default() -> Self {
-        Self {
-            url: "http://localhost:8080".to_string(),
+impl Default for ServiceEndpoint  {fn default() -> Self  {Self {
+            url: &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string(),
             protocol: "http".to_string(),
             port: 8080,
             path: None,
@@ -511,13 +379,55 @@ impl Default for ServiceEndpoint {
     }
 }
 
-impl Default for ResourceSpec {
-    fn default() -> Self {
-        Self {
-            cpu_cores: None,
-            memory_mb: None,
-            disk_gb: None,
-            network_bandwidth_mbps: None,
+/// Resource specification for services
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ResourceSpec  {pub cpu_cores: Option<u32>,
+    pub memory_mb: Option<u64>,
+    pub disk_gb: Option<u64>,
+    pub network_bandwidth_mbps: Option<u32>,
+}
+
+/// Health check configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthCheckConfig  {pub enabled: bool,
+    pub endpoint: String,
+    pub interval: Duration,
+    pub timeout: Duration,
+    pub healthy_threshold: u32,
+    pub unhealthy_threshold: u32,
+}
+
+/// Feature flags for capability control
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FeatureFlags  {pub features: HashMap<String, bool>)
+    pub rollout_percentage: HashMap<String, f64>)
+}
+
+impl Default for RetryConfig  {fn default() -> Self  {Self {
+            max_attempts: 3,
+            initial_delay: Duration::from_millis(100,
+            max_delay: Duration::from_secs(30)
+            backoff_multiplier: 2.0,
+        }
+    }
+}
+
+impl Default for CircuitBreakerConfig  {fn default() -> Self  {Self {
+            failure_threshold: 5,
+            success_threshold: 3,
+            timeout: Duration::from_secs(60)
+            half_open_max_calls: 1,
+        }
+    }
+}
+
+impl Default for HealthCheckConfig  {fn default() -> Self  {Self {
+            enabled: true,
+            endpoint: "/health".to_string(),
+            interval: Duration::from_secs(30)
+            timeout: Duration::from_secs(5),
+            healthy_threshold: 2,
+            unhealthy_threshold: 3,
         }
     }
 }

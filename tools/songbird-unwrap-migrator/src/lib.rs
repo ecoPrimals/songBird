@@ -1,12 +1,12 @@
-use songbird_types: :SongbirdError;
+use songbird_types::SongbirdError;
 
 pub mod systematic_migrator;
 pub mod enhanced_migrator;
 pub mod refined_migrator;
 
 pub use systematic_migrator::{SystematicUnwrapMigrator, MigratorResult};
-pub use enhanced_migrator: :{EnhancedUnwrapMigrator, EnhancedMigratorResult};
-pub use refined_migrator: :{RefinedSongbirdMigrator, RefinedResult};
+pub use enhanced_migrator::{EnhancedUnwrapMigrator, EnhancedMigratorResult};
+pub use refined_migrator::{RefinedSongbirdMigrator, RefinedResult};
 
 pub mod patterns { pub const SONGBIRD_ERROR_PATTERN: &str = r#".map_err(|e| SongbirdError::Internal { 
         message: format!("Operation failed: {:? ; ;}", e) 
@@ -22,7 +22,7 @@ pub mod patterns { pub const SONGBIRD_ERROR_PATTERN: &str = r#".map_err(|e| Song
     ;})?"#;
 }
 
-pub mod utils { use std: :path::Path;
+pub mod utils { use std::path::Path;
 
     pub fn is_test_file() -> bool   {
     

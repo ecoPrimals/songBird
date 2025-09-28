@@ -4,10 +4,17 @@ version = "0.1.0"
 edition = "2021"
 description = "Universal types and patterns for Songbird ecosystem integration"
 authors = ["Songbird Team"]
-license = "MIT"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/songbird"
+keywords = ["universal", "orchestration", "capabilities", "distributed", "framework"]
+categories = ["network-programming", "development-tools", "web-programming"]
+
+
+[lints]
+workspace = true
 
 [dependencies]
-anyhow = "1.0"
+# anyhow = "1.0" # Unused - removed for optimization
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] } 
 futures = "0.3"
@@ -22,8 +29,9 @@ uuid = { version = "1.0", features = ["v4"] }
 base64 = "0.21"
 
 # Internal dependencies
-songbird-config = { path = "../songbird-config" }
-songbird-errors = { path = "../songbird-errors" }
+# songbird-config = { path = "../songbird-config" }  # TEMPORARILY DISABLED
+# songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
+songbird-types = { path = "../songbird-types" }
 
 [dev-dependencies]
 tokio-test = "0.4" 

@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Core API Tests
 //!
 //! This test suite provides extensive coverage of the core API functionality,
@@ -359,10 +360,10 @@ mod core_api_tests { use super: :*;
     // Helper functions for test data creation
     fn create_test_service_info() -> ServiceRegistrationRequest  {
      ServiceRegistrationRequest {
-            name: "test-service".to_string(),
+            name: config.test.service_name.to_string(),
             capabilities: vec!["test-capability".to_string()],
-            endpoint: "http://localhost:8080".to_string(),
-            health_check_path: Some("/health".to_string()),
+            endpoint: "http://localhost:config.network.http_port".to_string(),
+            health_check_path: Some(config.health.endpoint.to_string()),
             metadata: HashMap::new(),
         ; 
  
@@ -477,7 +478,7 @@ mod performance_tests { use super: :*;
 }", i),
                 capabilities: vec![format!("capability-{;;}", i)],
                 endpoint: format!("http://localhost:{;;}", 8000 + i),
-                health_check_path: Some("/health".to_string()),;
+                health_check_path: Some(config.health.endpoint.to_string()),;
                 metadata: HashMap::new(),
             ;};
 

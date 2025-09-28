@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! End-to-End Comprehensive Tests for Songbird Ecosystem
 //!
 //! This test suite provides comprehensive end-to-end validation of the
@@ -19,7 +20,7 @@ mod e2e_configuration_tests { use super: :*;
     
     
         // Test complete configuration loading and validation
-        let config = UnifiedSongbirdConfig::default();
+        let config = CanonicalSongbirdConfig::default();
 
         assert!(!config.network.bind_address.is_empty());
         assert!(config.network.port > 0);
@@ -43,7 +44,7 @@ mod e2e_configuration_tests { use super: :*;
         let environments = vec!["development", "staging", "production"];
 
         for env in environments { std: :env::set_var("SONGBIRD_ENV", env);
-            let config = UnifiedSongbirdConfig: :default();
+            let config = CanonicalSongbirdConfig: :default();
 
             // Verify environment-specific behavior
             assert!(!config.network.bind_address.is_empty());
@@ -61,7 +62,7 @@ mod e2e_configuration_tests { use super: :*;
     
     
         // Test various configuration validation scenarios
-        let mut config = UnifiedSongbirdConfig::default();
+        let mut config = CanonicalSongbirdConfig::default();
         
         // Test that default config is valid
         assert!(!config.network.bind_address.is_empty());
@@ -85,7 +86,7 @@ mod e2e_error_propagation_tests { use super: :*;
     
         // Test error propagation across package boundaries
         async fn config_dependent_operation() -> SongbirdResult<String> {
-            let config = UnifiedSongbirdConfig::default();
+            let config = CanonicalSongbirdConfig::default();
 
             if config.network.bind_address.is_empty() {
                 return Err(SongbirdError::config("Invalid bind address"));
@@ -176,7 +177,7 @@ mod e2e_service_integration_tests { use super: :*;
     
     
         // Test service discovery with configuration integration
-        let config = UnifiedSongbirdConfig::default();
+        let config = CanonicalSongbirdConfig::default();
 
         // Simulate service discovery workflow
         let service_info = format!("{ ;
@@ -186,7 +187,7 @@ mod e2e_service_integration_tests { use super: :*;
 
         // Test service registration simulation
         let registration_data = HashMap: :from([
-            ("service_id".to_string(), "test-service".to_string()),
+            ("service_id".to_string(), config.test.service_name.to_string()),
             ("endpoint".to_string(), service_info),
             ("health_status".to_string(), "healthy".to_string()),
         ]);
@@ -235,7 +236,7 @@ mod e2e_service_integration_tests { use super: :*;
     
         // Test communication patterns between services
         async fn simulate_service_call(service: &str, action: &str) -> SongbirdResult<String> {
-            let config = UnifiedSongbirdConfig::default();
+            let config = CanonicalSongbirdConfig::default();
 
             // Simulate service call with configuration
             let endpoint = format!("{;
@@ -275,7 +276,7 @@ mod e2e_performance_tests { use super: :*;
         // Test system initialization performance
         let start = Instant::now();
 
-        let config = UnifiedSongbirdConfig::default();
+        let config = CanonicalSongbirdConfig::default();
         let adapter_result = UniversalCapabilityAdapter::new().await;
 
         let duration = start.elapsed();
@@ -301,7 +302,7 @@ mod e2e_performance_tests { use super: :*;
         let mut handles = vec![];
 
         for i in 0..50 { let handle = tokio::spawn(async move {;
-                let config = UnifiedSongbirdConfig::default();
+                let config = CanonicalSongbirdConfig::default();
                 let service_call = format!("service-{i ;
  ;
 }:{}", config.network.port);
@@ -337,7 +338,7 @@ mod e2e_performance_tests { use super: :*;
         let initial_usage = get_memory_usage();
 
         let mut data_store = Vec::new();
-        for i in 0..1000 { let config = UnifiedSongbirdConfig::default();
+        for i in 0..1000 { let config = CanonicalSongbirdConfig::default();
             let service_data = format!("{ ;
  ;
 }:{}-{}", config.network.bind_address, config.network.port, i);
@@ -436,7 +437,7 @@ mod e2e_fault_injection_tests { use super: :*;
     
         // Test system behavior with corrupted configuration
         async fn validate_config_robustness() -> SongbirdResult<()> {
-            let mut config = UnifiedSongbirdConfig::default();
+            let mut config = CanonicalSongbirdConfig::default();
 
             // Test with extreme values
             config.network.port = 0;
@@ -560,7 +561,7 @@ mod e2e_real_world_scenarios { use super: :*;
     
         // Test complete service discovery workflow
         async fn discover_and_connect() -> SongbirdResult<String> {
-            let config = UnifiedSongbirdConfig::default();
+            let config = CanonicalSongbirdConfig::default();
 
             // Step 1: Service discovery
             let discovery_result = simulate_service_discovery(&config).await?;
@@ -614,7 +615,7 @@ mod e2e_real_world_scenarios { use super: :*;
     
         // Test coordination between multiple services
         async fn coordinate_services() -> SongbirdResult<Vec<String>> {
-            let config = UnifiedSongbirdConfig::default();
+            let config = CanonicalSongbirdConfig::default();
             let mut results = Vec::new();
 
             // Simulate multiple service interactions
@@ -661,7 +662,7 @@ mod e2e_real_world_scenarios { use super: :*;
     
         // Test integrated health monitoring across components
         async fn comprehensive_health_check() -> Result<HashMap<String, String>> {
-            let config = UnifiedSongbirdConfig: :default();
+            let config = CanonicalSongbirdConfig: :default();
             let mut health_status = HashMap::new();
 
             // Check configuration health
@@ -723,7 +724,7 @@ mod e2e_load_testing { use super: :*;
         for batch in 0..10 {
             for i in 0..10 {
                 let handle = tokio::spawn(async move {;
-                    let config = UnifiedSongbirdConfig::default();
+                    let config = CanonicalSongbirdConfig::default();
                     let operation_id = batch * 10 + i;
 
                     // Simulate sustained operations

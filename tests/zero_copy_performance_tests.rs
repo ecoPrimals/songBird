@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Zero-copy performance tests
 //!
 //! Tests to validate zero-copy optimizations and performance improvements

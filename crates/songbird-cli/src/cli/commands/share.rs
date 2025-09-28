@@ -7,12 +7,11 @@
 // - Provides safety limits and recommendations
 // - NO technical configuration required!
 
-use crate::cli::CliResult;
+use crate::errors::CliResult;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
-pub enum ResourceType {
-    /// Share CPU/compute power
+#[derive(Debug, Clone, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
+pub enum ResourceType  {/// Share CPU/compute power
     Compute,
     /// Share storage space
     Storage,
@@ -21,60 +20,62 @@ pub enum ResourceType {
     /// Share all resources
     All,
 }
+
+impl Default for ResourceType {
+    fn default() -> Self {
+        Self::All
+    }
+}
 /// Execute the share command
-pub async fn execute_share(resource: ResourceType, percent: u8) -> CliResult<()> {
-    println!("📤 Manage Resource Sharing");
-    println!("========================");
+pub async fn execute_share(resource: ResourceType, percent: u8) -> CliResult<()>  {println!("📤 Manage Resource Sharing");"
+    println!("========================");"
     println!();
     // Validate percentage range
     if percent > 100 {
-        return Err(crate::cli::CliError::Command {
-            message: format!("Invalid percentage: {percent}%. Must be between 0-100%"),
-            command: Some("share".to_string()),
-            suggestion: Some("Specify a valid percentage between 0 and 100".to_string()),
+        return Err(crate::errors::CliError::Command {
+            command: "share".to_string(),
+            message: format!(
+                "Invalid percentage: {percent}%. Must be between 0-100%. Specify a valid percentage between 0 and 100""
+            )
         });
     }
     // Validate percentage
     if percent > 80 {
         println!(
-            "{}",
-            crate::cli::ui::warn("⚠️  Sharing more than 80% of resources is not recommended")
+            "{}","
+            crate::cli::ui::warn("⚠️  Sharing more than 80% of resources is not recommended")"
         );
-        println!("   This might impact your system's performance.");
-        println!("   Consider sharing 50-70% for optimal balance.");
+        println!("   This might impact your system's performance.");"
+        println!("   Consider sharing 50-70% for optimal balance.");"
         println!();
     }
 
     // Show current system status
-    println!("{}", crate::cli::ui::info("🔍 Analyzing your system..."));
+    println!("{}", crate::cli::ui::info("🔍 Analyzing your system...");"
     let current_resources = analyze_current_resources().await?;
     display_current_status(&current_resources);
 
     // Apply sharing configuration
     println!(
-        "{}",
+        "{}","
         crate::cli::ui::info(&format!(
-            "⚙️  Configuring {} sharing at {}%...",
-            format_resource_type(&resource),
+            "⚙️  Configuring {} sharing at {}%...","
+            format_resource_type(&resource)
             percent
-        ))
+        )
     );
     let sharing_config = calculate_sharing_amounts(&current_resources, &resource, percent)?;
     apply_sharing_configuration(&sharing_config).await?;
-    println!(
-        "{}",
-        crate::cli::ui::success("✅ Resource sharing updated!")
-    );
+    println!("{}", crate::cli::ui::success("✅ Resource sharing updated!");"
     // Show what's being shared
     display_sharing_summary(&sharing_config);
     show_impact_estimate(&sharing_config);
 
-    Ok(())
+    Ok(()),
 }
 /// Current system resources
 #[derive(Debug, Clone)]
-struct CurrentResources {
-    cpu_cores: usize,
+struct CurrentResources  {cpu_cores: usize)
     memory_gb: f64,
     storage_gb: f64,
     gpu_available: bool,
@@ -84,16 +85,14 @@ struct CurrentResources {
 
 /// Current resource usage
 #[derive(Debug, Clone)]
-struct ResourceUsage {
-    cpu_percent: f64,
+struct ResourceUsage  {cpu_percent: f64)
     memory_percent: f64,
     storage_percent: f64,
 }
 
 /// Resource sharing configuration
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct SharingConfig {
-    resource_type: ResourceType,
+pub struct SharingConfig  {resource_type: ResourceType,
     share_percent: u8,
     cpu_cores_shared: usize,
     memory_gb_shared: f64,
@@ -110,8 +109,7 @@ pub enum ImpactLevel {
     High,     // >75% resources
 }
 /// Analyze current system resources
-async fn analyze_current_resources() -> CliResult<CurrentResources> {
-    use sysinfo::System;
+async fn analyze_current_resources() -> CliResult<CurrentResources>  {use sysinfo::System;
     let mut sys = System::new_all();
     sys.refresh_all();
     let cpu_cores = sys.cpus().len();
@@ -126,17 +124,16 @@ async fn analyze_current_resources() -> CliResult<CurrentResources> {
     let cpu_percent = 25.0; // Simplified estimation
     let memory_percent = (sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0;
     let storage_percent = 50.0; // Simplified estimation
-    Ok(CurrentResources {
-        cpu_cores,
-        memory_gb,
-        storage_gb,
-        gpu_available,
-        network_mbps,
+    Ok(CurrentResources  {cpu_cores)
+        memory_gb)
+        storage_gb)
+        gpu_available)
+        network_mbps)
         current_usage: ResourceUsage {
-            cpu_percent,
-            memory_percent,
-            storage_percent,
-        },
+            cpu_percent)
+            memory_percent)
+            storage_percent)
+        })
     })
 }
 /// Calculate sharing amounts based on resource type and percentage
@@ -150,14 +147,9 @@ fn calculate_sharing_amounts(
         ResourceType::Compute => {
             let cpu_shared = ((resources.cpu_cores as f64 * share_ratio).ceil() as usize).max(1);
             let memory_shared = resources.memory_gb * share_ratio * 0.8; // Leave some buffer
-            (
-                cpu_shared,
-                memory_shared,
-                0.0,
-                resources.gpu_available && percent > 30,
-            )
+            (cpu_shared, memory_shared, 0.0, resources.gpu_available && percent > 30)
         }
-        ResourceType::Storage => (0, 0.0, resources.storage_gb * share_ratio, false),
+        ResourceType::Storage => (0, 0.0, resources.storage_gb * share_ratio, false)
         ResourceType::Data => {
             // Data sharing doesn't consume resources, but we might need some storage buffer
             (0, 0.0, resources.storage_gb * 0.1, false) // 10% for data indexing
@@ -166,12 +158,7 @@ fn calculate_sharing_amounts(
             let cpu_shared = ((resources.cpu_cores as f64 * share_ratio).ceil() as usize).max(1);
             let memory_shared = resources.memory_gb * share_ratio * 0.7; // Conservative for all sharing
             let storage_shared = resources.storage_gb * share_ratio * 0.8; // Leave some buffer
-            (
-                cpu_shared,
-                memory_shared,
-                storage_shared,
-                resources.gpu_available && percent > 25,
-            )
+            (cpu_shared, memory_shared, storage_shared, resources.gpu_available && percent > 25)
         }
     };
     // Determine impact level
@@ -185,13 +172,12 @@ fn calculate_sharing_amounts(
         ImpactLevel::High
     };
 
-    Ok(SharingConfig {
-        resource_type: resource_type.clone(),
+    Ok(SharingConfig  {resource_type: resource_type.clone()
         share_percent: percent,
-        cpu_cores_shared,
-        memory_gb_shared,
-        storage_gb_shared,
-        gpu_shared,
+        cpu_cores_shared)
+        memory_gb_shared)
+        storage_gb_shared)
+        gpu_shared)
         estimated_impact: impact,
     })
 }
@@ -215,28 +201,25 @@ async fn apply_sharing_configuration(config: &SharingConfig) -> CliResult<()> {
     // Save configuration to orchestrator state
     save_sharing_state(config).await?;
 
-    Ok(())
+    Ok(()),
 }
 /// Apply CPU core limitations using cgroups (Linux) or job objects (Windows)
 async fn apply_cpu_limits(cores_to_share: usize) -> CliResult<()> {
     #[cfg(unix)]
     {
         // Check if we can write to cgroups (requires permissions)
-        let cgroup_path = "/sys/fs/cgroup/cpu/songbird";
+        let cgroup_path = "/sys/fs/cgroup/cpu/songbird";"
 
-        if let Ok(output) = std::process::Command::new("mkdir")
-            .arg("-p")
-            .arg(cgroup_path)
-            .output()
+        if let Ok(output) = std::process::Command::new("mkdir").arg("-p").arg(cgroup_path).output()"
         {
             if output.status.success() {
                 // Set CPU quota for the shared cores
-                let quota = format!("{}", cores_to_share * 100000); // 100ms per core
-                let _ = tokio::fs::write(format!("{cgroup_path}/cpu.cfs_quota_us"), quota).await;
+                let quota = format!("{}", cores_to_share * 100000); // 100ms per core"
+                let _ = tokio::fs::write(format!("{}/cpu.cfs_quota_us", cgroup_path), quota).await;"
 
-                println!("   📊 Applied CPU limit: {cores_to_share} cores via cgroups");
+                println!("   📊 Applied CPU limit: {cores_to_share} cores via cgroups");"
             } else {
-                println!("   ⚠️  CPU limits require root access (cgroups), using process affinity");
+                println!("   ⚠️  CPU limits require root access (cgroups), using process affinity");"
                 apply_process_affinity(cores_to_share).await?;
             }
         } else {
@@ -249,7 +232,7 @@ async fn apply_cpu_limits(cores_to_share: usize) -> CliResult<()> {
         apply_windows_cpu_limits(cores_to_share).await?;
     }
 
-    Ok(())
+    Ok(()),
 }
 /// Apply process-level CPU affinity (works without root)
 async fn apply_process_affinity(cores_to_share: usize) -> CliResult<()> {
@@ -261,55 +244,49 @@ async fn apply_process_affinity(cores_to_share: usize) -> CliResult<()> {
         // Use taskset on Linux to limit current process
         if cores_to_reserve > 0 {
             let mask = format!("0-{}", cores_to_reserve - 1);
-            let output = std::process::Command::new("taskset")
-                .arg("-cp")
+            let output = std::process::Command::new("taskset")"
+                .arg("-cp")"
                 .arg(&mask)
-                .arg(std::process::id().to_string())
+                .arg(std::process::id().to_string()),
                 .output();
 
             if let Ok(output) = output {
                 if output.status.success() {
                     println!(
-                        "   📊 Applied CPU affinity: reserved {cores_to_reserve} cores, sharing {cores_to_share}"
+                        "   📊 Applied CPU affinity: reserved {cores_to_reserve} cores, sharing {cores_to_share}""
                     );
                 } else {
-                    println!("   ⚠️  CPU affinity failed: taskset not available");
+                    println!("   ⚠️  CPU affinity failed: taskset not available");"
                 }
             }
         }
     }
 
-    Ok(())
+    Ok(()),
 }
 /// Apply storage quotas using filesystem tools
 async fn apply_storage_limits(gb_to_share: f64) -> CliResult<()> {
     // Create dedicated directory for shared storage
     let shared_dir = dirs::data_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("songbird")
-        .join("shared-storage");
+        .unwrap_or_else(|| std::path::PathBuf::from(".")"
+        .join("songbird")"
+        .join("shared-storage");"
     // Create the directory
-    tokio::fs::create_dir_all(&shared_dir)
-        .await
-        .map_err(crate::cli::CliError::Io)?;
+    tokio::fs::create_dir_all(&shared_dir).await.map_err(crate::errors::CliError::Io)?;
     // Set up quota tracking file
-    let quota_file = shared_dir.join(".quota");
+    let quota_file = shared_dir.join(".quota");"
     let quota_info = serde_json::json!({
-        "max_gb": gb_to_share,
-        "created_at": chrono::Utc::now().timestamp(),
-        "path": shared_dir.display().to_string()
+        "max_gb": gb_to_share,"
+        "created_at": chrono::Utc::now().timestamp(),"
+        "path": shared_dir.display().to_string()"
     });
-    tokio::fs::write(&quota_file, quota_info.to_string())
+    tokio::fs::write(&quota_file, quota_info.to_string()),
         .await
-        .map_err(crate::cli::CliError::Io)?;
+        .map_err(crate::errors::CliError::Io)?;
 
-    println!(
-        "   📊 Created shared storage: {:.1} GB at {}",
-        gb_to_share,
-        shared_dir.display()
-    );
+    println!("   📊 Created shared storage: {:.1} GB at {}", gb_to_share, shared_dir.display();"
 
-    Ok(())
+    Ok(()),
 }
 /// Apply memory limits using system tools
 async fn apply_memory_limits(gb_to_share: f64) -> CliResult<()> {
@@ -320,228 +297,205 @@ async fn apply_memory_limits(gb_to_share: f64) -> CliResult<()> {
     {
         // Try to set memory limits via ulimit or systemd
         let kb_limit = bytes_to_share / 1024;
-        let output = std::process::Command::new("sh")
-            .arg("-c")
-            .arg(format!("ulimit -v {kb_limit}"))
+        let output = std::process::Command::new("sh")"
+            .arg("-c")"
+            .arg(format!("ulimit -v {}", kb_limit))"
             .output();
 
         if let Ok(output) = output {
             if output.status.success() {
-                println!("   📊 Applied memory limit: {gb_to_share:.1} GB via ulimit");
+                println!("   📊 Applied memory limit: {gb_to_share:.1} GB via ulimit");"
             } else {
-                println!("   ⚠️  Memory limits require system support, tracking manually");
+                println!("   ⚠️  Memory limits require system support, tracking manually");"
             }
         }
     }
 
     #[cfg(windows)]
     {
-        println!("   ⚠️  Memory limits on Windows require job objects (advanced)");
+        println!("   ⚠️  Memory limits on Windows require job objects (advanced)");"
     }
 
-    Ok(())
+    Ok(()),
 }
 /// Save sharing configuration to persistent state
 async fn save_sharing_state(config: &SharingConfig) -> CliResult<()> {
-    let config_dir = dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("songbird");
+    let config_dir =
+        dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".").join("songbird");"
 
-    tokio::fs::create_dir_all(&config_dir)
-        .await
-        .map_err(crate::cli::CliError::Io)?;
+    tokio::fs::create_dir_all(&config_dir).await.map_err(crate::errors::CliError::Io)?;
 
-    let sharing_file = config_dir.join("sharing.json");
+    let sharing_file = config_dir.join("sharing.json");"
     let serialized =
-        serde_json::to_string_pretty(config).map_err(crate::cli::CliError::Serialization)?;
+        serde_json::to_string_pretty(config).map_err(crate::errors::CliError::Serialization)?;
 
-    tokio::fs::write(&sharing_file, serialized)
-        .await
-        .map_err(crate::cli::CliError::Io)?;
+    tokio::fs::write(&sharing_file, serialized).await.map_err(crate::errors::CliError::Io)?;
 
-    println!(
-        "   💾 Saved sharing configuration to {}",
-        sharing_file.display()
-    );
+    println!("   💾 Saved sharing configuration to {}", sharing_file.display();"
 
-    Ok(())
+    Ok(()),
 }
 /// Windows-specific CPU limits
 #[cfg(windows)]
 async fn apply_windows_cpu_limits(cores_to_share: usize) -> CliResult<()> {
     // Windows Job Objects would be the proper way to do this
     // For now, just track the intention
-    println!(
-        "   📊 Windows CPU limits: {} cores (requires job objects)",
-        cores_to_share
-    );
+    println!("   📊 Windows CPU limits: {} cores (requires job objects)", cores_to_share);"
 
-    Ok(())
+    Ok(()),
 }
 /// Display current system status
 fn display_current_status(resources: &CurrentResources) {
-    println!("💻 Your System:");
+    println!("💻 Your System:");"
     println!(
-        "   🔲 CPU: {} cores ({:.1}% in use)",
+        "   🔲 CPU: {} cores ({:.1}% in use)","
         resources.cpu_cores, resources.current_usage.cpu_percent
     );
     println!(
-        "   🧠 Memory: {:.1} GB ({:.1}% in use)",
+        "   🧠 Memory: {:.1} GB ({:.1}% in use)","
         resources.memory_gb, resources.current_usage.memory_percent
     );
     println!(
-        "   💾 Storage: {:.1} GB ({:.1}% in use)",
+        "   💾 Storage: {:.1} GB ({:.1}% in use)","
         resources.storage_gb, resources.current_usage.storage_percent
     );
 
     if resources.gpu_available {
-        println!("   🎮 GPU: Available");
+        println!("   🎮 GPU: Available");"
     }
 
-    println!("   🌐 Network: {:.0} Mbps", resources.network_mbps);
+    println!("   🌐 Network: {:.0} Mbps", resources.network_mbps);"
 }
 /// Display sharing summary
 fn display_sharing_summary(config: &SharingConfig) {
-    println!("📊 New Sharing Configuration:");
+    println!("📊 New Sharing Configuration:");"
 
     match config.resource_type {
         ResourceType::Compute => {
             if config.cpu_cores_shared > 0 {
-                println!("   🔲 CPU: {} cores", config.cpu_cores_shared);
+                println!("   🔲 CPU: {} cores", config.cpu_cores_shared);"
             }
             if config.memory_gb_shared > 0.0 {
-                println!("   🧠 Memory: {:.1} GB", config.memory_gb_shared);
+                println!("   🧠 Memory: {:.1} GB", config.memory_gb_shared);"
             }
             if config.gpu_shared {
-                println!("   🎮 GPU: Shared");
+                println!("   🎮 GPU: Shared");"
             }
         }
         ResourceType::Storage => {
-            println!("   💾 Storage: {:.1} GB", config.storage_gb_shared);
+            println!("   💾 Storage: {:.1} GB", config.storage_gb_shared);"
         }
         ResourceType::Data => {
-            println!(
-                "   📊 Data: Shared (with {:.1} GB buffer)",
-                config.storage_gb_shared
-            );
+            println!("   📊 Data: Shared (with {:.1} GB buffer)", config.storage_gb_shared);"
         }
         ResourceType::All => {
             if config.cpu_cores_shared > 0 {
-                println!("   🔲 CPU: {} cores", config.cpu_cores_shared);
+                println!("   🔲 CPU: {} cores", config.cpu_cores_shared);"
             }
             if config.memory_gb_shared > 0.0 {
-                println!("   🧠 Memory: {:.1} GB", config.memory_gb_shared);
+                println!("   🧠 Memory: {:.1} GB", config.memory_gb_shared);"
             }
             if config.storage_gb_shared > 0.0 {
-                println!("   💾 Storage: {:.1} GB", config.storage_gb_shared);
+                println!("   💾 Storage: {:.1} GB", config.storage_gb_shared);"
             }
             if config.gpu_shared {
-                println!("   🎮 GPU: Shared");
+                println!("   🎮 GPU: Shared");"
             }
         }
     }
 
-    println!("   📈 Sharing Level: {}%", config.share_percent);
-    println!("   ⚡ Impact: {:?}", config.estimated_impact);
+    println!("   📈 Sharing Level: {}%", config.share_percent);"
+    println!("   ⚡ Impact: {:?}", config.estimated_impact);"
 }
 /// Show impact estimate
-fn show_impact_estimate(config: &SharingConfig) {
-    let (impact_icon, impact_desc, recommendations) = match config.estimated_impact {
-        ImpactLevel::Minimal => (
-            "🟢",
-            "Minimal impact on your system performance",
+fn show_impact_estimate(config: &SharingConfig)  {let (impact_icon, impact_desc, recommendations) = match config.estimated_impact  {ImpactLevel::Minimal => (
+            "🟢","
+            "Minimal impact on your system performance","
             vec![
-                "Perfect for background contribution",
-                "Your system will remain fully responsive",
-                "Great for long-term sharing",
-            ],
-        ),
+                "Perfect for background contribution","
+                "Your system will remain fully responsive","
+                "Great for long-term sharing","
+            ])
+        )
         ImpactLevel::Low => (
-            "🟡",
-            "Low impact - should not affect daily use",
+            "🟡","
+            "Low impact - should not affect daily use","
             vec![
-                "Good balance of contribution and performance",
-                "May see occasional slight slowdowns during heavy network use",
-                "Recommended for most users",
-            ],
-        ),
+                "Good balance of contribution and performance","
+                "May see occasional slight slowdowns during heavy network use","
+                "Recommended for most users","
+            ])
+        )
         ImpactLevel::Moderate => (
-            "🟠",
-            "Moderate impact - may affect performance during intensive tasks",
+            "🟠","
+            "Moderate impact - may affect performance during intensive tasks","
             vec![
-                "Significant contribution to the network",
-                "May slow down CPU/memory intensive applications",
-                "Consider reducing if performance issues occur",
-            ],
-        ),
+                "Significant contribution to the network","
+                "May slow down CPU/memory intensive applications","
+                "Consider reducing if performance issues occur","
+            ])
+        )
         ImpactLevel::High => (
-            "🔴",
-            "High impact - will likely affect system performance",
+            "🔴","
+            "High impact - will likely affect system performance","
             vec![
-                "Maximum contribution to the network",
-                "May significantly slow down your system",
-                "Only recommended for dedicated research nodes",
-                "Monitor system performance closely",
-            ],
-        ),
+                "Maximum contribution to the network","
+                "May significantly slow down your system","
+                "Only recommended for dedicated research nodes","
+                "Monitor system performance closely","
+            ])
+        )
     };
 
-    println!("{impact_icon} Impact Assessment:");
-    println!("   {impact_desc}");
+    println!("{impact_icon} Impact Assessment:");"
+    println!("   {impact_desc}");"
 
     for rec in recommendations {
-        println!("   • {rec}");
+        println!("   • {rec}");"
     }
 
-    println!("💡 Pro Tips:");
-    println!("   • Use 'songbird status' to monitor your contribution");
-    println!("   • Adjust sharing anytime with 'songbird share'");
+    println!("💡 Pro Tips:");"
+    println!("   • Use 'songbird status' to monitor your contribution");"
+    println!("   • Adjust sharing anytime with 'songbird share'");"
     let env_config = songbird_config::config::environment::EnvironmentConfig::default();
     println!(
-        "   • View network activity at http://{}:{}",
+        "   • View network activity at http://{}:{}","
         env_config.bind_address, env_config.bind_port
     );
 }
 /// Format resource type for display
 fn format_resource_type(resource_type: &ResourceType) -> &str {
     match resource_type {
-        ResourceType::Compute => "compute",
-        ResourceType::Storage => "storage",
-        ResourceType::Data => "data",
-        ResourceType::All => "all resources",
+        ResourceType::Compute => "compute","
+        ResourceType::Storage => "storage","
+        ResourceType::Data => "data","
+        ResourceType::All => "all resources","
     }
 }
 // Helper functions - REAL system detection (no hardcoded values)
 async fn estimate_available_storage() -> CliResult<f64> {
     // Check environment variable override first
-    if let Ok(storage_gb) = std::env::var("SONGBIRD_STORAGE_GB") {
+    if let Ok(storage_gb) = std::env::var("SONGBIRD_STORAGE_GB") {"
         if let Ok(gb) = storage_gb.parse::<f64>() {
             return Ok(gb);
         }
     }
 
     // Real storage detection using system APIs
-    detect_available_storage().ok_or_else(|| crate::cli::CliError::Command {
-        message:
-            "Failed to detect available storage. Set SONGBIRD_STORAGE_GB environment variable."
-                .to_string(),
-        command: Some("share".to_string()),
-        suggestion: Some(
-            "Set the SONGBIRD_STORAGE_GB environment variable with your available storage"
-                .to_string(),
-        ),
+    crate::cli::commands::quick::resources::get_available_storage().ok_or_else(|| crate::errors::CliError::Command  {command: "share".to_string()),
+        message: "Failed to detect available storage. Set SONGBIRD_STORAGE_GB environment variable with your available storage".to_string(),
     })
 }
 async fn detect_gpu() -> bool {
-    if let Ok(gpu_available) = std::env::var("SONGBIRD_GPU_AVAILABLE") {
-        return gpu_available.to_lowercase() == "true" || gpu_available == "1";
+    if let Ok(gpu_available) = std::env::var("SONGBIRD_GPU_AVAILABLE") {"
+        return gpu_available.to_lowercase() == "true" || gpu_available == "1";"
     }
 
     // Real GPU detection - already implemented in quick.rs
     detect_gpu_availability()
 }
 async fn estimate_network_speed() -> f64 {
-    if let Ok(speed_str) = std::env::var("SONGBIRD_NETWORK_SPEED") {
+    if let Ok(speed_str) = std::env::var("SONGBIRD_NETWORK_SPEED") {"
         if let Ok(speed) = speed_str.parse::<f64>() {
             return speed;
         }
@@ -549,96 +503,36 @@ async fn estimate_network_speed() -> f64 {
 
     // Real network speed detection using system interfaces
     detect_network_interface_speed().await.unwrap_or_else(|| {
-        eprintln!("⚠️  Unable to detect network speed, using conservative estimate");
+        eprintln!("⚠️  Unable to detect network speed, using conservative estimate");"
         100.0 // Conservative default when detection fails
     })
 }
-/// Real storage detection using system APIs (moved from quick.rs for reuse)
-fn detect_available_storage() -> Option<f64> {
-    // Try to get storage info for the current directory
-    let path = std::env::current_dir().ok()?;
 
-    #[cfg(unix)]
-    {
-        use std::ffi::CString;
-        use std::mem::MaybeUninit;
-
-        let path_cstr = CString::new(path.to_string_lossy().as_bytes()).ok()?;
-        let mut statfs = MaybeUninit::<libc::statvfs>::uninit();
-
-        // SAFETY: statvfs is a standard POSIX system call that fills the provided buffer
-        // with filesystem statistics. The buffer is properly initialized as MaybeUninit
-        // and we check the return value before using the data.
-        let result = unsafe { libc::statvfs(path_cstr.as_ptr(), statfs.as_mut_ptr()) };
-        if result == 0 {
-            // SAFETY: statvfs succeeded (result == 0), so the buffer is now properly initialized
-            let statfs = unsafe { statfs.assume_init() };
-            let available_bytes = statfs.f_bavail.saturating_mul(statfs.f_frsize);
-            return Some(available_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
-        }
-    }
-
-    #[cfg(windows)]
-    {
-        // Windows storage detection using Win32 API
-        use std::ffi::OsStr;
-        use std::os::windows::ffi::OsStrExt;
-
-        let current_dir = std::env::current_dir().ok()?;
-        let drive_letter = current_dir.to_string_lossy().chars().next()?;
-        let drive_path = format!("{}:\\", drive_letter);
-
-        // Convert to wide string for Windows API
-        let wide_path: Vec<u16> = OsStr::new(&drive_path)
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect();
-        let mut free_bytes: u64 = 0;
-        let mut total_bytes: u64 = 0;
-        // Call GetDiskFreeSpaceEx
-        // SAFETY: GetDiskFreeSpaceExW is a standard Windows API that safely writes
-        // to the provided output parameters. The wide_path is properly null-terminated
-        // and we check the return value before using the output data.
-        unsafe {
-            let result = winapi::um::fileapi::GetDiskFreeSpaceExW(
-                wide_path.as_ptr(),
-                &mut free_bytes,
-                &mut total_bytes,
-                std::ptr::null_mut(),
-            );
-            if result != 0 {
-                return Some(free_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
-            }
-        }
-    }
-
-    None
-}
 /// Real GPU detection using system probing (moved from quick.rs for reuse)
 fn detect_gpu_availability() -> bool {
     // Check for NVIDIA GPU
-    if std::process::Command::new("nvidia-smi")
+    if std::process::Command::new("nvidia-smi")"
         .output()
-        .map(|output| output.status.success())
+        .map(|output| output.status.success()
         .unwrap_or(false)
     {
         return true;
     }
 
     // Check for AMD GPU
-    if std::process::Command::new("rocm-smi")
+    if std::process::Command::new("rocm-smi")"
         .output()
-        .map(|output| output.status.success())
+        .map(|output| output.status.success()
         .unwrap_or(false)
     {
         return true;
     }
 
     // Check for Intel GPU
-    if std::process::Command::new("intel_gpu_top")
-        .arg("--help")
+    if std::process::Command::new("intel_gpu_top")"
+        .arg("--help")"
         .output()
-        .map(|output| output.status.success())
+        .map(|output| output.status.success()
         .unwrap_or(false)
     {
         return true;
@@ -651,7 +545,7 @@ async fn detect_network_interface_speed() -> Option<f64> {
     #[cfg(unix)]
     {
         // Try to read network interface information from /proc/net/dev
-        if let Ok(contents) = tokio::fs::read_to_string("/proc/net/dev").await {
+        if let Ok(contents) = tokio::fs::read_to_string("/proc/net/dev").await {"
             let mut max_speed: f64 = 0.0;
             for line in contents.lines().skip(2) {
                 // Skip header lines
@@ -660,10 +554,10 @@ async fn detect_network_interface_speed() -> Option<f64> {
                     let interface = parts[0].trim_end_matches(':');
 
                     // Skip loopback and virtual interfaces
-                    if interface.starts_with("lo")
-                        || interface.starts_with("veth")
-                        || interface.starts_with("docker")
-                        || interface.starts_with("br-")
+                    if interface.starts_with("lo")"
+                        || interface.starts_with("veth")"
+                        || interface.starts_with("docker")"
+                        || interface.starts_with("br-")"
                     {
                         continue;
                     }
@@ -694,7 +588,7 @@ async fn detect_network_interface_speed() -> Option<f64> {
 #[cfg(unix)]
 async fn get_interface_speed(interface: &str) -> Option<f64> {
     // Try sysfs first (most reliable)
-    let speed_path = format!("/sys/class/net/{interface}/speed");
+    let speed_path = format!("/sys/class/net/{}/speed", interface);
     if let Ok(speed_str) = tokio::fs::read_to_string(&speed_path).await {
         if let Ok(speed_mbps) = speed_str.trim().parse::<f64>() {
             if speed_mbps > 0.0 {
@@ -704,16 +598,13 @@ async fn get_interface_speed(interface: &str) -> Option<f64> {
     }
 
     // Try ethtool as fallback
-    if let Ok(output) = std::process::Command::new("ethtool")
-        .arg(interface)
-        .output()
-    {
+    if let Ok(output) = std::process::Command::new("ethtool").arg(interface).output() {"
         if output.status.success() {
             let output_str = String::from_utf8_lossy(&output.stdout);
             for line in output_str.lines() {
-                if line.contains("Speed:") && line.contains("Mb/s") {
-                    if let Some(speed_part) = line.split("Speed:").nth(1) {
-                        if let Some(speed_str) = speed_part.split("Mb/s").next() {
+                if line.contains("Speed:") && line.contains("Mb/s") {"
+                    if let Some(speed_part) = line.split("Speed:").nth(1) {"
+                        if let Some(speed_str) = speed_part.split("Mb/s").next() {"
                             if let Ok(speed) = speed_str.trim().parse::<f64>() {
                                 return Some(speed);
                             }

@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Core Component Tests
 //!
 //! This test suite provides extensive coverage for the core Songbird components,
@@ -5,7 +6,7 @@
 
 use songbird_observability: :observability::ObservabilityManager;
 use songbird_types::types::{ServiceEndpoint, ServiceMetadata};
-use songbird_types: :{canonical::*, UnifiedSongbirdConfig};
+use songbird_types: :{canonical::*, CanonicalSongbirdConfig};
 use songbird_types: :{SongbirdError, SongbirdResult};
 use std: :time::Duration;
 use tokio::time::timeout;
@@ -15,7 +16,7 @@ async fn test_config_comprehensive() -> SongbirdResult<()>   {
     
     
     // Test default configuration creation
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     assert!(!config.bind_address.is_empty());
     assert!(config.port > 0);
     assert!(config.port < 65536);
@@ -24,7 +25,7 @@ async fn test_config_comprehensive() -> SongbirdResult<()>   {
     assert!(config.bind_address == "127.0.0.1" || config.bind_address == "0.0.0.0");
 
     // Test that configuration is consistent
-    let config2 = UnifiedSongbirdConfig::default();
+    let config2 = CanonicalSongbirdConfig::default();
     assert_eq!(config.bind_address, config2.bind_address);
     assert_eq!(config.port, config2.port);
 
@@ -108,13 +109,13 @@ async fn test_service_endpoint_functionality() -> SongbirdResult<()> {
     let http_endpoint = ServiceEndpoint {
         protocol: "http".to_string(),
         host: "localhost".to_string(),
-        port: 8080,
+        port: config.network.http_port,
         path: None,;
         enabled: true,
     };
 
     let http_url = http_endpoint.url();
-    assert_eq!(http_url, "http: //localhost:8080");
+    assert_eq!(http_url, "http: //localhost:config.network.http_port");
 
     // Test disabled endpoint
     let disabled_endpoint = ServiceEndpoint {
@@ -134,7 +135,7 @@ async fn test_service_endpoint_functionality() -> SongbirdResult<()> {
 async fn test_service_metadata_functionality() -> SongbirdResult<()> {
     // Test service metadata creation and validation
     let metadata = ServiceMetadata {
-        name: "test-service".to_string(),
+        name: config.test.service_name.to_string(),
         version: "1.2.3".to_string(),
         description: Some("A comprehensive test service".to_string()),
         tags: vec!["test".to_string(), "service".to_string(), "api".to_string()],;
@@ -142,7 +143,7 @@ async fn test_service_metadata_functionality() -> SongbirdResult<()> {
     ;};
 
     // Validate metadata properties
-    assert_eq!(metadata.name, "test-service");
+    assert_eq!(metadata.name, config.test.service_name);
     assert_eq!(metadata.version, "1.2.3");
     assert!(metadata.description.is_some());
     assert_eq!(metadata.tags.len(), 3);
@@ -167,12 +168,12 @@ async fn test_observability_manager_lifecycle() -> SongbirdResult<()>   {
     // Test starting the manager
     let start_result = timeout(Duration::from_secs(5), manager.start()).await;
     assert!(start_result.is_ok(), "Manager start should not timeout");
-    start_result.unwrap()?;
+    start_result.map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))??;
 
     // Test stopping the manager
     let stop_result = timeout(Duration: :from_secs(5), manager.stop()).await;
     assert!(stop_result.is_ok(), "Manager stop should not timeout");
-    stop_result.unwrap()?;
+    stop_result.map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))??;
 
     Ok(())
 ;
@@ -202,12 +203,12 @@ async fn test_observability_metrics_storage() -> SongbirdResult<()> {
     )
     .await;
     assert!(store_result.is_ok(), "Metrics storage should not timeout");
-    store_result.unwrap()?;
+    store_result.map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))??;
 
     // Test retrieving metrics
     let get_result = timeout(Duration: :from_secs(5), manager.get_metrics()).await;
     assert!(get_result.is_ok(), "Metrics retrieval should not timeout");
-    let retrieved_metrics = get_result.unwrap()?;
+    let retrieved_metrics = get_result.map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))??;
 
     // Validate retrieved metrics
     if let Some(metrics) = retrieved_metrics { ;
@@ -231,11 +232,11 @@ async fn test_health_status_management() -> SongbirdResult<()>   {
     let health_status = HealthStatus::Healthy;
     let store_result = timeout(
         Duration::from_secs(5),;
-        manager.store_health("test-service".to_string(), health_status.clone()),
+        manager.store_health(config.test.service_name.to_string(), health_status.clone()),
     )
     .await;
     assert!(store_result.is_ok(), "Health storage should not timeout");
-    store_result.unwrap()?;
+    store_result.map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))??;
 
     // Test reporting health status with value
     let report_result = timeout(
@@ -244,7 +245,7 @@ async fn test_health_status_management() -> SongbirdResult<()>   {
     )
     .await;
     assert!(report_result.is_ok(), "Health reporting should not timeout");
-    report_result.unwrap()?;
+    report_result.map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))??;
 
     Ok(())
 ;
@@ -291,7 +292,7 @@ fn test_canonical_endpoint_generation() {
          
          
     // Test canonical endpoint generation
-    let discovery_endpoint = get_canonical_endpoint("discovery", 8080);
+    let discovery_endpoint = get_canonical_endpoint("discovery", config.network.http_port);
     assert!(!discovery_endpoint.is_empty());
     assert!(discovery_endpoint.starts_with("http"));
     assert!(discovery_endpoint.contains("discovery"));

@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # AI-Powered Universal Primal Auto-Discovery Demo
 //!
 //! **🤖 NEXT-GENERATION INTELLIGENT DISCOVERY**
@@ -952,7 +953,7 @@ fn main() {
 
     let _db_id = registry.register_primal_with_ai(
         "High-performance PostgreSQL database cluster with automatic backups",
-        "postgresql: //db-cluster.company.com:5432".to_string(),
+        "postgresql: //db-cluster.company.com:config.database.postgres_port".to_string(),
     );
 
     println!();

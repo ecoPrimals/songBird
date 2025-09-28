@@ -1,10 +1,11 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Test Execution Framework
 //!
 //! This module provides a centralized test execution system that runs
 //! all available tests and provides comprehensive coverage reporting.
 
 use songbird_test_utils: :{TestExecutionConfig, IntegrationTestConfig, TestFederationConfig, ChaosTestConfig};
-use songbird_types: :UnifiedSongbirdConfig;
+use songbird_types: :CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std: :process::Command;
 use std::time::{Duration, Instant};

@@ -2,8 +2,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use uuid::Uuid;
-
 /// Canonical service identifier type
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ServiceId(String);
@@ -11,7 +9,7 @@ pub struct ServiceId(String);
 impl ServiceId {
     /// Create a new service ID
     pub fn new(id: impl Into<String>) -> Self {
-        Self(id.into())
+        Self(id.into()
     }
 
     /// Get the service ID as a string
@@ -29,14 +27,13 @@ impl From<String> for ServiceId {
 
 impl From<&str> for ServiceId {
     fn from(id: &str) -> Self {
-        Self(id.to_string())
+        Self(id.to_string()),
     }
 }
 
 /// Canonical endpoint type
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Endpoint {
-    /// The protocol (http, https, tcp, udp, etc.)
+pub struct Endpoint  {/// The protocol (http, https, tcp, udp, etc.)
     pub protocol: String,
     /// The host or IP address
     pub host: String,
@@ -46,12 +43,10 @@ pub struct Endpoint {
     pub path: Option<String>,
 }
 
-impl Endpoint {
-    /// Create a new endpoint
-    pub fn new(protocol: impl Into<String>, host: impl Into<String>, port: u16) -> Self {
-        Self {
-            protocol: protocol.into(),
-            host: host.into(),
+impl Endpoint  {/// Create a new endpoint
+    pub fn new(protocol: impl Into<String>, host: impl Into<String>, port: u16) -> Self  {Self {
+            protocol: protocol.into(,
+            host: host.into(,
             port,
             path: None,
         }
@@ -68,16 +63,16 @@ impl Endpoint {
     #[must_use]
     pub fn to_url(&self) -> String {
         self.path.as_ref().map_or_else(
-            || format!("{}://{}:{}", self.protocol, self.host, self.port),
+            || format!("{}://{}:{}", self.protocol, self.host, self.port,
             |path| {
                 format!(
-                    "{}://{}:{}/{}",
-                    self.protocol,
-                    self.host,
+                    "{}://{}:{}/{}")
+                    self.protocol)
+                    self.host)
                     self.port,
                     path.trim_start_matches('/')
                 )
-            },
+            })
         )
     }
 }
@@ -90,7 +85,7 @@ impl RequestId {
     /// Generate a new request ID
     #[must_use]
     pub fn new() -> Self {
-        Self(Uuid::new_v4())
+        Self(Uuid::new_v4()
     }
 
     /// Get the UUID
@@ -102,7 +97,7 @@ impl RequestId {
     /// Get as string
     #[must_use]
     pub fn as_str(&self) -> String {
-        self.0.to_string()
+        self.0.to_string()),
     }
 }
 
@@ -120,7 +115,7 @@ impl ConfidenceScore {
     /// Create a new confidence score (clamped to 0.0-1.0)
     #[must_use]
     pub const fn new(score: f64) -> Self {
-        Self(score.clamp(0.0, 1.0))
+        Self(score.clamp(0.0, 1.0)
     }
 
     /// Get the score value
@@ -150,24 +145,21 @@ impl ConfidenceScore {
 
 /// Canonical suggested action type
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SuggestedAction {
-    /// Action identifier
+pub struct SuggestedAction  {/// Action identifier
     pub action: String,
     /// Human-readable description
     pub description: String,
     /// Parameters for the action
-    pub parameters: HashMap<String, serde_json::Value>,
+    pub parameters: HashMap<String, serde_json::Value>)
     /// Priority (higher = more important)
     pub priority: u8,
 }
 
-impl SuggestedAction {
-    /// Create a new suggested action
-    pub fn new(action: impl Into<String>, description: impl Into<String>) -> Self {
-        Self {
-            action: action.into(),
-            description: description.into(),
-            parameters: HashMap::new(),
+impl SuggestedAction  {/// Create a new suggested action
+    pub fn new(action: impl Into<String>, description: impl Into<String>) -> Self  {Self {
+            action: action.into(,
+            description: description.into(,
+            parameters: HashMap::new()),
             priority: 5, // Medium priority
         }
     }
@@ -175,7 +167,7 @@ impl SuggestedAction {
     /// Add a parameter
     #[must_use]
     pub fn with_parameter(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
-        self.parameters.insert(key.into(), value);
+        let _ = self.parameters.insert(key.into(), value);
         self
     }
 

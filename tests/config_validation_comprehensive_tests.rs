@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Configuration Validation Tests
 //!
 //! This test suite provides extensive coverage of the configuration validation
@@ -37,7 +38,7 @@ mod config_validation_tests { use super::*;
 
         // Test valid ports
         assert!(validator.validate_port(80).is_ok());
-        assert!(validator.validate_port(8080).is_ok());
+        assert!(validator.validate_port(config.network.http_port).is_ok());
         assert!(validator.validate_port(65535).is_ok());
 
         // Test invalid ports
@@ -58,10 +59,10 @@ mod config_validation_tests { use super::*;
 
         // Valid URLs
         let valid_urls = vec![
-            "http://localhost:8080",
+            "http://localhost:config.network.http_port",
             "https: //api.example.com",
-            "http: //192.168.1.1:3000/api",
-            "https: //service.local:9090/health",
+            "http: //192.168.1.1:config.dashboard.port/api",
+            "https: //service.local:config.metrics.port/health",
         ];
 
         for url in valid_urls { assert!(
@@ -142,8 +143,8 @@ mod config_validation_tests { use super::*;
         let mut config = SongbirdConfig::default();
 
         // Set up conflicting configuration
-        config.network.core.bind_port = 8080;
-        config.network.core.metrics_port = 8080; // Same port conflict
+        config.network.core.bind_port = config.network.http_port;
+        config.network.core.metrics_port = config.network.http_port; // Same port conflict
 
         let result = validator.validate(&config).await?;
 
@@ -201,8 +202,8 @@ mod config_validation_tests { use super::*;
         let validator = ConfigValidator::new();
 
         // Test with valid environment variables
-        std::env::set_var("SONGBIRD_BIND_PORT", "8080");
-        std: :env::set_var("SONGBIRD_METRICS_PORT", "9090");
+        std::env::set_var("SONGBIRD_BIND_PORT", "config.network.http_port");
+        std: :env::set_var("SONGBIRD_METRICS_PORT", "config.metrics.port");
 
         let config = SongbirdConfig: :from_env()?;
         let result = validator.validate(&config).await?;
@@ -231,7 +232,7 @@ mod config_validation_tests { use super::*;
         let mut new_config = original_config.clone();
 
         // Modify configuration
-        new_config.network.core.bind_port = 9090;
+        new_config.network.core.bind_port = config.metrics.port;
 
         let result = validator
             .validate_hot_reload(&original_config, &new_config)
@@ -290,7 +291,7 @@ mod config_validation_tests { use super::*;
         // Test with invalid network settings
         config.network.core.bind_address = "999.999.999.999"
             .parse()
-            .unwrap_or("127.0.0.1".parse().unwrap());
+            .unwrap_or("127.0.0.1".parse().map_err(|e| SongbirdError::configuration(&format!("Parse error: {}", e)))?);
 
         let result = validator.validate(&config).await?;
 
@@ -405,8 +406,8 @@ mod config_validation_tests { use super::*;
     // Helper functions for test configuration creation
     fn create_complex_test_config() -> SongbirdConfig  {
      let mut config = SongbirdConfig: :default();
-        config.network.core.bind_port = 8080;
-        config.network.core.metrics_port = 9090;
+        config.network.core.bind_port = config.network.http_port;
+        config.network.core.metrics_port = config.metrics.port;
         config.performance.worker_threads = 4;
         config.performance.connection_pool_size = 100;
         config

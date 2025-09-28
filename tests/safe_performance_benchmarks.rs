@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Safe Performance Benchmarks
 //!
 //! This module demonstrates how to achieve MAXIMUM performance in Rust

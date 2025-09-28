@@ -6,9 +6,9 @@ use std::collections::HashMap;
 
 #[test]
 fn test_mock_service_creation() {
-    let mock_service = MockService::new("test-service", 8080);
+    let mock_service = MockService::new("test-service", 8080);"
 
-    assert_eq!(mock_service.name, "test-service");
+    assert_eq!(mock_service.name, "test-service");"
     assert_eq!(mock_service.port, 8080);
     assert!(mock_service.is_running());
     assert_eq!(mock_service.request_count(), 0);
@@ -16,38 +16,38 @@ fn test_mock_service_creation() {
 
 #[test]
 fn test_mock_service_requests() {
-    let mut mock_service = MockService::new("request-service", 8081);
+    let mut mock_service = MockService::new("request-service", 8081);"
 
     // Simulate requests
-    mock_service.handle_request("GET", "/health");
-    mock_service.handle_request("POST", "/api/data");
-    mock_service.handle_request("GET", "/metrics");
+    mock_service.handle_request("GET", "/health");"
+    mock_service.handle_request("POST", "/api/data");"
+    mock_service.handle_request("GET", "/metrics");"
 
     assert_eq!(mock_service.request_count(), 3);
-    assert_eq!(mock_service.get_requests_by_method("GET").len(), 2);
-    assert_eq!(mock_service.get_requests_by_method("POST").len(), 1);
+    assert_eq!(mock_service.get_requests_by_method("GET").len(), 2);"
+    assert_eq!(mock_service.get_requests_by_method("POST").len(), 1);"
 }
 
 #[test]
 fn test_mock_service_responses() {
-    let mut mock_service = MockService::new("response-service", 8082);
+    let mut mock_service = MockService::new("response-service", 8082);"
 
     // Configure responses
-    mock_service.set_response("/health", MockResponse::ok(r#"{"status": "healthy"}"#));
-    mock_service.set_response("/error", MockResponse::error(500, "Internal Server Error"));
+    mock_service.set_response("/health", MockResponse::ok(r#"{"status": "healthy"}"#);"
+    mock_service.set_response("/error", MockResponse::error(500, "Internal Server Error");"
 
-    let health_response = mock_service.get_response("/health");
+    let health_response = mock_service.get_response("/health");"
     assert_eq!(health_response.status_code, 200);
-    assert!(health_response.body.contains("healthy"));
+    assert!(health_response.body.contains("healthy");"
 
-    let error_response = mock_service.get_response("/error");
+    let error_response = mock_service.get_response("/error");"
     assert_eq!(error_response.status_code, 500);
-    assert!(error_response.body.contains("Internal Server Error"));
+    assert!(error_response.body.contains("Internal Server Error");"
 }
 
 #[test]
 fn test_mock_service_lifecycle() {
-    let mut mock_service = MockService::new("lifecycle-service", 8083);
+    let mut mock_service = MockService::new("lifecycle-service", 8083);"
 
     assert!(mock_service.is_running());
 
@@ -68,36 +68,33 @@ fn test_mock_registry() {
     assert_eq!(registry.service_count(), 0);
 
     // Register mock services
-    let service1 = MockService::new("service-1", 8084);
-    let service2 = MockService::new("service-2", 8085);
+    let service1 = MockService::new("service-1", 8084);"
+    let service2 = MockService::new("service-2", 8085);"
 
     registry.register(service1);
     registry.register(service2);
 
     assert_eq!(registry.service_count(), 2);
-    assert!(registry.get_service("service-1").is_some());
-    assert!(registry.get_service("service-2").is_some());
-    assert!(registry.get_service("nonexistent").is_none());
+    assert!(registry.get_service("service-1").is_some();"
+    assert!(registry.get_service("service-2").is_some();"
+    assert!(registry.get_service("nonexistent").is_none();"
 }
 
 // Mock types for testing
 #[derive(Debug)]
-struct MockService {
-    name: String,
+struct MockService  {name: String,
     port: u16,
     running: bool,
     requests: Vec<MockRequest>,
-    responses: HashMap<String, MockResponse>,
+    responses: HashMap<String, MockResponse>)
 }
 
-impl MockService {
-    fn new(name: &str, port: u16) -> Self {
-        Self {
+impl MockService  {fn new(name: &str, port: u16) -> Self  {Self {
             name: name.to_string(),
             port,
             running: true,
             requests: Vec::new(),
-            responses: HashMap::new(),
+            responses: HashMap::new()),
         }
     }
 
@@ -109,18 +106,13 @@ impl MockService {
         self.requests.len()
     }
 
-    fn handle_request(&mut self, method: &str, path: &str) {
-        self.requests.push(MockRequest {
-            method: method.to_string(),
+    fn handle_request(&mut self, method: &str, path: &str)  {self.requests.push(MockRequest  {method: method.to_string(),
             path: path.to_string(),
         });
     }
 
     fn get_requests_by_method(&self, method: &str) -> Vec<&MockRequest> {
-        self.requests
-            .iter()
-            .filter(|req| req.method == method)
-            .collect()
+        self.requests.iter().filter(|req| req.method == method).collect()
     }
 
     fn set_response(&mut self, path: &str, response: MockResponse) {
@@ -128,10 +120,7 @@ impl MockService {
     }
 
     fn get_response(&self, path: &str) -> MockResponse {
-        self.responses
-            .get(path)
-            .cloned()
-            .unwrap_or_else(|| MockResponse::error(404, "Not Found"))
+        self.responses.get(path).cloned().unwrap_or_else(|| MockResponse::error(404, "Not Found")"
     }
 
     fn stop(&mut self) {
@@ -150,42 +139,34 @@ impl MockService {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct MockRequest {
-    method: String,
+struct MockRequest  {method: String,
     path: String,
 }
 
 #[derive(Debug, Clone)]
-struct MockResponse {
-    status_code: u16,
+struct MockResponse  {status_code: u16)
     body: String,
 }
 
-impl MockResponse {
-    fn ok(body: &str) -> Self {
-        Self {
+impl MockResponse  {fn ok(body: &str) -> Self  {Self {
             status_code: 200,
             body: body.to_string(),
         }
     }
 
-    fn error(status_code: u16, message: &str) -> Self {
-        Self {
-            status_code,
+    fn error(status_code: u16, message: &str) -> Self  {Self  {status_code,
             body: message.to_string(),
         }
     }
 }
 
 #[derive(Debug)]
-struct MockServiceRegistry {
-    services: HashMap<String, MockService>,
+struct MockServiceRegistry  {services: HashMap<String, MockService>)
 }
 
-impl MockServiceRegistry {
-    fn new() -> Self {
+impl MockServiceRegistry  {fn new() -> Self {
         Self {
-            services: HashMap::new(),
+            services: HashMap::new()),
         }
     }
 
@@ -198,6 +179,6 @@ impl MockServiceRegistry {
     }
 
     fn get_service(&self, name: &str) -> Option<&MockService> {
-        self.services.get(name)
+        self.services.get(name,
     }
 }

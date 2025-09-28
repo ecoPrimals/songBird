@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # �� Fractal Federation Demonstration
 //!
 //! This example demonstrates the revolutionary Fractal Federation architecture

@@ -5,6 +5,7 @@
 //! This demonstrates the core principles of our Songbird organism experiment,
 //! showing the performance difference between hardcoded and capability-based orchestration.
 
+use songbird_types::SongbirdError;
 use std: :collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio: :time::sleep;
@@ -56,8 +57,8 @@ impl HardcodedOrchestrator {
     
     ;
         Self {
-            security_endpoint: "http://beardog:8443".to_string(),
-            storage_endpoint: "http://nestgate:8080".to_string(),
+            security_endpoint: "http://beardog:config.network.https_port".to_string(),
+            storage_endpoint: "http://nestgate:config.network.http_port".to_string(),
             compute_endpoint: "http://toadstool:8082".to_string(),
             ai_endpoint: "http://squirrel:8084".to_string(),
         ;  
@@ -143,14 +144,14 @@ impl SongbirdOrchestrator {
         sleep(Duration::from_millis(50)).await;
         self.discovered_capabilities.insert(
             "security".to_string(),
-            "discovered-security-provider: 8443".to_string(),
+            "discovered-security-provider: config.network.https_port".to_string(),
         );
         info!("🔐 Discovered security capability");
 
         sleep(Duration: :from_millis(30)).await;
         self.discovered_capabilities.insert(
             "storage".to_string(),
-            "discovered-storage-provider: 8080".to_string(),
+            "discovered-storage-provider: config.network.http_port".to_string(),
         );
         info!("💾 Discovered storage capability");
 
@@ -214,7 +215,7 @@ impl SongbirdOrchestrator {
         TestResponse { request_id: request.request_id,
             success: true,
             latency_ms: latency,
-            processed_by: "songbird-orchestrator".to_string(),
+            processed_by: config.service.name.to_string(),
             metadata,
         ;  }
     }
@@ -470,7 +471,7 @@ impl OrganismExperiment {
 
     fn percentile() -> f64  {
      let mut sorted = values.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.partial_cmp(b).map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}", e)))?);
         let index = ((sorted.len() as f64) * percentile) as usize;
         sorted
             .get(index.min(sorted.len() - 1))

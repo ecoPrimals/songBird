@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Vendor Agnostic Discovery Demo
 //!
 //! This example demonstrates how Songbird's universal discovery system
@@ -25,10 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             d
         }
         Err(e) => {
-            warn!(
-                "⚠️ Auto-detection failed, this is expected in demo environment: {}",
-                e
-            );
+            warn!("⚠️ Auto-detection failed, this is expected in demo environment: {}", e);
             info!("🔄 Falling back to capability-based discovery...");
             UniversalDiscoveryFactory::create_for_capability("service_discovery").await?
         }
@@ -40,15 +38,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match discovery.discover(query).await {
         Ok(services) => {
-            info!(
-                "✅ Discovered {} services without hardcoding any vendor names!",
-                services.len()
-            );
+            info!("✅ Discovered {} services without hardcoding any vendor names!", services.len());
             for service in services {
-                info!(
-                    "   📡 Service: {} (type: {})",
-                    service.name, service.service_type
-                );
+                info!("   📡 Service: {} (type: {})", service.name, service.service_type);
             }
         }
         Err(e) => {
@@ -73,7 +65,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Show the contrast with old hardcoded approach
     info!("");
     info!("🎯 VENDOR AGNOSTIC SUCCESS!");
-    info!("   ❌ OLD: match backend {{ \"consul\" => ConsulClient::new(\"http://consul:8500\"), ... }}");
+    info!(
+        "   ❌ OLD: match backend {{ \"consul\" => ConsulClient::new(\"http://consul:8500\"), ... }}"
+    );
     info!("   ✅ NEW: UniversalDiscoveryFactory::create_auto_detect() // Works with ANY system!");
     info!("");
     info!("🌟 Benefits of vendor-agnostic architecture:");

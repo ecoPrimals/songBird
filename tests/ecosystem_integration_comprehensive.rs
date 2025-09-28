@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Ecosystem Integration Tests
 //!
 //! Tests the complete universal capability-based discovery system across
@@ -20,7 +21,7 @@ async fn test_ecosystem_universal_discovery() {
     // Test the ecosystem discovery with default configuration
     let config = EcosystemDiscoveryConfig {
         ecosystem_base_path: "../".to_string(),
-        health_check_timeout_ms: 3000,
+        health_check_timeout_ms: config.dashboard.port,
         max_concurrent_discoveries: 10,
         enable_capability_inference: true,
         enable_filesystem_discovery: true,

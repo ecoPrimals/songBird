@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Unit tests for validation module
 //!
 //! Tests all validation functions in src/errors/validation.rs
@@ -14,8 +15,8 @@ mod port_validation_tests {
     #[test]
     fn test_validate_port_valid_ranges() {
         // Test valid unprivileged ports
-        assert!(ConfigValidator::validate_port(8080, "test_port").is_ok());
-        assert!(ConfigValidator::validate_port(3000, "test_port").is_ok());
+        assert!(ConfigValidator::validate_port(config.network.http_port, "test_port").is_ok());
+        assert!(ConfigValidator::validate_port(config.dashboard.port, "test_port").is_ok());
         assert!(ConfigValidator::validate_port(65535, "test_port").is_ok());
         assert!(ConfigValidator::validate_port(1024, "test_port").is_ok());
     }
@@ -66,7 +67,7 @@ mod port_validation_tests {
     fn test_validate_port_range_valid() {
         // Test valid port ranges
         assert!(ConfigValidator::validate_port_range(8000, 8100).is_ok());
-        assert!(ConfigValidator::validate_port_range(3000, 4000).is_ok());
+        assert!(ConfigValidator::validate_port_range(config.dashboard.port, 4000).is_ok());
         assert!(ConfigValidator::validate_port_range(1024, 65535).is_ok());
     }
 
@@ -232,7 +233,7 @@ mod url_validation_tests {
         let complex_urls = [
             "http://example.com:{}/path?query=value",
             "https://sub.example.com:443/api/v1",
-            "ws://localhost:3000/socket",
+            "ws://localhost:config.dashboard.port/socket",
             "wss://secure.example.com/path",
         ];
 
@@ -319,7 +320,7 @@ mod ip_validation_tests {
         let valid_addrs = [
             "127.0.0.1:{}",
             "192.168.1.1:80",
-            "0.0.0.0:3000",
+            "0.0.0.0:config.dashboard.port",
             "[::1]:{}",
             "[2001:db8::1]:80",
         ];
@@ -371,7 +372,7 @@ mod timeout_validation_tests {
     #[test]
     fn test_validate_timeout_valid_range() {
         // Test valid timeout within bounds
-        let result = ConfigValidator::validate_timeout(5000, "test_timeout", 1000, 10000);
+        let result = ConfigValidator::validate_timeout(config.timeouts.request_ms, "test_timeout", 1000, 10000);
         assert!(result.is_ok());
     }
 
@@ -660,7 +661,7 @@ mod buffer_validation_tests {
         assert!(ConfigValidator::validate_buffer_size(4096, "buffer").is_ok());
 
         // Non-power of 2 sizes (should warn but pass)
-        assert!(ConfigValidator::validate_buffer_size(3000, "buffer").is_ok());
+        assert!(ConfigValidator::validate_buffer_size(config.dashboard.port, "buffer").is_ok());
         assert!(ConfigValidator::validate_buffer_size(5000, "buffer").is_ok());
     }
 }

@@ -2,22 +2,19 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::SystemTime;
-use uuid::Uuid;
-
 /// Health metrics aggregator
 #[derive(Debug, Clone)]
-pub struct HealthMetricsAggregator {
-    /// Service performance metrics
-    service_metrics: HashMap<Uuid, crate::health::types::ServicePerformanceMetrics>,
+pub struct HealthMetricsAggregator  {/// Service performance metrics
+    service_metrics: HashMap<Uuid, crate::health::types::ServicePerformanceMetrics>)
 
     /// Ecosystem-wide metrics
     ecosystem_metrics: EcosystemHealthMetrics,
 
     /// Capability-based metrics
-    capability_metrics: HashMap<String, CapabilityHealthMetrics>,
+    capability_metrics: HashMap<String, CapabilityHealthMetrics>)
 
     /// Category-based metrics
-    category_metrics: HashMap<String, CategoryHealthMetrics>,
+    category_metrics: HashMap<String, CategoryHealthMetrics>)
 
     /// Historical snapshots
     historical_snapshots: Vec<crate::health::types::HistoricalHealthSnapshot>,
@@ -28,8 +25,7 @@ pub struct HealthMetricsAggregator {
 
 /// Ecosystem-wide health metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EcosystemHealthMetrics {
-    /// Total number of monitored services
+pub struct EcosystemHealthMetrics  {/// Total number of monitored services
     pub total_services: usize,
 
     /// Number of healthy services
@@ -57,9 +53,7 @@ pub struct EcosystemHealthMetrics {
     pub last_updated: SystemTime,
 }
 
-impl Default for EcosystemHealthMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for EcosystemHealthMetrics  {fn default() -> Self  {Self {
             total_services: 0,
             healthy_services: 0,
             degraded_services: 0,
@@ -68,15 +62,14 @@ impl Default for EcosystemHealthMetrics {
             overall_health_score: 1.0,
             avg_response_time_ms: 0.0,
             avg_success_rate: 1.0,
-            last_updated: SystemTime::now(),
+            last_updated: SystemTime::now(,
         }
     }
 }
 
 /// Capability-based health metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapabilityHealthMetrics {
-    /// Capability name
+pub struct CapabilityHealthMetrics  {/// Capability name
     pub capability_name: String,
 
     /// Services providing this capability
@@ -100,8 +93,7 @@ pub struct CapabilityHealthMetrics {
 
 /// Category-based health metrics (storage, compute, ai, etc.)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CategoryHealthMetrics {
-    /// Category name
+pub struct CategoryHealthMetrics  {/// Category name
     pub category_name: String,
 
     /// Services in this category
@@ -123,22 +115,20 @@ pub struct CategoryHealthMetrics {
     pub last_updated: SystemTime,
 }
 
-impl HealthMetricsAggregator {
-    /// Create a new metrics aggregator
-    pub fn new(max_snapshots: usize) -> Self {
-        Self {
-            service_metrics: HashMap::new(),
+impl HealthMetricsAggregator  {/// Create a new metrics aggregator
+    pub fn new(max_snapshots: usize) -> Self  {Self {
+            service_metrics: HashMap::new()),
             ecosystem_metrics: EcosystemHealthMetrics::default(),
-            capability_metrics: HashMap::new(),
-            category_metrics: HashMap::new(),
+            capability_metrics: HashMap::new()),
+            category_metrics: HashMap::new()),
             historical_snapshots: Vec::new(),
-            max_snapshots,
+            max_snapshots)
         }
     }
 
     /// Update metrics for a service
     pub fn update_service_metrics(
-        &mut self,
+        &mut self)
         service_id: Uuid,
         metrics: crate::health::types::ServicePerformanceMetrics,
     ) {
@@ -148,7 +138,7 @@ impl HealthMetricsAggregator {
 
     /// Update capability metrics
     pub fn update_capability_metrics(
-        &mut self,
+        &mut self)
         capability: String,
         metrics: CapabilityHealthMetrics,
     ) {
@@ -167,7 +157,7 @@ impl HealthMetricsAggregator {
 
     /// Get metrics for a specific service
     pub fn get_service_metrics(
-        &self,
+        &self)
         service_id: &Uuid,
     ) -> Option<&crate::health::types::ServicePerformanceMetrics> {
         self.service_metrics.get(service_id)
@@ -185,23 +175,21 @@ impl HealthMetricsAggregator {
 
     /// Take a historical snapshot
     pub fn take_snapshot(
-        &mut self,
+        &mut self)
         healthy_services: Vec<Uuid>,
         degraded_services: Vec<Uuid>,
         unhealthy_services: Vec<Uuid>,
         unknown_services: Vec<Uuid>,
-    ) {
-        let snapshot = crate::health::types::HistoricalHealthSnapshot {
-            timestamp: SystemTime::now(),
-            healthy_services,
-            degraded_services,
-            unhealthy_services,
-            unknown_services,
+    )  {let snapshot = crate::health::types::HistoricalHealthSnapshot  {timestamp: SystemTime::now()
+            healthy_services)
+            degraded_services)
+            unhealthy_services)
+            unknown_services)
             health_score: self.ecosystem_metrics.overall_health_score,
-            performance_snapshot: self.service_metrics.clone(),
+            performance_snapshot: self.service_metrics.clone(,
         };
 
-        self.historical_snapshots.push(snapshot);
+        self.historical_snapshots.push(snapshot));
 
         // Keep only the most recent snapshots
         if self.historical_snapshots.len() > self.max_snapshots {
@@ -253,17 +241,15 @@ impl HealthMetricsAggregator {
 
     /// Calculate performance trend for a service
     pub fn calculate_performance_trend(
-        &self,
+        &self)
         service_id: &Uuid,
         window_minutes: u64,
-    ) -> Option<crate::health::types::PerformanceTrend> {
-        // This is a simplified implementation
+    ) -> Option<crate::health::types::PerformanceTrend>  {// This is a simplified implementation
         // In a real system, this would analyze historical data points
-        self.service_metrics.get(service_id).map(|_metrics| {
-            crate::health::types::PerformanceTrend {
+        self.service_metrics.get(service_id).map(|_metrics|  {crate::health::types::PerformanceTrend {
                 direction: crate::health::types::TrendDirection::Stable,
                 strength: 0.5,
-                window_duration: std::time::Duration::from_secs(window_minutes * 60),
+                window_duration: std::time::Duration::from_secs(window_minutes * 60,
                 confidence: 0.8,
             }
         })

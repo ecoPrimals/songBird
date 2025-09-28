@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 use chrono::Utc;
 use songbird_errors::SongbirdResult;
 use songbird_network::communication::{
@@ -11,12 +12,12 @@ use songbird_network::CommunicationLayer;
 async fn test_service_address_creation() -> Result<()> {
     // Test service address creation with all fields
     let addr = ServiceAddress {
-        service_id: "test-service".to_string(),
-        endpoint: Some("/api/v1".to_string()),
+        service_id: config.test.service_name.to_string(),
+        endpoint: Some(config.api.base_path.to_string()),
     };
 
-    assert_eq!(addr.service_id, "test-service");
-    assert_eq!(addr.endpoint, Some("/api/v1".to_string()));
+    assert_eq!(addr.service_id, config.test.service_name);
+    assert_eq!(addr.endpoint, Some(config.api.base_path.to_string()));
 
     Ok(())
 }
@@ -110,14 +111,14 @@ async fn test_http_communication_basic() -> Result<()> {
     let http_comm = HttpCommunication::new("http://localhost:{}".to_string())?;
 
     let address = ServiceAddress {
-        service_id: "test-service".to_string(),
+        service_id: config.test.service_name.to_string(),
         endpoint: Some("/test".to_string()),
     };
 
     let message = ServiceMessage {
         id: "http-test-msg".to_string(),
         source: "client".to_string(),
-        target: "test-service".to_string(),
+        target: config.test.service_name.to_string(),
         payload: serde_json::json!({"test": "data"}),
         correlation_id: None,
         timestamp: Utc::now(),
@@ -133,7 +134,7 @@ async fn test_http_communication_basic() -> Result<()> {
 
 #[tokio::test]
 async fn test_websocket_communication_basic() -> Result<()> {
-    let ws_comm = WebSocketCommunication::new("localhost".to_string(), 8080);
+    let ws_comm = WebSocketCommunication::new("localhost".to_string(), config.network.http_port);
 
     // WebSocket needs to be connected first
     ws_comm.connect().await?;

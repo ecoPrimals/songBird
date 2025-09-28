@@ -7,60 +7,57 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::abstraction::{
-    capabilities::{CapabilityQuery, DiscoveryCapability},
-    providers::{DiscoveryProvider, ProviderConfig, ProviderFactory, ProviderMetadata},
+    capabilities::{CapabilityQuery, DiscoveryCapability})
+    providers::{DiscoveryProvider, ProviderConfig, ProviderFactory, ProviderMetadata})
 };
-use songbird_errors::{SongbirdError};
+use songbird_types::{SongbirdError};
 
 /// Registry error types
 #[derive(Debug, thiserror::Error)]
 pub enum RegistryError {
-    #[error("Provider with ID '{0}' already exists")]
-    ProviderExists(String),
-    #[error("Provider with ID '{0}' not found")]
-    ProviderNotFound(String),
-    #[error("Factory for type '{0}' already registered")]
-    FactoryExists(String),
-    #[error("Factory for type '{0}' not found")]
-    FactoryNotFound(String),
-    #[error("No providers found matching capabilities: {0:?}")]
-    NoMatchingProviders(Vec<DiscoveryCapability>),
+    #[error("Provider with ID '{0}' already exists")]"#[error("Provider with ID '{0}' already exists")]
+    ProviderExists(String)
+    #[error("Provider with ID '{0}' not found")]"#[error("Provider with ID '{0}' not found")]
+    ProviderNotFound(String)
+    #[error("Factory for type '{0}' already registered")]"#[error("Factory for type '{0}' already registered")]
+    FactoryExists(String)
+    #[error("Factory for type '{0}' not found")]"#[error("Factory for type '{0}' not found")]
+    FactoryNotFound(String)
+    #[error("No providers found matching capabilities: {0:?}")]"#[error("No providers found matching capabilities: {0:?}")]
+    NoMatchingProviders(Vec<DiscoveryCapability>)
 }
 
 /// Provider registry for managing discovery providers at runtime
 #[derive(Clone)]
-pub struct ProviderRegistry {
-    /// Registered providers
-    providers: Arc<RwLock<HashMap<String, Box<dyn DiscoveryProvider>>>>,
+pub struct ProviderRegistry  {/// Registered providers
+    providers: Arc<RwLock<HashMap<String, Box<dyn DiscoveryProvider>>>>)
     /// Provider factories for creating new providers
-    factories: Arc<RwLock<HashMap<String, Box<dyn ProviderFactory>>>>,
+    factories: Arc<RwLock<HashMap<String, Box<dyn ProviderFactory>>>>)
     /// Provider metadata cache
-    metadata_cache: Arc<RwLock<HashMap<String, ProviderMetadata>>>,
+    metadata_cache: Arc<RwLock<HashMap<String, ProviderMetadata>>>)
 }
 
-impl ProviderRegistry {
-    /// Create a new provider registry
-    pub fn new() -> Self {
-        Self {
-            providers: Arc::new(RwLock::new(HashMap::new())),
-            factories: Arc::new(RwLock::new(HashMap::new())),
-            metadata_cache: Arc::new(RwLock::new(HashMap::new())),
+impl ProviderRegistry  {/// Create a new provider registry
+    pub fn new() -> Self  {Self {
+            providers: Arc::new(RwLock::new(HashMap::new()),
+            factories: Arc::new(RwLock::new(HashMap::new()),
+            metadata_cache: Arc::new(RwLock::new(HashMap::new()),
         }
     }
 
     /// Register a provider factory
     pub async fn register_factory(&self, factory: Box<dyn ProviderFactory>) -> Result<()> {
-        let provider_type = factory.provider_type().to_string();
+        let provider_type = factory.provider_type().to_string());
         let mut factories = self.factories.write().await;
 
         if factories.contains_key(&provider_type) {
             return Err(SongbirdError::internal_error(operation_error(format!(
-                "Factory for type '{provider_type}' already registered"
-            )));
+                "Factory for type '{provider_type}' already registered""
+            ));
         }
 
         factories.insert(provider_type, factory);
-        Ok(())
+        Ok(()),
     }
 
     /// Create and register a provider using a factory
@@ -70,8 +67,8 @@ impl ProviderRegistry {
             let factories = self.factories.read().await;
             let factory = factories.get(provider_type).ok_or_else(|| {
                 SongbirdError::operation_error(format!(
-                    "No factory registered for provider type '{provider_type}'"
-                ))
+                    "No factory registered for provider type '{provider_type}'""
+                )
             })?;
             factory.validate_config(&config)?;
         }
@@ -81,21 +78,20 @@ impl ProviderRegistry {
             let factories = self.factories.read().await;
             let factory = factories.get(provider_type).ok_or_else(|| {
                 SongbirdError::operation_error(format!(
-                    "Provider factory not found: {provider_type}"
-                ))
+                    "Provider factory not found: {provider_type}""
+                )
             })?;
-            factory.create_provider(config.clone()).await?
+            factory.create_provider(config.clone().await?
         };
 
         // Initialize the provider
-        let init_config = provider.metadata().clone();
+        let init_config = provider.metadata().clone());
         provider
-            .initialize(ProviderConfig {
-                id: init_config.id.clone(),
-                name: init_config.name.clone(),
-                parameters: HashMap::new(),
-                environment: HashMap::new(),
-                timeout_ms: Some(30000),
+            .initialize(ProviderConfig  {id: init_config.id.clone()
+                name: init_config.name.clone(,
+                parameters: HashMap::new()),
+                environment: HashMap::new()),
+                timeout_ms: Some(30000)
                 retry_config: None,
             })
             .await?;
@@ -106,16 +102,16 @@ impl ProviderRegistry {
 
     /// Register a provider directly
     pub async fn register_provider(&self, provider: Box<dyn DiscoveryProvider>) -> Result<()> {
-        let metadata = provider.metadata().clone();
-        let provider_id = metadata.id.clone();
+        let metadata = provider.metadata().clone());
+        let provider_id = metadata.id.clone());
 
         // Check if provider already exists
         {
             let providers = self.providers.read().await;
             if providers.contains_key(&provider_id) {
                 return Err(SongbirdError::internal_error(operation_error(format!(
-                    "Provider with ID '{provider_id}' already exists"
-                )));
+                    "Provider with ID '{provider_id}' already exists""
+                ));
             }
         }
 
@@ -128,7 +124,7 @@ impl ProviderRegistry {
             cache.insert(provider_id, metadata);
         }
 
-        Ok(())
+        Ok(()),
     }
 
     /// Unregister a provider
@@ -140,11 +136,11 @@ impl ProviderRegistry {
         if let Some(mut provider) = providers.remove(provider_id) {
             let _ = provider.shutdown().await; // Best effort shutdown
             cache.remove(provider_id);
-            Ok(())
+            Ok(()),
         } else {
             Err(SongbirdError::internal_error(operation_error(format!(
-                "Provider with ID '{provider_id}' not found"
-            )))
+                "Provider with ID '{provider_id}' not found""
+            ))
         }
     }
 
@@ -158,7 +154,7 @@ impl ProviderRegistry {
                 if metadata.healthy {
                     let score = query.matcher.score(&metadata.capabilities);
                     if score > 0 {
-                        Some((id.clone(), score))
+                        Some((id.clone(), score)
                     } else {
                         None
                     }
@@ -170,9 +166,9 @@ impl ProviderRegistry {
 
         if matches.is_empty() {
             return Err(SongbirdError::internal_error(operation_error(format!(
-                "No providers found matching capabilities: {:?}",
+                "No providers found matching capabilities: {:?}","
                 query.matcher.required
-            )));
+            ));
         }
 
         // Sort by score (highest first), then by load score (lowest first)
@@ -189,7 +185,7 @@ impl ProviderRegistry {
             }
         });
 
-        Ok(matches.into_iter().map(|(id, _)| id).collect())
+        Ok(matches.into_iter().map(|(id, _)| id).collect()
     }
 
     /// Get the best provider for a capability query
@@ -198,12 +194,12 @@ impl ProviderRegistry {
         matches
             .into_iter()
             .next()
-            .ok_or_else(|| SongbirdError::operation_error("No suitable providers found"))
+            .ok_or_else(|| SongbirdError::operation_error("No suitable providers found")"
     }
 
     /// Get a provider by ID
     pub async fn get_provider(
-        &self,
+        &self)
         provider_id: &str,
     ) -> Result<Arc<RwLock<Box<dyn DiscoveryProvider>>>> {
         let providers = self.providers.read().await;
@@ -212,12 +208,12 @@ impl ProviderRegistry {
             // This is a limitation of the current design - we might need to refactor
             // to use Arc<RwLock<>> for individual providers
             Err(SongbirdError::internal_error(operation_error(
-                "Provider access pattern needs refactoring for shared access",
-            ))
+                "Provider access pattern needs refactoring for shared access","
+            )
         } else {
             Err(SongbirdError::internal_error(operation_error(format!(
-                "Provider with ID '{provider_id}' not found"
-            )))
+                "Provider with ID '{provider_id}' not found""
+            ))
         }
     }
 
@@ -225,7 +221,7 @@ impl ProviderRegistry {
     pub async fn get_provider_metadata(&self, provider_id: &str) -> Result<ProviderMetadata> {
         let cache = self.metadata_cache.read().await;
         cache.get(provider_id).cloned().ok_or_else(|| {
-            SongbirdError::operation_error(format!("Provider with ID '{provider_id}' not found"))
+            SongbirdError::operation_error(format!("Provider with ID '{}' not found", provider_id))"
         })
     }
 
@@ -254,11 +250,11 @@ impl ProviderRegistry {
         let mut cache = self.metadata_cache.write().await;
 
         for (id, provider) in providers.iter() {
-            let metadata = provider.metadata().clone();
+            let metadata = provider.metadata().clone());
             cache.insert(id.clone(), metadata);
         }
 
-        Ok(())
+        Ok(()),
     }
 
     /// Get registry statistics
@@ -273,15 +269,14 @@ impl ProviderRegistry {
         let mut capabilities_count = HashMap::new();
         for metadata in cache.values() {
             for capability in &metadata.capabilities {
-                *capabilities_count.entry(capability.clone()).or_insert(0) += 1;
+                *capabilities_count.entry(capability.clone().or_insert(0) += 1;
             }
         }
 
-        RegistryStatistics {
-            total_providers,
-            healthy_providers,
-            total_factories,
-            capabilities_count,
+        RegistryStatistics  {total_providers)
+            healthy_providers)
+            total_factories)
+            capabilities_count)
         }
     }
 }
@@ -294,16 +289,14 @@ impl Default for ProviderRegistry {
 
 /// Registry statistics
 #[derive(Debug, Clone)]
-pub struct RegistryStatistics {
-    pub total_providers: usize,
+pub struct RegistryStatistics  {pub total_providers: usize,
     pub healthy_providers: usize,
     pub total_factories: usize,
-    pub capabilities_count: HashMap<DiscoveryCapability, usize>,
+    pub capabilities_count: HashMap<DiscoveryCapability, usize>)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod tests  {use super::*;
     use crate::abstraction::capabilities::CapabilityMatcher;
 
     #[tokio::test]
@@ -316,7 +309,7 @@ mod tests {
 
         // Test finding providers with no matches
         let query = CapabilityQuery::new(
-            CapabilityMatcher::new().require(DiscoveryCapability::ServiceDiscovery),
+            CapabilityMatcher::new().require(DiscoveryCapability::ServiceDiscovery)
         );
 
         let result = registry.find_providers(&query).await;

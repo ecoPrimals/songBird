@@ -7,8 +7,7 @@ use std::time::Duration;
 
 /// Unified API configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ApiConfig {
-    /// Session configuration for real-time AI streaming
+pub struct ApiConfig  {/// Session configuration for real-time AI streaming
     #[serde(default)]
     pub session: SessionConfig,
 
@@ -27,8 +26,7 @@ pub struct ApiConfig {
 
 /// Session configuration (consolidated from `SessionConfiguration`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionConfig {
-    /// Maximum concurrent sessions
+pub struct SessionConfig  {/// Maximum concurrent sessions
     pub max_concurrent_sessions: usize,
 
     /// Session timeout duration
@@ -47,23 +45,20 @@ pub struct SessionConfig {
     pub cleanup_interval: Duration,
 }
 
-impl Default for SessionConfig {
-    fn default() -> Self {
-        Self {
+impl Default for SessionConfig  {fn default() -> Self  {Self {
             max_concurrent_sessions: 1000,
-            session_timeout: Duration::from_secs(300),
-            keep_alive_interval: Duration::from_secs(30),
+            session_timeout: Duration::from_secs(300,
+            keep_alive_interval: Duration::from_secs(30)
             buffer_size: 8192,
             enable_persistence: true,
-            cleanup_interval: Duration::from_secs(60),
+            cleanup_interval: Duration::from_secs(60)
         }
     }
 }
 
 /// Connection configuration (consolidated from `ConnectionConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConnectionConfig {
-    /// Maximum connections per client
+pub struct ConnectionConfig  {/// Maximum connections per client
     pub max_connections_per_client: usize,
 
     /// Connection timeout
@@ -85,24 +80,21 @@ pub struct ConnectionConfig {
     pub pool_timeout: Duration,
 }
 
-impl Default for ConnectionConfig {
-    fn default() -> Self {
-        Self {
+impl Default for ConnectionConfig  {fn default() -> Self  {Self {
             max_connections_per_client: 10,
-            connection_timeout: Duration::from_secs(30),
-            read_timeout: Duration::from_secs(60),
-            write_timeout: Duration::from_secs(60),
+            connection_timeout: Duration::from_secs(30)
+            read_timeout: Duration::from_secs(60)
+            write_timeout: Duration::from_secs(60)
             enable_pooling: true,
             pool_size: 100,
-            pool_timeout: Duration::from_secs(30),
+            pool_timeout: Duration::from_secs(30)
         }
     }
 }
 
 /// AI Mesh configuration (consolidated from `MeshConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MeshConfig {
-    /// Health monitoring configuration
+pub struct MeshConfig  {/// Health monitoring configuration
     pub health_monitoring: HealthMonitoringConfig,
 
     /// Performance analysis configuration
@@ -118,13 +110,11 @@ pub struct MeshConfig {
     pub max_nodes: usize,
 }
 
-impl Default for MeshConfig {
-    fn default() -> Self {
-        Self {
+impl Default for MeshConfig  {fn default() -> Self  {Self {
             health_monitoring: HealthMonitoringConfig::default(),
             performance_analysis: PerformanceAnalysisConfig::default(),
             enable_mesh: true,
-            discovery_interval: Duration::from_secs(30),
+            discovery_interval: Duration::from_secs(30)
             max_nodes: 100,
         }
     }
@@ -132,8 +122,7 @@ impl Default for MeshConfig {
 
 /// Health monitoring configuration (consolidated from `HealthMonitoringConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthMonitoringConfig {
-    /// Health check interval
+pub struct HealthMonitoringConfig  {/// Health check interval
     pub check_interval: Duration,
 
     /// Health check timeout
@@ -149,11 +138,9 @@ pub struct HealthMonitoringConfig {
     pub enable_detailed_metrics: bool,
 }
 
-impl Default for HealthMonitoringConfig {
-    fn default() -> Self {
-        Self {
-            check_interval: Duration::from_secs(30),
-            check_timeout: Duration::from_secs(10),
+impl Default for HealthMonitoringConfig  {fn default() -> Self  {Self {
+            check_interval: Duration::from_secs(30)
+            check_timeout: Duration::from_secs(10)
             failure_threshold: 3,
             recovery_threshold: 2,
             enable_detailed_metrics: true,
@@ -163,8 +150,7 @@ impl Default for HealthMonitoringConfig {
 
 /// Performance analysis configuration (consolidated from `PerformanceAnalysisConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceAnalysisConfig {
-    /// Enable performance monitoring
+pub struct PerformanceAnalysisConfig  {/// Enable performance monitoring
     pub enabled: bool,
 
     /// Metrics collection interval
@@ -183,23 +169,20 @@ pub struct PerformanceAnalysisConfig {
     pub latency_threshold: Duration,
 }
 
-impl Default for PerformanceAnalysisConfig {
-    fn default() -> Self {
-        Self {
+impl Default for PerformanceAnalysisConfig  {fn default() -> Self  {Self {
             enabled: true,
-            metrics_interval: Duration::from_secs(10),
-            analysis_window: Duration::from_secs(300),
+            metrics_interval: Duration::from_secs(10)
+            analysis_window: Duration::from_secs(300,
             cpu_threshold: 80.0,
             memory_threshold: 85.0,
-            latency_threshold: Duration::from_millis(100),
+            latency_threshold: Duration::from_millis(100,
         }
     }
 }
 
 /// Service registration configuration (consolidated from `ServiceRegistrationConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceRegistrationConfig {
-    /// Health check configuration
+pub struct ServiceRegistrationConfig  {/// Health check configuration
     pub health_check: HealthCheckConfiguration,
 
     /// Circuit breaker configuration
@@ -215,22 +198,19 @@ pub struct ServiceRegistrationConfig {
     pub registration_timeout: Duration,
 }
 
-impl Default for ServiceRegistrationConfig {
-    fn default() -> Self {
-        Self {
+impl Default for ServiceRegistrationConfig  {fn default() -> Self  {Self {
             health_check: HealthCheckConfiguration::default(),
             circuit_breaker: CircuitBreakerConfig::default(),
             monitoring: MonitoringConfiguration::default(),
             auto_registration: true,
-            registration_timeout: Duration::from_secs(30),
+            registration_timeout: Duration::from_secs(30)
         }
     }
 }
 
 /// Health check configuration (consolidated from `HealthCheckConfiguration`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfiguration {
-    /// Health check endpoint path
+pub struct HealthCheckConfiguration  {/// Health check endpoint path
     pub endpoint: String,
 
     /// Check interval
@@ -246,12 +226,10 @@ pub struct HealthCheckConfiguration {
     pub failure_threshold: u32,
 }
 
-impl Default for HealthCheckConfiguration {
-    fn default() -> Self {
-        Self {
+impl Default for HealthCheckConfiguration  {fn default() -> Self  {Self {
             endpoint: "/health".to_string(),
-            interval: Duration::from_secs(30),
-            timeout: Duration::from_secs(10),
+            interval: Duration::from_secs(30)
+            timeout: Duration::from_secs(10)
             enabled: true,
             failure_threshold: 3,
         }
@@ -260,8 +238,7 @@ impl Default for HealthCheckConfiguration {
 
 /// Circuit breaker configuration (consolidated from `CircuitBreakerConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    /// Failure threshold to open circuit
+pub struct CircuitBreakerConfig  {/// Failure threshold to open circuit
     pub failure_threshold: u32,
 
     /// Timeout before attempting recovery
@@ -274,12 +251,10 @@ pub struct CircuitBreakerConfig {
     pub enabled: bool,
 }
 
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
+impl Default for CircuitBreakerConfig  {fn default() -> Self  {Self {
             failure_threshold: 5,
-            timeout: Duration::from_secs(60),
-            recovery_timeout: Duration::from_secs(30),
+            timeout: Duration::from_secs(60)
+            recovery_timeout: Duration::from_secs(30)
             enabled: true,
         }
     }
@@ -287,8 +262,7 @@ impl Default for CircuitBreakerConfig {
 
 /// Monitoring configuration (consolidated from `MonitoringConfiguration`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MonitoringConfiguration {
-    /// Enable monitoring
+pub struct MonitoringConfiguration  {/// Enable monitoring
     pub enabled: bool,
 
     /// Metrics collection interval
@@ -301,11 +275,9 @@ pub struct MonitoringConfiguration {
     pub enable_tracing: bool,
 }
 
-impl Default for MonitoringConfiguration {
-    fn default() -> Self {
-        Self {
+impl Default for MonitoringConfiguration  {fn default() -> Self  {Self {
             enabled: true,
-            metrics_interval: Duration::from_secs(60),
+            metrics_interval: Duration::from_secs(60)
             log_level: "info".to_string(),
             enable_tracing: true,
         }

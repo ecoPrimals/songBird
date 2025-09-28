@@ -6,21 +6,18 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
-use songbird_errors::{SongbirdError, SongbirdResult}; type Result<T> = SongbirdResult<T>;
+use songbird_types::{SongbirdError, SongbirdResult}; type Result<T> = SongbirdResult<T>;
 use super::ZeroTouchConfig;
 
 /// Configuration generator for zero-touch deployment
-pub struct ConfigGenerator {
-    templates: HashMap<String, ConfigTemplate>,
-    environment_overrides: HashMap<String, String>,
+pub struct ConfigGenerator  {templates: HashMap<String, ConfigTemplate>)
+    environment_overrides: HashMap<String, String>)
 }
 
-impl ConfigGenerator {
-    /// Create a new configuration generator
-    pub fn new() -> Self {
-        let mut generator = Self {
-            templates: HashMap::new(),
-            environment_overrides: HashMap::new(),
+impl ConfigGenerator  {/// Create a new configuration generator
+    pub fn new() -> Self  {let mut generator = Self {
+            templates: HashMap::new()),
+            environment_overrides: HashMap::new()),
         };
         generator.load_default_templates();
         generator
@@ -28,17 +25,15 @@ impl ConfigGenerator {
 
     /// Generate configuration based on environment discovery
     pub fn generate_config(
-        &self,
+        &self)
         environment: &str,
         resources: &ResourceRequirements,
-    ) -> Result<ZeroTouchConfig> {
-        let template = self.templates.get(environment)
-            .ok_or_else(|| SongbirdError::Configuration {
-                message: format!("No template found for environment: {environment}"),
-            })?;
+    ) -> Result<ZeroTouchConfig>  {let template = self.templates.get(environment)
+            .ok_or_else(|| SongbirdError::Configuration  {)
+                current_value: None,
+                expected_format: None})?;
 
-        let config = ZeroTouchConfig {
-            auto_discovery: template.auto_discovery,
+        let config = ZeroTouchConfig  {auto_discovery: template.auto_discovery)
             auto_configure: template.auto_configure,
             auto_deploy: template.auto_deploy,
             target_environment: environment.to_string(),
@@ -51,71 +46,69 @@ impl ConfigGenerator {
     }
 
     /// Load default configuration templates
-    fn load_default_templates(&mut self) {
-        // Development template
-        self.templates.insert("development".to_string(), ConfigTemplate {
+    fn load_default_templates(&mut self)  {// Development template
+        self.templates.insert("development".to_string(), ConfigTemplate  {"
             auto_discovery: true,
             auto_configure: true,
             auto_deploy: false,
             deployment_timeout: 300,
             rollback_on_failure: true,
-            resource_requirements: ResourceRequirements::minimal(),
-            network_config: NetworkTemplate::development(),
-            security_config: SecurityTemplate::development(),
+            resource_requirements: ResourceRequirements::minimal(,
+            network_config: NetworkTemplate::development(,
+            security_config: SecurityTemplate::development(,
         });
 
         // Production template
-        self.templates.insert("production".to_string(), ConfigTemplate {
+        self.templates.insert("production".to_string(), ConfigTemplate  {"
             auto_discovery: true,
             auto_configure: true,
             auto_deploy: true,
             deployment_timeout: 600,
             rollback_on_failure: true,
-            resource_requirements: ResourceRequirements::production(),
-            network_config: NetworkTemplate::production(),
-            security_config: SecurityTemplate::production(),
+            resource_requirements: ResourceRequirements::production(,
+            network_config: NetworkTemplate::production(,
+            security_config: SecurityTemplate::production(,
         });
 
         // Testing template
-        self.templates.insert("testing".to_string(), ConfigTemplate {
+        self.templates.insert("testing".to_string(), ConfigTemplate  {"
             auto_discovery: true,
             auto_configure: true,
             auto_deploy: true,
             deployment_timeout: 180,
             rollback_on_failure: false,
-            resource_requirements: ResourceRequirements::minimal(),
-            network_config: NetworkTemplate::testing(),
-            security_config: SecurityTemplate::testing(),
+            resource_requirements: ResourceRequirements::minimal(,
+            network_config: NetworkTemplate::testing(,
+            security_config: SecurityTemplate::testing(,
         });
     }
 
     /// Generate configuration templates based on resource requirements
-    fn generate_config_templates(&self, resources: &ResourceRequirements) -> Result<HashMap<String, PathBuf>> {
-        let mut templates = HashMap::new();
+    fn generate_config_templates(&self, resources: &ResourceRequirements) -> Result<HashMap<String, PathBuf>>  {let mut templates = HashMap::new();
 
         // Generate service configuration
         templates.insert(
-            "service".to_string(),
-            PathBuf::from("config/service.yaml")
+            "service".to_string()),
+            PathBuf::from("config/service.yaml")"
         );
 
         // Generate network configuration
         templates.insert(
-            "network".to_string(),
-            PathBuf::from("config/network.yaml")
+            "network".to_string()),
+            PathBuf::from("config/network.yaml")"
         );
 
         // Generate security configuration
         templates.insert(
-            "security".to_string(),
-            PathBuf::from("config/security.yaml")
+            "security".to_string()),
+            PathBuf::from("config/security.yaml")"
         );
 
         // Generate monitoring configuration if resources allow
         if resources.memory_mb >= 2048 {
             templates.insert(
-                "monitoring".to_string(),
-                PathBuf::from("config/monitoring.yaml")
+                "monitoring".to_string()),
+                PathBuf::from("config/monitoring.yaml")"
             );
         }
 
@@ -129,14 +122,13 @@ impl ConfigGenerator {
 
     /// Get available templates
     pub fn get_available_templates(&self) -> Vec<&str> {
-        self.templates.keys().map(|s| s.as_str()).collect()
+        self.templates.keys().map(|s| s.as_str().collect()
     }
 }
 
 /// Configuration template for different environments
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigTemplate {
-    pub auto_discovery: bool,
+pub struct ConfigTemplate  {pub auto_discovery: bool,
     pub auto_configure: bool,
     pub auto_deploy: bool,
     pub deployment_timeout: u64,
@@ -148,17 +140,14 @@ pub struct ConfigTemplate {
 
 /// Resource requirements for deployment
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceRequirements {
-    pub cpu_cores: u32,
+pub struct ResourceRequirements  {pub cpu_cores: u32,
     pub memory_mb: u32,
     pub storage_gb: u32,
     pub network_bandwidth_mbps: u32,
 }
 
-impl ResourceRequirements {
-    /// Minimal resource requirements
-    pub fn minimal() -> Self {
-        Self {
+impl ResourceRequirements  {/// Minimal resource requirements
+    pub fn minimal() -> Self  {Self {
             cpu_cores: 1,
             memory_mb: 512,
             storage_gb: 10,
@@ -167,9 +156,7 @@ impl ResourceRequirements {
     }
 
     /// Production resource requirements
-    pub fn production() -> Self {
-        Self {
-            cpu_cores: 4,
+    pub fn production() -> Self  {Self {cpu_cores: 4)
             memory_mb: 4096,
             storage_gb: 100,
             network_bandwidth_mbps: 1000,
@@ -187,8 +174,7 @@ impl ResourceRequirements {
 
 /// Network configuration template
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkTemplate {
-    pub bind_address: String,
+pub struct NetworkTemplate  {pub bind_address: String,
     pub bind_port: u16,
     pub enable_ssl: bool,
     pub enable_proxy: bool,
@@ -196,13 +182,11 @@ pub struct NetworkTemplate {
     pub timeout_seconds: u32,
 }
 
-impl NetworkTemplate {
-    /// Development network template
-    pub fn development() -> Self {
-        let env_config = crate::config::environment::EnvironmentConfig::default();
+impl NetworkTemplate  {/// Development network template
+    pub fn development() -> Self  {let env_config = crate::config::environment::EnvironmentConfig::default();
         
         Self {
-            bind_address: env_config.bind_address.clone(),
+            bind_address: env_config.bind_address.clone(,
             bind_port: env_config.bind_port,
             enable_ssl: env_config.require_tls,
             enable_proxy: false, // Development default
@@ -212,11 +196,9 @@ impl NetworkTemplate {
     }
 
     /// Production network template
-    pub fn production() -> Self {
-        let env_config = crate::config::environment::EnvironmentConfig::default();
+    pub fn production() -> Self  {let env_config = crate::config::environment::EnvironmentConfig::default();
         
-        Self {
-            bind_address: env_config.bind_address.clone(),
+        Self  {bind_address: env_config.bind_address.clone()
             bind_port: 443,
             enable_ssl: true,
             enable_proxy: true,
@@ -226,9 +208,7 @@ impl NetworkTemplate {
     }
 
     /// Testing network template
-    pub fn testing() -> Self {
-        Self {
-            bind_address: "crate::config::constants::default_bind_address()".to_string(),
+    pub fn testing() -> Self  {Self {bind_address: "crate::config::constants::default_bind_address()".to_string()),
             bind_port: 8081,
             enable_ssl: false,
             enable_proxy: false,
@@ -240,8 +220,7 @@ impl NetworkTemplate {
 
 /// Security configuration template
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityTemplate {
-    pub enable_authentication: bool,
+pub struct SecurityTemplate  {pub enable_authentication: bool,
     pub enable_authorization: bool,
     pub enable_encryption: bool,
     pub enable_audit_logging: bool,
@@ -249,39 +228,33 @@ pub struct SecurityTemplate {
     pub session_timeout_minutes: u32,
 }
 
-impl SecurityTemplate {
-    /// Development security template
-    pub fn development() -> Self {
-        Self {
+impl SecurityTemplate  {/// Development security template
+    pub fn development() -> Self  {Self {
             enable_authentication: false,
             enable_authorization: false,
             enable_encryption: false,
             enable_audit_logging: false,
-            password_policy: PasswordPolicy::lenient(),
+            password_policy: PasswordPolicy::lenient(,
             session_timeout_minutes: 480, // 8 hours
         }
     }
 
     /// Production security template
-    pub fn production() -> Self {
-        Self {
-            enable_authentication: true,
+    pub fn production() -> Self  {Self {enable_authentication: true)
             enable_authorization: true,
             enable_encryption: true,
             enable_audit_logging: true,
-            password_policy: PasswordPolicy::strict(),
+            password_policy: PasswordPolicy::strict(,
             session_timeout_minutes: 60, // 1 hour
         }
     }
 
     /// Testing security template
-    pub fn testing() -> Self {
-        Self {
-            enable_authentication: false,
+    pub fn testing() -> Self  {Self {enable_authentication: false)
             enable_authorization: false,
             enable_encryption: false,
             enable_audit_logging: true,
-            password_policy: PasswordPolicy::lenient(),
+            password_policy: PasswordPolicy::lenient(,
             session_timeout_minutes: 30,
         }
     }
@@ -289,8 +262,7 @@ impl SecurityTemplate {
 
 /// Password policy configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PasswordPolicy {
-    pub min_length: u32,
+pub struct PasswordPolicy  {pub min_length: u32,
     pub require_uppercase: bool,
     pub require_lowercase: bool,
     pub require_numbers: bool,
@@ -298,10 +270,8 @@ pub struct PasswordPolicy {
     pub max_age_days: u32,
 }
 
-impl PasswordPolicy {
-    /// Lenient password policy for development
-    pub fn lenient() -> Self {
-        Self {
+impl PasswordPolicy  {/// Lenient password policy for development
+    pub fn lenient() -> Self  {Self {
             min_length: 4,
             require_uppercase: false,
             require_lowercase: false,
@@ -312,9 +282,7 @@ impl PasswordPolicy {
     }
 
     /// Strict password policy for production
-    pub fn strict() -> Self {
-        Self {
-            min_length: 12,
+    pub fn strict() -> Self  {Self {min_length: 12)
             require_uppercase: true,
             require_lowercase: true,
             require_numbers: true,
@@ -327,64 +295,58 @@ impl PasswordPolicy {
 /// Configuration validator
 pub struct ConfigValidator;
 
-impl ConfigValidator {
-    /// Validate a zero-touch configuration
-    pub fn validate(config: &ZeroTouchConfig) -> Result<()> {
-        if config.deployment_timeout == 0 {
+impl ConfigValidator  {/// Validate a zero-touch configuration
+    pub fn validate(config: &ZeroTouchConfig) -> Result<()>  {if config.deployment_timeout == 0 {
             return Err(SongbirdError::Configuration {
-                message: "Deployment timeout cannot be zero".to_string(),
-            });
-        }
+        message: format!("Configuration error",
+        field: "unknown".to_string(),
+        current_value: None,
+        expected_format: None,
+        suggestion: None,
+    }
 
-        if config.target_environment.is_empty() {
-            return Err(SongbirdError::Configuration {
-                message: "Target environment cannot be empty".to_string(),
-            });
-        }
+        if config.target_environment.is_empty()  {return Err(SongbirdError::Configuration  {)
+                current_value: None,
+                expected_format: None}
 
-        Ok(())
+        Ok(()),
     }
 
     /// Validate resource requirements
-    pub fn validate_resources(requirements: &ResourceRequirements) -> Result<()> {
-        if requirements.cpu_cores == 0 {
-            return Err(SongbirdError::Configuration {
-                message: "CPU cores cannot be zero".to_string(),
-            });
-        }
+    pub fn validate_resources(requirements: &ResourceRequirements) -> Result<()>  {if requirements.cpu_cores == 0  {return Err(SongbirdError::Configuration {
+        message: format!("Configuration error",
+        field: "unknown".to_string(),
+        current_value: None,
+        expected_format: None,
+        suggestion: None,
+    }
 
-        if requirements.memory_mb == 0 {
-            return Err(SongbirdError::Configuration {
-                message: "Memory cannot be zero".to_string(),
-            });
-        }
+        if requirements.memory_mb == 0  {return Err(SongbirdError::Configuration  {)
+                current_value: None,
+                expected_format: None}
 
-        if requirements.storage_gb == 0 {
-            return Err(SongbirdError::Configuration {
-                message: "Storage cannot be zero".to_string(),
-            });
-        }
+        if requirements.storage_gb == 0  {return Err(SongbirdError::Configuration  {)
+                current_value: None,
+                expected_format: None}
 
-        Ok(())
+        Ok(()),
     }
 }
 
-impl Default for ZeroTouchConfig {
-    fn default() -> Self {
-        let env_config = crate::config::environment::EnvironmentConfig::default();
+impl Default for ZeroTouchConfig  {fn default() -> Self  {let env_config = crate::config::environment::EnvironmentConfig::default();
         
         Self {
             enabled: false,
             // Use environment configuration - NO MORE HARDCODING!
             bind_port: env_config.bind_port,
-            bind_address: env_config.bind_address.clone(),
+            bind_address: env_config.bind_address.clone(,
             auto_discovery: false,
             auto_configure: false,
             auto_deploy: false,
             target_environment: "".to_string(),
             deployment_timeout: 0,
             rollback_on_failure: false,
-            config_templates: HashMap::new(),
+            config_templates: HashMap::new()),
         }
     }
 }
@@ -398,9 +360,9 @@ mod tests {
         let generator = ConfigGenerator::new();
         let templates = generator.get_available_templates();
         
-        assert!(templates.contains(&"development"));
-        assert!(templates.contains(&"production"));
-        assert!(templates.contains(&"testing"));
+        assert!(templates.contains(&"development");"
+        assert!(templates.contains(&"production");"
+        assert!(templates.contains(&"testing");"
     }
 
     #[test]
@@ -432,7 +394,7 @@ mod tests {
     fn test_network_template_development() {
         let template = NetworkTemplate::development();
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        assert_eq!(template.bind_address, env_config.bind_address);
+        assert_eq!(template.bind_address, env_config.bind_address,;
         assert_eq!(template.bind_port, env_config.bind_port);
     }
 
@@ -440,72 +402,72 @@ mod tests {
     fn test_network_template_production() {
         let template = NetworkTemplate::production();
         let env_config = crate::config::environment::EnvironmentConfig::default();
-        assert_eq!(template.bind_address, env_config.bind_address);
+        assert_eq!(template.bind_address, env_config.bind_address,;
         assert_eq!(template.bind_port, 443);
-        assert!(template.enable_ssl);
+        assert!(template.enable_ssl));
     }
 
     #[test]
     fn test_security_template_development() {
         let template = SecurityTemplate::development();
-        assert!(!template.enable_authentication);
-        assert!(!template.enable_authorization);
-        assert!(!template.enable_encryption);
+        assert!(!template.enable_authentication));
+        assert!(!template.enable_authorization));
+        assert!(!template.enable_encryption));
     }
 
     #[test]
     fn test_security_template_production() {
         let template = SecurityTemplate::production();
-        assert!(template.enable_authentication);
-        assert!(template.enable_authorization);
-        assert!(template.enable_encryption);
+        assert!(template.enable_authentication));
+        assert!(template.enable_authorization));
+        assert!(template.enable_encryption));
     }
 
     #[test]
     fn test_password_policy_lenient() {
         let policy = PasswordPolicy::lenient();
         assert_eq!(policy.min_length, 4);
-        assert!(!policy.require_uppercase);
-        assert!(!policy.require_numbers);
+        assert!(!policy.require_uppercase));
+        assert!(!policy.require_numbers));
     }
 
     #[test]
     fn test_password_policy_strict() {
         let policy = PasswordPolicy::strict();
         assert_eq!(policy.min_length, 12);
-        assert!(policy.require_uppercase);
-        assert!(policy.require_numbers);
-        assert!(policy.require_special_chars);
+        assert!(policy.require_uppercase));
+        assert!(policy.require_numbers));
+        assert!(policy.require_special_chars));
     }
 
     #[test]
     fn test_config_validation() {
         let mut config = ZeroTouchConfig::default();
-        assert!(ConfigValidator::validate(&config).is_ok());
+        assert!(ConfigValidator::validate(&config).is_ok();
 
         config.deployment_timeout = 0;
-        assert!(ConfigValidator::validate(&config).is_err());
+        assert!(ConfigValidator::validate(&config).is_err();
 
         config.deployment_timeout = 300;
-        config.target_environment = "".to_string();
-        assert!(ConfigValidator::validate(&config).is_err());
+        config.target_environment = "".to_string();"
+        assert!(ConfigValidator::validate(&config).is_err();
     }
 
     #[test]
     fn test_resource_validation() {
         let mut resources = ResourceRequirements::minimal();
-        assert!(ConfigValidator::validate_resources(&resources).is_ok());
+        assert!(ConfigValidator::validate_resources(&resources).is_ok();
 
         resources.cpu_cores = 0;
-        assert!(ConfigValidator::validate_resources(&resources).is_err());
+        assert!(ConfigValidator::validate_resources(&resources).is_err();
 
         resources.cpu_cores = 1;
         resources.memory_mb = 0;
-        assert!(ConfigValidator::validate_resources(&resources).is_err());
+        assert!(ConfigValidator::validate_resources(&resources).is_err();
 
         resources.memory_mb = 512;
         resources.storage_gb = 0;
-        assert!(ConfigValidator::validate_resources(&resources).is_err());
+        assert!(ConfigValidator::validate_resources(&resources).is_err();
     }
 
     #[test]
@@ -513,10 +475,10 @@ mod tests {
         let generator = ConfigGenerator::new();
         let resources = ResourceRequirements::minimal();
         
-        let config = generator.generate_config("development", &resources).unwrap();
-        assert_eq!(config.target_environment, "development");
-        assert!(config.auto_discovery);
-        assert!(config.auto_configure);
+        let config = generator.generate_config("development", &resources).unwrap();"
+        assert_eq!(config.target_environment, "development");"
+        assert!(config.auto_discovery));
+        assert!(config.auto_configure));
         assert!(!config.auto_deploy); // Development default
     }
 } 

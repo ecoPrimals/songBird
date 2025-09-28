@@ -6,7 +6,7 @@ use crate::traits::service::ServiceInfo;
 use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
-use songbird_errors::SongbirdResult;
+use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -25,12 +25,12 @@ pub trait ServiceDiscovery: Send + Sync {
 
     /// Discover services matching the given query (alias for compatibility)
     async fn discover_services(&self, query: &ServiceQuery) -> Result<Vec<ServiceInfo>> {
-        self.discover(query.clone()).await
+        self.discover(query.clone().await
     }
 
     /// Watch for changes to services matching the query
     async fn watch(
-        &self,
+        &self)
         query: ServiceQuery,
     ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>>;
 
@@ -40,17 +40,17 @@ pub trait ServiceDiscovery: Send + Sync {
     /// List all registered services
     async fn list_all(&self) -> Result<Vec<ServiceInfo>>;
 
-    /// Check if a service exists (legacy name)
+    /// Check if a service exists (legacy name,
     async fn exists(&self, service_id: &str) -> Result<bool>;
 
-    /// Check if a service is registered (preferred name)
+    /// Check if a service is registered (preferred name,
     async fn is_registered(&self, service_id: &str) -> Result<bool>;
 
     /// Bulk update service metadata
     async fn update_metadata(
-        &self,
+        &self)
         service_id: &str,
-        metadata: HashMap<String, String>,
+        metadata: HashMap<String, String>)
     ) -> Result<()>;
 
     /// Downcast support for accessing concrete implementations
@@ -59,8 +59,7 @@ pub trait ServiceDiscovery: Send + Sync {
 
 /// Query parameters for service discovery
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ServiceQuery {
-    /// Service name pattern (supports wildcards)
+pub struct ServiceQuery  {/// Service name pattern (supports wildcards)
     pub name: Option<String>,
     /// Service ID filter (for exact service lookup)
     pub service_id: Option<String>,
@@ -71,7 +70,7 @@ pub struct ServiceQuery {
     /// Tags that must be present
     pub tags: Vec<String>,
     /// Metadata filters
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: HashMap<String, serde_json::Value>)
     /// Health status filter
     pub health_status: Option<HealthStatus>,
     /// Maximum number of results
@@ -80,16 +79,14 @@ pub struct ServiceQuery {
     pub sort_by: Option<SortBy>,
 }
 
-impl ServiceQuery {
-    /// Create a new service query
+impl ServiceQuery  {/// Create a new service query
     #[must_use]
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Self  {Self {
             service_id: None,
             service_type: None,
             version: None,
             tags: Vec::new(),
-            metadata: HashMap::new(),
+            metadata: HashMap::new()),
             health_status: None,
             limit: None,
             sort_by: None,
@@ -156,8 +153,7 @@ impl ServiceQuery {
 
 /// Service health status
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ServiceHealthStatus {
-    Healthy,
+pub enum ServiceHealthStatus  {Healthy)
     Degraded,
     Unhealthy,
     Unknown,
@@ -165,33 +161,26 @@ pub enum ServiceHealthStatus {
 
 /// Service discovery event
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ServiceEvent {
-    ServiceRegistered {
+pub enum ServiceEvent  {ServiceRegistered {
         service: Box<ServiceInfo>,
-    },
-    ServiceUnregistered {
-        service_id: String,
-    },
-    ServiceHealthChanged {
-        service_id: String,
+    })
+    ServiceUnregistered  {service_id: String,
+    })
+    ServiceHealthChanged  {service_id: String,
         health: ServiceHealthStatus,
-    },
-    ServiceMetadataUpdated {
-        service_id: String,
-    },
-    NodeJoined {
-        node_id: String,
-    },
-    NodeHealthChanged {
-        node_id: String,
+    })
+    ServiceMetadataUpdated  {service_id: String,
+    })
+    NodeJoined  {node_id: String,
+    })
+    NodeHealthChanged  {node_id: String,
         health: ServiceHealthStatus,
-    },
+    })
 }
 
 /// Health status for service discovery
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum HealthStatus {
-    Healthy,
+pub enum HealthStatus  {Healthy)
     Degraded,
     Unhealthy,
     Unknown,
@@ -199,8 +188,7 @@ pub enum HealthStatus {
 
 /// Sort order for discovery results
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum SortBy {
-    Name,
+pub enum SortBy  {Name)
     CreatedAt,
     LastSeen,
     Health,
@@ -208,24 +196,21 @@ pub enum SortBy {
 
 /// Service registration information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceRegistration {
-    pub service_info: ServiceInfo,
+pub struct ServiceRegistration  {pub service_info: ServiceInfo,
     pub ttl: Option<std::time::Duration>,
     pub health_check_interval: Option<std::time::Duration>,
     pub tags: Vec<String>,
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, String>)
 }
 
-impl ServiceRegistration {
-    /// Create a new service registration
+impl ServiceRegistration  {/// Create a new service registration
     #[must_use]
-    pub fn new(service_info: ServiceInfo) -> Self {
-        Self {
-            service_info,
+    pub fn new(service_info: ServiceInfo) -> Self  {Self {
+            service_info)
             ttl: None,
             health_check_interval: None,
             tags: Vec::new(),
-            metadata: HashMap::new(),
+            metadata: HashMap::new()),
         }
     }
 
@@ -246,8 +231,7 @@ impl ServiceRegistration {
 
 /// Discovery backend configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveryConfig {
-    pub backend: DiscoveryBackend,
+pub struct DiscoveryConfig  {pub backend: DiscoveryBackend,
     pub health_check_interval: std::time::Duration,
     pub connection_timeout: std::time::Duration,
     pub retry_attempts: u32,
@@ -255,37 +239,31 @@ pub struct DiscoveryConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum DiscoveryBackend {
-    /// Songbird native discovery service
-    Songbird {
-        federation_enabled: bool,
+pub enum DiscoveryBackend  {/// Songbird native discovery service
+    Songbird  {federation_enabled: bool)
         trust_verification: bool,
         attribution_tracking: bool,
-    },
+    })
     /// Static configuration discovery
     Static,
     /// etcd-based discovery
-    Etcd {
-        endpoints: Vec<String>,
+    Etcd  {endpoints: Vec<String>)
         username: Option<String>,
         password: Option<String>,
-    },
+    })
     /// Kubernetes service discovery
-    Kubernetes {
-        namespace: Option<String>,
+    Kubernetes  {namespace: Option<String>)
         in_cluster: bool,
         kubeconfig_path: Option<String>,
-    },
+    })
 }
 
-impl Default for DiscoveryConfig {
-    fn default() -> Self {
-        Self {
+impl Default for DiscoveryConfig  {fn default() -> Self  {Self {
             backend: DiscoveryBackend::Static,
-            health_check_interval: std::time::Duration::from_secs(30),
-            connection_timeout: std::time::Duration::from_secs(10),
+            health_check_interval: std::time::Duration::from_secs(30)
+            connection_timeout: std::time::Duration::from_secs(10)
             retry_attempts: 3,
-            retry_delay: std::time::Duration::from_secs(1),
+            retry_delay: std::time::Duration::from_secs(1,
         }
     }
 }

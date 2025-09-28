@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Tests for Orchestrator Module
 
 use songbird_config::SongbirdConfig;
@@ -184,7 +185,7 @@ async fn test_orchestrator_different_configs() {
             network: songbird_config::config::NetworkConfig {
                 bind_address: "0.0.0.0".parse::<IpAddr>()
     .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
-                orchestrator_port: 8080,
+                orchestrator_port: config.network.http_port,
                 ..Default::default()
             },
             ..Default::default()
@@ -193,7 +194,7 @@ async fn test_orchestrator_different_configs() {
             network: songbird_config::config::NetworkConfig {
                 bind_address: &get_bind_address().parse::<IpAddr>()
     .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
-                orchestrator_port: 3000,
+                orchestrator_port: config.dashboard.port,
                 ..Default::default()
             },
             ..Default::default()
@@ -338,7 +339,7 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
         network: songbird_config::config::NetworkConfig {
             bind_address: "0.0.0.0".parse::<IpAddr>()
     .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
-            orchestrator_port: 8080,
+            orchestrator_port: config.network.http_port,
             ..Default::default()
         },
         ..Default::default()
@@ -351,7 +352,7 @@ async fn test_orchestrator_stress_configuration() -> Result<()> {
         network: songbird_config::config::NetworkConfig {
             bind_address: &get_bind_address().parse::<IpAddr>()
     .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
-            orchestrator_port: 3000,
+            orchestrator_port: config.dashboard.port,
             ..Default::default()
         },
         ..Default::default()

@@ -25,7 +25,7 @@ pub use fixtures::*;
 pub use integration::IntegrationTestContext;
 pub use network_mocks::NetworkMockManager;
 pub use performance_testing::PerformanceTestFramework;
-pub use songbird_errors::SongbirdError;
+pub use songbird_types::SongbirdError;
 
 // Re-export helper modules
 pub use async_helpers::*;

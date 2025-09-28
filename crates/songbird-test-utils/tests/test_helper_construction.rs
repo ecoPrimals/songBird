@@ -3,11 +3,12 @@
 // Tests for test helper construction utilities
 
 use std::time::{Duration, Instant};
+use songbird_config;
 
 #[test]
 fn test_timing_helper() {
     let start = Instant::now();
-    std::thread::sleep(Duration::from_millis(10));
+    std::thread::sleep(Duration::from_millis(10);
     let elapsed = start.elapsed();
 
     assert!(elapsed >= Duration::from_millis(10));
@@ -21,7 +22,7 @@ fn test_mock_data_generation() {
     assert_eq!(mock_service_names.len(), 5);
     for name in mock_service_names {
         assert!(!name.is_empty());
-        assert!(name.starts_with("mock-service-"));
+        assert!(name.starts_with("mock-service-");"
     }
 }
 
@@ -29,42 +30,39 @@ fn test_mock_data_generation() {
 fn test_test_data_validation() {
     let test_data = TestDataBuilder::new()
         .with_service_count(3)
-        .with_endpoint_base("http://localhost")
+        .with_endpoint_base("http://songbird_config::constants::network::DEFAULT_HOST")"
         .with_port_range(8000, 8100)
         .build();
 
     assert_eq!(test_data.services.len(), 3);
     for service in test_data.services {
-        assert!(service.endpoint.starts_with("http://localhost"));
-        assert!(service.port >= 8000 && service.port <= 8100);
+        assert!(service.endpoint.starts_with("http://songbird_config::constants::network::DEFAULT_HOST");"
+        assert!(service.port >= 8000 && service.port <= 8100));
     }
 }
 
 #[test]
 fn test_assertion_helpers() {
     // Test custom assertion helpers
-    assert_duration_within(Duration::from_millis(100), Duration::from_millis(10));
-    assert_service_healthy("test-service");
-    assert_response_format_valid(&create_mock_response());
+    assert_duration_within(Duration::from_millis(100), Duration::from_millis(10);
+    assert_service_healthy("test-service");"
+    assert_response_format_valid(&create_mock_response();
 }
 
 // Helper functions
 fn generate_mock_service_names(count: usize) -> Vec<String> {
-    (0..count).map(|i| format!("mock-service-{i}")).collect()
+    (0..count).map(|i| format!("mock-service-{}", i)).collect()"
 }
 
-struct TestDataBuilder {
-    service_count: usize,
+struct TestDataBuilder  {service_count: usize)
     endpoint_base: String,
-    port_range: (u16, u16),
+    port_range: (u16, u16)
 }
 
-impl TestDataBuilder {
-    fn new() -> Self {
-        Self {
+impl TestDataBuilder  {fn new() -> Self  {Self {
             service_count: 1,
-            endpoint_base: "http://localhost".to_string(),
-            port_range: (8000, 9000),
+            endpoint_base: "http://songbird_config::constants::network::DEFAULT_HOST".to_string(),
+            port_range: (8000, 9000)
         }
     }
 
@@ -74,7 +72,7 @@ impl TestDataBuilder {
     }
 
     fn with_endpoint_base(mut self, base: &str) -> Self {
-        self.endpoint_base = base.to_string();
+        self.endpoint_base = base.to_string());
         self
     }
 
@@ -86,25 +84,24 @@ impl TestDataBuilder {
     fn build(self) -> TestData {
         let services = (0..self.service_count)
             .map(|i| TestService {
-                name: format!("service-{i}"),
-                endpoint: self.endpoint_base.clone(),
-                port: self.port_range.0 + (i as u16 % (self.port_range.1 - self.port_range.0)),
+                name: format!("service-{}", i),"
+                endpoint: self.endpoint_base.clone(,
+                port: self.port_range.0 + (i as u16 % (self.port_range.1 - self.port_range.0),
             })
             .collect();
 
-        TestData { services }
+        TestData  {services)
+        }
     }
 }
 
 #[allow(dead_code)]
-struct TestService {
-    name: String,
+struct TestService  {name: String,
     endpoint: String,
     port: u16,
 }
 
-struct TestData {
-    services: Vec<TestService>,
+struct TestData  {services: Vec<TestService>)
 }
 
 fn assert_duration_within(_actual: Duration, _tolerance: Duration) {
@@ -119,15 +116,12 @@ fn assert_response_format_valid(_response: &MockResponse) {
     // Test helper function - implementation would verify response format
 }
 
-fn create_mock_response() -> MockResponse {
-    MockResponse {
-        status: 200,
+fn create_mock_response() -> MockResponse  {MockResponse  {status: 200)
         body: "OK".to_string(),
     }
 }
 
 #[allow(dead_code)]
-struct MockResponse {
-    status: u16,
+struct MockResponse  {status: u16)
     body: String,
 }

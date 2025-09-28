@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Configuration Tests for Songbird Orchestrator
 //!
 //! This test suite covers configuration management, validation, serialization,
@@ -85,14 +86,14 @@ async fn test_network_config_creation() -> Result<()> {
     let network_config = NetworkConfig {
         bind_address: &get_bind_address().parse::<IpAddr>()
     .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
-        orchestrator_port: 8080,
+        orchestrator_port: config.network.http_port,
         discovery_port: 8001,
         health_port: 8002,
         dashboard_port: 8003,
         ..Default::default()
     };
 
-    assert_eq!(network_config.orchestrator_port, 8080);
+    assert_eq!(network_config.orchestrator_port, config.network.http_port);
     assert_eq!(
         network_config.bind_address,
         &get_bind_address().parse::<IpAddr>()
@@ -126,7 +127,7 @@ fn test_security_config_creation() -> Result<()> {
         cert_path: Some("/path/to/cert.pem".to_string()),
         key_path: Some("/path/to/key.pem".to_string()),
         ca_path: Some("/path/to/ca.pem".to_string()),
-        jwt_secret: Some("secret-key".to_string()),
+        jwt_secret: Some(config.security.jwt_secret.to_string()),
     };
 
     assert!(security_config.encryption_enabled);
@@ -145,7 +146,7 @@ async fn test_config_validation() -> Result<()> {
         network: NetworkConfig {
             bind_address: &get_bind_address().parse::<IpAddr>()
     .map_err(|e| SongbirdError::network_error(&format!("Invalid IP address: {}", e)))?,
-            orchestrator_port: 8080,
+            orchestrator_port: config.network.http_port,
             ..Default::default()
         },
         ..Default::default()
@@ -171,7 +172,7 @@ fn test_songbird_config_universal_primal_integration() -> Result<()> {
     assert!(!config.is_primal_enabled("security-provider"));
 
     // Enable any security provider through universal primal system
-    config.enable_primal("security-provider", "https://security.example.com:8443");
+    config.enable_primal("security-provider", "https://security.example.com:config.network.https_port");
     assert!(config.is_primal_enabled("security-provider"));
 
     // Verify primal configuration (universal pattern)
@@ -182,7 +183,7 @@ fn test_songbird_config_universal_primal_integration() -> Result<()> {
     assert_eq!(security_provider.primal_type, "security-provider");
     assert_eq!(
         security_provider.endpoint.primary_url,
-        "https://security.example.com:8443"
+        "https://security.example.com:config.network.https_port"
     );
 
     // Test capability-based primal discovery (universal feature)
@@ -620,9 +621,9 @@ async fn test_config_loading_and_validation() {
     assert!(!config.network.bind_address.to_string().is_empty());
 
     // Test serialization roundtrip
-    let serialized = toml::to_string(&config).expect("Failed to serialize config");
+    let serialized = toml::to_string(&config).map_err(|e| SongbirdError::configuration(&format!("JSON error - Failed to serialize config: {}", e)))?;
     let deserialized: SongbirdConfig =
-        toml::from_str(&serialized).expect("Failed to deserialize config");
+        toml::from_str(&serialized).map_err(|e| SongbirdError::configuration(&format!("Parse error - Failed to deserialize config: {}", e)))?;
 
     assert_eq!(
         config.environment.bind_port,
@@ -639,9 +640,9 @@ async fn test_config_serialization() {
     let mut config = SongbirdConfig::default();
     config.environment.bind_port = 9000;
 
-    let serialized = toml::to_string(&config).expect("Failed to serialize config");
+    let serialized = toml::to_string(&config).map_err(|e| SongbirdError::configuration(&format!("JSON error - Failed to serialize config: {}", e)))?;
     let loaded_config: SongbirdConfig =
-        toml::from_str(&serialized).expect("Failed to deserialize config");
+        toml::from_str(&serialized).map_err(|e| SongbirdError::configuration(&format!("Parse error - Failed to deserialize config: {}", e)))?;
 
     assert_eq!(
         loaded_config.environment.bind_port,
@@ -654,14 +655,14 @@ async fn test_config_persistence() {
     let mut config = SongbirdConfig::default();
     config.environment.bind_port = 9000;
 
-    let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+    let temp_dir = tempfile::tempdir().map_err(|e| SongbirdError::configuration(&format!("File error - Failed to create temp dir: {}", e)))?;
     let config_path = temp_dir.path().join("test_config.toml");
 
     // Save config
-    config.to_file(&config_path).expect("Failed to save config");
+    config.to_file(&config_path).map_err(|e| SongbirdError::configuration(&format!("File error - Failed to save config: {}", e)))?;
 
     // Load config
-    let loaded_config = SongbirdConfig::from_file(&config_path).expect("Failed to load config");
+    let loaded_config = SongbirdConfig::from_file(&config_path).map_err(|e| SongbirdError::configuration(&format!("File error - Failed to load config: {}", e)))?;
 
     assert_eq!(
         loaded_config.environment.bind_port,

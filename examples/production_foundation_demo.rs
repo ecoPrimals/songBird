@@ -1,6 +1,7 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 use songbird_canonical: :universal_orchestration::CapabilityBasedOrchestrator;
 use songbird_observability::ObservabilityManager;
-use songbird_types::UnifiedSongbirdConfig;
+use songbird_types::CanonicalSongbirdConfig;
 /// # 🎼 **SONGBIRD PRODUCTION FOUNDATION DEMO**
 ///
 /// **DEMONSTRATES PRODUCTION-READY CORE SYSTEMS**

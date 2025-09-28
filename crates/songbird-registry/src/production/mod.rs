@@ -5,10 +5,10 @@
 
 pub mod persistent_registry;
 
-pub use persistent_registry: :{ /// `PersistentService`Registry, PersistentServiceRegistry,
-    /// PersistentRegistryConfig, PersistentRegistryConfig,
+pub use persistent_registry: : {  /// `PersistentService`Registry, PersistentServiceRegistry,
+    /// PersistentRegistryConfig, PersistentRegistryConfig)
     /// `RegisteredService`, RegisteredService,
-    /// `CanonicalHealthStatus`, CanonicalHealthStatus,
+    /// `CanonicalHealthStatus`, CanonicalHealthStatus)
     /// StorageBackend, StorageBackend,
-    /// FileStorageBackend, FileStorageBackend,
+    /// FileStorageBackend, FileStorageBackend)
     RegistryStatistics};

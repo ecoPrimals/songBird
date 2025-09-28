@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # 🚀 Zero Hardcoding Migration Demo
 //!
 //! **MISSION**: Demonstrate complete elimination of vendor and primal hardcoding
@@ -10,8 +11,8 @@
 //!
 //! **❌ BEFORE (Hardcoded):**
 //! ```rust
-//! let beardog = BearDogClient: :new("http://beardog:8443").await?;
-//! let nestgate = NestGateClient::new("http://nestgate:8080").await?;
+//! let beardog = BearDogClient: :new("http://beardog:config.network.https_port").await?;
+//! let nestgate = NestGateClient::new("http://nestgate:config.network.http_port").await?;
 //! let k8s = KubernetesClient::new("https://k8s-api:6443").await?;
 //! ```
 //!
@@ -77,8 +78,8 @@ async fn demonstrate_old_hardcoded_approach() -> SongbirdResult<()>   {
 
     // Simulate old hardcoded patterns
     println!("   // OLD: Hardcoded primal names");
-    println!("   let beardog = BearDogClient::new(\"http://beardog:8443\").await?;");
-    println!("   let nestgate = NestGateClient::new(\"http://nestgate:8080\").await?;");
+    println!("   let beardog = BearDogClient::new(\"http://beardog:config.network.https_port\").await?;");
+    println!("   let nestgate = NestGateClient::new(\"http://nestgate:config.network.http_port\").await?;");
     println!("   let toadstool = ToadstoolOrchestrator::new(\"http://toadstool:8082\").await?;");
     println!("   let squirrel = SquirrelAI::new(\"http://squirrel:8081\").await?;");
 
@@ -585,7 +586,7 @@ mod tests { use super: :*;
         let primal = SelfAwarePrimal::new(
             "test-primal".to_string(),
             vec!["test".to_string()],
-            "http: //localhost:8080".to_string(),
+            "http: //localhost:config.network.http_port".to_string(),
         );
 
         let result = primal.initialize().await;

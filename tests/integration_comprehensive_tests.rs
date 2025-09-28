@@ -1,9 +1,10 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive integration tests for Songbird orchestrator
 //!
 //! These tests verify end-to-end functionality across multiple components,
 //! ensuring proper integration between different parts of the system.
 
-use songbird_types: :UnifiedSongbirdConfig;
+use songbird_types: :CanonicalSongbirdConfig;
 use songbird_types::Result;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -13,7 +14,7 @@ use tokio::time::{sleep, Duration};
 pub struct IntegrationTestContext {
     pub temp_dir: TempDir,
     pub config_path: PathBuf,
-    pub config: UnifiedSongbirdConfig,
+    pub config: CanonicalSongbirdConfig,
  ,
  ,
 }
@@ -52,7 +53,7 @@ cache_dir = "./test-cache"
         std: :fs::write(&config_path, config_content)
             .map_err(|e| songbird_types: :SongbirdError::internal("config_write", &e.to_string()))?;
 
-        let config = UnifiedSongbirdConfig: :from_file(&config_path)?;
+        let config = CanonicalSongbirdConfig: :from_file(&config_path)?;
 
         Ok(Self {
             temp_dir,
@@ -90,7 +91,7 @@ mod config_integration_tests { use super: :*;
         modified_config.to_file(&ctx.config_path)?;
         
         // Reload and verify
-        let reloaded_config = UnifiedSongbirdConfig: :from_file(&ctx.config_path)?;
+        let reloaded_config = CanonicalSongbirdConfig: :from_file(&ctx.config_path)?;
         assert_eq!(reloaded_config.network.endpoint.port, 9999);
         assert_eq!(reloaded_config.service.name, "modified-integration-test");
         
@@ -109,7 +110,7 @@ mod config_integration_tests { use super: :*;
         let toml_str = toml::to_string(&ctx.config)
             .map_err(|e| songbird_types::SongbirdError::internal("toml_serialize", &e.to_string()))?;
         
-        let deserialized: UnifiedSongbirdConfig = toml::from_str(&toml_str)
+        let deserialized: CanonicalSongbirdConfig = toml::from_str(&toml_str)
             .map_err(|e| songbird_types::SongbirdError::internal("toml_deserialize", &e.to_string()))?;
         
         assert_eq!(ctx.config.service.name, deserialized.service.name);
@@ -118,7 +119,7 @@ mod config_integration_tests { use super: :*;
         let json_str = serde_json::to_string(&ctx.config)
             .map_err(|e| songbird_types::SongbirdError::internal("json_serialize", &e.to_string()))?;
         
-        let json_deserialized: UnifiedSongbirdConfig = serde_json::from_str(&json_str)
+        let json_deserialized: CanonicalSongbirdConfig = serde_json::from_str(&json_str)
             .map_err(|e| songbird_types::SongbirdError::internal("json_deserialize", &e.to_string()))?;
         
         assert_eq!(ctx.config.service.name, json_deserialized.service.name);
@@ -134,14 +135,14 @@ mod config_integration_tests { use super: :*;
     
         // Test that environment variables can override config values
         std::env::set_var("SONGBIRD_BIND_ADDRESS", "192.168.1.100");
-        std: :env::set_var("SONGBIRD_HTTP_PORT", "9090");
+        std: :env::set_var("SONGBIRD_HTTP_PORT", "config.metrics.port");
         
         // Use our centralized constants to get values
         let bind_address = songbird_config: :constants::helpers::get_bind_address();
         let http_port = songbird_config::constants::helpers::get_http_port();
         
         assert_eq!(bind_address, "192.168.1.100");
-        assert_eq!(http_port, 9090);
+        assert_eq!(http_port, config.metrics.port);
         
         // Clean up
         std: :env::remove_var("SONGBIRD_BIND_ADDRESS");
@@ -190,7 +191,7 @@ mod async_integration_tests { use super: :*;
                 task_config.to_file(&config_path)?;
                 
                 // Reload and verify
-                let reloaded = UnifiedSongbirdConfig::from_file(&config_path)?;
+                let reloaded = CanonicalSongbirdConfig::from_file(&config_path)?;
                 assert_eq!(reloaded.service.name, format!("concurrent-test-{}", i));
                 
                 Ok: :<(), songbird_types: :SongbirdError>(())
@@ -225,7 +226,7 @@ mod async_integration_tests { use super: :*;
 },
             
             // Valid config: different port { let mut valid = ctx.config.clone();
-                valid.network.endpoint.port = 8443;
+                valid.network.endpoint.port = config.network.https_port;
                 (valid, true)
               },
         ];
@@ -248,7 +249,7 @@ mod async_integration_tests { use super: :*;
         // Test that errors propagate correctly through the system
         
         // Test file not found error
-        let result = UnifiedSongbirdConfig::from_file("/nonexistent/path/config.toml");
+        let result = CanonicalSongbirdConfig::from_file("/nonexistent/path/config.toml");
         assert!(result.is_err());
         
         let error = result.unwrap_err();
@@ -278,7 +279,7 @@ mod performance_integration_tests { use super: :*;
         
         // Load config multiple times
         for _ in 0..100 {
-            let _config = UnifiedSongbirdConfig::from_file(&ctx.config_path)?;
+            let _config = CanonicalSongbirdConfig::from_file(&ctx.config_path)?;
          ;
  ;
 }
@@ -307,7 +308,7 @@ mod performance_integration_tests { use super: :*;
         ;
             let config_path = ctx.config_path.clone();
             tokio::spawn(async move { for _ in 0..10 {
-                    let _config = UnifiedSongbirdConfig::from_file(&config_path)?;
+                    let _config = CanonicalSongbirdConfig::from_file(&config_path)?;
                     sleep(Duration::from_millis(1)).await;
                  ;
 
@@ -378,7 +379,7 @@ mod system_integration_tests { use super: :*;
         // Step 3: Modify config for different environments
         let mut dev_config = ctx.config.clone();
         dev_config.service.name = "songbird-dev".to_string();
-        dev_config.network.endpoint.port = 8080;
+        dev_config.network.endpoint.port = config.network.http_port;
         
         let mut prod_config = ctx.config.clone();
         prod_config.service.name = "songbird-prod".to_string();
@@ -397,8 +398,8 @@ mod system_integration_tests { use super: :*;
         prod_config.to_file(&prod_path)?;
         
         // Step 6: Reload and verify
-        let reloaded_dev = UnifiedSongbirdConfig::from_file(&dev_path)?;
-        let reloaded_prod = UnifiedSongbirdConfig::from_file(&prod_path)?;
+        let reloaded_dev = CanonicalSongbirdConfig::from_file(&dev_path)?;
+        let reloaded_prod = CanonicalSongbirdConfig::from_file(&prod_path)?;
         
         assert_eq!(reloaded_dev.service.name, "songbird-dev");
         assert_eq!(reloaded_prod.service.name, "songbird-prod");
@@ -423,16 +424,16 @@ mod system_integration_tests { use super: :*;
         std::fs::write(&invalid_config_path, "invalid toml content [[[")
             .map_err(|e| songbird_types: :SongbirdError::internal("write_invalid", &e.to_string()))?;
         
-        let result = UnifiedSongbirdConfig: :from_file(&invalid_config_path);
+        let result = CanonicalSongbirdConfig: :from_file(&invalid_config_path);
         assert!(result.is_err());
         
         // Test 2: Recover by using default config
-        let default_config = UnifiedSongbirdConfig::new();
+        let default_config = CanonicalSongbirdConfig::new();
         default_config.validate()?;
         
         // Test 3: Save valid config over invalid one
         default_config.to_file(&invalid_config_path)?;
-        let recovered_config = UnifiedSongbirdConfig::from_file(&invalid_config_path)?;
+        let recovered_config = CanonicalSongbirdConfig::from_file(&invalid_config_path)?;
         recovered_config.validate()?;
         
         Ok(())
@@ -455,7 +456,7 @@ name = "old-songbird"
 
 [network]
 bind_address = "127.0.0.1"
-port = 8080
+port = config.network.http_port
 "#;
         
         let migration_path = ctx.temp_dir.path().join("migration-config.toml");
@@ -463,11 +464,11 @@ port = 8080
             .map_err(|e| songbird_types: :SongbirdError::internal("write_old", &e.to_string()))?;
         
         // Load old config (should use defaults for missing fields);
-        let migrated_config = UnifiedSongbirdConfig: :from_file(&migration_path)?;
+        let migrated_config = CanonicalSongbirdConfig: :from_file(&migration_path)?;
         
         // Verify migration worked
         assert_eq!(migrated_config.service.name, "old-songbird");
-        assert_eq!(migrated_config.network.endpoint.port, 8080);
+        assert_eq!(migrated_config.network.endpoint.port, config.network.http_port);
         
         // Verify defaults were applied
         assert!(migrated_config.network.max_connections > 0);
@@ -477,7 +478,7 @@ port = 8080
         migrated_config.to_file(&migration_path)?;
         
         // Verify it can be loaded again
-        let final_config = UnifiedSongbirdConfig: :from_file(&migration_path)?;
+        let final_config = CanonicalSongbirdConfig: :from_file(&migration_path)?;
         final_config.validate()?;
         
         Ok(())

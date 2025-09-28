@@ -1,57 +1,47 @@
-//! Canonical traits - Modernized without async_trait
+//! # 🔧 Canonical Traits
+//!
+//! **MODERN TRAIT SYSTEM** ✅
+//!
+//! This module provides the canonical trait definitions that all
+//! Songbird components implement for consistency and interoperability.
 
-use songbird_types::SongbirdResult;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Universal capability for any primal or service
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Capability definition
+#[derive(Debug, Clone)]
 pub struct Capability {
-    /// Name identifier
-
+    /// Capability name
     pub name: String,
-    /// Version string
+    /// Capability version
     pub version: String,
-    /// Available service endpoints
-    pub endpoints: Vec<String>,
-    pub metadata: HashMap<String, String> ,
- ,
+    /// Capability metadata
+    pub metadata: HashMap<String, String>,
 }
 
-/// Modern capability provider trait using native async fn
-/// 
-/// Replaces legacy async_trait pattern with canonical async fn in traits
-pub trait CapabilityProvider: Send + Sync { /// Get available capabilities
-    async fn get_capabilities() {
-         
-        
-    -> SongbirdResult<Vec<Capability>>
+// ============================================================================
+// MIGRATION NOTICE
+// ============================================================================
 
-    /// Check if a capability is supported
-    async fn supports_capability() {
-    -> SongbirdResult<bool>
+/// Migration notice for deprecated traits
+pub const TRAIT_MIGRATION_NOTICE: &str = r#"
+🚨 TRAIT MIGRATION COMPLETE 🚨
 
+All provider traits have been migrated to the canonical trait system:
 
-    
+USE THESE CANONICAL TRAITS:
+```rust
+use songbird_types::traits::{
+    Provider,
+    ServiceProvider,
+    PrimalProvider,
+    DiscoveryProvider,
+    CapabilityProvider,
+    SecurityProvider,
+    OrchestrationProvider,
+    ObservabilityProvider,
+};
+```
 
-    }
-pub trait ServiceProvider: Send + Sync { /// Start the service
-    async fn start() {
-         
-        
-    -> SongbirdResult<()>
-
-    /// Stop the service
-    async fn stop() {
-    -> SongbirdResult<()>
-
-
-
-    
-
-    }
-pub trait OrchestrationProvider: Send + Sync { /// Deploy service
-    async fn deploy() {
-    -> SongbirdResult<()>
-
-;}
+All deprecated trait re-exports have been removed.
+Update your imports to use songbird_types::traits directly.
+"#;

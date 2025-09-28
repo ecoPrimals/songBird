@@ -4,18 +4,15 @@
 //! all fragmented and deprecated network configuration structs across the codebase.
 
 use serde::{Deserialize, Serialize};
-use songbird_errors::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
-use tracing::warn;
-
 /// Canonical Network Configuration - Single Source of Truth
 ///
 /// This struct unifies all network configuration patterns across Songbird,
 /// eliminating fragmentation and providing a modern, comprehensive solution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CanonicalNetworkConfig {
-    // Core network settings
+pub struct CanonicalNetworkConfig  {// Core network settings
     pub bind_address: IpAddr,
     pub production_bind_address: IpAddr,
 
@@ -60,8 +57,7 @@ pub struct CanonicalNetworkConfig {
 
 /// Gaming-specific network configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GamingNetworkConfig {
-    pub starcraft_port: u16,
+pub struct GamingNetworkConfig  {pub starcraft_port: u16,
     pub aoe2_port: u16,
     pub ipx_port: u16,
     pub udp_port: u16,
@@ -69,9 +65,7 @@ pub struct GamingNetworkConfig {
     pub max_players_per_game: usize,
 }
 
-impl Default for GamingNetworkConfig {
-    fn default() -> Self {
-        Self {
+impl Default for GamingNetworkConfig  {fn default() -> Self  {Self {
             starcraft_port: 6112,
             aoe2_port: 6113,
             ipx_port: 6112,
@@ -84,14 +78,11 @@ impl Default for GamingNetworkConfig {
 
 /// Port range configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortRange {
-    pub start: u16,
+pub struct PortRange  {pub start: u16,
     pub end: u16,
 }
 
-impl Default for PortRange {
-    fn default() -> Self {
-        Self {
+impl Default for PortRange  {fn default() -> Self  {Self {
             start: 7000,
             end: 7100,
         }
@@ -100,36 +91,30 @@ impl Default for PortRange {
 
 /// Network timeout configurations
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkTimeouts {
-    pub connection: Duration,
+pub struct NetworkTimeouts  {pub connection: Duration,
     pub request: Duration,
     pub health_check: Duration,
     pub default: Duration,
 }
 
-impl Default for NetworkTimeouts {
-    fn default() -> Self {
-        Self {
-            connection: Duration::from_secs(10),
-            request: Duration::from_secs(60),
+impl Default for NetworkTimeouts  {fn default() -> Self  {Self {
+            connection: Duration::from_secs(10)
+            request: Duration::from_secs(60)
             health_check: Duration::from_secs(5),
-            default: Duration::from_secs(30),
+            default: Duration::from_secs(30)
         }
     }
 }
 
 /// Connection limits configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConnectionLimits {
-    pub max_connections_per_host: usize,
+pub struct ConnectionLimits  {pub max_connections_per_host: usize,
     pub max_total_connections: usize,
     pub max_retries: u32,
     pub pool_idle_timeout_secs: u64,
 }
 
-impl Default for ConnectionLimits {
-    fn default() -> Self {
-        Self {
+impl Default for ConnectionLimits  {fn default() -> Self  {Self {
             max_connections_per_host: 10,
             max_total_connections: 100,
             max_retries: 3,
@@ -140,18 +125,15 @@ impl Default for ConnectionLimits {
 
 /// CORS configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CorsConfig {
-    pub enabled: bool,
+pub struct CorsConfig  {pub enabled: bool,
     pub origins: Vec<String>,
     pub allowed_methods: Vec<String>,
     pub allowed_headers: Vec<String>,
 }
 
-impl Default for CorsConfig {
-    fn default() -> Self {
-        Self {
+impl Default for CorsConfig  {fn default() -> Self  {Self {
             enabled: false,
-            origins: vec!["http://localhost:3000".to_string()],
+            origins: vec!["http://songbird_config::constants::network::DEFAULT_HOST:3000".to_string()],
             allowed_methods: vec!["GET".to_string(), "POST".to_string()],
             allowed_headers: vec!["Content-Type".to_string()],
         }
@@ -162,11 +144,18 @@ impl CanonicalNetworkConfig {
     /// Create canonical network configuration from environment variables
     pub async fn from_env() -> SongbirdResult<Self> {
         let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
-            .unwrap_or_else(|_| "0.0.0.0".to_string())
+            .unwrap_or_else(|_| "0.0.0.0".to_string()),
             .parse()
             .map_err(|e| SongbirdError::Configuration {
-                message: format!("Invalid bind address: {e}"),
-                field: Some("bind_address".to_string()),
+        message: format!("Invalid bind address: {,
+        field: "unknown".to_string(),
+        current_value: None,
+        expected_format: None,
+        suggestion: None,
+    }", e)
+                field: "bind_address".to_string(),
+                current_value: None,
+                expected_format: None,
                 suggestion: Some("Provide a valid IP address".to_string()),
             })?;
 
@@ -177,8 +166,7 @@ impl CanonicalNetworkConfig {
                 .parse()
                 .unwrap_or_else(|e| {
                     warn!(
-                        "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}",
-                        e
+                        "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}", e
                     );
                     std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))
                 }),
@@ -194,8 +182,8 @@ impl CanonicalNetworkConfig {
             federation_port: 8005,
             gaming: GamingNetworkConfig::default(),
             gaming_port_range: PortRange::default(),
-            connection_timeout: Duration::from_secs(30),
-            request_timeout: Duration::from_secs(60),
+            connection_timeout: Duration::from_secs(30)
+            request_timeout: Duration::from_secs(60)
             max_connections: 100,
             max_bandwidth_mbps: 100,
             worker_threads: 2,
@@ -215,16 +203,16 @@ impl CanonicalNetworkConfig {
     }
 
     /// Validate production readiness
-    pub async fn validate_production_readiness(&self) -> SongbirdResult<()> {
-        let localhost_v4 = std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1));
-        if self.bind_address == localhost_v4 {
-            return Err(SongbirdError::Configuration {
-                message: "Production deployment should not use localhost bind address".to_string(),
-                field: Some("bind_address".to_string()),
-                suggestion: Some("Use 0.0.0.0 or a specific IP address for production".to_string()),
-            });
+    pub async fn validate_production_readiness(&self) -> SongbirdResult<()>  {let songbird_config::constants::network::DEFAULT_HOST_v4 = std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1);
+        if self.bind_address == songbird_config::constants::network::DEFAULT_HOST_v4  {return Err(SongbirdError::Configuration {
+        message: "Production deployment should not use songbird_config::constants::network::DEFAULT_HOST bind address".to_string(),
+        field: "bind_address".to_string().to_string(),
+        current_value: None,
+        expected_format: None,
+        suggestion: Some("Use 0.0.0.0 or a specific IP address for production".to_string()),
+    });
         }
-        Ok(())
+        Ok(()),
     }
 
     /// Get local bind socket address
@@ -233,47 +221,59 @@ impl CanonicalNetworkConfig {
         let socket_addr = addr
             .parse::<SocketAddr>()
             .map_err(|e| SongbirdError::Configuration {
-                message: format!("Invalid address: {e}"),
+        message: format!("Invalid address: {,
+        field: "unknown".to_string(),
+        current_value: None,
+        expected_format: None,
+        suggestion: None,
+    }", e)
+                current_value: None,
+                expected_format: None}")
                 field: Some("address".to_string()),
-                suggestion: Some("Provide a valid IP:port combination".to_string()),
+                suggestion: Some("Provide a valid IP and port format".to_string()),
             })?;
         Ok(socket_addr)
     }
 
     /// Get gaming port for specific protocol
-    pub async fn gaming_port(&self, protocol: &str) -> SongbirdResult<u16> {
-        let port = match protocol {
-            "starcraft" | "ipx" => self.gaming.starcraft_port,
+    pub async fn gaming_port(&self, protocol: &str) -> SongbirdResult<u16>  {let port = match protocol  {"starcraft" | "ipx" => self.gaming.starcraft_port,
             "aoe2" | "udp" => self.gaming.aoe2_port,
             _ => {
                 return Err(SongbirdError::Configuration {
-                    message: format!("Unknown protocol: {protocol}"),
+        message: format!("Unknown protocol: {,
+        field: "unknown".to_string(),
+        current_value: None,
+        expected_format: None,
+        suggestion: None,
+    }", protocol)
+                current_value: None,
+                expected_format: None}")
                     field: Some("protocol".to_string()),
                     suggestion: Some("Use 'starcraft', 'aoe2', or 'udp'".to_string()),
                 });
             }
         };
-        Ok(port)
+        Ok(port,
     }
 
     /// Get orchestrator endpoint
     pub fn orchestrator_endpoint(&self) -> SocketAddr {
-        SocketAddr::new(self.bind_address, self.orchestrator_port)
+        SocketAddr::new(self.bind_address, self.orchestrator_port,
     }
 
     /// Get discovery endpoint  
     pub fn discovery_endpoint(&self) -> SocketAddr {
-        SocketAddr::new(self.bind_address, self.discovery_port)
+        SocketAddr::new(self.bind_address, self.discovery_port,
     }
 
     /// Get metrics endpoint
     pub fn metrics_endpoint(&self) -> SocketAddr {
-        SocketAddr::new(self.metrics_bind_address, self.metrics_port)
+        SocketAddr::new(self.metrics_bind_address, self.metrics_port,
     }
 
     /// Get federation endpoint
     pub fn federation_endpoint(&self) -> SocketAddr {
-        SocketAddr::new(self.federation_bind_address, self.federation_port)
+        SocketAddr::new(self.federation_bind_address, self.federation_port,
     }
 }
 
@@ -284,9 +284,8 @@ impl Default for CanonicalNetworkConfig {
             std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
         });
 
-        Self {
-            bind_address,
-            production_bind_address: "0.0.0.0".parse().unwrap(),
+        Self  {bind_address,
+            production_bind_address: "0.0.0.0".parse().unwrap(,
             orchestrator_port: 8080,
             discovery_port: 8001,
             health_port: 8002,
@@ -296,31 +295,30 @@ impl Default for CanonicalNetworkConfig {
             federation_port: 8005,
             gaming: GamingNetworkConfig::default(),
             gaming_port_range: PortRange::default(),
-            connection_timeout: Duration::from_secs(30),
-            request_timeout: Duration::from_secs(60),
+            connection_timeout: Duration::from_secs(30)
+            request_timeout: Duration::from_secs(60)
             max_connections: 50,
             max_bandwidth_mbps: 50,
             worker_threads: 2,
             require_tls: false,
-            cors: CorsConfig {
-                enabled: true,
-                origins: vec!["http://localhost:3000".to_string()],
+            cors: CorsConfig  {enabled: true,
+                origins: vec!["http://songbird_config::constants::network::DEFAULT_HOST:3000".to_string()],
                 allowed_methods: vec![
-                    "GET".to_string(),
-                    "POST".to_string(),
-                    "PUT".to_string(),
-                    "DELETE".to_string(),
-                ],
+                    "GET".to_string()),
+                    "POST".to_string()),
+                    "PUT".to_string()),
+                    "DELETE".to_string()),
+                ])
                 allowed_headers: vec!["Content-Type".to_string(), "Authorization".to_string()],
-            },
+            })
             discovery_ports: vec![8001],
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
             allowed_networks: vec![
-                "10.0.0.0/8".to_string(),
-                "172.16.0.0/12".to_string(),
-                "192.168.0.0/16".to_string(),
-            ],
+                "10.0.0.0/8".to_string()),
+                "172.16.0.0/12".to_string()),
+                "192.168.0.0/16".to_string()),
+            ])
             timeouts: NetworkTimeouts::default(),
             connection_limits: ConnectionLimits::default(),
             metrics_bind_address: bind_address,

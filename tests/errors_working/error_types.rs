@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Individual error type tests for all SongbirdError variants
 
 use songbird_errors::{
@@ -35,7 +36,7 @@ fn test_songbird_error_network() {
     let network_error = SongbirdError::Network(Box::new(NetworkError {
         service: Some("api".to_string()),
         message: "Connection refused".to_string(),
-        details: Some("Port 8080 not responding".to_string()),
+        details: Some("Port config.network.http_port not responding".to_string()),
         endpoint: Some("localhost:{}".to_string()),
         suggestion: Some("Check if service is running".to_string()),
     }));

@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! # 🌪️ Comprehensive Chaos Engineering Tests
 //!
 //! This module implements comprehensive chaos engineering tests to validate
@@ -728,12 +729,12 @@ async fn test_comprehensive_chaos_engineering() {
     println!("🌪️ Starting comprehensive chaos engineering validation...");
 
     let test_suite =;
-        ChaosEngineeringTestSuite::new().expect("Failed to create chaos engineering test suite");
+        ChaosEngineeringTestSuite::new().expect("Test operation should succeed: Failed to create chaos engineering test suite");
 
     let results = test_suite
         .run_comprehensive_chaos_tests()
         .await
-        .expect("Chaos engineering tests should complete");
+        .expect("Test operation should succeed: Chaos engineering tests should complete");
 
     let overall_score = results.overall_resilience_score();
     println!("🏆 Overall resilience score: {:.2 ;

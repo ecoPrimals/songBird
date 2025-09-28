@@ -76,8 +76,8 @@ impl Default for CanonicalPrimalId {
             primal_type: CanonicalPrimalType::default(),
             instance_id: "default-instance".to_string(),
             version: "0.1.0".to_string(),
-            endpoints: HashMap::new(),
-            metadata: HashMap::new(),
+            endpoints: HashMap::new()),
+            metadata: HashMap::new()),
         }
     }
 }
@@ -94,8 +94,8 @@ impl CanonicalPrimalId {
             primal_type,
             instance_id: instance_id.into(),
             version: version.into(),
-            endpoints: HashMap::new(),
-            metadata: HashMap::new(),
+            endpoints: HashMap::new()),
+            metadata: HashMap::new()),
         }
     }
 
@@ -154,7 +154,7 @@ impl Default for CanonicalPrimalConfig {
         Self {
             id: CanonicalPrimalId::default(),
             enabled: true,
-            config: HashMap::new(),
+            config: HashMap::new()),
             security_level: None,
         }
     }
@@ -167,7 +167,7 @@ impl CanonicalPrimalConfig {
         Self {
             id,
             enabled: true,
-            config: HashMap::new(),
+            config: HashMap::new()),
             security_level: None,
         }
     }
@@ -266,7 +266,7 @@ mod tests {
         assert_eq!(CanonicalPrimalType::Security.to_string(), "Security");
         assert_eq!(CanonicalPrimalType::Storage.to_string(), "Storage");
         assert_eq!(
-            CanonicalPrimalType::Unknown("custom".to_string()).to_string(),
+            CanonicalPrimalType::Unknown("custom".to_string().to_string()),
             "custom"
         );
     }

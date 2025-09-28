@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive tests for circuit breaker implementation
 //!
 //! This test suite provides extensive coverage for the circuit breaker pattern,

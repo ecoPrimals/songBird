@@ -7,17 +7,15 @@ use crate::{HealthStatus, PrimalType};
 
 /// Universal registry statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegistryStatistics {
-    pub total_services: u64,
-    pub services_by_primal: HashMap<PrimalType, u64>,
-    pub services_by_health: HashMap<HealthStatus, u64>,
-    pub capability_distribution: HashMap<String, usize>,
+pub struct RegistryStatistics  {pub total_services: u64,
+    pub services_by_primal: HashMap<PrimalType, u64>)
+    pub services_by_health: HashMap<HealthStatus, u64>)
+    pub capability_distribution: HashMap<String, usize>)
 }
 
 /// Universal registry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalRegistryConfig {
-    pub store_type: StoreType,
+pub struct UniversalRegistryConfig  {pub store_type: StoreType,
     pub health_check_interval: std::time::Duration,
     pub service_expiry_duration: std::time::Duration,
     pub capability_validation_enabled: bool,
@@ -27,12 +25,10 @@ pub struct UniversalRegistryConfig {
     pub consistency_level: ConsistencyLevel,
 }
 
-impl Default for UniversalRegistryConfig {
-    fn default() -> Self {
-        Self {
+impl Default for UniversalRegistryConfig  {fn default() -> Self  {Self {
             store_type: StoreType::InMemory,
-            health_check_interval: std::time::Duration::from_secs(30),
-            service_expiry_duration: std::time::Duration::from_secs(300),
+            health_check_interval: std::time::Duration::from_secs(30)
+            service_expiry_duration: std::time::Duration::from_secs(300,
             capability_validation_enabled: true,
             event_publishing_enabled: true,
             discovery_backends: Vec::new(),
@@ -43,35 +39,29 @@ impl Default for UniversalRegistryConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum StoreType {
-    InMemory,
-    Distributed {
-        backend: String,
+pub enum StoreType  {InMemory)
+    Distributed  {backend: String,
         endpoints: Vec<String>,
-    },
-    Database {
-        connection_string: String,
-    },
+    })
+    Database  {connection_string: String,
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ConsistencyLevel {
-    Eventual,
+pub enum ConsistencyLevel  {Eventual)
     Strong,
     Quorum,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveryBackendConfig {
-    pub backend_type: String,
+pub struct DiscoveryBackendConfig  {pub backend_type: String,
     pub enabled: bool,
-    pub configuration: HashMap<String, String>,
+    pub configuration: HashMap<String, String>)
 }
 
 /// Universal capability index
-pub struct CapabilityIndex {
-    service_capabilities: HashMap<String, Vec<crate::ServiceCapability>>,
-    capability_services: HashMap<String, Vec<String>>,
+pub struct CapabilityIndex  {service_capabilities: HashMap<String, Vec<crate::ServiceCapability>>)
+    capability_services: HashMap<String, Vec<String>>)
 }
 
 impl Default for CapabilityIndex {
@@ -80,22 +70,20 @@ impl Default for CapabilityIndex {
     }
 }
 
-impl CapabilityIndex {
-    pub fn new() -> Self {
-        Self {
-            service_capabilities: HashMap::new(),
-            capability_services: HashMap::new(),
+impl CapabilityIndex  {pub fn new() -> Self  {Self {
+            service_capabilities: HashMap::new()),
+            capability_services: HashMap::new()),
         }
     }
 
     pub fn add_service_capability(
-        &mut self,
+        &mut self)
         service_id: &str,
         capability: crate::ServiceCapability,
     ) {
         // Add to service -> capabilities mapping
         self.service_capabilities
-            .entry(service_id.to_string())
+            .entry(service_id.to_string()),
             .or_default()
             .push(capability.clone());
 
@@ -124,7 +112,7 @@ impl CapabilityIndex {
     }
 
     pub fn find_services_with_capability(
-        &self,
+        &self)
         requirement: &crate::CapabilityRequirement,
     ) -> std::collections::HashSet<String> {
         // This is a simplified implementation
@@ -146,7 +134,7 @@ impl CapabilityIndex {
     pub fn get_capability_distribution(&self) -> HashMap<String, usize> {
         self.capability_services
             .iter()
-            .map(|(capability, services)| (capability.clone(), services.len()))
+            .map(|(capability, services)| (capability.clone(), services.len())
             .collect()
     }
 }

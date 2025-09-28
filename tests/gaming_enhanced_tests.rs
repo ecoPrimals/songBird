@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive tests for gaming auto-configuration functionality
 //!
 //! These tests verify the gaming network configuration, optimization settings,

@@ -7,20 +7,18 @@ use tokio::sync::RwLock;
 
 use crate::traits::discovery::{ServiceDiscovery, ServiceEvent, ServiceHealthStatus, ServiceQuery};
 use crate::traits::service::ServiceInfo;
-use songbird_errors::SongbirdResult;
+use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 
 /// Static service discovery for development and testing
-pub struct StaticServiceDiscovery {
-    services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
+pub struct StaticServiceDiscovery  {services: Arc<RwLock<HashMap<String, ServiceInfo>>>)
 }
 
-impl StaticServiceDiscovery {
-    /// Create new static service discovery
+impl StaticServiceDiscovery  {/// Create new static service discovery
     #[must_use]
     pub fn new() -> Self {
         Self {
-            services: Arc::new(RwLock::new(HashMap::new())),
+            services: Arc::new(RwLock::new(HashMap::new()),
         }
     }
 
@@ -69,34 +67,28 @@ impl Default for StaticServiceDiscovery {
 #[async_trait]
 impl ServiceDiscovery for StaticServiceDiscovery {
     async fn register(&self, service: ServiceInfo) -> Result<()> {
-        tracing::info!(
-            "Registering service: {} ({})",
-            service.name,
-            service.service_id
-        );
+        tracing::info!("Registering service: {} ({})", service.name, service.service_id);"
 
         let mut services = self.services.write().await;
         services.insert(service.service_id.clone(), service);
 
-        Ok(())
+        Ok(()),
     }
 
     async fn unregister(&self, service_id: &str) -> Result<()> {
-        tracing::info!("Deregistering service: {}", service_id);
+        tracing::info!("Deregistering service: {}", service_id);"
 
         let mut services = self.services.write().await;
         services.remove(service_id);
 
-        Ok(())
+        Ok(()),
     }
 
-    async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
-        let services = self.services.read().await;
+    async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>>  {let services = self.services.read().await;
 
         let filtered_services: Vec<ServiceInfo> = services
             .values()
-            .filter(|service| match query.name.as_ref() {
-                Some(name) => service.name == *name,
+            .filter(|service| match query.name.as_ref()  {Some(name) => service.name == *name,
                 None => true,
             })
             // All static services are considered healthy
@@ -104,10 +96,10 @@ impl ServiceDiscovery for StaticServiceDiscovery {
             .collect();
 
         tracing::debug!(
-            "Discovered {} services{}",
-            filtered_services.len(),
+            "Discovered {} services{}","
+            filtered_services.len()
             match query.name.as_ref() {
-                Some(name) => format!(" for '{name}'"),
+                Some(name) => format!(" for '{}'", name),"
                 None => String::new(),
             }
         );
@@ -116,25 +108,25 @@ impl ServiceDiscovery for StaticServiceDiscovery {
     }
 
     async fn watch(
-        &self,
+        &self)
         _query: ServiceQuery,
     ) -> Result<std::pin::Pin<Box<dyn futures_util::Stream<Item = ServiceEvent> + Send>>> {
         use futures_util::stream;
-        Ok(Box::pin(stream::empty()))
+        Ok(Box::pin(stream::empty())
     }
 
     async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()> {
-        tracing::info!("Updating health for service {} to {:?}", service_id, health);
-        Ok(())
+        tracing::info!("Updating health for service {} to {:?}", service_id, health);"
+        Ok(()),
     }
 
     async fn list_all(&self) -> Result<Vec<ServiceInfo>> {
-        self.discover(ServiceQuery::new()).await
+        self.discover(ServiceQuery::new().await
     }
 
     async fn exists(&self, service_id: &str) -> Result<bool> {
         let services = self.services.read().await;
-        Ok(services.contains_key(service_id))
+        Ok(services.contains_key(service_id)
     }
 
     async fn is_registered(&self, service_id: &str) -> Result<bool> {
@@ -142,19 +134,17 @@ impl ServiceDiscovery for StaticServiceDiscovery {
     }
 
     async fn update_metadata(
-        &self,
+        &self)
         service_id: &str,
-        metadata: std::collections::HashMap<String, String>,
+        metadata: HashMap<String, String>)
     ) -> Result<()> {
         let mut services = self.services.write().await;
         if let Some(service) = services.get_mut(service_id) {
-            service.metadata.extend(
-                metadata
-                    .into_iter()
-                    .map(|(k, v)| (k, serde_json::Value::String(v))),
-            );
+            service
+                .metadata
+                .extend(metadata.into_iter().map(|(k, v)| (k, serde_json::Value::String(v));
         }
-        Ok(())
+        Ok(()),
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

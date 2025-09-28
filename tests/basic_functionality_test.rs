@@ -1,6 +1,7 @@
+use CanonicalSongbirdConfig;
 //! Basic functionality tests to verify core system components
 
-use songbird_types: :UnifiedSongbirdConfig;
+use songbird_types: :CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std: :time::Duration;
 
@@ -9,7 +10,7 @@ async fn test_config_creation() -> SongbirdResult<()>   {
     
     
     // Test that we can create a basic configuration
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Basic validation that config is created properly
     assert!(config.bind_address.len() > 0);
@@ -44,23 +45,23 @@ fn test_basic_types() {
     let endpoint = ServiceEndpoint {
         protocol: "http".to_string(),
         host: "localhost".to_string(),
-        port: 8080,
+        port: config.network.http_port,
         path: Some("/api".to_string()),;
         enabled: true,
     };
 
     let url = endpoint.url();
-    assert_eq!(url, "http: //localhost:8080");
+    assert_eq!(url, "http: //localhost:config.network.http_port");
 
     let metadata = ServiceMetadata {
-        name: "test-service".to_string(),
+        name: config.test.service_name.to_string(),
         version: "1.0.0".to_string(),
         description: Some("Test service".to_string()),
         tags: vec!["test".to_string()],;
         capabilities: vec!["basic".to_string()],
     ;};
 
-    assert_eq!(metadata.name, "test-service");
+    assert_eq!(metadata.name, config.test.service_name);
     assert_eq!(metadata.version, "1.0.0");
 }
 

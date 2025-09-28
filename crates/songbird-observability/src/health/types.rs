@@ -2,12 +2,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
-use uuid::Uuid;
-
 /// Monitored service information
 #[derive(Debug, Clone)]
-pub struct MonitoredService {
-    /// Unique service identifier
+pub struct MonitoredService  {/// Unique service identifier
     pub service_id: Uuid,
 
     /// Service display name (for logging only)
@@ -20,7 +17,7 @@ pub struct MonitoredService {
     pub capabilities: Vec<String>,
 
     /// Service metadata
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, String>)
 
     /// Last health check result
     pub last_health_check: Option<HealthCheckResult>,
@@ -37,8 +34,7 @@ pub struct MonitoredService {
 
 /// Health endpoint configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthEndpoint {
-    /// Endpoint URL
+pub struct HealthEndpoint  {/// Endpoint URL
     pub url: String,
 
     /// HTTP method (GET, POST, etc.)
@@ -51,7 +47,7 @@ pub struct HealthEndpoint {
     pub timeout_ms: u64,
 
     /// Custom headers
-    pub headers: HashMap<String, String>,
+    pub headers: HashMap<String, String>)
 
     /// Expected response body pattern (optional)
     pub expected_body_pattern: Option<String>,
@@ -59,8 +55,7 @@ pub struct HealthEndpoint {
 
 /// Health check result
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckResult {
-    /// Service ID that was checked
+pub struct HealthCheckResult  {/// Service ID that was checked
     pub service_id: Uuid,
 
     /// Health status
@@ -76,7 +71,7 @@ pub struct HealthCheckResult {
     pub timestamp: SystemTime,
 
     /// Additional metadata
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, String>)
 
     /// Error details (if check failed)
     pub error_details: Option<String>,
@@ -87,8 +82,7 @@ pub struct HealthCheckResult {
 
 /// Service performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServicePerformanceMetrics {
-    /// Average response time over monitoring window
+pub struct ServicePerformanceMetrics  {/// Average response time over monitoring window
     pub avg_response_time_ms: f64,
 
     /// 95th percentile response time
@@ -113,9 +107,7 @@ pub struct ServicePerformanceMetrics {
     pub last_updated: SystemTime,
 }
 
-impl Default for ServicePerformanceMetrics {
-    fn default() -> Self {
-        Self {
+impl Default for ServicePerformanceMetrics  {fn default() -> Self  {Self {
             avg_response_time_ms: 0.0,
             p95_response_time_ms: 0.0,
             p99_response_time_ms: 0.0,
@@ -123,15 +115,14 @@ impl Default for ServicePerformanceMetrics {
             error_rate: 0.0,
             total_requests: 0,
             failed_requests: 0,
-            last_updated: SystemTime::now(),
+            last_updated: SystemTime::now(,
         }
     }
 }
 
 /// Performance trend analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceTrend {
-    /// Trend direction
+pub struct PerformanceTrend  {/// Trend direction
     pub direction: TrendDirection,
 
     /// Trend strength (0.0 to 1.0)
@@ -146,8 +137,7 @@ pub struct PerformanceTrend {
 
 /// Trend direction
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum TrendDirection {
-    Improving,
+pub enum TrendDirection  {Improving)
     Stable,
     Degrading,
     Unknown,
@@ -155,8 +145,7 @@ pub enum TrendDirection {
 
 /// Historical health snapshot
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HistoricalHealthSnapshot {
-    /// Snapshot timestamp
+pub struct HistoricalHealthSnapshot  {/// Snapshot timestamp
     pub timestamp: SystemTime,
 
     /// Services that were healthy
@@ -175,5 +164,5 @@ pub struct HistoricalHealthSnapshot {
     pub health_score: f64,
 
     /// Performance metrics snapshot
-    pub performance_snapshot: HashMap<Uuid, ServicePerformanceMetrics>,
+    pub performance_snapshot: HashMap<Uuid, ServicePerformanceMetrics>)
 }

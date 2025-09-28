@@ -10,13 +10,17 @@ readme = "../../README.md"
 keywords = ["discovery", "networking", "service-registry", "distributed", "gaming"]
 categories = ["network-programming", "game-engines", "web-programming"]
 
+
+[lints]
+workspace = true
+
 [[example]]
 name = "vendor_agnostic_demo"
 path = "../../examples/vendor_agnostic_demo.rs"
 
 [dependencies]
 # Internal dependencies
-songbird-errors = { path = "../songbird-errors" }
+# songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 
@@ -37,3 +41,4 @@ num_cpus = { workspace = true }
 
 [dev-dependencies]
 tracing-subscriber = "0.3"
+

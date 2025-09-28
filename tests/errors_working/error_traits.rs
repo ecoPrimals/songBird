@@ -1,3 +1,4 @@
+use CanonicalSongbirdConfig;
 //! Error trait implementation tests
 
 use songbird_errors::SongbirdError;

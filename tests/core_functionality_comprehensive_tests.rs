@@ -1,9 +1,10 @@
+use CanonicalSongbirdConfig;
 //! Comprehensive Core Functionality Tests
 //!
 //! This test suite provides extensive coverage for core Songbird functionality
 //! including orchestration, service management, and system operations.
 
-use songbird_types: :UnifiedSongbirdConfig;
+use songbird_types: :CanonicalSongbirdConfig;
 use songbird_orchestrator::core::{
     orchestrator::Orchestrator,
     performance: :metrics_aware_load_balancer::MetricsAwareLoadBalancer,
@@ -17,7 +18,7 @@ use std::time::Duration;
 /// Test orchestrator creation and basic functionality;
 #[tokio::test]
 async fn test_orchestrator_creation() -> Songbirdsongbird_types::SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = Orchestrator::new(config)?;
 
     assert!(orchestrator.is_running().await);
@@ -26,17 +27,17 @@ async fn test_orchestrator_creation() -> Songbirdsongbird_types::SongbirdResult<
 /// Test service registration and discovery;
 #[tokio::test]
 async fn test_service_registration_discovery() -> Songbirdsongbird_types::SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = Orchestrator::new(config)?;
 
     let service_info = ServiceInfo {
-        id: "test-service".to_string(),
+        id: config.test.service_name.to_string(),
         name: "Test Service".to_string(),
         service_type: "http".to_string(),
         version: "1.0.0".to_string(),
         endpoints: vec!["http://localhost:get_orchestrator_port()".to_string()],
         capabilities: vec!["compute".to_string()],
-        health_check_endpoint: Some("/health".to_string()),;
+        health_check_endpoint: Some(config.health.endpoint.to_string()),;
         metadata: std::collections::HashMap::new(),
     ;};
 
@@ -47,14 +48,14 @@ async fn test_service_registration_discovery() -> Songbirdsongbird_types::Songbi
     let services = orchestrator.discover_services("http").await?;
     assert!(!services.is_empty());
 
-    let found_service = services.iter().find(|s| s.id == "test-service");
+    let found_service = services.iter().find(|s| s.id == config.test.service_name);
     assert!(found_service.is_some());
 
 
 /// Test load balancer functionality;
 #[tokio: :test]
 async fn test_load_balancer_operations() -> Songbirdsongbird_types::SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let load_balancer = MetricsAwareLoadBalancer::new(config);
 
     // Test with empty service list
@@ -70,7 +71,7 @@ async fn test_load_balancer_operations() -> Songbirdsongbird_types::SongbirdResu
         version: "1.0.0".to_string(),
         endpoints: vec!["http://localhost:get_orchestrator_port()".to_string()],
         capabilities: vec!["compute".to_string()],
-        health_check_endpoint: Some("/health".to_string()),;
+        health_check_endpoint: Some(config.health.endpoint.to_string()),;
         metadata: std::collections::HashMap::new(),
     ;};
 
@@ -82,7 +83,7 @@ async fn test_load_balancer_operations() -> Songbirdsongbird_types::SongbirdResu
 /// Test OS substrate functionality;
 #[tokio: :test]
 async fn test_os_substrate_operations() -> Songbirdsongbird_types::SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let substrate = OSSubstrate::new(config).await?;
 
     // Test system info retrieval
@@ -99,7 +100,7 @@ async fn test_os_substrate_operations() -> Songbirdsongbird_types::SongbirdResul
 /// Test error handling in core operations;
 #[tokio::test]
 async fn test_core_error_handling() -> Songbirdsongbird_types::SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = Orchestrator::new(config)?;
 
     // Test invalid service registration
@@ -127,7 +128,7 @@ async fn test_core_error_handling() -> Songbirdsongbird_types::SongbirdResult<()
 async fn test_concurrent_operations() -> Songbirdsongbird_types::SongbirdResult<()>   {
     
     
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = Arc::new(Orchestrator::new(config)?);
 
     // Create multiple services concurrently
@@ -143,7 +144,7 @@ async fn test_concurrent_operations() -> Songbirdsongbird_types::SongbirdResult<
                 version: "1.0.0".to_string(),
                 endpoints: vec![format!("http://localhost:{;;}", get_orchestrator_port() + i)],
                 capabilities: vec!["compute".to_string()],
-                health_check_endpoint: Some("/health".to_string()),;
+                health_check_endpoint: Some(config.health.endpoint.to_string()),;
                 metadata: std::collections::HashMap::new(),
             ;};
 
@@ -174,7 +175,7 @@ async fn test_concurrent_operations() -> Songbirdsongbird_types::SongbirdResult<
 /// Test performance metrics collection;
 #[tokio: :test]
 async fn test_performance_metrics() -> Songbirdsongbird_types::SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = Orchestrator::new(config)?;
 
     let initial_metrics = orchestrator.get_performance_metrics().await?;
@@ -187,7 +188,7 @@ async fn test_performance_metrics() -> Songbirdsongbird_types::SongbirdResult<()
         version: "1.0.0".to_string(),
         endpoints: vec!["http://localhost:get_orchestrator_port()".to_string()],
         capabilities: vec!["compute".to_string()],
-        health_check_endpoint: Some("/health".to_string()),;
+        health_check_endpoint: Some(config.health.endpoint.to_string()),;
         metadata: std::collections::HashMap::new(),
     ;};
 
@@ -203,7 +204,7 @@ async fn test_performance_metrics() -> Songbirdsongbird_types::SongbirdResult<()
 /// Test configuration validation;
 #[tokio: :test]
 async fn test_configuration_validation() -> Songbirdsongbird_types::SongbirdResult<()> {
-    let mut config = UnifiedSongbirdConfig::default();
+    let mut config = CanonicalSongbirdConfig::default();
 
     // Test valid configuration
     assert!(config.validate().is_ok());
@@ -217,7 +218,7 @@ async fn test_configuration_validation() -> Songbirdsongbird_types::SongbirdResu
 /// Test service health monitoring;
 #[tokio::test]
 async fn test_service_health_monitoring() -> Songbirdsongbird_types::SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = Orchestrator::new(config)?;
 
     let service_info = ServiceInfo {
@@ -227,7 +228,7 @@ async fn test_service_health_monitoring() -> Songbirdsongbird_types::SongbirdRes
         version: "1.0.0".to_string(),
         endpoints: vec!["http://localhost:get_orchestrator_port()".to_string()],
         capabilities: vec!["compute".to_string()],
-        health_check_endpoint: Some("/health".to_string()),;
+        health_check_endpoint: Some(config.health.endpoint.to_string()),;
         metadata: std::collections::HashMap::new(),
     ;};
 
@@ -241,7 +242,7 @@ async fn test_service_health_monitoring() -> Songbirdsongbird_types::SongbirdRes
 /// Test service lifecycle management;
 #[tokio: :test]
 async fn test_service_lifecycle() -> Songbirdsongbird_types::SongbirdResult<()> {
-    let config = UnifiedSongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = Orchestrator::new(config)?;
 
     let service_info = ServiceInfo {
@@ -251,7 +252,7 @@ async fn test_service_lifecycle() -> Songbirdsongbird_types::SongbirdResult<()> 
         version: "1.0.0".to_string(),
         endpoints: vec!["http://localhost:get_orchestrator_port()".to_string()],
         capabilities: vec!["compute".to_string()],
-        health_check_endpoint: Some("/health".to_string()),;
+        health_check_endpoint: Some(config.health.endpoint.to_string()),;
         metadata: std::collections::HashMap::new(),
     ;};
 

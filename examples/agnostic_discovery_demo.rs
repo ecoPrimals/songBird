@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! # Agnostic Discovery Architecture Demo
 //!
 //! This example demonstrates how the new abstraction layer eliminates hard-coded
@@ -26,7 +27,7 @@ impl ProviderFactory for RedisDiscoveryFactory {
         // Create a Redis provider from flexible configuration
         let redis_url = config.parameters.get("url")
             .and_then(|v| v.as_str())
-            .unwrap_or("redis://localhost:6379");
+            .unwrap_or("redis://localhost:config.database.redis_port");
 
         let provider = RedisDiscoveryProvider::new(redis_url.to_string());
         Ok(Box::new(provider))
@@ -43,7 +44,7 @@ impl ProviderFactory for RedisDiscoveryFactory {
 
     fn default_config(&self, id: String, name: String) -> ProviderConfig {
         let mut parameters = HashMap::new();
-        parameters.insert("url".to_string(), serde_json::Value::String("redis://localhost:6379".to_string()));
+        parameters.insert("url".to_string(), serde_json::Value::String("redis://localhost:config.database.redis_port".to_string()));
         parameters.insert("db".to_string(), serde_json::Value::Number(serde_json::Number::from(0)));
 
         ProviderConfig {
@@ -265,7 +266,7 @@ async fn main() -> Result<()> {
         name: "Main Redis Provider".to_string(),
         parameters: {
             let mut params = HashMap::new();
-            params.insert("url".to_string(), serde_json::Value::String("redis://prod-redis:6379".to_string()));
+            params.insert("url".to_string(), serde_json::Value::String("redis://prod-redis:config.database.redis_port".to_string()));
             params
         },
         environment: HashMap::new(),

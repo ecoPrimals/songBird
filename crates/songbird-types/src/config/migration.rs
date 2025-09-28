@@ -99,7 +99,7 @@ impl ConfigMigrationUtils {
     /// Generate migration report
     #[must_use]
     pub fn generate_migration_report() -> String {
-        "✅ Migration completed successfully!".to_string()
+        "✅ Migration completed successfully!".to_string()),
     }
 }
 
