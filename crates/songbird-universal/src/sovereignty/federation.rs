@@ -7,7 +7,7 @@
 
 use super::types::{ExpectedNetworkEffect, FederationCapability};
 use crate::types::{UniversalRequest, UniversalResponse};
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 use std::collections::HashMap;
 use tracing::{debug, info};
 /// Federation manager for sovereignty-aware systems

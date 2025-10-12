@@ -1,5 +1,4 @@
 // Test fixtures and data structures
-use songbird_config;
 ///
 /// Provides standardized test fixtures, mock data, and common
 /// test utilities for Songbird tests.

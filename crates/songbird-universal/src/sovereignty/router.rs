@@ -6,13 +6,12 @@
 use super::types::{
     PathSegment, PathSovereigntyAssessment, RiskSeverity, RoutingPath, SecurityAssessment,
     SecurityCapability, SecurityLevel, SegmentSovereigntyAssessment, SovereigntyComplianceLevel,
-    SovereigntyLevel, SovereigntyRisk, SovereigntyRiskType,
+    SovereigntyLevel,
 };
-use crate::capabilities::Capability;
 use crate::types::{ServiceInfo, UniversalRequest};
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 use std::collections::HashMap;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 /// Sovereignty-aware routing engine
 #[derive(Debug)]
 pub struct SovereigntyRouter {
@@ -149,7 +148,7 @@ impl SovereigntyRouter {
         path: &RoutingPath,
     ) -> SongbirdResult<PathSovereigntyAssessment> {
         let mut segment_assessments = Vec::new();
-        let mut sovereignty_risks = Vec::new();
+        let sovereignty_risks = Vec::new();
 
         for (i, segment) in path.segments.iter().enumerate() {
             let segment_assessment = SegmentSovereigntyAssessment {

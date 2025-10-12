@@ -160,7 +160,6 @@
 //! error information including network errors, timeout handling, and recovery
 //! suggestions for common discovery failures.
 
-use songbird_config;
 pub mod conversion;
 pub mod discovery;
 pub mod traits;

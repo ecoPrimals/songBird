@@ -11,7 +11,6 @@ use crate::traits::discovery::{
 };
 use async_trait::async_trait;
 use songbird_types::{SongbirdError, SongbirdResult};
-use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 // Import universal adapters
@@ -298,7 +297,7 @@ impl ServiceDiscovery for UniversalServiceDiscoveryAdapter {
         >,
     > {
         // Return an empty stream for now - proper implementation would use the universal adapter's watch capability
-        use futures_util::stream::{self, StreamExt};
+        use futures_util::stream::{self};
         Ok(Box::pin(stream::empty()))
     }
 

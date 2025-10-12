@@ -6,14 +6,13 @@
 use super::network_optimizer::NetworkEffectsOptimizer;
 use super::router::SovereigntyRouter;
 use super::types::{
-    ExpectedNetworkEffect, FederationCapability, RoutingPath, SovereigntyAdapterConfig,
+    RoutingPath, SovereigntyAdapterConfig,
     SovereigntyAwareRoutingDecision,
 };
-use crate::capabilities::Capability;
 use crate::types::{ServiceInfo, UniversalRequest, UniversalResponse};
 use crate::unified_adapter::UnifiedUniversalAdapter;
 use songbird_types::{SongbirdError, SongbirdResult};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 /// Sovereignty-aware enhancement to existing universal adapter
 ///
 /// This adds sovereignty-aware routing and federation capabilities
