@@ -40,11 +40,43 @@ pub use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig 
 
 // Core modules from universal-primals consolidation
 pub mod adaptive_discovery;
-pub mod beardog;
-pub mod capability_ai;
+
+// ============================================================================
+// CAPABILITY-BASED MODULES (Primal-Agnostic) ⭐ NEW!
+// ============================================================================
+
+/// Security capability provider (replaces beardog hardcoding)
+pub mod capability_security;
+/// Compute capability provider (replaces toadstool hardcoding)  
 pub mod capability_compute;
+/// AI capability provider (replaces squirrel hardcoding)
+pub mod capability_ai;
+
+// Other capability modules
 pub mod capability_orchestrator;
 pub mod capability_storage;
+
+// ============================================================================
+// DEPRECATED: Primal-Specific Modules (Use capability_* instead)
+// ============================================================================
+
+#[deprecated(
+    since = "0.4.0",
+    note = "Use `capability_security` module instead. This module hardcodes primal names and violates 'each primal only knows itself' principle."
+)]
+pub mod beardog;
+
+#[deprecated(
+    since = "0.4.0",
+    note = "Use `capability_compute` module instead. This module hardcodes primal names and violates 'each primal only knows itself' principle."
+)]
+pub mod toadstool;
+
+#[deprecated(
+    since = "0.4.0",
+    note = "Use `capability_ai` module instead. This module hardcodes primal names and violates 'each primal only knows itself' principle."
+)]
+pub mod squirrel;
 pub mod config;
 pub mod discovery;
 pub mod global_adapter;
