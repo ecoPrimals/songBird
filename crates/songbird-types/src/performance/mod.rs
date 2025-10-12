@@ -31,6 +31,11 @@ impl<T, const N: usize> ConstBuffer<T, N> {
     #[must_use]
     pub const fn new() -> Self {
         Self {
+            // SAFETY: Creating an array of MaybeUninit is always safe. MaybeUninit<T> does not
+            // require initialization. We track which elements are initialized via `len`.
+            // - Invariant 1: Only elements [0..len) are initialized and safe to read
+            // - Invariant 2: Elements [len..N) are uninitialized and must not be read
+            // - Invariant 3: Drop implementation ensures all initialized elements are dropped
             data: unsafe { MaybeUninit::uninit().assume_init() },
             len: 0,
             _phantom: PhantomData,
@@ -73,7 +78,12 @@ impl<T, const N: usize> ConstBuffer<T, N> {
 
 impl<T, const N: usize> Drop for ConstBuffer<T, N> {
     fn drop(&mut self) {
+        // Drop all initialized elements
         for i in 0..self.len {
+            // SAFETY: Elements [0..len) are guaranteed to be initialized by the type's invariants.
+            // - Invariant: `len` tracks the number of initialized elements
+            // - Invariant: Only `try_push` increases `len`, and only after successful write
+            // - Invariant: Each element is dropped exactly once during buffer drop
             unsafe {
                 self.data[i].assume_init_drop();
             }
