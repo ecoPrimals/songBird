@@ -21,7 +21,7 @@ use super::types::{DiscoveredPrimal, DiscoveryMethod};
 
 /// Query universal primal services using dynamic capability-based discovery
 pub async fn query_universal_primal_services() -> PrimalResult<Vec<DiscoveredPrimal>> {
-    debug!("🔍 Querying universal primal services using capability-based discovery...");"
+    debug!("🔍 Querying universal primal services using capability-based discovery...")"
 
     let mut discovered_primals = Vec::new();
 
@@ -31,7 +31,7 @@ pub async fn query_universal_primal_services() -> PrimalResult<Vec<DiscoveredPri
     for (name, endpoint) in configured_services {
         // Test connectivity first
         if let Ok(true) = test_endpoint_connectivity(&endpoint).await {
-            info!("✅ Found active service '{}' at: {}", name, endpoint);"
+            info!("✅ Found active service '{}' at: {}", name, endpoint)"
 
             // Probe service to determine capabilities and infer type
             match probe_service_capabilities(&endpoint).await  {Ok((capabilities, metadata) =>  {let inferred_type = infer_primal_type_from_capabilities(&capabilities);
@@ -58,18 +58,18 @@ pub async fn query_universal_primal_services() -> PrimalResult<Vec<DiscoveredPri
                     info!(
                         "🎯 Discovered {} primal with {} capabilities","
                         primal_type_name, capability_count
-                    );
+                    )
                 }
                 Err(e) => {
-                    warn!("⚠️  Failed to probe capabilities for {}: {}", endpoint, e);"
+                    warn!("⚠️  Failed to probe capabilities for {}: {}", endpoint, e)"
                 }
             }
         } else {
-            debug!("❌ Service '{}' not reachable at: {}", name, endpoint);"
+            debug!("❌ Service '{}' not reachable at: {}", name, endpoint)"
         }
     }
 
-    info!("🔍 Capability-based discovery found {} universal primals", discovered_primals.len();"
+    info!("🔍 Capability-based discovery found {} universal primals", discovered_primals.len()"
     Ok(discovered_primals)
 }
 
@@ -246,7 +246,7 @@ fn extract_endpoints_from_json(config: &serde_json::Value) -> Vec<(String, Strin
 
 /// Universal well-known location discovery
 pub async fn discover_from_well_known_locations() -> PrimalResult<Vec<DiscoveredPrimal>> {
-    debug!("🔍 Discovering primals from well-known locations using capability detection...");"
+    debug!("🔍 Discovering primals from well-known locations using capability detection...")"
 
     let mut discovered_primals = Vec::new();
 
@@ -297,10 +297,10 @@ pub async fn discover_from_well_known_locations() -> PrimalResult<Vec<Discovered
                     info!(
                         "🎯 Development songbird_config::constants::network::DEFAULT_HOST discovery found {} at {}","
                         primal_type_name, endpoint
-                    );
+                    )
                 }
                 Err(e) => {
-                    debug!("Failed to determine capabilities for songbird_config::constants::network::DEFAULT_HOST:{}: {}", port, e);"
+                    debug!("Failed to determine capabilities for songbird_config::constants::network::DEFAULT_HOST:{}: {}", port, e)"
                 }
             }
         }
@@ -342,10 +342,10 @@ pub async fn discover_from_well_known_locations() -> PrimalResult<Vec<Discovered
                             info!(
                                 "🎯 Well-known location discovery found {} at {}","
                                 primal_type_name, endpoint
-                            );
+                            )
                         }
                         Err(e) => {
-                            debug!("Failed to determine capabilities for {}: {}", endpoint, e);"
+                            debug!("Failed to determine capabilities for {}: {}", endpoint, e)"
                         }
                     }
                 }
@@ -353,7 +353,7 @@ pub async fn discover_from_well_known_locations() -> PrimalResult<Vec<Discovered
         }
     }
 
-    info!("🔍 Well-known location discovery found {} primals", discovered_primals.len();"
+    info!("🔍 Well-known location discovery found {} primals", discovered_primals.len()"
     Ok(discovered_primals)
 }
 
@@ -417,7 +417,7 @@ async fn discover_container_names() -> Vec<String> {
 }
 
 /// Register configured primals (replaces register_known_primal_services)
-pub async fn register_configured_primals() -> PrimalResult<Vec<DiscoveredPrimal>>  {debug!("📋 Registering configured primals from all sources...");"
+pub async fn register_configured_primals() -> PrimalResult<Vec<DiscoveredPrimal>>  {debug!("📋 Registering configured primals from all sources...")"
 
     let mut discovered_primals = Vec::new();
 
@@ -431,6 +431,6 @@ pub async fn register_configured_primals() -> PrimalResult<Vec<DiscoveredPrimal>
         Err(e) => warn!("Well-known location discovery failed: {}", e),"
     }
 
-    info!("📋 Registered {} total configured primals", discovered_primals.len();"
+    info!("📋 Registered {} total configured primals", discovered_primals.len()"
     Ok(discovered_primals)
 }

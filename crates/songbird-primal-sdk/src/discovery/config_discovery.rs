@@ -63,7 +63,7 @@ pub fn get_configured_service_endpoints() -> Vec<(String, String)> {
 }
 
 /// Discover endpoints from configuration files
-fn discover_endpoints_from_config() -> Result<Vec<(String, String)>, Box<dyn std::error::Error>>  {debug!("🔍 Attempting to discover endpoints from configuration files...");"
+fn discover_endpoints_from_config() -> Result<Vec<(String, String)>, Box<dyn std::error::Error>>  {debug!("🔍 Attempting to discover endpoints from configuration files...")"
     let mut endpoints = Vec::new();
 
     // Store the environment variable to extend its lifetime
@@ -81,7 +81,7 @@ fn discover_endpoints_from_config() -> Result<Vec<(String, String)>, Box<dyn std
         }
 
         if let Ok(config_content) = std::fs::read_to_string(config_path) {
-            debug!("📝 Found configuration file: {}", config_path);"
+            debug!("📝 Found configuration file: {}", config_path)"
 
             // Try parsing as TOML
             if let Ok(toml_value) = toml::from_str::<toml::Value>(&config_content) {
@@ -103,7 +103,7 @@ fn discover_endpoints_from_config() -> Result<Vec<(String, String)>, Box<dyn std
                 debug!(
                     "✅ Extracted {} endpoints from JSON config","
                     endpoints_count
-                );
+                )
             }
         }
     }
@@ -259,7 +259,7 @@ pub fn demonstrate_evolution_ready_discovery() -> Vec<(String, String)> {
 //             }
 //         }"#;"
 //         let json_value: serde_json::Value = serde_json::from_str(json_config).map_err(|e| {
-//             tracing::error!("JSON parsing failed: {}", e);"
+//             tracing::error!("JSON parsing failed: {}", e)"
 //             std::io::Error::new(
 //                 std::io::ErrorKind::InvalidData)
 //                 format!("JSON parsing error: {}", e),"

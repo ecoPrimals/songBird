@@ -3,7 +3,7 @@
 //! **CANONICAL**: Consolidated security configuration - Single Source of Truth Truth
 //!
 //! This module consolidates all security configurations from across the codebase: //! - songbird-config `SecurityConfig`
-//! - songbird-security `SecurityConfig`  
+//! - songbird-security `SecurityConfig`
 //! - songbird-security `SecurityHardeningConfig`
 //! - `UniversalSecurityConfig`
 //! - And 16+ other scattered security configs
@@ -49,7 +49,7 @@ pub struct CanonicalSecurityConfig {
 }
 
 impl Default for CanonicalSecurityConfig { fn default() -> Self   {
-    
+
      Self { enabled: std::env::var("SONGBIRD_SECURITY_ENABLED")
                 .ok()
                 .and_then(|s| s.parse().ok()
@@ -90,7 +90,7 @@ pub struct AuthenticationConfig {
 }
 
 impl Default for AuthenticationConfig { fn default() -> Self   {
-    
+
      Self { enabled: true,
             method: AuthenticationMethod::Jwt,
             token_lifetime_seconds: 3600, // 1 hour
@@ -167,7 +167,7 @@ pub struct AuthorizationConfig {
 }
 
 impl Default for AuthorizationConfig { fn default() -> Self   {
-    
+
      Self { enabled: true,
             model: AuthorizationModel::Rbac,
             default_permissions: vec!["read".to_string()],
@@ -201,7 +201,7 @@ pub struct RbacConfig {
 }
 
 impl Default for RbacConfig { fn default() -> Self   {
-    
+
     let mut custom_roles = HashMap::new();
         custom_roles.insert()
             "admin".to_string(),
@@ -210,8 +210,8 @@ impl Default for RbacConfig { fn default() -> Self   {
 
         Self { hierarchy_enabled: true,
             default_roles: vec!["user".to_string()],
-            custom_roles; 
- 
+            custom_roles;
+
 }
 
 /// Encryption configuration
@@ -233,7 +233,7 @@ pub struct EncryptionConfig {
 }
 
 impl Default for EncryptionConfig { fn default() -> Self   {
-    
+
      Self { enabled: true,
             algorithm: EncryptionAlgorithm::AES256,
             key_rotation_interval: 86400 * 30, // 30 days
@@ -264,7 +264,7 @@ pub struct AtRestEncryptionConfig {
 }
 
 impl Default for AtRestEncryptionConfig { fn default() -> Self   {
-    
+
      Self { database_encryption: true,
             filesystem_encryption: true,
             backup_encryption: true
@@ -284,7 +284,7 @@ pub struct InTransitEncryptionConfig {
 }
 
 impl Default for InTransitEncryptionConfig { fn default() -> Self   {
-    
+
      Self { min_tls_version: "1.3".to_string(),
             cipher_suites: vec![
                 "TLS_AES_256_GCM_SHA384".to_string(),
@@ -345,7 +345,7 @@ pub struct RateLimitingConfig {
 }
 
 impl Default for RateLimitingConfig { fn default() -> Self   {
-    
+
      Self { enabled: true,
             requests_per_minute: 60,
             burst_size: 10,
@@ -409,7 +409,7 @@ pub struct SessionConfig {
 }
 
 impl Default for SessionConfig { fn default() -> Self   {
-    
+
      Self { timeout: Duration::from_secs(3600),      // 1 hour
             idle_timeout: Duration::from_secs(1800), // 30 minutes
             max_concurrent_sessions: 5,
@@ -484,7 +484,7 @@ pub enum CharacterType { /// Uppercase letters (A-Z)
     SpecialChars  }
 
 impl Default for CharacterRequirements { fn default() -> Self   {
-    
+
      Self { required_types: vec![
                 CharacterType::Uppercase,
                 CharacterType::Lowercase,
@@ -497,7 +497,7 @@ impl Default for CharacterRequirements { fn default() -> Self   {
 impl CharacterRequirements {
   /// Check if uppercase letters are required
     pub fn requires_uppercase() -> bool   {
-    
+
      self.required_types.contains(&CharacterType::Uppercase)
     /// Check if lowercase letters are required
     pub fn requires_lowercase(&self) -> bool { self.required_types.contains(&CharacterType::Lowercase)
@@ -505,7 +505,7 @@ impl CharacterRequirements {
     pub fn requires_numbers(&self) -> bool { self.required_types.contains(&CharacterType::Numbers)
     /// Check if special characters are required
     pub fn requires_special_chars(&self) -> bool { self.required_types.contains(&CharacterType::SpecialChars)
-    
+
 }
 
 /// Password history settings
@@ -521,7 +521,7 @@ pub struct PasswordHistory {
 }
 
 impl Default for PasswordHistory { fn default() -> Self   {
-    
+
      Self { remember_count: 5,
             expiry_days: 90,
             passphrase_mode: true
@@ -550,7 +550,7 @@ pub struct NetworkSecurityConfig {
 }
 
 impl Default for NetworkSecurityConfig { fn default() -> Self   {
-    
+
      Self { firewall_enabled: true,
             allowed_ip_ranges: vec!["0.0.0.0/0".to_string()], // Allow all by default
             blocked_ip_ranges: vec![],
@@ -574,7 +574,7 @@ pub struct ProxyConfig {
 }
 
 impl Default for ProxyConfig { fn default() -> Self   {
-    
+
      Self { enabled: false,
             proxy_url: None,
             bypass_list: vec!["localhost".to_string(), "127.0.0.1".to_string()],
@@ -596,7 +596,7 @@ pub struct SecurityProviderIntegrationConfig { /// Enable `security_provider_con
     /// security_provider_endpoint-specific configuration
     pub config: HashMap<String, serde_json::Value>;};
 impl Default for SecurityProviderIntegrationConfig { fn default() -> Self   {
-    
+
      Self { enabled: false,
             endpoint: None,
             api_key: None,
@@ -604,19 +604,19 @@ impl Default for SecurityProviderIntegrationConfig { fn default() -> Self   {
             config: HashMap::new()}
 
 impl Default for TlsSettings { fn default() -> Self   {
-    
+
      Self { enabled: true,
             required: true
 }
 
 impl Default for SecurityFeatures { fn default() -> Self   {
-    
+
      Self { cert_pinning: false,
             hsts: true
 }
 
 impl Default for AuditSettings { fn default() -> Self   {
-    
+
      Self { enabled: true,
             types: vec![
                 AuditType::Authentication,
@@ -627,18 +627,18 @@ impl Default for AuditSettings { fn default() -> Self   {
             encryption: AuditEncryption::default()}
 
 impl Default for AuditEncryption { fn default() -> Self   {
-    
+
      Self { enabled: true
 }
 
 impl Default for PasswordPolicyConfig { fn default() -> Self   {
-    
+
      Self { min_length: 12,
             requirements: PasswordRequirements::default(),
             history: PasswordHistory::default()}
 
 impl Default for PasswordRequirements { fn default() -> Self   {
-    
+
      Self { character_requirements: CharacterRequirements::default(),
             min_length: 8,
             max_length: 64}

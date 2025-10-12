@@ -30,7 +30,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
         let deployment_id = uuid::Uuid::new_v4().to_string());
         let start_time = chrono::Utc::now());
 
-        info!("Starting deployment {} with strategy: {:?}", deployment_id, strategy);"
+        info!("Starting deployment {} with strategy: {:?}", deployment_id, strategy)"
 
         let mut deployed_services = Vec::with_capacity(16); // Pre-allocate for typical deployment size
         let mut errors = Vec::with_capacity(8); // Pre-allocate for typical error count
@@ -52,7 +52,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
                     match self.deploy_single_service(service).await {
                         Ok(deployed_service) => deployed_services.push(deployed_service),
                         Err(e) => {
-                            error!("Failed to deploy service {}: {}", service.name, e);"
+                            error!("Failed to deploy service {}: {}", service.name, e)"
                             errors.push(DeploymentError  {service_name: service.name.clone(), // Only clone on error
                                 error_message: e.to_string(),
                                 timestamp: chrono::Utc::now(,
@@ -66,12 +66,12 @@ impl DeploymentEngine  {/// Create a new deployment engine
                     .collect();
 
                 let results = futures::future::join_all(deployment_futures).await;
-                
+
                 for (service, result) in services.iter().zip(results.iter() {
                     match result {
                         Ok(deployed_service) => deployed_services.push(deployed_service.clone(),
                         Err(e) => {
-                            error!("Failed to deploy service {}: {}", service.name, e);"
+                            error!("Failed to deploy service {}: {}", service.name, e)"
                             errors.push(DeploymentError  {service_name: service.name.clone(), // Only clone on error
                                 error_message: e.to_string(),
                                 timestamp: chrono::Utc::now(,
@@ -90,7 +90,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
                             tokio::time::sleep(super::hardcoded_elimination::replace::health_check_timeout().await;
                         }
                         Err(e) => {
-                            error!("Failed to deploy service {}: {}", service.name, e);"
+                            error!("Failed to deploy service {}: {}", service.name, e)"
                             errors.push(DeploymentError  {service_name: service.name.clone()
                                 error_message: e.to_string(),
                                 timestamp: chrono::Utc::now(,
@@ -106,7 +106,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
 
         // Validate deployment
         if let Err(e) = self.validate_deployment(&deployed_services).await {
-            warn!("Deployment validation failed: {}", e);"
+            warn!("Deployment validation failed: {}", e)"
         }
 
         // Generate summary
@@ -143,7 +143,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
 
     /// Deploy a single service
     async fn deploy_single_service(&self, service: &ServiceConfig) -> Result<ServiceDeploymentInfo> {
-        info!("Deploying service: {}", service.name);"
+        info!("Deploying service: {}", service.name)"
 
         let deployment_method = service.deployment_method.as_deref().unwrap_or("docker");"
 
@@ -159,7 +159,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
 
     /// Deploy service using Docker
     async fn deploy_docker_service(&self, service: &ServiceConfig) -> Result<ServiceDeploymentInfo> {
-        let container_name = format!("songbird-{}", service.name);
+        let container_name = format!("songbird-{}", service.name)
 
         // Build docker run command
         let mut args = vec![
@@ -206,7 +206,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
             service_type: "docker".to_string(),
             status: ServiceStatus::Running,
             endpoint: format!("http://{}:{}", "
-                crate::config::environment::get_container_bind_address(), 
+                crate::config::environment::get_container_bind_address(),
                 service.ports.first().unwrap_or(&crate::config::constants::network::DEFAULT_PORT))
             ports: service.ports.clone(,
             process_id: None,
@@ -237,7 +237,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
             service_type: "kubernetes".to_string(),
             status: ServiceStatus::Running,
             endpoint: format!("http://{}:{}", "
-                crate::config::environment::get_container_bind_address(), 
+                crate::config::environment::get_container_bind_address(),
                 service.ports.first().unwrap_or(&crate::config::constants::network::DEFAULT_PORT))
             ports: service.ports.clone(,
             process_id: None,
@@ -255,7 +255,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
     /// Deploy service using systemd
     async fn deploy_systemd_service(&self, service: &ServiceConfig) -> Result<ServiceDeploymentInfo> {
         let unit_content = self.generate_systemd_unit(service)?;
-        let unit_file = format!("/etc/systemd/system/songbird-{}.service", service.name);
+        let unit_file = format!("/etc/systemd/system/songbird-{}.service", service.name)
 
         // Write systemd unit file
         tokio::fs::write(&unit_file, unit_content).await
@@ -292,7 +292,7 @@ impl DeploymentEngine  {/// Create a new deployment engine
             service_type: "systemd".to_string(),
             status: ServiceStatus::Running,
             endpoint: format!("http://{}:{}", "
-                crate::config::environment::get_container_bind_address(), 
+                crate::config::environment::get_container_bind_address(),
                 service.ports.first().unwrap_or(&crate::config::constants::network::DEFAULT_PORT))
             ports: service.ports.clone(,
             process_id: None,
@@ -309,8 +309,8 @@ impl DeploymentEngine  {/// Create a new deployment engine
 
     /// Validate deployment
     async fn validate_deployment(&self, deployed_services: &[ServiceDeploymentInfo]) -> Result<()> {
-        info!("Validating deployment of {} services", deployed_services.len();"
-        
+        info!("Validating deployment of {} services", deployed_services.len()"
+
         for service in deployed_services  {// Check if service is responding
             if let Some(port) = service.ports.first() {
                 match timeout(
@@ -318,14 +318,14 @@ impl DeploymentEngine  {/// Create a new deployment engine
                         Duration::from_secs(10)
                     )
                     tokio::net::TcpStream::connect(format!("{}:{}", "
-                        crate::config::constants::network::DEFAULT_BIND_ADDRESS, 
+                        crate::config::constants::network::DEFAULT_BIND_ADDRESS,
                         port,
                 ).await {
                     Ok(_) => {
-                        info!("✅ Service {} is responding on port {}", service.name, port);"
+                        info!("✅ Service {} is responding on port {}", service.name, port)"
                     }
                     Err(_) => {
-                        warn!("⚠️ Service {} is not responding on port {}", service.name, port);"
+                        warn!("⚠️ Service {} is not responding on port {}", service.name, port)"
                     }
                 }
             }
@@ -650,7 +650,7 @@ use songbird_types::unified_constants::*;
             resource_limits: None,
         };
 
-        assert_eq!(config.name, "test-service");"
+        assert_eq!(config.name, "test-service")"
         assert_eq!(config.ports.len(), 2);
     }
 
@@ -675,4 +675,4 @@ use songbird_types::unified_constants::*;
         assert_eq!(HealthStatus::Unhealthy.to_string(), "Unhealthy");"
         assert_eq!(HealthStatus::Unknown.to_string(), "Unknown");"
     }
-} 
+}

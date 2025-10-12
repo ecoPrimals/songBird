@@ -22,7 +22,7 @@ pub use primal::{
 };
 
 // Re-export error types
-pub use errors::{SecurityError, SongbirdError};
+pub use errors::{SecurityError, SongbirdError, SongbirdResult};
 
 // Re-export response types
 pub use response::{
@@ -55,6 +55,7 @@ pub use constants::{
 };
 
 // Module declarations
+pub mod adapters;
 pub mod config;
 pub mod constants;
 pub mod errors;
@@ -66,3 +67,7 @@ pub mod service;
 pub mod traits;
 pub mod types;
 pub mod zero_copy;
+
+// Backward compatibility alias for unified_constants
+// This allows old code using `songbird_types::unified_constants` to continue working
+pub use constants as unified_constants;

@@ -1,4 +1,5 @@
 //! Production Service Discovery System
+use tracing::{debug, info, warn, error};
 //!
 //! This module provides a production-ready service discovery system that works
 //! with the Universal Capability Adapter to dynamically discover and manage
@@ -78,7 +79,7 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
 
     /// Start the discovery process
     pub async fn start_discovery(&self) -> SongbirdResult<()> {
-        info!("🔍 Starting production service discovery");"
+        info!("🔍 Starting production service discovery")"
 
         if self.config.enable_env_discovery {
             self.discover_from_environment().await?;
@@ -88,12 +89,12 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
             self.discover_from_network().await?;
         }
 
-        info!("✅ Service discovery startup complete");"
+        info!("✅ Service discovery startup complete")"
         Ok(()),
     }
 
     /// Discover services from environment variables
-    async fn discover_from_environment(&self) -> SongbirdResult<()>  {debug!("🌍 Discovering services from environment variables");"
+    async fn discover_from_environment(&self) -> SongbirdResult<()>  {debug!("🌍 Discovering services from environment variables")"
         let mut discovered = Vec::new();
 
         // Standard service patterns
@@ -131,7 +132,7 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
                     metadata: HashMap::new()),
                 };
 
-                info!("🎯 Discovered service '{}' at {}", service_name, endpoint);"
+                info!("🎯 Discovered service '{}' at {}", service_name, endpoint)"
                 discovered.push(service));
             }
         }
@@ -140,7 +141,7 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
         for i in 1..=20 {
             let service_env = format!("SERVICE_{}_ENDPOINT", i);
             let name_env = format!("SERVICE_{}_NAME", i);
-            let caps_env = format!("SERVICE_{}_CAPABILITIES", i);
+            let caps_env = format!("SERVICE_{}_CAPABILITIES", i)
 
             if let (Ok(endpoint), Ok(name) =
                 (std::env::var(&service_env), std::env::var(&name_env)
@@ -170,7 +171,7 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
 
     /// Discover services from network scanning (placeholder for security)
     async fn discover_from_network(&self) -> SongbirdResult<()> {
-        warn!("🌐 Network discovery is disabled for security reasons");"
+        warn!("🌐 Network discovery is disabled for security reasons")"
         // In a production environment, this would implement secure service discovery
         // protocols like mDNS, Consul, etcd, etc.
         Ok(()),
@@ -201,7 +202,7 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
             service_map.insert(service.id, service);
         }
 
-        info!("🎉 Total services registered: {}", service_map.len();"
+        info!("🎉 Total services registered: {}", service_map.len()"
         Ok(()),
     }
 
@@ -227,7 +228,7 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
             );
             Ok(services)
         } else {
-            debug!("❌ No services found for capability '{}'", capability);"
+            debug!("❌ No services found for capability '{}'", capability)"
             Ok(Vec::new()
         }
     }
@@ -240,7 +241,7 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
 
     /// Perform health check on a service
     pub async fn health_check_service(&self, service: &DiscoveredService) -> ServiceHealth {
-        let health_endpoint = format!("{}/health", service.endpoint);
+        let health_endpoint = format!("{}/health", service.endpoint)
 
         match self.http_client.get(&health_endpoint).send().await {
             Ok(response) => {
@@ -268,7 +269,7 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
             debug!(
                 "💓 Updated health for service '{}': {:?}","
                 service.name, service.health_status
-            );
+            )
         }
 
         Ok(()),
@@ -328,8 +329,8 @@ use songbird_config;
         let discovery = ProductionServiceDiscovery::new(config);
 
         let stats = discovery.get_discovery_stats().await.unwrap();
-        assert_eq!(stats.total_services, 0);
-        assert_eq!(stats.total_capabilities, 0);
+        assert_eq!(stats.total_services, 0)
+        assert_eq!(stats.total_capabilities, 0)
     }
 
     #[tokio::test]
@@ -338,7 +339,10 @@ use songbird_config;
 
         let test_service = DiscoveredService  {id: Uuid::new_v4()
             name: "test-service".to_string(),
-            endpoint: &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string(),
+            endpoint: &format!("http://{}:{}", 
+                std::env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string()),
+                std::env::var("TEST_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8080)
+            ),
             capabilities: vec!["test".to_string(), "demo".to_string()],"
             health_status: ServiceHealth::Healthy,
             last_seen: chrono::Utc::now(,
@@ -352,7 +356,7 @@ use songbird_config;
 
         let services = discovery.get_services_by_capability("test").await.unwrap();"
         assert_eq!(services.len(), 1);
-        assert_eq!(services[0].name, "test-service");"
+        assert_eq!(services[0].name, "test-service")"
 
         let all_services = discovery.get_all_services().await.unwrap();
         assert_eq!(all_services.len(), 1);
@@ -364,7 +368,10 @@ use songbird_config;
 
         let service = DiscoveredService  {id: Uuid::new_v4()
             name: "test-service".to_string(),
-            endpoint: &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string(),
+            endpoint: &format!("http://{}:{}", 
+                std::env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string()),
+                std::env::var("TEST_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8080)
+            ),
             capabilities: vec!["security".to_string()],"
             health_status: ServiceHealth::Healthy,
             last_seen: chrono::Utc::now(,
@@ -372,8 +379,8 @@ use songbird_config;
         };
 
         let provider = discovery.to_capability_provider(&service);
-        assert_eq!(provider.name, service.name);
-        assert_eq!(provider.capabilities, service.capabilities);
-        assert_eq!(provider.priority, 1); // Healthy = priority 1
+        assert_eq!(provider.name, service.name)
+        assert_eq!(provider.capabilities, service.capabilities)
+        assert_eq!(provider.priority, 1) // Healthy = priority 1
     }
 }

@@ -30,7 +30,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
         }
     }
     pub async fn execute(
-        &self)
+        &self,
         dry_run: bool,
         save_config: Option<&std::path::Path>,
         skip_confirmation: bool,
@@ -47,8 +47,8 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
             print_info("Continue? (y/N)");"
 
             let mut input = String::new();
-            std::io::stdin().read_line(&mut input).map_err(|e| {
-                SongbirdError::from(format!("Failed to read user input: {}", e))"
+            std::io::stdin().read_line(&mut input,.map_err(|e| {
+                SongbirdError::from(format!("Failed to read user input: {}", e)"
             })?;
             if !input.trim().to_lowercase().starts_with('y') {
                 print_info("Deployment cancelled.");"
@@ -59,7 +59,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
         // Perform deployment
         let orchestrator = ZeroTouchOrchestrator::new();
         match orchestrator.deploy().await {
-            Ok(_result) => {
+            Ok(_result, => {
                 print_success("Zero-touch deployment completed successfully!");"
 
                 if let Some(config_path) = save_config {
@@ -71,7 +71,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
                 }
             }
             Err(e) => {
-                print_error(&format!("Deployment failed: {}", e));"
+                print_error(&format!("Deployment failed: {}", e);"
                 return Err(CliError::Command  {command: "zero-touch".to_string()),
                     message: e.to_string(),
                 });
@@ -82,7 +82,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
     }
     async fn save_config_file(&self, path: &std::path::Path) -> CliResult<()> {
         let config = ZeroTouchConfig::default();
-        let config_yaml = serde_yaml::to_string(&config).map_err(|e| {
+        let config_yaml = serde_yaml::to_string(&config,.map_err(|e| {
             SongbirdError::configuration(format!(
                 "Failed to serialize configuration: {}","
                 e
@@ -107,7 +107,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
             "message": "Zero-touch deployment completed""
         });
 
-        let summary_json = serde_json::to_string(&summary).map_err(|e| {
+        let summary_json = serde_json::to_string(&summary,.map_err(|e| {
             SongbirdError::configuration(format!(
                 "Failed to serialize summary: {}","
                 e
@@ -128,7 +128,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
     async fn display_error_with_troubleshooting(&self, error: &SongbirdError) {
         println!("{}", "🔧 TROUBLESHOOTING SUGGESTIONS".bright_yellow().bold();"
 
-        match error  {SongbirdError::Network  {message)
+        match error  {SongbirdError::Network  {message,
                 interface: _,
                 suggestion: _,
             } => {
@@ -138,7 +138,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
                 print_info("  • Verify firewall settings");"
                 print_info("  • Try running: songbird firewall configure");"
             }
-            SongbirdError::Service(service_error) => {
+            SongbirdError::Service(service_error, => {
                 print_info("🔧 Service issue detected");"
                 print_info(&format!("  Service: {}", service_error.service);
                 print_info(&format!("  Error: {}", service_error.message);
@@ -155,7 +155,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
                 print_info("🔧 Configuration issue detected");"
                 print_info(&format!("  Error: {}", message);
                 if let Some(field_name) = field {
-                    print_info(&format!("  Field: {}", field_name);
+                    print_info(&format!("  Field: {}", field_name,
                 }
                 print_info("  Troubleshooting:");"
                 print_info("    • Check configuration file syntax");"
@@ -169,15 +169,15 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
                 print_info("  • Check logs: songbird logs");"
             }
         }
-        println!();
+        println!()
     }
 }
 /// Print the zero-touch deployment banner
 #[allow(dead_code)]
 fn print_banner() {
     println!("{}", "🪄 ✨ SONGBIRD ZERO-TOUCH DEPLOYMENT ✨ 🪄".bright_magenta().bold();"
-    println!("{}", "   Completely automatic setup and deployment".bright_white();"
-    println!();
+    println!("{}", "   Completely automatic setup and deployment".bright_white()"
+    println!()
 }
 
 /// Execute zero-touch deployment
@@ -187,7 +187,7 @@ pub async fn execute_zero_touch(
     _yes: bool,
     output: Option<PathBuf>,
 ) -> CliResult<()> {
-    info!("🪄 Starting zero-touch deployment...");"
+    info!("🪄 Starting zero-touch deployment...");
 
     // Print banner
     print_zero_touch_banner();
@@ -199,9 +199,9 @@ pub async fn execute_zero_touch(
 
     // Execute deployment
     match orchestrator.deploy().await {
-        Ok(result) => {
+        Ok(result, => {
             print_success("🎉 Zero-touch deployment completed successfully!");"
-            println!();
+            println!()
 
             // Display results
             display_deployment_result(&result, dry_run).await?;
@@ -228,8 +228,8 @@ pub async fn execute_zero_touch(
             Ok(()),
         }
         Err(e) => {
-            error!("Zero-touch deployment failed: {}", e);"
-            print_error(&format!("❌ Zero-touch deployment failed: {}", e));"
+            error!("Zero-touch deployment failed: {}", e,"
+            print_error(&format!("❌ Zero-touch deployment failed: {}", e);"
             // Try to provide helpful suggestions
             suggest_troubleshooting_steps(&e).await;
             Err(e.into()
@@ -240,25 +240,25 @@ pub async fn execute_zero_touch(
 /// Print the zero-touch deployment banner
 fn print_zero_touch_banner() {
     println!("{}", "🚀 SONGBIRD ZERO-TOUCH DEPLOYMENT".bright_green().bold();"
-    println!("{}", "=====================================".bright_green();"
+    println!("{}", "=====================================".bright_green()"
     println!();
-    println!("Automatically configuring and deploying Songbird services...");"
-    println!();
+    println!("Automatically configuring and deploying Songbird services...");
+    println!()
 }
 
 /// Display deployment result information
 async fn display_deployment_result(_result: &DeploymentResult, dry_run: bool) -> CliResult<()> {
-    println!();
+    println!()
 
     // Simple deployment result display
     println!("{}", "📊 DEPLOYMENT RESULT".bright_green().bold();"
     if dry_run {
-        println!("  Mode: {} (simulation)", "DRY RUN".bright_yellow();"
+        println!("  Mode: {} (simulation,", "DRY RUN".bright_yellow();"
     } else {
-        println!("  Mode: {} (actual deployment)", "LIVE".bright_green();"
+        println!("  Mode: {} (actual deployment,", "LIVE".bright_green();"
     }
-    println!("  Result: {}", "Success".bright_white();"
-    println!();
+    println!("  Result: {}", "Success".bright_white()"
+    println!()
 
     Ok(()),
 }
@@ -268,7 +268,7 @@ async fn save_songbird_configuration(
     config: &songbird_config::config::SongbirdConfig,
     path: &std::path::Path,
 ) -> CliResult<()> {
-    let config_yaml = serde_yaml::to_string(config).map_err(|e| {
+    let config_yaml = serde_yaml::to_string(config,.map_err(|e| {
         SongbirdError::configuration(format!(
             "Failed to serialize configuration: {}","
             e
@@ -297,8 +297,8 @@ async fn save_deployment_summary(
         "status": "success""
     });
 
-    let summary_json = serde_json::to_string(&summary).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to serialize summary: {}", e)"
+    let summary_json = serde_json::to_string(&summary,.map_err(|e| {
+        SongbirdError::configuration(format!("Failed to serialize summary: {}", e,"
     })?;
 
     tokio::fs::write(path, summary_json).await.map_err(|e| {
@@ -315,28 +315,28 @@ async fn save_deployment_summary(
 async fn display_next_steps(_result: &DeploymentResult) {
     println!("{}", "🎯 NEXT STEPS".bright_green().bold();"
 
-    println!("  1. Check service status:");"
-    println!("     {}", "songbird status".bright_white();"
+    println!("  1. Check service status:");
+    println!("     {}", "songbird status".bright_white()"
 
-    println!("  2. View logs:");"
-    println!("     {}", "songbird logs --follow".bright_white();"
+    println!("  2. View logs:");
+    println!("     {}", "songbird logs --follow".bright_white()"
 
-    println!("  3. Join services to the network:");"
-    println!("     {}", "songbird join".bright_white();"
+    println!("  3. Join services to the network:");
+    println!("     {}", "songbird join".bright_white()"
 
     println!(
         "  💡 {} For help, run: {}","
         "Tip:".bright_yellow().bold(),"
         "songbird --help".bright_white()"
     );
-    println!();
+    println!()
 }
 
 /// Suggest troubleshooting steps based on the error
 async fn suggest_troubleshooting_steps(error: &SongbirdError) {
     println!("{}", "🔧 TROUBLESHOOTING SUGGESTIONS".bright_yellow().bold();"
 
-    match error  {SongbirdError::Network  {message)
+    match error  {SongbirdError::Network  {message,
             interface: _,
             suggestion: _,
         } => {
@@ -346,19 +346,19 @@ async fn suggest_troubleshooting_steps(error: &SongbirdError) {
             print_info("  • Verify firewall settings");"
             print_info("  • Try running: songbird firewall configure");"
         }
-        SongbirdError::Service(service_error) => {
+        SongbirdError::Service(service_error, => {
             print_error(&format!(
                 "Service error for {}: {}","
                 service_error.service, service_error.message
-            );
+            )
             print_info("Check service dependencies and requirements");"
         }
         _ => {
-            print_error(&format!("Deployment failed: {}", error));"
+            print_error(&format!("Deployment failed: {}", error);"
             print_info("Run with increased verbosity for more details");"
         }
     }
 
-    println!("  📚 For more help: https://docs.songbird.rs/troubleshooting");"
-    println!();
+    println!("  📚 For more help: https://docs.songbird.rs/troubleshooting");
+    println!()
 }

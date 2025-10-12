@@ -3,6 +3,8 @@
 //! This module provides the core traits that define the interfaces for
 //! all Songbird components. All implementations MUST use these traits.
 
+pub mod canonical;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

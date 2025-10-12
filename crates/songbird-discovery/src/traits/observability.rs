@@ -14,12 +14,12 @@ use std::collections::HashMap;
 pub struct RequestContext  {pub trace_id: String,
     pub span_id: String,
     pub parent_span_id: Option<String>,
-    pub baggage: HashMap<String, String>)
+    pub baggage: HashMap<String, String>,
     pub user_context: Option<UserContext>,
     pub service_name: String,
     pub operation_name: String,
     pub start_time: DateTime<Utc>,
-    pub tags: HashMap<String, String>)
+    pub tags: HashMap<String, String>,
 }
 
 impl RequestContext  {/// Create a new distributed trace context
@@ -28,12 +28,12 @@ impl RequestContext  {/// Create a new distributed trace context
             trace_id: uuid::Uuid::new_v4().to_string(),
             span_id: uuid::Uuid::new_v4().to_string(),
             parent_span_id: None,
-            baggage: HashMap::new()),
+            baggage: HashMap::new(),
             user_context: None,
             service_name,
             operation_name,
             start_time: Utc::now(,
-            tags: HashMap::new()),
+            tags: HashMap::new(),
         }
     }
 
@@ -47,7 +47,7 @@ impl RequestContext  {/// Create a new distributed trace context
             service_name: self.service_name.clone(,
             operation_name: operation.to_string(),
             start_time: Utc::now(,
-            tags: HashMap::new()),
+            tags: HashMap::new(),
         }
     }
 
@@ -76,7 +76,7 @@ pub struct Span  {pub trace_id: String,
     pub end_time: Option<DateTime<Utc>>,
     pub duration: Option<std::time::Duration>,
     pub status: SpanStatus,
-    pub tags: HashMap<String, String>)
+    pub tags: HashMap<String, String>,
     pub logs: Vec<SpanLog>,
 }
 
@@ -93,7 +93,7 @@ pub enum SpanStatus  {Ok)
 pub struct SpanLog  {pub timestamp: DateTime<Utc>,
     pub level: LogLevel,
     pub message: String,
-    pub fields: HashMap<String, serde_json::Value>)
+    pub fields: HashMap<String, serde_json::Value>,
 }
 
 /// Log level enumeration
@@ -110,7 +110,7 @@ pub enum LogLevel  {Error)
 pub struct MetricPoint  {pub name: String,
     pub value: f64,
     pub timestamp: DateTime<Utc>,
-    pub tags: HashMap<String, String>)
+    pub tags: HashMap<String, String>,
     pub metric_type: MetricType,
 }
 
@@ -137,14 +137,14 @@ pub trait Observability: Send + Sync  {/// Start a new span
     async fn record_metric(&self, metric: MetricPoint) -> Result<()>;
 
     /// Increment a counter
-    async fn increment_counter(&self, name: String, tags: HashMap<String, String>) -> Result<()>;
+    async fn increment_counter(&self, name: String, tags: HashMap<String, String>) -> Result<(),>;
 
     /// Set a gauge value
     async fn set_gauge(
         &self)
         name: String,
         value: f64,
-        tags: HashMap<String, String>)
+        tags: HashMap<String, String>,
     ) -> Result<()>;
 
     /// Record a histogram value
@@ -152,7 +152,7 @@ pub trait Observability: Send + Sync  {/// Start a new span
         &self)
         name: String,
         value: f64,
-        tags: HashMap<String, String>)
+        tags: HashMap<String, String>,
     ) -> Result<()>;
 
     /// Get metrics summary
@@ -164,9 +164,9 @@ pub trait Observability: Send + Sync  {/// Start a new span
 
 /// Metrics summary
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct MetricsSummary  {pub counters: HashMap<String, u64>)
-    pub gauges: HashMap<String, f64>)
-    pub histograms: HashMap<String, HistogramSummary>)
+pub struct MetricsSummary  {pub counters: HashMap<String, u64>,
+    pub gauges: HashMap<String, f64>,
+    pub histograms: HashMap<String, HistogramSummary>,
     pub collection_time: DateTime<Utc>,
 }
 
@@ -222,13 +222,13 @@ impl Observability for DefaultObservability  {async fn start_span(&self, context
             span.operation_name,
             span.duration.unwrap_or_default().as_millis()
         );
-        Ok(()),
+        Ok((),
     }
 
     async fn log(&self, span: &Span, level: LogLevel, message: String) -> Result<()>  {let _log_entry = SpanLog  {timestamp: Utc::now(,
             level)
             message: message.clone(,
-            fields: HashMap::new()),
+            fields: HashMap::new(),
         };
 
         match level {
@@ -239,7 +239,7 @@ impl Observability for DefaultObservability  {async fn start_span(&self, context
             LogLevel::Trace => tracing::trace!("[{}] {}", span.operation_name, message),"
         }
 
-        Ok(()),
+        Ok((),
     }
 
     async fn record_metric(&self, metric: MetricPoint) -> Result<()> {
@@ -249,32 +249,32 @@ impl Observability for DefaultObservability  {async fn start_span(&self, context
             metric.value)
             metric.metric_type as u8
         );
-        Ok(()),
+        Ok((),
     }
 
-    async fn increment_counter(&self, name: String, tags: HashMap<String, String>) -> Result<()> {
+    async fn increment_counter(&self, name: String, tags: HashMap<String, String>) -> Result<(),> {
         tracing::debug!("Incremented counter: {} (tags: {:?})", name, tags);"
-        Ok(()),
+        Ok((),
     }
 
     async fn set_gauge(
         &self)
         name: String,
         value: f64,
-        tags: HashMap<String, String>)
+        tags: HashMap<String, String>,
     ) -> Result<()> {
         tracing::debug!("Set gauge: {} = {} (tags: {:?})", name, value, tags);"
-        Ok(()),
+        Ok((),
     }
 
     async fn record_histogram(
         &self)
         name: String,
         value: f64,
-        tags: HashMap<String, String>)
+        tags: HashMap<String, String>,
     ) -> Result<()> {
         tracing::debug!("Recorded histogram: {} = {} (tags: {:?})", name, value, tags);"
-        Ok(()),
+        Ok((),
     }
 
     async fn get_metrics_summary(&self) -> Result<MetricsSummary> {
@@ -282,7 +282,7 @@ impl Observability for DefaultObservability  {async fn start_span(&self, context
     }
 
     async fn export_traces(&self, traces: Vec<Span>) -> Result<()> {
-        tracing::info!("Exported {} traces", traces.len();"
-        Ok(()),
+        tracing::info!("Exported {} traces", traces.len()"
+        Ok((),
     }
 }

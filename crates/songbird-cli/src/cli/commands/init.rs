@@ -23,35 +23,35 @@ pub async fn execute_init(
     output: PathBuf,
 ) -> crate::errors::CliResult<()> {
     println!("{}", "🎼 Songbird Orchestrator Initialization".bright_blue().bold();"
-    println!("{}", "=====================================".bright_blue();"
+    println!("{}", "=====================================".bright_blue()"
 
-    let mut config = InitConfig  {deployment_type: deployment)
+    let mut config = InitConfig  {deployment_type: deployment,
         config_dir: output.clone(,
         data_dir: output.join("data"),"
         log_dir: output.join("logs"),"
         ..Default::default()
     };
     // Interactive configuration if not in quick mode
-    if !quick  {config = interactive_configuration(config).map_err(|e| match e {
+    if !quick  {config = interactive_configuration(config,.map_err(|e| match e {
             CliError::UserCancelled => CliError::UserCancelled,
             _ => CliError::Config {
-                message: format!("Interactive configuration failed: {}", e),"
+                message: format!("Interactive configuration failed: {}", e,"
                 field: "interactive_config".to_string(),
                 suggestion: Some("Try running with --force to skip interactive mode".to_string(),"
             })
         })?;
     }
     // Validate configuration
-    validate_init_config(&config)?;
+    validate_init_config(&config,?;
     // Create directories
-    create_directories(&config)?;
+    create_directories(&config,?;
     // Generate and save configuration
-    let orchestrator_config = generate_orchestrator_config(&config)?;
-    save_configuration(&config, &orchestrator_config)?;
+    let orchestrator_config = generate_orchestrator_config(&config,?;
+    save_configuration(&config, &orchestrator_config,?;
     // Generate templates and examples
-    generate_templates(&config)?;
+    generate_templates(&config,?;
     // Show completion message
-    show_completion_message(&config)?;
+    show_completion_message(&config,?;
     Ok(()),
 }
 /// Configuration for the init command
@@ -89,20 +89,20 @@ impl Default for InitConfig  {fn default() -> Self  {let home_dir = dirs::home_d
 /// Interactive configuration wizard
 fn interactive_configuration(mut config: InitConfig) -> crate::errors::CliResult<InitConfig> {
     let theme = ColorfulTheme::default();
-    println!("\n{}", "Let's configure your Songbird cluster:".bright_green();"
+    println!("\n{}", "Let's configure your Songbird cluster:".bright_green()"
     // Deployment type selection
     let deployment_options = vec![
-        "Home Network (recommended for home labs)","
-        "Research Cluster (for scientific computing)","
-        "Edge Deployment (for IoT/edge computing)","
-        "Development (for testing and development)","
+        "Home Network (recommended for home labs,","
+        "Research Cluster (for scientific computing,","
+        "Edge Deployment (for IoT/edge computing,","
+        "Development (for testing and development,","
     ];
-    let deployment_selection = Select::with_theme(&theme)
+    let deployment_selection = Select::with_theme(&theme,
         .with_prompt("What type of deployment is this?")"
         .default(0)
-        .items(&deployment_options)
+        .items(&deployment_options,
         .interact()
-        .map_err(|_e| CliError::UserCancelled)?;
+        .map_err(|_e| CliError::UserCancelled,?;
     config.deployment_type = match deployment_selection  {0 => crate::cli::DeploymentType::HomeNetwork,
         1 => crate::cli::DeploymentType::ResearchCluster,
         2 => crate::cli::DeploymentType::EdgeDeployment,
@@ -115,13 +115,13 @@ fn interactive_configuration(mut config: InitConfig) -> crate::errors::CliResult
         .with_prompt("Configuration directory")"
         .default(config.config_dir.to_string_lossy().to_string()),
         .interact_text()
-        .map_err(|_e| CliError::UserCancelled)?;
+        .map_err(|_e| CliError::UserCancelled,?;
 
     config.config_dir = PathBuf::from(config_dir_input);
     config.data_dir = config.config_dir.join("data");"
     config.log_dir = config.config_dir.join("logs");"
 
-    Ok(config)
+    Ok(config,
 }
 /// Validate the initialization configuration
 fn validate_init_config(_config: &InitConfig) -> crate::errors::CliResult<()> {
@@ -131,9 +131,9 @@ fn validate_init_config(_config: &InitConfig) -> crate::errors::CliResult<()> {
 
 /// Create necessary directories
 fn create_directories(config: &InitConfig) -> crate::errors::CliResult<()> {
-    std::fs::create_dir_all(&config.config_dir).map_err(CliError::Io)?;
-    std::fs::create_dir_all(&config.data_dir).map_err(CliError::Io)?;
-    std::fs::create_dir_all(&config.log_dir).map_err(CliError::Io)?;
+    std::fs::create_dir_all(&config.config_dir,.map_err(CliError::Io,?;
+    std::fs::create_dir_all(&config.data_dir,.map_err(CliError::Io,?;
+    std::fs::create_dir_all(&config.log_dir,.map_err(CliError::Io,?;
 
     Ok(()),
 }
@@ -154,13 +154,13 @@ fn save_configuration(
     // Save main orchestrator configuration
     let config_file = init_config.config_dir.join("songbird.toml");"
     let config_content =
-        toml::to_string_pretty(orchestrator_config).map_err(|e| CliError::Config {
-            message: format!("Failed to serialize config: {}", e),"
+        toml::to_string_pretty(orchestrator_config,.map_err(|e| CliError::Config {
+            message: format!("Failed to serialize config: {}", e,"
             field: "config_serialization".to_string(),
             suggestion: Some("Check your configuration values and try again".to_string(),"
         })?;
-    std::fs::write(&config_file, config_content).map_err(|e| CliError::Config {
-        message: format!("Failed to write config file: {}", e),"
+    std::fs::write(&config_file, config_content,.map_err(|e| CliError::Config {
+        message: format!("Failed to write config file: {}", e,"
         field: "config_file".to_string(),
         suggestion: Some("Check file permissions and disk space".to_string(),"
     })?;
@@ -173,27 +173,27 @@ fn save_configuration(
         default_deployment_type: "home-network".to_string(),
     };
     let cli_config_file = init_config.config_dir.join("cli.toml");"
-    let cli_config_content = toml::to_string_pretty(&cli_config).map_err(|e| CliError::Config {
-        message: format!("Failed to serialize CLI config: {}", e),"
+    let cli_config_content = toml::to_string_pretty(&cli_config,.map_err(|e| CliError::Config {
+        message: format!("Failed to serialize CLI config: {}", e,"
         field: "cli_config_serialization".to_string(),
         suggestion: Some("Check your CLI configuration values".to_string(),"
     })?;
-    std::fs::write(&cli_config_file, cli_config_content).map_err(|e| CliError::Config {
-        message: format!("Failed to write CLI config file: {}", e),"
+    std::fs::write(&cli_config_file, cli_config_content,.map_err(|e| CliError::Config {
+        message: format!("Failed to write CLI config file: {}", e,"
         field: "cli_config_file".to_string(),
         suggestion: Some("Check file permissions and disk space".to_string(),"
     })?;
-    println!("{}", "⚙️  Configuration saved successfully".green();"
-    println!("   📄 Main config: {}", config_file.display();"
-    println!("   📄 CLI config: {}", cli_config_file.display();"
+    println!("{}", "⚙️  Configuration saved successfully".green()"
+    println!("   📄 Main config: {}", config_file.display()"
+    println!("   📄 CLI config: {}", cli_config_file.display()"
 
     Ok(()),
 }
 /// Generate templates and examples
 fn generate_templates(config: &InitConfig) -> crate::errors::CliResult<()> {
     let templates_dir = config.config_dir.join("templates");"
-    std::fs::create_dir_all(&templates_dir).map_err(|e| CliError::Config {
-        message: format!("Failed to create templates directory: {}", e),"
+    std::fs::create_dir_all(&templates_dir,.map_err(|e| CliError::Config {
+        message: format!("Failed to create templates directory: {}", e,"
         field: "templates_directory".to_string(),
         suggestion: Some("Check file permissions and disk space".to_string(),"
     })?;
@@ -227,9 +227,9 @@ min_instances = 1
 max_instances = 10
 target_cpu_percent = 70
 "#;"
-    std::fs::write(templates_dir.join("service.toml"), service_template).map_err(|e| {"
+    std::fs::write(templates_dir.join("service.toml"), service_template,.map_err(|e| {"
         CliError::Config {
-            message: format!("Failed to write service template: {}", e),"
+            message: format!("Failed to write service template: {}", e,"
             field: "service_template".to_string(),
             suggestion: Some("Check file permissions and disk space".to_string(),"
         }
@@ -260,9 +260,9 @@ networks:
   songbird-network:
     driver: bridge
 "#;"
-    std::fs::write(templates_dir.join("docker-compose.yml"), docker_compose_template).map_err("
+    std::fs::write(templates_dir.join("docker-compose.yml"), docker_compose_template,.map_err("
         |e| CliError::Config {
-            message: format!("Failed to write docker-compose template: {}", e),"
+            message: format!("Failed to write docker-compose template: {}", e,"
             field: "docker_compose_template".to_string(),
             suggestion: Some("Check file permissions and disk space".to_string(),"
         })
@@ -286,9 +286,9 @@ Environment=RUST_LOG=info
 [Install]
 WantedBy=multi-user.target
 "#;"
-    std::fs::write(templates_dir.join("songbird.service"), systemd_template).map_err(|e| {"
+    std::fs::write(templates_dir.join("songbird.service"), systemd_template,.map_err(|e| {"
         CliError::Config {
-            message: format!("Failed to write systemd template: {}", e),"
+            message: format!("Failed to write systemd template: {}", e,"
             field: "systemd_template".to_string(),
             suggestion: Some("Check file permissions and disk space".to_string(),"
         }
@@ -307,7 +307,7 @@ class SongbirdClient:
             def __init__(self, base_url: str = &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT):"
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
-    
+
     def register_service(self, service_info: Dict) -> Dict:
         """Register a service with the orchestrator""""
         response = self.session.post(
@@ -316,7 +316,7 @@ class SongbirdClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     def discover_services(self, service_type: Optional[str] = None) -> List[Dict]:
         """Discover available services""""
         params = {"type": service_type} if service_type else {}"
@@ -326,7 +326,7 @@ class SongbirdClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     def get_cluster_status(self) -> Dict:
         """Get cluster status""""
         response = self.session.get(f"{self.base_url}/api/v1/status")"
@@ -336,7 +336,7 @@ class SongbirdClient:
 # Example usage
 if __name__ == "__main__":"
     client = SongbirdClient()
-    
+
     # Example service registration
     service = {
         "id": "example-python-service","
@@ -346,22 +346,22 @@ if __name__ == "__main__":"
         "capabilities": ["cpu", "memory"],"
                                         "endpoints": ["http://songbird_config::constants::network::DEFAULT_HOST:8081"]"
     }
-    
+
     try:
         result = client.register_service(service,
         print(f"Service registered: {result}")"
-        
+
         services = client.discover_services()
-        print(f"Available services: {len(services)}")"
-        
+        print(f"Available services: {len(services,}")"
+
         status = client.get_cluster_status()
         print(f"Cluster status: {status}")"
     except requests.RequestException as e:
         print(f"Error: {e}")"
 "#;"
-    std::fs::write(templates_dir.join("client_example.py"), python_client_template).map_err("
+    std::fs::write(templates_dir.join("client_example.py"), python_client_template,.map_err("
         |e| CliError::Config {
-            message: format!("Failed to write Python client template: {}", e),"
+            message: format!("Failed to write Python client template: {}", e,"
             field: "python_client_template".to_string(),
             suggestion: Some("Check file permissions and disk space".to_string(),"
         })
@@ -391,20 +391,20 @@ This directory contains templates and examples to help you get started with Song
 - Try the examples in examples/
 - Join the community at https://github.com/songbird-orchestrator
 "#;"
-    std::fs::write(templates_dir.join("README.md"), readme_template).map_err(|e| {"
+    std::fs::write(templates_dir.join("README.md"), readme_template,.map_err(|e| {"
         CliError::Config {
-            message: format!("Failed to write templates README: {}", e),"
+            message: format!("Failed to write templates README: {}", e,"
             field: "templates_readme".to_string(),
             suggestion: Some("Check file permissions and disk space".to_string(),"
         }
     })?;
 
-    println!("{}", "📋 Templates generated successfully".green();"
-    println!("   📁 Templates directory: {}", templates_dir.display();"
-    println!("   📄 Service template: service.toml");"
-    println!("   🐳 Docker Compose: docker-compose.yml");"
-    println!("   ⚙️  Systemd service: songbird.service");"
-    println!("   🐍 Python client: client_example.py");"
+    println!("{}", "📋 Templates generated successfully".green()"
+    println!("   📁 Templates directory: {}", templates_dir.display()"
+    println!("   📄 Service template: service.toml");
+    println!("   🐳 Docker Compose: docker-compose.yml");
+    println!("   ⚙️  Systemd service: songbird.service");
+    println!("   🐍 Python client: client_example.py");
 
     Ok(()),
 }
@@ -413,14 +413,14 @@ This directory contains templates and examples to help you get started with Song
 fn show_completion_message(config: &InitConfig) -> crate::errors::CliResult<()> {
     println!("\n{}", "🎉 Initialization Complete!".bright_green().bold();"
     println!();
-    println!("📁 Configuration directory: {}", config.config_dir.display();"
-    println!("📊 Data directory: {}", config.data_dir.display();"
-    println!("📝 Log directory: {}", config.log_dir.display();"
+    println!("📁 Configuration directory: {}", config.config_dir.display()"
+    println!("📊 Data directory: {}", config.data_dir.display()"
+    println!("📝 Log directory: {}", config.log_dir.display()"
     println!();
     println!("{}", "Next steps:".bright_yellow().bold();"
-    println!("  1. Run 'songbird start' to start the orchestrator");"
-    println!("  2. Use 'songbird status' to check system status");"
-    println!("  3. Try 'songbird quick' for easy resource sharing");"
+    println!("  1. Run 'songbird start' to start the orchestrator");
+    println!("  2. Use 'songbird status' to check system status");
+    println!("  3. Try 'songbird quick' for easy resource sharing");
 
     Ok(()),
 }

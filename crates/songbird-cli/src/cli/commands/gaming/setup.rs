@@ -10,9 +10,9 @@ pub async fn execute_one_touch(
     _parental_controls: bool,
     _guests: bool,
 ) -> CliResult<()> {
-    println!("{}", format!("🚀 One-touch setup for: {}", name).bright_green();"
+    println!("{}", format!("🚀 One-touch setup for: {}", name,.bright_green();"
     if family_safe {
-        println!("👨‍👩‍👧‍👦 Family-safe mode enabled");"
+        println!("👨‍👩‍👧‍👦 Family-safe mode enabled");
     }
     Ok(()),
 }
@@ -22,13 +22,13 @@ pub async fn execute_zero_touch(
     _endpoint: Option<String>,
     _token: Option<String>,
 ) -> CliResult<()> {
-    println!("{}", "⚡ Zero-touch setup with BearDog".bright_green();"
+    println!("{}", "⚡ Zero-touch setup with BearDog".bright_green()"
     Ok(()),
 }
 
 /// Execute family-safe setup
 pub async fn execute_family_safe(family_name: String) -> CliResult<()> {
-    println!("{}", format!("👨‍👩‍👧‍👦 Family-safe setup for: {}", family_name).bright_green();"
+    println!("{}", format!("👨‍👩‍👧‍👦 Family-safe setup for: {}", family_name,.bright_green();"
     Ok(()),
 }
 
@@ -40,6 +40,6 @@ pub async fn execute_quick_start(
     name: Option<String>,
 ) -> CliResult<()> {
     let session_name = name.unwrap_or_else(|| "Quick Gaming Session".to_string();"
-    println!("{}", format!("⚡ Quick start: {}", session_name).bright_green();"
+    println!("{}", format!("⚡ Quick start: {}", session_name,.bright_green();"
     Ok(()),
 }

@@ -12,14 +12,9 @@
 // All provider traits have been consolidated into songbird-types::traits::canonical
 // Use the canonical traits directly:
 
-pub use songbird_types::traits::canonical::{Provider,
-    ServiceProvider,
-    PrimalProvider,
-    DiscoveryProvider,
-    CapabilityProvider,
-    SecurityProvider,
-    OrchestrationProvider,
-    ObservabilityProvider,
+pub use songbird_types::traits::canonical::{
+    CapabilityProvider, DiscoveryProvider, ObservabilityProvider, OrchestrationProvider,
+    PrimalProvider, Provider, SecurityProvider, ServiceProvider,
 };
 
 // ============================================================================

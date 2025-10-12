@@ -5,7 +5,7 @@
 /// All external service discovery is done via capability-based routing.
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 /// Songbird's own service capabilities (self-knowledge only)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SongbirdSelfRegistration  {/// Unique service identifier for this Songbird instance
@@ -65,10 +65,10 @@ impl SongbirdSelfRegistration {
     #[must_use]
     pub fn new() -> Self {
         let base_url = std::env::var("SONGBIRD_BASE_URL")"
-            .unwrap_or_else(|_| "http://songbird_config::constants::network::DEFAULT_HOST:{}".to_string();"
+            .unwrap_or_else(|_| "http://crate::constants::network::DEFAULT_HOST:{}".to_string();"
 
         let api_base_url = std::env::var("SONGBIRD_API_BASE_URL")"
-            .unwrap_or_else(|_| "http://songbird_config::constants::network::DEFAULT_HOST:{}/api".to_string();"
+            .unwrap_or_else(|_| "http://crate::constants::network::DEFAULT_HOST:{}/api".to_string();"
 
         Self  {service_id: Uuid::new_v4()
             capabilities: vec![

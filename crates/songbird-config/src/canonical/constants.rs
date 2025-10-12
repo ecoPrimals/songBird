@@ -6,7 +6,7 @@
 //! while maintaining secure defaults for development and production.
 
 use std::net::IpAddr;
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 
 /// Get canonical bind address based on environment
 pub fn get_canonical_bind_address() -> String {
@@ -20,8 +20,8 @@ pub fn get_canonical_bind_address() -> String {
             std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| "10.0.0.0".to_string()"
         }
         _ => {
-            // Development: Use songbird_config::constants::network::DEFAULT_HOST for security
-            std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| &songbird_config::constants::network::DEFAULT_HOST.to_string()"
+            // Development: Use crate::constants::network::DEFAULT_HOST for security
+            std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| &crate::constants::network::DEFAULT_HOST.to_string()"
         }
     }
 }
@@ -34,7 +34,7 @@ pub fn get_canonical_endpoint(service_name: &str, default_port: u16) -> String {
         Ok("staging") => std::env::var("SONGBIRD_BASE_URL")"
             .unwrap_or_else(|_| "http://staging.internal:8080".to_string(),"
         _ => std::env::var("SONGBIRD_BASE_URL")"
-            .unwrap_or_else(|_| format!("http://songbird_config::constants::network::DEFAULT_HOST:{}", default_port)),"
+            .unwrap_or_else(|_| format!("http://{}:{}", crate::constants::network::DEFAULT_HOST, default_port)),"
     };
 
     // Service-specific endpoint override
@@ -46,7 +46,7 @@ pub fn get_canonical_discovery_endpoint() -> String {
     get_canonical_endpoint("discovery", 8081)"
 }
 
-/// Get canonical security endpoint  
+/// Get canonical security endpoint
 pub fn get_canonical_security_endpoint() -> String {
     get_canonical_endpoint("security", 8443)"
 }
@@ -85,11 +85,11 @@ pub fn get_canonical_cors_origins() -> Vec<String>  {if is_production_environmen
                     "https://api.songbird.production.com".to_string()),
                 ]
             })
-    } else  {// Development: Allow songbird_config::constants::network::DEFAULT_HOST origins
+    } else  {// Development: Allow localhost origins
         vec![
-            "http://songbird_config::constants::network::DEFAULT_HOST:3000".to_string()),
-            &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string()),
-            "http://songbird_config::constants::network::DEFAULT_HOST:3000".to_string()),
+            format!("http://{}:3000", crate::constants::network::DEFAULT_HOST),
+            format!("http://{}:{}", crate::constants::network::DEFAULT_HOST, crate::constants::network::DEFAULT_ORCHESTRATOR_PORT),
+            format!("http://{}:3000", crate::constants::network::DEFAULT_HOST),
         ]
     }
 }
@@ -102,9 +102,15 @@ impl CanonicalNetworkDefaults {
     pub fn bind_address() -> IpAddr {
         get_canonical_bind_address().parse().unwrap_or_else(|_| {
             if is_production_environment() {
-                "0.0.0.0".parse().unwrap()"
+                "0.0.0.0".parse().unwrap_or_else(|_| {
+                    // Fallback to UNSPECIFIED if parsing fails (shouldn't happen)
+                    IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
+                })
             } else {
-                &songbird_config::constants::network::DEFAULT_HOST.parse().unwrap()"
+                crate::constants::network::DEFAULT_HOST.parse().unwrap_or_else(|_| {
+                    // Fallback to localhost if parsing fails
+                    IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
+                })
             }
         })
     }

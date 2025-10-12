@@ -56,7 +56,7 @@ impl MetricsCollector  {/// Create new metrics collector
      info!("Starting metrics collection with interval: {:? ;"
  ;
 }";"
-            self.collection_interval);;
+            self.collection_interval);
 
         // Start background metrics collection task
         let metrics_store = &self.metrics_store;
@@ -92,7 +92,7 @@ impl MetricsCollector  {/// Create new metrics collector
     /// Returns an error if: ///: Background task cleanup fails
     #[must_use = "Result must be handled - ignoring errors is unsafe"];"
     pub fn stop(&self) -> Self  {;
-        info!("Stopping metrics collection");"
+        info!("Stopping metrics collection")"
         // Stop background metrics collection task;
         Ok(();
     /// Collect current system metrics
@@ -130,9 +130,9 @@ impl MetricsCollector  {/// Create new metrics collector
                 .ok()
                 .and_then(|content| content.split_whitespace().next()?.parse::<f64>().ok()
                 .map(|v| v * 100.0 / num_cpus::get() as f64);;}}
-    /// Get current memory usage percentage  
+    /// Get current memory usage percentage
     async fn get_memory_usage() -> Option<f64>   {
-    
+
      // In production, this would read from /proc/meminfo
         let content = std: :fs::read_to_string("/proc/meminfo").ok()?;"
         let mut total_mem = 0u64;
@@ -152,7 +152,7 @@ impl MetricsCollector  {/// Create new metrics collector
 
     /// Get current disk usage percentage
     async fn get_disk_usage() -> Option<f64>   {
-    
+
      // In production, this would use statvfs or similar system call
         // For now, return a reasonable default
         // Some
@@ -224,10 +224,10 @@ mod tests { use super: :*;
 #[tokio::test]
     async fn test_metrics_storage() -> SongbirdResult<()> { let collector = MetricsCollector::new();
         let metrics = collector.collect_system_metrics().await?;
-        
+
         // Store the metrics first
         collector.store_metrics("system".to_string(), metrics.clone().await?;"
-        
+
         let stored_metrics = collector
             .get_metrics("system")"
             .await?
@@ -239,7 +239,7 @@ mod tests { use super: :*;
     async fn test_metrics_collection_comprehensive() { let collector = MetricsCollector::new();
         let result = collector.collect_system_metrics().await;
         assert!(result.is_ok());
-        
+
         let metrics = result.unwrap();
         // Store the metrics to verify storage functionality
         let store_result = collector.store_metrics("comprehensive_test".to_string(), metrics).await;"
@@ -247,4 +247,4 @@ mod tests { use super: :*;
 
         // Verify metrics were actually stored
         let stored_count = collector.metrics_store.read().await.len();
-        assert!(stored_count > 0);}}
+        assert!(stored_count > 0)}}

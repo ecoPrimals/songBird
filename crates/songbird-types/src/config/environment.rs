@@ -199,7 +199,7 @@ impl Default for CanonicalEnvironmentConfig {
             resource_limits: ResourceLimits::default(),
             service_discovery: ServiceDiscoveryConfig::default(),
             network_binding: NetworkBindingConfig::default(),
-            environment_overrides: HashMap::new()),
+            environment_overrides: HashMap::new(),
             capability_endpoints: CapabilityEndpoints::default(),
             legacy_compatibility: LegacyCompatibilityConfig::default(),
         }
@@ -276,7 +276,7 @@ impl Default for ServiceDiscoveryConfig {
                     .unwrap_or(30),
             ),
             discovery_timeout: Duration::from_secs(10),
-            fallback_endpoints: HashMap::new()),
+            fallback_endpoints: HashMap::new(),
             health_checks: EnvironmentHealthCheckConfig::default(),
         }
     }
@@ -300,11 +300,21 @@ impl Default for NetworkBindingConfig {
             bind_address: std::env::var("SONGBIRD_BIND_ADDRESS")
                 .ok()
                 .and_then(|s| s.parse().ok())
-                .unwrap_or_else(|| "0.0.0.0".parse().unwrap()),
+                .unwrap_or_else(|| {
+                    // Default to 0.0.0.0 for binding, with fallback
+                    "0.0.0.0"
+                        .parse()
+                        .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED))
+                }),
             production_bind_address: std::env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS")
                 .ok()
                 .and_then(|s| s.parse().ok())
-                .unwrap_or_else(|| "127.0.0.1".parse().unwrap()),
+                .unwrap_or_else(|| {
+                    // Default to localhost, with fallback
+                    "127.0.0.1"
+                        .parse()
+                        .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+                }),
             bind_port: std::env::var("SONGBIRD_BIND_PORT")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -333,7 +343,7 @@ impl Default for CapabilityEndpoints {
             ai: std::env::var("SONGBIRD_AI_ENDPOINT").ok(),
             security: std::env::var("SONGBIRD_SECURITY_ENDPOINT").ok(),
             orchestration: std::env::var("SONGBIRD_ORCHESTRATION_ENDPOINT").ok(),
-            custom: HashMap::new()),
+            custom: HashMap::new(),
         }
     }
 }
@@ -344,7 +354,7 @@ impl Default for LegacyCompatibilityConfig {
             enable_legacy_primal_names: std::env::var("SONGBIRD_ENABLE_LEGACY_NAMES")
                 .map(|s| s.parse().unwrap_or(true))
                 .unwrap_or(true),
-            legacy_endpoints: HashMap::new()),
+            legacy_endpoints: HashMap::new(),
             deprecation_warnings: DeprecationWarningsConfig::default(),
         }
     }

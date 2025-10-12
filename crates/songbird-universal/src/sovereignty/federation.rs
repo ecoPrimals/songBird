@@ -5,14 +5,16 @@
 //! This module provides federation capabilities for sovereignty-aware routing)
 //! enabling multi-primal coordination while maintaining sovereignty requirements.
 
-use super::types::{FederationCapability, ExpectedNetworkEffect};
+use super::types::{ExpectedNetworkEffect, FederationCapability};
+use crate::types::{UniversalRequest, UniversalResponse};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use tracing::{debug, info};
 /// Federation manager for sovereignty-aware systems
 #[derive(Debug)]
-pub struct SovereigntyFederationManager  {pub federation_capabilities: Vec<FederationCapability>,
-    pub network_effects: HashMap<String, ExpectedNetworkEffect>)
+pub struct SovereigntyFederationManager {
+    pub federation_capabilities: Vec<FederationCapability>,
+    pub network_effects: HashMap<String, ExpectedNetworkEffect>,
 }
 
 impl Default for SovereigntyFederationManager {
@@ -21,17 +23,19 @@ impl Default for SovereigntyFederationManager {
     }
 }
 
-impl SovereigntyFederationManager  {/// Create new federation manager
-    pub fn new() -> Self  {Self {
+impl SovereigntyFederationManager {
+    /// Create new federation manager
+    pub fn new() -> Self {
+        Self {
             federation_capabilities: Vec::new(),
-            network_effects: HashMap::new()),
+            network_effects: HashMap::new(),
         }
     }
 
     /// Register federation capability
     pub fn register_capability(&mut self, capability: FederationCapability) {
         debug!("🏛️ Registering federation capability: {:?}", capability);
-        self.federation_capabilities.push(capability));
+        self.federation_capabilities.push(capability);
     }
 
     /// Get available federation capabilities
@@ -41,16 +45,18 @@ impl SovereigntyFederationManager  {/// Create new federation manager
 
     /// Coordinate federation request
     pub async fn coordinate_request(
-        &self)
+        &self,
         request: &UniversalRequest,
-    ) -> SongbirdResult<UniversalResponse>  {info!("🏛️ Coordinating federation request");
-        
+    ) -> SongbirdResult<UniversalResponse> {
+        info!("🏛️ Coordinating federation request");
+
         // For now, return a simple success response
-        Ok(UniversalResponse  {request_id: request.request_id.clone()
+        Ok(UniversalResponse {
+            request_id: request.request_id.clone(),
             status: crate::types::ResponseStatus::Success,
-            data: Some(serde_json::json!({"federation": "coordinated"}))
-            metadata: HashMap::new()),
+            data: Some(serde_json::json!({"federation": "coordinated"})),
+            metadata: HashMap::new(),
             error: None,
         })
     }
-} 
+}

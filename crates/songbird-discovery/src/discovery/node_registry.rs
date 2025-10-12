@@ -19,7 +19,7 @@ pub struct NodeRegistry  {#[allow(dead_code)]
     /// Current node information
     local_node: NodeInfo,
     /// Registry of known nodes in the cluster
-    known_nodes: Arc<RwLock<HashMap<NodeId, NodeInfo>>>)
+    known_nodes: Arc<RwLock<HashMap<NodeId, NodeInfo>>>,
     /// Event broadcaster for node changes
     event_sender: broadcast::Sender<ServiceEvent>,
 }
@@ -33,13 +33,13 @@ impl NodeRegistry  {/// Create new node registry
             node_type: NodeType::Service,
             institution: config.global.service_name.clone(,
             health: FederationHealth::default(),
-            resources: HashMap::new()),
+            resources: HashMap::new(),
             last_seen: std::time::SystemTime::now(,
         };
 
         Self  {config)
             local_node)
-            known_nodes: Arc::new(RwLock::new(HashMap::new()),
+            known_nodes: Arc::new(RwLock::new(HashMap::new(),
             event_sender)
         }
     }
@@ -52,24 +52,24 @@ impl NodeRegistry  {/// Create new node registry
 
     /// Register a node in the discovery system
     pub async fn register_node(&self) -> SongbirdResult<()> {
-        debug!("🎼 Node registry: Registering node '{}'", node.id);"
+        debug!("🎼 Node registry: Registering node '{}'", node.id)"
 
         let mut nodes = self.known_nodes.write().await;
         nodes.insert(node.id.clone(), node);
 
-        debug!("🎼 Node registry: Node registered successfully");"
+        debug!("🎼 Node registry: Node registered successfully")"
         Ok(SongbirdResponse::success(())
     }
 
     /// Unregister a node from the discovery system
     pub async fn unregister_node(&self) -> SongbirdResult<()> {
-        debug!("🎼 Node registry: Unregistering node '{}'", node_id);"
+        debug!("🎼 Node registry: Unregistering node '{}'", node_id)"
 
         let mut nodes = self.known_nodes.write().await;
         if let Some(_node_info) = nodes.remove(node_id) {
-            debug!("🎼 Node registry: Node unregistered successfully");"
+            debug!("🎼 Node registry: Node unregistered successfully")"
         } else {
-            warn!("🎼 Node registry: Node not found for unregistration");"
+            warn!("🎼 Node registry: Node not found for unregistration")"
         }
 
         Ok(SongbirdResponse::success(())
@@ -82,7 +82,7 @@ impl NodeRegistry  {/// Create new node registry
 
     /// Update node health status
     pub async fn update_node_health(&self) -> SongbirdResult<()> {
-        debug!("🎼 Node registry: Updating health for node '{}'", node_id);"
+        debug!("🎼 Node registry: Updating health for node '{}'", node_id)"
 
         let mut nodes = self.known_nodes.write().await;
 
@@ -98,21 +98,21 @@ impl NodeRegistry  {/// Create new node registry
                     FederationHealth::Unknown => UniversalHealthStatus::Unknown,
                 };
 
-                let event = ServiceEvent::NodeHealthChanged  {node_id: node_id.to_string()),
+                let event = ServiceEvent::NodeHealthChanged  {node_id: node_id.to_string(),
                     health: universal_health,
                 };
 
                 if let Err(e) = self.event_sender.send(event) {
-                    warn!("⚠️ Failed to broadcast node health change event: {}", e);"
+                    warn!("⚠️ Failed to broadcast node health change event: {}", e)"
                 }
             }
 
-            debug!("✅ Node '{}' health updated", node_id);"
+            debug!("✅ Node '{}' health updated", node_id)"
         } else {
             warn!(
                 "⚠️ Attempted to update health for non-existent node: {}","
                 node_id
-            );
+            )
         }
 
         Ok(SongbirdResponse::success(())
@@ -178,7 +178,7 @@ impl NodeRegistry  {/// Create new node registry
 
     /// Update local node health
     pub fn update_local_health(&mut self, health: FederationHealth) {
-        debug!("🎼 Node registry: Updating local node health");"
+        debug!("🎼 Node registry: Updating local node health")"
         self.local_node.health = health;
     }
 
@@ -230,7 +230,7 @@ impl NodeRegistry  {/// Create new node registry
 #[derive(Debug, Clone)]
 pub struct FederationStatus  {pub total_nodes: usize,
     pub healthy_nodes: usize,
-    pub cluster_distribution: HashMap<String, usize>)
+    pub cluster_distribution: HashMap<String, usize>,
     pub local_node_health: FederationHealth,
 }
 

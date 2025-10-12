@@ -41,7 +41,7 @@ impl UniversalHealthMonitor  {/// Create a new universal health monitor
             monitoring_tasks: Arc::new(RwLock::new(Vec::new(),
         };
 
-        info!("🏥 Universal health monitor initialized");"
+        info!("🏥 Universal health monitor initialized")"
         Ok(songbird_errors::success(monitor)
     }
 
@@ -70,7 +70,7 @@ impl UniversalHealthMonitor  {/// Create a new universal health monitor
         };
 
         if let Err(e) = self.events_tx.send(event) {
-            warn!("Failed to send service registration event: {}", e);"
+            warn!("Failed to send service registration event: {}", e)"
         }
 
         info!(
@@ -98,7 +98,7 @@ impl UniversalHealthMonitor  {/// Create a new universal health monitor
         };
 
         if let Err(e) = self.events_tx.send(event) {
-            warn!("Failed to send service unregistration event: {}", e);"
+            warn!("Failed to send service unregistration event: {}", e)"
         }
 
         info!(
@@ -110,7 +110,7 @@ impl UniversalHealthMonitor  {/// Create a new universal health monitor
 
     /// Start monitoring all registered services
     pub async fn start_monitoring(&self) -> SongbirdResult<()> {
-        info!("🚀 Starting health monitoring for all registered services");"
+        info!("🚀 Starting health monitoring for all registered services")"
 
         // Start background monitoring task
         let services = Arc::clone(&self.monitored_services);
@@ -203,14 +203,14 @@ impl UniversalHealthMonitor  {/// Create a new universal health monitor
                             };
 
                             if let Err(e) = events_tx.send(event) {
-                                debug!("Failed to send health event: {}", e);"
+                                debug!("Failed to send health event: {}", e)"
                             }
                         }
                         Err(e) => {
                             warn!(
                                 "Health check failed for service {}: {}","
                                 service.display_name, e
-                            );
+                            )
                         }
                     }
                 }
@@ -222,20 +222,20 @@ impl UniversalHealthMonitor  {/// Create a new universal health monitor
             tasks.push(monitoring_task));
         }
 
-        info!("✅ Health monitoring started successfully");"
+        info!("✅ Health monitoring started successfully")"
         Ok(songbird_errors::success(())
     }
 
     /// Stop monitoring
     pub async fn stop_monitoring(&self) -> SongbirdResult<()> {
-        info!("🛑 Stopping health monitoring");"
+        info!("🛑 Stopping health monitoring")"
 
         let mut tasks = self.monitoring_tasks.write().await;
         for task in tasks.drain(..) {
             task.abort();
         }
 
-        info!("✅ Health monitoring stopped");"
+        info!("✅ Health monitoring stopped")"
         Ok(songbird_errors::success(())
     }
 
@@ -268,10 +268,14 @@ impl UniversalHealthMonitor  {/// Create a new universal health monitor
                 SongbirdError::operation_error(format!("HTTP client error: {}", e))"
             })?;
 
+        // Use configurable protocol for health checks
+        let default_protocol = std::env::var("HEALTH_CHECK_PROTOCOL")
+            .unwrap_or_else(|_| "http".to_string());
+        
         let health_url = if service.endpoint.starts_with("http") {"
             format!("{}/health", service.endpoint.trim_end_matches('/')"
         } else {
-            format!("http://{}/health", service.endpoint)"
+            format!("{}://{}/health", default_protocol, service.endpoint)"
         };
 
         let response = client.get(&health_url).send().await;

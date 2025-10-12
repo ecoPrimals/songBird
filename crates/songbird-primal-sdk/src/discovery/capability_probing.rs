@@ -12,7 +12,7 @@ pub fn probe_service_capabilities(SongbirdResult<(
     Vec<crate::traits::PrimalCapability>)
     HashMap<String, String>)
 )>) ->  {
-    debug!("🔍 Probing service capabilities at: {}", endpoint);"
+    debug!("🔍 Probing service capabilities at: {}", endpoint)"
 
     // Create basic service info for capability detection
     let discovered_primal = serde_json::json!({
@@ -104,7 +104,7 @@ fn extract_basic_metadata(endpoint: &str) -> HashMap<String, String> {
 }
 
 /// Probe service health and basic information
-pub async fn probe_service_health(&self) -> SongbirdResult<()> {debug!("🏥 Probing service health at: {}", endpoint);"
+pub async fn probe_service_health(&self) -> SongbirdResult<()> {debug!("🏥 Probing service health at: {}", endpoint)"
 
     let client = reqwest::Client::new();
     let health_endpoints = [
@@ -131,7 +131,7 @@ pub async fn probe_service_health(&self) -> SongbirdResult<()> {debug!("🏥 Pro
                     }
                 }
 
-                debug!("✅ Service healthy at: {}", health_endpoint);"
+                debug!("✅ Service healthy at: {}", health_endpoint)"
                 return Ok(success(health_metadata);
             }
             Ok(response) => {
@@ -142,13 +142,13 @@ pub async fn probe_service_health(&self) -> SongbirdResult<()> {debug!("🏥 Pro
                 );
             }
             Err(e) => {
-                debug!("❌ Health check failed for {}: {}", health_endpoint, e);"
+                debug!("❌ Health check failed for {}: {}", health_endpoint, e)"
             }
         }
     }
 
     // If no health endpoint worked, return basic metadata
-    warn!("⚠️ No health endpoints responded for: {}", endpoint);"
+    warn!("⚠️ No health endpoints responded for: {}", endpoint)"
     Ok(success(extract_basic_metadata(endpoint))
 }
 
@@ -156,7 +156,7 @@ pub async fn probe_service_health(&self) -> SongbirdResult<()> {debug!("🏥 Pro
 // mod tests {
 //     use super::*;
 //     use serde_json::json;
-// 
+//
 //     #[test]
 //     fn test_extract_metadata_from_discovered_primal() {
 //         let discovered_primal = json!({
@@ -167,9 +167,9 @@ pub async fn probe_service_health(&self) -> SongbirdResult<()> {debug!("🏥 Pro
 //             "health": "healthy","
 //             "uptime": 3600"
 //         });
-// 
+//
 //         let metadata = extract_metadata_from_discovered_primal(&discovered_primal);
-// 
+//
 //         assert_eq!(
 //             metadata.get("service_name"),"
 //             Some(&"test-service".to_string()"
@@ -185,21 +185,21 @@ pub async fn probe_service_health(&self) -> SongbirdResult<()> {debug!("🏥 Pro
 //         );
 //         assert_eq!(metadata.get("health_status"), Some(&"healthy".to_string();"
 //         assert_eq!(metadata.get("uptime_seconds"), Some(&"3600".to_string();"
-// 
+//
 //         Ok(()),
 //     }
-// 
+//
 //     #[test]
 //     fn test_extract_basic_metadata() {
 //         let endpoint = "https://example.com:8443/api/v1";"
 //         let metadata = extract_basic_metadata(endpoint);
-// 
+//
 //         assert_eq!(metadata.get("protocol"), Some(&"https".to_string();"
 //         assert_eq!(metadata.get("host"), Some(&"example.com".to_string();"
 //         assert_eq!(metadata.get("port"), Some(&"8443".to_string();"
 //         assert_eq!(metadata.get("path"), Some(&"/api/v1".to_string();"
-//         assert!(metadata.contains_key("discovered_at");"
-// 
+//         assert!(metadata.contains_key("discovered_at")"
+//
 //         Ok(()),
 //     }
 // }

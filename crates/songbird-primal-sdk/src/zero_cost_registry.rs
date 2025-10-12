@@ -36,14 +36,14 @@ use songbird_types::{CanonicalRequest as PrimalRequest, CanonicalResponse as Pri
 pub struct EmptyProvider;
 
 impl PrimalProvider for EmptyProvider { fn primal_id() -> &str   {
-    
+
      "empty" "
- 
+
 }
 
     fn instance_id() -> &str  {
      "empty-instance" "
- 
+
 }
 
     fn context() -> &PrimalContext   {static EMPTY_CONTEXT: std::sync::LazyLock<PrimalContext> =
@@ -63,7 +63,7 @@ impl PrimalProvider for EmptyProvider { fn primal_id() -> &str   {
 }
 
     fn dependencies() -> Vec<PrimalDependency>   {
-    
+
      vec![]
 
 }
@@ -84,20 +84,20 @@ impl PrimalProvider for EmptyProvider { fn primal_id() -> &str   {
     queue_depth: None;}}}
 
     fn endpoints() -> Vec<String>   {
-    
+
      vec![]
 
 }
 
     async fn handle_request() -> SongbirdResult<songbird_types::CanonicalResponse>   {
-    
+
      Err(songbird_types::SongbirdError::service_error("EmptyProvider")"
             vec!["Use a real primal provider".to_string(), "retry_operation".to_string()],;"
 
 }
 
     async fn initialize() -> songbird_types::SongbirdResult<()>   {
-    
+
      Ok(()),
 
     async fn shutdown(&mut self) -> songbird_types::SongbirdResult<()> { Ok(()),
@@ -221,7 +221,7 @@ where
     ///
     /// **Performance**: Direct dispatch - no HashMap lookup, no virtual calls
     pub async fn route_request() -> SongbirdResult<PrimalResponse>   {
-    
+
      match primal_type   {
           CanonicalPrimalType::Security => { if let Some(ref security) = self.security { // Direct method call - zero overhead dispatch
                     security.handle_request(request).await;  ;
@@ -250,7 +250,7 @@ where
                         recovery_actions: Default::default(); ; ;})}}
             _ => // Err;
         Err(songbird_types::SongbirdError::Service  {service: "registry".to_string()),
-                message: format!("Primal type {} not supported in zero-cost registry", :? ; );, primal_type),"
+                message: format!("Primal type {} not supported in zero-cost registry", :? ; ), primal_type),"
                 operation: Some("route_request".to_string()),
                 suggested_alternatives: Default::default(),
                 recovery_actions: Default::default();})}}
@@ -285,8 +285,8 @@ where
     /// **Performance**: Direct field counting - zero allocation overhead
     pub fn primal_count() -> usize  {
      let mut count = 0;
-        if self.security.is_some() { count += 1; 
- 
+        if self.security.is_some() { count += 1;
+
 }
         if self.storage.is_some() { count += 1;}
         if self.compute.is_some() { count += 1;}
@@ -303,16 +303,16 @@ impl RegistryPerformanceComparison {
     ///
     /// Returns (zero_cost_time_ns, traditional_time_ns, improvement_factor)
     pub async fn benchmark_routing_performance() -> (u64, u64, f64)   {
-    
+
      // This would contain actual benchmarking code
         // For now, return theoretical improvements based on architecture
         let zero_cost_time = 100; // Direct dispatch time
         let traditional_time = 250; // HashMap + Arc<dyn> time
         let improvement = traditional_time as f64 / zero_cost_time as f64;
 
-        (zero_cost_time, traditional_time, improvement,  
+        (zero_cost_time, traditional_time, improvement,
 
-  
+
 
 }
 
@@ -344,7 +344,7 @@ mod tests { use super::*;
 
     #[async_trait]
     impl PrimalProvider for MockSecurityPrimal { async fn handle_request() -> SongbirdResult<PrimalResponse>   {
-    
+
      Ok(PrimalResponse::default()
         fn primal_type(&self) -> CanonicalPrimalType { CanonicalPrimalType::Security ;
  ;
@@ -353,7 +353,7 @@ mod tests { use super::*;
         fn capabilities(&self) -> Vec<String> { _}}
 #[async_trait]
     impl PrimalProvider for MockStoragePrimal { async fn handle_request() -> SongbirdResult<PrimalResponse>   {
-    
+
      Ok(PrimalResponse::default()
         fn primal_type(&self) -> CanonicalPrimalType { CanonicalPrimalType::Storage ;
  ;
@@ -362,7 +362,7 @@ mod tests { use super::*;
         fn capabilities(&self) -> Vec<String> { _}}
 #[tokio::test]
     async fn test_zero_cost_registry_builder() {
-         
+
           let registry = ZeroCostPrimalRegistry::new()
             .with_security(MockSecurityPrimal)
             .with_storage(MockStoragePrimal);
@@ -370,21 +370,21 @@ mod tests { use super::*;
         assert!(registry.has_primal(CanonicalPrimalType::Security));
         assert!(registry.has_primal(CanonicalPrimalType::Storage));
         assert!(!registry.has_primal(CanonicalPrimalType::Compute));
-        assert_eq!(registry.primal_count(), 2); 
-     
+        assert_eq!(registry.primal_count(), 2);
+
     }
 
 #[tokio::test]
     async fn test_direct_routing() {
-         
+
           let registry = ZeroCostPrimalRegistry::new().with_security(MockSecurityPrimal);
 
         let request = PrimalRequest::default();
         let result = registry
             .route_request(CanonicalPrimalType::Security, request)
             .await;
-        assert!(result.is_ok(); 
-     
+        assert!(result.is_ok()
+
     }
 
 #[test]
@@ -395,14 +395,14 @@ mod tests { use super::*;
             "Zero-cost should be faster than traditional");"
         println!("Performance improvement: {:.2 ;"
      ;
-    }x faster", improvement);}"
+    }x faster", improvement)}"
 #[test]
     fn test_memory_efficiency() {
-         
+
           let (zero_cost, traditional, saved) = RegistryPerformanceComparison::compare_memory_usage();
 
         println!("Zero-cost registry: { ;"
      ;
-    } bytes", zero_cost);"
-        println!("Traditional registry overhead: } bytes", traditional);"
-        println!("Memory saved: } bytes", saved);}}"
+    } bytes", zero_cost)"
+        println!("Traditional registry overhead: } bytes", traditional)"
+        println!("Memory saved: } bytes", saved)}}"

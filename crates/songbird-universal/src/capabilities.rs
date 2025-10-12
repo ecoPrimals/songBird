@@ -8,13 +8,14 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use songbird_config;
+use tracing::{debug, error, info, warn};
 
 // Path constants to avoid Rust 2021 prefix parsing issues
 const HEALTH_PATH: &str = "/health";
 /// Universal capability adapter that works with any primal
 #[derive(Debug, Clone)]
-pub struct UniversalCapabilityAdapter  {/// Registry of discovered primals and their capabilities
+pub struct UniversalCapabilityAdapter {
+    /// Registry of discovered primals and their capabilities
     capability_registry: Arc<RwLock<CapabilityRegistry>>,
     /// Active primal connections
     primal_connections: Arc<RwLock<HashMap<String, PrimalConnection>>>,
@@ -24,7 +25,8 @@ pub struct UniversalCapabilityAdapter  {/// Registry of discovered primals and t
 
 /// Registry of primal capabilities discovered dynamically
 #[derive(Debug, Clone, Default)]
-pub struct CapabilityRegistry  {/// Map of primal name to their declared capabilities
+pub struct CapabilityRegistry {
+    /// Map of primal name to their declared capabilities
     pub primal_capabilities: HashMap<String, Vec<Capability>>,
     /// Map of capability type to primals that provide it
     pub capability_providers: HashMap<String, Vec<String>>,
@@ -34,7 +36,8 @@ pub struct CapabilityRegistry  {/// Map of primal name to their declared capabil
 
 /// Universal primal capability definition
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Capability  {/// Capability type (e.g., "compute", "storage", "security", "ai")"
+pub struct Capability {
+    /// Capability type (e.g., "compute", "storage", "security", "ai")"
     pub capability_type: String,
     /// Capability name (e.g., "encryption", "`container_runtime`", "`model_inference`")"
     pub name: String,
@@ -50,13 +53,14 @@ pub struct Capability  {/// Capability type (e.g., "compute", "storage", "securi
 
 /// Quality of Service metrics for capabilities
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct QoSMetrics  {/// Average latency in milliseconds
+pub struct QoSMetrics {
+    /// Average latency in milliseconds
     pub latency_ms: f64,
     /// Throughput in operations per second
     pub throughput_ops_sec: f64,
     /// Availability percentage (0.0 to 1.0)
     pub availability: f64,
-    /// Reliability percentage (0.0 to 1.0,  
+    /// Reliability percentage (0.0 to 1.0,
     pub reliability: f64,
     /// Resource usage metrics
     pub resource_usage: ResourceMetrics,
@@ -64,7 +68,8 @@ pub struct QoSMetrics  {/// Average latency in milliseconds
 
 /// Resource usage metrics
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ResourceMetrics  {/// CPU usage percentage
+pub struct ResourceMetrics {
+    /// CPU usage percentage
     pub cpu_percent: f64,
     /// Memory usage in MB
     pub memory_mb: u64,
@@ -76,7 +81,8 @@ pub struct ResourceMetrics  {/// CPU usage percentage
 
 /// Connection to a primal
 #[derive(Debug, Clone)]
-pub struct PrimalConnection  {/// Primal name
+pub struct PrimalConnection {
+    /// Primal name
     pub name: String,
     /// Primal type
     pub primal_type: PrimalType,
@@ -92,7 +98,8 @@ pub struct PrimalConnection  {/// Primal name
 
 /// Health status of primal connection
 #[derive(Debug, Clone, PartialEq)]
-pub enum ConnectionHealth  {/// Healthy and responsive
+pub enum ConnectionHealth {
+    /// Healthy and responsive
     Healthy,
     /// Degraded performance but functional
     Degraded,
@@ -104,7 +111,8 @@ pub enum ConnectionHealth  {/// Healthy and responsive
 
 /// Type of primal service
 #[derive(Debug, Clone, PartialEq)]
-pub enum PrimalType  {/// Security services (beardog, auth)
+pub enum PrimalType {
+    /// Security services (beardog, auth)
     Security,
     /// Compute services (toadstool, containers)
     Compute,
@@ -118,7 +126,8 @@ pub enum PrimalType  {/// Security services (beardog, auth)
 
 /// Discovery configuration for capability detection
 #[derive(Debug, Clone)]
-pub struct DiscoveryConfig  {/// How often to refresh capabilities
+pub struct DiscoveryConfig {
+    /// How often to refresh capabilities
     pub refresh_interval: std::time::Duration,
     /// Timeout for capability discovery requests
     pub discovery_timeout: std::time::Duration,
@@ -130,9 +139,11 @@ pub struct DiscoveryConfig  {/// How often to refresh capabilities
     pub enable_network_discovery: bool,
 }
 
-impl Default for DiscoveryConfig  {fn default() -> Self  {Self {
+impl Default for DiscoveryConfig {
+    fn default() -> Self {
+        Self {
             refresh_interval: std::time::Duration::from_secs(300), // 5 minutes
-            discovery_timeout: std::time::Duration::from_secs(10)
+            discovery_timeout: std::time::Duration::from_secs(10),
             max_concurrent_discoveries: 10,
             auto_discovery: true,
             enable_network_discovery: false,
@@ -140,24 +151,32 @@ impl Default for DiscoveryConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
+impl UniversalCapabilityAdapter {
+    /// Create a new universal capability adapter
     #[must_use]
-    pub fn new(config: DiscoveryConfig) -> Self  {Self {
-            capability_registry: Arc::new(RwLock::new(CapabilityRegistry::default(),
-            primal_connections: Arc::new(RwLock::new(HashMap::new()),
+    pub fn new(config: DiscoveryConfig) -> Self {
+        Self {
+            capability_registry: Arc::new(RwLock::new(CapabilityRegistry::default())),
+            primal_connections: Arc::new(RwLock::new(HashMap::new())),
             discovery_config: config,
         }
     }
 
     /// Discover capabilities for a primal by name
     pub async fn discover_primal_capabilities(
-        &self)
+        &self,
         primal_name: &str,
     ) -> Result<Vec<Capability>, CapabilityError> {
         info!("🔍 Discovering capabilities for primal: {}", primal_name);
 
         // Get primal endpoint
-        let endpoint = format!("http://songbird_config::constants::network::DEFAULT_HOST:8080/{}", primal_name);  // TEMPORARY FALLBACK
+        let capability_host =
+            std::env::var("UNIVERSAL_CAPABILITY_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let capability_port = std::env::var("UNIVERSAL_CAPABILITY_PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(8080);
+        let endpoint = format!("http://{}:{}/{}", capability_host, capability_port, primal_name);
 
         // Attempt capability discovery via HTTP
         match self.query_primal_capabilities(&endpoint).await {
@@ -171,7 +190,7 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
                 for capability in &capabilities {
                     registry
                         .capability_providers
-                        .entry(capability.capability_type.clone()
+                        .entry(capability.capability_type.clone())
                         .or_insert_with(Vec::new)
                         .push(primal_name.to_string());
                 }
@@ -213,9 +232,9 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
         providers.dedup();
 
         debug!(
-            "✅ Found {} providers for capability {}: {:?}")
-            providers.len()
-            capability_type)
+            "✅ Found {} providers for capability {}: {:?}",
+            providers.len(),
+            capability_type,
             providers
         );
 
@@ -227,9 +246,9 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
         let mut providers = Vec::new();
 
         // Check for generic capability environment variables
-        let capability_env = format!("{}_PROVIDERS ", capability_type.to_uppercase();
+        let capability_env = format!("{}_PROVIDERS ", capability_type.to_uppercase());
         if let Ok(provider_list) = std::env::var(&capability_env) {
-            providers.extend(provider_list.split(',').map(|s| s.trim().to_string();
+            providers.extend(provider_list.split(',').map(|s| s.trim().to_string()));
         }
 
         // Check for specific primal environment variables
@@ -249,7 +268,7 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
 
     /// Discover capability providers from network scanning
     async fn discover_capability_providers_from_network(
-        &self)
+        &self,
         capability_type: &str,
     ) -> Vec<String> {
         let providers = Vec::new();
@@ -276,11 +295,14 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
                 for i in 1..=10 {
                     let primal_env = format!("PRIMAL_{}_NAME ", i);
                     let endpoint_env = format!("PRIMAL_{}_ENDPOINT ", i);
-                    if let (Ok(name), Ok(_) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env)
+                    if let (Ok(name), Ok(_)) =
+                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
                     {
-                        if name.contains("security") || name.contains("auth") || name.contains("crypto") {
-                            providers.push(name));
+                        if name.contains("security")
+                            || name.contains("auth")
+                            || name.contains("crypto")
+                        {
+                            providers.push(name);
                         }
                     }
                 }
@@ -294,11 +316,14 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
                 for i in 1..=10 {
                     let primal_env = format!("PRIMAL_{}_NAME ", i);
                     let endpoint_env = format!("PRIMAL_{}_ENDPOINT ", i);
-                    if let (Ok(name), Ok(_) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env)
+                    if let (Ok(name), Ok(_)) =
+                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
                     {
-                        if name.contains("compute") || name.contains("process") || name.contains("exec") {
-                            providers.push(name));
+                        if name.contains("compute")
+                            || name.contains("process")
+                            || name.contains("exec")
+                        {
+                            providers.push(name);
                         }
                     }
                 }
@@ -312,11 +337,12 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
                 for i in 1..=10 {
                     let primal_env = format!("PRIMAL_{}_NAME ", i);
                     let endpoint_env = format!("PRIMAL_{}_ENDPOINT ", i);
-                    if let (Ok(name), Ok(_) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env)
+                    if let (Ok(name), Ok(_)) =
+                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
                     {
-                        if name.contains("storage") || name.contains("data") || name.contains("db") {
-                            providers.push(name));
+                        if name.contains("storage") || name.contains("data") || name.contains("db")
+                        {
+                            providers.push(name);
                         }
                     }
                 }
@@ -330,11 +356,15 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
                 for i in 1..=10 {
                     let primal_env = format!("PRIMAL_{}_NAME ", i);
                     let endpoint_env = format!("PRIMAL_{}_ENDPOINT ", i);
-                    if let (Ok(name), Ok(_) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env)
+                    if let (Ok(name), Ok(_)) =
+                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
                     {
-                        if name.contains("ai") || name.contains("ml") || name.contains("neural") || name.contains("model") {
-                            providers.push(name));
+                        if name.contains("ai")
+                            || name.contains("ml")
+                            || name.contains("neural")
+                            || name.contains("model")
+                        {
+                            providers.push(name);
                         }
                     }
                 }
@@ -344,11 +374,11 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
                 for i in 1..=10 {
                     let primal_env = format!("PRIMAL_{}_NAME ", i);
                     let endpoint_env = format!("PRIMAL_{}_ENDPOINT ", i);
-                    if let (Ok(name), Ok(_) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env)
+                    if let (Ok(name), Ok(_)) =
+                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
                     {
                         if name.contains(capability_type) {
-                            providers.push(name));
+                            providers.push(name);
                         }
                     }
                 }
@@ -359,14 +389,16 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
     }
 
     /// Check if a primal provides a specific capability
-    fn primal_provides_capability(&self, primal_name: &str, capability_type: &str) -> bool  {// Basic heuristic mapping of known primals to capabilities
-        match (primal_name, capability_type)  {("beardog", "security" | "encryption" | "authentication") => true,
+    fn primal_provides_capability(&self, primal_name: &str, capability_type: &str) -> bool {
+        // Basic heuristic mapping of known primals to capabilities
+        match (primal_name, capability_type) {
+            ("beardog", "security" | "encryption" | "authentication") => true,
             ("toadstool", "compute" | "processing" | "execution") => true,
             ("nestgate", "storage" | "data" | "persistence") => true,
             ("squirrel", "ai" | "ml" | "intelligence") => true,
             _ => {
                 // For custom primals, infer from name patterns
-                primal_name.contains(capability_type) || capability_type.contains(primal_name,
+                primal_name.contains(capability_type) || capability_type.contains(primal_name)
             }
         }
     }
@@ -415,25 +447,25 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
         }
 
         // Sort by score (highest first) and return the best provider
-        scored_providers.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal);
+        scored_providers.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         scored_providers.into_iter().next().map(|(provider, _)| provider)
     }
 
     /// Query primal capabilities via HTTP
     async fn query_primal_capabilities(
-        &self)
+        &self,
         endpoint: &str,
     ) -> Result<Vec<Capability>, CapabilityError> {
         let client = reqwest::Client::builder()
             .timeout(self.discovery_config.discovery_timeout)
             .build()
-            .map_err(|e| CapabilityError::NetworkError(format!("HTTP client error: {}", e))?;
+            .map_err(|e| CapabilityError::NetworkError(format!("HTTP client error: {}", e)))?;
 
         // Try standard capability endpoints
         let capability_endpoints = vec![
-            format!("{}/capabilities", endpoint)
-            format!("{}/api/v1/capabilities", endpoint)
-            format!("{}/primal/capabilities", endpoint)
+            format!("{}/capabilities", endpoint),
+            format!("{}/api/v1/capabilities", endpoint),
+            format!("{}/primal/capabilities", endpoint),
             format!("{}{}", endpoint, HEALTH_PATH), // Fallback - infer capabilities from health
         ];
 
@@ -458,53 +490,63 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
         }
 
         // If no capability endpoint works, return inferred capabilities
-        Ok(self.infer_capabilities_from_name(endpoint)
+        Ok(self.infer_capabilities_from_name(endpoint))
     }
 
     /// Infer basic capabilities from primal name and endpoint
-    fn infer_capabilities_from_name(&self, endpoint: &str) -> Vec<Capability>  {// Extract primal name from endpoint for inference
+    fn infer_capabilities_from_name(&self, endpoint: &str) -> Vec<Capability> {
+        // Extract primal name from endpoint for inference
         let primal_name = self.extract_primal_name_from_endpoint(endpoint);
 
         // Basic capability inference based on common patterns
-        let capabilities = match primal_name.to_lowercase().as_str()  {name if name.contains("security") || name.contains("auth") || name.contains("bear") => {
+        let capabilities = match primal_name.to_lowercase().as_str() {
+            name if name.contains("security") || name.contains("auth") || name.contains("bear") => {
                 vec![Capability {
                     capability_type: "security".to_string(),
                     name: "authentication".to_string(),
                     version: "1.0".to_string(),
-                    parameters: HashMap::new()),
+                    parameters: HashMap::new(),
                     qos_metrics: QoSMetrics::default(),
                     available: true,
                 }]
             }
-            name if name.contains("compute") || name.contains("toad") =>  {vec![Capability  {capability_type: "compute".to_string()),
+            name if name.contains("compute") || name.contains("toad") => {
+                vec![Capability {
+                    capability_type: "compute".to_string(),
                     name: "container_runtime".to_string(),
                     version: "1.0".to_string(),
-                    parameters: HashMap::new()),
+                    parameters: HashMap::new(),
                     qos_metrics: QoSMetrics::default(),
                     available: true,
                 }]
             }
-            name if name.contains("storage") || name.contains("nest") =>  {vec![Capability  {capability_type: "storage".to_string()),
+            name if name.contains("storage") || name.contains("nest") => {
+                vec![Capability {
+                    capability_type: "storage".to_string(),
                     name: "file_system".to_string(),
                     version: "1.0".to_string(),
-                    parameters: HashMap::new()),
+                    parameters: HashMap::new(),
                     qos_metrics: QoSMetrics::default(),
                     available: true,
                 }]
             }
-            name if name.contains("ai") || name.contains("ml") || name.contains("squirrel") =>  {vec![Capability  {capability_type: "ai".to_string()),
+            name if name.contains("ai") || name.contains("ml") || name.contains("squirrel") => {
+                vec![Capability {
+                    capability_type: "ai".to_string(),
                     name: "model_inference".to_string(),
                     version: "1.0".to_string(),
-                    parameters: HashMap::new()),
+                    parameters: HashMap::new(),
                     qos_metrics: QoSMetrics::default(),
                     available: true,
                 }]
             }
-            _ =>  {// Generic capability for unknown primals
-                vec![Capability  {capability_type: "generic".to_string()),
+            _ => {
+                // Generic capability for unknown primals
+                vec![Capability {
+                    capability_type: "generic".to_string(),
                     name: "service".to_string(),
                     version: "1.0".to_string(),
-                    parameters: HashMap::new()),
+                    parameters: HashMap::new(),
                     qos_metrics: QoSMetrics::default(),
                     available: true,
                 }]
@@ -528,20 +570,22 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
         }
 
         // Fallback: extract from path
-        endpoint.split('/').nth(2).unwrap_or("unknown").to_string()),
+        endpoint.split('/').nth(2).unwrap_or("unknown").to_string()
     }
 
     /// Establish connection to a primal
     pub async fn connect_to_primal(
-        &self)
+        &self,
         name: &str,
         endpoint: &str,
-    ) -> Result<(), CapabilityError>  {let connection = PrimalConnection  {name: name.to_string()),
-            primal_type: self.infer_primal_type_from_name(name,
+    ) -> Result<(), CapabilityError> {
+        let connection = PrimalConnection {
+            name: name.to_string(),
+            primal_type: self.infer_primal_type_from_name(name),
             endpoint: endpoint.to_string(),
             health: ConnectionHealth::Unknown,
-            last_contact: chrono::Utc::now(,
-            metadata: HashMap::new()),
+            last_contact: chrono::Utc::now(),
+            metadata: HashMap::new(),
         };
 
         // Test the connection
@@ -549,26 +593,28 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
 
         let mut connections = self.primal_connections.write().await;
         connections.insert(
-            name.to_string()),
-            PrimalConnection  {health)
-                last_contact: chrono::Utc::now(,
+            name.to_string(),
+            PrimalConnection {
+                health,
+                last_contact: chrono::Utc::now(),
                 ..connection
-            })
+            },
         );
 
         info!("Established connection to primal: {} at {}", name, endpoint);
-        Ok(()),
+        Ok(())
     }
 
     /// Test primal health
     async fn test_primal_health(&self, endpoint: &str) -> ConnectionHealth {
         // Basic health check - try to connect
         match reqwest::Client::new()
-            .get(&format!("{}{}", endpoint, HEALTH_PATH)
+            .get(&format!("{}{}", endpoint, HEALTH_PATH))
             .timeout(self.discovery_config.discovery_timeout)
             .send()
             .await
-         {Ok(response) if response.status().is_success() => ConnectionHealth::Healthy,
+        {
+            Ok(response) if response.status().is_success() => ConnectionHealth::Healthy,
             Ok(_) => ConnectionHealth::Degraded,
             Err(_) => ConnectionHealth::Unhealthy,
         }
@@ -577,7 +623,10 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
     /// Infer primal type from name
     fn infer_primal_type_from_name(&self, name: &str) -> PrimalType {
         let name_lower = name.to_lowercase();
-        if name_lower.contains("security") || name_lower.contains("auth") || name_lower.contains("bear") {
+        if name_lower.contains("security")
+            || name_lower.contains("auth")
+            || name_lower.contains("bear")
+        {
             PrimalType::Security
         } else if name_lower.contains("compute") || name_lower.contains("toad") {
             PrimalType::Compute
@@ -603,28 +652,30 @@ impl UniversalCapabilityAdapter  {/// Create a new universal capability adapter
         let mut connections = self.primal_connections.write().await;
         if connections.remove(name).is_some() {
             info!("Disconnected from primal: {}", name);
-            Ok(()),
+            Ok(())
         } else {
-            Err(CapabilityError::PrimalNotFound(name.to_string()),
+            Err(CapabilityError::PrimalNotFound(name.to_string()))
         }
     }
 
     /// Update connection health for all primals
     pub async fn update_connection_health(&self) {
-        let connections = self.primal_connections.read().await.clone());
+        let connections = self.primal_connections.read().await.clone();
         for (name, connection) in connections {
             let health = self.test_primal_health(&connection.endpoint).await;
 
             let mut connections_write = self.primal_connections.write().await;
             if let Some(conn) = connections_write.get_mut(&name) {
                 conn.health = health;
-                conn.last_contact = chrono::Utc::now());
+                conn.last_contact = chrono::Utc::now();
             }
         }
     }
 }
 
-impl Default for QoSMetrics  {fn default() -> Self  {Self {
+impl Default for QoSMetrics {
+    fn default() -> Self {
+        Self {
             latency_ms: 100.0,
             throughput_ops_sec: 1000.0,
             availability: 0.99,
@@ -634,7 +685,9 @@ impl Default for QoSMetrics  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for ResourceMetrics  {fn default() -> Self  {Self {
+impl Default for ResourceMetrics {
+    fn default() -> Self {
+        Self {
             cpu_percent: 10.0,
             memory_mb: 512,
             network_mbps: 10.0,
@@ -645,27 +698,29 @@ impl Default for ResourceMetrics  {fn default() -> Self  {Self {
 
 /// Response format for capability queries
 #[derive(Debug, Deserialize)]
-struct CapabilityResponse  {capabilities: Vec<Capability>)
+struct CapabilityResponse {
+    capabilities: Vec<Capability>,
 }
 
 /// Errors that can occur during capability operations
 #[derive(Debug)]
-pub enum CapabilityError  {/// Network communication error
-    NetworkError(String)
+pub enum CapabilityError {
+    /// Network communication error
+    NetworkError(String),
     /// Invalid capability format
-    ParseError(String)
+    ParseError(String),
     /// Primal not found
-    PrimalNotFound(String)
+    PrimalNotFound(String),
     /// Capability not available
-    CapabilityUnavailable(String)
+    CapabilityUnavailable(String),
 }
 
 impl std::fmt::Display for CapabilityError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CapabilityError::NetworkError(msg) => write!(f, "Network error: {}", msg)
-            CapabilityError::ParseError(msg) => write!(f, "Parse error: {}", msg)
-            CapabilityError::PrimalNotFound(name) => write!(f, "Primal not found: {}", name,
+            CapabilityError::NetworkError(msg) => write!(f, "Network error: {}", msg),
+            CapabilityError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            CapabilityError::PrimalNotFound(name) => write!(f, "Primal not found: {}", name),
             CapabilityError::CapabilityUnavailable(cap) => {
                 write!(f, "Capability unavailable: {}", cap)
             }

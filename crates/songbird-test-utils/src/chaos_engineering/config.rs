@@ -33,7 +33,7 @@ mod systemtime_option {
         D: Deserializer<'de>,
     {
         let opt: Option<u64> = Option::deserialize(deserializer)?;
-        Ok(opt.map(|secs| SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(secs))
+        Ok(opt.map(|secs| SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(secs)))
     }
 }
 
@@ -42,13 +42,61 @@ mod systemtime_option {
 // ============================================================================
 
 /// Experiment configuration - **MIGRATED TO UNIFIED**
-pub use songbird_config::unified::testing::{ByzantineFailureConfig, ExperimentConfig, NetworkFaultConfig, PerformanceDegradationConfig,
-    ResourceConstraintConfig, ServiceFailureConfig,
-};
+// TEMPORARY: Disabled - songbird_config::unified has E0765 corruption
+// pub use songbird_config::unified::testing::{ByzantineFailureConfig, ExperimentConfig, NetworkFaultConfig, PerformanceDegradationConfig,
+//     ResourceConstraintConfig, ServiceFailureConfig,
+// };
+
+// Temporary local definitions until unified module is fixed
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExperimentConfig {
+    pub network_fault: Option<NetworkFaultConfig>,
+    pub service_failure: Option<ServiceFailureConfig>,
+    pub resource_constraint: Option<ResourceConstraintConfig>,
+    pub byzantine_failure: Option<ByzantineFailureConfig>,
+    pub performance_degradation: Option<PerformanceDegradationConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct NetworkFaultConfig {
+    pub latency_ms: Option<u64>,
+    pub packet_loss_percent: Option<f64>,
+    pub bandwidth_limit_bps: Option<u64>,
+    pub partition_enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceFailureConfig {
+    pub failure_rate: f64,
+    pub mean_time_to_failure: Duration,
+    pub mean_time_to_recovery: Duration,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ResourceConstraintConfig {
+    pub cpu_limit_percent: Option<f64>,
+    pub memory_limit_mb: Option<u64>,
+    pub disk_io_limit_mbps: Option<u64>,
+    pub network_bandwidth_limit_mbps: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ByzantineFailureConfig {
+    pub corrupt_data_rate: f64,
+    pub delayed_response_rate: f64,
+    pub malicious_behavior_types: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PerformanceDegradationConfig {
+    pub slowdown_factor: f64,
+    pub resource_constraint: Option<ResourceConstraintConfig>,
+}
 
 /// Types of chaos experiments
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ExperimentType  {/// Network faults (latency, packet loss, partitions)
+pub enum ExperimentType {
+    /// Network faults (latency, packet loss, partitions)
     NetworkFault,
     /// Service failures (crashes, hangs, resource exhaustion)
     ServiceFailure,
@@ -68,7 +116,8 @@ pub enum ExperimentType  {/// Network faults (latency, packet loss, partitions)
 
 /// Experiment execution status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExperimentStatus  {/// Experiment is being prepared
+pub enum ExperimentStatus {
+    /// Experiment is being prepared
     Preparing,
     /// Experiment is currently running
     Running,
@@ -82,7 +131,8 @@ pub enum ExperimentStatus  {/// Experiment is being prepared
 
 /// Experiment definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChaosExperiment  {/// Unique experiment identifier
+pub struct ChaosExperiment {
+    /// Unique experiment identifier
     pub id: String,
     /// Human-readable name
     pub name: String,
@@ -99,10 +149,10 @@ pub struct ChaosExperiment  {/// Unique experiment identifier
     /// Experiment status
     pub status: ExperimentStatus,
     /// Start time (using `SystemTime` for serialization compatibility)
-    #[serde(with = "systemtime_option")]"
+    #[serde(with = "systemtime_option")]
     pub start_time: Option<SystemTime>,
     /// End time (using `SystemTime` for serialization compatibility)
-    #[serde(with = "systemtime_option")]"
+    #[serde(with = "systemtime_option")]
     pub end_time: Option<SystemTime>,
     /// Experiment results
     pub results: Option<ExperimentResults>,
@@ -110,7 +160,8 @@ pub struct ChaosExperiment  {/// Unique experiment identifier
 
 /// Experiment results
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExperimentResults  {/// Whether the experiment succeeded
+pub struct ExperimentResults {
+    /// Whether the experiment succeeded
     pub success: bool,
     /// Error message if failed
     pub error_message: Option<String>,
@@ -124,7 +175,8 @@ pub struct ExperimentResults  {/// Whether the experiment succeeded
 
 /// Performance impact measurements
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceImpact  {/// Response time change (percentage)
+pub struct PerformanceImpact {
+    /// Response time change (percentage)
     pub response_time_change_percent: f64,
     /// Throughput change (percentage)
     pub throughput_change_percent: f64,
@@ -136,7 +188,8 @@ pub struct PerformanceImpact  {/// Response time change (percentage)
 
 /// Resource utilization changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceUtilizationChange  {/// CPU utilization change (percentage)
+pub struct ResourceUtilizationChange {
+    /// CPU utilization change (percentage)
     pub cpu_change_percent: f64,
     /// Memory utilization change (percentage)
     pub memory_change_percent: f64,
@@ -148,8 +201,9 @@ pub struct ResourceUtilizationChange  {/// CPU utilization change (percentage)
 
 /// Metric snapshot
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MetricSnapshot  {/// Timestamp
-    #[serde(with = "systemtime_option")]"
+pub struct MetricSnapshot {
+    /// Timestamp
+    #[serde(with = "systemtime_option")]
     pub timestamp: Option<SystemTime>,
     /// Metric name
     pub name: String,

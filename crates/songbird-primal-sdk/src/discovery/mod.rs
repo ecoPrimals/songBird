@@ -8,7 +8,7 @@
 //!
 //! The Universal Primal discovery system is organized into focused modules:
 //! - `types` - Core types (PrimalNode, DiscoveredPrimal, DiscoveryMethod,
-//! - `engine` - Main PrimalDiscoveryEngine and coordination logic  
+//! - `engine` - Main PrimalDiscoveryEngine and coordination logic
 //! - `network_scan` - Network scanning and probing functionality
 //! - `legacy` - Legacy primal service support for backward compatibility
 //! - `parsing` - Capability parsing and metadata extraction utilities

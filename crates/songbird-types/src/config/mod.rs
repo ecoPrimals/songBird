@@ -7,6 +7,7 @@ pub mod adapters;
 pub mod ai_first;
 pub mod api;
 pub mod communication;
+pub mod consolidated_canonical;
 pub mod environment;
 pub mod federation;
 pub mod gaming;

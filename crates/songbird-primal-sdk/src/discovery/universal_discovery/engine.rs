@@ -106,7 +106,7 @@ impl UniversalDiscoveryEngine  {/// Create new universal discovery engine
     }
 
     /// Start the discovery engine
-    pub async fn start(&self) -> SongbirdResult<()>  {info!("🚀 Starting Universal Primal Discovery Engine");
+    pub async fn start(&self) -> SongbirdResult<()>  {info!("🚀 Starting Universal Primal Discovery Engine")
 
          {let mut running = self.running.write().await;
             if *running {
@@ -134,7 +134,7 @@ impl UniversalDiscoveryEngine  {/// Create new universal discovery engine
 
     /// Stop the discovery engine
     pub async fn stop(&self) -> SongbirdResult<()> {
-        info!("🛑 Stopping Universal Primal Discovery Engine");
+        info!("🛑 Stopping Universal Primal Discovery Engine")
 
         {
             let mut running = self.running.write().await;
@@ -199,7 +199,7 @@ impl UniversalDiscoveryEngine  {/// Create new universal discovery engine
                                 )
                                 .await;
                             }
-                            
+
                             // Update stats
                             let mut stats_guard = stats.write().await;
                             stats_guard.update_discovery(&channel_name, start_time.elapsed().as_millis() as f64);
@@ -218,10 +218,10 @@ impl UniversalDiscoveryEngine  {/// Create new universal discovery engine
                     stats_guard.complete_cycle();
                 }
 
-                debug!("🔍 Discovery cycle completed in {:?}", start_time.elapsed();
+                debug!("🔍 Discovery cycle completed in {:?}", start_time.elapsed()
             }
 
-            debug!("Discovery task stopped");
+            debug!("Discovery task stopped")
         });
 
         {
@@ -292,11 +292,11 @@ impl UniversalDiscoveryEngine  {/// Create new universal discovery engine
                 for (service_id, service) in services.iter() {
                     // Perform health check (placeholder)
                     let health_status = Self::check_service_health(service).await;
-                    
+
                     // Update stats
                     let mut stats_guard = stats.write().await;
                     stats_guard.record_health_check();
-                    
+
                     // Send health change event if needed
                     if health_status != service.health_status {
                         let event = DiscoveryEvent::ServiceHealthChanged {
@@ -391,4 +391,4 @@ impl UniversalDiscoveryEngine  {/// Create new universal discovery engine
     pub fn subscribe_to_events(&self) -> broadcast::Receiver<DiscoveryEvent> {
         self.events_tx.subscribe()
     }
-} 
+}

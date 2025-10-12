@@ -102,7 +102,7 @@ impl Default for ProtocolConfig {
         Self {
             supported: vec!["udp".to_string(), "tcp".to_string()],
             default: "udp".to_string(),
-            settings: std::collections::HashMap::new()),
+            settings: std::collections::HashMap::new(),
         }
     }
 }
@@ -380,7 +380,7 @@ impl Default for OneTouchConfig {
         Self {
             enabled: true,
             default_profile: GamingProfile::default(),
-            templates: HashMap::new()),
+            templates: HashMap::new(),
         }
     }
 }
@@ -539,7 +539,7 @@ impl Default for QoSConfig {
         Self {
             enabled: true,
             priority_levels: 3,
-            bandwidth_allocation: HashMap::new()),
+            bandwidth_allocation: HashMap::new(),
         }
     }
 }

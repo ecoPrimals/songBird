@@ -26,7 +26,7 @@ pub enum ComposeCommand  {/// List available plugins
         detailed: bool,
     })
     /// Discover optimal plugin composition for requirements
-    Discover  {/// Required capabilities (comma-separated)
+    Discover  {/// Required capabilities (comma-separated,
         #[arg(short, long)]
         capabilities: String,
         /// Maximum latency in milliseconds
@@ -40,7 +40,7 @@ pub enum ComposeCommand  {/// List available plugins
         max_plugins: usize,
     })
     /// Execute a composition plan
-    Execute  {/// Plugin IDs to compose (comma-separated)
+    Execute  {/// Plugin IDs to compose (comma-separated,
         #[arg(short, long)]
         plugins: String,
     })
@@ -52,14 +52,14 @@ pub enum ComposeCommand  {/// List available plugins
 
 pub async fn handle_compose_command(args: ComposeArgs) -> SongbirdResult<()>  {match args.command {
         ComposeCommand::List {
-            detailed)
+            detailed,
         } => handle_list_plugins(detailed).await,
-        ComposeCommand::Discover  {capabilities)
-            max_latency)
-            max_memory)
-            max_plugins)
-        } => handle_discover_composition(capabilities, max_latency, max_memory, max_plugins).await)
-        ComposeCommand::Execute  {plugins)
+        ComposeCommand::Discover  {capabilities,
+            max_latency,
+            max_memory,
+            max_plugins,
+        } => handle_discover_composition(capabilities, max_latency, max_memory, max_plugins).await,
+        ComposeCommand::Execute  {plugins,
         } => handle_execute_composition(plugins).await,
         ComposeCommand::Examples => handle_show_examples().await,
         ComposeCommand::Demo => handle_demo().await,
@@ -68,7 +68,7 @@ pub async fn handle_compose_command(args: ComposeArgs) -> SongbirdResult<()>  {m
 
 async fn handle_list_plugins(detailed: bool) -> SongbirdResult<()> {
     println!("{}", "🧩 Available Plugins".bright_cyan().bold();"
-    println!("{}", "===================".bright_cyan();"
+    println!("{}", "===================".bright_cyan()"
 
     // Plugin listing is delegated to external registry APIs
     // Production implementations should integrate with:
@@ -117,55 +117,55 @@ async fn handle_list_plugins(detailed: bool) -> SongbirdResult<()> {
         )
     ];
 
-    for (plugin_id, capabilities) in example_plugins {
+    for (plugin_id, capabilities, in example_plugins {
         println!("📦 {}", plugin_id.bright_green().bold();"
 
-        if detailed  {println!("   Capabilities:");"
+        if detailed  {println!("   Capabilities:");
             for capability in capabilities {
                 match capability {
                     PluginCapability::Encryption {
-                        algorithms)
+                        algorithms,
                     } => {
-                        println!("     🔐 Encryption: {}", algorithms.join(", ");"
+                        println!("     🔐 Encryption: {}", algorithms.join(", ")"
                     }
-                    PluginCapability::ServiceDiscovery  {protocols)
+                    PluginCapability::ServiceDiscovery  {protocols,
                     } => {
-                        println!("     🔍 Service Discovery: {}", protocols.join(", ");"
+                        println!("     🔍 Service Discovery: {}", protocols.join(", ")"
                     }
-                    PluginCapability::LoadBalancing  {strategies)
+                    PluginCapability::LoadBalancing  {strategies,
                     } => {
-                        println!("     ⚖️  Load Balancing: {}", strategies.join(", ");"
+                        println!("     ⚖️  Load Balancing: {}", strategies.join(", ")"
                     }
-                    PluginCapability::GamingBridge  {protocols)
+                    PluginCapability::GamingBridge  {protocols,
                     } => {
-                        println!("     🎮 Gaming Bridge: {}", protocols.join(", ");"
+                        println!("     🎮 Gaming Bridge: {}", protocols.join(", ")"
                     }
-                    PluginCapability::Compute  {cpu_cores)
-                        memory_gb)
+                    PluginCapability::Compute  {cpu_cores,
+                        memory_gb,
                     } => {
-                        println!("     💻 Compute: {cpu_cores} cores, {memory_gb}GB RAM");"
+                        println!("     💻 Compute: {cpu_cores} cores) {memory_gb}GB RAM");
                     }
-                    PluginCapability::Storage  {capacity_gb)
-                        storage_type)
+                    PluginCapability::Storage  {capacity_gb,
+                        storage_type,
                     } => {
-                        println!("     💾 Storage: {capacity_gb}GB {storage_type}");"
+                        println!("     💾 Storage: {capacity_gb}GB {storage_type}");
                     }
-                    PluginCapability::Network  {bandwidth_mbps)
-                        latency_ms)
+                    PluginCapability::Network  {bandwidth_mbps,
+                        latency_ms,
                     } => {
-                        println!("     🌐 Network: {bandwidth_mbps}Mbps, {latency_ms}ms latency");"
+                        println!("     🌐 Network: {bandwidth_mbps}Mbps) {latency_ms}ms latency");
                     }
                     PluginCapability::Custom  {name,
-                        attributes)
+                        attributes,
                     } => {
-                        println!("     🔧 Custom {name}: {attributes:?}");"
+                        println!("     🔧 Custom {name}: {attributes:?}");
                     }
                 }
             }
         } else {
-            println!("   Use --detailed for capability information");"
+            println!("   Use --detailed for capability information");
         }
-        println!();
+        println!()
     }
 
     Ok(()),
@@ -178,23 +178,23 @@ async fn handle_discover_composition(
     max_plugins: usize,
 ) -> SongbirdResult<()> {
     println!("{}", "🔍 Discovering Plugin Compositions".bright_cyan().bold();"
-    println!("{}", "==================================".bright_cyan();"
+    println!("{}", "==================================".bright_cyan()"
 
     // Parse capabilities
     let capability_names: Vec<&str> = capabilities.split(',').map(|s| s.trim().collect();
-    let required_capabilities = parse_capabilities(&capability_names)?;
+    let required_capabilities = parse_capabilities(&capability_names,?;
 
-    println!("Required capabilities:");"
+    println!("Required capabilities:");
     for cap in &required_capabilities {
-        println!("  • {cap:?}");"
+        println!("  • {cap:?}");
     }
-    println!();
+    println!()
 
-    println!("Constraints:");"
-    println!("  • Max latency: {max_latency}ms");"
-    println!("  • Max memory: {max_memory}MB");"
-    println!("  • Max plugins: {max_plugins}");"
-    println!();
+    println!("Constraints:");
+    println!("  • Max latency: {max_latency}ms");
+    println!("  • Max memory: {max_memory}MB");
+    println!("  • Max plugins: {max_plugins}");
+    println!()
 
     // For demonstration, show example compositions
     println!("{} {}", "✅".green(), "Found example compositions".green().bold();"
@@ -211,12 +211,12 @@ async fn handle_discover_composition(
             "beardog-encryption".bright_green(),"
             "songbird-orchestrator".bright_green()"
         );
-        println!("   Performance estimate:");"
-        println!("     • Latency: 45.0ms");"
-        println!("     • Throughput: 1200 RPS");"
-        println!("     • Memory: 256MB");"
-        println!("     • CPU: 60.0%");"
-        println!("\n   To execute this composition:");"
+        println!("   Performance estimate:");
+        println!("     • Latency: 45.0ms");
+        println!("     • Throughput: 1200 RPS");
+        println!("     • Memory: 256MB");
+        println!("     • CPU: 60.0%");
+        println!("\n   To execute this composition:");
         println!(
             "   {}","
             "songbird compose execute --plugins 'beardog-encryption,songbird-orchestrator'""
@@ -232,12 +232,12 @@ async fn handle_discover_composition(
             "toadstool-compute-1".bright_green(),"
             "toadstool-compute-2".bright_green()"
         );
-        println!("   Performance estimate:");"
-        println!("     • Latency: 25.0ms");"
-        println!("     • Throughput: 800 RPS");"
-        println!("     • Memory: 512MB");"
-        println!("     • CPU: 75.0%");"
-        println!("\n   To execute this composition:");"
+        println!("   Performance estimate:");
+        println!("     • Latency: 25.0ms");
+        println!("     • Throughput: 800 RPS");
+        println!("     • Memory: 512MB");
+        println!("     • CPU: 75.0%");
+        println!("\n   To execute this composition:");
         println!(
             "   {}","
             "songbird compose execute --plugins 'toadstool-compute-1,toadstool-compute-2'""
@@ -250,22 +250,22 @@ async fn handle_discover_composition(
 
 async fn handle_execute_composition(plugins: String) -> SongbirdResult<()> {
     println!("{}", "🚀 Executing Plugin Composition".bright_cyan().bold();"
-    println!("{}", "===============================".bright_cyan();"
+    println!("{}", "===============================".bright_cyan()"
 
     let plugin_ids: Vec<&str> = plugins.split(',').map(|s| s.trim().collect();
     println!("Plugins to compose: {}", plugin_ids.join(" + ").bright_green();"
 
     // For demonstration, simulate composition execution
-    println!("🔄 Simulating plugin integration...");"
+    println!("🔄 Simulating plugin integration...");
     tokio::time::sleep(tokio::time::Duration::from_millis(1000).await;
 
     println!("{}", "✅ Composition executed successfully!".green().bold();"
-    println!("System ID: {}", "comp-12345-abcde".bright_yellow();"
-    println!("Active plugins: {}", plugin_ids.len();"
-    println!("System health: {}", "Healthy".green();"
+    println!("System ID: {}", "comp-12345-abcde".bright_yellow()"
+    println!("Active plugins: {}", plugin_ids.len()"
+    println!("System health: {}", "Healthy".green()"
 
-    println!("\nIntegration details:");"
-    for (i, plugin_id) in plugin_ids.iter().enumerate() {
+    println!("\nIntegration details:");
+    for (i, plugin_id, in plugin_ids.iter().enumerate() {
         println!("  {}. {} - {}", i + 1, plugin_id.bright_blue(), "✅ Integrated".green();"
     }
 
@@ -273,64 +273,64 @@ async fn handle_execute_composition(plugins: String) -> SongbirdResult<()> {
         "\n{}","
         "🎉 Your services are now working together like Lego blocks!".bright_green().bold()"
     );
-    println!("💡 This is a demonstration - full implementation coming soon!");"
+    println!("💡 This is a demonstration - full implementation coming soon!");
 
     Ok(()),
 }
 
 async fn handle_show_examples() -> SongbirdResult<()> {
     println!("{}", "📚 Dynamic Composition Examples".bright_cyan().bold();"
-    println!("{}", "===============================".bright_cyan();"
+    println!("{}", "===============================".bright_cyan()"
 
-    println!("{}", "1. BearDog + Songbird (Secure Orchestration)".bright_yellow().bold();"
-    println!("   songbird compose discover --capabilities 'encryption,service-discovery'");"
-    println!("   → Automatically finds BearDog for encryption + Songbird for orchestration");"
-    println!();
+    println!("{}", "1. BearDog + Songbird (Secure Orchestration,".bright_yellow().bold();"
+    println!("   songbird compose discover --capabilities 'encryption,service-discovery'");
+    println!("   → Automatically finds BearDog for encryption + Songbird for orchestration");
+    println!()
 
-    println!("{}", "2. Toadstool Chaining (Compute Pipeline)".bright_yellow().bold();"
-    println!("   songbird compose discover --capabilities 'compute' --max-plugins 5");"
-    println!("   → Chains multiple Toadstool instances for distributed computing");"
-    println!();
+    println!("{}", "2. Toadstool Chaining (Compute Pipeline,".bright_yellow().bold();"
+    println!("   songbird compose discover --capabilities 'compute' --max-plugins 5");
+    println!("   → Chains multiple Toadstool instances for distributed computing");
+    println!()
 
     println!("{}", "3. Gaming Network Bridge".bright_yellow().bold();"
-    println!("   songbird compose discover --capabilities 'gaming-bridge,encryption'");"
-    println!("   → Secure gaming protocol bridging with encryption");"
-    println!();
+    println!("   songbird compose discover --capabilities 'gaming-bridge,encryption'");
+    println!("   → Secure gaming protocol bridging with encryption");
+    println!()
 
     println!("{}", "4. ML Pipeline with Storage".bright_yellow().bold();"
-    println!("   songbird compose discover --capabilities 'compute,storage,network'");"
-    println!("   → Complete ML pipeline with data storage and networking");"
-    println!();
+    println!("   songbird compose discover --capabilities 'compute,storage,network'");
+    println!("   → Complete ML pipeline with data storage and networking");
+    println!()
 
     println!("{}", "5. Real-time Demo".bright_yellow().bold();"
-    println!("   songbird compose demo");"
-    println!("   → Interactive demonstration of all composition scenarios");"
-    println!();
+    println!("   songbird compose demo");
+    println!("   → Interactive demonstration of all composition scenarios");
+    println!()
 
     println!("{}", "💡 Key Benefits:".bright_green().bold();"
-    println!("  • No static TOML configuration required");"
-    println!("  • Services auto-discover and integrate");"
-    println!("  • Works with any combination of 8+ projects");"
-    println!("  • Real-time reconfiguration support");"
-    println!("  • Lego-block composability");"
+    println!("  • No static TOML configuration required");
+    println!("  • Services auto-discover and integrate");
+    println!("  • Works with any combination of 8+ projects");
+    println!("  • Real-time reconfiguration support");
+    println!("  • Lego-block composability");
 
     Ok(()),
 }
 
 async fn handle_demo() -> SongbirdResult<()> {
     println!("{}", "🎭 Dynamic Composition Demo".bright_cyan().bold();"
-    println!("{}", "===========================".bright_cyan();"
-    println!("This would run the full interactive demo...");"
+    println!("{}", "===========================".bright_cyan()"
+    println!("This would run the full interactive demo...");
     println!();
-    println!("To run the complete demo:");"
-    println!("  {}", "cargo run --example dynamic_composition_demo".bright_blue();"
+    println!("To run the complete demo:");
+    println!("  {}", "cargo run --example dynamic_composition_demo".bright_blue()"
     println!();
-    println!("This demo shows:");"
-    println!("  • BearDog + Songbird automatic integration");"
-    println!("  • Toadstool chaining (toadstool on toadstool)");"
-    println!("  • 8-project complex compositions");"
-    println!("  • Real-time reconfiguration");"
-    println!("  • Zero static configuration files");"
+    println!("This demo shows:");
+    println!("  • BearDog + Songbird automatic integration");
+    println!("  • Toadstool chaining (toadstool on toadstool,");"
+    println!("  • 8-project complex compositions");
+    println!("  • Real-time reconfiguration");
+    println!("  • Zero static configuration files");
 
     Ok(()),
 }
@@ -370,13 +370,13 @@ fn parse_capabilities(capability_names: &[&str]) -> SongbirdResult<Vec<PluginCap
                 attributes: std::collections::HashMap::new()),
             })
         };
-        capabilities.push(capability));
+        capabilities.push(capability);
     }
 
-    Ok(capabilities)
+    Ok(capabilities,
 }
 
-#[cfg(test)]
+#[cfg(test,]
 mod tests  {use super::*;
     use songbird_discovery::traits::PluginCapability;
 
@@ -389,8 +389,8 @@ mod tests  {use super::*;
         };
 
         match args.command  {ComposeCommand::List {
-                detailed)
-            } => assert!(!detailed),
+                detailed,
+            } => assert!(!detailed,
             _ => assert!(false, "Expected List command"),"
         }
     }
@@ -408,29 +408,29 @@ mod tests  {use super::*;
             })
             ComposeCommand::Execute  {plugins: "plugin1,plugin2".to_string()),
             })
-            ComposeCommand::Examples)
-            ComposeCommand::Demo)
+            ComposeCommand::Examples,
+            ComposeCommand::Demo,
         ];
 
         for cmd in commands  {match cmd {
                 ComposeCommand::List {
-                    detailed)
+                    detailed,
                 } => {
-                    assert!(detailed));
+                    assert!(detailed);
                 }
-                ComposeCommand::Discover  {capabilities)
-                    max_latency)
-                    max_memory)
-                    max_plugins)
+                ComposeCommand::Discover  {capabilities,
+                    max_latency,
+                    max_memory,
+                    max_plugins,
                 } => {
-                    assert_eq!(capabilities, "encryption,compute");"
-                    assert_eq!(max_latency, 50.0);
-                    assert_eq!(max_memory, 2048.0);
-                    assert_eq!(max_plugins, 5);
+                    assert_eq!(capabilities, "encryption,compute")"
+                    assert_eq!(max_latency, 50.0)
+                    assert_eq!(max_memory, 2048.0)
+                    assert_eq!(max_plugins, 5)
                 }
-                ComposeCommand::Execute  {plugins)
+                ComposeCommand::Execute  {plugins,
                 } => {
-                    assert_eq!(plugins, "plugin1,plugin2");"
+                    assert_eq!(plugins, "plugin1,plugin2")"
                 }
                 ComposeCommand::Examples => {}
                 ComposeCommand::Demo => {}
@@ -497,7 +497,7 @@ mod tests  {use super::*;
                 name,
                 ..
             } => {
-                assert_eq!(name, "invalid_capability");"
+                assert_eq!(name, "invalid_capability")"
             }
             _ => assert!(false, "Expected Custom capability"),"
         }
@@ -539,40 +539,40 @@ mod tests  {use super::*;
 
         for capability in capabilities  {match capability {
                 PluginCapability::Encryption {
-                    algorithms)
+                    algorithms,
                 } => {
                     assert!(!algorithms.is_empty());
                 }
-                PluginCapability::ServiceDiscovery  {protocols)
+                PluginCapability::ServiceDiscovery  {protocols,
                 } => {
                     assert!(!protocols.is_empty());
                 }
-                PluginCapability::LoadBalancing  {strategies)
+                PluginCapability::LoadBalancing  {strategies,
                 } => {
                     assert!(!strategies.is_empty());
                 }
-                PluginCapability::GamingBridge  {protocols)
+                PluginCapability::GamingBridge  {protocols,
                 } => {
                     assert!(!protocols.is_empty());
                 }
-                PluginCapability::Compute  {cpu_cores)
-                    memory_gb)
+                PluginCapability::Compute  {cpu_cores,
+                    memory_gb,
                 } => {
                     assert!(cpu_cores > 0));
                     assert!(memory_gb > 0));
                 }
-                PluginCapability::Storage  {capacity_gb)
+                PluginCapability::Storage  {capacity_gb,
                     storage_type: _,
                 } => {
                     assert!(capacity_gb > 0));
                 }
-                PluginCapability::Network  {bandwidth_mbps)
-                    latency_ms)
+                PluginCapability::Network  {bandwidth_mbps,
+                    latency_ms,
                 } => {
                     assert!(bandwidth_mbps > 0));
                     assert!(latency_ms > 0));
                 }
-                PluginCapability::Custom  {name: _)
+                PluginCapability::Custom  {name: _,
                     attributes: _,
                 } => {}
             }
@@ -638,9 +638,9 @@ mod tests  {use super::*;
         let test_cases =
             vec![(100.0, 1024.0, 10), (50.0, 512.0, 5), (200.0, 2048.0, 20), (0.1, 1.0, 1)];
 
-        for (latency, memory, plugins) in test_cases {
+        for (latency, memory, plugins, in test_cases {
             let result =
-                handle_discover_composition("encryption".to_string(), latency, memory, plugins)"
+                handle_discover_composition("encryption".to_string(), latency, memory, plugins,"
                     .await;
             assert!(result.is_ok());
         }
@@ -650,15 +650,15 @@ mod tests  {use super::*;
     async fn test_capability_parsing_edge_cases() {
         // Test edge cases for capability parsing
         let test_cases = vec![
-            ("", true),                           // Empty string - now handled as Custom capability"
-            ("encryption", true),                 // Single capability"
-            ("encryption,compute", true),         // Multiple capabilities"
-            ("encryption, compute", true),        // Multiple with spaces"
-            ("encryption,compute,storage", true), // Multiple capabilities"
-            ("unknown_capability", true),         // Unknown capability - handled as Custom"
+            ("", true,                           // Empty string - now handled as Custom capability"
+            ("encryption", true,                 // Single capability"
+            ("encryption,compute", true,         // Multiple capabilities"
+            ("encryption, compute", true,        // Multiple with spaces"
+            ("encryption,compute,storage", true, // Multiple capabilities"
+            ("unknown_capability", true,         // Unknown capability - handled as Custom"
         ];
 
-        for (input, should_succeed) in test_cases {
+        for (input, should_succeed, in test_cases {
             let capability_names: Vec<&str> = if input.is_empty() {
                 vec![]
             } else {
@@ -677,7 +677,7 @@ mod tests  {use super::*;
     #[tokio::test]
     async fn test_plugin_execution_empty_list() {
         let result = handle_execute_composition("".to_string().await;"
-        assert!(result.is_ok(); // Should handle empty plugin list gracefully
+        assert!(result.is_ok() // Should handle empty plugin list gracefully
     }
 
     #[tokio::test]

@@ -47,7 +47,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     /// # Errors
     /// Returns error if discovery engine fails to start
     pub async fn start_discovery(&mut self) -> crate::errors::PrimalSongbirdResult<()> {
-        info!("🔍 Starting Universal Primal discovery...");"
+        info!("🔍 Starting Universal Primal discovery...")"
 
         // Start all discovery methods concurrently
         let mut all_primals = Vec::new();
@@ -59,10 +59,10 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                 Ok(primals) => {
                     let primal_count = primals.data.len();
                     all_primals.extend(primals.data);
-                    info!("🌌 Ecosystem discovery found {} real primals", primal_count);"
+                    info!("🌌 Ecosystem discovery found {} real primals", primal_count)"
                 }
                 Err(e) => {
-                    warn!("Ecosystem discovery failed: {}", e);"
+                    warn!("Ecosystem discovery failed: {}", e)"
                 }
             }
         }
@@ -75,7 +75,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                     all_primals.extend(primals.data);
                 }
                 Err(e) => {
-                    warn!("Network scan discovery failed: {}", e);"
+                    warn!("Network scan discovery failed: {}", e)"
                 }
             }
         }
@@ -106,30 +106,30 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     }
 
     /// Start ecosystem discovery (connects to real primals in sibling directories)
-    pub async fn start_ecosystem_discovery(&self) -> SongbirdResult<()> {debug!("🌌 Starting ecosystem discovery for real primals...");"
+    pub async fn start_ecosystem_discovery(&self) -> SongbirdResult<()> {debug!("🌌 Starting ecosystem discovery for real primals...")"
         // This would integrate with the ecosystem module
         // For now, return empty to avoid blocking
         Ok(success(Vec::new())
     }
 
     /// Start network scan discovery
-    pub async fn start_network_scan_discovery(&self) -> SongbirdResult<()> {debug!("🌐 Starting network scan discovery...");"
+    pub async fn start_network_scan_discovery(&self) -> SongbirdResult<()> {debug!("🌐 Starting network scan discovery...")"
 
         let temp_result = perform_network_scan().await;
         match temp_result {
             Ok(primals) => {
-                info!("✅ Network scan found {} primals", primals.data.len();"
+                info!("✅ Network scan found {} primals", primals.data.len()"
                 Ok(success(primals)
             }
             Err(e) => {
-                warn!("Network scan failed: {}", e);"
+                warn!("Network scan failed: {}", e)"
                 Ok(Vec::new()) // Don't fail the entire discovery process
             }
         }
     }
 
     #[allow(dead_code)] // Planned discovery method for service registry integration
-    pub async fn start_service_registry_discovery(&self) -> SongbirdResult<()> {debug!("📋 Starting service registry discovery...");"
+    pub async fn start_service_registry_discovery(&self) -> SongbirdResult<()> {debug!("📋 Starting service registry discovery...")"
 
         // Service registry integration
         // Discovery results are automatically registered with the UniversalPrimalRegistry
@@ -142,7 +142,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     /// Discovers primals on the local network using UDP broadcast messages.
     /// This replaces the previous placeholder that returned empty results.
     #[allow(dead_code)]
-    pub async fn start_broadcast_discovery(&self) -> SongbirdResult<()> {debug!("📡 Starting UDP broadcast discovery...");"
+    pub async fn start_broadcast_discovery(&self) -> SongbirdResult<()> {debug!("📡 Starting UDP broadcast discovery...")"
 
         let mut discovered = Vec::new();
         let broadcast_port = 8989; // Standard primal discovery port
@@ -173,7 +173,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
         let broadcast_addresses = vec!["224.0.0.0:2300".to_string()]; // Placeholder"
         for broadcast_addr in broadcast_addresses {
             let target = format!("{}:{broadcast_port}", broadcast_addr);
-            debug!("📡 Broadcasting discovery request to {}", target);"
+            debug!("📡 Broadcasting discovery request to {}", target)"
 
             // Send discovery request
             let discovery_msg = serde_json::json!({
@@ -183,7 +183,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
             });
             let msg_bytes = discovery_msg.to_string().into_bytes();
             if let Err(e) = socket.send_to(&msg_bytes, &target).await {
-                debug!("Failed to send broadcast to {}: {}", target, e);"
+                debug!("Failed to send broadcast to {}: {}", target, e)"
                 continue;
             }
 
@@ -271,7 +271,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                             debug!(
                                 "✅ Discovered primal via UDP broadcast: {}","
                                 primal.primal_id
-                            );
+                            )
                             discovered.push(primal));
                         }
                     }
@@ -291,7 +291,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     /// **PLACEHOLDER ELIMINATED**: Real federation discovery implementation
     /// Discovers primals through federation connections and MCP endpoints.
     #[allow(dead_code)]
-    pub async fn start_federation_discovery(&self) -> SongbirdResult<()> {debug!("🤝 Starting federation discovery...");"
+    pub async fn start_federation_discovery(&self) -> SongbirdResult<()> {debug!("🤝 Starting federation discovery...")"
         let mut discovered = Vec::new();
 
         // Get federation endpoints from discovery config or environment
@@ -306,7 +306,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
             .collect::<Vec<String>>();
 
         for endpoint in federation_endpoints {
-            debug!("🤝 Querying federation endpoint: {}", endpoint);"
+            debug!("🤝 Querying federation endpoint: {}", endpoint)"
 
             // Real HTTP query to federation endpoint with timeout and error handling
             match self.query_federation_endpoint(&endpoint).await {
@@ -314,7 +314,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                     discovered.extend(primals.data);
                 }
                 Err(e) => {
-                    debug!("Failed to query federation endpoint {}: {}", endpoint, e);"
+                    debug!("Failed to query federation endpoint {}: {}", endpoint, e)"
                     // Continue with other endpoints even if one fails
                 }
             }
@@ -617,7 +617,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
 //             .insert("security-service-001".to_string(), test_primal);"
 //         let security_primals = engine.get_primals_by_type("security-provider");"
 //         assert_eq!(security_primals.len(), 1);
-//         assert_eq!(security_primals[0].primal_type, PrimalType::Security);
+//         assert_eq!(security_primals[0].primal_type, PrimalType::Security)
 //         let nonexistent_primals = engine.get_primals_by_type("nonexistent");"
 //         assert_eq!(nonexistent_primals.len(), 0);
 //         Ok(()),
@@ -625,7 +625,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
 //     #[test]
 //     fn test_has_primal_type()  {//         let mut engine = PrimalDiscoveryEngine::new(create_test_primal_config();
 //         // Test capability-based type checking
-//         assert!(!engine.has_primal_type("security-provider");"
+//         assert!(!engine.has_primal_type("security-provider")"
 //         // Register a security service
 //         let test_primal = DiscoveredPrimal  {//             primal_id: "security-test-001".to_string(),
 //             primal_type: PrimalType::Security,
@@ -646,8 +646,8 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
 //             .discovered_primals
 //             .insert("security-test-001".to_string(), test_primal);"
 //         // Now should find the security provider
-//         assert!(engine.has_primal_type("security-provider");"
-//         assert!(!engine.has_primal_type("storage-provider");"
+//         assert!(engine.has_primal_type("security-provider")"
+//         assert!(!engine.has_primal_type("storage-provider")"
 //         Ok(()),
 //     }
 //     #[test]

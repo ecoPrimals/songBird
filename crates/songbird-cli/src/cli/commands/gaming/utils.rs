@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 // Game protocol classification for gaming operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum GameProtocolClass  {RealTime)
+pub enum GameProtocolClass  {RealTime,
     TurnBased,
     Streaming,
 }

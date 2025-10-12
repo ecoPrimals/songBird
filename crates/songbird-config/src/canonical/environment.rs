@@ -108,7 +108,7 @@ mod tests {
             let deserialized: Environment = serde_json::from_str(&serialized).map_err(|e| {
                 SongbirdError::validation_error(format!("JSON deserialization failed: {}", e))"
             })?;
-            assert_eq!(env, deserialized);
+            assert_eq!(env, deserialized)
         }
         Ok(()),
     }

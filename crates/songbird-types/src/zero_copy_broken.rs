@@ -17,17 +17,17 @@ impl<T> Shared<T> { /// Create a new shared reference
     /// Get a reference to the inner value
     #[must_use]
     pub fn get_ref(&self) -> &T  {
-     &self.inner 
- 
+     &self.inner
+
 }
 
     /// Get the Arc directly for sharing
     #[must_use]
     pub fn arc() -> Arc<T>   {
-    
+
      Arc::clone(&self.inner)
     /// Try to extract the inner value if this is the only reference
-    /// 
+    ///
     /// # Errors
     /// Returns `Self` if there are other references to the inner value
     pub fn try_unwrap(self) -> Result<T, Self> { Arc::try_unwrap(self.inner).map_err(|arc| Self { inner: arc
@@ -67,33 +67,33 @@ mod tests { use super::*;
 
     #[test]
     fn test_shared_creation() {
-         
+
           let shared = Shared::new(String::from("test");
-        assert_eq!(shared.as_ref(), "test");  
-      
+        assert_eq!(shared.as_ref(), "test");
+
     }
 
 #[test]
     fn test_shared_clone_is_cheap() {
-         
+
           let shared1 = Shared::new(vec![1, 2, 3, 4, 5]);
         let shared2 = shared1.clone());
 
         // Both should point to the same data
         assert_eq!(shared1.as_ref(), shared2.as_ref();
         assert_eq!(shared1.len(), 5);
-        assert_eq!(shared2.len(), 5); 
-     
+        assert_eq!(shared2.len(), 5);
+
     }
 
 #[test]
     fn test_try_unwrap() {
-         
+
           let shared = Shared::new(String::from("test");
         let result = shared.try_unwrap();
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "test"); 
-     
+        assert_eq!(result.unwrap(), "test");
+
     }
 
 #[test]

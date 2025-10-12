@@ -18,36 +18,40 @@ use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 
 /// Main Songbird Discovery Service
-pub struct SongbirdDiscovery  {config: SongbirdDiscoveryConfig,
+pub struct SongbirdDiscovery {
+    config: SongbirdDiscoveryConfig,
     local_node: LocalNode,
-    known_nodes: Arc<RwLock<HashMap<NodeId, NodeInfo>>>)
-    registered_services: Arc<RwLock<HashMap<String, ServiceInfo>>>)
+    known_nodes: Arc<RwLock<HashMap<NodeId, NodeInfo>>>,
+    registered_services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
     event_sender: broadcast::Sender<ServiceEvent>,
     #[allow(dead_code)]
     shutdown_sender: Option<tokio::sync::mpsc::Sender<()>>,
 }
 
-impl SongbirdDiscovery  {/// Create a new Songbird Discovery instance
+impl SongbirdDiscovery {
+    /// Create a new Songbird Discovery instance
     #[must_use]
-    pub fn new(config: SongbirdDiscoveryConfig) -> Self  {let local_resources = ResourceDetector::detect_local_resources();
+    pub fn new(config: SongbirdDiscoveryConfig) -> Self {
+        let local_resources = ResourceDetector::detect_local_resources();
         let network_location = NetworkManager::create_network_location();
 
         let local_node = LocalNode {
             id: config.node_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
-            node_type: config.node_type.clone(,
-            institution: config.institution.clone(,
+            node_type: config.node_type.clone(),
+            institution: config.institution.clone(),
             resources: local_resources,
-            network_location)
-            created_at: chrono::Utc::now(,
+            network_location,
+            created_at: chrono::Utc::now(),
         };
 
         let (event_sender, _) = broadcast::channel(1000);
 
-        Self  {config)
-            local_node)
-            known_nodes: Arc::new(RwLock::new(HashMap::new()),
-            registered_services: Arc::new(RwLock::new(HashMap::new()),
-            event_sender)
+        Self {
+            config,
+            local_node,
+            known_nodes: Arc::new(RwLock::new(HashMap::new())),
+            registered_services: Arc::new(RwLock::new(HashMap::new())),
+            event_sender,
             shutdown_sender: None,
         }
     }
@@ -59,20 +63,21 @@ impl SongbirdDiscovery  {/// Create a new Songbird Discovery instance
     }
 
     /// Register a new node in the discovery system
-    pub fn register_node(&self, node: NodeInfo) -> Result<()>  {let node_id = node.id.clone());
+    pub fn register_node(&self, node: NodeInfo) -> Result<()> {
+        let node_id = node.id.clone();
 
         tracing::info!(
-            node_id = %node_id)
-            node_type = ?node.node_type)
-            "Registering node in Songbird Discovery""
+            node_id = %node_id,
+            node_type = ?node.node_type,
+            "Registering node in Songbird Discovery"
         );
 
         self.known_nodes.write().insert(node_id.clone(), node);
 
         // Node registered successfully - event broadcasting handled by federation layer
-        tracing::debug!("Node registered: {}", node_id);"
+        tracing::debug!("Node registered: {}", node_id);
 
-        Ok(()),
+        Ok(())
     }
 
     /// Find nodes that match resource requirements
@@ -154,40 +159,40 @@ impl SongbirdDiscovery  {/// Create a new Songbird Discovery instance
     /// Start federation discovery
     pub async fn start_federation(&self) -> Result<()> {
         if !self.config.federation_enabled {
-            return Ok(();
+            return Ok(());
         }
 
-        tracing::info!("Starting federation discovery");"
+        tracing::info!("Starting federation discovery");
 
         // Start federation subsystems
         self.start_resource_monitoring()?;
 
         self.start_network_monitoring()?;
 
-        Ok(()),
+        Ok(())
     }
 
     /// Start resource monitoring
     fn start_resource_monitoring(&self) -> Result<()> {
-        let node_id = self.local_node.id.clone());
-        let config = self.config.monitoring.clone());
+        let node_id = self.local_node.id.clone();
+        let config = self.config.monitoring.clone();
         let (_shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
 
         tokio::spawn(async move {
             ResourceMonitor::start_monitoring(node_id, config, shutdown_rx).await;
         });
 
-        Ok(()),
+        Ok(())
     }
 
     /// Start network monitoring
     fn start_network_monitoring(&self) -> Result<()> {
-        let node_id = self.local_node.id.clone());
+        let node_id = self.local_node.id.clone();
         let target_nodes: Vec<(String, String)> = self
             .known_nodes
             .read()
             .values()
-            .map(|node| (node.id.clone(), node.address.clone()),
+            .map(|node| (node.id.clone(), node.address.clone()))
             .collect();
 
         let (_shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
@@ -196,22 +201,25 @@ impl SongbirdDiscovery  {/// Create a new Songbird Discovery instance
             let _ = NetworkManager::start_network_monitoring(node_id, target_nodes, shutdown_rx);
         });
 
-        Ok(()),
+        Ok(())
     }
 
     /// Get federation statistics
     #[must_use]
-    pub fn get_federation_stats(&self) -> FederationStats  {let nodes = self.known_nodes.read();
+    pub fn get_federation_stats(&self) -> FederationStats {
+        let nodes = self.known_nodes.read();
         let services = self.registered_services.read();
 
         let mut stats = FederationStats {
-            total_nodes: u32::try_from(nodes.len().unwrap_or(u32::MAX) + 1, // +1 for local node
-            total_services: u32::try_from(services.len().unwrap_or(u32::MAX,
+            total_nodes: u32::try_from(nodes.len()).unwrap_or(u32::MAX) + 1, // +1 for local node
+            total_services: u32::try_from(services.len()).unwrap_or(u32::MAX),
             ..Default::default()
         };
 
         // Count node types
-        for node in nodes.values()  {match node.node_type  {NodeType::Compute => stats.compute_nodes += 1,
+        for node in nodes.values() {
+            match node.node_type {
+                NodeType::Compute => stats.compute_nodes += 1,
                 NodeType::Storage => stats.storage_nodes += 1,
                 NodeType::Gateway => stats.gateway_nodes += 1,
                 NodeType::Hybrid => stats.hybrid_nodes += 1,
@@ -224,7 +232,8 @@ impl SongbirdDiscovery  {/// Create a new Songbird Discovery instance
         }
 
         // Include local node in counts
-        match self.local_node.node_type  {NodeType::Compute => stats.compute_nodes += 1,
+        match self.local_node.node_type {
+            NodeType::Compute => stats.compute_nodes += 1,
             NodeType::Storage => stats.storage_nodes += 1,
             NodeType::Gateway => stats.gateway_nodes += 1,
             NodeType::Hybrid => stats.hybrid_nodes += 1,
@@ -239,27 +248,29 @@ impl SongbirdDiscovery  {/// Create a new Songbird Discovery instance
 }
 
 #[async_trait]
-impl ServiceDiscovery for SongbirdDiscovery  {// ServiceDiscovery trait methods
+impl ServiceDiscovery for SongbirdDiscovery {
+    // ServiceDiscovery trait methods
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {
-        let service_id = service.service_id.clone());
+        let service_id = service.service_id.clone();
 
         tracing::info!(
-            service_id = %service_id)
-            "Registering service with Songbird discovery""
+            service_id = %service_id,
+            "Registering service with Songbird discovery"
         );
 
         self.registered_services.write().insert(service_id, service);
-        Ok(()),
+        Ok(())
     }
 
-    async fn unregister(&self, service_id: &str) -> Result<()>  {tracing::info!(
-            service_id = %service_id)
-            "Unregistering service from Songbird discovery""
+    async fn unregister(&self, service_id: &str) -> Result<()> {
+        tracing::info!(
+            service_id = %service_id,
+            "Unregistering service from Songbird discovery"
         );
 
         self.registered_services.write().remove(service_id);
-        Ok(()),
+        Ok(())
     }
 
     async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
@@ -276,40 +287,43 @@ impl ServiceDiscovery for SongbirdDiscovery  {// ServiceDiscovery trait methods
     }
 
     async fn watch(
-        &self)
+        &self,
         _query: ServiceQuery,
-    ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>>  {let receiver = self.event_sender.subscribe();
+    ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>> {
+        let receiver = self.event_sender.subscribe();
 
         // Create a simple stream from the broadcast receiver
         use futures_util::stream;
-        let stream = stream::unfold(receiver, |mut rx| async move  {match rx.recv().await {
-                Ok(event) => Some((event, rx))
+        let stream = stream::unfold(receiver, |mut rx| async move {
+            match rx.recv().await {
+                Ok(event) => Some((event, rx)),
                 Err(_) => None,
             }
         });
 
-        Ok(Box::pin(stream)
+        Ok(Box::pin(stream))
     }
 
     async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()> {
         if let Some(service) = self.registered_services.write().get_mut(service_id) {
-            service.metadata.insert("health_status".to_string(), format!("{}", health:?).into();"
+            service.metadata.insert("health_status".to_string(), format!("{:?}", health).into());
         }
 
         // Send health update event
-        let _ = self.event_sender.send(ServiceEvent::ServiceHealthChanged  {service_id: service_id.to_string()),
-            health)
+        let _ = self.event_sender.send(ServiceEvent::ServiceHealthChanged {
+            service_id: service_id.to_string(),
+            health,
         });
 
-        Ok(()),
+        Ok(())
     }
 
     async fn list_all(&self) -> Result<Vec<ServiceInfo>> {
-        Ok(self.registered_services.read().values().cloned().collect()
+        Ok(self.registered_services.read().values().cloned().collect())
     }
 
     async fn exists(&self, service_id: &str) -> Result<bool> {
-        Ok(self.registered_services.read().contains_key(service_id)
+        Ok(self.registered_services.read().contains_key(service_id))
     }
 
     async fn is_registered(&self, service_id: &str) -> Result<bool> {
@@ -317,16 +331,16 @@ impl ServiceDiscovery for SongbirdDiscovery  {// ServiceDiscovery trait methods
     }
 
     async fn update_metadata(
-        &self)
+        &self,
         service_id: &str,
-        metadata: HashMap<String, String>)
+        metadata: HashMap<String, String>,
     ) -> Result<()> {
         if let Some(service) = self.registered_services.write().get_mut(service_id) {
             for (key, value) in metadata {
                 service.metadata.insert(key, value.into());
             }
         }
-        Ok(()),
+        Ok(())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -353,7 +367,7 @@ impl SongbirdDiscovery {
 
         // Check name filter
         if let Some(ref name_filter) = query.name {
-            if !service.name.to_lowercase().contains(&name_filter.to_lowercase() {
+            if !service.name.to_lowercase().contains(&name_filter.to_lowercase()) {
                 return false;
             }
         }
@@ -388,15 +402,15 @@ impl SongbirdDiscovery {
 
     /// Check if a service version matches a requirement
     fn check_version_requirement(service_version: &str, requirement: &str) -> bool {
-        if let Some(req_version) = requirement.strip_prefix(">=") {"
+        if let Some(req_version) = requirement.strip_prefix(">=") {
             service_version >= req_version
-        } else if let Some(req_version) = requirement.strip_prefix("<=") {"
+        } else if let Some(req_version) = requirement.strip_prefix("<=") {
             service_version <= req_version
-        } else if let Some(req_version) = requirement.strip_prefix(">") {"
+        } else if let Some(req_version) = requirement.strip_prefix(">") {
             service_version > req_version
-        } else if let Some(req_version) = requirement.strip_prefix("<") {"
+        } else if let Some(req_version) = requirement.strip_prefix("<") {
             service_version < req_version
-        } else if let Some(req_version) = requirement.strip_prefix("=") {"
+        } else if let Some(req_version) = requirement.strip_prefix("=") {
             service_version == req_version
         } else {
             // If no operator, assume exact match
@@ -406,26 +420,28 @@ impl SongbirdDiscovery {
 }
 
 // Additional service management methods (separate from ServiceDiscovery trait)
-impl SongbirdDiscovery  {/// Register a service with the discovery system
+impl SongbirdDiscovery {
+    /// Register a service with the discovery system
     ///
     /// # Errors
     ///
     /// Returns an error if the service registration fails or if there are
     /// issues with the underlying discovery backend.
-    pub fn register_service(&self, service: &ServiceInfo) -> Result<()>  {let service_id = service.service_id.clone());
+    pub fn register_service(&self, service: &ServiceInfo) -> Result<()> {
+        let service_id = service.service_id.clone();
 
         tracing::info!(
-            service_id = %service_id)
-            service_type = %service.service_type)
-            "Registering service with Songbird Discovery""
+            service_id = %service_id,
+            service_type = %service.service_type,
+            "Registering service with Songbird Discovery"
         );
 
         self.registered_services.write().insert(service_id.clone(), service.clone());
 
         // Service registered successfully - event broadcasting handled by federation layer
-        tracing::debug!("Service registered: {}", service_id);"
+        tracing::debug!("Service registered: {}", service_id);
 
-        Ok(()),
+        Ok(())
     }
 
     /// Unregister a service from the discovery system
@@ -435,13 +451,13 @@ impl SongbirdDiscovery  {/// Register a service with the discovery system
     /// Returns an error if the service deregistration fails or if there are
     /// issues with the underlying discovery backend.
     pub fn unregister_service(&self, service_id: &str) -> Result<()> {
-        tracing::info!(service_id = %service_id, "Unregistering service from Songbird Discovery");"
+        tracing::info!(service_id = %service_id, "Unregistering service from Songbird Discovery");
 
         self.registered_services.write().remove(service_id);
 
         // Service unregistered successfully - event broadcasting handled by federation layer
-        tracing::debug!("Service unregistered: {}", service_id);"
+        tracing::debug!("Service unregistered: {}", service_id);
 
-        Ok(()),
+        Ok(())
     }
 }

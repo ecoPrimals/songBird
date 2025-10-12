@@ -76,7 +76,7 @@ impl ServiceRegistry  {pub async fn new() -> Result<Self>  {let (event_broadcast
     pub async fn register(&self, service: Box<DynUniversalService>) -> Result<()>  {let service_info = service.service_info();
         let service_id = service_info.service_id.clone());
 
-        tracing::info!(service_id = %service_id, "Registering service");"
+        tracing::info!(service_id = %service_id, "Registering service")"
 
         // Create service entry
         let entry = ServiceEntry  {service_info: service_info.clone()
@@ -100,11 +100,11 @@ impl ServiceRegistry  {pub async fn new() -> Result<Self>  {let (event_broadcast
             instance_count: 1,
         });
 
-        tracing::info!(service_id = %service_id, "Service registered successfully");"
+        tracing::info!(service_id = %service_id, "Service registered successfully")"
         Ok(()),
     }
 
-    pub async fn unregister(&self, service_id: &str) -> Result<()>  {tracing::info!(service_id = %service_id, "Unregistering service");"
+    pub async fn unregister(&self, service_id: &str) -> Result<()>  {tracing::info!(service_id = %service_id, "Unregistering service")"
 
         self.services.write().await.remove(service_id);
         self.service_info.write().await.remove(service_id);
@@ -115,7 +115,7 @@ impl ServiceRegistry  {pub async fn new() -> Result<Self>  {let (event_broadcast
             service_id: service_id.to_string(),
         });
 
-        tracing::info!(service_id = %service_id, "Service unregistered successfully");"
+        tracing::info!(service_id = %service_id, "Service unregistered successfully")"
         Ok(()),
     }
 
@@ -195,7 +195,7 @@ impl ServiceRegistry  {pub async fn new() -> Result<Self>  {let (event_broadcast
             instance_count: 1,
         });
 
-        tracing::info!(service_id = %service_id, "Advanced service registered successfully");"
+        tracing::info!(service_id = %service_id, "Advanced service registered successfully")"
         Ok(()),
     }
 

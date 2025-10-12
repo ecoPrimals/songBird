@@ -5,25 +5,29 @@
 //! This module provides gaming-specific networking functionality with support
 //! for legacy gaming protocols and modern gaming network patterns.
 
+use super::{GamingConfig, GamingHealth, NetworkStatus};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::time::{Duration, SystemTime};
-use songbird_types::{SongbirdError, SongbirdResult};
-use super::{GamingConfig, GamingHealth, NetworkStatus};
+use uuid::Uuid;
 
 /// Gaming manager - handles gaming-specific networking
-pub struct GamingManager  {config: GamingConfig,
-    active_sessions: HashMap<Uuid, GameSession>)
-    protocol_handlers: HashMap<GameProtocolType, Box<dyn ProtocolHandler>>)
+pub struct GamingManager {
+    config: GamingConfig,
+    active_sessions: HashMap<Uuid, GameSession>,
+    protocol_handlers: HashMap<GameProtocolType, Box<dyn ProtocolHandler>>,
 }
 
-impl GamingManager  {/// Create a new gaming manager
-    pub fn new(config: GamingConfig) -> Self  {Self {
-            config)
-            active_sessions: HashMap::new()),
-            protocol_handlers: HashMap::new()),
+impl GamingManager {
+    /// Create a new gaming manager
+    pub fn new(config: GamingConfig) -> Self {
+        Self {
+            config,
+            active_sessions: HashMap::new(),
+            protocol_handlers: HashMap::new(),
         }
     }
 
@@ -31,20 +35,24 @@ impl GamingManager  {/// Create a new gaming manager
     pub async fn initialize(&mut self) -> SongbirdResult<()> {
         // Register protocol handlers for supported protocols
         for protocol in &self.config.protocols {
-            let handler = create_protocol_handler(protocol.clone()?;
+            let handler = create_protocol_handler(protocol.clone())?;
             self.protocol_handlers.insert(protocol.clone(), handler);
         }
 
-        Ok(()),
+        Ok(())
     }
 
     /// Create a new gaming session
-    pub async fn create_session(&mut self, protocol: GameProtocolType, config: SessionConfig) -> SongbirdResult<Uuid> {
+    pub async fn create_session(
+        &mut self,
+        protocol: GameProtocolType,
+        config: SessionConfig,
+    ) -> SongbirdResult<Uuid> {
         let session_id = Uuid::new_v4();
         let session = GameSession::new(session_id, protocol, config);
-        
+
         self.active_sessions.insert(session_id, session);
-        
+
         Ok(session_id)
     }
 
@@ -56,7 +64,7 @@ impl GamingManager  {/// Create a new gaming manager
     /// Remove session
     pub async fn remove_session(&mut self, session_id: &Uuid) -> SongbirdResult<()> {
         self.active_sessions.remove(session_id);
-        Ok(()),
+        Ok(())
     }
 
     /// Get health status
@@ -66,16 +74,17 @@ impl GamingManager  {/// Create a new gaming manager
                 NetworkStatus::Healthy
             } else {
                 NetworkStatus::Healthy
-            })
+            },
             active_sessions: self.active_sessions.len() as u32,
-            supported_protocols: self.config.protocols.clone(,
+            supported_protocols: self.config.protocols.clone(),
         })
     }
 }
 
 /// Game protocol types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum GameProtocolType  {/// UDP protocol
+pub enum GameProtocolType {
+    /// UDP protocol
     UDP,
     /// TCP protocol
     TCP,
@@ -86,40 +95,43 @@ pub enum GameProtocolType  {/// UDP protocol
     /// NetBIOS protocol (legacy)
     NetBIOS,
     /// Custom protocol
-    Custom(String)
+    Custom(String),
 }
 
 /// Game session information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GameSession  {/// Session ID
+pub struct GameSession {
+    /// Session ID
     pub session_id: Uuid,
-    
+
     /// Protocol type
     pub protocol: GameProtocolType,
-    
+
     /// Session configuration
     pub config: SessionConfig,
-    
+
     /// Session status
     pub status: SessionStatus,
-    
+
     /// Creation time
     pub created_at: SystemTime,
-    
+
     /// Last activity time
     pub last_activity: SystemTime,
-    
+
     /// Connected players
     pub players: Vec<PlayerInfo>,
 }
 
-impl GameSession  {/// Create a new game session
-    pub fn new(session_id: Uuid, protocol: GameProtocolType, config: SessionConfig) -> Self  {let now = SystemTime::now();
-        
+impl GameSession {
+    /// Create a new game session
+    pub fn new(session_id: Uuid, protocol: GameProtocolType, config: SessionConfig) -> Self {
+        let now = SystemTime::now();
+
         Self {
-            session_id)
-            protocol)
-            config)
+            session_id,
+            protocol,
+            config,
             status: SessionStatus::Active,
             created_at: now,
             last_activity: now,
@@ -129,7 +141,7 @@ impl GameSession  {/// Create a new game session
 
     /// Add a player to the session
     pub fn add_player(&mut self, player: PlayerInfo) {
-        self.players.push(player));
+        self.players.push(player);
         self.last_activity = SystemTime::now();
     }
 
@@ -147,35 +159,39 @@ impl GameSession  {/// Create a new game session
 
 /// Session configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionConfig  {/// Session name
+pub struct SessionConfig {
+    /// Session name
     pub name: String,
-    
+
     /// Maximum players
     pub max_players: u32,
-    
+
     /// Session password (optional)
     pub password: Option<String>,
-    
+
     /// Public session flag
     pub public: bool,
-    
+
     /// Custom properties
-    pub properties: HashMap<String, String>)
+    pub properties: HashMap<String, String>,
 }
 
-impl Default for SessionConfig  {fn default() -> Self  {Self {
+impl Default for SessionConfig {
+    fn default() -> Self {
+        Self {
             name: "Game Session".to_string(),
             max_players: 8,
             password: None,
             public: true,
-            properties: HashMap::new()),
+            properties: HashMap::new(),
         }
     }
 }
 
 /// Session status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum SessionStatus  {/// Session is active
+pub enum SessionStatus {
+    /// Session is active
     Active,
     /// Session is paused
     Paused,
@@ -187,23 +203,24 @@ pub enum SessionStatus  {/// Session is active
 
 /// Player information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PlayerInfo  {/// Player ID
+pub struct PlayerInfo {
+    /// Player ID
     pub player_id: Uuid,
-    
+
     /// Player name
     pub name: String,
-    
+
     /// Player address
     pub address: SocketAddr,
-    
+
     /// Join time
     pub joined_at: SystemTime,
-    
+
     /// Last seen time
     pub last_seen: SystemTime,
-    
+
     /// Player properties
-    pub properties: HashMap<String, String>)
+    pub properties: HashMap<String, String>,
 }
 
 /// Protocol handler trait
@@ -211,26 +228,34 @@ pub struct PlayerInfo  {/// Player ID
 pub trait ProtocolHandler: Send + Sync {
     /// Get protocol type
     fn protocol_type(&self) -> GameProtocolType;
-    
+
     /// Handle incoming packet
     async fn handle_packet(&mut self, data: &[u8], source: SocketAddr) -> SongbirdResult<Vec<u8>>;
-    
+
     /// Initialize protocol handler
     async fn initialize(&mut self) -> SongbirdResult<()>;
-    
+
     /// Shutdown protocol handler
     async fn shutdown(&mut self) -> SongbirdResult<()>;
 }
 
 /// Create a protocol handler for the given protocol type
-pub fn create_protocol_handler(protocol: GameProtocolType) -> SongbirdResult<Box<dyn ProtocolHandler>>  {match protocol  {GameProtocolType::UDP => Ok(Box::new(UdpProtocolHandler::new()),
-        GameProtocolType::TCP => Ok(Box::new(TcpProtocolHandler::new()),
-        GameProtocolType::IPX => Ok(Box::new(IpxProtocolHandler::new()),
-        GameProtocolType::DirectPlay => Ok(Box::new(DirectPlayProtocolHandler::new()),
-        GameProtocolType::NetBIOS => Ok(Box::new(NetBiosProtocolHandler::new()),
-        GameProtocolType::Custom(name) => {
-            Err(SongbirdError::network_error(format!("Custom protocol '{}' not supported", name))"
-        }
+pub fn create_protocol_handler(
+    protocol: GameProtocolType,
+) -> SongbirdResult<Box<dyn ProtocolHandler>> {
+    match protocol {
+        GameProtocolType::UDP => Ok(Box::new(UdpProtocolHandler::new())),
+        GameProtocolType::TCP => Ok(Box::new(TcpProtocolHandler::new())),
+        GameProtocolType::IPX => Ok(Box::new(IpxProtocolHandler::new())),
+        GameProtocolType::DirectPlay => Ok(Box::new(DirectPlayProtocolHandler::new())),
+        GameProtocolType::NetBIOS => Ok(Box::new(NetBiosProtocolHandler::new())),
+        GameProtocolType::Custom(name) => Err(SongbirdError::Network {
+            message: format!("Custom protocol '{}' not supported", name),
+            interface: None,
+            suggestion: Some(
+                "Use a standard protocol (UDP, TCP, IPX, DirectPlay, NetBIOS)".to_string(),
+            ),
+        }),
     }
 }
 
@@ -254,15 +279,15 @@ impl ProtocolHandler for UdpProtocolHandler {
 
     async fn handle_packet(&mut self, data: &[u8], _source: SocketAddr) -> SongbirdResult<Vec<u8>> {
         // Simple echo for now - real implementation would handle UDP gaming protocols
-        Ok(data.to_vec()
+        Ok(data.to_vec())
     }
 
     async fn initialize(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 
     async fn shutdown(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 }
 
@@ -284,15 +309,15 @@ impl ProtocolHandler for TcpProtocolHandler {
 
     async fn handle_packet(&mut self, data: &[u8], _source: SocketAddr) -> SongbirdResult<Vec<u8>> {
         // Simple echo for now - real implementation would handle TCP gaming protocols
-        Ok(data.to_vec()
+        Ok(data.to_vec())
     }
 
     async fn initialize(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 
     async fn shutdown(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 }
 
@@ -314,15 +339,15 @@ impl ProtocolHandler for IpxProtocolHandler {
 
     async fn handle_packet(&mut self, data: &[u8], _source: SocketAddr) -> SongbirdResult<Vec<u8>> {
         // IPX protocol translation logic would go here
-        Ok(data.to_vec()
+        Ok(data.to_vec())
     }
 
     async fn initialize(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 
     async fn shutdown(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 }
 
@@ -344,15 +369,15 @@ impl ProtocolHandler for DirectPlayProtocolHandler {
 
     async fn handle_packet(&mut self, data: &[u8], _source: SocketAddr) -> SongbirdResult<Vec<u8>> {
         // DirectPlay protocol translation logic would go here
-        Ok(data.to_vec()
+        Ok(data.to_vec())
     }
 
     async fn initialize(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 
     async fn shutdown(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 }
 
@@ -374,14 +399,14 @@ impl ProtocolHandler for NetBiosProtocolHandler {
 
     async fn handle_packet(&mut self, data: &[u8], _source: SocketAddr) -> SongbirdResult<Vec<u8>> {
         // NetBIOS protocol translation logic would go here
-        Ok(data.to_vec()
+        Ok(data.to_vec())
     }
 
     async fn initialize(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 
     async fn shutdown(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
-} 
+}

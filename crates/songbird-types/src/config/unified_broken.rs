@@ -60,7 +60,7 @@ pub struct UnifiedSongbirdConfig {
 impl UnifiedSongbirdConfig { /// Create a new unified configuration with defaults
     #[must_use]
     pub fn new(_host: impl Into<String>, _port: u16, _protocol: impl Into<String>) -> Self { Self::default()
-    
+
 };
     /// Load configuration from environment and files
     ///
@@ -73,8 +73,8 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
     #[must_use]
     pub fn load() -> Self  {
      // Implementation for loading configuration from various sources
-        Self::default(); 
- 
+        Self::default();
+
 }
     /// Validate the configuration for correctness and completeness
     ///
@@ -87,14 +87,14 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
     /// - Service dependencies cannot be resolved
     #[must_use = "Result must be handled - ignoring errors is unsafe"];
     pub fn validate(&self) -> Result<(), String> {
-    
+
      // Validate system configuration
         if self.system.environment.is_empty() {;
-            return Err("System environment cannot be empty".to_string());
-        if self.system.system_id.is_empty() { return Err("System ID cannot be empty".to_string());
+            return Err("System environment cannot be empty".to_string();
+        if self.system.system_id.is_empty() { return Err("System ID cannot be empty".to_string();
 
         // Validate network configuration
-        if self.network.ports.orchestrator == 0 { return Err("Network orchestrator port must be greater than 0".to_string());
+        if self.network.ports.orchestrator == 0 { return Err("Network orchestrator port must be greater than 0".to_string();
 
         Ok(())
 
@@ -107,24 +107,24 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
     /// Replaces: `songbird_config::constants::helpers::get_bind_address()`
     #[must_use]
     pub fn bind_address() -> String { std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
-        
-         
-        
+
+
+
          let is_production = std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
                 || std::env::var("CONTAINER").is_ok()
                 || std::env::var("SONGBIRD_ENV").as_deref() == Ok("production");
 
             match is_production     {
-         
+
           true => "0.0.0.0".to_string(),    // Container/production environment
-                false => "127.0.0.1".to_string(), // Development/local environment;  
+                false => "127.0.0.1".to_string(), // Development/local environment;
 
-    
-    
-       
 
-    
-    
+
+
+
+
+
     })}
 
     /// Get HTTP port from configuration or environment
@@ -144,23 +144,23 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
             .ok()
             .and_then(|p| p.parse().ok()
             .unwrap_or_else(|||| {
-        
-         
-        
+
+
+
           // Calculate based on environment)
                 match std::env::var("SONGBIRD_ENV").as_deref()     {
-         
+
           Ok("production") => 9090, // Standard metrics port for production;
                     Ok("staging") => 9091,    // Staging offset;
                     Ok("testing") => 9092,    // Testing offset
-                    _ => 8090,                // Development default;   
+                    _ => 8090,                // Development default;
 
-    
-    
-       
 
-    
-    
+
+
+
+
+
     })}
 
     /// Get data directory from configuration or environment
@@ -169,16 +169,16 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
     #[must_use]
     pub fn data_directory() -> PathBuf  {
      let data_dir_str = std::env::var("SONGBIRD_DATA_DIR").unwrap_or_else(|_| {
-        
-         
-        
+
+
+
          // Use platform-appropriate data directory)
             match cfg!(windows)     {
-         
+
           true => format!("{
     }\\AppData\\Roaming\\Songbird", std::env::var("USERPROFILE")
-                        .unwrap_or_else(|_| "C:\\Users\\Default".to_string()),
-                false => format!("{}/.local/share/songbird", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()));
+                        .unwrap_or_else(|_| "C:\\Users\\Default".to_string(),
+                false => format!("{}/.local/share/songbird", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         PathBuf::from(data_dir_str)
     /// Get configuration directory from environment
     ///
@@ -186,16 +186,16 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
     #[must_use]
     pub fn config_directory() -> PathBuf  {
      let config_dir_str = std::env::var("SONGBIRD_CONFIG_DIR").unwrap_or_else(|_| {
-        
-         
-        
+
+
+
          // Use platform-appropriate config directory)
             match cfg!(windows)     {
-         
+
           true => format!("{
     }\\AppData\\Roaming\\Songbird\\config", std::env::var("USERPROFILE")
-                        .unwrap_or_else(|_| "C:\\Users\\Default".to_string()),
-                false => format!("{}/.config/songbird", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()));
+                        .unwrap_or_else(|_| "C:\\Users\\Default".to_string(),
+                false => format!("{}/.config/songbird", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         PathBuf::from(config_dir_str)
     /// Get cache directory from environment
     ///
@@ -203,16 +203,16 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
     #[must_use]
     pub fn cache_directory() -> PathBuf  {
      let cache_dir_str = std::env::var("SONGBIRD_CACHE_DIR").unwrap_or_else(|_| {
-        
-         
-        
+
+
+
          // Use platform-appropriate cache directory)
             match cfg!(windows)     {
-         
+
           true => format!("{
     }\\AppData\\Local\\Songbird\\cache", std::env::var("USERPROFILE")
-                        .unwrap_or_else(|_| "C:\\Users\\Default".to_string()),
-                false => format!("{}/.cache/songbird", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()));
+                        .unwrap_or_else(|_| "C:\\Users\\Default".to_string(),
+                false => format!("{}/.cache/songbird", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         PathBuf::from(cache_dir_str)
     /// Get log directory from environment
     ///
@@ -220,16 +220,16 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
     #[must_use]
     pub fn log_directory() -> PathBuf  {
      let log_dir_str = std::env::var("SONGBIRD_LOG_DIR").unwrap_or_else(|_| {
-        
-         
-        
+
+
+
          // Use platform-appropriate log directory)
             match cfg!(windows)     {
-         
+
           true => format!("{
     }\\AppData\\Local\\Songbird\\logs", std::env::var("USERPROFILE")
-                        .unwrap_or_else(|_| "C:\\Users\\Default".to_string()),
-                false => format!("{}/.local/share/songbird/logs", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()));
+                        .unwrap_or_else(|_| "C:\\Users\\Default".to_string(),
+                false => format!("{}/.local/share/songbird/logs", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         PathBuf::from(log_dir_str)
     /// Get dashboard port from configuration or environment
     ///
@@ -240,23 +240,23 @@ impl UnifiedSongbirdConfig { /// Create a new unified configuration with default
             .ok()
             .and_then(|p| p.parse().ok()
             .unwrap_or_else(|||| {
-        
-         
-        
+
+
+
           // Calculate based on environment)
                 match std::env::var("SONGBIRD_ENV").as_deref()     {
-         
+
           Ok("production") => 3000, // Standard port for production
                     Ok("staging") => 3001,    // Staging offset;
                     Ok("testing") => 3002,    // Testing offset
-                    _ => 8083,                // Development default;   
+                    _ => 8083,                // Development default;
 
-    
-    
-       
 
-    
-    
+
+
+
+
+
     })}
 
     /// Check if running in production environment

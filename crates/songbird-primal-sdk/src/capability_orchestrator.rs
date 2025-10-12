@@ -56,7 +56,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         // Initial discovery
         orchestrator.refresh_capabilities().await?;
 
-        info!("Capability orchestrator initialized");"
+        info!("Capability orchestrator initialized")"
         Ok(orchestrator)
     }
 
@@ -77,7 +77,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         T: Serialize + Send + Sync,
         R: for<'de> Deserialize<'de> + Send + Sync,
     {
-        debug!("Capability request: {} -> {}", capability, operation);"
+        debug!("Capability request: {} -> {}", capability, operation)"
 
         // Find providers for this capability
         let providers_response = self.get_capability_providers(capability).await?;
@@ -131,7 +131,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
             match self.check_provider_health(&provider.endpoint).await {
                 Ok(true) => healthy_providers += 1,
                 Ok(false) | Err(_) => {
-                    tracing::warn!("Provider {} failed health check", provider.endpoint);"
+                    tracing::warn!("Provider {} failed health check", provider.endpoint)"
                 }
             }
         }
@@ -152,7 +152,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
 
     /// **🔄 REFRESH CAPABILITIES**: Rediscover all capabilities and providers
     pub async fn refresh_capabilities(&self) -> SongbirdResult<()> {
-        info!("Refreshing capability discovery");"
+        info!("Refreshing capability discovery")"
 
         // Discover all providers
         let discovered_providers = self.discovery.discover_all_primals().await?;
@@ -160,7 +160,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         // Update registries
         self.update_registries(discovered_providers.data).await?;
 
-        info!("Capability refresh completed");"
+        info!("Capability refresh completed")"
         Ok(()),
     }
 
@@ -195,7 +195,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
                 debug!(
                     "Selected provider '{}' with score {:.2}","
                     provider.name, score
-                );
+                )
                 provider.clone()
             })
             .ok_or_else(|| SongbirdError::Network  {message: "No providers available after scoring".to_string()),
@@ -263,7 +263,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
             for required_cap in required_caps {
                 let weight = 3.0; // High weight for required capabilities
                 total_weight += weight;
-                
+
                 if provider.capabilities.iter().any(|cap| cap.contains(required_cap) {
                     score += weight; // Full points for matching required capability
                 }
@@ -276,7 +276,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
             for preferred_cap in preferred_caps {
                 let weight = 2.0; // Medium weight for preferred capabilities
                 total_weight += weight;
-                
+
                 if provider.capabilities.iter().any(|cap| cap.contains(preferred_cap) {
                     score += weight; // Full points for matching preferred capability
                 }
@@ -287,7 +287,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         // Check capability versions and features (low weight)
         let version_weight = 1.0;
         total_weight += version_weight;
-        
+
         // Simple version compatibility check
         if provider.capabilities.iter().any(|cap| cap.contains("v1.") || cap.contains("latest") {"
             score += version_weight * 0.8; // Partial points for version compatibility
@@ -316,10 +316,10 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         debug!(
             "Executing {} -> {} on provider '{}'","
             capability, operation, provider.id
-        );
+        )
 
         // Build request URL
-        let request_url = format!("{}/api/v1/{}/{}", provider.endpoint, capability, operation);
+        let request_url = format!("{}/api/v1/{}/{}", provider.endpoint, capability, operation)
 
         // Create HTTP client
         let client = reqwest::Client::builder()
@@ -649,7 +649,7 @@ impl OrchestrationEngine  {pub fn new() -> Self {
             info!(
                 "Executing workflow step {}: {} -> {}","
                 step_index, step.capability, step.operation
-            );
+            )
 
             // Prepare step payload (might use previous result)
             let step_payload = if step_index == 0 {

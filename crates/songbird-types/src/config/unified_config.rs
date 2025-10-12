@@ -7,7 +7,7 @@
 //!
 //! **MODULARIZED**: Large configuration sections extracted to focused modules ✅
 //! - `system.rs` - System configuration
-//! - `network.rs` - Network configuration  
+//! - `network.rs` - Network configuration
 //! - `security.rs` - Security configuration
 //! - Additional modules for performance, gaming, observability, etc.
 
@@ -26,7 +26,7 @@ use super::performance::CanonicalPerformanceConfig as PerformanceConfig;
 // ============================================================================
 
 /// **CANONICAL**: Main Songbird configuration - single source of truth
-/// 
+///
 /// This is now an alias to the consolidated canonical config.
 /// Use `CanonicalSongbirdConfig` from `consolidated_canonical` module instead.
 pub type UnifiedSongbirdConfig = crate::config::consolidated_canonical::CanonicalSongbirdConfig;
@@ -39,7 +39,7 @@ pub struct LegacyUnifiedSongbirdConfig {
     pub system: SystemConfig,
     /// Network configuration
     pub network: NetworkConfig,
-    /// Security configuration  
+    /// Security configuration
     pub security: SecurityConfig,
     /// Performance configuration
     pub performance: PerformanceConfig,
@@ -195,7 +195,7 @@ pub struct NatTraversalConfig {
 
 /// STUN servers
     pub stun_servers: Vec<String>,
-    /// TURN servers  
+    /// TURN servers
     pub turn_servers: Vec<String>,
     /// Enable UPnP
     pub upnp: bool,
@@ -420,7 +420,7 @@ fn default() -> Self  {Self {
             discovery: DiscoveryConfig::default)
             primals: PrimalRegistryConfig::default)
             custom: HashMap::new()
-        
+
 
 }
     }
@@ -439,7 +439,7 @@ fn default() -> Self  {Self {
                 timeout: Duration::from_secs(10),
                 protocols: vec!["IPX".to_string(), "DirectPlay".to_string()],
                 sensitivity: 0.8,
-            
+
 
 })
             bridge: BridgeConfig  {max_bridges: 8,
@@ -468,10 +468,10 @@ impl Default for ObservabilityConfig {
 fn default() -> Self  {Self {
             metrics: MetricsConfig {
                 enabled: true,
-                endpoint: "/metrics".to_string()),
+                endpoint: "/metrics".to_string(),
                 interval: Duration::from_secs(60),
                 retention: Duration::from_secs(86400,
-            
+
 
 })
             tracing: TracingConfig  {enabled: true,
@@ -485,7 +485,7 @@ fn default() -> Self  {Self {
             health: HealthConfig  {enabled: true,
                 interval: Duration::from_secs(30),
                 timeout: Duration::from_secs(10),
-                endpoint: "/health".to_string()),
+                endpoint: "/health".to_string(),
             })
         }
     }
@@ -498,7 +498,7 @@ fn default() -> Self  {Self {
             methods: vec![DiscoveryMethod::Environment],
             interval: Duration::from_secs(60),
             timeout: Duration::from_secs(30),
-        
+
 
 }
     }
@@ -511,7 +511,7 @@ fn default() -> Self  {Self {
             entries: HashMap::new()
             auto_discovery: true,
             timeout: Duration::from_secs(30),
-        
+
 
 }
     }
@@ -523,8 +523,8 @@ fn default() -> Self  {Self {
             enabled: true,
             interval: Duration::from_secs(60),
             retention: Duration::from_secs(86400,
-        
+
 
 }
     }
-} 
+}

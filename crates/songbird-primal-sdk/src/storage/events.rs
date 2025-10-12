@@ -415,9 +415,9 @@ mod tests  {use super::*;
         };
 
         let description = event.description();
-        assert!(description.contains("test-file");"
-        assert!(description.contains("2048");"
-        assert!(description.contains("local");"
+        assert!(description.contains("test-file")"
+        assert!(description.contains("2048")"
+        assert!(description.contains("local")"
     }
 
     #[test]

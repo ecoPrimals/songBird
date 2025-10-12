@@ -1,6 +1,6 @@
 /// Gaming CLI Command Definitions
-/// 
-/// This module contains only the command structure definitions)
+///
+/// This module contains only the command structure definitions,
 /// keeping them separate from the implementation logic.
 
 use clap::{Parser, Subcommand};
@@ -33,8 +33,8 @@ pub enum GamingCommand  {/// Scan for gaming traffic
         private: bool,
     })
     /// Join a gaming session
-    Join { 
-        code: String 
+    Join {
+        code: String
     })
     /// Show gaming status
     Status,
@@ -60,8 +60,8 @@ pub enum GamingCommand  {/// Scan for gaming traffic
         token: Option<String>,
     })
     /// Family-safe gaming setup
-    FamilySafe { 
-        family_name: String 
+    FamilySafe {
+        family_name: String
     })
     /// Quick one-click gaming setup
     QuickStart  {#[arg(long)]
@@ -83,4 +83,4 @@ pub struct DiscoveryMessage  {pub session_code: String,
     pub protocol_class: GameProtocolClass,
     pub max_players: u8,
     pub current_players: u8,
-} 
+}

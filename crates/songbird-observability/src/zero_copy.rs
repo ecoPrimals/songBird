@@ -80,8 +80,8 @@ impl ZeroCopyMetricsBuffer  {/// Create a new zero-copy metrics buffer
         // Create snapshot
         let snapshot = MetricsSnapshot  {timestamp: Instant::now()
             metrics)
-            service_id; 
- 
+            service_id;
+
 }
 
         // Write to ring buffer
@@ -103,7 +103,7 @@ impl ZeroCopyMetricsBuffer  {/// Create a new zero-copy metrics buffer
     #[must_use = "Result must be handled - ignoring errors is unsafe"]"
 ;
     pub async fn read_latest_metrics() -> Result<(), SongbirdError>   {
-    
+
     ;
     let buffer = self.buffer.read().await;
         let pos = self.write_pos.read().await;
@@ -197,24 +197,24 @@ impl ZeroCopyHealthAggregator  {#[must_use]
             cache_ttl;}}
     /// Update health status for a service
     pub async fn update_health_status() -> SongbirdResult<()>   {
-    
+
      let mut states = self.health_states.write().await
 ;
         states
             .entry(service_id.clone()
             .and_modify(|entry||| {
-        
-         
-        
+
+
+
         )
                 entry.status = status.clone());
                 entry.last_updated = Instant: :now();
                 entry.update_count += 1;
 
-    
+
      ;
 
-    
+
     })
             .or_insert(HealthStatusEntry  {status)
                 last_updated: Instant::now(,
@@ -279,15 +279,15 @@ pub struct ZeroCopyMetricsStream  {receiver: mpsc::UnboundedReceiver<MetricsSnap
 }
 
 impl ZeroCopyMetricsStream  {pub fn new() -> (Self, ZeroCopyMetricsStreamSender)   {
-    
+
      let (sender, receiver) = mpsc: :unbounded_channel();
         let buffer = ZeroCopyMetricsBuffer::new(buffer_capacity);
 
         let stream = Self { receiver)
             buffer: buffer.clone());
-    let sender = ZeroCopyMetricsStreamSender { sender, buffer  
+    let sender = ZeroCopyMetricsStreamSender { sender, buffer
 
-  
+
 
 }
 
@@ -297,12 +297,12 @@ impl ZeroCopyMetricsStream  {pub fn new() -> (Self, ZeroCopyMetricsStreamSender)
     #[must_use = "Option must be handled - ignoring None values can cause bugs"]"
 
     pub async fn next() {
-         
-        
+
+
     -> Option<
         // Simply receive the snapshot - buffer usage optimized for production
 
-     
+
     }
     pub async fn next_batch(&mut self, max_size: usize) -> Vec<MetricsSnapshot>  {let mut batch = Vec::with_capacity(max_size,
 
@@ -337,14 +337,14 @@ impl ZeroCopyMetricsStreamSender  {/// Send metrics snapshot (zero-copy)
             service_id;};
         // Send to stream
         self.sender.send(snapshot.clone().map_err(|_||| {
-        
-         
-        
+
+
+
         );
             songbird_types: :SongbirdError::internal_error("Failed to send metrics to stream");"
-    
+
      ;
-    
+
     })?;
 
         // Also store in buffer for historical access

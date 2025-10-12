@@ -8,7 +8,7 @@
 //! ## 🎯 **Gaming-First Features**
 //!
 //! - **🎮 Gaming Sessions**: Create, join, and manage gaming sessions
-//! - **🌐 Network Gaming**: Gaming-specific network optimization and protocol support  
+//! - **🌐 Network Gaming**: Gaming-specific network optimization and protocol support
 //! - **🤝 Gaming Federation**: Multi-region gaming federation and matchmaking
 //! - **📊 Gaming Metrics**: Real-time gaming performance and latency monitoring
 //! - **🔧 Gaming Config**: Dynamic gaming configuration and protocol management
@@ -20,7 +20,7 @@
 //! The CLI is organized into focused gaming command modules:
 //!
 //! - `gaming`: Core gaming session and protocol commands
-//! - `network`: Gaming network optimization and diagnostics  
+//! - `network`: Gaming network optimization and diagnostics
 //! - `federation`: Gaming federation and matchmaking
 //! - `security`: Gaming security and authentication
 //! - `config`: Gaming configuration management
@@ -39,7 +39,7 @@
 //! songbird gaming scan --protocol all
 //! ```
 //!
-//! ### Network Gaming Commands  
+//! ### Network Gaming Commands
 //! ```bash
 //! # Optimize network for gaming
 //! songbird network optimize --game-mode

@@ -58,7 +58,7 @@ pub struct ResourceLimits {
     pub max_memory_mb: u64,
     /// Maximum CPU cores to         if let Some(storage) = &self.capability_endpoints.storage {
             let _ = endpoints.insert("storage".to_string(), storage.clone());
-        
+
 
 }
         if let Some(compute) = &self.capability_endpoints.compute {

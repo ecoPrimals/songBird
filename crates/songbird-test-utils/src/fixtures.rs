@@ -1,9 +1,10 @@
 // Test fixtures and data structures
+use songbird_config;
 ///
 /// Provides standardized test fixtures, mock data, and common
-/// test utilities for use songbird_types::errors::SongbirdResult;
+/// test utilities for Songbird tests.
+use songbird_types::{errors::SongbirdResult, SongbirdError};
 use std::net::SocketAddr;
-use songbird_config;
 
 /// Create a test socket address with a random port
 /// Note: This function is preserved for backward compatibility with existing tests.
@@ -12,28 +13,29 @@ use songbird_config;
 #[must_use]
 pub fn test_socket_addr() -> SocketAddr {
     let port = 0; // OS will assign available port
-    format!("songbird_config::constants::network::DEFAULT_HOST:{}", port)"
+    format!("127.0.0.1:{}", port)
         .parse()
-        .expect("Failed to parse test socket address - this should never happen with songbird_config::constants::network::DEFAULT_HOST:0")"
+        .expect("Failed to parse test socket address - this should never happen with 127.0.0.1:0 ")
 }
 
 /// Create a test socket address with a specific port
 #[must_use]
 pub fn test_socket_addr_with_port(port: u16) -> SocketAddr {
-    format!("songbird_config::constants::network::DEFAULT_HOST:{}", port)"
+    format!("127.0.0.1:{}", port)
         .parse()
-        .expect("Failed to parse test socket address - this should never happen with valid port")"
+        .expect("Failed to parse test socket address - this should never happen with valid port ")
 }
 
 /// Create a temporary directory for testing
 pub fn create_test_temp_dir() -> SongbirdResult<tempfile::TempDir> {
     tempfile::tempdir()
-        .map_err(|e| SongbirdError::service("test", format!("Failed to create temp dir: {}", e))"
+        .map_err(|e| SongbirdError::service("test", format!("Failed to create temp dir: {}", e)))
 }
 
 /// Mock peer information for testing
 #[derive(Debug, Clone)]
-pub struct MockPeer  {/// Peer identifier
+pub struct MockPeer {
+    /// Peer identifier
     pub id: String,
     /// Peer address
     pub address: SocketAddr,
@@ -41,19 +43,21 @@ pub struct MockPeer  {/// Peer identifier
     pub capabilities: Vec<String>,
 }
 
-impl MockPeer  {/// Create a new mock peer
+impl MockPeer {
+    /// Create a new mock peer
     #[must_use]
-    pub fn new(id: String, address: SocketAddr) -> Self  {Self {
-            id)
+    pub fn new(id: String, address: SocketAddr) -> Self {
+        Self {
+            id,
             address,
-            capabilities: vec!["mock".to_string()],"
+            capabilities: vec!["mock".to_string()],
         }
     }
 
     /// Add a capability to this peer
     #[must_use]
     pub fn with_capability(mut self, capability: String) -> Self {
-        self.capabilities.push(capability));
+        self.capabilities.push(capability);
         self
     }
 
@@ -66,7 +70,8 @@ impl MockPeer  {/// Create a new mock peer
 
 /// Mock network message for testing
 #[derive(Debug, Clone)]
-pub struct MockMessage  {/// Message sender
+pub struct MockMessage {
+    /// Message sender
     pub from: String,
     /// Message recipient
     pub to: String,
@@ -74,29 +79,31 @@ pub struct MockMessage  {/// Message sender
     pub payload: Vec<u8>,
 }
 
-impl MockMessage  {/// Create a new mock message
+impl MockMessage {
+    /// Create a new mock message
     #[must_use]
-    pub fn new(from: String, to: String, payload: Vec<u8>) -> Self  {Self {
-            from)
-            to)
-            payload)
+    pub fn new(from: String, to: String, payload: Vec<u8>) -> Self {
+        Self {
+            from,
+            to,
+            payload,
         }
     }
 
     /// Create a text message
     #[must_use]
     pub fn text(from: String, to: String, text: String) -> Self {
-        Self::new(from, to, text.into_bytes()
+        Self::new(from, to, text.into_bytes())
     }
 
     /// Get message payload as string
     pub fn as_text(&self) -> Result<String, std::string::FromUtf8Error> {
-        String::from_utf8(self.payload.to_vec()
+        String::from_utf8(self.payload.to_vec())
     }
 
     /// Convert payload to string
     pub fn payload_as_string(&self) -> Result<String, std::string::FromUtf8Error> {
-        String::from_utf8(self.payload.to_vec() // More explicit than clone()
+        String::from_utf8(self.payload.to_vec()) // More explicit than clone()
     }
 
     /// Get payload as a slice to avoid cloning when possible

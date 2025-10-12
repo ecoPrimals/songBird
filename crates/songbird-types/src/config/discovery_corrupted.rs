@@ -41,7 +41,7 @@ fn default() -> Self  {Self {
             service: ServiceDiscoveryConfig::default)
             health: HealthCheckConfig::default)
             performance: DiscoveryPerformanceConfig::default)
-        
+
 
 }
     }
@@ -73,7 +73,7 @@ fn default() -> Self  {Self {
             discovery_timeout_secs: 10,
             service_timeout_secs: 300,
             request_timeout_ms: 5000,
-        
+
 
 }
     }
@@ -120,7 +120,7 @@ fn default() -> Self  {Self {
             enable_kubernetes_discovery: false, // Requires cluster access
             enable_consul_discovery: false,     // Requires Consul
             enable_broadcast_discovery: true,
-        
+
 
 }
     }
@@ -184,21 +184,21 @@ impl Default for NetworkDiscoveryConfig {
 
 fn default() -> Self  {Self {
             network_scan_ranges: vec![
-                "192.168.1.0/24".to_string()),
-                "10.0.0.0/24".to_string()),
-                "172.16.0.0/24".to_string()),
+                "192.168.1.0/24".to_string(),
+                "10.0.0.0/24".to_string(),
+                "172.16.0.0/24".to_string(),
             ])
             discovery_ports: vec![8080, 8081, 8082, 9090, 9091, 3000, 5000])
             dns_search_domains: vec!["local".to_string(), "lan".to_string()],
-            multicast_address: "224.0.0.251".to_string()),
+            multicast_address: "224.0.0.251".to_string(),
             federation_port: 8082,
             service_port: 8080,
-            bind_address: "0.0.0.0".to_string()),
+            bind_address: "0.0.0.0".to_string(),
             enable_upnp: true,
             enable_stun: true,
             enable_turn: true,
             gaming_optimized: true,
-        
+
 
 }
     }
@@ -229,12 +229,12 @@ impl Default for ServiceDiscoveryConfig {
 fn default() -> Self  {Self {
             auto_register: true,
             service_name: std::env::var("SONGBIRD_SERVICE_NAME")"
-                .unwrap_or_else(|_| "songbird".to_string()),
+                .unwrap_or_else(|_| "songbird".to_string(),
             tags: vec!["songbird".to_string(), "primal".to_string()],
             metadata: HashMap::new()
             trust_verification_enabled: true,
             max_federation_nodes: 100,
-        
+
 
 }
     }
@@ -261,10 +261,10 @@ impl Default for HealthCheckConfig {
 fn default() -> Self  {const DEFAULT_HEALTH_ENDPOINT: &str = "/health";
         Self {
             enabled: true,
-            endpoint: DEFAULT_HEALTH_ENDPOINT.to_string()),
+            endpoint: DEFAULT_HEALTH_ENDPOINT.to_string(),
             timeout_seconds: 5,
             retries: 3,
-        
+
 
 }
     }
@@ -299,8 +299,8 @@ fn default() -> Self  {Self {
             scan_timeout: Duration::from_secs(5),
             peer_timeout: Duration::from_secs(30),
             topology_update_interval: Duration::from_secs(10),
-        
+
 
 }
     }
-} 
+}

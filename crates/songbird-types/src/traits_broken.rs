@@ -25,20 +25,20 @@ use crate::SongbirdResult;
 #[async_trait]
 pub trait CanonicalServiceDiscovery: Send + Sync { /// Discover services by capability
     async fn discover_by_capability() {
-         
-        
+
+
     -> SongbirdResult<Vec<CanonicalServiceInfo>>
     }
 pub trait CanonicalHealthCheck: Send + Sync { /// Perform health check
     async fn health_check() {
-         
-        
+
+
     -> SongbirdResult<CanonicalHealthStatus>
     }
 pub trait CanonicalHealthMonitor: Send + Sync { /// Start monitoring a service
     async fn start_monitoring() {
-         
-        
+
+
     -> SongbirdResult<()>
     }
 pub struct HealthRecord {
@@ -64,14 +64,14 @@ pub struct HealthRecord {
 #[async_trait]
 pub trait CanonicalCommunicationLayer: Send + Sync { /// Send a request to a service
     async fn send_request() {
-         
-        
+
+
     -> SongbirdResult<serde_json::Value>
     }
 pub trait CanonicalConnection: Send + Sync { /// Send data over the connection
     async fn send() {
-         
-        
+
+
     -> SongbirdResult<()>
     }
 pub struct CommunicationStats {
@@ -99,8 +99,8 @@ pub struct CommunicationStats {
 #[async_trait]
 pub trait CanonicalPrimalProvider: Send + Sync { /// Get provider metadata
     async fn get_metadata() {
-         
-        
+
+
     -> SongbirdResult<PrimalProviderMetadata>
     }
 pub struct PrimalProviderMetadata {
@@ -124,8 +124,8 @@ pub trait CanonicalPrimalCapability: Send + Sync { /// Get capability name
     ///
     /// Returns an error if the operation fails.
     fn get_name() {
-         
-        
+
+
     -> &str
     }
 pub struct CapabilityParameter {
@@ -149,8 +149,8 @@ pub struct CapabilityParameter {
 #[async_trait]
 pub trait CanonicalServiceInstance: Send + Sync { /// Start the service instance
     async fn start() {
-         
-        
+
+
     -> SongbirdResult<()>
     }
 pub enum ServiceInstanceStatus { /// Service is starting up, Starting,
@@ -167,20 +167,20 @@ pub enum ServiceInstanceStatus { /// Service is starting up, Starting,
 #[async_trait]
 pub trait CanonicalConfigProvider: Send + Sync { /// Load configuration;
     async fn load_config() {
-         
-        
+
+
     -> SongbirdResult<serde_json::Value>
     }
 pub trait ConfigWatcher: Send + Sync { /// Wait for next configuration change
     async fn next_change() {
-         
-        
+
+
     -> SongbirdResult<serde_json::Value>
     }
 pub trait CanonicalObservabilityProvider: Send + Sync { /// Record a metric
     async fn record_metric() {
-         
-        
+
+
     -> SongbirdResult<()>
     }
 pub trait TraceSpan: Send + Sync { /// Add an attribute to the span
@@ -191,8 +191,8 @@ pub trait TraceSpan: Send + Sync { /// Add an attribute to the span
 
     /// Finish the span
     async fn finish() {
-         
-        
+
+
     -> SongbirdResult<()>
     }
 pub struct MetricPoint {

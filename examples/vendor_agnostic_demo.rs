@@ -1,10 +1,10 @@
 use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
-//! # Vendor Agnostic Discovery Demo
-//!
-//! This example demonstrates how Songbird's universal discovery system
-//! works without any hardcoded vendor names like "consul", "kubernetes", etc.
-//!
-//! The system automatically detects what's available and adapts accordingly.
+// # Vendor Agnostic Discovery Demo
+//
+// This example demonstrates how Songbird's universal discovery system
+// works without any hardcoded vendor names like "consul", "kubernetes", etc.
+//
+// The system automatically detects what's available and adapts accordingly.
 
 use songbird_discovery::{traits::ServiceQuery, UniversalDiscoveryFactory};
 use tracing::{info, warn};

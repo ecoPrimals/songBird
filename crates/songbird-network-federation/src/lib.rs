@@ -20,13 +20,13 @@
 #![allow(clippy::pub_use)] // Re-exports are acceptable for consolidated crates
 
 // Core modules
-pub mod network;
 pub mod federation;
 pub mod integration;
+pub mod network;
 
 // Re-export core types for convenience
-pub use network::{NetworkManager, NetworkConfig, NetworkProvider};
-pub use federation::{FederationCoordinator, FederationConfig, NodeInfo};
+pub use federation::{FederationConfig, FederationCoordinator, NodeInfo};
 pub use integration::NetworkFederationBridge;
+pub use network::{NetworkConfig, NetworkManager, NetworkProvider};
 
-// Legacy compatibility removed - use canonical APIs directly 
+// Legacy compatibility removed - use canonical APIs directly

@@ -34,8 +34,8 @@ impl Default for CanonicalServiceInfo {
             name: "unknown-service".to_string(),
             version: "0.1.0".to_string(),
             description: None,
-            endpoints: HashMap::new()),
-            metadata: HashMap::new()),
+            endpoints: HashMap::new(),
+            metadata: HashMap::new(),
             health_check_endpoint: Some("/health".to_string()),
             dependencies: Vec::new(),
             capabilities: Vec::new(),
@@ -226,7 +226,10 @@ pub enum AllowedValues {
     /// Only specific values are allowed
     Specific(Vec<String>),
     /// Range of numeric values
-    Range { min: f64, max: f64 },
+    Range {
+        min: f64,
+        max: f64,
+    },
     /// Pattern-based validation
     Pattern(String),
 }
@@ -243,10 +246,7 @@ mod tests {
 
     #[test]
     fn test_canonical_service_status_default() {
-        assert_eq!(
-            CanonicalServiceStatus::default(),
-            CanonicalServiceStatus::Unknown
-        );
+        assert_eq!(CanonicalServiceStatus::default(), CanonicalServiceStatus::Unknown);
     }
 
     #[test]
@@ -264,7 +264,10 @@ mod tests {
             max: 100.0,
         };
         match range {
-            AllowedValues::Range { min, max } => {
+            AllowedValues::Range {
+                min,
+                max,
+            } => {
                 assert!((min - 0.0).abs() < f64::EPSILON);
                 assert!((max - 100.0).abs() < f64::EPSILON);
             }

@@ -14,7 +14,9 @@ impl NetworkManagement {
         Self
     }
 
-    pub async fn get_stats(&self) -> SongbirdResult<NetworkStats>  {Ok(NetworkStats  {connections: 0)
+    pub async fn get_stats(&self) -> SongbirdResult<NetworkStats> {
+        Ok(NetworkStats {
+            connections: 0,
             bandwidth_mbps: 0.0,
             latency_ms: 0.0,
         })
@@ -23,7 +25,8 @@ impl NetworkManagement {
 
 /// Network statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkStats  {pub connections: u64,
+pub struct NetworkStats {
+    pub connections: u64,
     pub bandwidth_mbps: f64,
     pub latency_ms: f64,
-} 
+}

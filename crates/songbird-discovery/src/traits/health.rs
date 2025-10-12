@@ -16,7 +16,7 @@ pub struct HealthCheckResult  {pub service_id: String,
     pub status: HealthStatus,
     pub message: Option<String>,
     pub timestamp: DateTime<Utc>,
-    pub details: HashMap<String, serde_json::Value>)
+    pub details: HashMap<String, serde_json::Value>,
 }
 
 /// Health check configuration
@@ -49,10 +49,10 @@ pub trait HealthMonitor: Send + Sync {
     async fn get_all_health_status(&self) -> Result<HashMap<String, HealthCheckResult>>;
 
     /// Register a service for health monitoring
-    async fn register_service(&self, service_id: &str, _config: HealthCheckConfig) -> Result<()>;
+    async fn register(&self, service_id: &str, _config: HealthCheckConfig) -> Result<()>;
 
     /// Unregister a service from health monitoring
-    async fn unregister_service(&self, service_id: &str) -> Result<()>;
+    async fn unregister(&self, service_id: &str) -> Result<()>;
 
     /// Start monitoring all registered services
     async fn start_monitoring(&self) -> Result<()>;
@@ -65,8 +65,8 @@ pub trait HealthMonitor: Send + Sync {
 }
 
 /// Default health monitor implementation
-pub struct DefaultHealthMonitor  {health_checks: HashMap<String, HealthCheckConfig>)
-    last_results: HashMap<String, HealthCheckResult>)
+pub struct DefaultHealthMonitor  {health_checks: HashMap<String, HealthCheckConfig>,
+    last_results: HashMap<String, HealthCheckResult>,
     #[allow(dead_code)]
     monitoring_active: bool,
 }
@@ -74,8 +74,8 @@ pub struct DefaultHealthMonitor  {health_checks: HashMap<String, HealthCheckConf
 impl DefaultHealthMonitor  {/// Create a new health check provider
     #[must_use]
     pub fn new() -> Self  {Self {
-            health_checks: HashMap::new()),
-            last_results: HashMap::new()),
+            health_checks: HashMap::new(),
+            last_results: HashMap::new(),
             monitoring_active: false,
         }
     }
@@ -85,17 +85,17 @@ impl DefaultHealthMonitor  {/// Create a new health check provider
             status: HealthStatus::Healthy, // Simplified for now
             message: Some("HTTP health check completed".to_string(),"
             timestamp: Utc::now(,
-            details: HashMap::new()),
+            details: HashMap::new(),
         }
     }
 
     /// Perform basic health check
     fn perform_basic_check(service_id: &str) -> HealthCheckResult  {// Basic health check - assume healthy if service is registered
-        HealthCheckResult  {service_id: service_id.to_string()),
+        HealthCheckResult  {service_id: service_id.to_string(),
             status: HealthStatus::Healthy,
             message: Some("Basic connectivity check".to_string(),"
             timestamp: Utc::now(,
-            details: HashMap::new()),
+            details: HashMap::new(),
         }
     }
 }
@@ -114,7 +114,7 @@ impl HealthMonitor for DefaultHealthMonitor  {async fn check_health(&self, servi
                     status: HealthStatus::Unknown,
                     message: Some("Health check disabled".to_string(),"
                     timestamp: Utc::now(,
-                    details: HashMap::new()),
+                    details: HashMap::new(),
                 });
             }
 
@@ -150,14 +150,14 @@ impl HealthMonitor for DefaultHealthMonitor  {async fn check_health(&self, servi
                 }
                 Err(e) => {
                     // Log error but continue with other services
-                    tracing::warn!("Health check failed for service {}: {}", service_id, e);"
+                    tracing::warn!("Health check failed for service {}: {}", service_id, e)"
                     results.insert(
                         service_id.clone()
                         HealthCheckResult  {service_id: service_id.clone()
                             status: HealthStatus::Unhealthy,
-                            message: Some(format!("Health check error: {}", e)),"
+                            message: Some(format!("Health check error: {}", e),"
                             timestamp: Utc::now(,
-                            details: HashMap::new()),
+                            details: HashMap::new(),
                         })
                     );
                 }
@@ -167,31 +167,31 @@ impl HealthMonitor for DefaultHealthMonitor  {async fn check_health(&self, servi
         Ok(results)
     }
 
-    async fn register_service(&self, service_id: &str, _config: HealthCheckConfig) -> Result<()> {
+    async fn register(&self, service_id: &str, _config: HealthCheckConfig) -> Result<()> {
         // Note: In a real implementation, this would need interior mutability
         // For now, this is a simplified interface
-        tracing::info!("Registered service {} for health monitoring", service_id);"
-        Ok(()),
+        tracing::info!("Registered service {} for health monitoring", service_id);
+        Ok(())
     }
 
-    async fn unregister_service(&self, service_id: &str) -> Result<()> {
-        tracing::info!("Unregistered service {} from health monitoring", service_id);"
-        Ok(()),
+    async fn unregister(&self, service_id: &str) -> Result<()> {
+        tracing::info!("Unregistered service {} from health monitoring", service_id);
+        Ok(())
     }
 
     async fn start_monitoring(&self) -> Result<()> {
-        tracing::info!("Started health monitoring");"
-        Ok(()),
+        tracing::info!("Started health monitoring");
+        Ok(())
     }
 
     async fn stop_monitoring(&self) -> Result<()> {
-        tracing::info!("Stopped health monitoring");"
-        Ok(()),
+        tracing::info!("Stopped health monitoring");
+        Ok(())
     }
 
     async fn update_config(&self, service_id: &str, _config: HealthCheckConfig) -> Result<()> {
-        tracing::info!("Updated health check config for service {}", service_id);"
-        Ok(()),
+        tracing::info!("Updated health check config for service {}", service_id)"
+        Ok((),
     }
 }
 

@@ -69,9 +69,9 @@ impl UnifiedSongbirdConfig {
     pub fn get_bind_address(&self) -> String {
         std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
             if self.is_production() {
-                "0.0.0.0".to_string()),
+                "0.0.0.0".to_string()
             } else {
-                "127.0.0.1".to_string()),
+                "127.0.0.1".to_string()
             }
         })
     }
@@ -81,11 +81,11 @@ impl UnifiedSongbirdConfig {
     pub fn get_data_dir(&self) -> String {
         std::env::var("SONGBIRD_DATA_DIR").unwrap_or_else(|_| {
             if self.is_production() {
-                "/var/lib/songbird".to_string()),
+                "/var/lib/songbird".to_string()
             } else {
                 format!(
                     "{  }/.local/share/songbird",
-                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
+                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
                 )
             }
         })
@@ -96,11 +96,11 @@ impl UnifiedSongbirdConfig {
     pub fn get_config_dir(&self) -> String {
         std::env::var("SONGBIRD_CONFIG_DIR").unwrap_or_else(|_| {
             if self.is_production() {
-                "/etc/songbird".to_string()),
+                "/etc/songbird".to_string()
             } else {
                 format!(
                     "{  }/.config/songbird",
-                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
+                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
                 )
             }
         })
@@ -111,11 +111,11 @@ impl UnifiedSongbirdConfig {
     pub fn get_cache_dir(&self) -> String {
         std::env::var("SONGBIRD_CACHE_DIR").unwrap_or_else(|_| {
             if self.is_production() {
-                "/var/cache/songbird".to_string()),
+                "/var/cache/songbird".to_string()
             } else {
                 format!(
                     "{  }/.cache/songbird",
-                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
+                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
                 )
             }
         })
@@ -126,11 +126,11 @@ impl UnifiedSongbirdConfig {
     pub fn get_log_dir(&self) -> String {
         std::env::var("SONGBIRD_LOG_DIR").unwrap_or_else(|_| {
             if self.is_production() {
-                "/var/log/songbird".to_string()),
+                "/var/log/songbird".to_string()
             } else {
                 format!(
                     "{  }/.local/share/songbird/logs",
-                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()),
+                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
                 )
             }
         })

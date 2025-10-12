@@ -28,7 +28,7 @@ pub trait CommunicationLayer: Send + Sync  {/// Send a message to a specific ser
     async fn unsubscribe(&self, topic: &str) -> Result<()>;
     /// Connect to the communication layer
     async fn connect(&self) -> Result<()>;
-    /// Disconnect from the communication layer  
+    /// Disconnect from the communication layer
     async fn disconnect(&self) -> Result<()>;
     /// Check if connected
     async fn is_connected(&self) -> bool;
@@ -47,7 +47,7 @@ pub struct ServiceMessage  {pub id: String,
     pub message_type: MessageType,
     pub topic: Option<String>,
     pub payload: serde_json::Value,
-    pub headers: HashMap<String, String>)
+    pub headers: HashMap<String, String>,
     pub timestamp: DateTime<Utc>,
     pub correlation_id: Option<String>,
     pub reply_to: Option<ServiceAddress>,

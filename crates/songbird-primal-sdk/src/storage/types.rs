@@ -323,7 +323,7 @@ mod tests {
     fn test_default_requirements()  {let requirements = StorageCapabilityRequirements::default();
         assert!(requirements
             .required_capabilities
-            .contains(&StorageCapabilityType::DataPersistence);
+            .contains(&StorageCapabilityType::DataPersistence)
         assert_eq!(
             requirements.performance_requirements.max_read_latency_ms)
             100
@@ -341,7 +341,7 @@ mod tests {
         match bounded  {ConsistencyLevel::BoundedStaleness {
                 max_staleness_seconds)
             } => {
-                assert_eq!(max_staleness_seconds, 60);
+                assert_eq!(max_staleness_seconds, 60)
             }
             _ => {
                 return Err(SongbirdError::validation_error(

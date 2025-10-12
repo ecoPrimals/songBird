@@ -41,7 +41,7 @@ impl SquirrelPrimal {
             .map(|id| format!("-{}", id)"
             .unwrap_or_else(|| "-default".to_string();"
 
-        let id = format!("squirrel{}", user_suffix);
+        let id = format!("squirrel{}", user_suffix)
 
         Self  {id: id.clone()
             context)

@@ -18,7 +18,7 @@ pub use crate::errors::{SongbirdError, SongbirdResult};
 // ============================================================================
 
 /// **CANONICAL**: Unified health status enumeration
-/// 
+///
 /// Replaces multiple fragmented health status types across crates.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum UnifiedHealthStatus  {/// System is healthy and operating normally
@@ -36,19 +36,19 @@ impl Default for UnifiedHealthStatus {
 
     fn default() -> Self {
         Self::Unknown
-    
+
 
 }
 }
 
 impl fmt::Display for UnifiedHealthStatus {
 
-fn fmt((&self,self) f: &mut fmt::Formatter<'_>) -> fmt::Result  {let status_str = match self {
+fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result  {let status_str = match self {
             Self::Healthy => "Healthy",
             Self::Degraded => "Degraded",
             Self::Unhealthy => "Unhealthy",
             Self::Unknown => "Unknown",
-        
+
 
 };
         write!(f, "{status_str}")
@@ -56,7 +56,7 @@ fn fmt((&self,self) f: &mut fmt::Formatter<'_>) -> fmt::Result  {let status_str 
 }
 
 /// **CANONICAL**: Unified operation result with rich context
-/// 
+///
 /// This replaces all fragmented operation result types with a single, comprehensive result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnifiedOperationResult<T> {
@@ -86,7 +86,7 @@ impl<T> Default for UnifiedOperationResult<T>  {fn default() -> Self  {Self {
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
         }
     }
 }
@@ -101,10 +101,10 @@ impl<T> UnifiedOperationResult<T>  {/// Create a successful result
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
         }
     }
-    
+
     /// Create a failed result
     pub fn failure() -> Self  {Self {success: false,
             data: None,
@@ -114,16 +114,16 @@ impl<T> UnifiedOperationResult<T>  {/// Create a successful result
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
         }
     }
-    
+
     /// Add timing information
     pub fn with_duration() -> Self {
         self.duration_ms = duration.as_millis() as u64;
         self
     }
-    
+
     /// Add metadata
     pub fn with_metadata() -> Self {
         self.metadata.insert(key, value);
@@ -136,52 +136,52 @@ impl<T> UnifiedOperationResult<T>  {/// Create a successful result
 // ============================================================================
 
 /// **CANONICAL**: Validation result type
-/// 
+///
 /// Consolidates 15+ different ValidationResult definitions across crates.
 pub type ValidationResult<T = ()> = SongbirdResult<T>;
 
 /// **CANONICAL**: Deployment result type
-/// 
+///
 /// Consolidates 8+ different DeploymentResult definitions across crates.
 pub type DeploymentResult<T = ()> = SongbirdResult<T>;
 
 /// **CANONICAL**: Health check result type
-/// 
+///
 /// Consolidates 12+ different HealthCheckResult definitions across crates.
 pub type HealthCheckResult = SongbirdResult<UnifiedHealthStatus>;
 
 /// **CANONICAL**: Migration result type
-/// 
+///
 /// Consolidates 6+ different MigrationResult definitions across crates.
 pub type MigrationResult<T = ()> = SongbirdResult<T>;
 
 /// **CANONICAL**: Discovery result type
-/// 
+///
 /// Consolidates multiple discovery result variations.
 pub type DiscoveryResult<T> = SongbirdResult<T>;
 
 /// **CANONICAL**: Configuration result type
-/// 
+///
 /// Consolidates configuration operation results.
 pub type ConfigurationResult<T = ()> = SongbirdResult<T>;
 
 /// **CANONICAL**: Service operation result type
-/// 
+///
 /// Consolidates service-related operation results.
 pub type ServiceOperationResult<T = ()> = SongbirdResult<T>;
 
 /// **CANONICAL**: Network operation result type
-/// 
+///
 /// Consolidates network-related operation results.
 pub type NetworkOperationResult<T = ()> = SongbirdResult<T>;
 
 /// **CANONICAL**: Security operation result type
-/// 
+///
 /// Consolidates security-related operation results.
 pub type SecurityOperationResult<T = ()> = SongbirdResult<T>;
 
 /// **CANONICAL**: Federation operation result type
-/// 
+///
 /// Consolidates federation-related operation results.
 pub type FederationOperationResult<T = ()> = SongbirdResult<T>;
 
@@ -213,24 +213,24 @@ impl ServiceHealthResult {
     pub fn new() -> Self {
         Self {
             status,
-            components: HashMap::new()),
+            components: HashMap::new(),
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
             check_duration_ms: 0,
-            metadata: HashMap::new()),
-        
+            metadata: HashMap::new(),
+
 
 }
     }
-    
+
     /// Add component health status
     pub fn with_component() -> Self {
         self.components.insert(component, status);
         self
     }
-    
+
     /// Add health metadata
     pub fn with_metadata() -> Self {
         self.metadata.insert(key, value);
@@ -281,8 +281,8 @@ impl DeploymentStatusResult {
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
-            metadata: HashMap::new()),
-        
+            metadata: HashMap::new(),
+
 
 }
     }
@@ -295,7 +295,7 @@ impl DeploymentStatusResult {
 /// Utility functions for working with unified results
 pub mod utils {
     use super::*;
-    
+
     /// Convert a standard Result to UnifiedOperationResult
     pub fn to_unified_result<T, E>() -> UnifiedOperationResult<T>
     where
@@ -311,22 +311,22 @@ pub mod utils {
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs(),
-                metadata: HashMap::new()),
+                metadata: HashMap::new(),
             },
             Err(e) => UnifiedOperationResult {
                 success: false,
                 data: None,
-                error: Some(e.to_string()),
+                error: Some(e.to_string(),
                 duration_ms: 0,
                 timestamp: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs(),
-                metadata: HashMap::new()),
+                metadata: HashMap::new(),
             },
         }
     }
-    
+
     /// Check if a health status indicates the system is operational
     pub fn is_operational() -> bool {
         matches!(status, UnifiedHealthStatus::Healthy | UnifiedHealthStatus::Degraded)
@@ -343,7 +343,7 @@ pub const RESULT_CONSOLIDATION_SUMMARY: &str = r#"
 
 Consolidated fragmented result types:
 ├── ValidationResult: 15+ definitions → 1 canonical type
-├── DeploymentResult: 8+ definitions → 1 canonical type  
+├── DeploymentResult: 8+ definitions → 1 canonical type
 ├── HealthCheckResult: 12+ definitions → 1 canonical type
 ├── MigrationResult: 6+ definitions → 1 canonical type
 ├── DiscoveryResult: 5+ definitions → 1 canonical type
@@ -357,8 +357,8 @@ Total: 66+ fragmented result types → 10 canonical types (-85% reduction,
 
 Benefits:
 ✅ Single source of truth for all result types
-✅ Consistent error handling patterns  
+✅ Consistent error handling patterns
 ✅ Rich contextual information
 ✅ Type-safe result processing
 ✅ Simplified testing and debugging
-"#; 
+"#;

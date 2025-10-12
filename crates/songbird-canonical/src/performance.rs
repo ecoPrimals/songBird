@@ -17,7 +17,7 @@ pub async fn initialize_performance_monitoring() -> Result<(), SongbirdError> {
     initialize_performance_tracking();
 
     tracing::info!("✅ Performance monitoring initialized successfully");
-    Ok(()),
+    Ok(())
 }
 
 /// Initialize metrics collection system

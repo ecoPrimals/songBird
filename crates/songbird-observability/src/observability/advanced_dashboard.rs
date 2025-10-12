@@ -391,7 +391,7 @@ impl AdvancedDashboard  {/// Create new advanced dashboard
     /// Assess system health
     fn assess_system_health(&self) -> SystemHealth {
         let score = self.calculate_overall_performance_score();
-        
+
         if score >= 0.9 {
             SystemHealth::Excellent
         } else if score >= 0.7 {
@@ -610,7 +610,7 @@ mod tests {
     fn test_dashboard_creation() {
         let config = DashboardConfig::default();
         let dashboard = AdvancedDashboard::new(config);
-        
+
         assert!(dashboard.started_at.elapsed().as_secs() < 1);
     }
 
@@ -618,7 +618,7 @@ mod tests {
     fn test_performance_overview() {
         let config = DashboardConfig::default();
         let dashboard = AdvancedDashboard::new(config);
-        
+
         let overview = dashboard.get_performance_overview();
         assert!(overview.overall_score >= 0.0));
         assert!(overview.overall_score <= 1.0));
@@ -628,7 +628,7 @@ mod tests {
     fn test_system_health_assessment() {
         let config = DashboardConfig::default();
         let dashboard = AdvancedDashboard::new(config);
-        
+
         let health = dashboard.assess_system_health();
         // Should be good initially
         assert!(matches!(health, SystemHealth::Excellent | SystemHealth::Good));

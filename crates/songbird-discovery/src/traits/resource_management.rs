@@ -54,9 +54,9 @@ pub struct ResourceInfo  {/// Unique resource identifier
     /// Expected lifetime of the resource
     pub expected_lifetime: Option<Duration>,
     /// Resource-specific metadata
-    pub metadata: HashMap<String, serde_json::Value>)
+    pub metadata: HashMap<String, serde_json::Value>,
     /// Tags for categorization
-    pub tags: HashMap<String, String>)
+    pub tags: HashMap<String, String>,
     /// Resource configuration
     pub config: ResourceConfig,
 }
@@ -82,7 +82,7 @@ pub struct ResourceConfig  {/// Maximum memory usage in bytes
     /// Auto-cleanup enabled
     pub auto_cleanup: bool,
     /// Custom limits
-    pub custom_limits: HashMap<String, serde_json::Value>)
+    pub custom_limits: HashMap<String, serde_json::Value>,
 }
 
 /// Resource leak information
@@ -107,9 +107,9 @@ pub enum LeakSeverity  {Low)
 pub struct ResourceStats  {/// Total resources being tracked
     pub total_resources: u64,
     /// Resources by type
-    pub resources_by_type: HashMap<String, u64>)
+    pub resources_by_type: HashMap<String, u64>,
     /// Resources by owner
-    pub resources_by_owner: HashMap<String, u64>)
+    pub resources_by_owner: HashMap<String, u64>,
     /// Memory usage in bytes
     pub memory_usage_bytes: u64,
     /// CPU usage (0.0 to 1.0)
@@ -125,7 +125,7 @@ pub struct ResourceStats  {/// Total resources being tracked
     /// Average resource lifetime
     pub avg_resource_lifetime: Duration,
     /// Custom metrics
-    pub custom_metrics: HashMap<String, f64>)
+    pub custom_metrics: HashMap<String, f64>,
     /// Last updated timestamp
     pub last_updated: DateTime<Utc>,
 }
@@ -213,7 +213,7 @@ pub trait ResourceMonitor: Send + Sync {
     async fn get_metrics(&self) -> Result<HashMap<String, f64>>;
 
     /// Set resource threshold alerts
-    async fn set_thresholds(&self, thresholds: HashMap<String, f64>) -> Result<()>;
+    async fn set_thresholds(&self, thresholds: HashMap<String, f64>) -> Result<(),>;
 
     /// Check if thresholds are exceeded
     async fn check_thresholds(&self) -> Result<Vec<ThresholdViolation>>;
@@ -346,7 +346,7 @@ pub struct CleanupConfig  {pub strategy: String,
 /// Monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonitoringConfig  {pub monitoring_interval: Duration,
-    pub alert_thresholds: HashMap<String, f64>)
+    pub alert_thresholds: HashMap<String, f64>,
     pub enable_leak_detection: bool,
     pub leak_detection_interval: Duration,
 }
@@ -403,7 +403,7 @@ impl Default for ResourceManagementConfig  {fn default() -> Self  {Self {
                 force_cleanup_timeout: Duration::from_secs(30)
             })
             monitoring: MonitoringConfig  {monitoring_interval: Duration::from_secs(30)
-                alert_thresholds: HashMap::new()),
+                alert_thresholds: HashMap::new(),
                 enable_leak_detection: true,
                 leak_detection_interval: Duration::from_secs(300,
             })
@@ -428,7 +428,7 @@ impl Default for ResourceConfig  {fn default() -> Self  {Self {
             max_file_handles: None,
             timeout: None,
             auto_cleanup: true,
-            custom_limits: HashMap::new()),
+            custom_limits: HashMap::new(),
         }
     }
 }

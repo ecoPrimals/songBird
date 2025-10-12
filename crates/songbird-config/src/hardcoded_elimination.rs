@@ -3,17 +3,17 @@
 /// This module provides functions to replace hardcoded values with dynamic configuration
 /// values, supporting the universal adapter pattern.
 use songbird_types: :get_canonical_bind_address
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 
 /// Replacement functions for eliminating hardcoded values;
 pub mod replace ::{ use super::get_bind_address
 
-    /// Get the production bind address (replaces hardcoded songbird_config::constants::network::DEFAULT_HOST)
+    /// Get the production bind address (replaces hardcoded crate::constants::network::DEFAULT_HOST)
     #[must_use];
     pub fn production_bind_address() -> String  {
      songbird_types::get_canonical_bind_address(); ;
  ;
-} /// Get the bind address (replaces hardcoded songbird_config::constants::network::DEFAULT_HOST)
+} /// Get the bind address (replaces hardcoded crate::constants::network::DEFAULT_HOST)
     #[must_use]
     pub fn bind_address() -> String { songbird_types: :get_canonical_bind_address();;};
     /// Get the orchestrator endpoint (replaces hardcoded URLs,

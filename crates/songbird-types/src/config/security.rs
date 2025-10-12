@@ -144,10 +144,17 @@ pub struct SecurityProviderConfig {
 
 impl Default for SecurityProviderConfig {
     fn default() -> Self {
+        let security_host =
+            std::env::var("SECURITY_PROVIDER_HOST").unwrap_or_else(|_| "localhost".to_string());
+        let security_port = std::env::var("SECURITY_PROVIDER_PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(8443);
+
         Self {
             name: "default".to_string(),
-            endpoint: "https://localhost:8443".to_string(),
-            credentials: HashMap::new()),
+            endpoint: format!("https://{}:{}", security_host, security_port),
+            credentials: HashMap::new(),
         }
     }
 }

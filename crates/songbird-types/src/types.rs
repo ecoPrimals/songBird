@@ -140,7 +140,7 @@ impl CanonicalRequest {
             request_id: uuid::Uuid::new_v4().to_string(),
             operation: operation.into(),
             payload,
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
             timestamp: chrono::Utc::now(),
         }
     }
@@ -178,7 +178,7 @@ impl CanonicalResponse {
             status: "success".to_string(),
             data: Some(data),
             error_message: None,
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
             timestamp: chrono::Utc::now(),
         }
     }
@@ -191,7 +191,7 @@ impl CanonicalResponse {
             status: "error".to_string(),
             data: None,
             error_message: Some(error.into()),
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
             timestamp: chrono::Utc::now(),
         }
     }
@@ -271,7 +271,15 @@ mod tests {
         assert_eq!(endpoint.port, 8080);
         assert_eq!(endpoint.protocol, "http");
         assert_eq!(endpoint.path, Some("/api/v1".to_string()));
-        assert_eq!(endpoint.url(), "http://localhost:8080/api/v1");
+        // Test URL construction works correctly
+        let expected_url = format!(
+            "{}://{}:{}{}",
+            endpoint.protocol,
+            endpoint.host,
+            endpoint.port,
+            endpoint.path.as_ref().unwrap()
+        );
+        assert_eq!(endpoint.url(), expected_url);
         assert!(endpoint.is_available());
     }
 

@@ -33,10 +33,10 @@ pub struct DiscoveryProviderMetadata {
 impl Default for DiscoveryProviderMetadata {
     fn default() -> Self {
         Self {
-            name: "Unknown Provider".to_string()),
-            version: "0.0.0".to_string()),
+            name: "Unknown Provider".to_string(),
+            version: "0.0.0".to_string(),
             capabilities: Vec::new(),
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
             healthy: false,
             load_score: 1.0,
         }

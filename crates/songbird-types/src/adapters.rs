@@ -9,35 +9,34 @@ pub mod canonical; // NEW: Consolidated canonical adapter
 
 // Re-export the canonical adapter system (PREFERRED,
 pub use canonical::{
-    // Main adapter
-    CanonicalUniversalAdapter,
-    
-    // Configuration types
-    CanonicalAdapterConfig,
-    CanonicalDiscoveryConfig,
-    CanonicalLoadBalancingConfig,
-    CanonicalCircuitBreakerConfig,
-    CanonicalRetryConfig,
-    CanonicalTimeoutConfig,
-    CanonicalHealthCheckConfig,
-    CanonicalMonitoringConfig,
-    
-    // Supporting types
-    CanonicalRegisteredService,
-    CanonicalServicePerformance,
-    CanonicalLoadBalancingStrategy,
-    CanonicalCircuitState,
-    CanonicalAdapterRequest,
-    CanonicalAdapterResponse,
-    CanonicalRequestPriority,
-    CanonicalAdapterMetrics,
-    
-    // Protocol handling
-    CanonicalProtocolHandler,
-    
+    create_adapter_request,
     // Convenience functions
     create_canonical_adapter,
-    create_adapter_request,
+    // Configuration types
+    CanonicalAdapterConfig,
+    CanonicalAdapterMetrics,
+
+    CanonicalAdapterRequest,
+    CanonicalAdapterResponse,
+    CanonicalCircuitBreakerConfig,
+    CanonicalCircuitState,
+    CanonicalDiscoveryConfig,
+    CanonicalHealthCheckConfig,
+    CanonicalLoadBalancingConfig,
+    CanonicalLoadBalancingStrategy,
+    CanonicalMonitoringConfig,
+
+    // Protocol handling
+    CanonicalProtocolHandler,
+
+    // Supporting types
+    CanonicalRegisteredService,
+    CanonicalRequestPriority,
+    CanonicalRetryConfig,
+    CanonicalServicePerformance,
+    CanonicalTimeoutConfig,
+    // Main adapter
+    CanonicalUniversalAdapter,
 };
 
 // ============================================================================
@@ -58,14 +57,10 @@ pub use canonical::{
 // ============================================================================
 
 /// Prelude module for easy importing of canonical adapter types
-pub mod prelude  {
-    pub use super::canonical::{CanonicalUniversalAdapter,
-        CanonicalAdapterConfig,
-        CanonicalAdapterRequest,
-        CanonicalAdapterResponse,
-        CanonicalRequestPriority,
-        CanonicalLoadBalancingStrategy,
-        create_canonical_adapter,
-        create_adapter_request,
+pub mod prelude {
+    pub use super::canonical::{
+        create_adapter_request, create_canonical_adapter, CanonicalAdapterConfig,
+        CanonicalAdapterRequest, CanonicalAdapterResponse, CanonicalLoadBalancingStrategy,
+        CanonicalRequestPriority, CanonicalUniversalAdapter,
     };
-} 
+}

@@ -224,31 +224,31 @@ impl DiscoverySummary  {/// Create a new empty discovery summary
         report.push_str(&format!(
             "Total primals discovered: {}\n","
             self.total_primals_discovered
-        );
+        )
         report.push_str(&format!(
             "Total discovery attempts: {}\n","
             self.total_attempts
-        );
+        )
         report.push_str(&format!(
             "Successful attempts: {}\n","
             self.successful_attempts
-        );
+        )
         report.push_str(&format!(
             "Success rate: {:.2}%\n","
             self.discovery_success_rate * 100.0
-        );
+        )
         report.push_str(&format!(
             "Total discovery time: {}ms\n","
             self.total_discovery_time_ms
-        );
+        )
         report.push_str(&format!(
             "Average time per attempt: {:.2}ms\n","
             self.average_attempt_time_ms
-        );
+        )
         report.push_str(&format!(
             "Discovery config: {}\n\n","
             self.discovery_config_summary
-        );
+        )
 
         if !self.primals_by_method.is_empty() {
             report.push_str("Primals by discovery method:\n");"
@@ -421,10 +421,10 @@ fn calculate_method_distribution(primals: &Vec<DiscoveredPrimal>) -> HashMap<Str
 //     #[test]
 //     fn test_discovery_summary_creation() {
 //         let summary = DiscoverySummary::new();
-//         assert_eq!(summary.total_primals_discovered, 0);
+//         assert_eq!(summary.total_primals_discovered, 0)
 //         assert!(summary.primals_by_method.is_empty());
 //         assert!(summary.primals_by_type.is_empty());
-//         assert_eq!(summary.discovery_success_rate, 0.0);
+//         assert_eq!(summary.discovery_success_rate, 0.0)
 //         Ok(()),
 //     }
 //
@@ -463,13 +463,13 @@ fn calculate_method_distribution(primals: &Vec<DiscoveredPrimal>) -> HashMap<Str
 //         let summary =
 //             DiscoverySummary::from_discovered_primals(&primals, &stats, "Test Config".to_string();"
 //
-//         assert_eq!(summary.total_primals_discovered, 1);
-//         assert_eq!(summary.total_attempts, 10);
-//         assert_eq!(summary.successful_attempts, 8);
-//         assert_eq!(summary.discovery_success_rate, 0.8);
-//         assert_eq!(summary.average_attempt_time_ms, 500.0);
-//         assert!(summary.primals_by_method.contains_key("config_based");"
-//         assert!(summary.primals_by_type.contains_key("security-provider");"
+//         assert_eq!(summary.total_primals_discovered, 1)
+//         assert_eq!(summary.total_attempts, 10)
+//         assert_eq!(summary.successful_attempts, 8)
+//         assert_eq!(summary.discovery_success_rate, 0.8)
+//         assert_eq!(summary.average_attempt_time_ms, 500.0)
+//         assert!(summary.primals_by_method.contains_key("config_based")"
+//         assert!(summary.primals_by_type.contains_key("security-provider")"
 //
 //         Ok(()),
 //     }
@@ -479,15 +479,15 @@ fn calculate_method_distribution(primals: &Vec<DiscoveredPrimal>) -> HashMap<Str
 //         let json_result = summary.to_json();
 //         assert!(json_result.is_ok());
 //         let json_str = json_result.unwrap_or_else(|| {
-//             tracing::error!("Operation failed");"
+//             tracing::error!("Operation failed")"
 //             return Err(std::io::Error::new(
 //                 std::io::ErrorKind::Other)
 //                 format!("Operation failed - {}: {}", :?), "unable to continue", e),"
 //             )
 //             )?;
 //         });
-//         assert!(json_str.contains("total_primals_discovered");"
-//         assert!(json_str.contains("generated_at");"
+//         assert!(json_str.contains("total_primals_discovered")"
+//         assert!(json_str.contains("generated_at")"
 //         Ok(()),
 //     }
 //
@@ -495,9 +495,9 @@ fn calculate_method_distribution(primals: &Vec<DiscoveredPrimal>) -> HashMap<Str
 //     fn test_summary_to_text_report() {
 //         let summary = DiscoverySummary::new();
 //         let report = summary.to_text_report();
-//         assert!(report.contains("Universal Primal Discovery Summary");"
-//         assert!(report.contains("Total primals discovered: 0");"
-//         assert!(report.contains("Success rate");"
+//         assert!(report.contains("Universal Primal Discovery Summary")"
+//         assert!(report.contains("Total primals discovered: 0")"
+//         assert!(report.contains("Success rate")"
 //         Ok(()),
 //     }
 //

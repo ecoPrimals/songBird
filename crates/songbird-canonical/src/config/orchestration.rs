@@ -6,9 +6,9 @@
 use serde::{Deserialize, Serialize};
 
 /// Orchestration configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
-pub struct OrchestrationConfig  {/// Service discovery settings
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct OrchestrationConfig {
+    /// Service discovery settings
     pub discovery: ServiceDiscoveryConfig,
     /// Load balancing configuration
     /// Load Balancing field
@@ -22,7 +22,8 @@ pub struct OrchestrationConfig  {/// Service discovery settings
 
 /// Service discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceDiscoveryConfig  {/// Enable service discovery
+pub struct ServiceDiscoveryConfig {
+    /// Enable service discovery
     pub enabled: bool,
     /// Discovery interval in seconds
     pub interval_seconds: u64,
@@ -34,7 +35,8 @@ pub struct ServiceDiscoveryConfig  {/// Enable service discovery
 
 /// Load balancing configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoadBalancingConfig  {/// Load balancing strategy
+pub struct LoadBalancingConfig {
+    /// Load balancing strategy
     /// Custom retry strategy configuration
     pub strategy: LoadBalancingStrategy,
     /// Health check interval for load balancer
@@ -48,7 +50,8 @@ pub struct LoadBalancingConfig  {/// Load balancing strategy
 
 /// Load balancing strategies
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LoadBalancingStrategy  {/// Round-robin distribution
+pub enum LoadBalancingStrategy {
+    /// Round-robin distribution
     RoundRobin,
     /// Least connections
     LeastConnections,
@@ -58,7 +61,8 @@ pub enum LoadBalancingStrategy  {/// Round-robin distribution
 
 /// Health monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthConfig  {/// Enable health monitoring
+pub struct HealthConfig {
+    /// Enable health monitoring
     /// Enabled field
     pub enabled: bool,
     /// Health check interval in seconds
@@ -74,7 +78,8 @@ pub struct HealthConfig  {/// Enable health monitoring
 
 /// Scaling configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ScalingConfig  {/// Enable automatic scaling
+pub struct ScalingConfig {
+    /// Enable automatic scaling
     /// Enabled field
     pub enabled: bool,
     /// Minimum number of instances
@@ -94,7 +99,9 @@ pub struct ScalingConfig  {/// Enable automatic scaling
     pub check_interval_seconds: u64,
 }
 
-impl Default for ServiceDiscoveryConfig  {fn default() -> Self  {Self {
+impl Default for ServiceDiscoveryConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             interval_seconds: 30,
             timeout_ms: 5000,
@@ -103,7 +110,9 @@ impl Default for ServiceDiscoveryConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for LoadBalancingConfig  {fn default() -> Self  {Self {
+impl Default for LoadBalancingConfig {
+    fn default() -> Self {
+        Self {
             strategy: LoadBalancingStrategy::RoundRobin,
             health_check_interval_seconds: 10,
             max_retries: 3,
@@ -112,7 +121,9 @@ impl Default for LoadBalancingConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for HealthConfig  {fn default() -> Self  {Self {
+impl Default for HealthConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             check_interval_seconds: 30,
             timeout_ms: 5000,
@@ -122,7 +133,9 @@ impl Default for HealthConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for ScalingConfig  {fn default() -> Self  {Self {
+impl Default for ScalingConfig {
+    fn default() -> Self {
+        Self {
             enabled: false,
             min_instances: 1,
             max_instances: 10,

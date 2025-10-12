@@ -30,18 +30,18 @@ pub enum RegistryError {
 /// Provider registry for managing discovery providers at runtime
 #[derive(Clone)]
 pub struct ProviderRegistry  {/// Registered providers
-    providers: Arc<RwLock<HashMap<String, Box<dyn DiscoveryProvider>>>>)
+    providers: Arc<RwLock<HashMap<String, Box<dyn DiscoveryProvider>>>>,
     /// Provider factories for creating new providers
-    factories: Arc<RwLock<HashMap<String, Box<dyn ProviderFactory>>>>)
+    factories: Arc<RwLock<HashMap<String, Box<dyn ProviderFactory>>>>,
     /// Provider metadata cache
-    metadata_cache: Arc<RwLock<HashMap<String, ProviderMetadata>>>)
+    metadata_cache: Arc<RwLock<HashMap<String, ProviderMetadata>>>,
 }
 
 impl ProviderRegistry  {/// Create a new provider registry
     pub fn new() -> Self  {Self {
-            providers: Arc::new(RwLock::new(HashMap::new()),
-            factories: Arc::new(RwLock::new(HashMap::new()),
-            metadata_cache: Arc::new(RwLock::new(HashMap::new()),
+            providers: Arc::new(RwLock::new(HashMap::new(),
+            factories: Arc::new(RwLock::new(HashMap::new(),
+            metadata_cache: Arc::new(RwLock::new(HashMap::new(),
         }
     }
 
@@ -57,7 +57,7 @@ impl ProviderRegistry  {/// Create a new provider registry
         }
 
         factories.insert(provider_type, factory);
-        Ok(()),
+        Ok((),
     }
 
     /// Create and register a provider using a factory
@@ -89,8 +89,8 @@ impl ProviderRegistry  {/// Create a new provider registry
         provider
             .initialize(ProviderConfig  {id: init_config.id.clone()
                 name: init_config.name.clone(,
-                parameters: HashMap::new()),
-                environment: HashMap::new()),
+                parameters: HashMap::new(),
+                environment: HashMap::new(),
                 timeout_ms: Some(30000)
                 retry_config: None,
             })
@@ -124,7 +124,7 @@ impl ProviderRegistry  {/// Create a new provider registry
             cache.insert(provider_id, metadata);
         }
 
-        Ok(()),
+        Ok((),
     }
 
     /// Unregister a provider
@@ -136,7 +136,7 @@ impl ProviderRegistry  {/// Create a new provider registry
         if let Some(mut provider) = providers.remove(provider_id) {
             let _ = provider.shutdown().await; // Best effort shutdown
             cache.remove(provider_id);
-            Ok(()),
+            Ok((),
         } else {
             Err(SongbirdError::internal_error(operation_error(format!(
                 "Provider with ID '{provider_id}' not found""
@@ -254,7 +254,7 @@ impl ProviderRegistry  {/// Create a new provider registry
             cache.insert(id.clone(), metadata);
         }
 
-        Ok(()),
+        Ok((),
     }
 
     /// Get registry statistics
@@ -292,7 +292,7 @@ impl Default for ProviderRegistry {
 pub struct RegistryStatistics  {pub total_providers: usize,
     pub healthy_providers: usize,
     pub total_factories: usize,
-    pub capabilities_count: HashMap<DiscoveryCapability, usize>)
+    pub capabilities_count: HashMap<DiscoveryCapability, usize>,
 }
 
 #[cfg(test)]
@@ -321,8 +321,8 @@ mod tests  {use super::*;
         let registry = ProviderRegistry::new();
         let stats = registry.get_statistics().await;
 
-        assert_eq!(stats.total_providers, 0);
-        assert_eq!(stats.healthy_providers, 0);
-        assert_eq!(stats.total_factories, 0);
+        assert_eq!(stats.total_providers, 0)
+        assert_eq!(stats.healthy_providers, 0)
+        assert_eq!(stats.total_factories, 0)
     }
 }

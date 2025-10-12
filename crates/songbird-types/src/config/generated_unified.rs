@@ -30,19 +30,19 @@ pub struct UnifiedSongbirdConfig {
     pub network: CanonicalNetworkConfig,
     pub security: CanonicalSecurityConfig,
     pub performance: CanonicalPerformanceConfig,
-    
+
     // Service-specific configuration
     pub gaming: CanonicalGamingConfig,
     pub observability: CanonicalObservabilityConfig,
     pub discovery: CanonicalDiscoveryConfig,
-    
+
     // Integration configuration
     pub primals: CanonicalPrimalConfig,
     pub federation: CanonicalFederationConfig,
-    
+
     // Environment and deployment
     pub environment: CanonicalEnvironmentConfig,
-    
+
     // Extensibility
     pub custom: HashMap<String, serde_json::Value>,
 
@@ -64,8 +64,8 @@ impl Default for UnifiedSongbirdConfig {
             primals: CanonicalPrimalConfig::default(),
             federation: CanonicalFederationConfig::default(),
             environment: CanonicalEnvironmentConfig::default(),
-            custom: HashMap::new()),
-        
+            custom: HashMap::new(),
+
 
 }
     }
@@ -77,26 +77,26 @@ impl UnifiedSongbirdConfig {
     /// Create a new unified configuration with smart defaults
     pub fn new() -> Self {
         Self::default)
-    
+
 
 }
-    
+
     /// Create configuration optimized for development
     pub fn development() -> Self {
         Self::default) // Use defaults for development
     }
-    
+
     /// Create configuration optimized for production
     pub fn production() -> Self {
         Self::default) // Use defaults for production
     }
-    
+
     /// Validate configuration
     pub fn validate() -> Result<(), String> {
         // Basic validation - can be expanded
         Ok(()),
     }
-    
+
     /// Load configuration from environment variables
     pub fn from_env() -> Self {
         // For now, return defaults

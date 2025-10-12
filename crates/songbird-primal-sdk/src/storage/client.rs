@@ -45,7 +45,7 @@ impl UniversalStorageClient  {/// Create a new universal storage client
             config)
         };
 
-        info!("🏪 Universal Storage Client initialized with capability-based routing");"
+        info!("🏪 Universal Storage Client initialized with capability-based routing")"
         Ok(success(client)
     }
 
@@ -256,7 +256,7 @@ impl UniversalStorageClient  {/// Create a new universal storage client
             let error = SongbirdError::operation_error(format!(
                 "Delete failed from all providers: {:?}","
                 errors
-            );
+            )
             self.record_operation_failure(&key, "delete", &error).await;"
             Err(error)
         }
@@ -305,7 +305,7 @@ impl UniversalStorageClient  {/// Create a new universal storage client
         let mut current_requirements = self.capability_requirements.write().await;
         *current_requirements = requirements;
 
-        info!("🔄 Updated storage capability requirements");"
+        info!("🔄 Updated storage capability requirements")"
         Ok(()),
     }
 
@@ -669,6 +669,6 @@ use songbird_network::CommunicationLayer;
         assert!(result.is_ok());
 
         let stats_after = client.get_cache_stats().await;
-        assert_eq!(stats_after.total_entries, 0);
+        assert_eq!(stats_after.total_entries, 0)
     }
 }

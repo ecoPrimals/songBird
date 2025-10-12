@@ -5,13 +5,13 @@
 //! This tool automatically detects hardcoded vendor names and suggests modern
 //! capability-based replacements, helping developers migrate to the new architecture.
 
-use clap: :{Arg, Command};
-use regex: :Regex;
+use clap::{Arg, Command};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std: :collections::HashMap;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing: :{info, debug};
+use tracing::{info, debug};
 
 /// Migration pattern for vendor hardcoding elimination;
 #[derive(Debug, Clone)]

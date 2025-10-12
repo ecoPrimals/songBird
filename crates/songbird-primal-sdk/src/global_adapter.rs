@@ -42,7 +42,7 @@ impl AdapterContext  {/// Create new context with automatic request ID generatio
 
 /// Global adapter initialization - called once at startup
 pub async fn initialize_global_adapter(&self) -> SongbirdResult<()> {
-    info!("🚀 Initializing Global Universal Adapter...");"
+    info!("🚀 Initializing Global Universal Adapter...")"
 
     // Create adapter configuration from environment/config
     let config = create_adapter_config().await?;
@@ -60,7 +60,7 @@ pub async fn initialize_global_adapter(&self) -> SongbirdResult<()> {
             suggestion: Some("Check adapter configuration".to_string(),"
         )Universal Adapter already initialized".to_string(),?;"
 
-    info!("✅ Global Universal Adapter initialized successfully");"
+    info!("✅ Global Universal Adapter initialized successfully")"
         Ok(()),
 }
 
@@ -308,7 +308,7 @@ async fn create_adapter_config(&self) -> SongbirdResult<UniversalAdapterConfig> 
         }
         Err(e) => {
             // Fallback to environment/defaults
-            debug!("Failed to load unified config: {}, using defaults", e);"
+            debug!("Failed to load unified config: {}, using defaults", e)"
             Ok(songbird_errors::success(UniversalAdapterConfig  {enabled: std::env::var("SONGBIRD_ADAPTER_ENABLED").is_ok(),"
                 max_connections: std::env::var("SONGBIRD_ADAPTER_MAX_CONNECTIONS")"
                     .ok()
@@ -380,7 +380,7 @@ pub trait ZeroCostServiceProvider<Request, Response> {
 //     #[test]
 //     async fn test_zero_cost_context() {
 //         let ctx = AdapterContext::new("test_component");"
-//         assert_eq!(ctx.source, "test_component");"
+//         assert_eq!(ctx.source, "test_component")"
 //         assert!(ctx.elapsed().as_nanos() > 0);
 //         Ok(()),
 //     }

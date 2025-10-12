@@ -8,7 +8,8 @@ use std::collections::HashMap;
 
 /// Environment and deployment configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnvironmentConfig  {/// Environment type (development, staging, production)
+pub struct EnvironmentConfig {
+    /// Environment type (development, staging, production)
     /// Environment field
     pub environment: Environment,
     /// Port configuration
@@ -26,7 +27,8 @@ pub struct EnvironmentConfig  {/// Environment type (development, staging, produ
 
 /// Environment types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Environment  {/// Development environment
+pub enum Environment {
+    /// Development environment
     Development,
     /// Staging environment
     Staging,
@@ -35,12 +37,13 @@ pub enum Environment  {/// Development environment
     /// Testing environment
     Testing,
     /// Custom environment
-    Custom(String)
+    Custom(String),
 }
 
 /// Port configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortConfig  {/// Orchestrator service port
+pub struct PortConfig {
+    /// Orchestrator service port
     pub discovery_port: u16,
     /// Federation service port
     /// Federation Port field
@@ -48,12 +51,13 @@ pub struct PortConfig  {/// Orchestrator service port
     /// Dashboard port
     pub health_port: u16,
     /// Dynamic port range for services
-    pub dynamic_port_range: (u16, u16)
+    pub dynamic_port_range: (u16, u16),
 }
 
 /// Logging configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoggingConfig  {/// Log level (trace, debug, info, warn, error)
+pub struct LoggingConfig {
+    /// Log level (trace, debug, info, warn, error)
     /// Level field
     pub level: String,
     /// Log format (json, plain, structured)
@@ -75,7 +79,8 @@ pub struct LoggingConfig  {/// Log level (trace, debug, info, warn, error)
 
 /// Observability configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ObservabilityConfig  {/// Enable metrics collection
+pub struct ObservabilityConfig {
+    /// Enable metrics collection
     /// Enable Metrics field
     pub enable_metrics: bool,
     /// Metrics collection interval (seconds)
@@ -99,7 +104,8 @@ pub struct ObservabilityConfig  {/// Enable metrics collection
 
 /// Network configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkConfig  {/// Bind address for services
+pub struct NetworkConfig {
+    /// Bind address for services
     /// Bind Address field
     pub bind_address: String,
     /// Enable /// TLS
@@ -126,7 +132,8 @@ pub struct NetworkConfig  {/// Bind address for services
 
 /// Environment security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnvironmentSecurityConfig  {/// Enable authentication
+pub struct EnvironmentSecurityConfig {
+    /// Enable authentication
     /// Enable Auth field
     pub enable_auth: bool,
     /// Authentication method
@@ -149,7 +156,9 @@ pub struct EnvironmentSecurityConfig  {/// Enable authentication
     pub cors_origins: Vec<String>,
 }
 
-impl Default for EnvironmentConfig  {fn default() -> Self  {Self {
+impl Default for EnvironmentConfig {
+    fn default() -> Self {
+        Self {
             environment: Environment::Development,
             ports: PortConfig::default(),
             logging: LoggingConfig::default(),
@@ -160,16 +169,20 @@ impl Default for EnvironmentConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for PortConfig  {fn default() -> Self  {Self {
+impl Default for PortConfig {
+    fn default() -> Self {
+        Self {
             discovery_port: 8081,
             federation_port: 8082,
             health_port: 8085,
-            dynamic_port_range: (9000, 9999)
+            dynamic_port_range: (9000, 9999),
         }
     }
 }
 
-impl Default for LoggingConfig  {fn default() -> Self  {Self {
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self {
             level: "info".to_string(),
             format: "json".to_string(),
             output: "stdout".to_string(),
@@ -181,19 +194,23 @@ impl Default for LoggingConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for ObservabilityConfig  {fn default() -> Self  {Self {
+impl Default for ObservabilityConfig {
+    fn default() -> Self {
+        Self {
             enable_metrics: true,
             metrics_interval: 60,
             enable_tracing: true,
             trace_sampling_rate: 0.1,
             enable_health_checks: true,
             health_check_interval: 30,
-            custom_tags: HashMap::new()),
+            custom_tags: HashMap::new(),
         }
     }
 }
 
-impl Default for NetworkConfig  {fn default() -> Self  {Self {
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self {
             bind_address: "0.0.0.0".to_string(),
             enable_tls: false,
             tls_cert_path: None,
@@ -206,7 +223,9 @@ impl Default for NetworkConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for EnvironmentSecurityConfig  {fn default() -> Self  {Self {
+impl Default for EnvironmentSecurityConfig {
+    fn default() -> Self {
+        Self {
             enable_auth: true,
             auth_method: "bearer".to_string(),
             enable_authz: true,

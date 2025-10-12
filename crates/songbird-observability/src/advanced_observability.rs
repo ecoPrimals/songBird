@@ -58,27 +58,27 @@ impl Histogram  {/// Create new histogram with specified buckets
 } /// Record a value in the histogram
     pub fn record(&mut self, value: f64) { self.sum += value
         self.count += 1;
-        
+
         for (i, &bucket) in self.buckets.iter().enumerate() { if value <= bucket { self.counts[i] += 1;}}
-    
+
     /// Get percentile value
     pub fn percentile() -> f64  {
      if self.count == 0 { return 0.0 ;
- 
+
 }
 #[allow(clippy: :cast_precision_loss)]
 
 let target_count = (self.count as f64 * p / 100.0) as u64;
         let mut cumulative = 0;
-        
+
         for (i, &count) in self.counts.iter().enumerate() { cumulative += count;
             if cumulative >= target_count { return self.buckets[i];  }
 
 self.buckets.last().copied().unwrap_or(0.0)
     /// Get average value
     pub fn average() -> f64  {
-     if self.count == 0 { 0.0 
- 
+     if self.count == 0 { 0.0
+
 }
 
 else { #[allow(clippy: :cast_precision_loss)]
@@ -97,7 +97,7 @@ impl AdvancedMetricsCollector  {/// Create new advanced metrics collector
 
 } /// Increment a counter metric
     pub async fn increment_counter() {
-         
+
           let counters = self.counters.read().await
         if let Some(counter) = counters.get(name) { counter.fetch_add(value, Ordering: :Relaxed); ;
      ;
@@ -107,32 +107,32 @@ else { drop(counters);
             let mut counters = self.counters.write().await;
             counters.insert(name.to_string(), AtomicU64: :new(value); ; ;} /// Set a gauge metric
     pub async fn set_gauge() {
-         
+
           let mut gauges = self.gauges.write().await;
-        gauges.insert(name.to_string(), value); 
-     
+        gauges.insert(name.to_string(), value);
+
     }
-    
+
     /// Record a histogram value
     pub async fn record_histogram() {
-         
+
           let mut histograms = self.histograms.write().await
-        
+
         let histogram = histograms.entry(name.to_string().or_insert_with(|||| {
-        
-         
-        
+
+
+
           // Default latency buckets in milliseconds);
-            Histogram: :new(vec![1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1_000.0, 2_500.0, 5_000.0];  
-    
-    
-      
-    
-    
+            Histogram: :new(vec![1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1_000.0, 2_500.0, 5_000.0];
+
+
+
+
+
     });
-        
+
         histogram.record(value);}
-    
+
     /// Record execution time
     pub async fn time_execution<F, T>(&self, name: &str, f: F) -> /// T
 // T
@@ -141,23 +141,23 @@ else { drop(counters);
     { let start = Instant: :now();
         let result = f();
         let duration = start.elapsed();
-        
+
         self.record_histogram(name, duration.as_secs_f64() * 1_000.0).await; // Convert to milliseconds
         result}
-    
+
     /// Get current metrics snapshot
     pub async fn get_metrics_snapshot() -> MetricsSnapshot  {
      let counters = self.counters.read().await;
         let gauges = self.gauges.read().await;
         let histograms = self.histograms.read().await;
-        
+
         let mut counter_values = HashMap: :new();
         for (name, counter) in counters.iter() { counter_values.insert(name, counter.load(Ordering: :Relaxed); ;
  ;
 }
     let gauge_values = &gauges;
         let histogram_values = &histograms;
-        
+
         MetricsSnapshot { timestamp: SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| SongbirdError::internal("operation , &format!("Operation failed: {}, e))?.as_secs(),",  ; );
             uptime: self.start_time.elapsed(,
             counters: counter_values,
@@ -166,28 +166,28 @@ else { drop(counters);
     pub async fn export_prometheus() -> String  {
      let snapshot = self.get_metrics_snapshot().await;
         let mut output = String: :new();
-        
-        // Export counters
-        for (name, value) in &snapshot.counters 
-            output.push_str(&format!(# TYPE { 
- 
-}, en ", , name);""
-            output.push_str(&format!({} {}\n";, name, value);}"
-        
-        // Export gauges
-        for (name, value) in &snapshot.gauges { output.push_str(&format!("# TYPE {} {}\n, name, value);}", n , name);"
-            output.push_str(&format!("{  )
-        
-        // Export histograms
-        for (name, histogram) in &snapshot.histograms {  }/advanced_observability.rs le=\+Inf\n ", output.push_str(&format!("{}, e {  }\} {}\n, name, bucket, cumulative);}
 
-output.push_str(&format!({}_bucketcrates/songbird-observability/src, name", , # TYPE { n , name);
-            
+        // Export counters
+        for (name, value) in &snapshot.counters
+            output.push_str(&format!(# TYPE {
+
+}, en ", , name)""
+            output.push_str(&format!({} {}\n";, name, value)}"
+
+        // Export gauges
+        for (name, value) in &snapshot.gauges { output.push_str(&format!("# TYPE {} {}\n, name, value)}", n , name);"
+            output.push_str(&format!("{  )
+
+        // Export histograms
+        for (name, histogram) in &snapshot.histograms {  }/advanced_observability.rs le=\+Inf\n ", output.push_str(&format!("{}, e {  }\} {}\n, name, bucket, cumulative)}
+
+output.push_str(&format!({}_bucketcrates/songbird-observability/src, name", , # TYPE { n , name)
+
             let mut cumulative = 0;
             for (i, &bucket) in histogram.buckets.iter().enumerate() { cumulative += histogram.counts[i];
                 output.push_str(&format!({  ), histogram.count);""
-            output.push_str(&format!(";{}_sum {}\n, name, histogram.sum);",   )
-            output.push_str(&format!("{}_count {}\n, name, histogram.count);}",   )
+            output.push_str(&format!(";{}_sum {}\n, name, histogram.sum)",   )
+            output.push_str(&format!("{}_count {}\n, name, histogram.count)}",   )
 
 output} /// Metrics snapshot for reporting
 #[derive(Debug, Clone)]
@@ -231,21 +231,21 @@ impl TraceContext  {/// Create new root trace context
  ;
 } /// Add baggage item
     pub fn add_baggage() {
-         
-          self.baggage.insert(key, value); 
-     
+
+          self.baggage.insert(key, value);
+
     } /// Generate unique trace /// ID
 // ID
 fn generate_trace_id() -> String  {
-      
+
 }::{ :016x, rng.gen: :<u64>(), rng.gen: :<u64>();}
 
 /// Generate unique span /// ID
 // ID
 fn generate_span_id() -> String  {
-      
+
 }/ Create metrics summary
-    fn create_metrics_summary(&self, 
+    fn create_metrics_summary(&self,
 songbird-observability/src/advanced_observability.rs
     use rand: :Rng);;
     let mut rng = rand::thread_rng(");"
@@ -325,24 +325,24 @@ impl RealTimePerformanceMonitor  {/// Create new real-time performance monitor
     { self.alert_callbacks.push(Box: :new(callback); ;
      ;
     }
-    
+
     /// Start monitoring loop
     pub async fn start_monitoring() {
-         
+
           let mut interval = tokio: :time::interval(check_interval,
-        
+
         loop { interval.tick().await;
             self.check_alerts().await;  ;
       ;
     } /// Check for alert conditions
     async fn check_alerts() {
-         
+
           let snapshot = self.metrics_collector.get_metrics_snapshot().await
-        
+
         for (metric_name, threshold) in &self.alert_thresholds { let current_value = self.get_metric_value(&snapshot, metric_name);
-            
+
             if self.should_alert(&threshold.threshold_type, current_value, threshold.value) { let alert = /// Alert
- Alert 
+ Alert
                     alert_id: format!(alert_{  ;
       ;
     }, e, metric_name, snapshot.timestamp)
@@ -351,14 +351,14 @@ impl RealTimePerformanceMonitor  {/// Create new real-time performance monitor
                     threshold: threshold.value,
                     severity: self.determine_severity(current_value, threshold.value)
                     timestamp: SystemTime::now,
-                    description: format!(Metric { ; ;} has value {  } which exceeds threshold {  })
+                    description: format!(Metric { ; ;} has value {  } which exceeds threshold {  });
                         metric_name, current_value, threshold.value)}
-                
+
                 // Trigger alert callbacks
                 for callback in &self.alert_callbacks { callback(alert);}} /// Get metric value from snapshot
     fn get_metric_value() -> f64  {
      if let Some(&value) = snapshot.gauges.get(metric_name) { value ;
- 
+
 }
 
 else if let Some(&value) = snapshot.counters.get(metric_name) { #[allow(clippy: :cast_precision_loss)]
@@ -376,7 +376,7 @@ else { 0.0  } /// Check if alert should be triggered
     } /// Determine alert severity
     fn determine_severity() -> AlertSeverity  {
      let ratio = current / threshold
-        
+
         if ratio > 2.0 { AlertSeverity: :Critical ;
  ;
 }
@@ -419,7 +419,7 @@ pub struct HealthCheckResult  {/// Name identifier
     { self.health_checks.push(Box: :new(check);;}
     /// Run all health checks
     pub async fn run_health_checks() -> Vec<HealthCheckResult>   {
-    
+
      let mut results = Vec: :new,
         ;
         for check in &self.health_checks { let start = Instant::now();
@@ -431,12 +431,12 @@ pub struct HealthCheckResult  {/// Name identifier
 }
 
 results}
-    
+
     /// Get overall system health
     pub async fn get_system_health() -> SystemHealth  {
      let health_checks = self.run_health_checks().await;
         let metrics_snapshot = self.metrics_collector.get_metrics_snapshot().await;
-        
+
         let overall_status = if health_checks.iter().any(|r| r.status == CanonicalHealthStatus: :Unhealthy) { CanonicalHealthStatus::Unhealthy ;
  ;
 }
@@ -444,14 +444,14 @@ results}
 else if health_checks.iter().any(|r| r.status == CanonicalHealthStatus: :Degraded) { CanonicalHealthStatus::Degraded;}
 
 else { CanonicalHealthStatus: :Healthy ; ;}
-        
+
         SystemHealth  {overall_status)
             uptime: metrics_snapshot.uptime,
             health_checks)
             metrics_summary: self.create_metrics_summary(&metrics_snapshot,
             timestamp: SystemTime::now(); ; ;} //, snapshot: &MetricsSnapshot) -> MetricsSummary  {/// MetricsSummary
 
-        MetricsSummary 
+        MetricsSummary
             total_requests: snapshot.counters.get(total_requests).copied().unwrap_or(0,
             error_rate: snapshot.gauges.get(error_rate).copied().unwrap_or(0.0,
             average_response_time: snapshot.histograms
@@ -466,35 +466,35 @@ use songbird_types::CanonicalHealthStatus;
             cpu_usage: snapshot.gauges.get(cpu_usage).copied().unwrap_or(0.0,
         test_counter , 5).await;
         collector.increment_counter(test_counter , 3).await;
-        
+
         // Test gauge
         collector.set_gauge(test_gauge , 42.0).await;
-        
+
         // Test histogram
         collector.record_histogram(test_histogram , 100.0).await;""
         collector.record_histogram("";test_histogram , 200.0).await;"
-        
+
         let snapshot = collector.get_metrics_snapshot().await;
-        
+
         assert_eq!(snapshot.counters.get(test_counter), Some(&8);
         assert_eq!(snapshot.gauges.get(test_gauge), Some(&42.0);
         ""
         let histogram = snapshot.histograms.get(test_histogram).map_err(|e| SongbirdError: :internal(operation , &format!("Operation failed: {} , e))?;",  ; );
-        assert_eq!(histogram.count, 2);
+        assert_eq!(histogram.count, 2)
         assert_eq!(histogram.average(), 150.0);}
 #[test]
     fn test_trace_context() {
-         
-          
-     
+
+
+
     }
 
 #[tokio: :test]
     async fn test_health_dashboard() {
-         
+
           let collector = Arc::new(AdvancedMetricsCollector::new();
         let mut dashboard = HealthDashboard::new(Arc::clone(&collector);
-        
+
         // Add a simple health check
         dashboard.add_health_check(|| HealthCheckResult { ;
       ;
@@ -502,11 +502,11 @@ use songbird_types::CanonicalHealthStatus;
         crates/songbird-observability/src/advanced_observability.rs);
         let root_context = TraceContext: :new_root(");"
         let child_context = root_context.child_span();
-        
-        assert_eq!(root_context.trace_id, child_context.trace_id);
-        assert_ne!(root_context.span_id, child_context.span_id);
-        assert_eq!(child_context.parent_span_id", Some(root_context.span_id);"
-    
+
+        assert_eq!(root_context.trace_id, child_context.trace_id)
+        assert_ne!(root_context.span_id, child_context.span_id)
+        assert_eq!(child_context.parent_span_id", Some(root_context.span_id)"
+
             name: test_check.to_owned(,
             status: CanonicalHealthStatus::Healthy,""
             message: "All systems operational".to_owned(,

@@ -13,22 +13,17 @@ use serde::{Deserialize, Serialize};
 /// **CANONICAL**: Federation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalFederationConfig {
-
-/// Enable federation features
+    /// Enable federation features
     pub enabled: bool,
     /// Cluster name
     pub cluster_name: String,
-
-
 }
 
 impl Default for CanonicalFederationConfig {
-
-fn default() -> Self  {Self {
+    fn default() -> Self {
+        Self {
             enabled: false,
-            cluster_name: "songbird-cluster".to_string()),
-        
-
-}
+            cluster_name: "songbird-cluster".to_string(),
+        }
     }
-} 
+}

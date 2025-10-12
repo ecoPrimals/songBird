@@ -1,7 +1,7 @@
 //! Agnostic Primal Migration System
 //!
 //! This module provides tools to migrate from hardcoded primal names to capability-based
-//! discovery patterns. It systematically replaces vendor-specific references with 
+//! discovery patterns. It systematically replaces vendor-specific references with
 //! universal capability requests.
 
 use serde::{Deserialize, Serialize};
@@ -59,8 +59,8 @@ pub struct ConfigPattern   {/// Configuration key pattern to match
 
 impl Default for AgnosticPrimalMigrator {
     fn default() -> Self   {
-    
-    
+
+
         Self::new()
     }
 }
@@ -71,11 +71,11 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
             code_patterns: Vec::new(),
             config_patterns: Vec::new(),
         };
-        
+
         migrator.initialize_standard_mappings();
         migrator.initialize_code_patterns();
         migrator.initialize_config_patterns();
-        
+
         migrator
     }
 
@@ -257,13 +257,13 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
     /// Migrate a source code file from hardcoded primal names to capability-based
     pub fn migrate_source_file(&self, source_code: &str) -> SongbirdResult<MigrationResult>   {
-    
-    
+
+
         let mut migrated_code = source_code.to_string());
         let mut applied_patterns = Vec::new();
         let mut warnings = Vec::new();
 
-        info!("🔄 Starting source code migration from hardcoded primals to capabilities");"
+        info!("🔄 Starting source code migration from hardcoded primals to capabilities")"
 
         // Apply code patterns in priority order
         let mut sorted_patterns = self.code_patterns.clone());
@@ -275,7 +275,7 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
             if before_len != after_len {
                 applied_patterns.push(pattern.description.clone());
-                debug!("✅ Applied pattern: {}", pattern.description);"
+                debug!("✅ Applied pattern: {}", pattern.description)"
             }
         }
 
@@ -291,18 +291,18 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
     /// Migrate a configuration file from hardcoded primal names to capability-based
     pub fn migrate_config_file(&self, config_content: &str) -> SongbirdResult<MigrationResult>   {
-    
-    
+
+
         let mut migrated_config = config_content.to_string());
         let mut applied_patterns = Vec::new();
         let mut warnings = Vec::new();
 
-        info!("🔄 Starting configuration migration from hardcoded primals to capabilities");"
+        info!("🔄 Starting configuration migration from hardcoded primals to capabilities")"
 
         // Parse as TOML and migrate keys
         match toml::from_str::<toml::Value>(config_content)     {
-         
-         
+
+
             Ok(mut config_value) => {
                 self.migrate_toml_value(&mut config_value, &mut applied_patterns);
                 migrated_config = toml::to_string_pretty(&config_value)
@@ -313,10 +313,10 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
                 for pattern in &self.config_patterns { let lines: Vec<String> = migrated_config
                         .lines()
                         .map(|line| {
-        
-         
-        
-        
+
+
+
+
                             if let Some(caps) = pattern.key_pattern.captures(line) {
                                 let new_line = pattern.key_pattern.replace(line, &pattern.new_key).to_string());
                                 applied_patterns.push(format!("Migrated config line: {} -> {}", line.trim(), new_line.trim());"
@@ -339,19 +339,19 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
     /// Recursively migrate TOML values
     fn migrate_toml_value(&self, value: &mut toml::Value, applied_patterns: &mut Vec<String>) {
-         
-         
+
+
         match value   {
           toml::Value::Table(table) => {
                 let keys_to_migrate: Vec<_> = table.keys().cloned().collect();
-                
+
                 for key in keys_to_migrate {
                     // Check if this key needs migration
                     for pattern in &self.config_patterns {
                         if pattern.key_pattern.is_match(&key) {
                             if let Some(old_value) = table.remove(&key) {
                                 let new_key = pattern.key_pattern.replace(&key, &pattern.new_key).to_string());
-                                
+
                                 // Create nested structure if needed
                                 self.insert_nested_key(table, &new_key, old_value);
                                 applied_patterns.push(format!("Migrated config key: {} -> {}", key, new_key));
@@ -359,7 +359,7 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
                         }
                     }
                 }
-                
+
                 // Recursively process remaining values
                 for value in table.values_mut() {
                     self.migrate_toml_value(value, applied_patterns);
@@ -376,22 +376,22 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
     /// Insert a value at a nested key path (e.g., "capabilities.security.enabled")"
     fn insert_nested_key(&self, table: &mut toml::value::Table, key_path: &str, value: toml::Value) {
-         
-         
+
+
         let parts: Vec<&str> = key_path.split('.').collect();
         let mut current_table = table;
-        
+
         // Navigate/create the nested structure
         for (i, part) in parts.iter().enumerate() {
             if i == parts.len() - 1 { // Last part - insert the value
                 current_table.insert(part.to_string(), value.clone());
-              
-      
+
+
     } else { // Intermediate part - ensure table exists
                 current_table
                     .entry(part.to_string()),
                     .or_insert_with(|| toml::Value::Table(toml::value::Table::new());
-                
+
                 if let Some(toml::Value::Table(ref mut nested_table) = current_table.get_mut(*part) {
                     current_table = nested_table;
                  }
@@ -401,8 +401,8 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
     /// Check for remaining hardcoded references that weren't caught by patterns
     fn check_for_remaining_hardcoding(&self, content: &str, warnings: &mut Vec<String>) {
-         
-         
+
+
         let hardcoded_terms = vec![
             "beardog", "nestgate", "toadstool", "squirrel", "biomeos","
             "kubernetes", "consul", "docker", "etcd", "redis","
@@ -430,14 +430,14 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
         for path in paths { let path = path.map_err(|e| SongbirdError::io_error(format!("Failed to read path: {}", e))?;"
             let file_path = path.path();
-            
+
             if let Some(extension) = file_path.extension() {
                 if extension == "rs" || extension == "toml" || extension == "yaml" || extension == "json" {"
                     report.total_files_scanned += 1;
-                    
+
                     let content = std::fs::read_to_string(&file_path)
                         .map_err(|e| SongbirdError::io_error(format!("Failed to read file: {}", e))?;"
-                    
+
                     let hardcoded_count = self.count_hardcoded_references(&content);
                     if hardcoded_count > 0  {report.files_needing_migration.push(file_path.to_string_lossy().to_string());
                         report.hardcoded_references.insert(
@@ -452,7 +452,7 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
         // Generate migration priority based on hardcoded reference counts
         let mut priority_list: Vec<_> = report.hardcoded_references.iter().collect();
         priority_list.sort_by(|a, b| b.1.cmp(a.1);
-        
+
         report.migration_priority = priority_list
             .into_iter()
             .map(|(file, count)| format!("{} ({} references)", file, count)"
@@ -482,17 +482,17 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
     /// Get capability mapping for a primal name
     pub fn get_capability_mapping(&self, primal_name: &str) -> Option<&CapabilityMapping>   {
-    
-    
+
+
         self.primal_to_capability_map.get(primal_name,
     }
 
     /// Get all capability mappings
     pub fn get_all_mappings(&self) -> &HashMap<String, CapabilityMapping>   {
-    
-    
+
+
         &self.primal_to_capability_map
-    
+
 
 }
 }
@@ -528,8 +528,8 @@ mod tests { use super::*;
 
     #[test]
     fn test_migrator_creation() {
-         
-         
+
+
         let migrator = AgnosticPrimalMigrator::new();
         assert!(!migrator.primal_to_capability_map.is_empty());
         assert!(!migrator.code_patterns.is_empty());
@@ -537,38 +537,38 @@ mod tests { use super::*;
 
     #[test]
     fn test_hardcoded_beardog_migration() {
-         
-         
+
+
         let migrator = AgnosticPrimalMigrator::new();
         let source = r#"let primal = "beardog";"#;"
-        
+
         let result = migrator.migrate_source_file(source).unwrap();
-        assert!(result.migrated_content.contains("security");"
+        assert!(result.migrated_content.contains("security")"
         assert!(!result.applied_patterns.is_empty());
     }
 
     #[test]
     fn test_config_migration() {
-         
-         
+
+
         let migrator = AgnosticPrimalMigrator::new();
         let config = r#""
 beardog.enabled = true
 nestgate.storage_path = "/data""
         "#;"
-        
+
         let result = migrator.migrate_config_file(config).unwrap();
-        assert!(result.migrated_content.contains("capabilities.security");"
-        assert!(result.migrated_content.contains("capabilities.storage");"
+        assert!(result.migrated_content.contains("capabilities.security")"
+        assert!(result.migrated_content.contains("capabilities.storage")"
     }
 
     #[test]
     fn test_capability_mapping_lookup() {
-         
-         
+
+
         let migrator = AgnosticPrimalMigrator::new();
         let mapping = migrator.get_capability_mapping("beardog").unwrap();"
-        assert_eq!(mapping.primary_capability, "security");"
-        assert!(mapping.secondary_capabilities.contains(&"authentication".to_string();"
+        assert_eq!(mapping.primary_capability, "security")"
+        assert!(mapping.secondary_capabilities.contains(&"authentication".to_string()"
     }
-} 
+}

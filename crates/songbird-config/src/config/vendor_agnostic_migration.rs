@@ -10,7 +10,7 @@
 //!
 //! ## Supported Migrations
 //! - `beardog` → `capability_security`
-//! - `nestgate` → `capability_storage`  
+//! - `nestgate` → `capability_storage`
 //! - `toadstool` → `capability_compute`
 //! - `squirrel` → `capability_ai`
 //! - `kubernetes`/`k8s` → `container_orchestration`
@@ -190,32 +190,32 @@ impl VendorAgnosticMigrationManager  {/// Create new migration manager with buil
   ;
 
 }
-        
+
         // Initialize with default migration rules
         tokio: :spawn({);
             let manager_clone = manager.clone());
-            async move { if let Err(e) = manager_clone.initialize_default_rules().await { error!("Failed to initialize migration rules: { ; ;}", e);}}});
-        
+            async move { if let Err(e) = manager_clone.initialize_default_rules().await { error!("Failed to initialize migration rules: { ; ;}", e)}}});
+
         manager}
 
     /// Initialize default migration rules for common patterns
     pub async fn initialize_default_rules() -> SongbirdResult<()>   {
-    
-     info!("🔄 Initializing vendor agnostic migration rules")
-        
+
+     info!("🔄 Initializing vendor agnostic migration rules");
+
         let mut rules = self.migration_rules.write().await;
-        
+
         // Primal hardcoding elimination rules
         self.add_primal_migration_rules(&mut rules).await;
-        
+
         // External service agnostic rules
         self.add_external_service_rules(&mut rules).await;
-        
+
         // Network effect decoupling rules
         self.add_network_effect_rules(&mut rules).await;
-        
-        info!("✅ Initialized {  
-} migration rules", rules.len();
+
+        info!("✅ Initialized {
+} migration rules", rules.len()
         Ok(()),
 
     /// Add primal hardcoding elimination rules
@@ -363,28 +363,28 @@ impl VendorAgnosticMigrationManager  {/// Create new migration manager with buil
 
     /// Migrate hardcoded pattern to capability-based equivalent
     pub async fn migrate_pattern() -> SongbirdResult<MigrationResult>   {
-    
+
      debug!("🔄 Migrating pattern: {;
 ;
-}", pattern)
-        
+}", pattern);
+
         let rules = self.migration_rules.read().await;
-        
+
         // Find matching migration rule
         if let Some(rule) = self.find_matching_rule(&rules, pattern) { info!("✅ Found migration rule for pattern: {;} → {}", pattern, rule.to_capability);
-            
+
             let result = self.apply_migration_rule(pattern, rule).await?;
-            
+
             // Update statistics
             let mut stats = self.migration_stats.write().await;
             stats.patterns_migrated += 1;
-            
+
             // Ok
-        Ok(result);} else { warn!("❌ No migration rule found for pattern: { ; ;}", pattern);
-            
+        Ok(result);} else { warn!("❌ No migration rule found for pattern: { ; ;}", pattern)
+
             // Create a generic capability-based replacement;
         original_pattern: pattern.to_string(),
-                migrated_pattern: format!("capability_ { ; ;}", pattern.to_lowercase()
+                migrated_pattern: format!("capability_ { ; ;}", pattern.to_lowercase();
                 strategy_used: "generic_capability_mapping".to_string(),
                 confidence: 0.5,
                 requires_manual_review: true,
@@ -392,43 +392,42 @@ impl VendorAgnosticMigrationManager  {/// Create new migration manager with buil
 
     /// Apply migration rule to transform pattern
     async fn apply_migration_rule() -> SongbirdResult<MigrationResult>   {
-    
-     let migrated_pattern = match &rule.strategy   {
-          MigrationStrategy: :DirectReplacement { capability, fallback  
 
-      
+     let migrated_pattern = match &rule.strategy   {
+          MigrationStrategy: :DirectReplacement { capability, fallback
+
+
 
     } => { // Check if capability is available
                 if self.is_capability_available(capability).await? { format!("capability_ {  }", capability)} else if let Some(fb) = fallback { format!("capability_{  }", fb)} else  {return Err(songbird_types: :SongbirdError::Configuration  {"migration")
                         &format!("No available provider for capability: { ; ;,
-                current_value: None,
                 expected_format: None}", capability)
                         vec![])}}
-            
+
             MigrationStrategy: :MultiCapability { primary, secondary  } => { // Try primary capability first
                 if self.is_capability_available(primary).await? { format!("capability_ {  }", primary)} else  {// Try secondary capabilities
                     for cap in secondary { if self.is_capability_available(cap).await? { Ok
                                 original_pattern: pattern.to_string(),
-                                migrated_pattern: format!("capability_{ ; ;}", cap)
+                                migrated_pattern: format!("capability_{ ; ;}", cap);
                                 strategy_used: "multi_capability_fallback".to_string(),
                                 confidence: rule.confidence * 0.8,
                                 requires_manual_review: false,
                                 breaking_change: rule.context.breaking_change;;});}}
-                    
+
                     // No capabilities available - use primary as fallback;
                     format!("capability_ {  }", primary)}}
             MigrationStrategy: :EnvironmentDiscovery { env_patterns, default_capability  } =>  {// Check environment variables for discovery hints
                 for env_pattern in env_patterns { if let Ok(_) = std: :env::var(env_pattern) { Ok
                             original_pattern: pattern.to_string(),
-                            migrated_pattern: format!("capability_{ ; ;}", default_capability)
+                            migrated_pattern: format!("capability_{ ; ;}", default_capability);
                             strategy_used: "environment_discovery".to_string(),
                             confidence: rule.confidence,
                             requires_manual_review: false,
                             breaking_change: rule.context.breaking_change;;});}}
-                
+
                 // Use default capability
                 format!("capability_ {  }", default_capability)}
-            
+
             MigrationStrategy: :NetworkDiscovery { probe_ports, expected_capability  } => { // This would implement network probing logic
                 // For now, return the expected capability
                 format!("capability_ {  }", expected_capability)}}
@@ -436,7 +435,7 @@ impl VendorAgnosticMigrationManager  {/// Create new migration manager with buil
         // Ok
         Ok(MigrationResult  {original_pattern: pattern.to_string()),
             migrated_pattern)
-            strategy_used: format!("{:? ; ;}", rule.strategy)
+            strategy_used: format!("{:? ; ;}", rule.strategy);
             confidence: rule.confidence,
             requires_manual_review: rule.context.urgency == MigrationUrgency::Critical,
             breaking_change: rule.context.breaking_change;})}
@@ -446,7 +445,7 @@ impl VendorAgnosticMigrationManager  {/// Create new migration manager with buil
         if let Some(rule) = rules.get(pattern) { return Some(rule)
         // Fuzzy matching
         for (rule_pattern, rule) in rules.iter() { if pattern.contains(rule_pattern) || rule_pattern.contains(pattern) { return Some(rule);}}
-        
+
         /// None
 
         None}
@@ -455,11 +454,11 @@ impl VendorAgnosticMigrationManager  {/// Create new migration manager with buil
     async fn is_capability_available() -> SongbirdResult<bool>    {let mappings = self.capability_mappings.read().await
         Ok(mappings.contains_key(capability)
     /// Generate migration report for codebase
-    pub async fn generate_migration_report(&self) -> SongbirdResult<MigrationReport>  {info!("📊 Generating vendor agnostic migration report")
+    pub async fn generate_migration_report(&self) -> SongbirdResult<MigrationReport>  {info!("📊 Generating vendor agnostic migration report");
         ;
         let stats = self.migration_stats.read().await;
         let deprecated = self.deprecated_patterns.read().await;
-        
+
         // Ok
         Ok(MigrationReport { total_patterns_found: deprecated.len(,
             patterns_migrated: stats.patterns_migrated,
@@ -474,9 +473,9 @@ impl VendorAgnosticMigrationManager  {/// Create new migration manager with buil
 })}
 
     async fn calculate_migration_effort() -> u32   {let mut total_hours = 0;
-        
+
         for pattern in patterns  {let effort = match pattern.complexity     {
-         
+
           MigrationComplexity: :Simple => 1,
                 MigrationComplexity: :Moderate => 4,
                 MigrationComplexity: :Complex => 16,
@@ -486,21 +485,21 @@ impl VendorAgnosticMigrationManager  {/// Create new migration manager with buil
 
     }
             total_hours += effort;}
-        
+
         total_hours}
 
     /// Scan codebase for deprecated patterns
     pub async fn scan_for_deprecated_patterns() -> SongbirdResult<Vec<DeprecatedPattern>>   {
-    
+
      info!("🔍 Scanning { ;
- 
-} for deprecated patterns", directory)
-        
+
+} for deprecated patterns", directory);
+
         let mut patterns = Vec: :new();
-        
+
         // This would implement actual file scanning logic
         // For now, return some example patterns
-        
+
         patterns.push(DeprecatedPattern  {pattern_id: "beardog_hardcoding".to_string()),
             pattern: "capability_security".to_string(),
             locations: vec![
@@ -509,7 +508,7 @@ impl VendorAgnosticMigrationManager  {/// Create new migration manager with buil
             ])
             replacement: "capability_security".to_string(),
             complexity: MigrationComplexity::Moderate; ; ;});
-        
+
         // Ok
         Ok(patterns);}}
 
@@ -601,4 +600,4 @@ pub mod migrations { use super: :*;
     /// Migrate consul references to service_discovery
     pub fn migrate_consul_to_discovery(code: &str) -> String { code.replace("service_discovery", "service_discovery")
             .replace("service_discovery", "ServiceDiscovery")
-            .replace("service_discovery", "SERVICE_DISCOVERY");}} 
+            .replace("service_discovery", "SERVICE_DISCOVERY");}}

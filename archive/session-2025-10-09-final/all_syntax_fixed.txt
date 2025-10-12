@@ -1,0 +1,107 @@
+    Checking songbird-config v0.1.0 (/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-config)
+    Checking songbird-universal v0.1.0 (/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-universal)
+    Checking songbird-canonical v0.1.0 (/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-canonical)
+error: unexpected closing delimiter: `]`
+   --> crates/songbird-universal/src/sovereignty/router.rs:184:9
+    |
+ 52 | impl SovereigntyRouter  {pub fn new() -> Self  {Self {
+    |                         - the nearest open delimiter
+...
+ 69 |     ) -> SongbirdResult<Vec<RoutingPath>> {
+    |     - missing open `(` for this delimiter
+...
+180 |     async fn assess_service_security_capabilities(&self, service: &ServiceInfo) -> SongbirdResult<Vec<SecurityCapability>>  {// In a real...
+    |                                                                                                                             - the nearest open delimiter
+181 |         Ok(vec![
+    |                - the nearest open delimiter
+182 |             SecurityCapability::Encryption)
+    |                                           - missing open `(` for this delimiter
+183 |             SecurityCapability::Authentication)
+    |                                               - missing open `(` for this delimiter
+184 |         ])
+    |         ^ unexpected closing delimiter
+
+error: could not compile `songbird-universal` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: mismatched closing delimiter: `}`
+  --> crates/songbird-config/src/config/environment.rs:62:49
+   |
+62 |             max_connections: get_max_connections(,
+   |                                                 ^ unclosed delimiter
+...
+76 |         }
+   |         ^ mismatched closing delimiter
+
+error: mismatched closing delimiter: `}`
+  --> crates/songbird-config/src/config/environment.rs:86:49
+   |
+86 |             health_endpoint: get_primal_endpoint("health",
+   |                                                 ^ unclosed delimiter
+87 |             metrics_endpoint: get_primal_endpoint("metrics"),
+88 |         }
+   |         ^ mismatched closing delimiter
+
+error: mismatched closing delimiter: `}`
+  --> crates/songbird-config/src/config/environment.rs:95:41
+   |
+95 |             max_cpu_cores: get_cpu_limit(,
+   |                                         ^ unclosed delimiter
+...
+98 |         }
+   |         ^ mismatched closing delimiter
+
+error: mismatched closing delimiter: `}`
+   --> crates/songbird-config/src/config/environment.rs:106:47
+    |
+106 |             enable_zero_copy: enable_zero_copy(,
+    |                                               ^ unclosed delimiter
+...
+109 |         }
+    |         ^ mismatched closing delimiter
+
+error: mismatched closing delimiter: `}`
+   --> crates/songbird-config/src/config/environment.rs:178:17
+    |
+175 | pub fn get_environment() -> String {
+    |                                    - closing delimiter possibly meant for this
+...
+178 |         .or_else(|_| env::var("RAILS_ENV")
+    |                 ^ unclosed delimiter
+...
+184 | }
+    | ^ mismatched closing delimiter
+
+error: unexpected closing delimiter: `}`
+   --> crates/songbird-config/src/config/environment.rs:213:5
+    |
+202 |     {
+    |     - the nearest open delimiter
+203 |         return "testing".to_string());
+    |                                     - missing open `(` for this delimiter
+...
+211 |     {
+    |     - the nearest open delimiter
+212 |         return "development".to_string());
+    |                                         - missing open `(` for this delimiter
+213 |     }
+    |     ^ unexpected closing delimiter
+
+error: could not compile `songbird-config` (lib) due to 6 previous errors
+error[E0432]: unresolved import `songbird_types::adapters::canonical`
+ --> crates/songbird-canonical/src/adapters.rs:9:35
+  |
+9 | pub use songbird_types::adapters::canonical::*;
+  |                                   ^^^^^^^^^ could not find `canonical` in `adapters`
+
+error[E0432]: unresolved import `songbird_types::config::consolidated_canonical`
+ --> crates/songbird-canonical/src/config/adapters.rs:8:29
+  |
+8 | use songbird_types::config::consolidated_canonical::CanonicalHealthCheckConfig as HealthCheckConfig;
+  |                             ^^^^^^^^^^^^^^^^^^^^^^ could not find `consolidated_canonical` in `config`
+
+error[E0432]: unresolved import `songbird_types::traits::canonical`
+  --> crates/songbird-canonical/src/providers.rs:15:33
+   |
+15 | pub use songbird_types::traits::canonical::{Provider,
+   |                                 ^^^^^^^^^ could not find `canonical` in `traits`
+

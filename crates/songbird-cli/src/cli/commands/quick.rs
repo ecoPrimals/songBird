@@ -1,6 +1,6 @@
 //! Headless Quick Setup API
 //!
-//! Provides API endpoints for system resource detection, network discovery)
+//! Provides API endpoints for system resource detection, network discovery,
 //! and zero-touch configuration that biomeOS can consume.
 //!
 //! All interactive UI elements have been removed - this module provides
@@ -42,7 +42,8 @@ pub struct SystemResources  {pub cpu_cores: usize,
 
 /// Network speed classification
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum NetworkSpeed  {Slow)
+pub enum NetworkSpeed {
+    Slow,
     Medium,
     Fast,
 }
@@ -94,16 +95,18 @@ pub struct QuickSetupResponse  {pub success: bool,
 
 /// Setup status
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SetupStatus  {ResourcesDetected)
+pub enum SetupStatus {
+    ResourcesDetected,
     NetworksDiscovered,
     ConfigurationGenerated,
     SystemReady,
-    Error(String)
+    Error(String),
 }
 
 /// Endpoint preferences
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EndpointPreferences  {pub preferred_discovery_methods: Vec<String>,
+pub struct EndpointPreferences {
+    pub preferred_discovery_methods: Vec<String>,
     pub timeout_seconds: Option<u64>,
     pub max_networks_to_discover: Option<usize>,
 }
@@ -113,44 +116,45 @@ pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> CliResult<Qu
     let resources = resources::detect_system_resources_api().await?;
 
     // Step 2: Discover networks
-    let discovery_params = DiscoveryParameters  {methods: request
+    let discovery_params = DiscoveryParameters {
+        methods: request
             .endpoint_preferences
             .as_ref()
-            .map(|p| p.preferred_discovery_methods.clone()
-            .unwrap_or_else(|| vec!["subnet".to_string(), "multicast".to_string()],,"
+            .map(|p| p.preferred_discovery_methods.clone())
+            .unwrap_or_else(|| vec!["subnet".to_string(), "multicast".to_string()]),
         timeout_ms: request
             .endpoint_preferences
             .as_ref()
             .and_then(|p| p.timeout_seconds)
             .unwrap_or(30)
-            * 1000)
+            * 1000,
         max_results: request
             .endpoint_preferences
             .as_ref()
             .and_then(|p| p.max_networks_to_discover)
-            .unwrap_or(10)
+            .unwrap_or(10),
     };
 
     let discovered_networks = discovery::discover_networks_api(discovery_params).await?;
 
     // Step 3: Generate optimized configuration
     let node_name = request.node_name.unwrap_or_else(|| {
-        format!("{}-{}", whoami::username(), hostname::get().unwrap_or_default().to_string_lossy()"
+        format!("{}-{}", whoami::username(), hostname::get().unwrap_or_default().to_string_lossy())
     });
 
-    // Simple config generation (avoiding complex field access for now)
+    // Simple config generation (avoiding complex field access for now,
     let config = OrchestratorConfig::default();
     // Basic configuration will be handled by the config system
 
     let next_steps = generate_next_steps(&discovered_networks, &request.contribute_type);
 
-    Ok(QuickSetupResponse  {success: true)
+    Ok(QuickSetupResponse {
+        success: true,
+        setup_time_ms: start.elapsed().as_millis() as u64,
         node_name,
-        system_resources: resources,
-        discovered_networks)
-        recommended_config: config,
-        setup_status: SetupStatus::SystemReady,
-        next_steps)
+        discovered_networks,
+        optimized_config: config,
+        next_steps,
     })
 }
 
@@ -163,12 +167,12 @@ fn generate_next_steps(
 
     match networks.len() {
         0 => {
-            steps.push("Start a new Songbird network".to_string();"
-            steps.push("Configure firewall and network settings".to_string();"
+            steps.push("Start a new Songbird network ".to_string());
+            steps.push("Configure firewall and network settings ".to_string());
         }
         1 => {
-            steps.push(format!("Join the '{}' network", networks[0].name));
-            steps.push("Verify network connectivity".to_string();"
+            steps.push(format!("Join the '{}' network ", networks[0].name));
+            steps.push("Verify network connectivity ".to_string());
         }
         _ => {
             // Find the network with the highest compatibility score
@@ -178,54 +182,56 @@ fn generate_next_steps(
                     .unwrap_or(std::cmp::Ordering::Equal)
             }) {
                 steps.push(format!("Recommended: Join '{}' network", best_network.name));
-                steps.push("Alternative networks available".to_string();"
+                steps.push("Alternative networks available".to_string());
             } else {
-                steps.push("No networks available".to_string();"
+                steps.push("No networks available".to_string());
             }
         }
     }
 
     match contribute_type {
         ContributeType::Compute => {
-            steps.push("Enable compute sharing in configuration".to_string();"
+            steps.push("Enable compute sharing in configuration".to_string());
         }
         ContributeType::Storage => {
-            steps.push("Configure storage allocation limits".to_string();"
+            steps.push("Configure storage allocation limits".to_string());
         }
         ContributeType::Data => {
-            steps.push("Set up data sharing protocols".to_string();"
+            steps.push("Set up data sharing protocols".to_string());
         }
         ContributeType::All => {
-            steps.push("Configure resource sharing for all types".to_string();"
+            steps.push("Configure resource sharing for all types".to_string());
         }
     }
 
-    steps.push("Monitor system status via API".to_string();"
+    steps.push("Monitor system status via API".to_string());
     steps
 }
 
-/// Legacy execute function for backward compatibility (now calls headless API,
+/// Legacy execute function for backward compatibility (now calls headless API)
 pub async fn execute_quick_gaming(name: Option<String>, auto_detect: bool, family_safe: bool) -> CliResult<()> {
-    println!("🚀 Quick gaming setup...");"
-    
+    println!("🚀 Quick gaming setup...");
+
     if let Some(session_name) = name {
-        println!("🎮 Session name: {}", session_name);"
+        println!("🎮 Session name: {}", session_name);
     }
-    
+
     if auto_detect {
-        println!("🔍 Auto-detecting gaming protocols");"
+        println!("🔍 Auto-detecting gaming protocols");
     }
-    
+
     if family_safe {
-        println!("👨‍👩‍👧‍👦 Family-safe mode enabled");"
+        println!("👨‍👩‍👧‍👦 Family-safe mode enabled");
     }
-    
-    println!("✅ Quick gaming setup complete");"
-    Ok(()),
+
+    println!("✅ Quick gaming setup complete");
+    Ok(())
 }
 
 // Keep the legacy function for compatibility
-pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> CliResult<()>  {let request = QuickSetupRequest  {contribute_type: contribute,
+pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> CliResult<()> {
+    let request = QuickSetupRequest {
+        contribute_type: contribute,
         node_name: name,
         endpoint_preferences: None,
         security_preferences: None,
@@ -235,10 +241,12 @@ pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> 
 
     // For CLI compatibility, just indicate success
     if response.success {
-        Ok(()),
-    } else  {Err(CliError::Config  {message: "Quick setup failed".to_string()),
+        Ok(())
+    } else {
+        Err(CliError::Config {
+            message: "Quick setup failed".to_string(),
             field: None,
-            suggestion: Some("Check API response for details".to_string(),"
+            suggestion: Some("Check API response for details".to_string()),
         })
     }
 }

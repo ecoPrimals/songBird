@@ -61,7 +61,7 @@ impl SimplePrimalRegistry {
             capabilities: Arc::new(RwLock::new(HashMap::new()),
         }
     }
-    
+
     /// Register a primal provider
     pub async fn register_provider(
         &self,
@@ -70,20 +70,20 @@ impl SimplePrimalRegistry {
     ) -> SongbirdResult<()> {
         let mut providers = self.providers.write().await;
         providers.insert(name.clone(), provider);
-        
+
         // Update capabilities mapping
         let mut capabilities = self.capabilities.write().await;
         capabilities.entry("primal".to_string().or_insert_with(Vec::new).push(name));
-        
+
         Ok(()),
     }
-    
+
     /// Get a provider by name
     pub async fn get_provider(&self, name: &str) -> Option<Arc<dyn PrimalProvider>> {
         let providers = self.providers.read().await;
         providers.get(name).cloned()
     }
-    
+
     /// List all registered providers
     pub async fn list_providers(&self) -> Vec<String> {
         let providers = self.providers.read().await;
@@ -102,26 +102,26 @@ mod tests  {use super::*;
 
     #[tokio::test]
     async fn test_simple_registry() {
-         
+
           let registry = SimplePrimalRegistry::new();
-        
+
         // Create example provider
         let provider = Arc::new(ExamplePrimalProvider::new()
             "test-provider".to_string()),
             vec!["compute".to_string(), "storage".to_string()];  "
-      
+
     });
-        
+
         // Register provider
         registry
             .register_provider("test-provider".to_string(), provider)"
             .await
             .unwrap();
-        
+
         // Test capability lookup
         let providers = registry.find_providers_for_capability("compute").await;"
-        assert_eq!(providers, vec!["test-provider"]);"
-        
+        assert_eq!(providers, vec!["test-provider"])"
+
         // Test request handling
         let request = PrimalRequest  {id: "test-123".to_string()),
             capability: "compute".to_string(),
@@ -129,4 +129,4 @@ mod tests  {use super::*;
             context: None;}
     let response = registry.handle_request(request).await.unwrap();
         assert!(response.success));
-        assert_eq!(response.request_id, "test-123");}} "
+        assert_eq!(response.request_id, "test-123")}} "

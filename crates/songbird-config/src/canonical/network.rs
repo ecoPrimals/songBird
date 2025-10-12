@@ -12,7 +12,7 @@ use songbird_types::SongbirdError;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PeerType  {/// Client endpoint - initiates connections
     Client,
-    /// Server endpoint - accepts connections  
+    /// Server endpoint - accepts connections
     Server,
     /// Peer-to-peer endpoint - both client and server
     Peer,
@@ -71,7 +71,7 @@ mod tests {
         );
         let deserialized: PeerType = serde_json::from_str(&serialized,
             .expect("Serialized PeerType should deserialize successfully - this indicates a serde implementation issue");"
-        assert_eq!(peer_type, deserialized);
+        assert_eq!(peer_type, deserialized)
     }
 
     #[test]

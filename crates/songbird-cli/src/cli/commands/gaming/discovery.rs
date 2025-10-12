@@ -11,11 +11,11 @@ pub struct GamingManager;
 
 impl GamingManager {
     pub async fn new() -> CliResult<Self> {
-        Ok(Self)
+        Ok(Self,
     }
 
     pub async fn scan_for_games(
-        &mut self)
+        &mut self,
         _interface: Option<String>,
         _duration: Duration,
     ) -> CliResult<Vec<String>> {
@@ -30,7 +30,7 @@ pub async fn scan_for_games(
     _continuous: bool,
     _filter: Option<String>,
 ) -> CliResult<()> {
-    println!("{}", "🔍 Scanning for gaming traffic...".bright_cyan();"
+    println!("{}", "🔍 Scanning for gaming traffic...".bright_cyan()"
 
     let mut gaming_manager = GamingManager::new().await?;
     let interface = interface.as_deref().unwrap_or("auto");"
@@ -43,21 +43,21 @@ pub async fn scan_for_games(
         std::io::Write::flush(&mut std::io::stdout().unwrap();
         tokio::time::sleep(Duration::from_millis(500).await;
     }
-    println!();
+    println!()
 
     let detected_sessions = gaming_manager
-        .scan_for_games(Some(interface.to_string(), Duration::from_secs(_duration)
+        .scan_for_games(Some(interface.to_string(), Duration::from_secs(_duration,
         .await?;
 
     if detected_sessions.is_empty() {
-        println!("{}", "❌ No gaming traffic detected".yellow();"
+        println!("{}", "❌ No gaming traffic detected".yellow()"
         println!(
             "💡 Try running games and scanning again, or use 'songbird gaming host --auto' to start a session""
-        );
+        )
         return Ok(();
     }
 
-    println!("{}", "✅ Gaming traffic detected!".bright_green();"
+    println!("{}", "✅ Gaming traffic detected!".bright_green()"
     Ok(()),
 }
 
@@ -65,5 +65,5 @@ pub async fn scan_for_games(
 pub async fn show_compatible_games_for_protocols(
     _sessions: &[String], // Gaming sessions from canonical gaming types
 ) {
-    println!("   📦 Compatible games will be shown here");"
+    println!("   📦 Compatible games will be shown here");
 }

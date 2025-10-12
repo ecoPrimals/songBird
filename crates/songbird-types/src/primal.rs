@@ -76,8 +76,8 @@ impl Default for CanonicalPrimalId {
             primal_type: CanonicalPrimalType::default(),
             instance_id: "default-instance".to_string(),
             version: "0.1.0".to_string(),
-            endpoints: HashMap::new()),
-            metadata: HashMap::new()),
+            endpoints: HashMap::new(),
+            metadata: HashMap::new(),
         }
     }
 }
@@ -94,8 +94,8 @@ impl CanonicalPrimalId {
             primal_type,
             instance_id: instance_id.into(),
             version: version.into(),
-            endpoints: HashMap::new()),
-            metadata: HashMap::new()),
+            endpoints: HashMap::new(),
+            metadata: HashMap::new(),
         }
     }
 
@@ -154,7 +154,7 @@ impl Default for CanonicalPrimalConfig {
         Self {
             id: CanonicalPrimalId::default(),
             enabled: true,
-            config: HashMap::new()),
+            config: HashMap::new(),
             security_level: None,
         }
     }
@@ -167,7 +167,7 @@ impl CanonicalPrimalConfig {
         Self {
             id,
             enabled: true,
-            config: HashMap::new()),
+            config: HashMap::new(),
             security_level: None,
         }
     }
@@ -265,16 +265,17 @@ mod tests {
     fn test_primal_type_display() {
         assert_eq!(CanonicalPrimalType::Security.to_string(), "Security");
         assert_eq!(CanonicalPrimalType::Storage.to_string(), "Storage");
-        assert_eq!(
-            CanonicalPrimalType::Unknown("custom".to_string().to_string()),
-            "custom"
-        );
+        assert_eq!(CanonicalPrimalType::Unknown("custom".to_string()).to_string(), "custom");
     }
 
     #[test]
     fn test_primal_id_creation() {
+        let test_host = std::env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string());
+        let test_port =
+            std::env::var("TEST_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
+
         let mut id = CanonicalPrimalId::new(CanonicalPrimalType::Security, "security-001", "1.0.0");
-        id.with_endpoint("health", "http://localhost:8080/health");
+        id.with_endpoint("health", &format!("http://{}:{}/health", test_host, test_port));
         id.with_metadata("region", "us-west-2");
 
         assert!(id.is_security());

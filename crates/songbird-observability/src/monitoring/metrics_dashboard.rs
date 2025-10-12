@@ -466,11 +466,11 @@ impl MetricsDashboard  {/// Create a new metrics dashboard
 
     /// Start metrics collection process
     pub async fn start_metrics_collection(&mut self) -> SongbirdResult<()> {
-        info!("📊 Starting metrics collection...");"
+        info!("📊 Starting metrics collection...")"
 
         // Implement actual metrics collection logic
         let system_metrics = self.collect_system_metrics();
-        
+
         // Update dashboard with collected metrics
         self.update_system_metrics(system_metrics).await?;
         self.update_performance_metrics(self.collect_performance_metrics().await?).await?;
@@ -485,11 +485,11 @@ impl MetricsDashboard  {/// Create a new metrics dashboard
             loop {
                 interval.tick().await;
                 // Periodic metrics collection would go here
-                debug!("📊 Periodic metrics collection tick");"
+                debug!("📊 Periodic metrics collection tick")"
             }
         });
 
-        info!("✅ Metrics collection started successfully");"
+        info!("✅ Metrics collection started successfully")"
         Ok(success_result(())
     }
 

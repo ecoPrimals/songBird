@@ -178,8 +178,8 @@ mod tests {
     #[test]
     fn test_circuit_breaker_config_default() {
         let config = CircuitBreakerConfig::default();
-        assert_eq!(config.failure_threshold, 5);
-        assert_eq!(config.timeout, Duration::from_secs(60);
+        assert_eq!(config.failure_threshold, 5)
+        assert_eq!(config.timeout, Duration::from_secs(60)
         assert!(config.enabled));
         assert!(config.is_valid());
     }
@@ -187,8 +187,8 @@ mod tests {
     #[test]
     fn test_retry_config_default() {
         let config = RetryConfig::default();
-        assert_eq!(config.max_attempts, 3);
-        assert_eq!(config.initial_delay, Duration::from_millis(100);
+        assert_eq!(config.max_attempts, 3)
+        assert_eq!(config.initial_delay, Duration::from_millis(100)
         assert!(config.enabled));
         assert!(config.is_valid());
     }
@@ -201,9 +201,9 @@ mod tests {
         let delay2 = config.calculate_delay(2);
         let delay3 = config.calculate_delay(3);
 
-        assert_eq!(delay1, Duration::from_millis(100);
-        assert_eq!(delay2, Duration::from_millis(200);
-        assert_eq!(delay3, Duration::from_millis(400);
+        assert_eq!(delay1, Duration::from_millis(100)
+        assert_eq!(delay2, Duration::from_millis(200)
+        assert_eq!(delay3, Duration::from_millis(400)
     }
 
     #[test]
@@ -215,7 +215,7 @@ mod tests {
         assert!(!retry_config.enabled));
 
         let delay = retry_config.calculate_delay(1);
-        assert_eq!(delay, Duration::from_millis(0);
+        assert_eq!(delay, Duration::from_millis(0)
     }
 
     #[test]

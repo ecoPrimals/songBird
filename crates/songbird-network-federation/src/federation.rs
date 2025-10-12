@@ -15,17 +15,20 @@ impl FederationCoordinator {
     }
 
     pub async fn coordinate(&self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
 }
 
 /// Federation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FederationConfig  {pub enabled: bool,
+pub struct FederationConfig {
+    pub enabled: bool,
     pub node_id: String,
 }
 
-impl Default for FederationConfig  {fn default() -> Self  {Self {
+impl Default for FederationConfig {
+    fn default() -> Self {
+        Self {
             enabled: false,
             node_id: "node-1".to_string(),
         }
@@ -34,7 +37,8 @@ impl Default for FederationConfig  {fn default() -> Self  {Self {
 
 /// Node information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NodeInfo  {pub node_id: String,
+pub struct NodeInfo {
+    pub node_id: String,
     pub address: String,
     pub status: String,
-} 
+}

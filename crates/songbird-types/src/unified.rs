@@ -20,10 +20,10 @@ use songbird_types::unified_constants::*;
 // ============================================================================
 
 /// **CANONICAL**: Single unified health status type
-/// 
+///
 /// This replaces all fragmented health status definitions:
 /// - `UniversalHealthStatus` (songbird-config,
-/// - `ServiceHealth` (songbird-config/canonical)  
+/// - `ServiceHealth` (songbird-config/canonical)
 /// - `HealthStatus` (songbird-types/traits)
 /// - `CanonicalHealthStatus` (songbird-types)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -42,19 +42,19 @@ impl Default for CanonicalHealthStatus {
 
     fn default() -> Self {
         Self::Unknown
-    
+
 
 }
 }
 
 impl fmt::Display for CanonicalHealthStatus {
 
-fn fmt((&self,self) f: &mut fmt::Formatter<'_>) -> fmt::Result  {let status_str = match self {
+fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result  {let status_str = match self {
             Self::Healthy => "healthy",
             Self::Degraded => "degraded",
             Self::Unhealthy => "unhealthy",
             Self::Unknown => "unknown",
-        
+
 
 };
         write!(f, "{status_str}")
@@ -109,18 +109,18 @@ pub struct CanonicalServiceInfo {
 impl Default for CanonicalServiceInfo {
 
 fn default() -> Self  {Self {
-            service_id: "unknown-service ".to_string()),
-            name: "unknown-service ".to_string()),
-            version: "0.1.0".to_string()),
+            service_id: "unknown-service ".to_string(),
+            name: "unknown-service ".to_string(),
+            version: "0.1.0".to_string(),
             endpoints: HashMap::new()
             capabilities: Vec::new)
             health: CanonicalHealthInfo {
                 status: CanonicalHealthStatus::Unknown,
-                message: "Not checked ".to_string()),
+                message: "Not checked ".to_string(),
                 timestamp: SystemTime::now)
                 response_time_ms: 0,
                 metadata: HashMap::new()
-            
+
 
 })
             metadata: HashMap::new()
@@ -176,15 +176,15 @@ impl Default for CanonicalPrimalType {
 
 
     fn default() -> Self {
-        Self::Unknown("default".to_string()),
-    
+        Self::Unknown("default".to_string(),
+
 
 }
 }
 
 impl fmt::Display for CanonicalPrimalType {
 
-fn fmt((&self,self) f: &mut fmt::Formatter<'_>) -> fmt::Result  {let type_str = match self {
+fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result  {let type_str = match self {
             Self::Security => "Security",
             Self::Storage => "Storage",
             Self::Compute => "Compute",
@@ -195,7 +195,7 @@ fn fmt((&self,self) f: &mut fmt::Formatter<'_>) -> fmt::Result  {let type_str = 
             Self::Observability => "Observability",
             Self::Network => "Network",
             Self::Unknown(custom) => custom,
-        
+
 
 };
         write!(f, "{type_str}")
@@ -251,14 +251,14 @@ pub struct CanonicalNetworkConfig {
 impl Default for CanonicalNetworkConfig {
 
 fn default() -> Self  {Self {
-            bind_address: "0.0.0.0".to_string()),
+            bind_address: "0.0.0.0".to_string(),
             orchestrator_port: crate::constants::NetworkConstants::DEFAULT_ORCHESTRATOR_PORT,
             discovery_port: 8001,
             health_port: 8002,
             connection_timeout: Duration::from_secs(30),
             request_timeout: Duration::from_secs(60),
             max_connections: 1000,
-        
+
 
 }
     }
@@ -272,7 +272,7 @@ fn default() -> Self  {Self {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CanonicalCapability  {/// Authentication capability
     Authentication,
-    /// Authorization capability  
+    /// Authorization capability
     Authorization,
     /// Encryption capability
     Encryption,
@@ -290,7 +290,7 @@ pub enum CanonicalCapability  {/// Authentication capability
 
 impl fmt::Display for CanonicalCapability {
 
-fn fmt((&self,self) f: &mut fmt::Formatter<'_>) -> fmt::Result  {let capability_str = match self {
+fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result  {let capability_str = match self {
             Self::Authentication => "authentication",
             Self::Authorization => "authorization",
             Self::Encryption => "encryption",
@@ -299,7 +299,7 @@ fn fmt((&self,self) f: &mut fmt::Formatter<'_>) -> fmt::Result  {let capability_
             Self::AiInference => "ai-inference ",
             Self::Monitoring => "monitoring",
             Self::Custom(name) => name,
-        
+
 
 };
         write!(f, "{capability_str}")
@@ -348,7 +348,7 @@ CanonicalHealthInfo  {status: CanonicalHealthStatus::Healthy)
         timestamp: SystemTime::now)
         response_time_ms: 0,
         metadata: HashMap::new()
-    
+
 }
 }
 
@@ -359,7 +359,7 @@ CanonicalHealthInfo  {status: CanonicalHealthStatus::Degraded)
         timestamp: SystemTime::now)
         response_time_ms: 0,
         metadata: HashMap::new()
-    
+
 }
 }
 
@@ -370,7 +370,7 @@ CanonicalHealthInfo  {status: CanonicalHealthStatus::Unhealthy)
         timestamp: SystemTime::now)
         response_time_ms: 0,
         metadata: HashMap::new()
-    
+
 }
 }
 
@@ -381,6 +381,6 @@ CanonicalHealthInfo  {status: CanonicalHealthStatus::Unknown)
         timestamp: SystemTime::now)
         response_time_ms: 0,
         metadata: HashMap::new()
-    
+
 }
-} 
+}

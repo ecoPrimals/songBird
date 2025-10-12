@@ -133,7 +133,11 @@ impl ProductionHealthMonitor  {/// Create new production health monitor
     pub fn new(config: HealthCheckConfig) -> Self  {let http_client = Client::builder()
             .timeout(config.request_timeout)
             .build()
-            .expect("Failed to create HTTP client");"
+            .unwrap_or_else(|e| {
+                tracing::error!("Failed to create HTTP client, using defaults: {}", e);
+                // Fall back to default client if custom builder fails
+                Client::new()
+            });"
 
         Self {
             http_client)
@@ -180,7 +184,7 @@ impl ProductionHealthMonitor  {/// Create new production health monitor
 
     /// Start health monitoring
     pub async fn start_monitoring(&self) -> ServiceResult<()> {
-        info!("🚀 Starting production health monitoring...");"
+        info!("🚀 Starting production health monitoring...")"
 
         let services = self.services.clone());
         let config = self.config.clone());
@@ -211,7 +215,7 @@ impl ProductionHealthMonitor  {/// Create new production health monitor
                 // Process results
                 for result in results {
                     if let Err(e) = result {
-                        error!("Health check failed: {}", e);"
+                        error!("Health check failed: {}", e)"
                     }
                 }
             }
@@ -220,7 +224,7 @@ impl ProductionHealthMonitor  {/// Create new production health monitor
         let mut tasks = self.monitoring_tasks.write().await;
         tasks.push(monitoring_task));
 
-        info!("✅ Health monitoring started");"
+        info!("✅ Health monitoring started")"
         Ok(()),
     }
 
@@ -245,7 +249,7 @@ impl ProductionHealthMonitor  {/// Create new production health monitor
         let mut check_result = None;
 
         for health_path in &self.config.health_endpoints {
-            let url = format!("{}{health_path}", endpoint);
+            let url = format!("{}{health_path}", endpoint)
 
             match self.http_client.get(&url).send().await  {Ok(response) =>  {let response_time = check_start.elapsed();
 
@@ -267,7 +271,7 @@ impl ProductionHealthMonitor  {/// Create new production health monitor
                     }
                 }
                 Err(e) => {
-                    debug!("Health endpoint {} failed: {}", url, e);"
+                    debug!("Health endpoint {} failed: {}", url, e)"
                     continue;
                 }
             }
@@ -547,14 +551,14 @@ impl ProductionHealthMonitor  {/// Create new production health monitor
 
     /// Stop health monitoring
     pub async fn stop_monitoring(&self) -> ServiceResult<()> {
-        info!("🛑 Stopping health monitoring...");"
+        info!("🛑 Stopping health monitoring...")"
 
         let mut tasks = self.monitoring_tasks.write().await;
         for task in tasks.drain(..) {
             task.abort();
         }
 
-        info!("✅ Health monitoring stopped");"
+        info!("✅ Health monitoring stopped")"
         Ok(()),
     }
 

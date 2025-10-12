@@ -8,11 +8,14 @@ use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ZeroTouchConfig  {pub auto_deploy: bool,
+pub struct ZeroTouchConfig {
+    pub auto_deploy: bool,
     pub environment_detection: bool,
 }
 
-impl Default for ZeroTouchConfig  {fn default() -> Self  {Self {
+impl Default for ZeroTouchConfig {
+    fn default() -> Self {
+        Self {
             auto_deploy: false,
             environment_detection: true,
         }
@@ -20,14 +23,17 @@ impl Default for ZeroTouchConfig  {fn default() -> Self  {Self {
 }
 
 #[derive(Debug)]
-pub struct ZeroTouchDeployment  {#[allow(dead_code)]
+pub struct ZeroTouchDeployment {
+    #[allow(dead_code)]
     config: ZeroTouchConfig,
 }
 
 impl ZeroTouchDeployment {
     #[must_use]
     pub const fn new(config: ZeroTouchConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+        }
     }
 
     /// Deploy zero-touch configuration
@@ -37,7 +43,7 @@ impl ZeroTouchDeployment {
     /// Returns an error if deployment fails due to system constraints or configuration issues
     pub const fn deploy(&self) -> Result<()> {
         // Minimal implementation
-        Ok(()),
+        Ok(())
     }
 }
 
@@ -45,7 +51,8 @@ pub struct ZeroTouchOrchestrator {
     // Basic fields for zero-touch deployment
 }
 
-pub struct DeploymentResult  {pub config: Option<SongbirdConfig>,
+pub struct DeploymentResult {
+    pub config: Option<SongbirdConfig>,
 }
 
 impl Default for ZeroTouchOrchestrator {
@@ -65,11 +72,12 @@ impl ZeroTouchOrchestrator {
     /// # Errors
     ///
     /// Returns an error if deployment configuration fails
-    pub fn deploy(&mut self) -> Result<DeploymentResult>  {// Basic deployment logic
+    pub fn deploy(&mut self) -> Result<DeploymentResult> {
+        // Basic deployment logic
         let config = SongbirdConfig::default();
 
         Ok(DeploymentResult {
-            config: Some(config)
+            config: Some(config),
         })
     }
 }

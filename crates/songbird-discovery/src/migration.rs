@@ -90,7 +90,7 @@ pub struct LegacyFederationConfig  {/// Cluster name
     pub federation_mode: Option<LegacyFederationMode>,
 
     /// Additional legacy settings
-    pub legacy_settings: HashMap<String, String>)
+    pub legacy_settings: HashMap<String, String>,
 }
 
 /// Legacy sovereignty levels (for migration)
@@ -166,8 +166,8 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
         legacy_config: LegacyFederationConfig,
     ) -> SongbirdResult<FederationDiscoveryConfig> {
         if self.config.verbose_logging {
-            info!("🔄 Starting migration of legacy federation config");"
-            debug!("Legacy config: {:?}", legacy_config);"
+            info!("🔄 Starting migration of legacy federation config")"
+            debug!("Legacy config: {:?}", legacy_config)"
         }
 
         let start_time = std::time::Instant::now();
@@ -199,8 +199,8 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
         self.stats.total_migration_time += start_time.elapsed();
 
         if self.config.verbose_logging {
-            info!("✅ Successfully migrated federation config");"
-            debug!("New config: {:?}", new_config);"
+            info!("✅ Successfully migrated federation config")"
+            debug!("New config: {:?}", new_config)"
         }
 
         Ok(new_config)
@@ -212,7 +212,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
         legacy_config: LegacyFederationConfig,
     ) -> SongbirdResult<MigrationResult>  {let start_time = std::time::Instant::now();
 
-        info!("🚀 Starting complete federation migration with validation");"
+        info!("🚀 Starting complete federation migration with validation")"
 
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -235,7 +235,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
         // 2. Test new discovery system
         if self.config.validate_migration  {match self.validate_new_discovery_system(&new_discovery_config).await {
                 Ok(validation_warnings) => warnings.extend(validation_warnings),
-                Err(e) => errors.push(format!("Discovery validation failed: {}", e)),"
+                Err(e) => errors.push(format!("Discovery validation failed: {}", e),"
             }
         }
 
@@ -268,9 +268,9 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
         };
 
         if success {
-            info!("🎉 Migration completed successfully!");"
+            info!("🎉 Migration completed successfully!")"
         } else {
-            warn!("⚠️ Migration completed with errors");"
+            warn!("⚠️ Migration completed with errors")"
         }
 
         Ok(result)
@@ -281,7 +281,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
         &self)
         new_config: FederationDiscoveryConfig,
     ) -> SongbirdResult<LegacyFederationWrapper> {
-        info!("🔧 Creating legacy compatibility wrapper");"
+        info!("🔧 Creating legacy compatibility wrapper")"
 
         LegacyFederationWrapper::new(new_config).await
     }
@@ -293,7 +293,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
     ) -> SongbirdResult<Vec<String>> {
         let mut warnings = Vec::new();
 
-        info!("🔍 Validating new discovery system");"
+        info!("🔍 Validating new discovery system")"
 
         // Create base discovery
         let base_discovery =
@@ -316,16 +316,16 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
 
                 if services.is_empty()  {warnings.push(
                         "No services discovered - this may be normal if no services are running""
-                            .to_string()),
+                            .to_string(),
                     );
                 } else {
-                    info!("✅ Discovery validation successful: {} services found", services.len();"
+                    info!("✅ Discovery validation successful: {} services found", services.len()"
                 }
             }
             Err(e) => {
                 warnings.push(format!(
                     "Discovery test failed: {e} - This may be normal in test environments""
-                );
+                )
             }
         }
 
@@ -342,7 +342,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
             warnings.push(
                 "Leader federation mode is deprecated and not supported in the new system. \"
                 The new system uses pure peer-to-peer coordination with no leaders.""
-                    .to_string()),
+                    .to_string(),
             );
         }
 
@@ -355,7 +355,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
         if legacy_config.heartbeat_interval.as_millis() < 1000  {warnings.push(
                 "Very short heartbeat intervals detected. The new system uses different \"
                 performance optimization strategies and may not need such frequent heartbeats.""
-                    .to_string()),
+                    .to_string(),
             );
         }
     }
@@ -366,7 +366,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
         _legacy_config: &LegacyFederationConfig,
         new_config: &FederationDiscoveryConfig,
     ) -> SongbirdResult<PerformanceComparison> {
-        info!("📊 Performing performance comparison");"
+        info!("📊 Performing performance comparison")"
 
         let start_time = std::time::Instant::now();
 
@@ -429,9 +429,9 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
 
         // Add default networks if none found
         if networks.is_empty()  {networks.extend_from_slice(&[
-                "127.0.0.0/8".to_string()),
-                "192.168.0.0/16".to_string()),
-                "10.0.0.0/8".to_string()),
+                "127.0.0.0/8".to_string(),
+                "192.168.0.0/16".to_string(),
+                "10.0.0.0/8".to_string(),
             ]);
         }
 
@@ -499,12 +499,12 @@ impl LegacyFederationWrapper  {/// Create new compatibility wrapper
 
     /// Legacy API: Join network (simplified in new system,
     pub async fn join_network(&mut self, _network_id: &str) -> SongbirdResult<()> {
-        info!("🔗 Joining network using new discovery system");"
+        info!("🔗 Joining network using new discovery system")"
 
         // In the new system, joining is automatic through discovery
         let _services = self.federation_discovery.discover_federation_aware_services().await?;
 
-        Ok(()),
+        Ok((),
     }
 
     /// Legacy API: Get network effects
@@ -522,7 +522,7 @@ impl LegacyFederationWrapper  {/// Create new compatibility wrapper
             .map(|service| LegacyPeerInfo  {id: service.base_info.service_id.clone()
                 name: service.base_info.name.clone(,
                 address: service.base_info.endpoints.first().map_or_else(
-                    || "unknown".to_string()),
+                    || "unknown".to_string(),
                     |ep| format!("{}:{}", ep.path, ep.method),"
                 )
                 sovereignty_level: self
@@ -599,7 +599,7 @@ mod tests  {use super::*;
             sovereignty_level: Some(LegacySovereigntyLevel::High)
             enable_network_effects: true,
             federation_mode: Some(LegacyFederationMode::Peer)
-            legacy_settings: HashMap::new()),
+            legacy_settings: HashMap::new(),
         };
 
         let mut helper = FederationMigrationHelper::default();
@@ -608,7 +608,7 @@ mod tests  {use super::*;
         assert!(new_config.enable_federation_patterns));
         assert!(new_config.enable_sovereignty_assessment));
         assert!(new_config.enable_network_effects));
-        assert_eq!(helper.stats.configs_migrated, 1);
+        assert_eq!(helper.stats.configs_migrated, 1)
     }
 
     #[tokio::test]
@@ -619,7 +619,7 @@ mod tests  {use super::*;
         // Test legacy API
         if let Ok(peers) = wrapper.discover_peers().await {
             // Should work even if no services are found
-            println!("Found {} peers", peers.len();"
+            println!("Found {} peers", peers.len()"
         } else {
             // Expected in test environment
         }

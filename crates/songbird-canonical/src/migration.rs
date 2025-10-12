@@ -8,17 +8,20 @@ use std::path::Path;
 /// Migration tool for converting existing code to canonical patterns
 #[allow(clippy::struct_field_names)]
 #[derive(Debug)]
-pub struct CanonicalMigrator  {/// Pattern replacements for return types
-    return_type_patterns: HashMap<String, String>)
+pub struct CanonicalMigrator {
+    /// Pattern replacements for return types
+    return_type_patterns: HashMap<String, String>,
     /// Pattern replacements for error handling
-    error_patterns: HashMap<String, String>)
+    error_patterns: HashMap<String, String>,
     /// Pattern replacements for configuration fields
-    config_field_patterns: HashMap<String, String>)
+    config_field_patterns: HashMap<String, String>,
 }
 
-impl CanonicalMigrator  {/// Create a new migrator with default patterns
+impl CanonicalMigrator {
+    /// Create a new migrator with default patterns
     #[must_use]
-    pub fn new() -> Self  {let mut return_type_patterns = HashMap::new();
+    pub fn new() -> Self {
+        let mut return_type_patterns = HashMap::new();
         let _ = return_type_patterns
             .insert("SongbirdResult<T>>".to_string(), "SongbirdResult<T>".to_string());
         let _ = return_type_patterns
@@ -29,10 +32,8 @@ impl CanonicalMigrator  {/// Create a new migrator with default patterns
         let mut error_patterns = HashMap::new();
         let _ = error_patterns
             .insert("service_error!(".to_string(), "SongbirdError::service_error(".to_string());
-        let _ = error_patterns.insert(
-            "Ok(()".to_string()),
-            "Ok(SongbirdResponse::unit()".to_string()),
-        );
+        let _ =
+            error_patterns.insert("Ok(()".to_string(), "Ok(SongbirdResponse::unit()".to_string());
 
         let mut config_field_patterns = HashMap::new();
         let _ = config_field_patterns
@@ -43,18 +44,20 @@ impl CanonicalMigrator  {/// Create a new migrator with default patterns
             .insert("batch_timeout".to_string(), "batch_timeout_ms".to_string());
 
         Self {
-            return_type_patterns)
-            error_patterns)
-            config_field_patterns)
+            return_type_patterns,
+            error_patterns,
+            config_field_patterns,
         }
     }
 
     /// Generate migration report for a codebase
     #[must_use]
-    pub fn analyze_codebase(_path: &Path) -> MigrationReport  {// This would analyze the codebase and generate a report
+    pub fn analyze_codebase(_path: &Path) -> MigrationReport {
+        // This would analyze the codebase and generate a report
         // Use canonical migration system
-        MigrationReport  {files_analyzed: 0)
-            patterns_found: HashMap::new()),
+        MigrationReport {
+            files_analyzed: 0,
+            patterns_found: HashMap::new(),
             suggested_changes: Vec::new(),
             estimated_effort_hours: 0,
         }
@@ -62,46 +65,53 @@ impl CanonicalMigrator  {/// Create a new migrator with default patterns
 
     /// Apply automatic migrations to a file
     #[must_use]
-    pub fn migrate_file(&self, _file_path: &Path, content: &str) -> MigrationResult  {let mut migrated_content = content.to_string());
+    pub fn migrate_file(&self, _file_path: &Path, content: &str) -> MigrationResult {
+        let mut migrated_content = content.to_string();
         let mut changes_made = Vec::new();
 
         // Apply return type migrations
-        for (old_pattern, new_pattern) in &self.return_type_patterns  {if migrated_content.contains(old_pattern) {
+        for (old_pattern, new_pattern) in &self.return_type_patterns {
+            if migrated_content.contains(old_pattern) {
                 migrated_content = migrated_content.replace(old_pattern, new_pattern);
                 changes_made.push(MigrationChange {
                     change_type: ChangeType::ReturnType,
-                    old_pattern: old_pattern.clone(,
-                    new_pattern: new_pattern.clone(,
+                    old_pattern: old_pattern.clone(),
+                    new_pattern: new_pattern.clone(),
                     line_number: None, // Would be populated in real implementation
                 });
             }
         }
 
         // Apply error pattern migrations
-        for (old_pattern, new_pattern) in &self.error_patterns  {if migrated_content.contains(old_pattern)  {migrated_content = migrated_content.replace(old_pattern, new_pattern);
+        for (old_pattern, new_pattern) in &self.error_patterns {
+            if migrated_content.contains(old_pattern) {
+                migrated_content = migrated_content.replace(old_pattern, new_pattern);
                 changes_made.push(MigrationChange {
                     change_type: ChangeType::ErrorHandling,
-                    old_pattern: old_pattern.clone(,
-                    new_pattern: new_pattern.clone(,
+                    old_pattern: old_pattern.clone(),
+                    new_pattern: new_pattern.clone(),
                     line_number: None,
                 });
             }
         }
 
         // Apply config field migrations
-        for (old_pattern, new_pattern) in &self.config_field_patterns  {if migrated_content.contains(old_pattern)  {migrated_content = migrated_content.replace(old_pattern, new_pattern);
+        for (old_pattern, new_pattern) in &self.config_field_patterns {
+            if migrated_content.contains(old_pattern) {
+                migrated_content = migrated_content.replace(old_pattern, new_pattern);
                 changes_made.push(MigrationChange {
                     change_type: ChangeType::ConfigField,
-                    old_pattern: old_pattern.clone(,
-                    new_pattern: new_pattern.clone(,
+                    old_pattern: old_pattern.clone(),
+                    new_pattern: new_pattern.clone(),
                     line_number: None,
                 });
             }
         }
 
-        MigrationResult  {original_content: content.to_string()),
-            migrated_content)
-            changes_made)
+        MigrationResult {
+            original_content: content.to_string(),
+            migrated_content,
+            changes_made,
             compilation_status: CompilationStatus::Unknown,
         }
     }
@@ -115,10 +125,11 @@ impl Default for CanonicalMigrator {
 
 /// Report of migration analysis
 #[derive(Debug, Clone)]
-pub struct MigrationReport  {/// Number of files analyzed
+pub struct MigrationReport {
+    /// Number of files analyzed
     pub files_analyzed: usize,
     /// Patterns found and their counts
-    pub patterns_found: HashMap<String, usize>)
+    pub patterns_found: HashMap<String, usize>,
     /// Suggested changes
     pub suggested_changes: Vec<SuggestedChange>,
     /// Estimated effort in hours
@@ -127,7 +138,8 @@ pub struct MigrationReport  {/// Number of files analyzed
 
 /// Result of migrating a single file
 #[derive(Debug, Clone)]
-pub struct MigrationResult  {/// Original file content
+pub struct MigrationResult {
+    /// Original file content
     pub original_content: String,
     /// Migrated file content
     pub migrated_content: String,
@@ -139,7 +151,8 @@ pub struct MigrationResult  {/// Original file content
 
 /// A single migration change
 #[derive(Debug, Clone)]
-pub struct MigrationChange  {/// Type of change
+pub struct MigrationChange {
+    /// Type of change
     pub change_type: ChangeType,
     /// Old pattern that was replaced
     pub old_pattern: String,
@@ -151,7 +164,8 @@ pub struct MigrationChange  {/// Type of change
 
 /// Types of changes that can be made
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ChangeType  {/// Return type changes
+pub enum ChangeType {
+    /// Return type changes
     ReturnType,
     /// Error handling changes
     ErrorHandling,
@@ -165,7 +179,8 @@ pub enum ChangeType  {/// Return type changes
 
 /// Suggested change for manual review
 #[derive(Debug, Clone)]
-pub struct SuggestedChange  {/// File path
+pub struct SuggestedChange {
+    /// File path
     pub file_path: String,
     /// Line number
     pub line_number: usize,
@@ -179,7 +194,8 @@ pub struct SuggestedChange  {/// File path
 
 /// Compilation status after migration
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CompilationStatus  {/// Compilation successful
+pub enum CompilationStatus {
+    /// Compilation successful
     Success,
     /// Compilation failed
     Failed,

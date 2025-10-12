@@ -12,43 +12,43 @@ use std::time::Duration;
 // ============================================================================
 
 /// Universal storage configuration - **MIGRATED TO UNIFIED**
-/// 
+///
 /// This re-exports the unified storage configuration from songbird_config.
 /// The migration to songbird_config::unified is complete.
 pub use songbird_config::unified::primals::UniversalPrimalsConfig as UniversalStorageConfig;
 
 /// Retry configuration - **MIGRATED TO UNIFIED**
-/// 
+///
 /// This re-exports the unified retry configuration.
 /// The migration to songbird_config::unified is complete.
 pub use songbird_config::unified::robustness::RetryConfig;
 
 /// Health check configuration - **MIGRATED TO UNIFIED**
-/// 
+///
 /// This re-exports the unified health check configuration.
 /// The migration to songbird_config::unified is complete.
 pub use songbird_config::unified::core::HealthCheckConfig;
 
 /// Monitoring configuration - **MIGRATED TO UNIFIED**
-/// 
+///
 /// This re-exports the unified monitoring configuration.
 /// The migration to songbird_config::unified is complete.
 pub use songbird_config::unified::observability::UnifiedObservabilityConfig as MonitoringConfig;
 
 /// Security configuration - **MIGRATED TO UNIFIED**
-/// 
+///
 /// This re-exports the unified security configuration.
 /// The migration to songbird_config::unified is complete.
 pub use songbird_config::unified::security::UnifiedSecurityConfig as SecurityConfig;
 
 /// Access control configuration - **MIGRATED TO UNIFIED**
-/// 
+///
 /// This re-exports the unified access control configuration.
 /// The migration to songbird_config::unified is complete.
 pub use songbird_config::unified::security::AccessControlConfig;
 
 /// Audit logging configuration - **MIGRATED TO UNIFIED**
-/// 
+///
 /// This re-exports the unified audit configuration.
 /// The migration to songbird_config::unified is complete.
 pub use songbird_config::unified::security::AuditConfig as AuditLoggingConfig;
@@ -228,10 +228,10 @@ mod tests {
     fn test_retry_error_types() {
         let config = RetryConfig::default();
 
-        assert!(config.should_retry("timeout");"
-        assert!(config.should_retry("network_error");"
-        assert!(config.should_retry("service_unavailable");"
-        assert!(!config.should_retry("invalid_request");"
+        assert!(config.should_retry("timeout")"
+        assert!(config.should_retry("network_error")"
+        assert!(config.should_retry("service_unavailable")"
+        assert!(!config.should_retry("invalid_request")"
     }
 
     #[test]
@@ -249,13 +249,13 @@ mod tests {
                 .security_config
                 .audit_logging
                 .log_all_operations
-        );
+        )
         assert!(
             high_security
                 .security_config
                 .access_control
                 .authentication_required
-        );
+        )
     }
 
     #[test]

@@ -43,7 +43,7 @@ pub struct ValidationContext  {/// Configuration section being validated
     /// Service context
     pub service_id: Option<String>,
     /// Custom validation context
-    pub custom_context: HashMap<String, serde_json::Value>)
+    pub custom_context: HashMap<String, serde_json::Value>,
     /// Validation timestamp
     pub timestamp: DateTime<Utc>,
 }
@@ -57,7 +57,7 @@ pub struct ValidationResult  {/// Whether validation passed
     /// Validation warnings
     pub warnings: Vec<ValidationWarning>,
     /// Validation metadata
-    pub metadata: HashMap<String, serde_json::Value>)
+    pub metadata: HashMap<String, serde_json::Value>,
     /// Validation duration
     pub duration_ms: u64,
 }
@@ -77,7 +77,7 @@ pub struct ValidationError  {/// Error code
     /// Error severity
     pub severity: ErrorSeverity,
     /// Additional error context
-    pub context: HashMap<String, serde_json::Value>)
+    pub context: HashMap<String, serde_json::Value>,
 }
 
 /// Validation warning information
@@ -120,7 +120,7 @@ pub struct ConfigValidationResult  {/// Overall validation status
     /// Total number of warnings
     pub warning_count: u32,
     /// Field-level validation results
-    pub field_results: HashMap<String, ValidationResult>)
+    pub field_results: HashMap<String, ValidationResult>,
     /// Schema validation errors
     pub schema_errors: Vec<ValidationError>,
     /// Cross-field validation errors
@@ -140,7 +140,7 @@ pub struct ValidationSummary  {/// Total fields validated
     /// Fields with warnings
     pub fields_with_warnings: u32,
     /// Most common error types
-    pub common_errors: HashMap<String, u32>)
+    pub common_errors: HashMap<String, u32>,
     /// Validation coverage percentage
     pub coverage_percentage: f64,
 }
@@ -154,11 +154,11 @@ pub struct ValidationSchema  {/// Schema identifier
     /// Schema description
     pub description: String,
     /// Field definitions
-    pub fields: HashMap<String, FieldSchema>)
+    pub fields: HashMap<String, FieldSchema>,
     /// Cross-field validation rules
     pub cross_field_rules: Vec<CrossFieldRule>,
     /// Schema metadata
-    pub metadata: HashMap<String, serde_json::Value>)
+    pub metadata: HashMap<String, serde_json::Value>,
 }
 
 /// Field schema definition
@@ -176,7 +176,7 @@ pub struct FieldSchema  {/// Field type
     /// Field constraints
     pub constraints: Vec<FieldConstraint>,
     /// Field metadata
-    pub metadata: HashMap<String, serde_json::Value>)
+    pub metadata: HashMap<String, serde_json::Value>,
 }
 
 /// Field type enumeration
@@ -202,7 +202,7 @@ pub enum FieldType  {String)
 pub struct ValidationRule  {/// Rule type
     pub rule_type: RuleType,
     /// Rule parameters
-    pub parameters: HashMap<String, serde_json::Value>)
+    pub parameters: HashMap<String, serde_json::Value>,
     /// Error message template
     pub error_message: Option<String>,
     /// Rule severity
@@ -268,7 +268,7 @@ pub enum ConstraintType  {Range  {min: f64)
         values: Vec<serde_json::Value>,
     })
     Custom  {name: String,
-        parameters: HashMap<String, serde_json::Value>)
+        parameters: HashMap<String, serde_json::Value>,
     })
 }
 
@@ -377,8 +377,8 @@ pub struct ValidationStats  {pub total_validations: u64,
     pub successful_validations: u64,
     pub failed_validations: u64,
     pub average_validation_time_ms: f64,
-    pub most_common_errors: HashMap<String, u32>)
-    pub validation_by_type: HashMap<String, u64>)
+    pub most_common_errors: HashMap<String, u32>,
+    pub validation_by_type: HashMap<String, u64>,
 }
 
 /// Validation configuration
@@ -445,7 +445,7 @@ impl Default for ValidationContext  {fn default() -> Self  {Self {
             field_path: String::new(,
             environment: None,
             service_id: None,
-            custom_context: HashMap::new()),
+            custom_context: HashMap::new(),
             timestamp: Utc::now(,
         }
     }

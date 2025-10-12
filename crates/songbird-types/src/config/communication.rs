@@ -54,7 +54,7 @@ impl Default for HttpClientConfig {
             max_connections_per_host: 10,
             http2_enabled: true,
             user_agent: "songbird/1.0".to_string(),
-            default_headers: HashMap::new()),
+            default_headers: HashMap::new(),
             compression_enabled: true,
             keep_alive_timeout: Duration::from_secs(60),
             max_redirects: 10,
@@ -154,7 +154,7 @@ impl Default for WebSocketConfig {
             pong_timeout: Duration::from_secs(10),
             compression_enabled: true,
             subprotocols: Vec::new(),
-            headers: HashMap::new()),
+            headers: HashMap::new(),
         }
     }
 }

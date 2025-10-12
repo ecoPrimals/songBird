@@ -9,35 +9,35 @@ pub mod output {
 
     /// Print informational message (centralized)
     pub fn print_info(msg: &str) {
-        println!("{}", msg.blue();"
+        println!("{}", msg.blue());
     }
 
     /// Print success message (centralized)
     pub fn print_success(msg: &str) {
-        println!("{}", msg.green();"
+        println!("{}", msg.green());
     }
 
     /// Print error message (centralized)
     pub fn print_error(msg: &str) {
-        eprintln!("{}", msg.red();"
+        eprintln!("{}", msg.red());
     }
 
     /// Print warning message (centralized)
     pub fn print_warning(msg: &str) {
-        println!("{}", msg.yellow();"
+        println!("{}", msg.yellow());
     }
 
     /// Print debug message (only in debug builds)
     pub fn print_debug(msg: &str) {
         #[cfg(debug_assertions)]
-        println!("{}", format!("DEBUG: {}", msg).dimmed();"
-        #[cfg(not(debug_assertions)]
+        println!("{}", format!("DEBUG: {}", msg).dimmed());
+        #[cfg(not(debug_assertions))]
         let _ = msg; // Prevent unused variable warning in release builds
     }
 
     /// Print with custom color
     pub fn print_colored(msg: &str, color: Color) {
-        println!("{}", msg.color(color);"
+        println!("{}", msg.color(color));
     }
 }
 
@@ -47,14 +47,16 @@ pub mod testing {
     use std::sync::{Arc, Mutex};
 
     /// Capture CLI output for testing
-    pub struct OutputCapture  {captured_output: Arc<Mutex<Vec<String>>>)
+    pub struct OutputCapture {
+        captured_output: Arc<Mutex<Vec<String>>>,
     }
 
-    impl OutputCapture  {/// Create new output capture
+    impl OutputCapture {
+        /// Create new output capture
         #[must_use]
         pub fn new() -> Self {
             Self {
-                captured_output: Arc::new(Mutex::new(Vec::new(),
+                captured_output: Arc::new(Mutex::new(Vec::new())),
             }
         }
 
@@ -63,7 +65,7 @@ pub mod testing {
             self.captured_output
                 .lock()
                 .unwrap_or_else(|poisoned| {
-                    tracing::warn!("Lock poisoned, recovering gracefully");"
+                    tracing::warn!("Lock poisoned, recovering gracefully ");
                     poisoned.into_inner()
                 })
                 .push(msg.to_string());
@@ -75,7 +77,7 @@ pub mod testing {
             self.captured_output
                 .lock()
                 .unwrap_or_else(|poisoned| {
-                    tracing::warn!("Lock poisoned, recovering gracefully");"
+                    tracing::warn!("Lock poisoned, recovering gracefully ");
                     poisoned.into_inner()
                 })
                 .clone()
@@ -86,7 +88,7 @@ pub mod testing {
             self.captured_output
                 .lock()
                 .unwrap_or_else(|poisoned| {
-                    tracing::warn!("Lock poisoned, recovering gracefully");"
+                    tracing::warn!("Lock poisoned, recovering gracefully ");
                     poisoned.into_inner()
                 })
                 .clear();
@@ -101,20 +103,23 @@ pub mod testing {
 }
 
 /// Progress display utilities for long-running operations
-pub mod progress  {
+pub mod progress {
     use std::io::Write;
 
     /// Simple progress indicator
-    pub struct ProgressIndicator  {current: usize)
+    pub struct ProgressIndicator {
+        current: usize,
         total: usize,
         prefix: String,
     }
 
-    impl ProgressIndicator  {/// Create new progress indicator
+    impl ProgressIndicator {
+        /// Create new progress indicator
         #[must_use]
-        pub fn new(total: usize, prefix: &str) -> Self  {Self {
+        pub fn new(total: usize, prefix: &str) -> Self {
+            Self {
                 current: 0,
-                total)
+                total,
                 prefix: prefix.to_string(),
             }
         }
@@ -128,15 +133,15 @@ pub mod progress  {
                 0
             };
 
-            print!("\r{} {}/{} ({}%)", self.prefix, self.current, self.total, percentage);"
+            print!("\r{} {}/{} ({}%) ", self.prefix, self.current, self.total, percentage);
             if let Err(e) = std::io::stdout().flush() {
-                tracing::error!("Failed to flush stdout: {:?}", e);"
+                tracing::error!("Failed to flush stdout: {:?}", e);
             }
         }
 
         /// Complete progress
         pub fn complete(&self) {
-            println!("\r{} Complete! {}/{}", self.prefix, self.total, self.total);"
+            println!(" {} Complete! {}/{} ", self.prefix, self.total, self.total);
         }
     }
 }

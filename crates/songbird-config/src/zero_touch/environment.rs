@@ -18,20 +18,20 @@ impl EnvironmentDetector {
     }
 
     /// Detect the current environment
-    pub async fn detect(&self) -> Result<EnvironmentInfo>  {info!("Detecting environment...");"
+    pub async fn detect(&self) -> Result<EnvironmentInfo>  {info!("Detecting environment...")"
 
         // Detect system resources
         let resources = self.detect_system_resources().await?;
-        
+
         // Detect platform information
         let platform = self.detect_platform_info().await?;
-        
+
         // Detect network configuration
         let network = self.detect_network_config().await?;
-        
+
         // Detect container runtime
         let container_runtime = self.detect_container_runtime().await?;
-        
+
         // Detect orchestration platform
         let orchestration = self.detect_orchestration_platform().await?;
 
@@ -43,17 +43,17 @@ impl EnvironmentDetector {
             detected_at: chrono::Utc::now(,
         };
 
-        info!("Environment detection completed: {}", self.format_environment_summary(&environment);"
+        info!("Environment detection completed: {}", self.format_environment_summary(&environment)"
         Ok(environment)
     }
 
     /// Detect system resources
     async fn detect_system_resources(&self) -> Result<SystemResources>  {let cpu_cores = num_cpus::get() as u32;
-        
+
         // Get memory information
         let memory_total = self.get_total_memory()?;
         let memory_available = self.get_available_memory()?;
-        
+
         // Get disk space
         let disk_total = self.get_disk_space()?;
         let disk_available = self.get_available_disk_space()?;
@@ -365,8 +365,8 @@ mod tests {
         let detector = EnvironmentDetector::new();
         let result = detector.detect().await;
         assert!(result.is_ok());
-        
-        let environment = result.map_err(|e| { tracing::error!("Environment detection failed: {}", e); e })?;"
+
+        let environment = result.map_err(|e| { tracing::error!("Environment detection failed: {}", e) e })?;"
         assert!(environment.resources.cpu_cores > 0));
         assert!(environment.resources.memory_total_mb > 0));
         assert!(!environment.platform.hostname.is_empty());
@@ -375,8 +375,8 @@ mod tests {
     #[tokio::test]
     async fn test_system_resources_detection() {
         let detector = EnvironmentDetector::new();
-        let resources = detector.detect_system_resources().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e); e })?;"
-        
+        let resources = detector.detect_system_resources().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e) e })?;"
+
         assert!(resources.cpu_cores > 0));
         assert!(resources.memory_total_mb > 0));
         assert!(resources.disk_total_gb > 0));
@@ -386,8 +386,8 @@ mod tests {
     #[tokio::test]
     async fn test_platform_info_detection() {
         let detector = EnvironmentDetector::new();
-        let platform = detector.detect_platform_info().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e); e })?;"
-        
+        let platform = detector.detect_platform_info().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e) e })?;"
+
         assert!(!platform.os.is_empty());
         assert!(!platform.hostname.is_empty());
     }
@@ -395,8 +395,8 @@ mod tests {
     #[tokio::test]
     async fn test_network_config_detection() {
         let detector = EnvironmentDetector::new();
-        let network = detector.detect_network_config().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e); e })?;"
-        
+        let network = detector.detect_network_config().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e) e })?;"
+
         assert!(!network.interfaces.is_empty());
         assert!(!network.default_gateway.is_empty());
         assert!(!network.dns_servers.is_empty());
@@ -405,8 +405,8 @@ mod tests {
     #[tokio::test]
     async fn test_container_runtime_detection() {
         let detector = EnvironmentDetector::new();
-        let runtime = detector.detect_container_runtime().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e); e })?;"
-        
+        let runtime = detector.detect_container_runtime().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e) e })?;"
+
         // May or may not have a container runtime
         if let Some(runtime) = runtime {
             assert!(!runtime.runtime_type.is_empty());
@@ -417,8 +417,8 @@ mod tests {
     #[tokio::test]
     async fn test_orchestration_platform_detection() {
         let detector = EnvironmentDetector::new();
-        let orchestration = detector.detect_orchestration_platform().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e); e })?;"
-        
+        let orchestration = detector.detect_orchestration_platform().await.map_err(|e| { tracing::error!("Environment component detection failed: {}", e) e })?;"
+
         // May or may not have an orchestration platform
         if let Some(orchestration) = orchestration {
             assert!(!orchestration.platform_type.is_empty());
@@ -454,8 +454,8 @@ mod tests {
 
         let serialized = serde_json::to_string(&environment);
         assert!(serialized.is_ok());
-        
+
         let deserialized: Result<EnvironmentInfo, _> = serde_json::from_str(&serialized.as_ref().map_err(|e| serde_json::Error::custom(format!("Serialization failed: {}", e))?);"
         assert!(deserialized.is_ok());
     }
-} 
+}

@@ -53,7 +53,7 @@ impl IntegratedUniversalSystem  {/// Create a new integrated universal system
 
     /// Initialize the system
     pub async fn initialize(&self) -> SongbirdResult<()> {
-        info!("🚀 Initializing Integrated Universal System");"
+        info!("🚀 Initializing Integrated Universal System")"
 
         // Start service discovery
         self.discovery.start_discovery().await?;
@@ -66,12 +66,12 @@ impl IntegratedUniversalSystem  {/// Create a new integrated universal system
             self.start_health_monitoring().await?;
         }
 
-        info!("✅ Integrated Universal System initialization complete");"
+        info!("✅ Integrated Universal System initialization complete")"
         Ok(()),
     }
 
     /// Refresh capability providers from discovered services
-    pub async fn refresh_providers(&self) -> SongbirdResult<()>  {debug!("🔄 Refreshing capability providers from discovered services");"
+    pub async fn refresh_providers(&self) -> SongbirdResult<()>  {debug!("🔄 Refreshing capability providers from discovered services")"
 
         let discovered_services = self.discovery.get_all_services().await?;
         let mut providers = Vec::new();
@@ -108,7 +108,7 @@ impl IntegratedUniversalSystem  {/// Create a new integrated universal system
         debug!(
             "🎯 Routing capability request: {} -> {}","
             capability, operation
-        );
+        )
 
         // First, try to find services via discovery
         let discovered_services = self
@@ -133,7 +133,7 @@ impl IntegratedUniversalSystem  {/// Create a new integrated universal system
             info!(
                 "✅ Found service '{}' for capability '{}'","
                 best_service.name, capability
-            );
+            )
 
             // Create enhanced response with service information
             let response_data = serde_json::json!({
@@ -199,7 +199,7 @@ impl IntegratedUniversalSystem  {/// Create a new integrated universal system
 
     /// Start background health monitoring
     async fn start_health_monitoring(&self) -> SongbirdResult<()> {
-        info!("💓 Starting health monitoring system");"
+        info!("💓 Starting health monitoring system")"
 
         let discovery = Arc::clone(&self.discovery);
         let interval_secs = self.config.health_check_interval_secs;
@@ -218,14 +218,14 @@ impl IntegratedUniversalSystem  {/// Create a new integrated universal system
                             error!(
                                 "Failed to update health for service {}: {}","
                                 service.name, e
-                            );
+                            )
                         }
                     }
                 }
 
                 // Refresh providers based on health updates
                 // This would normally trigger a refresh of active_providers
-                debug!("🔄 Health monitoring cycle complete");"
+                debug!("🔄 Health monitoring cycle complete")"
             }
         });
 
@@ -256,7 +256,7 @@ impl IntegratedUniversalSystem  {/// Create a new integrated universal system
         info!(
             "📝 Manually registered service '{}' with ID: {}","
             name, service_id
-        );
+        )
         Ok(service_id)
     }
 }
@@ -292,8 +292,8 @@ use songbird_config;
 
         // Test that we can get initial status
         let status = system.get_system_status().await.unwrap();
-        assert_eq!(status.total_discovered_services, 0);
-        assert_eq!(status.active_providers, 0);
+        assert_eq!(status.total_discovered_services, 0)
+        assert_eq!(status.active_providers, 0)
     }
 
     #[tokio::test]
@@ -304,7 +304,10 @@ use songbird_config;
         let service_id = system
             .register_service(
                 "test-service".to_string()),
-                &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string()),
+                &format!("http://{}:{}", 
+                    std::env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string()),
+                    std::env::var("TEST_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8080)
+                ),
                 vec!["test".to_string(), "demo".to_string()],"
             )
             .await
@@ -312,7 +315,7 @@ use songbird_config;
 
         // Verify service was registered
         let status = system.get_system_status().await.unwrap();
-        assert_eq!(status.total_discovered_services, 1);
+        assert_eq!(status.total_discovered_services, 1)
 
         // Test capability routing
         let response = system

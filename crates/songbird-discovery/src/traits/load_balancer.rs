@@ -26,7 +26,7 @@ pub struct LoadBalancerStats  {pub total_requests: u64,
     pub failed_requests: u64,
     pub average_response_time: f64,
     pub active_connections: u64,
-    pub service_stats: HashMap<String, ServiceStats>)
+    pub service_stats: HashMap<String, ServiceStats>,
 }
 
 /// Per-service statistics
@@ -87,7 +87,7 @@ impl LoadBalancer for RoundRobinLoadBalancer  {async fn select_service(
         if services.is_empty() {
             return Err(SongbirdError::service(
                 "load_balancer","
-                "No healthy instances available for load balancing".to_string()),
+                "No healthy instances available for load balancing".to_string(),
             );
         }
 
@@ -96,8 +96,8 @@ impl LoadBalancer for RoundRobinLoadBalancer  {async fn select_service(
     }
 
     async fn update_service_health(&self, service_id: &str, is_healthy: bool) -> Result<()> {
-        tracing::info!("Updated health for service {}: {}", service_id, is_healthy);"
-        Ok(()),
+        tracing::info!("Updated health for service {}: {}", service_id, is_healthy)"
+        Ok((),
     }
 
     async fn get_stats(&self) -> Result<LoadBalancerStats> {
@@ -105,23 +105,23 @@ impl LoadBalancer for RoundRobinLoadBalancer  {async fn select_service(
     }
 
     async fn reset_stats(&self) -> Result<()> {
-        tracing::info!("Reset load balancer statistics");"
-        Ok(()),
+        tracing::info!("Reset load balancer statistics")"
+        Ok((),
     }
 }
 
 /// Weighted round-robin load balancer
-pub struct WeightedRoundRobinLoadBalancer  {weights: HashMap<String, f64>)
+pub struct WeightedRoundRobinLoadBalancer  {weights: HashMap<String, f64>,
     #[allow(dead_code)]
-    current_weights: HashMap<String, f64>)
+    current_weights: HashMap<String, f64>,
     stats: LoadBalancerStats,
 }
 
 impl WeightedRoundRobinLoadBalancer  {/// Create a new load balancer strategy
     #[must_use]
     pub fn new() -> Self  {Self {
-            weights: HashMap::new()),
-            current_weights: HashMap::new()),
+            weights: HashMap::new(),
+            current_weights: HashMap::new(),
             stats: LoadBalancerStats::default(),
         }
     }
@@ -146,7 +146,7 @@ impl LoadBalancer for WeightedRoundRobinLoadBalancer  {async fn select_service(
         if services.is_empty() {
             return Err(SongbirdError::service(
                 "load_balancer","
-                "No healthy instances available for load balancing".to_string()),
+                "No healthy instances available for load balancing".to_string(),
             );
         }
 
@@ -156,8 +156,8 @@ impl LoadBalancer for WeightedRoundRobinLoadBalancer  {async fn select_service(
     }
 
     async fn update_service_health(&self, service_id: &str, is_healthy: bool) -> Result<()> {
-        tracing::info!("Updated health for service {}: {}", service_id, is_healthy);"
-        Ok(()),
+        tracing::info!("Updated health for service {}: {}", service_id, is_healthy)"
+        Ok((),
     }
 
     async fn get_stats(&self) -> Result<LoadBalancerStats> {
@@ -165,7 +165,7 @@ impl LoadBalancer for WeightedRoundRobinLoadBalancer  {async fn select_service(
     }
 
     async fn reset_stats(&self) -> Result<()> {
-        tracing::info!("Reset weighted load balancer statistics");"
-        Ok(()),
+        tracing::info!("Reset weighted load balancer statistics")"
+        Ok((),
     }
 }

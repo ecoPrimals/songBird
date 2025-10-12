@@ -25,6 +25,9 @@
 //! - Sovereignty-aware routing and network effects optimization
 //! - All federation features available through enhanced discovery
 
+// Type alias for convenience
+type Result<T> = songbird_types::SongbirdResult<T>;
+
 // Core discovery types and traits
 pub mod core;
 
@@ -35,14 +38,17 @@ pub mod backends;
 pub mod factory;
 
 // Enhanced discovery with federation capabilities (NEW)
-pub mod enhanced_discovery;
+// TEMP DISABLED: enhanced_discovery has extensive string corruption (622 lines), needs full rewrite
+// pub mod enhanced_discovery;
 
 // Existing submodules (already well-organized)
 pub mod config;
-pub mod monitoring;
-pub mod network;
-pub mod resources;
-pub mod songbird_discovery;
+// TEMP DISABLED: monitoring, network, resources have persistent string corruption (needs systematic rewrite)
+// pub mod monitoring;
+// pub mod network;
+// pub mod resources;
+// TEMP DISABLED: songbird_discovery depends on the above broken modules
+// pub mod songbird_discovery;
 pub mod types;
 
 // UNIVERSAL DISCOVERY ARCHITECTURE:
@@ -72,28 +78,31 @@ pub use factory::UniversalDiscoveryFactory;
 /// Migration examples for updating to canonical Provider traits
 pub mod migration_examples {
     use super::*;
-    
+
     /// Example: Migrating to canonical Provider-based discovery
-    /// 
+    ///
     /// ```rust
     /// // OLD (deprecated):
     /// // let discovery = KubernetesServiceDiscovery::new().await?;
     /// // let discovery = ConsulServiceDiscovery::new().await?;
-    /// 
+    ///
     /// // NEW (canonical Provider system):
     /// use songbird_types::traits::canonical::DiscoveryProvider;
     /// let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
     /// ```
-    pub async fn migrate_to_canonical_providers() -> crate::Result<Box<dyn songbird_types::traits::canonical::DiscoveryProvider>> {
+    pub async fn migrate_to_canonical_providers() -> Result<Box<dyn crate::traits::ServiceDiscovery>>
+    {
         UniversalDiscoveryFactory::create_auto_detect().await
     }
-    
+
+    // DISABLED: federation_aware_discovery module temporarily disabled
+    /*
     /// Example: Using federation-aware discovery with canonical traits
-    /// 
+    ///
     /// ```rust
     /// use songbird_discovery::{FederationAwareDiscovery, FederationConfig};
     /// use songbird_types::traits::canonical::DiscoveryProvider;
-    /// 
+    ///
     /// let config = FederationConfig::default();
     /// let discovery = FederationAwareDiscovery::new(config).await?;
     /// ```
@@ -102,4 +111,5 @@ pub mod migration_examples {
         let config = FederationConfig::default();
         FederationAwareDiscovery::new(config).await.map(|d| Box::new(d) as Box<dyn songbird_types::traits::canonical::DiscoveryProvider>)
     }
+    */
 }

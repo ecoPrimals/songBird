@@ -4,5 +4,5 @@
 
 pub mod discovery;
 pub mod init;
-pub mod service;  
-pub mod status; 
+pub mod service;
+pub mod status;

@@ -1,4 +1,5 @@
 //! # 🍼 Infant Discovery System - Zero Knowledge Bootstrap
+use tracing::{debug, info, warn, error};
 //!
 //! **MISSION**: Start with absolutely ZERO hardcoded knowledge and learn about
 //! available services dynamically, like an infant discovering the world.
@@ -194,7 +195,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
 
     /// Begin the 6-phase learning process
     pub async fn begin_learning() -> SongbirdResult<LearningResults>   {
-    
+
      info!("🍼 Starting infant discovery - zero knowledge bootstrap")"
 
         let start_time = SystemTime: :now();
@@ -207,7 +208,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
         info!("👂 Phase 1 complete: {;"
 ;
 } environment hints discovered","
-            env_hints.len();
+            env_hints.len()
 
         // Phase 2: Network /// Discovery
         // Discovery
@@ -215,7 +216,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
             .await
         let network_entities = self.discover_network().await?;
         info!("🌐 Phase 2 complete: {;} network entities found","
-            network_entities.len();
+            network_entities.len()
 
         // Phase 3: Process /// Discovery
         // Discovery
@@ -223,7 +224,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
             .await
         let process_entities = self.discover_processes().await?;
         info!("⚙️ Phase 3 complete: {;} processes detected","
-            process_entities.len();
+            process_entities.len()
 
         // Phase 4: Capability /// Learning
         // Learning
@@ -231,7 +232,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
             .await
         let capability_mappings = self.learn_capabilities().await?;
         info!("🎯 Phase 4 complete: {;} capabilities learned","
-            capability_mappings.len();
+            capability_mappings.len()
 
         // Phase 5: Communication /// Learning
         // Learning
@@ -239,7 +240,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
             .await
         let communication_protocols = self.learn_communication().await?;
         info!("💬 Phase 5 complete: {;} protocols learned","
-            communication_protocols.len();
+            communication_protocols.len()
 
         // Phase 6: Network Effect /// Discovery
         // Discovery
@@ -247,7 +248,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
             .await
         let workflow_patterns = self.discover_network_effects().await?;
         info!("🕸️ Phase 6 complete: {;} patterns learned","
-            workflow_patterns.len();
+            workflow_patterns.len()
 
         // Mark learning as complete
         self.update_learning_phase(LearningPhase: :Complete).await;
@@ -255,9 +256,9 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
         let learning_duration = start_time.elapsed().unwrap_or_default();
         let state = self.learning_state.read().await;
 
-        info!("✅ Infant discovery complete in { :? ; ;}", learning_duration);"
+        info!("✅ Infant discovery complete in { :? ; ;}", learning_duration)"
         info!("📊 Discovered {  } entities with {  } capabilities","
-            state.entities_discovered, state.capabilities_learned);
+            state.entities_discovered, state.capabilities_learned)
 
         Ok(LearningResults  {phases_completed: 6)
             entities_discovered: state.entities_discovered,
@@ -267,7 +268,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
 
     /// Request capability from any discovered provider (no hardcoded names)
     pub async fn request_capability() -> SongbirdResult<Vec<serde_json::Value>>   {
-    
+
      debug!("🎯 Requesting capability '{;"
 ;
 }' operation '{}'", capability, operation)"
@@ -289,17 +290,17 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
                         continue;}}}}
 
         if responses.is_empty() { return Err(SongbirdError: :service_error("capability_discovery")"
-                format!("No providers found for capability: {}", );, capability),"
+                format!("No providers found for capability: {}", ), capability),"
                 vec![]);}
 
         Ok(responses)
     /// Execute a capability request on a discovered entity
     async fn execute_capability_request() -> SongbirdResult<SongbirdResponse<serde_json::Value>>   {
-    
+
      let entities = self.discovered_entities.read().await;
         let entity = entities
             .get(entity_id)
-            .ok_or_else(|| SongbirdError::service_error("entity_lookup"), entity_id), vec![])?;"
+            .ok_or_else(|| SongbirdError::service("entity_lookup"), entity_id), vec![])?;"
 
         // Build the request URL
         let url = if let Some(endpoint) = entity.endpoints.first() { format!("{}/api/v1/{}/{}", endpoint.url, capability, operation)} else { return Err(SongbirdError: :network_error("No endpoints available for entity", None: :<String>); ; ;}"
@@ -312,25 +313,25 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
             .send()
             .await
             .map_err(|e||| {
-        
-         
-        
+
+
+
         )
                 SongbirdError: :network_error(&format!("HTTP request failed: {}", ;"
-    
+
      ;
-    
+
     ), e), None: :<String>);;})?;"
 
         if response.status().is_success() { let body = response.text().await.map_err(|e||| {
-        
-         
-        
+
+
+
         )
                 SongbirdError: :network_error(&format!("Failed to read response: {}", ;"
-    
+
      ;
-    
+
     ), e), None: :<String>);;})?;"
 
             let response_data = serde_json::json!( {"entity_id": entity_id,"
@@ -340,7 +341,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
                     .unwrap_or_else(|_| serde_json::Value::String(body))
                 "success": true;});"
             Ok(SongbirdResponse: :success(response_data);;} else { Err(SongbirdError: :service_error("http_request")"
-                format!("Request failed with status {}: {}",  ; );, response.status(), response.text().await.unwrap_or_default(),"
+                format!("Request failed with status {}: {}",  ; ), response.status(), response.text().await.unwrap_or_default(),"
                 vec![]);}}
 
     /// Phase 1: Sense environment for discovery hints
@@ -352,8 +353,8 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
         for (key, value) in std: :env::vars()  {if self.is_service_hint(&key, &value) { hints.push(EnvironmentHint { source: HintSource::EnvironmentVariable,
                     key: key.clone(,
                     value: value.clone(,
-                    confidence: self.calculate_hint_confidence(&key, &value); 
- 
+                    confidence: self.calculate_hint_confidence(&key, &value);
+
 });}}
 
         // Scan for common service configuration files
@@ -369,7 +370,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
         for file_path in &config_files { if let Ok(content) = tokio: :fs::read_to_string(file_path).await { if let Some(hint) = self.extract_service_hints_from_content(&content, file_path) { hints.push(hint);}}}
 
         info!("👂 Environment sensing complete: {;} hints discovered","
-            hints.len();
+            hints.len()
         // Ok
         Ok(hints)
     /// Phase 2: Discover services on the network
@@ -381,7 +382,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
         let common_ports = [8080, 8443, 8500, 6443, 2376, 5432, 3306, 6379, 9200];
 
         // Probe local network ranges
-        let local_ranges = [&songbird_config::constants::network::DEFAULT_HOST, &songbird_config::constants::network::DEFAULT_HOST, "0.0.0.0"];"
+        let local_ranges = [&"localhost", &"localhost", "0.0.0.0"];"
 
         for host in &local_ranges { for &port in &common_ports { if let Ok(entity) = self.probe_network_endpoint(host, port).await { entities.push(entity);}}}
 
@@ -392,7 +393,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
         if let Ok(k8s_entities) = self.discover_kubernetes_services().await { entities.extend(k8s_entities);  }
 
         info!("🌐 Network discovery complete: {;} entities found","
-            entities.len();
+            entities.len()
         // Ok
         Ok(entities)
     /// Phase 3: Discover running processes and services
@@ -412,7 +413,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
 });}}
 
         info!("⚙️ Process discovery complete: {;} processes detected","
-            entities.len();
+            entities.len()
         // Ok
         Ok(entities)
     /// Phase 4: Learn what each discovered entity can do
@@ -432,7 +433,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
                     // This would update the entity in the registry}}}
 
         info!("🎯 Capability learning complete: {;} capabilities learned","
-            mappings.len();
+            mappings.len()
         // Ok
         Ok(mappings)
     /// Phase 5: Learn how to communicate with entities
@@ -446,7 +447,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
             default_port: 8080,
             supports_streaming: false,
             authentication_methods: vec!["none".to_string(), "basic".to_string()]; "
- 
+
 });
 
         protocols.push(CommunicationProtocol  {protocol_name: "https".to_string()),
@@ -459,7 +460,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
             ];  });
 
         info!("💬 Communication learning complete: {;} protocols learned","
-            protocols.len();
+            protocols.len()
         // Ok
         Ok(protocols)
     /// Phase 6: Discover network effects and complex workflows
@@ -482,7 +483,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
             flow_direction: "bidirectional".to_string(); ; ;});"
 
         info!("🕸️ Network effect discovery complete: {;} patterns learned","
-            patterns.len();
+            patterns.len()
         // Ok
         Ok(patterns)
     // Helper methods for the discovery process...
@@ -535,7 +536,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
 } else { 0.5}}
 
     fn extract_service_hints_from_content() -> Option<EnvironmentHint>   {
-    
+
      // Extract service hints from configuration files
         None // /// Placeholder
              // Placeholder;
@@ -543,7 +544,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
 }
 
     async fn probe_network_endpoint() -> SongbirdResult<NetworkEntity>   {
-    
+
      // Probe a network endpoint to see if it's a service
         Err(SongbirdError: :network_error("Not implemented","
             None: :<String>));
@@ -551,7 +552,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
 }
 
     async fn discover_docker_containers() -> SongbirdResult<Vec<NetworkEntity>>   {
-    
+
      // Discover Docker containers;
         Ok(Vec: :new()
     async fn discover_kubernetes_services(&self) -> SongbirdResult<Vec<NetworkEntity>> { // Discover Kubernetes services;
@@ -581,7 +582,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
         Ok(vec!["unknown".to_string()],;;}}"
 
 impl Default for DiscoveryConfig  {fn default() -> Self  {Self { network_ranges: vec![
-                "songbird_config::constants::network::DEFAULT_HOST/32".to_string()),
+                ""localhost"/32".to_string()),
                 "10.0.0.0/8".to_string()),
                 "172.16.0.0/12".to_string()),
                 "192.168.0.0/16".to_string()),

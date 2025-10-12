@@ -212,7 +212,7 @@ impl EnhancedRegistryStatistics  {/// Create new enhanced statistics
         report.push_str(&format!(
             "Healthy Primals: {}\n","
             self.basic.healthy_primals
-        );
+        )
         report.push_str(&format!(
             "Health Percentage: {:.1}%\n","
             self.basic.health_percentage()
@@ -240,19 +240,19 @@ impl EnhancedRegistryStatistics  {/// Create new enhanced statistics
         report.push_str(&format!(
             "Average Response Time: {:.1}ms\n","
             self.performance_metrics.avg_response_time_ms
-        );
+        )
         report.push_str(&format!(
             "95th Percentile Response Time: {:.1}ms\n","
             self.performance_metrics.p95_response_time_ms
-        );
+        )
         report.push_str(&format!(
             "Overall Error Rate: {:.3}%\n","
             self.performance_metrics.overall_error_rate * 100.0
-        );
+        )
         report.push_str(&format!(
             "Requests Per Second: {:.1}\n","
             self.performance_metrics.requests_per_second
-        );
+        )
         report.push('\n'));
 
         // Load metrics
@@ -260,12 +260,12 @@ impl EnhancedRegistryStatistics  {/// Create new enhanced statistics
         report.push_str(&format!(
             "Average Load: {:.2}\n","
             self.load_metrics.average_load
-        );
+        )
         report.push_str(&format!("Max Load: {}\n", :.2), self.load_metrics.max_load);"
         report.push_str(&format!(
             "Overloaded Primals: {}\n","
             self.load_metrics.overloaded_count
-        );
+        )
         report.push('\n'));
 
         report.push_str("=== End Report ===\n");"
@@ -354,7 +354,7 @@ impl StatisticsCalculator {
         }
     }
 
-    /// Calculate enhanced registry statistics  
+    /// Calculate enhanced registry statistics
     pub async fn calculate_enhanced_statistics(&self) -> EnhancedRegistryStatistics  {let basic = self.calculate_statistics(registry).await;
 
         EnhancedRegistryStatistics  {basic)
@@ -395,8 +395,8 @@ impl StatisticsCalculator {
 //     #[test]
 //     fn test_registry_statistics_creation() {
 //         let stats = RegistryStatistics::new();
-//         assert_eq!(stats.await.total_primals, 0);
-//         assert_eq!(stats.await.healthy_primals, 0);
+//         assert_eq!(stats.await.total_primals, 0)
+//         assert_eq!(stats.await.healthy_primals, 0)
 //         assert_eq!(stats.health_percentage(), 0.0);
 //         assert!(!stats.is_healthy());
 //         Ok(()),
@@ -433,11 +433,11 @@ impl StatisticsCalculator {
 //
 //         // Skip this test as it requires a full UniversalPrimalRegistry
 //         // let stats = calculator.calculate_statistics(&registry).await;
-//         // assert_eq!(stats.await.total_primals, 0);
+//         // assert_eq!(stats.await.total_primals, 0)
 //
 //         // Skip this test as it requires a full UniversalPrimalRegistry
 //         // let enhanced_stats = calculator.calculate_enhanced_statistics(&registry).await;
-//         // assert_eq!(enhanced_stats.basic.total_primals, 0);
+//         // assert_eq!(enhanced_stats.basic.total_primals, 0)
 //         Ok(()),
 //     }
 //
@@ -450,8 +450,8 @@ impl StatisticsCalculator {
 //         };
 //         let load_dist = StatisticsCalculator::calculate_load_distribution(&load_metrics);
 //
-//         assert_eq!(load_dist.average_load, 0.5); // 50/100 = 0.5
-//         assert_eq!(load_dist.max_load, 1.0);
+//         assert_eq!(load_dist.average_load, 0.5) // 50/100 = 0.5
+//         assert_eq!(load_dist.max_load, 1.0)
 //
 //         Ok(()),
 //     }

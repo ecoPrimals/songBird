@@ -151,7 +151,14 @@ impl SongbirdError {
     pub fn with_context(&mut self, context: impl Into<String>) -> &mut Self {
         match self {
             Self::Security(sec) => sec.context = Some(context.into()),
-            Self::Configuration { suggestion, .. } | Self::Network { suggestion, .. } => {
+            Self::Configuration {
+                suggestion,
+                ..
+            }
+            | Self::Network {
+                suggestion,
+                ..
+            } => {
                 *suggestion = Some(context.into());
             }
             _ => {} // Other variants don't support context
@@ -163,9 +170,18 @@ impl SongbirdError {
     pub fn with_suggestion(&mut self, suggestion: impl Into<String>) -> &mut Self {
         match self {
             Self::Security(sec) => sec.remediation = Some(suggestion.into()),
-            Self::Configuration { suggestion: s, .. }
-            | Self::Network { suggestion: s, .. }
-            | Self::Validation { suggestion: s, .. } => {
+            Self::Configuration {
+                suggestion: s,
+                ..
+            }
+            | Self::Network {
+                suggestion: s,
+                ..
+            }
+            | Self::Validation {
+                suggestion: s,
+                ..
+            } => {
                 *s = Some(suggestion.into());
             }
             _ => {} // Other variants don't have suggestion fields
@@ -190,7 +206,7 @@ impl From<serde_json::Error> for SongbirdError {
 //     fn from(error: tokio::task::JoinError) -> Self {
 //         Self::Runtime {
 //             message: format!("Task join error: {}", error),
-//             component: Some("tokio".to_string()),
+//             component: Some("tokio".to_string(),
 //             debug_info: None,
 //         }
 //     }
@@ -203,16 +219,6 @@ impl From<std::net::AddrParseError> for SongbirdError {
             message: format!("Address parse error: {error}"),
             interface: None,
             suggestion: Some("Check the address format".to_string()),
-        }
-    }
-}
-
-impl From<regex::Error> for SongbirdError {
-    fn from(error: regex::Error) -> Self {
-        Self::Validation {
-            message: format!("Regex error: {error}"),
-            field: None,
-            suggestion: Some("Check the regex pattern syntax".to_string()),
         }
     }
 }
@@ -300,8 +306,9 @@ mod tests {
             remediation: None,
         });
 
-        let serialized = serde_json::to_string(&error).unwrap();
-        let deserialized: SongbirdError = serde_json::from_str(&serialized).unwrap();
+        // Test code: unwrap is acceptable for testing serialization
+        let serialized = serde_json::to_string(&error).expect("test serialization should succeed");
+        let deserialized: SongbirdError = serde_json::from_str(&serialized).expect("test deserialization should succeed");
 
         assert_eq!(deserialized.to_string(), error.to_string());
     }

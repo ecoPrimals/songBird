@@ -15,7 +15,7 @@ pub struct UnifiedFederationConfig  {/// Enable federation functionality
     /// Node configuration
     pub node: NodeConfig,
 
-    /// Cluster configuration  
+    /// Cluster configuration
     pub cluster: ClusterConfig,
 
     /// Discovery configuration

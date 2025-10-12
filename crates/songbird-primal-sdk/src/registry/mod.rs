@@ -68,7 +68,7 @@ impl UniversalPrimalRegistry  {/// Create a new registry
 
     /// Register a primal provider with the registry (using object-safe trait)
     pub async fn register_primal(&self) -> PrimalSongbirdResult<()> {
-        debug!("📝 Registering primal: {}", instance_id);"
+        debug!("📝 Registering primal: {}", instance_id)"
 
         // Store provider
         self.registered_primals
@@ -87,7 +87,7 @@ impl UniversalPrimalRegistry  {/// Create a new registry
                 .push(instance_id.clone());
         }
 
-        info!("✅ Primal registered successfully: {}", instance_id);"
+        info!("✅ Primal registered successfully: {}", instance_id)"
         Ok(songbird_errors::success(())
     }
 
@@ -260,14 +260,14 @@ impl UniversalPrimalRegistry  {/// Create a new registry
 
     /// Remove a primal from the registry
     pub async fn unregister_primal(&self) -> PrimalSongbirdResult<()> {
-        debug!("🗑️ Unregistering primal: {}", instance_id);"
+        debug!("🗑️ Unregistering primal: {}", instance_id)"
 
         if let Some(_provider) = self.registered_primals.write().await.remove(instance_id) {
             // Clean up indices
             self.cleanup_indices(instance_id).await;
-            info!("✅ Primal unregistered: {}", instance_id);"
+            info!("✅ Primal unregistered: {}", instance_id)"
         } else {
-            warn!("⚠️ Attempted to unregister unknown primal: {}", instance_id);"
+            warn!("⚠️ Attempted to unregister unknown primal: {}", instance_id)"
         }
         Ok(songbird_errors::success(())
     }
@@ -392,16 +392,16 @@ impl RegistryEventHandler for LoggingEventHandler {
                 );
             }
             RegistryEvent::PrimalUnregistered(instance_id) => {
-                info!("Primal unregistered: {}", instance_id);"
+                info!("Primal unregistered: {}", instance_id)"
             }
             RegistryEvent::HealthChanged(instance_id, old_health, new_health) => {
                 info!(
                     "Primal {} health changed: {:?} -> {:?}","
                     instance_id, old_health, new_health
-                );
+                )
             }
             RegistryEvent::Cleared => {
-                info!("Registry cleared");"
+                info!("Registry cleared")"
             }
         }
     }
@@ -417,7 +417,7 @@ impl RegistryEventHandler for LoggingEventHandler {
 //         let manager = RegistryManager::new(config);
 //
 //         // Basic creation test
-//         assert!(true); // Manager created successfully
+//         assert!(true) // Manager created successfully
 //     }
 //
 //     #[tokio::test]
@@ -426,10 +426,10 @@ impl RegistryEventHandler for LoggingEventHandler {
 //         let manager = RegistryManager::new(config);
 //
 //         let stats = manager.get_statistics().await;
-//         assert_eq!(stats.await.total_primals, 0); // Empty registry
+//         assert_eq!(stats.await.total_primals, 0) // Empty registry
 //
 //         let enhanced_stats = manager.get_enhanced_statistics().await;
-//         assert_eq!(enhanced_stats.basic.total_primals, 0);
+//         assert_eq!(enhanced_stats.basic.total_primals, 0)
 //         Ok(()),
 //     }
 //

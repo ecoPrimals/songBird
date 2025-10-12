@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 
 /// AI-First Citizen API configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AIFirstConfig  {/// Enable AI-First response formatting
+pub struct AIFirstConfig {
+    /// Enable AI-First response formatting
     /// Enable Ai Responses field
     pub enable_ai_responses: bool,
 
@@ -27,7 +28,8 @@ pub struct AIFirstConfig  {/// Enable AI-First response formatting
 
 /// Confidence scoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfidenceScoringConfig  {/// Enable confidence scoring
+pub struct ConfidenceScoringConfig {
+    /// Enable confidence scoring
     /// Enabled field
     pub enabled: bool,
     /// Minimum confidence threshold (0.0-1.0)
@@ -43,7 +45,8 @@ pub struct ConfidenceScoringConfig  {/// Enable confidence scoring
 
 /// Human-AI collaboration configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HumanCollaborationConfig  {/// Enable human-AI collaboration features
+pub struct HumanCollaborationConfig {
+    /// Enable human-AI collaboration features
     /// Enabled field
     pub enabled: bool,
     /// Require human approval for high-impact decisions
@@ -59,7 +62,8 @@ pub struct HumanCollaborationConfig  {/// Enable human-AI collaboration features
 
 /// Workload classification configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WorkloadClassificationConfig  {/// Enable automatic workload classification
+pub struct WorkloadClassificationConfig {
+    /// Enable automatic workload classification
     /// Enabled field
     pub enabled: bool,
     /// Classification strategies
@@ -71,7 +75,8 @@ pub struct WorkloadClassificationConfig  {/// Enable automatic workload classifi
 
 /// Streaming interface configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StreamingInterfaceConfig  {/// Enable real-time streaming
+pub struct StreamingInterfaceConfig {
+    /// Enable real-time streaming
     /// Enabled field
     pub enabled: bool,
     /// Maximum concurrent streams
@@ -84,17 +89,20 @@ pub struct StreamingInterfaceConfig  {/// Enable real-time streaming
 
 /// Classification strategies for workload analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ClassificationStrategy  {/// Rule-based classification
+pub enum ClassificationStrategy {
+    /// Rule-based classification
     RuleBased,
     /// Machine learning classification
     MachineLearning,
     /// Hybrid approach
     Hybrid,
     /// Custom strategy
-    Custom(String)
+    Custom(String),
 }
 
-impl Default for AIFirstConfig  {fn default() -> Self  {Self {
+impl Default for AIFirstConfig {
+    fn default() -> Self {
+        Self {
             enable_ai_responses: true,
             confidence_scoring: ConfidenceScoringConfig::default(),
             human_collaboration: HumanCollaborationConfig::default(),
@@ -104,7 +112,9 @@ impl Default for AIFirstConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for ConfidenceScoringConfig  {fn default() -> Self  {Self {
+impl Default for ConfidenceScoringConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             min_threshold: 0.7,
             high_threshold: 0.9,
@@ -113,7 +123,9 @@ impl Default for ConfidenceScoringConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for HumanCollaborationConfig  {fn default() -> Self  {Self {
+impl Default for HumanCollaborationConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             require_human_approval: false,
             escalation_threshold: 0.5,
@@ -122,7 +134,9 @@ impl Default for HumanCollaborationConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for WorkloadClassificationConfig  {fn default() -> Self  {Self {
+impl Default for WorkloadClassificationConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             strategies: vec![ClassificationStrategy::Hybrid],
             model_update_interval: 24, // 24 hours
@@ -130,7 +144,9 @@ impl Default for WorkloadClassificationConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for StreamingInterfaceConfig  {fn default() -> Self  {Self {
+impl Default for StreamingInterfaceConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             max_concurrent_streams: 100,
             buffer_size: 8192,

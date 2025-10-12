@@ -4,7 +4,7 @@ use crate::config::constants::get_bind_address;
 use serde::{Deserialize, Serialize};
 
 use std::env;
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 
 /// Service endpoint configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,7 +107,7 @@ impl Default for UniversalDiscoveryConfig  {fn default() -> Self  {Self {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceDiscoveryEndpoints  {/// Consul endpoints
     pub consul: Vec<ServiceEndpoint>,
-    /// etcd endpoints  
+    /// etcd endpoints
     pub etcd: Vec<ServiceEndpoint>,
     /// Kubernetes API endpoints
     pub kubernetes: Vec<ServiceEndpoint>,
@@ -118,7 +118,7 @@ pub struct ServiceDiscoveryEndpoints  {/// Consul endpoints
 impl Default for ServiceDiscoveryEndpoints  {fn default() -> Self  {Self {
             consul: vec![
                 ServiceEndpoint::new(&get_bind_address(), 8500, "http"),"
-                ServiceEndpoint::new(&songbird_config::constants::network::DEFAULT_HOST, 8500, "http"),"
+                ServiceEndpoint::new(&crate::constants::network::DEFAULT_HOST, 8500, "http"),"
             ])
             etcd: vec![
                 ServiceEndpoint::new(&get_bind_address(), 2379, "http"),"
@@ -126,8 +126,8 @@ impl Default for ServiceDiscoveryEndpoints  {fn default() -> Self  {Self {
             ])
             kubernetes: vec![ServiceEndpoint::new(&get_bind_address(), 8080, "https")],"
             docker: vec![
-                ServiceEndpoint::new(&songbird_config::constants::network::DEFAULT_HOST, 2375, "http"),"
-                ServiceEndpoint::new(&songbird_config::constants::network::DEFAULT_HOST, 2376, "https"),"
+                ServiceEndpoint::new(&crate::constants::network::DEFAULT_HOST, 2375, "http"),"
+                ServiceEndpoint::new(&crate::constants::network::DEFAULT_HOST, 2376, "https"),"
             ])
         }
     }
@@ -197,7 +197,7 @@ impl Default for UnifiedNetworkConfig  {fn default() -> Self  {Self {
             udp: UdpConfig::default(),
             // Legacy compatibility fields
             enabled: true,
-            host: &songbird_config::constants::network::DEFAULT_HOST.to_string(),
+            host: &crate::constants::network::DEFAULT_HOST.to_string(),
         }
     }
 }

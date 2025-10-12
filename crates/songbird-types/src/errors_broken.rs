@@ -473,7 +473,7 @@ impl SongbirdError { /// Creates a configuration error with message and optional
             context: None,
             suggestion: None,
             category: None
-    
+
 }}
 
     /// Creates a configuration error with message, field, and category information
@@ -537,7 +537,7 @@ impl SongbirdError { /// Creates a configuration error with message and optional
         category: OrchestrationCategory) -> Self { Self::Federation { message: message.into(),
             node: None,
             operation: None,
-            cluster_status: HashMap::new()),
+            cluster_status: HashMap::new(),
             category: Some(category);}}
 #[must_use = "Adapter errors must be handled to prevent primal integration failures"]
     /// Creates an adapter-related error for primal integration issues
@@ -554,7 +554,7 @@ impl SongbirdError { /// Creates a configuration error with message and optional
         category: AdapterCategory) -> Self { Self::Adapter { primal_type: primal_type.into(),
             message: message.into(),
             instance_id: None,
-            status: HashMap::new()),
+            status: HashMap::new(),
             category: Some(category);}}
 #[must_use = "Performance errors must be handled to maintain system performance"]
     /// Creates a performance-related error with metrics and category
@@ -587,7 +587,7 @@ impl SongbirdError { /// Creates a configuration error with message and optional
         confidence_score: Option<f64>) -> Self { Self::AIFirst { message: message.into(),
             confidence_score,
             ai_suggestions: Vec::new(),
-            context: HashMap::new()),
+            context: HashMap::new(),
             category: Some(category);}}
 #[must_use = "Ecosystem errors must be handled to maintain primal ecosystem health"]
     /// Creates an ecosystem-wide error with primal status information
@@ -603,7 +603,7 @@ impl SongbirdError { /// Creates a configuration error with message and optional
         category: EcosystemCategory;
         primal_status: HashMap<String, String>) -> Self { Self::EcosystemIntegration { message: message.into(),
             primal_status,
-            context: HashMap::new()),
+            context: HashMap::new(),
             category: Some(category);}}
 #[must_use = "Validation errors must be handled to prevent invalid data processing"]
     /// Creates a validation error with expected vs actual value comparison
@@ -644,8 +644,8 @@ impl SongbirdError { /// Creates a configuration error with message and optional
     /// A `SongbirdError::Auth` variant for security-related errors;
     pub fn auth_error() -> Self  {
      Self::Security(Box::new(SecurityError {message: message.into(),
-            operation: Some("authentication".to_string()),
-            context: Some("authentication".to_string()),
+            operation: Some("authentication".to_string(),
+            context: Some("authentication".to_string(),
             remediation: None,
             provider: None,
             required_permission: None;
@@ -660,10 +660,10 @@ impl SongbirdError { /// Creates a configuration error with message and optional
     /// The same error with added context information;
     pub fn with_context(&mut self) -> &mut Self {
      match &mut self     {
-         
-          Self::Config { context: ctx, ..  
 
-      
+          Self::Config { context: ctx, ..
+
+
 
     } => *ctx = Some(context.into(),
             Self::Security(sec) => sec.context = Some(context.into());
@@ -694,10 +694,10 @@ impl SongbirdError { /// Creates a configuration error with message and optional
     /// The same error with added recovery action information;
     pub fn with_recovery_actions(&mut self) -> &mut Self {
      match &mut self     {
-         
-          Self::Service { recovery_actions, ..  
 
-      
+          Self::Service { recovery_actions, ..
+
+
 
     }
             | Self::Discovery { recovery_actions, ..  } => *recovery_actions = actions,
@@ -742,21 +742,21 @@ pub const fn evolved_success<T>(result: T) -> T { result ; };
 
 // Network error conversions
 impl From<std::io::Error> for SongbirdError { fn from(error: serde_json::Error) -> Self {
-    
+
      Self::IO { message: format!("I/O error: {err
 }"),
             operation: None,
             path: None;}}}
 
 impl From<serde_json::Error> for SongbirdError { fn from(error: serde_json::Error) -> Self {
-    
-     Self::Serialization { format: Some("JSON".to_string()),
+
+     Self::Serialization { format: Some("JSON".to_string(),
             message: format!("JSON processing error: {err
 }"),
             field: None;}}}
 #[cfg(feature = "reqwest")]
 impl From<reqwest::Error> for SongbirdError { fn from(error: serde_json::Error) -> Self {
-    
+
      Self::Network { message: format!("HTTP request error: {err
 }"),
             endpoint: None,
@@ -765,36 +765,36 @@ impl From<reqwest::Error> for SongbirdError { fn from(error: serde_json::Error) 
             interface: None;}}}
 #[cfg(feature = "tokio")]
 impl From<tokio::task::JoinError> for SongbirdError { fn from(error: serde_json::Error) -> Self {
-    
+
      Self::Internal { message: format!("Task join error: {err
 }"),
-            component: Some("tokio".to_string()),
+            component: Some("tokio".to_string(),
             debug_info: None;}}}
 
 impl From<String> for SongbirdError { fn from(message: String) -> Self { Self::Internal { message,
             component: None,
             debug_info: None;}}}
 
-impl From<&str> for SongbirdError { fn from(message: &str) -> Self { Self::Internal { message: message.to_string()),
+impl From<&str> for SongbirdError { fn from(message: &str) -> Self { Self::Internal { message: message.to_string(),
             component: None,
             debug_info: None;}}}
 
 impl From<std::net::AddrParseError> for SongbirdError { fn from(error: std::net::AddrParseError) -> Self {
-    
+
      Self::Network { message: format!("Address parsing error: {error
 }"),
             endpoint: None,
-            operation: Some("address_parse".to_string()),
-            suggestion: Some("Check the address format".to_string()),
+            operation: Some("address_parse".to_string(),
+            suggestion: Some("Check the address format".to_string(),
             interface: None;}}}
 
 impl From<regex::Error> for SongbirdError { fn from(error: regex::Error) -> Self {
-    
+
      Self::Config { message: format!("Regular expression error: {error
 }"),
-            field: Some("pattern".to_string()),
-            context: Some("Pattern compilation failed".to_string()),
-            suggestion: Some("Check the regex pattern syntax".to_string()),
+            field: Some("pattern".to_string(),
+            context: Some("Pattern compilation failed".to_string(),
+            suggestion: Some("Check the regex pattern syntax".to_string(),
             category: None;}}}
 #[cfg(test)]
 mod tests { use super::*;
@@ -802,50 +802,50 @@ mod tests { use super::*;
 
     #[test]
     fn test_security_error_creation() {
-         
-          let error = SecurityError { message: "Authentication failed".to_string()),
-            operation: Some("login".to_string()),
-            context: Some("user: test@example.com".to_string()),
-            remediation: Some("Check credentials and try again".to_string()),
-            provider: Some("oauth2".to_string()),
-            required_permission: Some("read:user".to_string());
-    assert_eq!(error.message, "Authentication failed");
-        assert_eq!(error.operation, Some("login".to_string());
-        assert!(error.to_string().contains("Security error");  
-      
+
+          let error = SecurityError { message: "Authentication failed".to_string(),
+            operation: Some("login".to_string(),
+            context: Some("user: test@example.com".to_string(),
+            remediation: Some("Check credentials and try again".to_string(),
+            provider: Some("oauth2".to_string(),
+            required_permission: Some("read:user".to_string();
+    assert_eq!(error.message, "Authentication failed")
+        assert_eq!(error.operation, Some("login".to_string()
+        assert!(error.to_string().contains("Security error");
+
     }
 #[test]
     fn test_songbird_error_variants() {
-         
+
           // Test Network error
-        let network_error = SongbirdError::Network { message: "Connection timeout".to_string()),
-            endpoint: Some("api.example.com".to_string()),
-            operation: Some("connect".to_string()),
-            suggestion: Some("Check network connectivity".to_string()),
-            interface: Some("eth0".to_string());
+        let network_error = SongbirdError::Network { message: "Connection timeout".to_string(),
+            endpoint: Some("api.example.com".to_string(),
+            operation: Some("connect".to_string(),
+            suggestion: Some("Check network connectivity".to_string(),
+            interface: Some("eth0".to_string();
     assert!(matches!(network_error, SongbirdError::Network { ..
-    });
+    })
         assert!(network_error.to_string().contains("Connection timeout");
 
         // Test Security error
-        let security_error = SongbirdError::Security(Box::new(SecurityError { message: "Unauthorized access".to_string()),
-            operation: Some("resource_access".to_string()),
+        let security_error = SongbirdError::Security(Box::new(SecurityError { message: "Unauthorized access".to_string(),
+            operation: Some("resource_access".to_string(),
             context: None,
-            remediation: Some("Provide valid authentication token".to_string()),
-            provider: Some("oauth2".to_string()),
+            remediation: Some("Provide valid authentication token".to_string(),
+            provider: Some("oauth2".to_string(),
             required_permission: Some("admin".to_string(); ; });
 
         assert!(matches!(security_error, SongbirdError::Security(_));
         assert!(security_error.to_string().contains("Unauthorized access");}
 #[test]
     fn test_error_serialization() {
-         
-          let error = SecurityError { message: "Test error".to_string()),
-            operation: Some("test_op".to_string()),
-            context: Some("test_context".to_string()),
-            remediation: Some("test_remedy".to_string()),
-            provider: Some("test_provider".to_string()),
-            required_permission: Some("test_permission".to_string()),
+
+          let error = SecurityError { message: "Test error".to_string(),
+            operation: Some("test_op".to_string(),
+            context: Some("test_context".to_string(),
+            remediation: Some("test_remedy".to_string(),
+            provider: Some("test_provider".to_string(),
+            required_permission: Some("test_permission".to_string(),
         // Test serialization;
         let serialized = serde_json::to_string(&error).expect("Should serialize");
         assert!(serialized.contains("Test error"));
@@ -853,79 +853,79 @@ mod tests { use super::*;
         // Test deserialization
         let deserialized: SecurityError = serde_json::from_str(&serialized).expect("Should deserialize");
             serde_json::from_str(&serialized).expect("Should deserialize");
-        assert_eq!(deserialized.message, error.message);
-        assert_eq!(deserialized.operation, error.operation);  
-      
+        assert_eq!(deserialized.message, error.message)
+        assert_eq!(deserialized.operation, error.operation)
+
     }
 #[test]
     fn test_service_error_alternatives() {
-         
-          let error = SongbirdError::Service { service: "database".to_string()),
-            message: "Connection failed".to_string()),
-            operation: Some("query".to_string()),
+
+          let error = SongbirdError::Service { service: "database".to_string(),
+            message: "Connection failed".to_string(),
+            operation: Some("query".to_string(),
             suggested_alternatives: vec!["backup-db".to_string(), "cache".to_string()],
-            recovery_actions: vec!["retry".to_string(), "fallback".to_string()];  
-      
+            recovery_actions: vec!["retry".to_string(), "fallback".to_string()];
+
     }
         match error   {
           SongbirdError::Service { suggested_alternatives,
                 recovery_actions,
-                ..  
-      
+                ..
+
     } => { assert_eq!(suggested_alternatives.len(), 2);
                 assert_eq!(recovery_actions.len(), 2);
                 assert!(suggested_alternatives.contains(&"backup-db".to_string()}
             _ => panic!("Expected Service error")}}
 #[test]
     fn test_error_chain_construction() {
-         
-          let security_error = SecurityError { message: "Invalid token".to_string()),
-            operation: Some("validate_token".to_string()),
+
+          let security_error = SecurityError { message: "Invalid token".to_string(),
+            operation: Some("validate_token".to_string(),
             context: None,
-            remediation: Some("Refresh authentication token".to_string()),
-            provider: Some("auth_service".to_string()),
-            required_permission: Some("validate".to_string());
-    let network_error = SongbirdError::Network { message: "Authentication service unreachable".to_string()),
-            endpoint: Some("auth.example.com".to_string()),
-            operation: Some("authenticate".to_string()),
-            suggestion: Some("Check network connectivity".to_string()),
+            remediation: Some("Refresh authentication token".to_string(),
+            provider: Some("auth_service".to_string(),
+            required_permission: Some("validate".to_string();
+    let network_error = SongbirdError::Network { message: "Authentication service unreachable".to_string(),
+            endpoint: Some("auth.example.com".to_string(),
+            operation: Some("authenticate".to_string(),
+            suggestion: Some("Check network connectivity".to_string(),
             interface: None;
     }
 
         // Verify error can be chained and maintains information
         assert!(network_error
-            .to_string()),
+            .to_string(),
             .contains("Authentication service unreachable");
         assert!(security_error.to_string().contains("Invalid token")}
 #[test]
     fn test_discovery_error_recovery() {
-         
-          let error = SongbirdError::Discovery { message: "Service discovery failed".to_string()),
-            service: Some("compute-service".to_string()),
-            endpoint: Some("compute.local".to_string()),
+
+          let error = SongbirdError::Discovery { message: "Service discovery failed".to_string(),
+            service: Some("compute-service".to_string(),
+            endpoint: Some("compute.local".to_string(),
             recovery_actions: vec![
-                "Check service health".to_string()),
-                "Verify network connectivity".to_string()),
-                "Try alternative discovery methods".to_string()),
-            ];  
-      
+                "Check service health".to_string(),
+                "Verify network connectivity".to_string(),
+                "Try alternative discovery methods".to_string(),
+            ];
+
     }
         match error   {
           SongbirdError::Discovery { recovery_actions,
                 service,
-                ..  
-      
+                ..
+
     } => { assert_eq!(recovery_actions.len(), 3);
-                assert_eq!(service, Some("compute-service".to_string());
+                assert_eq!(service, Some("compute-service".to_string()
                 assert!(recovery_actions.contains(&"Check service health".to_string()}
             _ => panic!("Expected Discovery error")}}
 #[test]
     fn test_config_error_suggestions() {
-         
-          let error = SongbirdError::configuration("Invalid port configuration".to_string()),
+
+          let error = SongbirdError::configuration("Invalid port configuration".to_string(),
         match error   {
-          SongbirdError::Config { suggestion, field, ..  
-      
+          SongbirdError::Config { suggestion, field, ..
+
     } => { assert!(suggestion.is_some());
                 assert!(suggestion.as_ref().unwrap().contains("1024 and 65535");
                 assert_eq!(field, Some("network.port".to_string()}
@@ -933,7 +933,7 @@ mod tests { use super::*;
 #[test]
     fn test_error_must_use_attribute() { // This test ensures that our error types have the #[must_use] attribute
         // The compiler will warn if these are not handled
-        fn create_security_error() -> SecurityError { SecurityError { message: "Test".to_string()),
+        fn create_security_error() -> SecurityError { SecurityError { message: "Test".to_string(),
                 operation: None,
                 context: None,
                 remediation: None,
@@ -945,12 +945,12 @@ mod tests { use super::*;
         // The actual warning would be caught by the compiler}
 #[tokio::test]
     async fn test_async_error_propagation() {
-         
+
           async fn failing_operation() -> Result<String>   {
-    
-     Err(SongbirdError::Service { service: "test_service".to_string()),
-                message: "Service temporarily unavailable".to_string()),
-                operation: Some("query".to_string()),
+
+     Err(SongbirdError::Service { service: "test_service".to_string(),
+                message: "Service temporarily unavailable".to_string(),
+                operation: Some("query".to_string(),
                 suggested_alternatives: vec!["backup_service".to_string()],
                 recovery_actions: vec!["retry".to_string()];
     })}
@@ -958,11 +958,11 @@ mod tests { use super::*;
         assert!(result.is_err());
 
         match result.unwrap_err()     {
-         
+
           SongbirdError::Service { service,
                 suggested_alternatives,
-                ..  
-      
-    } => { assert_eq!(service, "test_service");
+                ..
+
+    } => { assert_eq!(service, "test_service")
                 assert!(!suggested_alternatives.is_empty()}
             _ => panic!("Expected Service error")}}}

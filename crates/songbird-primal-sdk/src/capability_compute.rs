@@ -317,18 +317,18 @@ pub struct ResourceUsage  {/// CPU cores used
 
 impl ComputeCapabilityManager  {/// Create new compute capability manager
     pub async fn new() -> SongbirdResult<Self>    {info!("🖥️ Initializing capability-based compute manager")"
-        
+
         let discovery_manager = Arc::new(InfantDiscoveryManager::new();
-        
+
         // Begin discovery process
         let _learning_results = discovery_manager.begin_learning().await?;
-        
+
         let manager = Self { discovery_manager)
             provider_cache: Arc::new(RwLock::new(HashMap::new()),
             config: ComputeConfig::default,
         // Initial provider discovery
         manager.discover_compute_providers().await?;
-        
+
         // Ok;
         Ok(manager)
     /// Request a compute capability (replaces hardcoded toadstool calls)
@@ -339,43 +339,43 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
   ;
 
 }", capability)"
-        
+
         // Find providers for this capability
         let providers = self.find_capability_providers(capability).await;
-        
-        if providers.is_empty() { warn!("⚠️ No compute providers found for capability: }", capability);"
+
+        if providers.is_empty() { warn!("⚠️ No compute providers found for capability: }", capability)"
             return self.handle_no_providers(capability, request).await;}
     let mut responses = Vec::new();
-        
+
         for provider in providers { match self.execute_compute_operation(&provider, &request).await     {
-         
+
           Ok(response) => { responses.push(response));
-                    break; // Use first successful response  
-      
+                    break; // Use first successful response
+
     }
-                Err(e) => { warn!("⚠️ Compute provider {} failed: }", provider.provider_id, e);"
+                Err(e) => { warn!("⚠️ Compute provider {} failed: }", provider.provider_id, e)"
                     continue;}}}
-        
+
         if responses.is_empty() { self.handle_all_providers_failed(capability, request).await;} else { // Ok;
         Ok(responses);}}
 
     /// Discover compute providers in the environment
     async fn discover_compute_providers() -> SongbirdResult<()>   {
-    
+
      info!("🔍 Discovering compute providers...")"
-        
+
         // Use infant discovery to find compute capabilities
         let capability_responses = self.discovery_manager
             .request_capability("compute", "health_check", serde_json::json!({;"
 ;
 })
             .await?;
-        
+
         let mut cache = self.provider_cache.write().await;
-        
+
         for response in capability_responses  {let provider = ComputeProvider { provider_id: response.provider_entity_id.clone(,
                 capabilities: vec!["compute".to_string(), "container-execution".to_string()],"
-                endpoints: vec![ComputeEndpoint { url: format!("discovered://{}",  ; );, response.provider_entity_id),"
+                endpoints: vec![ComputeEndpoint { url: format!("discovered://{}",  ; ), response.provider_entity_id),"
                     supported_operations: vec!["run_container".to_string(), "execute_job".to_string()],"
                     runtime_type: ComputeRuntime::Container  {engine: "discovered".to_string(),
                         supports_orchestration: true; ; ;})
@@ -386,13 +386,13 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
                 health_status: ProviderHealth::Healthy,
                 resource_limits: ResourceLimits::default,
             cache.insert(response.provider_entity_id, provider);}
-        
-        info!("✅ Discovered {} compute providers", cache.len();"
+
+        info!("✅ Discovered {} compute providers", cache.len()"
         Ok(()),
 
     /// Find providers that support a specific capability
     async fn find_capability_providers() -> Vec<ComputeProvider>    {let cache = self.provider_cache.read().await
-        
+
         cache.values()
             .filter(|provider| provider.capabilities.contains(&capability.to_string()),
             .cloned()
@@ -405,10 +405,10 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
 } on compute provider {}", request.operation, provider.provider_id)"
         ;
         let start_time = std::time::Instant::now();
-        
+
         // Simulate operation based on request type
         let response_payload = match request.operation.as_str()     {
-         
+
           "run_container" => self.simulate_container_execution(request).await?,"
             "execute_job" => self.simulate_job_execution(request).await?,"
             "deploy_function" => self.simulate_function_deployment(request).await?,"
@@ -417,7 +417,7 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
      ;
     ), request.operation));}}"
     let processing_time = start_time.elapsed().as_millis() as u64;
-        
+
         // Ok;
         Ok(ComputeResponse  {provider_id: provider.provider_id.clone()
             payload: response_payload,
@@ -431,38 +431,38 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
 
     /// Handle case when no providers are available
     async fn handle_no_providers() -> SongbirdResult<Vec<ComputeResponse>>   {
-    
+
      warn!("🖥️ No providers for compute capability: {;"
 ;
 }, using fallback", capability)"
-        
+
         for strategy in &self.config.fallback_strategies { match strategy     {
-         
+
           ComputeFallbackStrategy::LocalCompute { max_cpu_cores  ;
       ;
     } => { return self.use_local_compute(request, *max_cpu_cores).await;}
                 ComputeFallbackStrategy::MockCompute => { return self.use_production_compute(request).await;}
                 ComputeFallbackStrategy::CachedResults { max_age_ms ; ;} => { if let Ok(cached) = self.use_cached_results(&request, *max_age_ms).await { return Ok(cached);}}
                 ComputeFallbackStrategy::FailCompute => { return Err(SongbirdError::internal_error("No compute providers available")}"
-        
+
         Err(SongbirdError::internal_error("All compute fallback strategies exhausted");}"
 
     /// Handle case when all providers fail
     async fn handle_all_providers_failed() -> SongbirdResult<Vec<ComputeResponse>>   {
-    
+
      warn!("🖥️ All compute providers failed, using emergency fallback")"
         self.use_local_compute(request, 2).await // Use 2 CPU cores as emergency fallback;
 
 }
 
     // Fallback implementations
-    
+
     async fn use_local_compute() -> SongbirdResult<Vec<ComputeResponse>>   {
-    
+
      info!("🖥️ Using local compute resources (max { ;"
- 
+
 } cores)", max_cpu_cores);"
-        
+
         let response = ComputeResponse  {provider_id: "local-compute".to_string()),
             payload: serde_json::json!({ "status": "success","
                 "method": "local_compute","
@@ -475,18 +475,18 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
                 storage_bytes_used: 1024 * 1024 * 50,  // 50MB
                 gpu_units_used: 0,
                 network_bytes_transferred: 0;}}
-        
+
         // Ok;
         Ok(vec![response])
     async fn use_production_compute() -> SongbirdResult<Vec<ComputeResponse>>   {
-    
-     info!("🖥️ Using production compute implementation");"
-        
+
+     info!("🖥️ Using production compute implementation")"
+
         let start_time = std::time::Instant::now();
-        
+
         // Real compute implementation based on request type
         let (result, resource_usage) = match request.operation.as_str()     {
-         
+
           "execute" => self.handle_compute_execution(&request).await?,"
             "container_run" => self.handle_container_execution(&request).await?,"
             "job_submit" => self.handle_job_submission(&request).await?,"
@@ -498,26 +498,26 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
 
     ), request.operation));}"
     let processing_time = start_time.elapsed().as_millis() as u64;
-        
+
         let response = ComputeResponse  {provider_id: "production-compute".to_string()),
             payload: result,
             processing_time_ms: processing_time,
             performance_level: PerformanceLevel::Production,
             resource_usage;  }
-        
+
         Ok(vec![response])
     async fn use_cached_results() -> SongbirdResult<Vec<ComputeResponse>>   {
-    
+
      // Implementation would check compute result cache;
         Err(SongbirdError::internal_error("No cached compute results available");"
 ;
 }
 
     // Simulation methods (would be replaced with real implementations)
-    
+
     async fn simulate_container_execution() -> SongbirdResult<serde_json::Value>   {
-    
-     debug!("🖥️ Simulating container execution");"
+
+     debug!("🖥️ Simulating container execution")"
         Ok(serde_json::json!({)
             "container_id": "sim_container_123")"
             "status": "running")"
@@ -529,8 +529,8 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
 })}
 
     async fn simulate_job_execution() -> SongbirdResult<serde_json::Value>   {
-    
-     debug!("🖥️ Simulating job execution");"
+
+     debug!("🖥️ Simulating job execution")"
         Ok(serde_json::json!({ "job_id": "sim_job_456","
             "status": "completed","
             "exit_code": 0,"
@@ -543,8 +543,8 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
 })})}
 
     async fn simulate_function_deployment() -> SongbirdResult<serde_json::Value>   {
-    
-     debug!("🖥️ Simulating function deployment");"
+
+     debug!("🖥️ Simulating function deployment")"
         Ok(serde_json::json!({ "function_id": "sim_func_789")"
             "status": "deployed")"
             "endpoint": "https://compute-provider.example.com/functions/sim_func_789")"
@@ -555,8 +555,8 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
 })}
 
     async fn simulate_resource_scaling() -> SongbirdResult<serde_json::Value>   {
-    
-     debug!("🖥️ Simulating resource scaling");"
+
+     debug!("🖥️ Simulating resource scaling")"
         Ok(serde_json::json!({ "scaling_operation_id": "sim_scale_101")"
             "status": "scaling")"
             "current_instances": 2)"
@@ -566,15 +566,15 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
 })}
 
     // Production compute operation handlers
-    
+
     async fn handle_compute_execution() -> SongbirdResult<(serde_json::Value, ResourceUsage)>   {
-    
-     debug!("🖥️ Handling compute execution request");"
-        
+
+     debug!("🖥️ Handling compute execution request")"
+
         let command = request.payload.get("command")"
             .and_then(|v| v.as_str()
             .ok_or_else(|| SongbirdError::invalid_input("Missing command")?;"
-        
+
         // Basic command execution (in production, use proper process execution);
         let result = serde_json::json!({ "status": "completed","
             "command": command,"
@@ -583,22 +583,22 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
             "execution_id": uuid::Uuid::new_v4().to_string();"
 ;
 });
-        
+
         let resource_usage = ResourceUsage  {cpu_cores_used: 0.5)
             memory_bytes_used: 64 * 1024 * 1024, // 64MB
             storage_bytes_used: 1024 * 1024, // 1MB
             gpu_units_used: 0,
             network_bytes_transferred: 0 ; ;}
-        
+
         Ok(result, resource_usage)
     async fn handle_container_execution() -> SongbirdResult<(serde_json::Value, ResourceUsage)>   {
-    
-     debug!("🖥️ Handling container execution request");"
-        
+
+     debug!("🖥️ Handling container execution request")"
+
         let image = request.payload.get("image")"
             .and_then(|v| v.as_str()
             .ok_or_else(|| SongbirdError::invalid_input("Missing container image")?;"
-        
+
         // Basic container execution simulation (in production, use proper container runtime);
         let result = serde_json::json!({ "status": "running","
             "container_id": format!("container_ {}",   "
@@ -606,21 +606,21 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
             "image": image,"
             "ports": [8080],"
             "created_at": chrono::Utc::now();"
-            "logs_url": format!("http://songbird_config::constants::network::DEFAULT_HOST:8080/logs/}", uuid::Uuid::new_v4();});"
-        
+            "logs_url": format!("http://songbird_config::constants::network::DEFAULT_HOST:8080/logs/}", uuid::Uuid::new_v4()});"
+
         let resource_usage = ResourceUsage  {cpu_cores_used: 1.0)
             memory_bytes_used: 256 * 1024 * 1024, // 256MB
             storage_bytes_used: 100 * 1024 * 1024, // 100MB
             gpu_units_used: 0,
             network_bytes_transferred: 1024 * 1024, // 1MB  }
-        
+
         Ok(result, resource_usage)
-    async fn handle_job_submission() -> SongbirdResult<(serde_json::Value, ResourceUsage)>    {debug!("🖥️ Handling job submission request");"
-        
+    async fn handle_job_submission() -> SongbirdResult<(serde_json::Value, ResourceUsage)>    {debug!("🖥️ Handling job submission request")"
+
         let job_type = request.payload.get("type")"
             .and_then(|v| v.as_str()
             .unwrap_or("batch");"
-        
+
         // Basic job submission (in production, use proper job scheduler);
         let result = serde_json::json!({ "status": "queued","
             "job_id": uuid::Uuid::new_v4().to_string()),
@@ -630,20 +630,20 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
             "priority": request.payload.get("priority").unwrap_or(&serde_json::json!("normal");"
 ;
 });
-        
+
         let resource_usage = ResourceUsage  {cpu_cores_used: 0.1, // Minimal for queuing
             memory_bytes_used: 16 * 1024 * 1024, // 16MB
             storage_bytes_used: 0,
             gpu_units_used: 0,
             network_bytes_transferred: 512, // 512B  }
-        
+
         Ok(result, resource_usage)
-    async fn handle_function_invocation() -> SongbirdResult<(serde_json::Value, ResourceUsage)>    {debug!("🖥️ Handling function invocation request");"
-        
+    async fn handle_function_invocation() -> SongbirdResult<(serde_json::Value, ResourceUsage)>    {debug!("🖥️ Handling function invocation request")"
+
         let function_name = request.payload.get("function")"
             .and_then(|v| v.as_str()
             .ok_or_else(|| SongbirdError::invalid_input("Missing function name")?;"
-        
+
         // Basic function invocation (in production, use proper serverless runtime);
         let result = serde_json::json!({ "status": "success","
             "function": function_name,"
@@ -653,20 +653,20 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
             "memory_used_mb": 32;"
 
 });
-        
+
         let resource_usage = ResourceUsage  {cpu_cores_used: 0.25)
             memory_bytes_used: 32 * 1024 * 1024, // 32MB
             storage_bytes_used: 0,
             gpu_units_used: 0,
             network_bytes_transferred: 2048, // 2KB  }
-        
+
         Ok(result, resource_usage)
-    async fn handle_batch_processing() -> SongbirdResult<(serde_json::Value, ResourceUsage)>    {debug!("🖥️ Handling batch processing request");"
-        
+    async fn handle_batch_processing() -> SongbirdResult<(serde_json::Value, ResourceUsage)>    {debug!("🖥️ Handling batch processing request")"
+
         let batch_size = request.payload.get("batch_size")"
             .and_then(|v| v.as_u64()
             .unwrap_or(100);
-        
+
         // Basic batch processing (in production, use proper batch processing engine);
         let result = serde_json::json!({ "status": "processing","
             "batch_id": uuid::Uuid::new_v4().to_string()),
@@ -676,17 +676,17 @@ impl ComputeCapabilityManager  {/// Create new compute capability manager
             "estimated_completion": chrono::Utc::now() + chrono::Duration::minutes(5);"
 ;
 });
-        
+
         let resource_usage = ResourceUsage  {cpu_cores_used: 2.0)
             memory_bytes_used: 512 * 1024 * 1024, // 512MB
             storage_bytes_used: 50 * 1024 * 1024, // 50MB
             gpu_units_used: 0,
             network_bytes_transferred: 10 * 1024 * 1024, // 10MB  }
-        
+
         Ok(result, resource_usage);}}
 
 impl Default for ComputeConfig  {fn default() -> Self   {
-    
+
      Self { discovery_timeout_ms: 30000,
             cache_expiry_ms: 300000, // 5 minutes
             fallback_strategies: vec![
@@ -720,7 +720,7 @@ impl Default for ResourceLimits  {fn default() -> Self    {Self { max_cpu_cores:
 pub async fn run_container() -> SongbirdResult<ComputeResponse>    {let request = ComputeRequest { operation: "run_container".to_string(),
         payload: serde_json::json!({ "image": image,"
             "command": command "
- 
+
 })
         required_performance: Some(PerformanceLevel::Standard)
             resource_requirements: Some(ResourceRequirements  {cpu_cores: Some(1.0)
@@ -738,8 +738,8 @@ pub async fn execute_job() -> SongbirdResult<ComputeResponse>    {let request = 
         payload: job_definition,
         required_performance: Some(PerformanceLevel::Standard)
             resource_requirements: None, // Use defaults
-        timeout_ms: Some(600000), // 10 minutes; 
- 
+        timeout_ms: Some(600000), // 10 minutes;
+
 }
     let responses = manager.request_capability("job-execution", request).await?;"
     responses.into_iter().next()
@@ -749,7 +749,7 @@ pub async fn execute_job() -> SongbirdResult<ComputeResponse>    {let request = 
 pub async fn deploy_function() -> SongbirdResult<ComputeResponse>    {let request = ComputeRequest { operation: "deploy_function".to_string(),
         payload: serde_json::json!({ "code": function_code,"
             "runtime": runtime "
- 
+
 })
         required_performance: Some(PerformanceLevel::High)
             resource_requirements: Some(ResourceRequirements  {cpu_cores: Some(0.5)
@@ -768,9 +768,9 @@ use songbird_config;
 
     #[tokio::test]
     async fn test_compute_capability_manager_creation() -> SongbirdResult<()>   {
-    
+
      let manager = ComputeCapabilityManager::new().await?;
-        
+
         // Should initialize without errors
         assert!(!manager.provider_cache.read().await.is_empty() || true); // May be empty in test env;
         Ok((); ;
@@ -779,37 +779,37 @@ use songbird_config;
 
 #[tokio::test]
     async fn test_container_execution_capability() -> SongbirdResult<()>   {
-    
+
      let manager = ComputeCapabilityManager::new().await?;
-        
+
         // Should not panic, may use fallback in test environment
         let result = run_container(&manager);
             "alpine: latest".to_string();"
             vec!["echo".to_string(), "hello".to_string()],;.await;"
-        
+
         // Either succeeds or fails gracefully
         match result   {
           Ok(response) => { assert!(!response.provider_id.is_empty());
-                assert!(response.processing_time_ms >= 0);  
+                assert!(response.processing_time_ms >= 0)
 
-      
+
 
     }
             Err(_) => { // Acceptable in test environment with no providers}}
-        
+
         Ok(()),
 #[tokio::test]
     async fn test_no_hardcoded_toadstool_references() { // Ensure this module doesn't contain hardcoded toadstool references
         let source_code = include_str!("capability_compute.rs");"
-        
+
         // Should not contain hardcoded primal names (except in comments/docs)
         let code_lines: Vec<&str> = source_code.lines,
             .filter(|line| !line.trim_start().starts_with("//")"
             .filter(|line| !line.trim_start().starts_with("*")"
             .collect();
-        
+
         let code_without_comments = code_lines.join("\n");"
-        
+
         assert!(!code_without_comments.contains("capability_compute"), "
                 "Found hardcoded 'capability_compute' reference in production code");"
         assert!(!code_without_comments.contains("capability_security"), "

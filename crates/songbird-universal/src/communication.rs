@@ -375,11 +375,20 @@ pub struct SongbirdIntegrationConfig  {/// Service mesh endpoints
     pub load_balancing: crate::LoadBalancingConfig,
 }
 
-impl Default for SongbirdIntegrationConfig  {fn default() -> Self  {Self {
-            discovery_endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8080/discovery".to_string(),
-            registration_endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8080/register".to_string(),
-            health_endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8080/health".to_string(),
-            metrics_endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8080/metrics".to_string(),
+impl Default for SongbirdIntegrationConfig  {fn default() -> Self  {
+        let integration_host = std::env::var("SONGBIRD_INTEGRATION_HOST")
+            .unwrap_or_else(|_| "127.0.0.1".to_string());
+        let integration_port = std::env::var("SONGBIRD_INTEGRATION_PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(8080);
+        let base_url = format!("http://{}:{}", integration_host, integration_port);
+        
+        Self {
+            discovery_endpoint: format!("{}/discovery", base_url),
+            registration_endpoint: format!("{}/register", base_url),
+            health_endpoint: format!("{}/health", base_url),
+            metrics_endpoint: format!("{}/metrics", base_url),
             auth_token: None,
             auth_method: AuthMethod::Jwt,
             retry_config: crate::RetryConfig::default(),

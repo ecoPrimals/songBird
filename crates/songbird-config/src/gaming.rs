@@ -299,4 +299,4 @@ impl GamingConfig {
 
 // ============================================================================
 // Gaming constants are now consolidated in songbird-types::constants::GamingConstants
-// Use those constants instead of defining them here. 
+// Use those constants instead of defining them here.
