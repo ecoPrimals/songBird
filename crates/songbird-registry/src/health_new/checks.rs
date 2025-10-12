@@ -2,9 +2,9 @@
 //!
 //! Different types of health checks that can be performed.
 
-use crate::types::{HealthCheckType, HealthStatus};
+use crate::types::HealthStatus;
 use songbird_types::errors::SongbirdResult;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// HTTP health check
 pub struct HttpCheck {

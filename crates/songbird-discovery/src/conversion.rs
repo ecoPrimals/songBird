@@ -3,11 +3,10 @@
 //! This module provides conversions between discovery-specific types
 //! and universal types used across the Songbird ecosystem.
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use std::collections::HashMap;
 
 use crate::traits::service::{ServiceEndpoint, ServiceInfo as DiscoveryServiceInfo, ServiceStatus};
-use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::ServiceInfo as UniversalServiceInfo;
 
 /// Convert from discovery ServiceInfo to universal ServiceInfo

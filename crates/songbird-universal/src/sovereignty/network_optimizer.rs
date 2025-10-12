@@ -6,7 +6,7 @@
 //! maximizing beneficial network effects while maintaining sovereignty.
 
 use super::types::{PathSegment, RoutingPath, SecurityCapability, SecurityLevel};
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 use tracing::{debug, info};
 
 /// Network effects optimizer

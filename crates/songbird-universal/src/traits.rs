@@ -6,7 +6,6 @@
 //! trait system from songbird-types.
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 
 // Re-export canonical traits from songbird-types
 pub use songbird_types::traits::canonical::{

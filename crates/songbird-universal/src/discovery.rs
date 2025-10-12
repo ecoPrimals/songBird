@@ -4,13 +4,12 @@
 //! without hardcoding specific primal names. The system uses capability-based
 //! discovery and environment-based configuration.
 
-use crate::capabilities::{Capability, CapabilityError};
+use crate::capabilities::Capability;
 use crate::types::PrimalType;
-use crate::unified_adapter::UnifiedUniversalAdapter;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::time::{timeout, Duration};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 // String constants to avoid Rust 2021 prefix parsing issues
 const DISCOVERED_FROM_ENVIRONMENT_MSG: &str = "✅ Discovered {} primals from environment";
 const DISCOVERED_FROM_CONTAINERS_MSG: &str = "✅ Discovered {} primals from containers";

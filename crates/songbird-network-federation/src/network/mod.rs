@@ -12,7 +12,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
 use songbird_config;
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 
 pub mod discovery;
 pub mod gaming;
