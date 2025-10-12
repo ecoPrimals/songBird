@@ -13,6 +13,7 @@
 
 pub mod adapters;
 pub mod capabilities;
+pub mod capability_providers; // NEW: Vendor-agnostic capability-based providers
 pub mod delegation;
 pub mod modernized_factory;
 pub mod providers;
@@ -20,6 +21,10 @@ pub mod registry;
 
 // Re-export main abstractions
 pub use capabilities::{CapabilityMatcher, DiscoveryCapability};
+pub use capability_providers::{
+    CapabilityProviderFactory, CapabilityType, VendorImplementation,
+    create_default_capability_factory, discover_capability_vendor, request_capability_provider,
+};
 pub use delegation::{DelegationStrategy, DiscoveryDelegator};
 pub use providers::{DiscoveryProvider, ProviderConfig, ProviderMetadata};
 pub use registry::{ProviderRegistry, RegistryError};
