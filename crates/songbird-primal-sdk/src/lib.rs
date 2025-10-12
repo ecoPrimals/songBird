@@ -14,8 +14,8 @@
 //! - **Security**: Integrated security and provider systems
 //! - **Performance**: Const generics and compile-time optimizations
 
-use songbird_types::{SongbirdError)
-    performance::{ConstBuffer, PerformanceConfig, ProductionConfig, StackString, StackVec})
+use songbird_types::{SongbirdError,
+    performance::{ConstBuffer, PerformanceConfig, ProductionConfig, StackString, StackVec}
 };
 
 // ============================================================================
@@ -70,38 +70,36 @@ pub mod zero_cost_registry;
 
 /// **ZERO-COST**: Performance-optimized primal connection pool
 #[derive(Debug)]
-pub struct OptimizedPrimalPool<const MAX_CONNECTIONS: usize = 16>  {
-    connections: ConstBuffer<PrimalConnection, MAX_CONNECTIONS>)
+pub struct OptimizedPrimalPool<const MAX_CONNECTIONS: usize = 16> {
+    connections: ConstBuffer<PrimalConnection, MAX_CONNECTIONS>,
     config: PerformanceConfig<true, false>, // Production config
 }
 
 impl<const MAX_CONNECTIONS: usize> OptimizedPrimalPool<MAX_CONNECTIONS>  {/// Create new optimized pool - compile-time sized
     #[must_use]
     pub const fn new() -> Self  {Self {
-            connections: ConstBuffer::new(,
-            config: PerformanceConfig::new(,
+            connections: ConstBuffer::new(),
+            config: PerformanceConfig::new(),
         }
     }
 
     /// Add connection to pool - zero-cost bounds checking
-    pub fn add_connection(&mut self, connection: PrimalConnection) -> PrimalResult<()>  {self.connections.try_push(connection,
+    pub fn add_connection(&mut self, connection: PrimalConnection) -> PrimalResult<()>  {
+        self.connections.try_push(connection)
             .map_err(|_| SongbirdError::Configuration {
-        message: format!("Pool at maximum capacity: {,
-        field: "connection_pool".to_string(),
-                message: format!("Pool at maximum capacity: {.to_string(),
-        current_value: None,
-        expected_format: None,
-        suggestion: None,
-    }", MAX_CONNECTIONS)
+                field: "connection_pool".to_string(),
+                message: format!("Pool at maximum capacity: {}", MAX_CONNECTIONS),
                 current_value: Some(self.connections.len().to_string()),
-                expected_format: Some(format!("< {}", MAX_CONNECTIONS))
-                suggestion: Some("Increase MAX_CONNECTIONS const generic parameter".to_string()),
+                expected_format: Some(format!("< {}", MAX_CONNECTIONS)),
+                suggestion: Some("Increase MAX_CONNECTIONS const generic parameter ".to_string()),
             })
     }
 
     /// Get pool statistics - zero allocation
     #[must_use]
-    pub const fn stats(&self) -> PoolStats  {PoolStats  {active_connections: self.connections.len()
+    pub const fn stats(&self) -> PoolStats  {
+        PoolStats  {
+            active_connections: self.connections.len(),
             max_connections: MAX_CONNECTIONS,
             utilization_percent: (self.connections.len() * 100) / MAX_CONNECTIONS,
         }
@@ -129,8 +127,8 @@ impl PrimalConnection  {/// Create new connection - zero heap allocation for met
         let _ = stack_endpoint.try_push_str(endpoint); // Truncate if too long
         
         Self {
-            id)
-            primal_type)
+            id,
+            primal_type,
             endpoint: stack_endpoint,
             metadata: StackVec::new(),
         }
@@ -141,11 +139,11 @@ impl PrimalConnection  {/// Create new connection - zero heap allocation for met
         let mut stack_key = StackString::new();
         let mut stack_value = StackString::new();
         
-        stack_key.try_push_str(key).map_err(|_| "Key too long")?;
-        stack_value.try_push_str(value).map_err(|_| "Value too long")?;
+        stack_key.try_push_str(key).map_err(|_| "Key too long ")?;
+        stack_value.try_push_str(value).map_err(|_| "Value too long ")?;
         
-        self.metadata.try_push((stack_key, stack_value)
-            .map_err(|_| "Metadata capacity exceeded")
+        self.metadata.try_push((stack_key, stack_value))
+            .map_err(|_| "Metadata capacity exceeded ")
     }
 }
 
@@ -158,16 +156,17 @@ pub struct PrimalSDK<const POOL_SIZE: usize = 16>  {registry: Box<dyn crate::tra
 }
 
 impl<const POOL_SIZE: usize> PrimalSDK<POOL_SIZE>  {/// Create a new PrimalSDK instance with compile-time optimizations
-    pub async fn new() -> PrimalResult<Self>  {let registry = Box::new(simple_primal_registry::SimplePrimalRegistry::new();
+    pub async fn new() -> PrimalResult<Self>  {
+        let registry = Box::new(simple_primal_registry::SimplePrimalRegistry::new());
         let orchestrator = capability_orchestrator::CapabilityOrchestrator::new().await?;
         let discovery = adaptive_discovery::AdaptiveDiscovery::new().await?;
 
         Ok(Self {
-            registry)
-            orchestrator)
-            discovery)
-            connection_pool: OptimizedPrimalPool::new(,
-            performance_config: ProductionConfig::new(,
+            registry,
+            orchestrator,
+            discovery,
+            connection_pool: OptimizedPrimalPool::new(),
+            performance_config: ProductionConfig::new(),
         })
     }
 

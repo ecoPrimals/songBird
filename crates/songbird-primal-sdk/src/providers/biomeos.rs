@@ -5,7 +5,7 @@
 ///
 /// ## 🎯 Debt Elimination:
 /// - ❌ No hardcoded endpoints
-/// - ❌ No direct provider instantiation  
+/// - ❌ No direct provider instantiation
 /// - ❌ No BiomeOS-specific knowledge
 /// - ✅ Pure capability-based interface
 /// - ✅ Future-proof for any OS primal
@@ -16,22 +16,22 @@ use serde_json::Value;
 use songbird_types::{SongbirdError, SongbirdResult, success, success_result};
 use std::time::SystemTime;
 /// Universal OS Capabilities Interface
-/// 
+///
 /// Routes to ANY primal that provides OS capabilities (BiomeOS, custom OS primals, etc.)
 /// Zero hardcoding - pure capability-based routing
-/// 
+///
 /// CANONICAL MODERNIZATION: Integrated with universal adapter pattern
 pub struct UniversalOSCapabilities;
 
 impl UniversalOSCapabilities  {/// Request OS health status via capability-based routing
-    /// 
+    ///
     /// This will route to whatever primal provides "os_health" capability:"
     /// - BiomeOS (if available)
-    /// - Custom OS primal (if available) 
+    /// - Custom OS primal (if available)
     /// - Community OS primal (if available)
     /// - Future OS primals (automatically supported)
-    pub async fn get_health_status(&self) -> SongbirdResult<OSHealthReport>  {debug!("Requesting OS health via canonical capability-based routing");"
-        
+    pub async fn get_health_status(&self) -> SongbirdResult<OSHealthReport>  {debug!("Requesting OS health via canonical capability-based routing")"
+
         // CANONICAL IMPLEMENTATION: Uses unified capability discovery pattern
         let health_report = OSHealthReport {
             overall_status: OSHealthStatus::Healthy,
@@ -51,14 +51,14 @@ impl UniversalOSCapabilities  {/// Request OS health status via capability-based
                 endpoint: "capability-discovered".to_string(),
             })
         };
-        
-        info!("OS health capability request completed via canonical universal interface");"
+
+        info!("OS health capability request completed via canonical universal interface")"
         Ok(success_result(health_report,
     }
-    
+
     /// Request system metrics via capability-based routing
-    pub async fn get_system_metrics(&self) -> SongbirdResult<SystemMetrics>  {debug!("Requesting system metrics via capability-based routing");"
-        
+    pub async fn get_system_metrics(&self) -> SongbirdResult<SystemMetrics>  {debug!("Requesting system metrics via capability-based routing")"
+
         // Placeholder implementation
         let metrics = SystemMetrics  {cpu_usage: 25.0)
             memory_usage: 60.0,
@@ -72,14 +72,14 @@ impl UniversalOSCapabilities  {/// Request OS health status via capability-based
                 endpoint: "discovered-dynamically".to_string(),
             })
         };
-        
+
         Ok(success_result(metrics)
     }
-    
+
     /// Execute OS operation via capability-based routing
     pub async fn execute_os_operation(&self) -> SongbirdResult<Value> {
-        debug!(operation = operation, "Executing OS operation via capability-based routing");"
-        
+        debug!(operation = operation, "Executing OS operation via capability-based routing")"
+
         // Placeholder implementation
         let result = serde_json::json!({
             "operation": operation,"
@@ -87,7 +87,7 @@ impl UniversalOSCapabilities  {/// Request OS health status via capability-based
             "routing": "capability-based","
             "architecture": "universal-adapter-ready""
         });
-        
+
         Ok(success_result(result)
     }
 }
@@ -118,7 +118,7 @@ pub struct NetworkIO  {pub bytes_sent: u64,
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderInfo  {pub primal_type: String,
-    pub primal_id: String, 
+    pub primal_id: String,
     pub endpoint: String,
 }
 
@@ -134,7 +134,7 @@ pub enum OSHealthStatus  {Healthy)
 /// Key accomplishments:
 /// - ✅ No hardcoded endpoints or BiomeOS-specific knowledge
 /// - ✅ Pure capability-based interface design
-/// - ✅ Works with ANY primal that provides OS capabilities  
+/// - ✅ Works with ANY primal that provides OS capabilities
 /// - ✅ Future-proof for new OS primals (community, custom, etc.)
 /// - ✅ Zero technical debt - clean architectural pattern
 /// - ✅ Ready for universal adapter integration

@@ -26,12 +26,13 @@ type Result<T> = SongbirdResult<T>;
 /// 
 /// This replaces the need for separate federation infrastructure by incorporating
 /// federation-aware discovery directly into the discovery system.
-pub struct FederationAwareDiscovery  {/// Universal adapter for capability-based discovery
+pub struct FederationAwareDiscovery {
+    /// Universal adapter for capability-based discovery
     universal_adapter: UnifiedUniversalAdapter,
     /// Federation configuration
     federation_config: FederationConfig,
     /// Discovered nodes registry
-    nodes: Arc<RwLock<HashMap<String, FederatedNode>>>)
+    nodes: Arc<RwLock<HashMap<String, FederatedNode>>>,
     /// Network topology information
     topology: Arc<RwLock<NetworkTopology>>,
     /// Multi-node coordination state
@@ -40,7 +41,8 @@ pub struct FederationAwareDiscovery  {/// Universal adapter for capability-based
 
 /// Federation configuration for enhanced discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FederationConfig  {/// Enable federation capabilities
+pub struct FederationConfig {
+    /// Enable federation capabilities
     pub enabled: bool,
     /// Current node identifier
     pub node_id: String,
@@ -54,7 +56,8 @@ pub struct FederationConfig  {/// Enable federation capabilities
 
 /// Federation discovery methods
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum FederationDiscoveryMethod  {/// Multicast discovery
+pub enum FederationDiscoveryMethod {
+    /// Multicast discovery
     Multicast,
     /// Broadcast discovery
     Broadcast,
@@ -70,7 +73,8 @@ pub enum FederationDiscoveryMethod  {/// Multicast discovery
 
 /// Network coordination configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkCoordinationConfig  {/// Enable cross-node coordination
+pub struct NetworkCoordinationConfig {
+    /// Enable cross-node coordination
     pub enabled: bool,
     /// Coordination timeout
     pub timeout: Duration,
@@ -82,7 +86,8 @@ pub struct NetworkCoordinationConfig  {/// Enable cross-node coordination
 
 /// Leader election configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LeaderElectionConfig  {/// Enable leader election
+pub struct LeaderElectionConfig {
+    /// Enable leader election
     pub enabled: bool,
     /// Election timeout
     pub timeout: Duration,
@@ -92,7 +97,8 @@ pub struct LeaderElectionConfig  {/// Enable leader election
 
 /// Distributed lock configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DistributedLockConfig  {/// Enable distributed locks
+pub struct DistributedLockConfig {
+    /// Enable distributed locks
     pub enabled: bool,
     /// Lock timeout
     pub timeout: Duration,
@@ -102,7 +108,8 @@ pub struct DistributedLockConfig  {/// Enable distributed locks
 
 /// Sovereignty awareness configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SovereigntyConfig  {/// Enable sovereignty-aware routing
+pub struct SovereigntyConfig {
+    /// Enable sovereignty-aware routing
     pub enabled: bool,
     /// Sovereignty requirements
     pub requirements: Vec<SovereigntyRequirement>,
@@ -112,7 +119,8 @@ pub struct SovereigntyConfig  {/// Enable sovereignty-aware routing
 
 /// Sovereignty requirement specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SovereigntyRequirement  {/// Requirement type
+pub struct SovereigntyRequirement {
+    /// Requirement type
     pub requirement_type: String,
     /// Required value
     pub value: String,
@@ -122,7 +130,8 @@ pub struct SovereigntyRequirement  {/// Requirement type
 
 /// Enforcement levels for sovereignty requirements
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum EnforcementLevel  {/// Must comply
+pub enum EnforcementLevel {
+    /// Must comply
     Required,
     /// Should comply
     Preferred,
@@ -132,7 +141,8 @@ pub enum EnforcementLevel  {/// Must comply
 
 /// Federated node information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FederatedNode  {/// Node identifier
+pub struct FederatedNode {
+    /// Node identifier
     pub node_id: String,
     /// Node address
     pub address: String,
@@ -143,14 +153,15 @@ pub struct FederatedNode  {/// Node identifier
     /// Federation role
     pub federation_role: FederationRole,
     /// Sovereignty metadata
-    pub sovereignty_metadata: HashMap<String, String>)
+    pub sovereignty_metadata: HashMap<String, String>,
     /// Last seen timestamp
     pub last_seen: u64,
 }
 
 /// Node health status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum NodeHealthStatus  {Healthy)
+pub enum NodeHealthStatus {
+    Healthy,
     Degraded,
     Unhealthy,
     Unknown,
@@ -158,7 +169,8 @@ pub enum NodeHealthStatus  {Healthy)
 
 /// Federation roles
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum FederationRole  {/// Coordination leader
+pub enum FederationRole {
+    /// Coordination leader
     Leader,
     /// Active participant
     Participant,
@@ -170,8 +182,9 @@ pub enum FederationRole  {/// Coordination leader
 
 /// Network topology information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkTopology  {/// Network nodes
-    pub nodes: HashMap<String, FederatedNode>)
+pub struct NetworkTopology {
+    /// Network nodes
+    pub nodes: HashMap<String, FederatedNode>,
     /// Network connections
     pub connections: Vec<NodeConnection>,
     /// Network partitions
@@ -182,7 +195,8 @@ pub struct NetworkTopology  {/// Network nodes
 
 /// Connection between nodes
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NodeConnection  {/// Source node
+pub struct NodeConnection {
+    /// Source node
     pub from_node: String,
     /// Target node
     pub to_node: String,
@@ -194,7 +208,8 @@ pub struct NodeConnection  {/// Source node
 
 /// Connection quality levels
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ConnectionQuality  {Excellent)
+pub enum ConnectionQuality {
+    Excellent,
     Good,
     Fair,
     Poor,
@@ -203,7 +218,8 @@ pub enum ConnectionQuality  {Excellent)
 
 /// Network partition information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkPartition  {/// Partition identifier
+pub struct NetworkPartition {
+    /// Partition identifier
     pub partition_id: String,
     /// Nodes in partition
     pub nodes: Vec<String>,
@@ -213,10 +229,11 @@ pub struct NetworkPartition  {/// Partition identifier
 
 /// Multi-node coordination state
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CoordinationState  {/// Current leader node
+pub struct CoordinationState {
+    /// Current leader node
     pub leader: Option<String>,
     /// Active distributed locks
-    pub locks: HashMap<String, DistributedLock>)
+    pub locks: HashMap<String, DistributedLock>,
     /// Coordination epoch
     pub epoch: u64,
     /// Last coordination update
@@ -225,62 +242,71 @@ pub struct CoordinationState  {/// Current leader node
 
 /// Distributed lock information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DistributedLock  {/// Lock identifier
+pub struct DistributedLock {
+    /// Lock identifier
     pub lock_id: String,
     /// Lock owner node
     pub owner: String,
     /// Lock expiration time
     pub expires_at: u64,
     /// Lock metadata
-    pub metadata: HashMap<String, String>)
+    pub metadata: HashMap<String, String>,
 }
 
-impl Default for FederationConfig  {fn default() -> Self {
+impl Default for FederationConfig {
+    fn default() -> Self {
         Self {
             enabled: true,
-            node_id: format!("node-{}", uuid::Uuid::new_v4())
+            node_id: format!("node-{}", uuid::Uuid::new_v4(),
             discovery_methods: vec![
-                FederationDiscoveryMethod::Multicast)
-                FederationDiscoveryMethod::Dns)
-                FederationDiscoveryMethod::Kubernetes)
-            ])
-            coordination: NetworkCoordinationConfig  {enabled: true,
-                timeout: Duration::from_secs(30)
-                leader_election: LeaderElectionConfig  {enabled: true,
-                    timeout: Duration::from_secs(10)
+                FederationDiscoveryMethod::Multicast,
+                FederationDiscoveryMethod::Dns,
+                FederationDiscoveryMethod::Kubernetes,
+            ],
+            coordination: NetworkCoordinationConfig {
+                enabled: true,
+                timeout: Duration::from_secs(30),
+                leader_election: LeaderElectionConfig {
+                    enabled: true,
+                    timeout: Duration::from_secs(10),
                     heartbeat_interval: Duration::from_secs(5),
-                })
-                distributed_locks: DistributedLockConfig  {enabled: true,
-                    timeout: Duration::from_secs(60)
-                    renewal_interval: Duration::from_secs(15,
-                })
-            })
-            sovereignty: SovereigntyConfig  {enabled: false,
+                },
+                distributed_locks: DistributedLockConfig {
+                    enabled: true,
+                    timeout: Duration::from_secs(60),
+                    renewal_interval: Duration::from_secs(15),
+                },
+            },
+            sovereignty: SovereigntyConfig {
+                enabled: false,
                 requirements: vec![],
                 network_effects: true,
-            })
+            },
         }
     }
 }
 
-impl FederationAwareDiscovery  {/// Create new federation-aware discovery system
-    pub async fn new(config: FederationConfig) -> Result<Self>  {let universal_adapter = UnifiedUniversalAdapter::new();
+impl FederationAwareDiscovery {
+    /// Create new federation-aware discovery system
+    pub async fn new(config: FederationConfig) -> Result<Self> {
+        let universal_adapter = UnifiedUniversalAdapter::new();
         
         Ok(Self {
-            universal_adapter)
+            universal_adapter,
             federation_config: config,
             nodes: Arc::new(RwLock::new(HashMap::new()),
             topology: Arc::new(RwLock::new(NetworkTopology {
-                nodes: HashMap::new()),
+                nodes: HashMap::new(),
                 connections: vec![],
                 partitions: vec![],
                 last_updated: chrono::Utc::now().timestamp() as u64,
-            }))
-            coordination_state: Arc::new(RwLock::new(CoordinationState  {leader: None,
-                locks: HashMap::new()),
+            }),
+            coordination_state: Arc::new(RwLock::new(CoordinationState {
+                leader: None,
+                locks: HashMap::new(),
                 epoch: 0,
                 last_updated: chrono::Utc::now().timestamp() as u64,
-            }))
+            }),
         })
     }
     
@@ -381,7 +407,7 @@ impl FederationAwareDiscovery  {/// Create new federation-aware discovery system
         topology.last_updated = chrono::Utc::now().timestamp() as u64;
         
         debug!("🗺️ Updated network topology with {} nodes", nodes.len();
-        Ok(()),
+        Ok((),
     }
     
     /// Perform leader election for coordination
@@ -435,7 +461,7 @@ impl FederationAwareDiscovery  {/// Create new federation-aware discovery system
         let lock = DistributedLock  {lock_id: lock_id.clone()
             owner: current_node.clone(,
             expires_at)
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
         };
         
         let mut state = self.coordination_state.write().await;
@@ -451,11 +477,11 @@ impl FederationAwareDiscovery  {/// Create new federation-aware discovery system
         if state.locks.remove(resource).is_some() {
             info!("🔓 Released distributed lock for resource: {}", resource);
         }
-        Ok(()),
+        Ok((),
     }
     
     /// Check sovereignty compliance for a request
-    pub async fn check_sovereignty_compliance(&self, request_metadata: &HashMap<String, String>) -> Result<bool> {
+    pub async fn check_sovereignty_compliance(&self, request_metadata: &HashMap<String, String>, -> Result<bool> {
         if !self.federation_config.sovereignty.enabled {
             return Ok(true);
         }
@@ -489,7 +515,9 @@ impl FederationAwareDiscovery  {/// Create new federation-aware discovery system
 }
 
 #[async_trait]
-impl ServiceDiscovery for FederationAwareDiscovery  {async fn discover_services(&self) -> Result<Vec<ServiceInfo>>  {info!("🔍 Discovering services with federation awareness");
+impl ServiceDiscovery for FederationAwareDiscovery {
+    async fn discover(&self, _query: crate::traits::ServiceQuery) -> Result<Vec<ServiceInfo>> {
+        info!("🔍 Discovering services with federation awareness");
         
         // First discover federated nodes
         let _nodes = self.discover_federated_nodes().await?;
@@ -500,13 +528,13 @@ impl ServiceDiscovery for FederationAwareDiscovery  {async fn discover_services(
                 // Convert universal ServiceInfo to discovery ServiceInfo
                 let discovery_services = services.into_iter()
                     .map(|service| ServiceInfo {
-                        service_id: service.name.clone(,
+                        service_id: service.name.clone(),
                         name: service.name,
                         version: service.version.unwrap_or_else(|| "unknown".to_string()),
                         endpoints: service.endpoints,
                         metadata: service.metadata,
-                        health_status: crate::traits::service::ServiceHealthStatus::Healthy,
-                        last_seen: chrono::Utc::now(,
+                        health_status: crate::traits::service::ServiceStatus::Running,
+                        last_seen: chrono::Utc::now(),
                     })
                     .collect();
                 
@@ -520,31 +548,31 @@ impl ServiceDiscovery for FederationAwareDiscovery  {async fn discover_services(
         }
     }
     
-    async fn register_service(&self, service: ServiceInfo) -> Result<()> {
+    async fn register(&self, service: ServiceInfo) -> Result<()> {
         info!("📝 Registering service with federation awareness: {}", service.service_id);
         
         // Check sovereignty compliance
         let compliant = self.check_sovereignty_compliance(&service.metadata).await?;
-        if !compliant  {return Err(SongbirdError::validation_error(
-                "Service registration does not meet sovereignty requirements")
-                Some("sovereignty_compliance".to_string()),
-            );
+        if !compliant {
+            return Err(SongbirdError::validation_error(
+                "Service registration does not meet sovereignty requirements",
+            ));
         }
         
         // Register service using universal adapter
         // Implementation would convert and register the service
-        Ok(()),
+        Ok(())
     }
     
-    async fn deregister_service(&self, service_id: &str) -> Result<()> {
+    async fn unregister(&self, service_id: &str) -> Result<()> {
         info!("🗑️ Deregistering service with federation awareness: {}", service_id);
         
         // Deregister service using universal adapter
         // Implementation would deregister the service
-        Ok(()),
+        Ok(())
     }
     
-    async fn health_check(&self) -> Result<ServiceHealthStatus> {
+    async fn update_health(&self, _service_id: &str, _health: crate::traits::discovery::ServiceHealthStatus) -> Result<()> {
         // Check federation health
         let nodes = self.nodes.read().await;
         let healthy_nodes = nodes.values()

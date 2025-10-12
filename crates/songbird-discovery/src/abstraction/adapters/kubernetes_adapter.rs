@@ -8,14 +8,17 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
 
-use crate::abstraction:: {capabilities::DiscoveryCapability)
+use crate::abstraction::{
+    capabilities::DiscoveryCapability,
     providers::{DiscoveryProvider, LoadBalancingHints, ProviderConfig, ProviderFactory, ProviderMetadata,
         ServiceMetrics,
-    })
+    },
 };
 
 use crate::traits::{ServiceEvent, ServiceInfo, ServiceQuery};
-use songbird_types::{SongbirdError};
+use songbird_types::SongbirdError;
+
+type Result<T> = songbird_types::SongbirdResult<T>;
 
 /// Factory for creating Kubernetes providers from configuration
 pub struct KubernetesProviderFactory;
@@ -23,52 +26,54 @@ pub struct KubernetesProviderFactory;
 #[async_trait]
 impl ProviderFactory for KubernetesProviderFactory {
     fn provider_type(&self) -> &str {
-        "kubernetes""
+        "kubernetes"
     }
 
     async fn create_provider(&self, config: ProviderConfig) -> Result<Box<dyn DiscoveryProvider>> {
         // Extract namespace from flexible configuration
         let namespace = config
             .parameters
-            .get("namespace")"
-            .and_then(|v| v.as_str()
-            .unwrap_or("default");"
+            .get("namespace")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default");
 
         // Create the legacy Kubernetes backend
         // Create native kubernetes adapter (no longer using deprecated backend)
 
         // Create native adapter
         let adapter = KubernetesProviderAdapter::new_native(config.id, namespace.to_string());
-        Ok(Box::new(adapter)
+        Ok(Box::new(adapter))
     }
 
     fn validate_config(&self, _config: &ProviderConfig) -> Result<()> {
         // Kubernetes provider validation would check for kubeconfig, service account, etc.
         // For now, we'll assume it's valid
-        Ok(()),
+        Ok(())
     }
 
-    fn default_config(&self, id: String, name: String) -> ProviderConfig  {let mut parameters = HashMap::new();
+    fn default_config(&self, id: String, name: String) -> ProviderConfig {
+        let mut parameters = HashMap::new();
         parameters.insert(
-            "namespace".to_string()),
-            serde_json::Value::String("default".to_string(),"
+            "namespace".to_string(),
+            serde_json::Value::String("default".to_string()),
         );
         parameters.insert(
-            "kubeconfig".to_string()),
-            serde_json::Value::String("${KUBECONFIG}".to_string(),"
+            "kubeconfig".to_string(),
+            serde_json::Value::String("${KUBECONFIG}".to_string()),
         );
 
         let mut environment = HashMap::new();
         environment.insert(
-            "KUBERNETES_SERVICE_HOST".to_string()),
-            "kubernetes.default.svc".to_string()),
+            "KUBERNETES_SERVICE_HOST".to_string(),
+            "kubernetes.default.svc".to_string(),
         );
-        environment.insert("KUBERNETES_SERVICE_PORT".to_string(), "443".to_string();"
+        environment.insert("KUBERNETES_SERVICE_PORT".to_string(), "443".to_string());
 
-        ProviderConfig  {id)
+        ProviderConfig {
+            id,
             name,
-            parameters)
-            environment)
+            parameters,
+            environment,
             timeout_ms: Some(30000), // K8s can be slower
             retry_config: None,
         }
@@ -76,42 +81,45 @@ impl ProviderFactory for KubernetesProviderFactory {
 }
 
 /// Native Kubernetes provider adapter (no legacy backend dependency)
-pub struct KubernetesProviderAdapter  {metadata: ProviderMetadata,
+pub struct KubernetesProviderAdapter {
+    metadata: ProviderMetadata,
     _namespace: String,
     _client: reqwest::Client,
 }
 
-impl KubernetesProviderAdapter  {/// Create new native kubernetes adapter
+impl KubernetesProviderAdapter {
+    /// Create new native kubernetes adapter
     pub fn new_native(id: String, namespace: String) -> Self {
         let metadata = ProviderMetadata {
-            id: id.clone(,
-            name: format!("Kubernetes Provider ({})", id),"
+            id: id.clone(),
+            name: format!("Kubernetes Provider ({})", id),
             version: "1.0.0".to_string(),
             capabilities: vec![
-                DiscoveryCapability::ServiceRegistration)
-                DiscoveryCapability::ServiceUnregistration)
-                DiscoveryCapability::ServiceDiscovery)
+                DiscoveryCapability::ServiceRegistration,
+                DiscoveryCapability::ServiceUnregistration,
+                DiscoveryCapability::ServiceDiscovery,
                 DiscoveryCapability::ServiceWatching, // K8s supports watching!
-                DiscoveryCapability::HealthChecking)
-                DiscoveryCapability::ServiceListing)
-                DiscoveryCapability::ServiceExistence)
-                DiscoveryCapability::ServiceMetrics)
-                DiscoveryCapability::LoadBalancingHints)
-            ])
+                DiscoveryCapability::HealthChecking,
+                DiscoveryCapability::ServiceListing,
+                DiscoveryCapability::ServiceExistence,
+                DiscoveryCapability::ServiceMetrics,
+                DiscoveryCapability::LoadBalancingHints,
+            ],
             metadata: {
                 let mut meta = HashMap::new();
-                meta.insert("type".to_string(), "kubernetes".to_string();"
-                meta.insert("protocol".to_string(), "grpc".to_string();"
-                meta.insert("vendor".to_string(), "cncf".to_string();"
+                meta.insert("type".to_string(), "kubernetes".to_string());
+                meta.insert("protocol".to_string(), "grpc".to_string());
+                meta.insert("vendor".to_string(), "cncf".to_string());
                 meta
-            })
+            },
             healthy: true,
             load_score: 0.4, // K8s has moderate load
         };
 
-        Self  {metadata)
+        Self {
+            metadata,
             _namespace: namespace,
-            _client: reqwest::Client::new(,
+            _client: reqwest::Client::new(),
         }
     }
 }
@@ -123,13 +131,13 @@ impl DiscoveryProvider for KubernetesProviderAdapter {
     }
 
     async fn initialize(&mut self, _config: ProviderConfig) -> Result<()> {
-        tracing::info!("☸️ Initializing Kubernetes discovery provider adapter");"
-        Ok(()),
+        tracing::info!("☸️ Initializing Kubernetes discovery provider adapter");
+        Ok(())
     }
 
     async fn shutdown(&mut self) -> Result<()> {
-        tracing::info!("☸️ Shutting down Kubernetes discovery provider adapter");"
-        Ok(()),
+        tracing::info!("☸️ Shutting down Kubernetes discovery provider adapter");
+        Ok(())
     }
 
     async fn health_check(&self) -> Result<bool> {
@@ -137,88 +145,90 @@ impl DiscoveryProvider for KubernetesProviderAdapter {
         Ok(true)
     }
 
-    async fn register_service(&self, service: ServiceInfo) -> Result<()> {
+    async fn register(&self, service: ServiceInfo) -> Result<()> {
         tracing::info!(
-            "📝 Registering service {} via Kubernetes adapter","
+            "📝 Registering service {} via Kubernetes adapter",
             service.service_id
         );
 
         // For now, return an error indicating the legacy backend needs updating
-        Err(SongbirdError::internal_error(operation_error(
-            "Legacy Kubernetes backend needs trait interface updates to work with adapter","
-        )
+        Err(SongbirdError::operation_error(
+            "Legacy Kubernetes backend needs trait interface updates to work with adapter",
+        ))
     }
 
-    async fn discover_services(&self, _query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
+    async fn discover(&self, _query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
         // For now, return empty list - real implementation would query Kubernetes API
         // In production, this would use the query parameter to filter services
         Ok(vec![])
     }
 
-    async fn watch_services(
-        &self)
+    async fn watch(
+        &self,
         _query: ServiceQuery,
     ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>> {
-        tracing::info!("👀 Watching services via Kubernetes adapter");"
+        tracing::info!("👀 Watching services via Kubernetes adapter");
 
         // K8s supports watching natively, but legacy backend needs updates
-        Ok(Box::pin(stream::empty())
+        Ok(Box::pin(stream::empty()))
     }
 
-    async fn list_all_services(&self) -> Result<Vec<ServiceInfo>> {
-        tracing::info!("📋 Listing all services via Kubernetes adapter");"
+    async fn list_all(&self) -> Result<Vec<ServiceInfo>> {
+        tracing::info!("📋 Listing all services via Kubernetes adapter");
 
         // MODERNIZED: Use capability-based service discovery
         // In production, this would integrate with the UniversalCapabilityAdapter
         // to provide Kubernetes service discovery through the unified interface
-        
+
         Err(SongbirdError::configuration(
-            "Kubernetes service discovery should use UniversalCapabilityAdapter. \"
-             Configure kubernetes capability provider through songbird-universal crate.""
-        )
+            "Kubernetes service discovery should use UniversalCapabilityAdapter. \
+             Configure kubernetes capability provider through songbird-universal crate."
+        ))
     }
 
-    async fn service_exists(&self, service_id: &str) -> Result<bool> {
+    async fn exists(&self, service_id: &str) -> Result<bool> {
         tracing::debug!(
-            "❓ Checking if service {} exists via Kubernetes adapter","
+            "❓ Checking if service {} exists via Kubernetes adapter",
             service_id
         );
 
         // MODERNIZED: Use capability-based service discovery
         Err(SongbirdError::configuration(
-            "Kubernetes service existence checks should use UniversalCapabilityAdapter. \"
-             Configure kubernetes capability provider through songbird-universal crate.""
-        )
+            "Kubernetes service existence checks should use UniversalCapabilityAdapter. \
+             Configure kubernetes capability provider through songbird-universal crate."
+        ))
     }
 
     async fn get_service_metrics(&self, service_id: &str) -> Result<ServiceMetrics> {
         tracing::debug!(
-            "📊 Getting metrics for service {} via Kubernetes adapter","
+            "📊 Getting metrics for service {} via Kubernetes adapter",
             service_id
         );
 
         // K8s can provide rich metrics through metrics-server
-        Ok(ServiceMetrics  {service_id: service_id.to_string()),
+        Ok(ServiceMetrics {
+            service_id: service_id.to_string(),
             request_count: 0,
             error_count: 0,
             average_response_time_ms: 0.0,
             cpu_usage_percent: 0.0,
             memory_usage_bytes: 0,
-            custom_metrics: HashMap::new()),
+            custom_metrics: HashMap::new(),
         })
     }
 
     async fn get_load_balancing_hints(&self, service_name: &str) -> Result<LoadBalancingHints> {
         tracing::debug!(
-            "⚖️ Getting load balancing hints for {} via Kubernetes adapter","
+            "⚖️ Getting load balancing hints for {} via Kubernetes adapter",
             service_name
         );
 
         // K8s can provide sophisticated load balancing through Services
-        Ok(LoadBalancingHints  {service_name: service_name.to_string()),
+        Ok(LoadBalancingHints {
+            service_name: service_name.to_string(),
             preferred_instances: vec![],
-            weights: HashMap::new()),
-            health_scores: HashMap::new()),
+            weights: HashMap::new(),
+            health_scores: HashMap::new(),
             locality_preferences: vec![],
         })
     }
@@ -235,10 +245,10 @@ mod tests {
     #[test]
     fn test_kubernetes_factory_config() {
         let factory = KubernetesProviderFactory;
-        let config = factory.default_config("test".to_string(), "Test".to_string();"
+        let config = factory.default_config("test".to_string(), "Test".to_string());
 
-        assert!(factory.validate_config(&config).is_ok();
-        assert_eq!(factory.provider_type(), "kubernetes");"
+        assert!(factory.validate_config(&config).is_ok());
+        assert_eq!(factory.provider_type(), "kubernetes");
     }
 
     #[test]
@@ -246,6 +256,6 @@ mod tests {
         // We can't easily test this without a real K8s backend
         // but we can test the factory
         let factory = KubernetesProviderFactory;
-        assert_eq!(factory.provider_type(), "kubernetes");"
+        assert_eq!(factory.provider_type(), "kubernetes");
     }
 }

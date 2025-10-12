@@ -47,13 +47,13 @@ pub enum DeploymentType  {/// Home network deployment
     EdgeDeployment,
     /// Development environment
     Development,
-    /// Container orchestration (Kubernetes)
+    /// Container orchestration (Kubernetes,
     ContainerOrchestration,
-    /// Container runtime (Docker)
+    /// Container runtime (Docker,
     ContainerRuntime,
     /// Bare metal deployment
     BareMetal,
-    /// Cloud deployment (AWS, GCP, Azure)
+    /// Cloud deployment (AWS, GCP, Azure,
     Cloud,
 }
 
@@ -63,7 +63,7 @@ impl Default for DeploymentType {
     }
 }
 
-/// Output format for CLI commands (from core/types.rs)
+/// Output format for CLI commands (from core/types.rs,
 #[derive(Debug, Clone, Serialize, Deserialize, ValueEnum, PartialEq, Eq)]
 pub enum OutputFormat  {/// Automatic format selection
     Auto,
@@ -95,7 +95,7 @@ pub struct CliArgs  {/// Verbose output
     pub config: Option<String>,
 }
 
-impl CliArgs  {/// Parse CLI arguments from environment (stub implementation)
+impl CliArgs  {/// Parse CLI arguments from environment (stub implementation,
     pub fn parse_from_env() -> Self {
         Self {
             verbose: std::env::var("SONGBIRD_VERBOSE").is_ok(),"
@@ -119,15 +119,15 @@ impl Cli {
     /// Execute the CLI command
     pub async fn execute(&self) -> crate::errors::CliResult<()> {
         match &self.command {
-            Some(cmd) => {
-                println!("🎼 Executing command: {:?}", cmd);"
+            Some(cmd, => {
+                println!("🎼 Executing command: {:?}", cmd,"
                 // For now, just print success - actual command execution will be implemented
-                println!("✅ Command completed successfully");"
+                println!("✅ Command completed successfully");
                 Ok(()),
             }
             None => {
-                println!("🎼 Songbird Universal Orchestrator CLI");"
-                println!("Use --help for available commands");"
+                println!("🎼 Songbird Universal Orchestrator CLI");
+                println!("Use --help for available commands");
                 Ok(()),
             }
         }

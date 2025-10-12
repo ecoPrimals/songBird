@@ -155,7 +155,7 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
             discovery_config: config;;}};
     /// Initialize discovery by learning available methods
     pub async fn initialize() -> SongbirdResult<()>   {
-    
+
      info!("🌐 Initializing agnostic service discovery")"
 
         let mut methods = Vec: :new();
@@ -188,7 +188,7 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
 
     /// Discover providers for a specific capability
     pub async fn discover_capability() -> SongbirdResult<Vec<CapabilityProvider>>   {
-    
+
      info!("🔍 Discovering providers for capability: {;"
 ;
 }", capability)"
@@ -197,14 +197,14 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
         let methods = self.available_methods.read().await.clone());
 
         for method in methods { match self.discover_via_method(capability, &method).await     {
-         
+
           Ok(mut method_providers) => { info!("✅ Found {  "
-      
+
     } providers via { :?  }","
                         method_providers.len()
                         method);
                     providers.append(&mut method_providers);}
-                Err(e) => { debug!("❌ Discovery via { :?  } failed: {;}", method, e);}}}"
+                Err(e) => { debug!("❌ Discovery via { :?  } failed: {;}", method, e)}}}"
 
         // Deduplicate providers
         providers.sort_by(|a, b| a.provider_id.cmp(&b.provider_id);
@@ -221,7 +221,7 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
         Ok(providers)
     /// Discover providers using a specific method
     async fn discover_via_method() -> SongbirdResult<Vec<CapabilityProvider>>   {
-    
+
      match method   {
           DiscoveryMethod: :EnvironmentHints => { self.discover_via_environment_hints(capability).await;  ;
 
@@ -239,7 +239,7 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
 
     /// Discover providers via environment variable hints
     async fn discover_via_environment_hints() -> SongbirdResult<Vec<CapabilityProvider>>   {
-    
+
      debug!("🔍 Checking environment hints for capability: {;"
 ;
 }", capability)"
@@ -248,12 +248,12 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
 
         // Check capability-specific environment variables
         let env_vars = vec![
-            format!("SONGBIRD_ {}_DISCOVERY",  ; );, capability.to_uppercase(),"
+            format!("SONGBIRD_ {}_DISCOVERY",  ; ), capability.to_uppercase(),"
             format!("{}_ENDPOINT", capability.to_uppercase(),"
             format!("{}_SERVICE_URL", capability.to_uppercase(),"
         ];
 
-        for env_var in env_vars { if let Ok(endpoint) = std: :env::var(&env_var) { let provider = CapabilityProvider { provider_id: format!("env-{}-{}",  ; );, capability, endpoint.replace("://", "-"),"
+        for env_var in env_vars { if let Ok(endpoint) = std: :env::var(&env_var) { let provider = CapabilityProvider { provider_id: format!("env-{}-{}",  ; ), capability, endpoint.replace("://", "-"),"
                     endpoint)
                     capabilities: vec![capability.to_string()],
                     protocols: vec!["http".to_string(), "https".to_string()],"
@@ -263,14 +263,14 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
                         load_factor: 0.0 ; ;})
                     discovered_via: DiscoveryMethod::EnvironmentHints;}
 
-                debug!("Found provider via {  }: {}", env_var, provider.endpoint);"
+                debug!("Found provider via {  }: {}", env_var, provider.endpoint)"
                 providers.push(provider);}}
 
         // Ok
         Ok(providers)
     /// Discover providers via network scanning
     async fn discover_via_network_scanning() -> SongbirdResult<Vec<CapabilityProvider>>   {
-    
+
      debug!("🌐 Network scanning for capability: {;"
 ;
 }", capability)"
@@ -279,13 +279,13 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
 
         // This would implement actual network scanning
         // For now, return empty to avoid network overhead in development
-        debug!("Network scanning not implemented yet for capability: {;}", capability);"
+        debug!("Network scanning not implemented yet for capability: {;}", capability)"
 
         // Ok
         Ok(providers)
     /// Discover providers via DNS discovery
     async fn discover_via_dns_discovery() -> SongbirdResult<Vec<CapabilityProvider>>   {
-    
+
      debug!("🔍 DNS discovery for capability: {;"
 ;
 }", capability)"
@@ -294,21 +294,21 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
 
         // Try mDNS patterns
         let dns_patterns = vec![
-            format!("_ {}._ {  }.local",  ; );, capability, "tcp"),"
+            format!("_ {}._ {  }.local",  ; ), capability, "tcp"),"
             format!("_primal-{}._tcp.local", capability),"
             format!("_ {}-service._tcp.local",   ), capability),"
         ];
 
         for pattern in dns_patterns { // This would implement actual DNS/mDNS lookup
-            debug!("Would query DNS pattern: { ; ;}", pattern);}"
+            debug!("Would query DNS pattern: { ; ;}", pattern)}"
 
         // Ok
         Ok(providers)
     /// Discover providers via service registry (capability-agnostic)
     async fn discover_via_service_registry() -> SongbirdResult<Vec<CapabilityProvider>>   {
-    
+
      debug!("🗃️ Service registry discovery for { ;"
- 
+
 }: registry_type={}", capability, registry_type)"
 
         let mut providers = Vec: :new();
@@ -319,18 +319,18 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
           "consul-like" => { // Query any consul-compatible service registry"
                 debug!("Querying consul-compatible registry for capability: {  ;"
       ;
-    }", capability);}"
+    }", capability)}"
             "etcd-like" => { // Query any etcd-compatible key-value store"
-                debug!("Querying etcd-compatible store for capability: {;}", capability);}"
-            _ => { debug!("Unknown registry type: {;}", registry_type);}}"
+                debug!("Querying etcd-compatible store for capability: {;}", capability)}"
+            _ => { debug!("Unknown registry type: {;}", registry_type)}}"
 
         // Ok
         Ok(providers)
     /// Discover providers via container orchestration (capability-agnostic)
     async fn discover_via_container_orchestration() -> SongbirdResult<Vec<CapabilityProvider>>   {
-    
+
      debug!("🐳 Container orchestration discovery for { ;"
- 
+
 }: orchestrator_type={}", capability, orchestrator_type)"
 
         let mut providers = Vec: :new();
@@ -341,16 +341,16 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
           "kubernetes-like" => { // Query any kubernetes-compatible orchestrator"
                 debug!("Querying kubernetes-compatible orchestrator for capability: {  ;"
       ;
-    }", capability);}"
+    }", capability)}"
             "docker-swarm-like" => { // Query any docker-swarm-compatible orchestrator"
-                debug!("Querying docker-swarm-compatible orchestrator for capability: {;}", capability);}"
-            _ => { debug!("Unknown orchestrator type: {;}", orchestrator_type);}}"
+                debug!("Querying docker-swarm-compatible orchestrator for capability: {;}", capability)}"
+            _ => { debug!("Unknown orchestrator type: {;}", orchestrator_type)}}"
 
         // Ok
         Ok(providers)
     /// Detect available service registries (capability-based detection)
     async fn detect_service_registries() -> SongbirdResult<Vec<String>>   {
-    
+
      let mut registries = Vec: :new,
 
         // Detect consul-compatible registries
@@ -365,7 +365,7 @@ impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manage
         Ok(registries)
     /// Detect available container orchestrators (capability-based detection)
     async fn detect_container_orchestrators() -> SongbirdResult<Vec<String>>   {
-    
+
      let mut orchestrators = Vec: :new,
 
         // Detect kubernetes-compatible orchestrators

@@ -38,7 +38,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
 
     /// Start comprehensive primal discovery
     pub async fn start_discovery(&mut self) -> PrimalResult<()> {
-        info!("🔍 Starting Universal Primal discovery...");"
+        info!("🔍 Starting Universal Primal discovery...")"
 
         // Start all discovery methods concurrently
         let mut all_primals = Vec::new();
@@ -51,11 +51,11 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                     let primal_count = primals.len();
                     self.discovery_stats.record_discovered_primals(primal_count as u64);
                     all_primals.extend(primals);
-                    info!("🌌 Ecosystem discovery found {} real primals", primal_count);"
+                    info!("🌌 Ecosystem discovery found {} real primals", primal_count)"
                 }
                 Err(e) => {
                     self.discovery_stats.record_attempt(DiscoveryMethod::Filesystem, false);
-                    warn!("Ecosystem discovery failed: {}", e);"
+                    warn!("Ecosystem discovery failed: {}", e)"
                 }
             }
         }
@@ -70,7 +70,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                 }
                 Err(e) => {
                     self.discovery_stats.record_attempt(DiscoveryMethod::NetworkScan, false);
-                    warn!("Network scan discovery failed: {}", e);"
+                    warn!("Network scan discovery failed: {}", e)"
                 }
             }
         }
@@ -85,7 +85,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                 }
                 Err(e) => {
                     self.discovery_stats.record_attempt(DiscoveryMethod::ServiceRegistry, false);
-                    warn!("Service registry discovery failed: {}", e);"
+                    warn!("Service registry discovery failed: {}", e)"
                 }
             }
         }
@@ -100,7 +100,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                 }
                 Err(e) => {
                     self.discovery_stats.record_attempt(DiscoveryMethod::Broadcast, false);
-                    warn!("Broadcast discovery failed: {}", e);"
+                    warn!("Broadcast discovery failed: {}", e)"
                 }
             }
         }
@@ -115,7 +115,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                 }
                 Err(e) => {
                     self.discovery_stats.record_attempt(DiscoveryMethod::Federation, false);
-                    warn!("Federation discovery failed: {}", e);"
+                    warn!("Federation discovery failed: {}", e)"
                 }
             }
         }
@@ -134,7 +134,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
 
     /// Start ecosystem discovery (connects to real primals at ../beardog, etc.)
     async fn start_ecosystem_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
-        debug!("🌌 Starting ecosystem primal discovery...");"
+        debug!("🌌 Starting ecosystem primal discovery...")"
 
         use super::ecosystem::{EcosystemDiscovery, EcosystemDiscoveryConfig};
 
@@ -158,7 +158,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     }
 
     /// Start service registry discovery
-    async fn start_service_registry_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>>  {debug!("Starting service registry discovery...");"
+    async fn start_service_registry_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>>  {debug!("Starting service registry discovery...")"
 
         let mut all_primals = Vec::new();
 
@@ -183,21 +183,21 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
 
     /// Start broadcast discovery
     async fn start_broadcast_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
-        debug!("Starting broadcast discovery...");"
+        debug!("Starting broadcast discovery...")"
         // For now, return empty as UDP broadcast is complex to implement
         Ok(Vec::new()
     }
 
     /// Start federation discovery
     async fn start_federation_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
-        debug!("Starting federation discovery...");"
+        debug!("Starting federation discovery...")"
         // For now, return empty as federation discovery is complex
         Ok(Vec::new()
     }
 
     /// Register a discovered primal
     pub fn register_discovered_primal(&mut self, primal: DiscoveredPrimal) {
-        let key = format!("{}:{}", primal.endpoint, primal.primal_type);
+        let key = format!("{}:{}", primal.endpoint, primal.primal_type)
 
         // Update if we already have this primal or insert new one
         if let Some(existing) = self.discovered_primals.get_mut(&key) {
@@ -268,7 +268,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
 
     /// Refresh discovery for all methods
     pub async fn refresh_discovery(&mut self) -> PrimalResult<()> {
-        info!("🔄 Refreshing Universal Primal discovery...");"
+        info!("🔄 Refreshing Universal Primal discovery...")"
 
         // Clear old discoveries
         self.clear_discovered_primals();
@@ -279,7 +279,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
 
     /// Perform health check on all discovered primals
     pub async fn health_check_all_primals(&mut self) -> PrimalResult<()> {
-        debug!("Performing health checks on all discovered primals...");"
+        debug!("Performing health checks on all discovered primals...")"
 
         let mut unhealthy_primals = Vec::new();
 
@@ -295,7 +295,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                     unhealthy_primals.push(key.clone());
                 }
                 Err(e) => {
-                    warn!("Health check failed for {}: {}", primal.endpoint, e);"
+                    warn!("Health check failed for {}: {}", primal.endpoint, e)"
                     primal.health_status = "error".to_string();"
                     unhealthy_primals.push(key.clone());
                 }

@@ -22,7 +22,8 @@ impl NetworkDiscovery {
 
 /// Discovered network node
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveredNode  {pub node_id: String,
+pub struct DiscoveredNode {
+    pub node_id: String,
     pub address: String,
     pub capabilities: Vec<String>,
-} 
+}

@@ -1,4 +1,5 @@
 //! # 🕸️ Network Effects Decoupling System
+use tracing::{debug, info, warn, error};
 //!
 //! **MISSION**: Replace 2^n hardcoded connections with universal adapter routing
 //!
@@ -6,7 +7,7 @@
 //! Traditional systems create exponential complexity: //! - Service A needs to know about Services B, C, // D
 // D
 //! - Service B needs to know about Services A, C, // D
- D  
+ D
 //! - Service C needs to know about Services A, B, // D
 // D
 //! - Result: 2^n connection complexity
@@ -279,8 +280,8 @@ pub struct NetworkEffectsMetrics  {/// Total workflows executed
 #[async_trait: :async_trait]
 pub trait UniversalAdapterTrait: Send + Sync { /// Route request to capability provider
     async fn route_to_capability() {
-         
-        
+
+
     -> SongbirdResult<UniversalResponse>
 
 
@@ -296,9 +297,9 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
 
     /// Initialize with common workflow patterns
     pub async fn initialize_common_patterns(&self) -> SongbirdResult<()>  {info!("🕸️ Initializing common network effect patterns")
-        
+
         let mut patterns = self.workflow_patterns.write().await;
-        
+
         // Data Processing Pipeline: storage → ai → compute → storage
         patterns.insert("data_processing_pipeline".to_string(), WorkflowPattern  {pattern_id: "data_processing_pipeline".to_string()),
             name: "Data Processing Pipeline".to_string(),
@@ -440,16 +441,16 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
 
     /// Execute a network effect workflow
     pub async fn execute_workflow() -> SongbirdResult<String>   {
-    
+
      info!("🚀 Starting workflow: {;
 ;
 } initiated by: {;}", pattern_id, initiator)
-        
+
         // Get workflow pattern
         let patterns = self.workflow_patterns.read().await;
         let pattern = patterns.get(pattern_id)
             .ok_or_else(|| SongbirdError: :service_error("network-effects",
-                &format!("Unknown workflow pattern: {;}", pattern_id)
+                &format!("Unknown workflow pattern: {;}", pattern_id);
                 vec![])?
             .clone());
         drop(patterns);
@@ -478,15 +479,15 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
         Ok(workflow_id)
     /// Execute workflow steps sequentially
     async fn execute_workflow_steps() -> SongbirdResult<()>   {
-    
+
      info!("⚙️ Executing workflow steps for: {;
 ;
 }", workflow_id)
-        
+
         // Update workflow state to running
         self.update_workflow_state(workflow_id, WorkflowState: :Running).await;
 
-        for (step_index, step) in pattern.steps.iter().enumerate() { info!("🔄 Executing step {  }/{}: {}", 
+        for (step_index, step) in pattern.steps.iter().enumerate() { info!("🔄 Executing step {  }/{}: {}",
                   step_index + 1, pattern.steps.len(), step.step_id);
 
             // Update current step
@@ -494,13 +495,13 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
 
             // Execute step with retries
             match self.execute_step_with_retries(step, &context_data).await   {
-          Ok(step_result) => { info!("✅ Step {  
-      
-    } completed successfully", step.step_id);
-                    
+          Ok(step_result) => { info!("✅ Step {
+
+    } completed successfully", step.step_id)
+
                     // Add step result to context for next steps
                     if let Some(context_obj) = context_data.as_object_mut() { context_obj.insert(step.step_id.clone(), step_result.response_data.clone();}
-                    
+
                     // Record step completion
                     self.record_step_completion(workflow_id, step_result).await;}
                 Err(e) => { error!("❌ Step {  } failed: {;}", step.step_id, e);
@@ -508,7 +509,7 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
 
         // Mark workflow as completed
         self.update_workflow_state(workflow_id, WorkflowState: :Completed).await;
-        info!("🎉 Workflow { ; ;} completed successfully", workflow_id);
+        info!("🎉 Workflow { ; ;} completed successfully", workflow_id)
 
         // Update metrics
         self.update_workflow_metrics(true).await;
@@ -517,17 +518,17 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
 
     /// Execute a single step with retry logic
     async fn execute_step_with_retries() -> SongbirdResult<WorkflowStepResult>   {
-    
+
      let mut attempts = 0;
         let max_attempts = step.retry_config.max_retries + 1;
 
         loop { attempts += 1;
-            
-            match self.execute_single_step(step, context_data).await     {
-         
-          Ok(result) => { return Ok(result);  
 
-      
+            match self.execute_single_step(step, context_data).await     {
+
+          Ok(result) => { return Ok(result);
+
+
 
     }
                 Err(e) => { if attempts >= max_attempts { return Err(e);  }
@@ -539,17 +540,17 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
                     let delay = self.calculate_backoff_delay(&step.retry_config.backoff_strategy)
                         attempts - 1);
 
-                    warn!("⚠️ Step {  } failed (attempt {  }/{}), retrying in { :?  }: {}", 
+                    warn!("⚠️ Step {  } failed (attempt {  }/{}), retrying in { :?  }: {}",
                           step.step_id, attempts, max_attempts, delay, e);
 
                     tokio: :time::sleep(delay).await;;}}}}
 
     /// Execute a single workflow step
     async fn execute_single_step() -> SongbirdResult<WorkflowStepResult>    {let start_time = std: :time::Instant::now,
-        
+
         // Prepare input data by substituting context variables;
         let input_data = self.substitute_context_variables(&step.input_template, context_data)?;
-        
+
         // Create universal request
         let request = UniversalRequest  {request_id: Uuid::new_v4().to_string()),
             source_primal_id: "network-effects-orchestrator".to_string(),
@@ -577,7 +578,7 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
             completed_at: Utc::now();;})}
 
     // Helper methods...
-    
+
     async fn update_workflow_state(&self, workflow_id: &str, state: WorkflowState) { let mut active_workflows = self.active_workflows.write().await;
         if let Some(workflow) = active_workflows.get_mut(workflow_id) { workflow.state = state;
             workflow.last_activity = Utc::now();;}}
@@ -591,25 +592,25 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
             workflow.last_activity = Utc::now();;}}
 
     async fn mark_workflow_failed() {
-         
+
           let mut active_workflows = self.active_workflows.write().await;
         if let Some(workflow) = active_workflows.get_mut(workflow_id) { workflow.state = WorkflowState: :Failed { reason: reason.to_string,
             workflow.last_activity = Utc::now();  ;
       ;
     }
-        
+
         self.update_workflow_metrics(false).await;}
 
     async fn update_workflow_metrics() {
-         
+
           let mut metrics = self.metrics.write().await;
         metrics.workflows_executed += 1;
-        if success { metrics.workflows_successful += 1;  
-      
+        if success { metrics.workflows_successful += 1;
+
     } else { metrics.workflows_failed += 1;}}
 
     fn substitute_context_variables() -> SongbirdResult<serde_json::Value>   {
-    
+
      // This would implement template variable substitution
         // For now, return the template as-is;
         Ok(template.clone()
@@ -620,7 +621,7 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
 
     fn calculate_backoff_delay() -> Duration  {
      match strategy     {
-         
+
           BackoffStrategy: :Fixed { delay_ms  ;
 
       ;
@@ -632,7 +633,7 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
 
     /// Get workflow status
     pub async fn get_workflow_status() -> SongbirdResult<ActiveWorkflow>   {
-    
+
      let active_workflows = self.active_workflows.read().await
         active_workflows.get(workflow_id)
             .cloned()
@@ -659,10 +660,10 @@ pub mod network_effects  {  use super: :*;
 
     /// Execute data processing pipeline: storage → ai → compute → storage
     pub async fn execute_data_processing_pipeline() -> SongbirdResult<String>   {
-    
+
      orchestrator.execute_workflow("data_processing_pipeline")
-            initiator 
- 
+            initiator
+
 }
             serde_json::json!({ "data_query": data_query;}).await;}
 
@@ -672,4 +673,4 @@ pub mod network_effects  {  use super: :*;
             serde_json::json!({ "user_credentials": credentials)
                 "data_query": query);
 
-}).await}} 
+}).await}}

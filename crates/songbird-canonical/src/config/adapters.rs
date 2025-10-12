@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use songbird_types::config::consolidated_canonical::CanonicalHealthCheckConfig as HealthCheckConfig;
 
 /// Universal adapter configuration for ecosystem primals
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
-pub struct UniversalAdapterConfig  {/// Security capability adapters
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UniversalAdapterConfig {
+    /// Security capability adapters
     pub security_adapters: SecurityAdapterConfig,
     /// Compute capability adapters
     pub compute_adapters: ComputeAdapterConfig,
@@ -23,7 +23,8 @@ pub struct UniversalAdapterConfig  {/// Security capability adapters
 
 /// Security adapter configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityAdapterConfig  {/// Enable security adapters
+pub struct SecurityAdapterConfig {
+    /// Enable security adapters
     /// Enabled field
     pub enabled: bool,
     /// Discovery mode for security services
@@ -45,7 +46,8 @@ pub struct SecurityAdapterConfig  {/// Enable security adapters
 
 /// Compute adapter configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ComputeAdapterConfig  {/// Enable compute adapters
+pub struct ComputeAdapterConfig {
+    /// Enable compute adapters
     /// Enabled field
     pub enabled: bool,
     /// Discovery mode for compute services
@@ -67,7 +69,8 @@ pub struct ComputeAdapterConfig  {/// Enable compute adapters
 
 /// Storage adapter configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StorageAdapterConfig  {/// Enable storage adapters
+pub struct StorageAdapterConfig {
+    /// Enable storage adapters
     /// Enabled field
     pub enabled: bool,
     /// Discovery mode for storage services
@@ -89,7 +92,8 @@ pub struct StorageAdapterConfig  {/// Enable storage adapters
 
 /// Storage provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StorageProviderConfig  {/// Enable storage provider
+pub struct StorageProviderConfig {
+    /// Enable storage provider
     pub enabled: bool,
     /// Provider endpoint
     pub endpoint: Option<String>,
@@ -101,7 +105,8 @@ pub struct StorageProviderConfig  {/// Enable storage provider
 
 /// `security_provider_config` security adapter configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityProviderConfigSecurityConfig  {/// Enable `security_provider_config` security adapter
+pub struct SecurityProviderConfigSecurityConfig {
+    /// Enable `security_provider_config` security adapter
     /// Enabled field
     pub enabled: bool,
     /// `security_provider_config` endpoint (environment-based discovery)
@@ -116,7 +121,8 @@ pub struct SecurityProviderConfigSecurityConfig  {/// Enable `security_provider_
 
 /// `compute_provider_config` compute adapter configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ComputeProviderConfigComputeConfig  {/// Enable `compute_provider_config` compute adapter
+pub struct ComputeProviderConfigComputeConfig {
+    /// Enable `compute_provider_config` compute adapter
     /// Enabled field
     pub enabled: bool,
     /// `compute_provider_config` endpoint (environment-based discovery)
@@ -131,7 +137,8 @@ pub struct ComputeProviderConfigComputeConfig  {/// Enable `compute_provider_con
 
 /// `storage_provider_config` storage adapter configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StorageProviderConfigStorageConfig  {/// Enable `storage_provider_config` storage adapter
+pub struct StorageProviderConfigStorageConfig {
+    /// Enable `storage_provider_config` storage adapter
     /// Enabled field
     pub enabled: bool,
     /// `storage_provider_config` endpoint (environment-based discovery)
@@ -148,7 +155,8 @@ pub struct StorageProviderConfigStorageConfig  {/// Enable `storage_provider_con
 
 /// Adapter-wide settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AdapterSettings  {/// Default timeout for primal requests
+pub struct AdapterSettings {
+    /// Default timeout for primal requests
     pub default_timeout_ms: u64,
     /// Maximum concurrent requests per primal
     /// Max Concurrent Requests field
@@ -162,7 +170,8 @@ pub struct AdapterSettings  {/// Default timeout for primal requests
 
 /// Circuit breaker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig  {/// Enable circuit breaker
+pub struct CircuitBreakerConfig {
+    /// Enable circuit breaker
     /// Enabled field
     pub enabled: bool,
     /// Failure threshold before opening circuit
@@ -174,8 +183,9 @@ pub struct CircuitBreakerConfig  {/// Enable circuit breaker
     pub success_threshold: u32,
 }
 
-
-impl Default for SecurityAdapterConfig  {fn default() -> Self  {Self {
+impl Default for SecurityAdapterConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             discovery_mode: "auto".to_string(),
             endpoint: None,
@@ -187,7 +197,9 @@ impl Default for SecurityAdapterConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for ComputeAdapterConfig  {fn default() -> Self  {Self {
+impl Default for ComputeAdapterConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             discovery_mode: "auto".to_string(),
             endpoint: None,
@@ -199,7 +211,9 @@ impl Default for ComputeAdapterConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for StorageAdapterConfig  {fn default() -> Self  {Self {
+impl Default for StorageAdapterConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             discovery_mode: "auto".to_string(),
             endpoint: None,
@@ -211,7 +225,9 @@ impl Default for StorageAdapterConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for SecurityProviderConfigSecurityConfig  {fn default() -> Self  {Self {
+impl Default for SecurityProviderConfigSecurityConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             endpoint: None,
             health_check: HealthCheckConfig::default(),
@@ -220,7 +236,9 @@ impl Default for SecurityProviderConfigSecurityConfig  {fn default() -> Self  {S
     }
 }
 
-impl Default for ComputeProviderConfigComputeConfig  {fn default() -> Self  {Self {
+impl Default for ComputeProviderConfigComputeConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             endpoint: None,
             health_check: HealthCheckConfig::default(),
@@ -229,7 +247,9 @@ impl Default for ComputeProviderConfigComputeConfig  {fn default() -> Self  {Sel
     }
 }
 
-impl Default for StorageProviderConfigStorageConfig  {fn default() -> Self  {Self {
+impl Default for StorageProviderConfigStorageConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             endpoint: None,
             health_check: HealthCheckConfig::default(),
@@ -238,7 +258,9 @@ impl Default for StorageProviderConfigStorageConfig  {fn default() -> Self  {Sel
     }
 }
 
-impl Default for AdapterSettings  {fn default() -> Self  {Self {
+impl Default for AdapterSettings {
+    fn default() -> Self {
+        Self {
             default_timeout_ms: 30000,
             max_concurrent_requests: 100,
             circuit_breaker: CircuitBreakerConfig::default(),
@@ -247,7 +269,9 @@ impl Default for AdapterSettings  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for CircuitBreakerConfig  {fn default() -> Self  {Self {
+impl Default for CircuitBreakerConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             failure_threshold: 5,
             timeout_seconds: 60,

@@ -5,7 +5,7 @@
 //! This module provides clean, error-free environment configuration management.
 
 use std::env;
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 
 /// **PEDANTIC**: Environment configuration manager
 #[derive(Debug, Clone, Default)]
@@ -16,7 +16,7 @@ impl EnvironmentConfig {
     #[must_use]
     pub fn songbird_endpoint() -> String {
         std::env::var("SONGBIRD_ENDPOINT").unwrap_or_else(|_| {
-            let bind_addr = &songbird_config::constants::network::DEFAULT_HOST;
+            let bind_addr = &crate::constants::network::DEFAULT_HOST;
             let port = std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok()
@@ -30,14 +30,14 @@ impl EnvironmentConfig {
     pub fn service_endpoint_by_capability(capability_type: &str, default_port: u16) -> String {
         std::env::var("SONGBIRD_ENDPOINT")
             .or_else(|_| env::var(format!("{}_ENDPOINT", capability_type))
-            .unwrap_or_else(|_| format!("http://songbird_config::constants::network::DEFAULT_HOST:{}", default_port,
+            .unwrap_or_else(|_| format!("http://{}:{}", crate::constants::network::DEFAULT_HOST, default_port)
     }
 
     /// Get the ToadStool compute endpoint from environment or calculate from config
     #[must_use]
     pub fn toadstool_endpoint() -> String {
         std::env::var("TOADSTOOL_ENDPOINT").unwrap_or_else(|_| {
-            let bind_addr = &songbird_config::constants::network::DEFAULT_HOST;
+            let bind_addr = &crate::constants::network::DEFAULT_HOST;
             let port = std::env::var("TOADSTOOL_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok()
@@ -50,7 +50,7 @@ impl EnvironmentConfig {
     #[must_use]
     pub fn nestgate_endpoint() -> String {
         std::env::var("NESTGATE_ENDPOINT").unwrap_or_else(|_| {
-            let bind_addr = &songbird_config::constants::network::DEFAULT_HOST;
+            let bind_addr = &crate::constants::network::DEFAULT_HOST;
             let port = std::env::var("NESTGATE_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok()
@@ -63,7 +63,7 @@ impl EnvironmentConfig {
     #[must_use]
     pub fn squirrel_endpoint() -> String {
         std::env::var("SQUIRREL_ENDPOINT").unwrap_or_else(|_| {
-            let bind_addr = &songbird_config::constants::network::DEFAULT_HOST;
+            let bind_addr = &crate::constants::network::DEFAULT_HOST;
             let port = std::env::var("SQUIRREL_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok()
@@ -114,7 +114,7 @@ impl EnvironmentConfig {
         if Self::is_production() {
             Self::get_env_or_default("BIND_ADDRESS", "0.0.0.0")
         } else {
-            Self::get_env_or_default("BIND_ADDRESS", &songbird_config::constants::network::DEFAULT_HOST)
+            Self::get_env_or_default("BIND_ADDRESS", &crate::constants::network::DEFAULT_HOST)
         }
     }
 
@@ -192,25 +192,25 @@ mod tests {
         // Clear environment variable if set
         std::env::remove_var("SONGBIRD_ENDPOINT");
         std::env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
-        
+
         let endpoint = EnvironmentConfig::songbird_endpoint();
-        assert_eq!(endpoint, &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT);
+        assert_eq!(endpoint, &format!("http://{}:{}", crate::constants::network::DEFAULT_HOST, crate::constants::network::DEFAULT_ORCHESTRATOR_PORT)
     }
 
     #[test]
     fn test_songbird_endpoint_from_env() {
         std::env::set_var("SONGBIRD_ENDPOINT", "http://custom:9000");
-        
+
         let endpoint = EnvironmentConfig::songbird_endpoint();
-        assert_eq!(endpoint, "http://custom:9000");
-        
+        assert_eq!(endpoint, "http://custom:9000")
+
         std::env::remove_var("SONGBIRD_ENDPOINT");
     }
 
     #[test]
     fn test_service_endpoint_by_capability() {
         let endpoint = EnvironmentConfig::service_endpoint_by_capability("COMPUTE", 8081);
-        assert_eq!(endpoint, "http://songbird_config::constants::network::DEFAULT_HOST:8081");
+        assert_eq!(endpoint, format!("http://{}:8081", crate::constants::network::DEFAULT_HOST))
     }
 
     #[test]
@@ -241,10 +241,10 @@ mod tests {
     fn test_is_development() {
         std::env::remove_var("ENVIRONMENT");
         assert!(EnvironmentConfig::is_development());
-        
+
         std::env::set_var("ENVIRONMENT", "production");
         assert!(!EnvironmentConfig::is_development());
-        
+
         std::env::remove_var("ENVIRONMENT");
     }
 
@@ -252,10 +252,10 @@ mod tests {
     fn test_is_production() {
         std::env::remove_var("ENVIRONMENT");
         assert!(!EnvironmentConfig::is_production());
-        
+
         std::env::set_var("ENVIRONMENT", "production");
         assert!(EnvironmentConfig::is_production());
-        
+
         std::env::remove_var("ENVIRONMENT");
     }
 
@@ -263,11 +263,11 @@ mod tests {
     fn test_bind_address() {
         std::env::remove_var("ENVIRONMENT");
         std::env::remove_var("BIND_ADDRESS");
-        assert_eq!(EnvironmentConfig::bind_address(), &songbird_config::constants::network::DEFAULT_HOST);
-        
+        assert_eq!(EnvironmentConfig::bind_address(), &crate::constants::network::DEFAULT_HOST);
+
         std::env::set_var("ENVIRONMENT", "production");
         assert_eq!(EnvironmentConfig::bind_address(), "0.0.0.0");
-        
+
         std::env::remove_var("ENVIRONMENT");
         std::env::remove_var("BIND_ADDRESS");
     }
@@ -276,17 +276,17 @@ mod tests {
     fn test_port_getters() {
         std::env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
         assert_eq!(EnvironmentConfig::orchestrator_port(), 8080);
-        
+
         std::env::remove_var("SONGBIRD_DISCOVERY_PORT");
         assert_eq!(EnvironmentConfig::discovery_port(), 8001);
-        
+
         std::env::remove_var("SONGBIRD_REGISTRY_PORT");
         assert_eq!(EnvironmentConfig::registry_port(), 8002);
-        
+
         std::env::remove_var("SONGBIRD_METRICS_PORT");
         assert_eq!(EnvironmentConfig::metrics_port(), 8004);
-        
+
         std::env::remove_var("SONGBIRD_FEDERATION_PORT");
         assert_eq!(EnvironmentConfig::federation_port(), 8005);
     }
-} 
+}

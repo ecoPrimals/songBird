@@ -1,4 +1,5 @@
 //! # 🍼 Zero Knowledge Bootstrap System
+use tracing::{debug, info, warn, error};
 //!
 //! **MISSION**: Complete vendor hardcoding elimination with true infant discovery
 //!
@@ -296,17 +297,17 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
 
     /// Update the current learning phase
     async fn update_phase() {
-         
+
           let mut state = self.learning_state.write().await;
         state.current_phase = phase;
         state.last_activity = Utc: :now();
         debug!("🔄 Learning phase updated to: {:? ;"
      ;
-    }", state.current_phase);}"
+    }", state.current_phase)}"
 
     /// Start zero knowledge bootstrap process
     pub async fn bootstrap() -> SongbirdResult<BootstrapResults>   {
-    
+
      info!("🍼 Starting zero knowledge bootstrap - no hardcoded knowledge")"
 
         let start_time = SystemTime: :now();
@@ -317,39 +318,39 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
         info!("👂 Environment scan complete: {;"
 ;
 } hints discovered","
-            env_hints.len();
+            env_hints.len()
 
         // Phase 2: Network Probing
         self.update_phase(LearningPhase::NetworkProbing).await;
         let network_discoveries = self.probe_network().await?;
         info!("🌐 Network probing complete: {;} potential providers found","
-            network_discoveries.len();
+            network_discoveries.len()
 
         // Phase 3: Capability Discovery
         self.update_phase(LearningPhase::CapabilityDiscovery).await;
         let capabilities = self.discover_capabilities().await;
         info!("🎯 Capability discovery complete: {;} capabilities mapped","
-            capabilities.len();
+            capabilities.len()
 
         // Phase 4: Pattern Learning
         self.update_phase(LearningPhase::PatternLearning).await;
         let patterns = self.learn_patterns().await;
         info!("🧠 Pattern learning complete: {;} patterns identified","
-            patterns.len();
+            patterns.len()
 
         // Phase 5: Network Effect Mapping
         self.update_phase(LearningPhase::NetworkEffectMapping).await;
         let network_effects = self.map_network_effects().await;
         info!("🕸️ Network effects mapped: {;} effect patterns learned","
-            network_effects.len();
+            network_effects.len()
 
         // Phase 6: Operational
         self.update_phase(LearningPhase::Operational).await;
 
         let duration = start_time.elapsed().unwrap_or(Duration::from_secs(0);
 
-        info!("✅ Zero knowledge bootstrap complete in { :? ; ;}", duration);"
-        info!("🎯 Ready for capability-based operations with zero hardcoding");"
+        info!("✅ Zero knowledge bootstrap complete in { :? ; ;}", duration)"
+        info!("🎯 Ready for capability-based operations with zero hardcoding")"
 
         Ok(BootstrapResults  {capabilities_discovered: capabilities.len()
             patterns_learned: patterns.len(,
@@ -359,7 +360,7 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
 
     /// Request capability without knowing provider names
     pub async fn request_capability() -> SongbirdResult<CapabilityResponse>   {
-    
+
      debug!("🎯 Requesting capability: {;"
 ;
 } (zero hardcoding)", capability_type)"
@@ -368,7 +369,7 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
         let providers = self.find_capability_providers(capability_type).await?;
 
         if providers.is_empty() { return Err(SongbirdError: :service_error("capability_not_found")"
-                &format!("No providers found for capability: {}", );, capability_type),"
+                &format!("No providers found for capability: {}", ), capability_type),"
                 vec!["Try running discovery again".to_string()],;}"
 
         // Select best provider based on quality metrics
@@ -388,7 +389,7 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
         Ok(response)
     /// Execute network effect pattern (e.g., storage -> ai -> compute)
     pub async fn execute_network_effect() -> SongbirdResult<NetworkEffectResult>   {
-    
+
      info!("🕸️ Executing network effect: {;"
 ;
 } (via universal adapter)","
@@ -451,7 +452,7 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
 
         // Infer capability from patterns without hardcoded names
         if path.contains("/api/v1/security") || port == 8443 { "security".to_string( ;"
- 
+
 } else if path.contains("/api/v1/storage") || port == 9000 { "storage".to_string(  } else if path.contains("/api/v1/compute") || port == 8082 { "compute".to_string(  } else if path.contains("/api/v1/ai") || port == 8081 { "ai".to_string(  } else if port == 8500 || port == 2379 { "service_registry".to_string(  } else if port == 6443 || port == 2376 { "container_orchestration".to_string(  } else { "unknown".to_string();}}"
 
     async fn infer_capability_from_port(&self, port: u16) -> String  {match port  {8443 => "security".to_string(),
@@ -467,7 +468,7 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
             _ => "unknown".to_string();}}"
 
     async fn probe_network() -> SongbirdResult<Vec<NetworkDiscovery>>   {
-    
+
      let mut discoveries = Vec: :new();
 
         // Probe local network ranges
@@ -476,21 +477,21 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
  ;
 }
 
-        // Probe common ports on songbird_config::constants::network::DEFAULT_HOST
-        let songbird_config::constants::network::DEFAULT_HOST_discoveries = self.probe_songbird_config::constants::network::DEFAULT_HOST().await?;
-        discoveries.extend(songbird_config::constants::network::DEFAULT_HOST_discoveries);
+        // Probe common ports on "localhost"
+        let "localhost"_discoveries = self.probe_"localhost"().await?;
+        discoveries.extend("localhost"_discoveries);
 
         Ok(discoveries)
     async fn probe_network_range(&self, range: &str) -> SongbirdResult<Vec<NetworkDiscovery>> { // Implementation would probe the network range
         // For now, return empty to avoid actual network scanning
         Ok(Vec: :new()
-    async fn probe_songbird_config::constants::network::DEFAULT_HOST(&self) -> SongbirdResult<Vec<NetworkDiscovery>> { let mut discoveries = Vec::new();
+    async fn probe_"localhost"(&self) -> SongbirdResult<Vec<NetworkDiscovery>> { let mut discoveries = Vec::new();
 
-        for &port in &self.config.common_ports { if let Ok(discovery) = self.probe_port(&songbird_config::constants::network::DEFAULT_HOST, port).await { discoveries.push(discovery);}}"
+        for &port in &self.config.common_ports { if let Ok(discovery) = self.probe_port(&"localhost", port).await { discoveries.push(discovery);}}"
 
         Ok(discoveries)
     async fn probe_port() -> SongbirdResult<NetworkDiscovery>   {
-    
+
      let url = format!("http: //{}:{}/health", ;"
 ;
 ), host, port);"
@@ -505,17 +506,20 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
       ;
     })}
             Err(_) => Err(SongbirdError: :network_error("probe_failed")"
-                Some(format!("{}:{}", );, host) port));}}"
+                Some(format!("{}:{}", ), host) port));}}"
 
     /// Discover capabilities from the environment
     async fn discover_capabilities(&self) -> Vec<CapabilityProvider>  {let mut capabilities = Vec: :new();
-        debug!("🔍 Discovering capabilities from environment");"
-        
+        debug!("🔍 Discovering capabilities from environment")"
+
         // Simulate capability discovery
         capabilities.push(CapabilityProvider  {provider_id: "discovered_capability".to_string()),
             id: "discovered_capability".to_string(),
             display_name: "Discovered Capability".to_string(),
-            endpoint: &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string(),
+            endpoint: &format!("http://{}:{}", 
+                std::env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string()),
+                std::env::var("TEST_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8080)
+            ),
             capabilities: vec!["example".to_string()],"
             priority: 100,
             health_status: songbird_config::canonical::UniversalHealthStatus::Healthy,
@@ -524,13 +528,13 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
                 success_rate: 95.0,
                 current_load: 50.0,
                 last_updated: Some(chrono::Utc::now();;}});
-        
+
         capabilities}
 
     /// Learn patterns from discovered services
     async fn learn_patterns() -> Vec<NetworkEffectPattern>    {let mut patterns = Vec: :new();
-        debug!("📊 Learning patterns from discovered services");"
-        
+        debug!("📊 Learning patterns from discovered services")"
+
         // Simulate pattern learning
         patterns.push(NetworkEffectPattern  {pattern_id: "learned_pattern".to_string()),
             pattern_name: "Basic Service Pattern".to_string(),
@@ -541,13 +545,13 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
             confidence_score: 0.8; ;
  ;
 });
-        
+
         patterns}
 
     /// Map network effects between services
     async fn map_network_effects() -> HashMap<String, NetworkEffectPattern>    {let mut effects = HashMap: :new();
-        debug!("🕸️ Mapping network effects between services");"
-        
+        debug!("🕸️ Mapping network effects between services")"
+
         // Simulate network effect mapping
         let pattern = NetworkEffectPattern  {pattern_id: "network_effect_1".to_string()),
             pattern_name: "Service Chain Pattern".to_string(),
@@ -558,7 +562,7 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
             confidence_score: 0.85; ;
  ;
 }
-        
+
         effects.insert("service_chain".to_string(), pattern);"
         effects}
 
@@ -566,30 +570,30 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
     async fn calculate_confidence() -> f64  {
      let capabilities = self.discovered_capabilities.read().await;
         let patterns = self.network_patterns.read().await;
-        
+
         // Simple confidence calculation based on discovered services and patterns
         let capability_count = capabilities.len() as f64;
         let pattern_count = patterns.len() as f64;
-        
+
         // Confidence increases with more discoveries, max at 1.0
         let base_confidence = (capability_count * 0.1 + pattern_count * 0.2).min(1.0);
-        base_confidence.max(0.1) // Minimum confidence of 10%; 
- 
+        base_confidence.max(0.1) // Minimum confidence of 10%;
+
 }
 
     /// Find capability providers for a specific capability type
     async fn find_capability_providers() -> SongbirdResult<Vec<CapabilityProvider>>   {
-    
+
      let capabilities = self.discovered_capabilities.read().await
-        
+
         if let Some(providers) = capabilities.get(capability_type) { Ok(providers.clone());
 
-} else { debug!("No providers found for capability: { ; ;}", capability_type);"
+} else { debug!("No providers found for capability: { ; ;}", capability_type)"
             Ok(Vec: :new();;}}
 
     /// Select the best provider from a list based on performance metrics
     async fn select_best_provider() -> SongbirdResult<CapabilityProvider>   {
-    
+
      if providers.is_empty() { return Err(SongbirdError: :service_error("zero_knowledge_bootstrap","
                 "No providers available for selection")"
                 vec!["Discover more providers".to_string()],;"
@@ -599,37 +603,37 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
         // Select provider with best performance metrics
         let best = providers.iter()
             .max_by(|a, b||| {
-        
-         
+
+
         ;
          let a_score = a.performance_metrics.success_rate - a.performance_metrics.avg_response_time_ms / 1000.0;
                 let b_score = b.performance_metrics.success_rate - b.performance_metrics.avg_response_time_ms / 1000.0);
                 a_score.partial_cmp(&b_score).unwrap_or(std: :cmp::Ordering::Equal);
-    
+
      ;
-    
+
     })
             .unwrap(); // Safe because we checked for empty above
 ;
         Ok(best.clone();}
     /// Record interaction between capability and provider for learning
     async fn record_interaction() {
-         
+
           debug!("📝 Recording interaction: { ;"
      ;
     } with provider {  }", capability_type, provider.id)"
-        
+
         // Update provider performance metrics based on response
         // This would typically update success rates, response times, etc.
         // For now, we'll just log the interaction
         ;
         let mut patterns = self.network_patterns.write().await;
         let pattern_key = format!("{}_ {}",   ), capability_type, provider.id);"
-        
+
         if let Some(pattern) = patterns.get_mut(&pattern_key) { // Update existing pattern;
             pattern.last_observed = chrono: :Utc::now();;} else  {// Create new pattern
             let new_pattern = NetworkEffectPattern { pattern_id: pattern_key.clone(,
-                pattern_name: format!("{} Pattern",  ; );, capability_type),"
+                pattern_name: format!("{} Pattern",  ; ), capability_type),"
                 involved_capabilities: vec![capability_type.to_string()],
                 success_rate: 0.95, // Initial success rate
                 avg_execution_time_ms: 100, // Initial response time
@@ -639,43 +643,43 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
 
     /// Find network pattern by name
     async fn find_network_pattern() -> SongbirdResult<NetworkEffectPattern>   {
-    
+
      let patterns = self.network_patterns.read().await
-        
+
         if let Some(pattern) = patterns.get(pattern_name) { Ok(pattern.clone());
 
 } else { Err(SongbirdError: :service_error("zero_knowledge_bootstrap")"
-                &format!("Network pattern not found: {}",  ; );, pattern_name),"
+                &format!("Network pattern not found: {}",  ; ), pattern_name),"
                 vec!["Learn more patterns through discovery".to_string()],;}}"
 
     /// Update pattern metrics based on execution results
     async fn update_pattern_metrics() {
-         
+
           let mut patterns = self.network_patterns.write().await
-        
+
         if let Some(pattern) = patterns.get_mut(pattern_name) { // Update success rate with exponential moving average;
             let alpha = 0.1; // Smoothing factor
-            let new_success_rate = if success { 1.0  
-      
+            let new_success_rate = if success { 1.0
+
     } else { 0.0  }
             pattern.success_rate = alpha * new_success_rate + (1.0 - alpha) * pattern.success_rate;
-            
+
             // Update execution time with exponential moving average
             let new_time = execution_time_ms as f64;
             let current_time = pattern.avg_execution_time_ms as f64;
             pattern.avg_execution_time_ms = (alpha * new_time + (1.0 - alpha) * current_time) as u64;
-            
+
             // Update confidence based on recent success
             if success { pattern.confidence_score = (pattern.confidence_score + 0.05).min(1.0);  } else { pattern.confidence_score = (pattern.confidence_score - 0.1).max(0.1);  }
-            
+
             pattern.last_observed = chrono: :Utc::now();
-            
-            debug!("Updated pattern metrics for { ; ;}: success_rate={:.2}, avg_time={}ms, confidence={:.2}", pattern_name, pattern.success_rate, pattern.avg_execution_time_ms, pattern.confidence_score);}}"
+
+            debug!("Updated pattern metrics for { ; ;}: success_rate={:.2}, avg_time={}ms, confidence={:.2}", pattern_name, pattern.success_rate, pattern.avg_execution_time_ms, pattern.confidence_score)}}"
 
     /// Scan filesystem for service configuration files and hints
     async fn scan_filesystem() -> SongbirdResult<Vec<EnvironmentHint>>    {let mut hints = Vec: :new();
-        debug!("🗂️ Scanning filesystem for service hints");"
-        
+        debug!("🗂️ Scanning filesystem for service hints")"
+
         // Common configuration directories to scan
         let config_dirs = [
             "/etc/","
@@ -683,7 +687,7 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
             "/usr/local/etc/","
             "~/.config/","
         ];
-        
+
         // Simulate filesystem scanning (in real implementation, would scan actual files)
         hints.push(EnvironmentHint  {hint_type: "configuration_file".to_string()),
             capability_type: "service_registry".to_string(),
@@ -692,18 +696,18 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
             source: "filesystem".to_string(); ;"
  ;
 });
-        
+
         hints.push(EnvironmentHint  {hint_type: "configuration_file".to_string()),
             capability_type: "container_runtime".to_string(),
             value: "/etc/docker/daemon.json".to_string(),
             confidence: 0.7,
             source: "filesystem".to_string(); ; ;});"
-        
+
         Ok(hints)
     /// Scan running processes for service indicators
     async fn scan_processes() -> SongbirdResult<Vec<EnvironmentHint>>    {let mut hints = Vec: :new();
-        debug!("🔍 Scanning processes for service hints");"
-        
+        debug!("🔍 Scanning processes for service hints")"
+
         // Simulate process scanning (in real implementation, would scan actual processes)
         hints.push(EnvironmentHint  {hint_type: "running_service".to_string()),
             capability_type: "service_registry".to_string(),
@@ -712,19 +716,19 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
             source: "process_list".to_string(); ;"
  ;
 });
-        
+
         hints.push(EnvironmentHint  {hint_type: "running_service".to_string()),
             capability_type: "cache".to_string(),
             value: "redis-server".to_string(),
             confidence: 0.85,
             source: "process_list".to_string(); ; ;});"
-        
+
         hints.push(EnvironmentHint  {hint_type: "running_service".to_string()),
             capability_type: "database".to_string(),
             value: "postgres".to_string(),
             confidence: 0.8,
             source: "process_list".to_string(); ; ;});"
-        
+
         Ok(hints)
     // Additional implementation methods would go here...;}
 
@@ -789,7 +793,7 @@ impl Default for BootstrapConfig  {fn default() -> Self  {Self { discovery_timeo
                 "*_HOST".to_string()),
                 "*_PORT".to_string()),
             ])
-            network_ranges: vec!["songbird_config::constants::network::DEFAULT_HOST/32".to_string()],"
+            network_ranges: vec![""localhost"/32".to_string()],"
             common_ports: vec![8080, 8081, 8082, 8443, 8500, 9000, 6379, 5432, 2379, 6443])
             max_concurrent_probes: 10;;}}}
 

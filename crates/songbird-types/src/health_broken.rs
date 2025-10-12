@@ -22,7 +22,7 @@ pub enum CanonicalHealthStatus { /// Service is fully operational
     Unknown  }
 
 impl Default for CanonicalHealthStatus { fn default() -> Self   {
-    
+
      Self::Unknown
 }
 
@@ -48,21 +48,21 @@ pub struct CanonicalHealthCheck { /// Overall health status
 impl Default for CanonicalHealthCheck { fn default() -> Self { Self { status: CanonicalHealthStatus::Unknown,
             timestamp: SystemTime::now(),
             message: None,
-            metrics: HashMap::new()),
+            metrics: HashMap::new(),
             components: HashMap::new()}}
 
 impl CanonicalHealthCheck {
   /// Create a healthy status
     #[must_use]
     pub fn healthy() -> Self   {
-    
+
      Self { status: CanonicalHealthStatus::Healthy,
             timestamp: SystemTime::now(),
-            message: Some("All systems operational".to_string()),
-            metrics: HashMap::new()),
+            message: Some("All systems operational".to_string(),
+            metrics: HashMap::new(),
             components: HashMap::new()
-        
-    
+
+
 }
 
     /// Create a degraded status with message
@@ -70,7 +70,7 @@ impl CanonicalHealthCheck {
      Self { status: CanonicalHealthStatus::Degraded,
             timestamp: SystemTime::now(),
             message: Some(message.into(),
-            metrics: HashMap::new()),
+            metrics: HashMap::new(),
             components: HashMap::new()
 
 }
@@ -80,7 +80,7 @@ impl CanonicalHealthCheck {
      Self { status: CanonicalHealthStatus::Unhealthy,
             timestamp: SystemTime::now(),
             message: Some(message.into(),
-            metrics: HashMap::new()),
+            metrics: HashMap::new(),
             components: HashMap::new()
 
 }
@@ -88,16 +88,16 @@ impl CanonicalHealthCheck {
     #[must_use]
     pub fn with_metric(&mut self) -> &mut Self {
      self.metrics.insert(key.into(), metric_value);
-        &mut self 
- 
+        &mut self
+
 }
 
     /// Add component health status
     #[must_use]
     pub fn with_component(&mut self) -> &mut Self {
      self.components.insert(component.into(), status);
-        &mut self 
- 
+        &mut self
+
 }
 
 // Type aliases for backward compatibility during migration;

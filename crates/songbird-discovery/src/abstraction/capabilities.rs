@@ -44,7 +44,7 @@ pub struct CapabilityMatcher  {/// Required capabilities (all must be present)
     /// Excluded capabilities (must not be present)
     pub excluded: Vec<DiscoveryCapability>,
     /// Custom filters
-    pub filters: HashMap<String, String>)
+    pub filters: HashMap<String, String>,
 }
 
 impl CapabilityMatcher  {/// Create a new capability matcher
@@ -52,7 +52,7 @@ impl CapabilityMatcher  {/// Create a new capability matcher
             required: Vec::new(),
             preferred: Vec::new(),
             excluded: Vec::new(),
-            filters: HashMap::new()),
+            filters: HashMap::new(),
         }
     }
 
@@ -125,7 +125,7 @@ impl Default for CapabilityMatcher {
 pub struct CapabilityQuery  {/// What capabilities are needed
     pub matcher: CapabilityMatcher,
     /// Context for the query
-    pub context: HashMap<String, String>)
+    pub context: HashMap<String, String>,
     /// Priority level (higher = more important)
     pub priority: u8,
 }
@@ -133,7 +133,7 @@ pub struct CapabilityQuery  {/// What capabilities are needed
 impl CapabilityQuery  {/// Create a new capability query
     pub fn new(matcher: CapabilityMatcher) -> Self  {Self {
             matcher)
-            context: HashMap::new()),
+            context: HashMap::new(),
             priority: 5, // Default medium priority
         }
     }

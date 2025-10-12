@@ -12,13 +12,13 @@ use std::time::Duration;
 // ============================================================================
 
 /// Universal health monitoring configuration - **MIGRATED TO UNIFIED**
-/// 
+///
 /// This re-exports the unified health configuration from songbird_config.
 /// The migration to songbird_config::unified is complete.
 pub use songbird_config::unified::observability::UnifiedObservabilityConfig as UniversalHealthConfig;
 
 /// Health check configuration - **MIGRATED TO UNIFIED**
-/// 
+///
 /// This re-exports the unified health check configuration.
 /// The migration to songbird_config::unified is complete.
 pub use songbird_config::unified::core::HealthCheckConfig;

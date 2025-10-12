@@ -14,6 +14,6 @@ impl NetworkFederationBridge {
     }
 
     pub async fn initialize(&mut self) -> SongbirdResult<()> {
-        Ok(()),
+        Ok(())
     }
-} 
+}

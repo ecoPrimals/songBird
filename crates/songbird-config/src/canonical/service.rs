@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 
 /// Service configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,7 +45,7 @@ pub type UniversalServiceInfo = ServiceInfo;
 
 impl Default for ServiceConfig  {fn default() -> Self  {Self {
             name: "default-service".to_string(),
-            address: &songbird_config::constants::network::DEFAULT_HOST.to_string(),
+            address: &crate::constants::network::DEFAULT_HOST.to_string(),
             port: 8080,
             metadata: HashMap::new()),
             health_check: Some(HealthCheckConfig::default(),
@@ -56,7 +56,7 @@ impl Default for ServiceConfig  {fn default() -> Self  {Self {
 impl Default for ServiceInfo  {fn default() -> Self  {Self {
             service_id: "default-service".to_string(),
             name: "default-service".to_string(),
-            host: &songbird_config::constants::network::DEFAULT_HOST.to_string(),
+            host: &crate::constants::network::DEFAULT_HOST.to_string(),
             port: 8080,
             metadata: HashMap::new()),
         }

@@ -23,11 +23,11 @@ impl DiscoveryStats {
     /// Update discovery statistics
     pub fn update_discovery(&mut self, method: &str, discovery_time_ms: f64) {
         self.total_discoveries += 1;
-        
+
         // Update average discovery time
         let total_time = self.average_discovery_time_ms * (self.total_discoveries - 1) as f64;
         self.average_discovery_time_ms = (total_time + discovery_time_ms) / self.total_discoveries as f64;
-        
+
         // Update services by method
         *self.services_by_method.entry(method.to_string().or_insert(0) += 1;
     }
@@ -67,4 +67,4 @@ impl DiscoveryStats {
             .max_by_key(|(_, count)| *count)
             .map(|(method, _)| method.clone()
     }
-} 
+}

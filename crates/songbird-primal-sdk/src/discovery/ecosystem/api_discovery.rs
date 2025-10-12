@@ -11,7 +11,7 @@ pub async fn discover_service_capabilities_via_api(
     endpoint: &str,
     service_name: &str,
 ) -> PrimalResult<(String, Vec<String>)> {
-    debug!("Attempting API discovery for endpoint: {}", endpoint);"
+    debug!("Attempting API discovery for endpoint: {}", endpoint)"
 
     // In a real implementation, this would:
     // 1. Make HTTP requests to the service's capability endpoint
@@ -47,7 +47,7 @@ pub async fn discover_service_capabilities_via_api(
 pub async fn discover_service_metadata_via_api(
     endpoint: &str,
 ) -> PrimalResult<HashMap<String, serde_json::Value>> {
-    debug!("Discovering service metadata for endpoint: {}", endpoint);"
+    debug!("Discovering service metadata for endpoint: {}", endpoint)"
 
     // In a real implementation, this would query the service's metadata endpoint
     Ok(HashMap::new()

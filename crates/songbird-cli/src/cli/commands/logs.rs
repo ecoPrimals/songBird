@@ -33,10 +33,10 @@ pub async fn show_logs(
         format!("📋 SONGBIRD LOGS - {}", service_name.to_uppercase().bright_blue().bold()"
     );
     println!("{}", format!("Filter: {} | Lines: {lines} | Follow: {follow}", level:?).dimmed();"
-    println!();
+    println!()
 
     if follow {
-        println!("{}", "Following logs (press Ctrl+C to stop)...".bright_yellow();"
+        println!("{}", "Following logs (press Ctrl+C to stop,...".bright_yellow();"
         follow_logs(service, level).await
     } else {
         show_recent_logs(service, lines, level).await
@@ -46,7 +46,7 @@ async fn show_recent_logs(service: Option<&str>, lines: usize, _level: LogLevel)
     // Simulate recent logs
     let sample_logs = generate_sample_logs(service, lines);
     for log_entry in sample_logs {
-        println!("{log_entry}");"
+        println!("{log_entry}");
     }
     Ok(()),
 }
@@ -75,9 +75,9 @@ async fn read_last_lines(
     lines: usize,
     level: &LogLevel,
 ) -> CliResult<Vec<String>> {
-    let content = tokio::fs::read_to_string(log_path).await.map_err(crate::errors::CliError::Io)?;
+    let content = tokio::fs::read_to_string(log_path).await.map_err(crate::errors::CliError::Io,?;
     let all_lines: Vec<&str> = content.lines().collect();
-    let recent_lines = all_lines.iter().rev().take(lines).rev();
+    let recent_lines = all_lines.iter().rev().take(lines,.rev();
     let filtered_logs: Vec<String> = recent_lines
         .filter_map(|line| {
             if should_show_log(line, level) {
@@ -87,17 +87,17 @@ async fn read_last_lines(
             }
         })
         .collect();
-    Ok(filtered_logs)
+    Ok(filtered_logs,
 }
 /// Generate sample logs for simulation mode
 fn generate_sample_logs(service: Option<&str>, lines: usize) -> Vec<String> {
     let mut logs = Vec::new();
     let service_name = service.unwrap_or("orchestrator");"
     for i in 0..lines {
-        let timestamp = chrono::Utc::now() - chrono::Duration::seconds((lines - i) as i64 * 10);
+        let timestamp = chrono::Utc::now() - chrono::Duration::seconds((lines - i, as i64 * 10);
         let formatted_timestamp = timestamp.format("%Y-%m-%d %H:%M:%S%.3f");"
 
-        let (level_str, color) = match i % 4 {
+        let (level_str, color, = match i % 4 {
             0 => ("INFO", "bright_blue"),"
             1 => ("DEBUG", "bright_magenta"),"
             2 => ("WARN", "bright_yellow"),"
@@ -115,11 +115,11 @@ fn generate_sample_logs(service: Option<&str>, lines: usize) -> Vec<String> {
         let log_entry = format!(
             "{} [{}] {} {}","
             formatted_timestamp.to_string().dimmed()
-            level_str.color(color)
+            level_str.color(color,
             service_name.bright_cyan()
             message
         );
-        logs.push(log_entry));
+        logs.push(log_entry);
     }
     logs
 }
@@ -171,7 +171,7 @@ async fn follow_real_logs(service_name: &str, level: &LogLevel) -> CliResult<()>
     let log_paths = get_log_paths(service_name);
     for log_path in log_paths {
         if tokio::fs::metadata(&log_path).await.is_ok() {
-            println!("Reading logs from: {}", log_path.display();"
+            println!("Reading logs from: {}", log_path.display()"
             return tail_log_file(&log_path, level.clone().await;
         }
     }
@@ -186,7 +186,7 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
     let mut paths = Vec::new();
     // User-specific log directory
     if let Some(config_dir) = dirs::config_dir() {
-        paths.push(config_dir.join("songbird").join("logs").join(format!("{}.log", service_name));"
+        paths.push(config_dir.join("songbird").join("logs").join(format!("{}.log", service_name);"
         paths.push(config_dir.join("songbird").join("songbird.log");"
     }
 
@@ -196,7 +196,7 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
 
     // Current directory
     paths.push(std::path::PathBuf::from("songbird.log");"
-    paths.push(std::path::PathBuf::from(format!("{}.log", service_name));"
+    paths.push(std::path::PathBuf::from(format!("{}.log", service_name);"
 
     paths
 }
@@ -204,13 +204,13 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
 #[allow(dead_code)]
 async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> CliResult<()> {
     use tokio::io::{AsyncBufReadExt, BufReader};
-    let file = tokio::fs::File::open(log_path).await.map_err(crate::errors::CliError::Io)?;
+    let file = tokio::fs::File::open(log_path).await.map_err(crate::errors::CliError::Io,?;
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
 
-    while let Some(line) = lines.next_line().await.map_err(crate::errors::CliError::Io)? {
+    while let Some(line, = lines.next_line().await.map_err(crate::errors::CliError::Io,? {
         if should_show_log(&line, &level) {
-            println!("{line}");"
+            println!("{line}");
         }
     }
     Ok(()),
@@ -231,11 +231,11 @@ fn should_show_log(log_entry: &str, filter_level: &LogLevel) -> bool {
         LogLevel::Trace
     };
 
-    match filter_level  {LogLevel::Error => matches!(entry_level, LogLevel::Error)
-        LogLevel::Warn => matches!(entry_level, LogLevel::Error | LogLevel::Warn)
-        LogLevel::Info => matches!(entry_level, LogLevel::Error | LogLevel::Warn | LogLevel::Info)
+    match filter_level  {LogLevel::Error => matches!(entry_level, LogLevel::Error,
+        LogLevel::Warn => matches!(entry_level, LogLevel::Error | LogLevel::Warn,
+        LogLevel::Info => matches!(entry_level, LogLevel::Error | LogLevel::Warn | LogLevel::Info,
         LogLevel::Debug => matches!(
-            entry_level)
+            entry_level,
             LogLevel::Error | LogLevel::Warn | LogLevel::Info | LogLevel::Debug
         )
         LogLevel::Trace => true, // Show all levels

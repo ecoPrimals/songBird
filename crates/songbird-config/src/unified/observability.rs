@@ -7,7 +7,7 @@ use std::env;
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UnifiedObservabilityConfig  {/// Dashboard configuration
     pub dashboard: DashboardConfig,
-    /// Health check configuration  
+    /// Health check configuration
     pub health_checks: HealthCheckConfig,
     /// Logging configuration
     pub logging: LoggingConfig,

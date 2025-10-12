@@ -41,7 +41,7 @@ impl Default for CanonicalUniversalAdapterConfig {
     fn default() -> Self {
         Self {
             auto_discovery: true,
-            primal_instances: HashMap::new()),
+            primal_instances: HashMap::new(),
             multi_instance: CanonicalMultiInstanceConfig::default(),
             lifecycle: CanonicalInstanceLifecycleConfig::default(),
             port_management: CanonicalPortManagementConfig::default(),
@@ -82,14 +82,21 @@ pub struct CanonicalPrimalInstanceConfig {
 
 impl Default for CanonicalPrimalInstanceConfig {
     fn default() -> Self {
+        let base_host =
+            std::env::var("DEFAULT_PRIMAL_HOST").unwrap_or_else(|_| "localhost".to_string());
+        let base_port = std::env::var("DEFAULT_PRIMAL_PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(8080);
+
         Self {
-            base_url: "http://localhost:8080".to_string(),
+            base_url: format!("http://{}:{}", base_host, base_port),
             instance_id: "default-instance".to_string(),
             user_id: "default-user".to_string(),
             device_id: "default-device".to_string(),
             security_level: "standard".to_string(),
             api_key: None,
-            headers: HashMap::new()),
+            headers: HashMap::new(),
             timeout_seconds: 30,
             connection_pool: CanonicalConnectionPoolConfig::default(),
             health_check: CanonicalHealthConfig::default(),

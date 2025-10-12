@@ -206,26 +206,31 @@ pub struct PotentialNetworkEffect  {/// Type of network effect
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum NetworkEffectType  {/// Capabilities combine additively
+pub enum NetworkEffectType {
+    /// Capabilities combine additively
     Additive {
         combined_capabilities: Vec<String>,
-    })
+    },
 
     /// Capabilities combine multiplicatively
-    Multiplicative  {enhanced_capabilities: Vec<String>)
-    })
+    Multiplicative {
+        enhanced_capabilities: Vec<String>,
+    },
 
     /// Novel capabilities emerge
-    Emergent  {novel_capabilities: Vec<String>)
-    })
+    Emergent {
+        novel_capabilities: Vec<String>,
+    },
 
     /// Enhanced security through combination
-    SecurityEnhancement  {security_boost: f64)
-    })
+    SecurityEnhancement {
+        security_boost: f64,
+    },
 
     /// Enhanced federation through combination
-    FederationEnhancement  {federation_boost: f64)
-    })
+    FederationEnhancement {
+        federation_boost: f64,
+    },
 }
 
 /// Discovery metadata
@@ -261,7 +266,7 @@ impl FederationAwareDiscovery  {/// Create new federation-aware discovery
     pub async fn discover_federation_aware_services(
         &mut self)
     ) -> SongbirdResult<Vec<FederationAwareServiceInfo>> {
-        info!("🔍 Starting federation-aware discovery...");"
+        info!("🔍 Starting federation-aware discovery...")"
 
         // 1. Use base discovery system (existing functionality)
         // Create empty query for discovery
@@ -281,7 +286,7 @@ impl FederationAwareDiscovery  {/// Create new federation-aware discovery
             self.detect_and_add_network_effects(&mut federation_aware_services).await?;
         }
 
-        info!("✅ Discovered {} federation-aware services", federation_aware_services.len();"
+        info!("✅ Discovered {} federation-aware services", federation_aware_services.len()"
         Ok(federation_aware_services)
     }
 
@@ -344,7 +349,7 @@ impl FederationAwareDiscovery  {/// Create new federation-aware discovery
             }
         }
 
-        Ok(()),
+        Ok((),
     }
 
     /// Get services that support sovereign federation
@@ -402,7 +407,7 @@ impl FederationAwareDiscovery  {/// Create new federation-aware discovery
 /// Federation pattern recognizer (NOT hardcoded primal knowledge)
 #[derive(Debug)]
 pub struct FederationPatternRecognizer  {/// Known patterns (learned, not hardcoded)
-    known_patterns: HashMap<String, PrimalPattern>)
+    known_patterns: HashMap<String, PrimalPattern>,
 }
 
 impl Default for FederationPatternRecognizer {
@@ -423,18 +428,18 @@ impl FederationPatternRecognizer  {#[must_use]
 
         // Security-focused pattern (could be BearDog or similar)
         patterns.insert(
-            "security-genetic".to_string()),
-            PrimalPattern  {pattern_signature: "security-genetic".to_string()),
+            "security-genetic".to_string(),
+            PrimalPattern  {pattern_signature: "security-genetic".to_string(),
                 characteristic_capabilities: vec![
-                    "genetic-spawning".to_string()),
-                    "hsm-integration".to_string()),
-                    "entropy-assessment".to_string()),
-                    "quantum-security".to_string()),
+                    "genetic-spawning".to_string(),
+                    "hsm-integration".to_string(),
+                    "entropy-assessment".to_string(),
+                    "quantum-security".to_string(),
                 ])
                 behavioral_indicators: vec![
-                    "high-entropy-responses".to_string()),
-                    "security-first-design".to_string()),
-                    "adaptive-threat-response".to_string()),
+                    "high-entropy-responses".to_string(),
+                    "security-first-design".to_string(),
+                    "adaptive-threat-response".to_string(),
                 ])
                 likely_category: PrimalCategory::SecurityFocused,
             })
@@ -442,18 +447,18 @@ impl FederationPatternRecognizer  {#[must_use]
 
         // Federation-focused pattern (could be Songbird or similar)
         patterns.insert(
-            "federation-sovereign".to_string()),
-            PrimalPattern  {pattern_signature: "federation-sovereign".to_string()),
+            "federation-sovereign".to_string(),
+            PrimalPattern  {pattern_signature: "federation-sovereign".to_string(),
                 characteristic_capabilities: vec![
-                    "sovereign-federation".to_string()),
-                    "quorum-sensing".to_string()),
-                    "fractal-networking".to_string()),
-                    "zero-leaders".to_string()),
+                    "sovereign-federation".to_string(),
+                    "quorum-sensing".to_string(),
+                    "fractal-networking".to_string(),
+                    "zero-leaders".to_string(),
                 ])
                 behavioral_indicators: vec![
-                    "sovereignty-preservation".to_string()),
-                    "decentralized-coordination".to_string()),
-                    "human-dignity-protection".to_string()),
+                    "sovereignty-preservation".to_string(),
+                    "decentralized-coordination".to_string(),
+                    "human-dignity-protection".to_string(),
                 ])
                 likely_category: PrimalCategory::FederationFocused,
             })
@@ -620,14 +625,14 @@ impl NetworkEffectsDetector {
                 effects.push(PotentialNetworkEffect {
                     effect_type: NetworkEffectType::Multiplicative {
                         enhanced_capabilities: vec![
-                            "entropy-aware-federation".to_string()),
-                            "hierarchical-sovereignty".to_string()),
+                            "entropy-aware-federation".to_string(),
+                            "hierarchical-sovereignty".to_string(),
                         ])
                     })
                     benefit_multiplier: 2.5,
                     required_conditions: vec![
-                        "compatible-security-primal".to_string()),
-                        "compatible-federation-primal".to_string()),
+                        "compatible-security-primal".to_string(),
+                        "compatible-federation-primal".to_string(),
                     ])
                     confidence: caps.pattern_confidence,
                 });
@@ -636,8 +641,8 @@ impl NetworkEffectsDetector {
             // Quorum sensing enables collective intelligence
             if caps.supports_quorum_sensing  {effects.push(PotentialNetworkEffect  {effect_type: NetworkEffectType::Emergent {
                         novel_capabilities: vec![
-                            "collective-intelligence".to_string()),
-                            "swarm-coordination".to_string()),
+                            "collective-intelligence".to_string(),
+                            "swarm-coordination".to_string(),
                         ])
                     })
                     benefit_multiplier: 1.8,
@@ -669,15 +674,15 @@ impl NetworkEffectsDetector {
 
         if service1_security && service2_federation  {effects.push(PotentialNetworkEffect  {effect_type: NetworkEffectType::Multiplicative {
                     enhanced_capabilities: vec![
-                        "entropy-aware-sovereign-federation".to_string()),
-                        "genetic-quorum-sensing".to_string()),
-                        "hierarchical-sovereignty-enforcement".to_string()),
+                        "entropy-aware-sovereign-federation".to_string(),
+                        "genetic-quorum-sensing".to_string(),
+                        "hierarchical-sovereignty-enforcement".to_string(),
                     ])
                 })
                 benefit_multiplier: 3.0, // Synergistic effect
                 required_conditions: vec![
-                    "compatible-protocols".to_string()),
-                    "mutual-trust-establishment".to_string()),
+                    "compatible-protocols".to_string(),
+                    "mutual-trust-establishment".to_string(),
                 ])
                 confidence: 0.9,
             });

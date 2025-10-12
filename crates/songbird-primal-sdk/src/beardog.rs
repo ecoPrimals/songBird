@@ -23,28 +23,27 @@ pub struct BearDogConfig  {/// Primary endpoint URL for BearDog services
 
 impl Default for BearDogConfig {
     fn default() -> Self {
-        let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {"
-            songbird_config::constants::network::DEFAULT_BIND_ADDRESS.to_string()),
-        });
+        let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
+            .unwrap_or_else(|_| songbird_config::constants::network::DEFAULT_BIND_ADDRESS.to_string());
 
         Self {
-            endpoint: std::env::var("BEARDOG_ENDPOINT")"
-                .unwrap_or_else(|_| format!("https://{}:8443", bind_address,),"
-            api_key: std::env::var("BEARDOG_API_KEY").ok(),"
-            verify_tls: std::env::var("BEARDOG_VERIFY_TLS")"
-                .unwrap_or_else(|_| "true".to_string()"
+            endpoint: std::env::var("BEARDOG_ENDPOINT")
+                .unwrap_or_else(|_| format!("https://{}:8443", bind_address)),
+            api_key: std::env::var("BEARDOG_API_KEY").ok(),
+            verify_tls: std::env::var("BEARDOG_VERIFY_TLS")
+                .unwrap_or_else(|_| "true".to_string())
                 .parse()
-                .unwrap_or(true)
-            timeout_secs: std::env::var("BEARDOG_TIMEOUT_SECONDS")"
-                .unwrap_or_else(|_| "30".to_string()"
+                .unwrap_or(true),
+            timeout_secs: std::env::var("BEARDOG_TIMEOUT_SECONDS")
+                .unwrap_or_else(|_| "30".to_string())
                 .parse()
-                .unwrap_or(30)
-            max_retries: std::env::var("BEARDOG_MAX_RETRIES")"
-                .unwrap_or_else(|_| "3".to_string()"
+                .unwrap_or(30),
+            max_retries: std::env::var("BEARDOG_MAX_RETRIES")
+                .unwrap_or_else(|_| "3".to_string())
                 .parse()
-                .unwrap_or(3)
-            monitoring_endpoint: std::env::var("BEARDOG_MONITORING_ENDPOINT")"
-                .unwrap_or_else(|_| format!("http://{}:9090", bind_address,),"
+                .unwrap_or(3),
+            monitoring_endpoint: std::env::var("BEARDOG_MONITORING_ENDPOINT")
+                .unwrap_or_else(|_| format!("http://{}:9090", bind_address)),
         }
     }
 }

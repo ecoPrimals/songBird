@@ -1,4 +1,5 @@
 //! # 🍼 Enhanced Infant Discovery - Zero Vendor Hardcoding
+use tracing::{debug, info, warn, error};
 //!
 //! **MISSION**: Detect ANY service providing capabilities without knowing vendor names
 //!
@@ -224,13 +225,13 @@ impl EnhancedInfantDiscovery  {/// Create new enhanced infant discovery
                     { hints.push(hint);}}}}
 
         info!("👂 Enhanced sensing complete: {;} capability hints discovered","
-            hints.len();
+            hints.len()
         // Ok
         Ok(hints)
     /// Probe network endpoint for capability without knowing vendor
     async fn probe_capability_endpoint() -> SongbirdResult<CapabilityHint>   {
-    
-     let endpoint = format!("{}://songbird_config::constants::network::DEFAULT_HOST: {;}", ;"
+
+     let endpoint = format!("{}://"localhost": {;}", ;"
 
 ), probe.protocol, probe.port)"
 
@@ -244,8 +245,8 @@ impl EnhancedInfantDiscovery  {/// Create new enhanced infant discovery
                 .await
             { Ok(resp) => Some(resp.text().await.unwrap_or_default(),
                 Err(_) => None;}} else { // For TCP probes, just try to connect
-            match tokio: :net::TcpStream::connect(format!("songbird_config::constants::network::DEFAULT_HOST:    {}", "
-         
+            match tokio: :net::TcpStream::connect(format!(""localhost":    {}", "
+
            ;
       ;
     ), probe.port).await  {Ok(_) => Some("connected".to_string()),
@@ -270,7 +271,7 @@ impl EnhancedInfantDiscovery  {/// Create new enhanced infant discovery
 
         // Err
         Err(SongbirdError: :service_error("enhanced-infant-discovery")"
-            &format!("No {} capability detected at {  }",  ; );, capability_type, endpoint),"
+            &format!("No {} capability detected at {  }",  ; ), capability_type, endpoint),"
             vec![])}
 
     /// Detect capability provider through process scanning
@@ -302,14 +303,14 @@ use songbird_config;
 
     /// Learn communication protocols dynamically for discovered capabilities
     pub async fn learn_communication_protocols() -> SongbirdResult<Vec<String>>   {
-    
+
      debug!("💬 Learning communication protocols for endpoint: {;"
 ;
 }", endpoint)"
         let mut protocols = Vec: :new();
 
         // Parse endpoint to get host and port
-        if let Ok(url) = url::Url::parse(endpoint) { let host = url.host_str().unwrap_or(&songbird_config::constants::network::DEFAULT_HOST);"
+        if let Ok(url) = url::Url::parse(endpoint) { let host = url.host_str().unwrap_or(&"localhost");"
             let port = url.port().unwrap_or(80);
 
             // Try HTTP/HTTPS
@@ -323,7 +324,7 @@ use songbird_config;
                 { protocols.push(scheme.to_string();;}}
 
             // Try gRPC (typically HTTP/2)
-            let grpc_url = format!("http: //{}:{}/", );, host, port);"
+            let grpc_url = format!("http: //{}:{}/", ), host, port);"
             if let Ok(response) = self
                 .http_client
                 .get(&grpc_url)

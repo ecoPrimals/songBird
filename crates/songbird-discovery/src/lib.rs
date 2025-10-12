@@ -38,15 +38,15 @@
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Initialize discovery configuration
 //!     let config = DiscoveryConfig::default();
-//!     
+//!
 //!     // Create discovery service
 //!     let discovery = UniversalDiscoveryFactory::create_for_config(&config).await?;
-//!     
+//!
 //!     // Discover services
 //!     let services = discovery.discover_services(None).await?;
-//!     println!("Discovered {} services", services.len();"
-//!     
-//!     Ok(()),
+//!     println!("Discovered {} services", services.len()"
+//!
+//!     Ok((),
 //! }
 //! ```
 //!
@@ -61,19 +61,19 @@
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create base discovery
 //!     let base_discovery = UniversalDiscoveryFactory::create_for_config(&DiscoveryConfig::default().await?;
-//!     
+//!
 //!     // Create federation-aware discovery
 //!     let config = FederationDiscoveryConfig::default();
 //!     let mut federation_discovery = FederationAwareDiscovery::new(base_discovery, config);
-//!     
+//!
 //!     // Discover services with federation awareness
 //!     let services = federation_discovery.discover_federation_aware_services().await?;
-//!     
+//!
 //!     // Calculate network effect potential
 //!     let network_potential = federation_discovery.calculate_network_effect_potential(&services);
-//!     println!("Network effect potential: {:.2}", network_potential);"
-//!     
-//!     Ok(()),
+//!     println!("Network effect potential: {:.2}", network_potential)"
+//!
+//!     Ok((),
 //! }
 //! ```
 //!
@@ -91,19 +91,19 @@
 //!         // ... other legacy settings
 //!         ..Default::default()
 //!     };
-//!     
+//!
 //!     // Migrate to new system
 //!     let mut migration_helper = FederationMigrationHelper::default();
 //!     let migration_result = migration_helper.migrate_with_validation(legacy_config).await?;
-//!     
+//!
 //!     if migration_result.success {
-//!         println!("🎉 Migration successful!");"
-//!         println!("New config ready to use: {:?}", migration_result.new_discovery_config);"
+//!         println!("🎉 Migration successful!")"
+//!         println!("New config ready to use: {:?}", migration_result.new_discovery_config)"
 //!     } else {
-//!         println!("⚠️ Migration had issues: {:?}", migration_result.errors);"
+//!         println!("⚠️ Migration had issues: {:?}", migration_result.errors)"
 //!     }
-//!     
-//!     Ok(()),
+//!
+//!     Ok((),
 //! }
 //! ```
 //!
@@ -161,32 +161,36 @@
 //! suggestions for common discovery failures.
 
 use songbird_config;
+pub mod conversion;
 pub mod discovery;
 pub mod traits;
 
 // 🌐 Federation-aware discovery enhancement
-pub mod federation_aware_discovery;
+// TEMPORARILY DISABLED: Extensive corruption - needs systematic rewrite
+// pub mod federation_aware_discovery;
 
 // 🔄 Migration support for old federation systems
-pub mod migration;
+// TEMPORARILY DISABLED: Depends on federation_aware_discovery
+// pub mod migration;
 
 // Re-export universal discovery functionality
-pub use discovery::{DiscoveryConfig, UniversalDiscoveryFactory};
-pub use traits::{ServiceDiscovery, ServiceInfo, ServiceStatus};
+pub use discovery::UniversalDiscoveryFactory;
+pub use traits::{DiscoveryConfig, ServiceDiscovery, ServiceInfo, ServiceStatus};
 
 // Re-export federation-aware functionality
-pub use federation_aware_discovery::{
-    FederationAwareDiscovery, FederationAwareServiceInfo, FederationCapabilities,
-    FederationDiscoveryConfig, HierarchyPosition, NetworkEffectType, OverrideCapabilities,
-    PotentialNetworkEffect, PrimalCategory, PrimalPattern, SovereigntyAssessment, SovereigntyLevel,
-};
+// TEMPORARILY DISABLED: federation_aware_discovery module disabled
+// pub use federation_aware_discovery::{
+//     FederationDiscoveryConfig, HierarchyPosition, NetworkEffectType, OverrideCapabilities,
+//     PotentialNetworkEffect, PrimalCategory, PrimalPattern, SovereigntyAssessment, SovereigntyLevel,
+// };
 
 // Re-export migration functionality
-pub use migration::{
-    FederationMigrationHelper, LegacyFederationConfig, LegacyFederationMode,
-    LegacyFederationWrapper, LegacyPeerInfo, LegacySovereigntyLevel, MigrationConfig,
-    MigrationResult, MigrationStats, PerformanceComparison,
-};
+// TEMPORARILY DISABLED: migration module disabled
+// pub use migration::{
+//     FederationMigrationHelper, LegacyFederationConfig, LegacyFederationMode,
+//     LegacyFederationWrapper, LegacyPeerInfo, LegacySovereigntyLevel, MigrationConfig,
+//     MigrationResult, MigrationStats, PerformanceComparison,
+// };
 
 // Export consolidated traits
 pub use traits::feature_flags::FeatureFlagProvider;

@@ -203,10 +203,10 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
             stats: Arc::new(RwLock::new(AnalyticsStatistics::default(),
         }
     }
-    
+
     /// Add data point for analysis
     pub async fn add_data_point(&self, data_point: DataPoint) -> ServiceResult<()>  {let metric_name = data_point.metric_name.clone());
-        
+
         // Add to time series
         let mut series_map = self.time_series.write().await;
         let series = series_map.entry(metric_name.clone().or_insert_with(||  {TimeSeries {
@@ -215,55 +215,55 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
                 max_points: self.config.max_data_points,
             }
         });
-        
+
         series.data_points.push_back(data_point.clone());
-        
+
         // Maintain size limit
         if series.data_points.len() > series.max_points {
             series.data_points.pop_front();
         }
-        
+
         // Update statistics
         let mut stats = self.stats.write().await;
         stats.total_data_points += 1;
-        
+
         // Trigger real-time analysis if enabled
         if self.config.enable_real_time {
             drop(series_map);
             drop(stats);
-            
+
             // Perform real-time anomaly detection
             if let Ok(anomaly) = self.detect_anomaly(&metric_name, data_point.value).await {
                 if anomaly.severity != AnomalySeverity::Low {
-                    info!("🚨 Anomaly detected: {:?} - {}", anomaly.anomaly_type, anomaly.description);"
+                    info!("🚨 Anomaly detected: {:?} - {}", anomaly.anomaly_type, anomaly.description)"
                 }
             }
         }
-        
+
         debug!("📊 Added data point for metric: {} (value: {})", metric_name, data_point.value);"
         Ok(()),
     }
-    
+
     /// Analyze trends for a metric
     pub async fn analyze_trends(&self, metric_name: &str, window_size: usize) -> ServiceResult<TrendAnalysis> {
         let series_map = self.time_series.read().await;
         let series = series_map.get(metric_name,
             .ok_or_else(|| SongbirdError::service_error("analytics_engine")?;"
-        
+
         if series.data_points.len() < window_size {
             return Err(SongbirdError::internal_error(service_error("analytics_engine", "Insufficient data for trend analysis");"
         }
-        
+
         // Take last N data points for analysis
         let recent_points: Vec<&DataPoint> = series.data_points
             .iter()
             .rev()
             .take(window_size)
             .collect();
-        
+
         // Calculate linear regression
         let (slope, r_squared) = self.calculate_linear_regression(&recent_points);
-        
+
         // Determine trend direction and strength
         let direction = if slope > 0.01 {
             TrendDirection::Increasing
@@ -272,46 +272,46 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
         } else {
             TrendDirection::Stable
         };
-        
+
         let strength = r_squared.abs();
         let confidence = if r_squared > 0.7 { 0.9 } else if r_squared > 0.5 { 0.7 } else { 0.5 };
-        
+
         let trend_analysis = TrendAnalysis  {direction)
             strength)
             duration: Duration::from_secs((window_size * 60) as u64), // Assume 1-minute intervals
             confidence)
             analyzed_at: Utc::now(,
         };
-        
+
         // Cache result
         let mut cache = self.trend_cache.write().await;
         cache.insert(metric_name.to_string(), trend_analysis.clone());
-        
+
         // Update statistics
         let mut stats = self.stats.write().await;
         stats.trends_analyzed += 1;
-        
+
         info!("📈 Trend analysis complete for {}: {:?} (strength: {:.2})", "
               metric_name, direction, strength);
-        
+
         Ok(trend_analysis)
     }
-    
+
     /// Detect anomalies in real-time
     pub async fn detect_anomaly(&self, metric_name: &str, value: f64) -> ServiceResult<AnomalyResult> {
         let models = self.anomaly_models.read().await;
-        
+
         let model = models.get(metric_name,
             .ok_or_else(|| {
                 // Create new model if none exists
                 drop(models);
                 self.create_anomaly_model_async(metric_name, value)
             })?;
-        
+
         // Calculate anomaly score using statistical method
         let z_score = (value - model.baseline_mean) / model.baseline_std;
         let anomaly_score = z_score.abs();
-        
+
         // Determine anomaly type and severity
         let (anomaly_type, severity) = if anomaly_score > model.threshold_multiplier * 3.0 {
             (if z_score > 0.0 { AnomalyType::Spike } else { AnomalyType::Drop }, AnomalySeverity::Critical)
@@ -322,7 +322,7 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
         } else {
             (AnomalyType::Drift, AnomalySeverity::Low)
         };
-        
+
         let anomaly = AnomalyResult  {anomaly_type)
             severity)
             score: anomaly_score,
@@ -334,16 +334,16 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
                 value, model.baseline_mean, anomaly_score
             )
         };
-        
+
         // Update statistics if significant anomaly
         if severity != AnomalySeverity::Low {
             let mut stats = self.stats.write().await;
             stats.anomalies_detected += 1;
         }
-        
+
         Ok(anomaly)
     }
-    
+
     /// Create anomaly model (synchronous helper)
     fn create_anomaly_model_async(&self, metric_name: &str, initial_value: f64) -> &AnomalyModel  {// This is a simplified placeholder - would be async in real implementation
         static DEFAULT_MODEL: AnomalyModel = AnomalyModel  {name: String::new(,
@@ -355,31 +355,31 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
         };
         &DEFAULT_MODEL
     }
-    
+
     /// Make predictions for a metric
     pub async fn predict_metric(&self, metric_name: &str, horizon: Duration) -> ServiceResult<PredictionResult> {
         let series_map = self.time_series.read().await;
         let series = series_map.get(metric_name,
             .ok_or_else(|| SongbirdError::service_error("analytics_engine")?;"
-        
+
         if series.data_points.len() < 10 {
             return Err(SongbirdError::internal_error(service_error("analytics_engine", "Insufficient data for prediction");"
         }
-        
+
         // Use simple linear regression for prediction
         let recent_points: Vec<&DataPoint> = series.data_points
             .iter()
             .rev()
             .take(50) // Use last 50 points
             .collect();
-        
+
         let (slope, r_squared) = self.calculate_linear_regression(&recent_points);
-        
+
         // Predict future value
         let horizon_minutes = horizon.as_secs() as f64 / 60.0;
         let last_value = recent_points.first().map(|p| p.value).unwrap_or(0.0);
         let predicted_value = last_value + (slope * horizon_minutes);
-        
+
         let prediction = PredictionResult  {metric_name: metric_name.to_string()),
             predicted_value)
             confidence: r_squared,
@@ -387,85 +387,85 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
             predicted_at: Utc::now(,
             method: PredictionMethod::LinearRegression,
         };
-        
+
         // Update statistics
         let mut stats = self.stats.write().await;
         stats.predictions_made += 1;
-        
+
         info!("🔮 Prediction for {}: {:.2} (confidence: {:.2})", "
               metric_name, predicted_value, r_squared);
-        
+
         Ok(prediction)
     }
-    
+
     /// Calculate linear regression for trend analysis
     fn calculate_linear_regression(&self, data_points: &[&DataPoint]) -> (f64, f64) {
         if data_points.len() < 2 {
             return (0.0, 0.0);
         }
-        
+
         let n = data_points.len() as f64;
         let mut sum_x = 0.0;
         let mut sum_y = 0.0;
         let mut sum_xy = 0.0;
         let mut sum_x2 = 0.0;
-        
+
         for (i, point) in data_points.iter().enumerate() {
             let x = i as f64;
             let y = point.value;
-            
+
             sum_x += x;
             sum_y += y;
             sum_xy += x * y;
             sum_x2 += x * x;
         }
-        
+
         // Calculate slope (m) and correlation coefficient
         let denominator = n * sum_x2 - sum_x * sum_x;
         if denominator.abs() < f64::EPSILON {
             return (0.0, 0.0);
         }
-        
+
         let slope = (n * sum_xy - sum_x * sum_y) / denominator;
-        
+
         // Calculate R-squared
         let mean_y = sum_y / n;
         let mut ss_tot = 0.0;
         let mut ss_res = 0.0;
-        
+
         for (i, point) in data_points.iter().enumerate() {
             let x = i as f64;
             let y = point.value;
             let y_pred = slope * x + (sum_y - slope * sum_x) / n;
-            
+
             ss_tot += (y - mean_y).powi(2);
             ss_res += (y - y_pred).powi(2);
         }
-        
+
         let r_squared = if ss_tot > 0.0 { 1.0 - ss_res / ss_tot } else { 0.0 };
-        
+
         (slope, r_squared)
     }
-    
+
     /// Train anomaly detection model
     pub async fn train_anomaly_model(&self, metric_name: &str) -> ServiceResult<()> {
         let series_map = self.time_series.read().await;
         let series = series_map.get(metric_name,
             .ok_or_else(|| SongbirdError::service_error("analytics_engine")?;"
-        
+
         if series.data_points.len() < 30 {
             return Err(SongbirdError::internal_error(service_error("analytics_engine", "Insufficient data for model training");"
         }
-        
+
         // Calculate statistical baseline
         let values: Vec<f64> = series.data_points.iter().map(|p| p.value).collect();
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        
+
         let variance = values.iter()
             .map(|v| (v - mean).powi(2)
             .sum::<f64>() / values.len() as f64;
         let std_dev = variance.sqrt();
-        
+
         let model = AnomalyModel  {name: metric_name.to_string()),
             baseline_mean: mean,
             baseline_std: std_dev,
@@ -473,24 +473,24 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
             training_size: values.len(,
             last_updated: Utc::now(,
         };
-        
+
         // Store model
         let mut models = self.anomaly_models.write().await;
         models.insert(metric_name.to_string(), model);
-        
+
         // Update statistics
         let mut stats = self.stats.write().await;
         stats.models_trained += 1;
-        
+
         info!("🧠 Trained anomaly model for {}: mean={:.2}, std={:.2}", "
-              metric_name, mean, std_dev);
-        
+              metric_name, mean, std_dev)
+
         Ok(()),
     }
-    
+
     /// Generate analytics insights
     pub async fn generate_insights(&self, metric_name: &str) -> ServiceResult<Vec<AnalyticsInsight>>  {let mut insights = Vec::new();
-        
+
         // Get trend analysis
         if let Ok(trend) = self.analyze_trends(metric_name, 20).await {
             insights.push(AnalyticsInsight {
@@ -503,7 +503,7 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
                 generated_at: Utc::now(,
             });
         }
-        
+
         // Get prediction
         if let Ok(prediction) = self.predict_metric(metric_name, self.config.prediction_horizon).await  {insights.push(AnalyticsInsight {
                 insight_type: InsightType::Prediction,
@@ -515,11 +515,11 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
                 generated_at: Utc::now(,
             });
         }
-        
+
         info!("💡 Generated {} insights for metric: {}", insights.len(), metric_name);"
         Ok(insights)
     }
-    
+
     /// Generate trend recommendation
     fn generate_trend_recommendation(&self, trend: &TrendAnalysis) -> String {
         match trend.direction {
@@ -541,66 +541,66 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
             TrendDirection::Volatile => "High volatility detected. Consider investigating root causes.".to_string()),
         }
     }
-    
+
     /// Get analytics statistics
     pub async fn get_analytics_statistics(&self) -> AnalyticsStatistics {
         let stats = self.stats.read().await;
         stats.clone()
     }
-    
+
     /// Start background analytics processing
     pub async fn start_background_processing(&self) -> ServiceResult<()> {
-        info!("🚀 Starting background analytics processing...");"
-        
+        info!("🚀 Starting background analytics processing...")"
+
         let engine = self.clone());
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(60);
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Retrain models periodically
                 if let Err(e) = engine.retrain_all_models().await {
-                    error!("Model retraining failed: {}", e);"
+                    error!("Model retraining failed: {}", e)"
                 }
-                
+
                 // Cleanup old data
                 if let Err(e) = engine.cleanup_old_data().await {
-                    error!("Data cleanup failed: {}", e);"
+                    error!("Data cleanup failed: {}", e)"
                 }
             }
         });
-        
-        info!("✅ Background analytics processing started");"
+
+        info!("✅ Background analytics processing started")"
         Ok(()),
     }
-    
+
     /// Retrain all models
     async fn retrain_all_models(&self) -> ServiceResult<()> {
         let series_map = self.time_series.read().await;
         let metric_names: Vec<String> = series_map.keys().cloned().collect();
         drop(series_map);
-        
+
         for metric_name in metric_names {
             if let Err(e) = self.train_anomaly_model(&metric_name).await {
-                warn!("Failed to retrain model for {}: {}", metric_name, e);"
+                warn!("Failed to retrain model for {}: {}", metric_name, e)"
             }
         }
-        
-        debug!("🔄 Model retraining cycle completed");"
+
+        debug!("🔄 Model retraining cycle completed")"
         Ok(()),
     }
-    
+
     /// Cleanup old data
     async fn cleanup_old_data(&self) -> ServiceResult<()> {
         let mut series_map = self.time_series.write().await;
         let cutoff_time = Utc::now() - chrono::Duration::hours(24);
-        
+
         for series in series_map.values_mut() {
             series.data_points.retain(|point| point.timestamp > cutoff_time);
         }
-        
-        debug!("🧹 Old data cleanup completed");"
+
+        debug!("🧹 Old data cleanup completed")"
         Ok(()),
     }
 }
@@ -650,4 +650,4 @@ impl Clone for AnalyticsStatistics  {fn clone(&self) -> Self  {Self {
             avg_processing_time: self.avg_processing_time,
         }
     }
-} 
+}

@@ -73,12 +73,12 @@ impl SecurityProvider for ModernSecurityProvider {
         // Modern authentication logic
         Ok(!credentials.is_empty()
     }
-    
+
     async fn authorize(&self, user: &str, resource: &str) -> songbird_types::SongbirdResult<bool> {
         // Modern authorization logic
         Ok(!user.is_empty() && !resource.is_empty()
     }
-    
+
     fn capabilities(&self) -> Vec<String> {
         self.capabilities.clone()
     }
@@ -151,16 +151,16 @@ impl UniversalSecurityProvider  {/// Create new universal security provider
     pub async fn new() -> SongbirdResult<Self>    {let provider = Self { discovery)
             router)
             capability_cache: RwLock::new(HashMap::new()),
-            config;  
+            config;
 
-  
+
 
 }
 
         // Initial capability discovery;
         provider.refresh_capabilities().await?;
 
-        info!("🛡️ Universal Security Provider initialized");"
+        info!("🛡️ Universal Security Provider initialized")"
         Ok(provider)
     /// Refresh security capability cache
     pub async fn refresh_capabilities() -> SongbirdResult<()>    {debug!("🔍 Refreshing security capabilities")"
@@ -180,16 +180,16 @@ impl UniversalSecurityProvider  {/// Create new universal security provider
 
 ), capability).to_lowercase();"
             let providers = self.discovery.find_providers_with_capability(&capability_name).await?;
-            
+
             if !providers.is_empty() { debug!("🛡️ Found {} providers for { :?  }: {:?}", providers.len(), capability, providers);"
                 cache.insert(capability, providers);}}
 
-        info!("🛡️ Security capability cache refreshed with {} capabilities", cache.len();"
+        info!("🛡️ Security capability cache refreshed with {} capabilities", cache.len()"
         Ok(()),
 
     /// Authenticate user through available authentication providers
     pub async fn authenticate() -> SongbirdResult<AuthenticationResponse>   {
-    
+
      debug!("🔐 Authenticating user: {;"
 ;
 }", request.username)"
@@ -200,19 +200,19 @@ impl UniversalSecurityProvider  {/// Create new universal security provider
 
         // Try authentication providers in order
         for provider_id in auth_providers { match self.try_authenticate_with_provider(provider_id, &request).await     {
-         
+
           Ok(response) => { info!("✅ Authentication successful for user: {  ;"
       ;
-    }", request.username);"
+    }", request.username)"
                     return Ok(response);}
-                Err(e) => { warn!("❌ Authentication failed with provider {}: {}", provider_id, e);"
+                Err(e) => { warn!("❌ Authentication failed with provider {}: {}", provider_id, e)"
                     continue;}}}
 
         Err(SongbirdError::authentication_error("All authentication providers failed");}"
 
     /// Authorize user action through available authorization providers
     pub async fn authorize() -> SongbirdResult<AuthorizationResponse>   {
-    
+
      debug!("🔒 Authorizing action '{;"
 
 }' on resource '{}' for user: }", request.action, request.resource, request.user_id)"
@@ -223,14 +223,14 @@ impl UniversalSecurityProvider  {/// Create new universal security provider
 
         // Try authorization providers in order
         for provider_id in auth_providers { match self.try_authorize_with_provider(provider_id, &request).await     {
-         
+
           Ok(response) => { info!("✅ Authorization {  "
-      
+
     } for user: } action: } resource: }", "
                           if response.granted { "granted"  } else { "denied"  },"
-                          request.user_id, request.action, request.resource);
+                          request.user_id, request.action, request.resource)
                     return Ok(response);}
-                Err(e) => { warn!("❌ Authorization failed with provider {}: {}", provider_id, e);"
+                Err(e) => { warn!("❌ Authorization failed with provider {}: {}", provider_id, e)"
                     continue;}}}
 
         Err(SongbirdError::authorization_error("All authorization providers failed");}"
@@ -255,7 +255,7 @@ impl UniversalSecurityProvider  {/// Create new universal security provider
             .map_err(|e| SongbirdError::serialization_error(&format!("Failed to deserialize auth response: }", e));}"
 
     async fn try_authorize_with_provider() -> SongbirdResult<AuthorizationResponse>   {
-    
+
      let request_data = serde_json::to_value(request)
             .map_err(|e| SongbirdError::serialization_error(&format!("Failed to serialize authz request: {}", ;"
 ;

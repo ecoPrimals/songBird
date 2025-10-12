@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 
 /// Performance and zero-cost optimization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceConfig  {/// Enable zero-cost abstractions
+pub struct PerformanceConfig {
+    /// Enable zero-cost abstractions
     /// Enable Zero Cost field
     pub enable_zero_cost: bool,
 
@@ -22,7 +23,8 @@ pub struct PerformanceConfig  {/// Enable zero-cost abstractions
 
 /// Memory optimization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MemoryConfig  {/// Enable memory pooling
+pub struct MemoryConfig {
+    /// Enable memory pooling
     /// Enable Pooling field
     pub enable_pooling: bool,
     /// Pool size for object reuse
@@ -40,7 +42,8 @@ pub struct MemoryConfig  {/// Enable memory pooling
 
 /// Throughput optimization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ThroughputConfig  {/// Enable batch processing
+pub struct ThroughputConfig {
+    /// Enable batch processing
     /// Enable Batching field
     pub enable_batching: bool,
     /// Batch size for operations
@@ -56,7 +59,8 @@ pub struct ThroughputConfig  {/// Enable batch processing
 
 /// Latency optimization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LatencyConfig  {/// Enable request pipelining
+pub struct LatencyConfig {
+    /// Enable request pipelining
     /// Enable Pipelining field
     pub enable_pipelining: bool,
     /// Connection keep-alive timeout (seconds)
@@ -75,7 +79,9 @@ pub struct LatencyConfig  {/// Enable request pipelining
     /// Cache Ttl field
     pub cache_ttl: u64,
 }
-impl Default for PerformanceConfig  {fn default() -> Self  {Self {
+impl Default for PerformanceConfig {
+    fn default() -> Self {
+        Self {
             enable_zero_cost: true,
             memory: MemoryConfig::default(),
             throughput: ThroughputConfig::default(),
@@ -84,7 +90,9 @@ impl Default for PerformanceConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for MemoryConfig  {fn default() -> Self  {Self {
+impl Default for MemoryConfig {
+    fn default() -> Self {
+        Self {
             enable_pooling: true,
             pool_size: 1000,
             enable_zero_copy: true,
@@ -94,7 +102,9 @@ impl Default for MemoryConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for ThroughputConfig  {fn default() -> Self  {Self {
+impl Default for ThroughputConfig {
+    fn default() -> Self {
+        Self {
             enable_batching: true,
             batch_size: 100,
             worker_threads: None, // Use system default
@@ -104,7 +114,9 @@ impl Default for ThroughputConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for LatencyConfig  {fn default() -> Self  {Self {
+impl Default for LatencyConfig {
+    fn default() -> Self {
+        Self {
             enable_pipelining: true,
             keep_alive_timeout: 60,
             enable_connection_pooling: true,

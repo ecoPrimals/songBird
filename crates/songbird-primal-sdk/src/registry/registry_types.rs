@@ -327,7 +327,7 @@ impl LoadMetrics  {/// Create new load metrics
 //
 //         let query = RegistryQuery::new().with_type(inferred_type.clone());
 //
-//         assert_eq!(query.primal_type, Some(inferred_type);
+//         assert_eq!(query.primal_type, Some(inferred_type)
 //
 //         Ok(()),
 //     }
@@ -352,10 +352,10 @@ impl LoadMetrics  {/// Create new load metrics
 //             registration: crate::universal_registry::UniversalServiceRegistration::default(),
 //         };
 //
-//         assert_eq!(primal.primal_id, "sec-001");"
+//         assert_eq!(primal.primal_id, "sec-001")"
 //         // Note: instance_id field doesn't exist in current DiscoveredPrimal struct
 //         assert_eq!(primal.capabilities.len(), 2);
-//         assert!(primal.is_healthy(); // Should start as Healthy
+//         assert!(primal.is_healthy() // Should start as Healthy
 //     }
 //
 //     #[test]

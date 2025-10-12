@@ -11,7 +11,8 @@ use std::collections::HashMap;
 
 /// Canonical service information structure
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ServiceInfo  {/// Service name identifier
+pub struct ServiceInfo {
+    /// Service name identifier
     pub name: String,
     /// Service address
     pub address: String,
@@ -21,18 +22,20 @@ pub struct ServiceInfo  {/// Service name identifier
     pub metadata: HashMap<String, String>,
 }
 
-impl ServiceInfo  {/// Create a new service info
+impl ServiceInfo {
+    /// Create a new service info
     #[must_use]
-    pub fn new(name: String, address: String, port: u16) -> Self  {Self {
+    pub fn new(name: String, address: String, port: u16) -> Self {
+        Self {
             name,
             address,
             port,
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
         }
     }
 
     /// Add metadata to the service info
-    #[must_use] 
+    #[must_use]
     pub fn with_metadata(mut self, key: String, value: String) -> Self {
         self.metadata.insert(key, value);
         self

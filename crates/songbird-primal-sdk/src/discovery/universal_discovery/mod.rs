@@ -19,4 +19,4 @@ pub use channels::{
     DiscoveryChannel, NetworkScanChannel, DnsDiscoveryChannel,
     KubernetesDiscoveryChannel, ConsulDiscoveryChannel
 };
-pub use stats::DiscoveryStats; 
+pub use stats::DiscoveryStats;

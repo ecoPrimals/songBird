@@ -2,7 +2,8 @@
 
 /// Canonical error context wrapper
 #[derive(Debug, Clone)]
-pub struct ErrorContext  {/// The error message
+pub struct ErrorContext {
+    /// The error message
     pub message: String,
     /// Additional context about the error
     pub context: String,
@@ -10,10 +11,12 @@ pub struct ErrorContext  {/// The error message
     pub recovery_suggestions: Vec<String>,
 }
 
-impl ErrorContext  {/// Create a new error context
-    pub fn new(message: impl Into<String>, context: impl Into<String>) -> Self  {Self {
-            message: message.into(,
-            context: context.into(,
+impl ErrorContext {
+    /// Create a new error context
+    pub fn new(message: impl Into<String>, context: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            context: context.into(),
             recovery_suggestions: Vec::new(),
         }
     }
@@ -32,7 +35,7 @@ impl ErrorContext  {/// Create a new error context
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.recovery_suggestions.extend(suggestions.into_iter().map(Into::into);
+        self.recovery_suggestions.extend(suggestions.into_iter().map(Into::into));
         self
     }
 
@@ -59,9 +62,9 @@ impl std::fmt::Display for ErrorContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} (Context: {})", self.message, self.context)?;
         if !self.recovery_suggestions.is_empty() {
-            write!(f, " Suggestions: {}", self.recovery_suggestions.join(", ")?
+            write!(f, " Suggestions: {}", self.recovery_suggestions.join(", "))?;
         }
-        Ok(()),
+        Ok(())
     }
 }
 
@@ -81,5 +84,5 @@ pub const fn success_result<T>(data: T) -> T {
 /// This function never returns an error - it always succeeds with `Ok(()`
 #[allow(clippy::unnecessary_wraps)]
 pub fn unit_success() -> Result<(), Box<dyn std::error::Error>> {
-    Ok(()),
+    Ok(())
 }

@@ -13,22 +13,17 @@ use serde::{Deserialize, Serialize};
 /// **CANONICAL**: Environment configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalEnvironmentConfig {
-
-/// Environment name
+    /// Environment name
     pub name: String,
     /// Deployment mode
     pub deployment_mode: String,
-
-
 }
 
 impl Default for CanonicalEnvironmentConfig {
-
-fn default() -> Self  {Self {
-            name: "development".to_string()),
-            deployment_mode: "standalone".to_string()),
-        
-
-}
+    fn default() -> Self {
+        Self {
+            name: "development".to_string(),
+            deployment_mode: "standalone".to_string(),
+        }
     }
-} 
+}

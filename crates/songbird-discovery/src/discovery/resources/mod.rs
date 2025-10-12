@@ -195,7 +195,7 @@ impl ResourceDetector  {#[must_use]
         }
 
         // Fallback: add a default storage device
-        if devices.is_empty()  {devices.push(StorageDevice  {device_type: "Unknown".to_string()),
+        if devices.is_empty()  {devices.push(StorageDevice  {device_type: "Unknown".to_string(),
                 capacity_gb: 100, // Default 100GB
                 available_gb: 50, // Default 50GB available
                 mount_point: "/".to_string(),

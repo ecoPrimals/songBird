@@ -38,7 +38,7 @@ impl EcosystemDiscovery  {/// Create new ecosystem discovery instance
 
     /// Discover all primals in the ecosystem
     pub async fn discover_ecosystem_primals(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
-        info!("🌌 Discovering ecosystem primals at {}", self.config.ecosystem_base_path);"
+        info!("🌌 Discovering ecosystem primals at {}", self.config.ecosystem_base_path)"
 
         let mut discovered_primals = Vec::new();
 
@@ -46,11 +46,11 @@ impl EcosystemDiscovery  {/// Create new ecosystem discovery instance
         if self.config.enable_filesystem_discovery {
             match filesystem::discover_via_filesystem(&self.config, &self.http_client).await {
                 Ok(mut primals) => {
-                    info!("🗂️ Filesystem discovery found {} primals", primals.len();"
+                    info!("🗂️ Filesystem discovery found {} primals", primals.len()"
                     discovered_primals.append(&mut primals);
                 }
                 Err(e) => {
-                    tracing::warn!("Filesystem discovery failed: {}", e);"
+                    tracing::warn!("Filesystem discovery failed: {}", e)"
                 }
             }
         }
@@ -59,11 +59,11 @@ impl EcosystemDiscovery  {/// Create new ecosystem discovery instance
         if self.config.enable_network_discovery {
             match network::network_capability_discovery().await {
                 Ok(mut primals) => {
-                    info!("🌐 Network discovery found {} primals", primals.len();"
+                    info!("🌐 Network discovery found {} primals", primals.len()"
                     discovered_primals.append(&mut primals);
                 }
                 Err(e) => {
-                    tracing::warn!("Network discovery failed: {}", e);"
+                    tracing::warn!("Network discovery failed: {}", e)"
                 }
             }
         }
@@ -72,7 +72,7 @@ impl EcosystemDiscovery  {/// Create new ecosystem discovery instance
         discovered_primals.sort_by(|a, b| a.endpoint.cmp(&b.endpoint);
         discovered_primals.dedup_by(|a, b| a.endpoint == b.endpoint);
 
-        info!("✅ Total ecosystem primals discovered: {}", discovered_primals.len();"
+        info!("✅ Total ecosystem primals discovered: {}", discovered_primals.len()"
         Ok(discovered_primals)
     }
 

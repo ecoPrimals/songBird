@@ -3,57 +3,70 @@ use http_body_util::Full;
 use hyper::body::Incoming;
 use hyper::{Method, Request, Response};
 use serde_json::json;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use songbird_types::SongbirdResult;
+use tracing::{info, warn};
 type Result<T> = SongbirdResult<T>;
+
+// Helper function to convert hyper::http::Error to SongbirdError
+fn http_error_to_songbird(error: hyper::http::Error) -> SongbirdError {
+    SongbirdError::Network {
+        message: format!("HTTP error: {error}"),
+        interface: None,
+        suggestion: Some("Check HTTP request/response construction".to_string()),
+    }
+}
 
 /// Simple web dashboard for observability
 #[derive(Debug)]
-pub struct SimpleDashboard  {port: u16)
+pub struct SimpleDashboard {
+    port: u16,
     running: Arc<AtomicBool>,
 }
 
-impl SimpleDashboard  {/// Create new dashboard
+impl SimpleDashboard {
+    /// Create new dashboard
     #[must_use]
-    pub fn new(port: u16) -> Self  {Self {
+    pub fn new(port: u16) -> Self {
+        Self {
             port,
-            running: Arc::new(AtomicBool::new(false),
+            running: Arc::new(AtomicBool::new(false)),
         }
     }
 
     /// Create dashboard from network config
     #[must_use]
     pub fn from_network_config(port: u16) -> Self {
-        Self::new(port,
+        Self::new(port)
     }
 
     /// Start the dashboard server
     pub async fn start(&self) -> Result<()> {
         if self.running.load(Ordering::Relaxed) {
-            warn!("Dashboard already running on port {}", self.port);"
-            return Ok(();
+            warn!("Dashboard already running on port {}", self.port);
+            return Ok(());
         }
 
-        info!("Starting dashboard on port {}", self.port);"
+        info!("Starting dashboard on port {}", self.port);
         self.running.store(true, Ordering::Relaxed);
 
         // In a real implementation, this would start an HTTP server
         // For now, we'll just mark it as running
         let env_config = songbird_config::EnvironmentConfig::default();
-        info!("Dashboard started on http://{}:{}", env_config.bind_address, self.port);"
-        Ok(()),
+        info!("Dashboard started on http://{}:{}", env_config.bind_address, self.port);
+        Ok(())
     }
 
     /// Stop the dashboard server
     pub async fn stop(&self) -> Result<()> {
         if !self.running.load(Ordering::Relaxed) {
-            return Ok(();
+            return Ok(());
         }
 
-        info!("Stopping dashboard on port {}", self.port);"
+        info!("Stopping dashboard on port {}", self.port);
         self.running.store(false, Ordering::Relaxed);
-        Ok(()),
+        Ok(())
     }
 
     /// Check if dashboard is running
@@ -63,18 +76,19 @@ impl SimpleDashboard  {/// Create new dashboard
     }
 
     /// Handle HTTP requests
-    pub async fn handle_request(&self, req: Request<Incoming>) -> Result<Response<Full<Bytes>>>  {match (req.method(), req.uri().path() {
-            (&Method::GET, "/") => self.serve_dashboard().await,"
-            (&Method::GET, "/api/metrics") => self.serve_metrics().await,"
-            (&Method::GET, "/api/health") => self.serve_health().await,"
-            (&Method::GET, "/api/status") => self.serve_status().await,"
+    pub async fn handle_request(&self, req: Request<Incoming>) -> Result<Response<Full<Bytes>>> {
+        match (req.method(), req.uri().path()) {
+            (&Method::GET, "/") => self.serve_dashboard().await,
+            (&Method::GET, "/api/metrics") => self.serve_metrics().await,
+            (&Method::GET, "/api/health") => self.serve_health().await,
+            (&Method::GET, "/api/status") => self.serve_status().await,
             _ => self.serve_not_found().await,
         }
     }
 
     /// Serve main dashboard HTML
     async fn serve_dashboard(&self) -> Result<Response<Full<Bytes>>> {
-        let html = r#""
+        let html = r#"
 <!DOCTYPE html>
 <html>
 <head>
@@ -89,17 +103,17 @@ impl SimpleDashboard  {/// Create new dashboard
 </head>
 <body>
     <h1>Songbird Orchestrator Dashboard</h1>
-    <div id="status">Loading...</div>"
+    <div id="status">Loading...</div>
     <script>
         async function loadStatus() {
             try {
                 const response = await fetch('/api/status');
                 const data = await response.json();
                 document.getElementById('status').innerHTML = 
-                    '<div class="status healthy">System Status: ' + data.status + '</div>';"
+                    '<div class="status healthy">System Status: ' + data.status + '</div>';
             } catch (error) {
                 document.getElementById('status').innerHTML = 
-                    '<div class="status critical">Error loading status</div>';"
+                    '<div class="status critical">Error loading status</div>';
             }
         }
         loadStatus();
@@ -107,151 +121,77 @@ impl SimpleDashboard  {/// Create new dashboard
     </script>
 </body>
 </html>
-        "#;"
+        "#;
 
         let response = Response::builder()
-            .header("content-type", "text/html")"
-            .body(Full::new(Bytes::from(html));
+            .header("content-type", "text/html")
+            .body(Full::new(Bytes::from(html)))
+            .map_err(http_error_to_songbird)?;
 
-        match response  {Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build HTTP response for dashboard: {}", e);"
-                // Create fallback response
-                Ok(Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "text/plain")"
-                    .body(Full::new(Bytes::from("Dashboard temporarily unavailable"))"
-                    .unwrap_or_else(|_| {
-                        let (parts, _) =
-                            Response::new(Full::new(Bytes::from("Server error")).into_parts();"
-                        Response::from_parts(parts, Full::new(Bytes::from("Critical error"))"
-                    })
-            }
-        }
+        Ok(response)
     }
 
     /// Serve metrics API
     async fn serve_metrics(&self) -> Result<Response<Full<Bytes>>> {
         let metrics = json!({
-            "cpu_usage": 0.0,"
-            "memory_usage": 0.0,"
-            "disk_usage": 0.0,"
-            "timestamp": chrono::Utc::now()"
+            "cpu_usage": 0.0,
+            "memory_usage": 0.0,
+            "disk_usage": 0.0,
+            "timestamp": chrono::Utc::now()
         });
 
-        let json_response = metrics.to_string());
+        let json_response = metrics.to_string();
         let response = Response::builder()
-            .header("content-type", "application/json")"
-            .body(Full::new(Bytes::from(json_response));
+            .header("content-type", "application/json")
+            .body(Full::new(Bytes::from(json_response)))
+            .map_err(http_error_to_songbird)?;
 
-        match response  {Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build HTTP response for metrics: {}", e);"
-                Ok(Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "application/json")"
-                    .body(Full::new(Bytes::from(r#"{"error": "Metrics unavailable"}"#))"
-                    .unwrap_or_else(|_| {
-                        let (parts, _) =
-                            Response::new(Full::new(Bytes::from(r#"{"error": "Server error"}"#))"
-                                .into_parts();
-                        Response::from_parts(
-                            parts)
-                            Full::new(Bytes::from(r#"{"error": "Critical error"}"#),"
-                        )
-                    })
-            }
-        }
+        Ok(response)
     }
 
     /// Serve health API
     async fn serve_health(&self) -> Result<Response<Full<Bytes>>> {
         let health = json!({
-            "status": "healthy","
-            "services": [],"
-            "timestamp": chrono::Utc::now()"
+            "status": "healthy",
+            "services": [],
+            "timestamp": chrono::Utc::now()
         });
 
-        let json_response = health.to_string());
+        let json_response = health.to_string();
         let response = Response::builder()
-            .header("content-type", "application/json")"
-            .body(Full::new(Bytes::from(json_response));
+            .header("content-type", "application/json")
+            .body(Full::new(Bytes::from(json_response)))
+            .map_err(http_error_to_songbird)?;
 
-        match response  {Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build HTTP response for health: {}", e);"
-                Ok(Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "application/json")"
-                    .body(Full::new(Bytes::from(r#"{"error": "Health check unavailable"}"#))"
-                    .unwrap_or_else(|_| {
-                        let (parts, _) =
-                            Response::new(Full::new(Bytes::from(r#"{"error": "Server error"}"#))"
-                                .into_parts();
-                        Response::from_parts(
-                            parts)
-                            Full::new(Bytes::from(r#"{"error": "Critical error"}"#),"
-                        )
-                    })
-            }
-        }
+        Ok(response)
     }
 
     /// Serve status API
     async fn serve_status(&self) -> Result<Response<Full<Bytes>>> {
         let status = json!({
-            "status": "running","
-            "uptime": "0s","
-            "timestamp": chrono::Utc::now()"
+            "status": "running",
+            "uptime": "0s",
+            "timestamp": chrono::Utc::now()
         });
 
-        let json_response = status.to_string());
+        let json_response = status.to_string();
         let response = Response::builder()
-            .header("content-type", "application/json")"
-            .body(Full::new(Bytes::from(json_response));
+            .header("content-type", "application/json")
+            .body(Full::new(Bytes::from(json_response)))
+            .map_err(http_error_to_songbird)?;
 
-        match response  {Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build HTTP response for status: {}", e);"
-                Ok(Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "application/json")"
-                    .body(Full::new(Bytes::from(r#"{"error": "Status unavailable"}"#))"
-                    .unwrap_or_else(|_| {
-                        let (parts, _) =
-                            Response::new(Full::new(Bytes::from(r#"{"error": "Server error"}"#))"
-                                .into_parts();
-                        Response::from_parts(
-                            parts)
-                            Full::new(Bytes::from(r#"{"error": "Critical error"}"#),"
-                        )
-                    })
-            }
-        }
+        Ok(response)
     }
 
     /// Serve 404 response
-    async fn serve_not_found(&self) -> Result<Response<Full<Bytes>>>  {// Return 404 for unknown paths
+    async fn serve_not_found(&self) -> Result<Response<Full<Bytes>>> {
         let response = Response::builder()
             .status(hyper::StatusCode::NOT_FOUND)
-            .header("content-type", "text/plain")"
-            .body(Full::new(Bytes::from("Not Found"));"
+            .header("content-type", "text/plain")
+            .body(Full::new(Bytes::from("Not Found")))
+            .map_err(http_error_to_songbird)?;
 
-        match response {
-            Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build 404 HTTP response: {}", e);"
-                Ok(Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "text/plain")"
-                    .body(Full::new(Bytes::from("Server error"))"
-                    .unwrap_or_else(|_| {
-                        let (parts, _) =
-                            Response::new(Full::new(Bytes::from("Critical failure")).into_parts();"
-                        Response::from_parts(parts, Full::new(Bytes::from("Server failure"))"
-                    })
-            }
-        }
+        Ok(response)
     }
 }
 
@@ -271,10 +211,10 @@ mod tests {
         let env_config = songbird_config::EnvironmentConfig::default();
         let dashboard = SimpleDashboard::new(env_config.dashboard_port);
 
-        assert!(dashboard.start().await.is_ok();
+        assert!(dashboard.start().await.is_ok());
         assert!(dashboard.is_running());
 
-        assert!(dashboard.stop().await.is_ok();
+        assert!(dashboard.stop().await.is_ok());
         assert!(!dashboard.is_running());
     }
 }

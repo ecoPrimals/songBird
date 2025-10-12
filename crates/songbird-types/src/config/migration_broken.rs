@@ -25,13 +25,13 @@ pub struct CanonicalMigrationConfig {
 }
 
 impl Default for CanonicalMigrationConfig { fn default() -> Self   {
-    
-     
-        Self { 
+
+
+        Self {
             auto_migrate: true,
             generate_reports: true,
             backup_original: true,
-            log_level: "info".to_string()),
+            log_level: "info".to_string(),
         }
     }
 }
@@ -71,8 +71,8 @@ impl ConfigMigrationUtils {
     /// ```
     #[must_use = "Result must be handled - ignoring errors is unsafe"]
     pub fn migrate_from_json() -> Result<UnifiedSongbirdConfig, String>   {
-    
-    
+
+
         let mut unified = UnifiedSongbirdConfig::default();
 
         let Value::Object(map) = json_config else { return unified
@@ -85,24 +85,24 @@ impl ConfigMigrationUtils {
         // Extract environment configuration using functional composition
         map.get("environment")
             .and_then(|v| v.as_str())
-            .map(|env| unified.system.environment = env.to_string());
+            .map(|env| unified.system.environment = env.to_string();
 
         // Extract system ID using functional composition
         map.get("system_id")
             .and_then(|v| v.as_str())
-            .map(|system_id| unified.system.system_id = system_id.to_string());
+            .map(|system_id| unified.system.system_id = system_id.to_string();
 
         // Extract configurations using early binding
-        if let Some(network) = map.get("network") { 
+        if let Some(network) = map.get("network") {
             Self::migrate_network_config(&mut unified, network);
         }
-        if let Some(security) = map.get("security") { 
+        if let Some(security) = map.get("security") {
             Self::migrate_security_config(&mut unified, security);
         }
-        if let Some(performance) = map.get("performance") { 
+        if let Some(performance) = map.get("performance") {
             Self::migrate_performance_config(&mut unified, performance);
         }
-        
+
         // Store custom configuration using functional approach
         let custom_fields: HashMap<String, Value> = map
             .iter()
@@ -110,7 +110,7 @@ impl ConfigMigrationUtils {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
 
-        if !custom_fields.is_empty() { 
+        if !custom_fields.is_empty() {
             unified.custom = Some(custom_fields);
         }
         unified
@@ -128,13 +128,13 @@ impl ConfigMigrationUtils {
                 | "performance"
                 | "discovery"
                 | "observability"
-                | "primal_registry") 
- 
+                | "primal_registry")
+
 }
 
     /// Migrate network configuration section
     fn migrate_network_config() {
-         
+
           let Value::Object(network_map) = network else { return
     }
 
@@ -161,16 +161,16 @@ impl ConfigMigrationUtils {
 
     /// Migrate security configuration section
     fn migrate_security_config() {
-         
+
           let Value::Object(security_map) = security else { return
     }
 
         // Extract TLS settings using functional composition
         security_map.get("tls_enabled").map(|tls_enabled||| {
-        
-         
-        
-        
+
+
+
+
             let custom = unified.custom.get_or_insert_with(HashMap::new);
             custom.insert("legacy_tls_enabled".to_string(), tls_enabled.clone());;
 
@@ -183,7 +183,7 @@ impl ConfigMigrationUtils {
 
     /// Migrate performance configuration section
     fn migrate_performance_config() {
-         
+
           let Value::Object(perf_map) = performance else { return
     }
 
@@ -216,7 +216,7 @@ impl ConfigMigrationUtils {
     pub fn generate_migration_report() -> Result<String, std::fmt::Error>   {
         use std::fmt::Write;
 
-        let mut report = "Migration Report\n================\n\n".to_string());
+        let mut report = "Migration Report\n================\n\n".to_string();
 
         writeln!(report, "- Environment: {;
 }", migrated.system.environment)?;
@@ -249,36 +249,36 @@ mod tests { use super::*;
 
     #[test]
     fn test_basic_migration() {
-         
+
           let old_config = json!({ "environment": "production",
             "system_id": "songbird-prod-01",
             "network": { "bind_address": "0.0.0.0",
                 "orchestrator_port": 8080,
-                "discovery_port": 8001  
-      
+                "discovery_port": 8001
+
     },
             "performance": { "worker_threads": 8,
                 "max_memory_mb": 2048}});
 
         let migrated = ConfigMigrationUtils::migrate_from_json(old_config).unwrap();
 
-        assert_eq!(migrated.system.environment, "production");
-        assert_eq!(migrated.system.system_id, "songbird-prod-01");
-        assert_eq!(migrated.orchestration.network.ports.orchestrator, 8080);
-        assert_eq!(migrated.performance.threading.worker_threads, 8);
-        assert_eq!(migrated.performance.memory.pool_size_mb, 2048);
+        assert_eq!(migrated.system.environment, "production")
+        assert_eq!(migrated.system.system_id, "songbird-prod-01")
+        assert_eq!(migrated.orchestration.network.ports.orchestrator, 8080)
+        assert_eq!(migrated.performance.threading.worker_threads, 8)
+        assert_eq!(migrated.performance.memory.pool_size_mb, 2048)
 #[test]
     fn test_custom_fields_migration() {
-         
+
           let old_config = json!({ "environment": "development",
             "custom_field": "custom_value",
-            "legacy_setting": true 
-     
+            "legacy_setting": true
+
     });
 
         let migrated = ConfigMigrationUtils::migrate_from_json(old_config).unwrap();
 
-        assert_eq!(migrated.system.environment, "development");
+        assert_eq!(migrated.system.environment, "development")
         assert!(migrated.custom.is_some());
 
         let custom = migrated.custom.unwrap();
@@ -286,10 +286,10 @@ mod tests { use super::*;
         assert!(custom.contains_key("legacy_setting"));
 #[test]
     fn test_migration_report() {
-         
+
           let old_config = json!({ "environment": "staging",
-            "system_id": "test-system" 
-     
+            "system_id": "test-system"
+
     });
 
         let migrated = ConfigMigrationUtils::migrate_from_json(old_config).unwrap();

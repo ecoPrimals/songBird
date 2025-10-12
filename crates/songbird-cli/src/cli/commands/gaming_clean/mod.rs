@@ -1,5 +1,5 @@
 /// Gaming CLI Commands - Clean Modular Architecture
-/// 
+///
 /// This module demonstrates excellent code organization for the SongBird project:
 /// - Focused modules (each under 1000 lines,
 /// - Clear separation of concerns
@@ -14,4 +14,4 @@ pub mod join;
 
 // Re-export the main types
 pub use commands::*;
-pub use handlers::*; 
+pub use handlers::*;

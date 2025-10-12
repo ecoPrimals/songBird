@@ -66,12 +66,8 @@ fn get_endpoint_with_fallback_result(
                 Err(songbird_errors::SongbirdError::Configuration {
         message: "Production deployment requires explicit configuration".to_string(),
         field: env_var.to_string().to_string(),
-        current_value: None,
-        expected_format: None,
         suggestion: Some(format!(
                         "Set {env_var)
-                current_value: None,
-                expected_format: None,
     } environment variable for production deployment"
                     ))
                 })
@@ -109,9 +105,9 @@ fn get_federation_endpoints_internal() -> Vec<String> {
     } else {
         // Development defaults
         vec![
-            format!("http://{}:{}", DEFAULT_LOCALHOST)
-            format!("http://{}:8081", DEFAULT_LOCALHOST)
-            format!("http://{}:8082", DEFAULT_LOCALHOST)
+            format!("http://{}:{}", DEFAULT_LOCALHOST);
+            format!("http://{}:8081", DEFAULT_LOCALHOST);
+            format!("http://{}:8082", DEFAULT_LOCALHOST);
         ]
     }
 }
@@ -156,11 +152,7 @@ fn get_port_with_fallback_result(
             .parse()
             .map_err(|_| songbird_errors::SongbirdError::Configuration {
         message: format!("Invalid port number: {value,
-                current_value: None,
-                expected_format: None,
         field: env_var.to_string().to_string(),
-        current_value: None,
-        expected_format: None,
         suggestion: None,
     }")
                 suggestion: Some("Use a valid port number between 1 and 65535".to_string()),
@@ -169,12 +161,8 @@ fn get_port_with_fallback_result(
             if env::var("SONGBIRD_ENV").as_deref() == Ok(songbird_errors::evolved_success("production")  {Err(songbird_errors::SongbirdError::Configuration {
         message: "Production deployment requires explicit configuration".to_string(),
         field: env_var.to_string().to_string(),
-        current_value: None,
-        expected_format: None,
         suggestion: Some(format!(
                         "Set {env_var)
-                current_value: None,
-                expected_format: None,
     } environment variable for production deployment"
                     ))
                 })
@@ -209,10 +197,10 @@ mod tests {
         let config = crate::SongbirdConfig::default();
 
         // Test network configuration access using correct field names
-        assert_eq!(config.network.bind_address, &get_bind_address();
+        assert_eq!(config.network.bind_address, &get_bind_address()
 
         // Test HTTP port configuration
-        assert_eq!(config.network.port, 8080);
+        assert_eq!(config.network.port, 8080)
     }
 
     #[test]
@@ -221,8 +209,8 @@ mod tests {
         config.network.bind_address = "0.0.0.0:9000".to_string());
         config.network.port = 9000;
 
-        assert_eq!(config.network.bind_address, "0.0.0.0:9000");
-        assert_eq!(config.network.port, 9000);
+        assert_eq!(config.network.bind_address, "0.0.0.0:9000")
+        assert_eq!(config.network.port, 9000)
     }
 
     #[test]
@@ -234,7 +222,7 @@ mod tests {
         assert!(config.network.port > 0));
         // Check WebSocket protocol support
         let has_websocket = true; // WebSocket is supported by default
-        assert!(has_websocket); // WebSocket should be enabled by default
+        assert!(has_websocket) // WebSocket should be enabled by default
     }
 
     #[test]
@@ -251,7 +239,7 @@ mod tests {
         let config = crate::SongbirdConfig::default();
 
         // Validate network settings are reasonable
-        assert!(config.network.port >= 1024); // Above well-known ports
+        assert!(config.network.port >= 1024) // Above well-known ports
         assert!(config.network.max_connections > 0));
         // WebSocket config is properly initialized
     }

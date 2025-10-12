@@ -15,8 +15,7 @@ use std::time::Duration;
 /// **CANONICAL**: Observability configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalObservabilityConfig {
-
-/// Enable observability features
+    /// Enable observability features
     pub enabled: bool,
     /// Metrics collection interval in seconds
     pub metrics_interval: u64,
@@ -26,15 +25,12 @@ pub struct CanonicalObservabilityConfig {
     pub metrics: CanonicalMetricsConfig,
     /// Tracing configuration
     pub tracing: CanonicalTracingConfig,
-
-
 }
 
 /// **CANONICAL**: Health Check Configuration - replaces 12+ duplicates
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalHealthCheckConfig {
-
-/// Enable health checks
+    /// Enable health checks
     pub enabled: bool,
     /// Health check interval
     pub interval: Duration,
@@ -52,15 +48,12 @@ pub struct CanonicalHealthCheckConfig {
     pub headers: HashMap<String, String>,
     /// Enable detailed health reporting
     pub detailed_reporting: bool,
-
-
 }
 
 /// **CANONICAL**: Metrics configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalMetricsConfig {
-
-/// Enable metrics collection
+    /// Enable metrics collection
     pub enabled: bool,
     /// Metrics collection interval
     pub collection_interval: Duration,
@@ -70,15 +63,12 @@ pub struct CanonicalMetricsConfig {
     pub export_endpoints: Vec<String>,
     /// Custom metrics labels
     pub labels: HashMap<String, String>,
-
-
 }
 
 /// **CANONICAL**: Tracing configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalTracingConfig {
-
-/// Enable distributed tracing
+    /// Enable distributed tracing
     pub enabled: bool,
     /// Tracing level (trace, debug, info, warn, error,
     pub level: String,
@@ -86,8 +76,6 @@ pub struct CanonicalTracingConfig {
     pub sampling_rate: f64,
     /// Trace export endpoints
     pub export_endpoints: Vec<String>,
-
-
 }
 
 // ============================================================================
@@ -95,60 +83,52 @@ pub struct CanonicalTracingConfig {
 // ============================================================================
 
 impl Default for CanonicalObservabilityConfig {
-
-fn default() -> Self  {Self {
+    fn default() -> Self {
+        Self {
             enabled: true,
             metrics_interval: 60,
             health_checks: CanonicalHealthCheckConfig::default(),
             metrics: CanonicalMetricsConfig::default(),
             tracing: CanonicalTracingConfig::default(),
-        
-
-}
+        }
     }
 }
 
 impl Default for CanonicalHealthCheckConfig {
-
-fn default() -> Self  {Self {
+    fn default() -> Self {
+        Self {
             enabled: true,
             interval: Duration::from_secs(30),
             timeout: Duration::from_secs(5),
-            endpoint: "/health".to_string()),
+            endpoint: "/health".to_string(),
             expected_status_codes: vec![200, 204],
             failure_threshold: 3,
             success_threshold: 2,
-            headers: HashMap::new()),
+            headers: HashMap::new(),
             detailed_reporting: false,
-        
-
-}
+        }
     }
 }
 
 impl Default for CanonicalMetricsConfig {
-
-fn default() -> Self  {Self {
+    fn default() -> Self {
+        Self {
             enabled: true,
             collection_interval: Duration::from_secs(60),
             retention_period: Duration::from_secs(86400), // 24 hours
             export_endpoints: vec![],
-            labels: HashMap::new()),
-        
-
-}
+            labels: HashMap::new(),
+        }
     }
 }
 
 impl Default for CanonicalTracingConfig {
-
-fn default() -> Self  {Self {
+    fn default() -> Self {
+        Self {
             enabled: true,
-            level: "info".to_string()),
+            level: "info".to_string(),
             sampling_rate: 1.0,
             export_endpoints: vec![],
-        
-
-}
+        }
     }
-} 
+}

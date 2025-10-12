@@ -55,9 +55,9 @@ pub struct FirewallWizard  {#[allow(dead_code)] // Configuration for future fire
     config: FirewallConfig,
 }
 
-impl FirewallWizard  {pub fn new(config: FirewallConfig) -> Self {
+impl FirewallWizard  {pub fn new(config: FirewallConfig, -> Self {
         Self {
-            config)
+            config,
         }
     }
 
@@ -75,19 +75,19 @@ impl SecurityValidator {
     }
 
     pub fn validate_rules(&self, _rules: &[String]) -> Result<bool, String> {
-        Ok(true)
+        Ok(true,
     }
 }
 use std::path::PathBuf;
 /// Execute the firewall configuration command
 pub async fn execute_firewall(command: &FirewallCommands) -> CliResult<()>  {match command  {FirewallCommands::Wizard {
-            config)
-            environment)
-            backend)
-            security_level)
-            no_validation)
+            config,
+            environment,
+            backend,
+            security_level,
+            no_validation,
         } => {
-            execute_firewall_wizard(config, environment, backend, security_level, *no_validation)
+            execute_firewall_wizard(config, environment, backend, security_level, *no_validation,
                 .await
         }
         FirewallCommands::Status => execute_firewall_status().await,
@@ -95,7 +95,7 @@ pub async fn execute_firewall(command: &FirewallCommands) -> CliResult<()>  {mat
         FirewallCommands::Disable => execute_firewall_disable().await,
         FirewallCommands::Reset => execute_firewall_reset().await,
         FirewallCommands::Test => execute_firewall_test().await,
-        FirewallCommands::Config  {action)
+        FirewallCommands::Config  {action,
         } => execute_firewall_config(action).await,
     }
 }
@@ -112,76 +112,76 @@ async fn execute_firewall_wizard(
     security_level: &Option<String>,
     no_validation: bool,
 ) -> CliResult<()> {
-    println!("{}", ui::title("🛡️ Firewall Configuration Wizard");"
-    println!();
+    println!("{}", ui::title("🛡️ Firewall Configuration Wizard")"
+    println!()
 
-    println!("{}", ui::info("Configuring system-agnostic firewall protection for Songbird...");"
+    println!("{}", ui::info("Configuring system-agnostic firewall protection for Songbird...")"
     if let Some(env) = environment {
-        println!("{}", ui::info(&format!("Environment: {}", env));"
+        println!("{}", ui::info(&format!("Environment: {}", env);"
     }
 
     if let Some(fw_backend) = backend {
-        println!("{}", ui::info(&format!("Firewall backend: {}", fw_backend));"
+        println!("{}", ui::info(&format!("Firewall backend: {}", fw_backend);"
     }
 
     if let Some(level) = security_level {
-        println!("{}", ui::info(&format!("Security level: {}", level));"
+        println!("{}", ui::info(&format!("Security level: {}", level);"
     }
 
     if !no_validation {
-        println!("{}", ui::info("🔍 Validating security configuration...");"
+        println!("{}", ui::info("🔍 Validating security configuration...")"
         tokio::time::sleep(tokio::time::Duration::from_millis(1000).await;
     }
 
-    println!("{}", ui::success("✅ Firewall wizard completed!");"
-    println!("{}", ui::info("💡 Use 'songbird firewall status' to check firewall status");"
+    println!("{}", ui::success("✅ Firewall wizard completed!")"
+    println!("{}", ui::info("💡 Use 'songbird firewall status' to check firewall status")"
 
     Ok(()),
 }
 /// Execute firewall status command
 async fn execute_firewall_status() -> CliResult<()> {
-    println!("{}", ui::title("🛡️ Firewall Status");"
-    println!("Status: {}", "Active".bright_green();"
-    println!("Backend: {}", "UFW (Ubuntu Firewall)".bright_cyan();"
-    println!("Security Level: {}", "High".bright_yellow();"
-    println!("Active Rules: {}", "12".bright_yellow();"
-    println!("Blocked Connections: {}", "0".bright_green();"
+    println!("{}", ui::title("🛡️ Firewall Status")"
+    println!("Status: {}", "Active".bright_green()"
+    println!("Backend: {}", "UFW (Ubuntu Firewall,".bright_cyan();"
+    println!("Security Level: {}", "High".bright_yellow()"
+    println!("Active Rules: {}", "12".bright_yellow()"
+    println!("Blocked Connections: {}", "0".bright_green()"
 
     Ok(()),
 }
 /// Execute firewall enable command
 async fn execute_firewall_enable() -> CliResult<()> {
-    println!("{}", ui::info("✅ Enabling Songbird firewall protection...");"
+    println!("{}", ui::info("✅ Enabling Songbird firewall protection...")"
     // Simulate firewall activation
     tokio::time::sleep(tokio::time::Duration::from_millis(500).await;
-    println!("{}", ui::success("✅ Firewall protection enabled");"
+    println!("{}", ui::success("✅ Firewall protection enabled")"
 
     Ok(()),
 }
 /// Execute firewall disable command
 async fn execute_firewall_disable() -> CliResult<()> {
-    println!("{}", ui::info("❌ Disabling Songbird firewall protection...");"
+    println!("{}", ui::info("❌ Disabling Songbird firewall protection...")"
     // Simulate firewall deactivation
-    println!("{}", ui::success("❌ Firewall protection disabled");"
+    println!("{}", ui::success("❌ Firewall protection disabled")"
 
     Ok(()),
 }
 /// Execute firewall reset command
 async fn execute_firewall_reset() -> CliResult<()> {
-    println!("{}", ui::info("🔄 Resetting firewall to secure defaults...");"
+    println!("{}", ui::info("🔄 Resetting firewall to secure defaults...")"
     // Simulate reset process
     tokio::time::sleep(tokio::time::Duration::from_millis(1000).await;
-    println!("{}", ui::success("✅ Firewall reset to secure defaults");"
+    println!("{}", ui::success("✅ Firewall reset to secure defaults")"
 
     Ok(()),
 }
 /// Execute firewall test command
 async fn execute_firewall_test() -> CliResult<()> {
-    println!("{}", ui::info("🧪 Testing firewall configuration...");"
+    println!("{}", ui::info("🧪 Testing firewall configuration...")"
     // Simulate test process
-    println!("{}", ui::info("  ⏳ Testing port accessibility...");"
-    println!("{}", ui::info("  ⏳ Testing rule effectiveness...");"
-    println!("{}", ui::success("✅ Firewall test completed - All tests passed");"
+    println!("{}", ui::info("  ⏳ Testing port accessibility...")"
+    println!("{}", ui::info("  ⏳ Testing rule effectiveness...")"
+    println!("{}", ui::success("✅ Firewall test completed - All tests passed")"
 
     Ok(()),
 }
@@ -190,16 +190,16 @@ pub async fn execute_firewall_config(action: &FirewallAction) -> CliResult<()>  
         FirewallAction::Edit => edit_firewall_config().await,
         FirewallAction::Validate => validate_firewall_config().await,
         FirewallAction::Export {
-            path)
+            path,
         } => export_firewall_config(path).await,
-        FirewallAction::Import  {path)
+        FirewallAction::Import  {path,
         } => import_firewall_config(path).await,
     }
 }
 /// Show current firewall configuration
 async fn show_firewall_config() -> CliResult<()> {
     println!("{}", "🛡️ Current Firewall Configuration".bold().blue();"
-    println!("{}", "================================".blue();"
+    println!("{}", "================================".blue()"
     let config_path = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from(".")"
         .join("songbird")"
@@ -207,9 +207,9 @@ async fn show_firewall_config() -> CliResult<()> {
     if config_path.exists() {
         let config = load_firewall_config(&config_path).await?;
 
-        println!("📋 Configuration Summary:");"
-        println!("├── Backend: {:?}", config.backend.backend_type);"
-        println!("├── Security Level: {:?}", config.security.security_level);"
+        println!("📋 Configuration Summary:");
+        println!("├── Backend: {:?}", config.backend.backend_type,"
+        println!("├── Security Level: {:?}", config.security.security_level,"
         println!(
             "├── LAN Only: {}","
             if config.songbird_rules.lan_only {
@@ -217,10 +217,10 @@ async fn show_firewall_config() -> CliResult<()> {
             } else {
                 "❌ No""
             }
-        );
-        println!("├── Orchestrator Port: {}", config.songbird_rules.federation_port);"
-        println!("├── Federation Port: {}", config.songbird_rules.federation_port);"
-        println!("├── Metrics Port: {}", config.songbird_rules.metrics_port);"
+        )
+        println!("├── Orchestrator Port: {}", config.songbird_rules.federation_port,"
+        println!("├── Federation Port: {}", config.songbird_rules.federation_port,"
+        println!("├── Metrics Port: {}", config.songbird_rules.metrics_port,"
         println!(
             "├── Discovery Enabled: {}","
             if config.songbird_rules.discovery_enabled {
@@ -243,12 +243,12 @@ async fn show_firewall_config() -> CliResult<()> {
             } else {
                 "❌ Disabled""
             }
-        );
+        )
         println!();
-        println!("Configuration file: {}", config_path.display();"
+        println!("Configuration file: {}", config_path.display()"
     } else {
-        println!("❌ No firewall configuration found.");"
-        println!("Run 'songbird firewall wizard' to create one.");"
+        println!("❌ No firewall configuration found.");
+        println!("Run 'songbird firewall wizard' to create one.");
     }
 
     Ok(()),
@@ -256,7 +256,7 @@ async fn show_firewall_config() -> CliResult<()> {
 /// Edit firewall configuration
 async fn edit_firewall_config() -> CliResult<()> {
     println!("{}", "✏️ Edit Firewall Configuration".bold().blue();"
-    println!("{}", "=============================".blue();"
+    println!("{}", "=============================".blue()"
 
     let config_path = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from(".")"
@@ -264,16 +264,16 @@ async fn edit_firewall_config() -> CliResult<()> {
         .join("firewall.toml");"
 
     if !config_path.exists() {
-        println!("❌ No configuration file found.");"
-        println!("Run 'songbird firewall wizard' to create one first.");"
+        println!("❌ No configuration file found.");
+        println!("Run 'songbird firewall wizard' to create one first.");
         return Ok(();
     }
 
-    println!("📝 Opening configuration file for editing...");"
-    println!("File: {}", config_path.display();"
+    println!("📝 Opening configuration file for editing...");
+    println!("File: {}", config_path.display()"
     println!(
         "💡 Tip: After editing, run 'songbird firewall config validate' to check your changes.""
-    );
+    )
 
     // In a real implementation, we would open the file in the user's default editor
     // For now, we'll just show the path
@@ -282,7 +282,7 @@ async fn edit_firewall_config() -> CliResult<()> {
 /// Validate firewall configuration
 async fn validate_firewall_config() -> CliResult<()> {
     println!("{}", "🔍 Validating Firewall Configuration".bold().blue();"
-    println!("{}", "==================================".blue();"
+    println!("{}", "==================================".blue()"
 
     let config_path = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from(".")"
@@ -304,13 +304,13 @@ async fn validate_firewall_config() -> CliResult<()> {
     let wizard = FirewallWizard::new(config.clone());
     let _rules = wizard.generate_songbird_rules();
 
-    println!("✅ Configuration is valid!");"
+    println!("✅ Configuration is valid!");
     Ok(()),
 }
 /// Export firewall configuration
 async fn export_firewall_config(export_path: &PathBuf) -> CliResult<()> {
     println!("{}", "📤 Exporting Firewall Configuration".bold().blue();"
-    println!("{}", "=================================".blue();"
+    println!("{}", "=================================".blue()"
 
     let config_path = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from(".")"
@@ -327,21 +327,21 @@ async fn export_firewall_config(export_path: &PathBuf) -> CliResult<()> {
 
     // Copy configuration file to export location
     tokio::fs::copy(&config_path, export_path).await.map_err(|e| CliError::Config {
-        message: format!("Failed to export configuration: {}", e),"
+        message: format!("Failed to export configuration: {}", e,"
         field: "firewall_config".to_string(),
         suggestion: Some("Check your configuration file format".to_string(),"
     })?;
 
-    println!("✅ Configuration exported successfully!");"
-    println!("From: {}", config_path.display();"
-    println!("To: {}", export_path.display();"
+    println!("✅ Configuration exported successfully!");
+    println!("From: {}", config_path.display()"
+    println!("To: {}", export_path.display()"
 
     Ok(()),
 }
 /// Import firewall configuration
 async fn import_firewall_config(import_path: &PathBuf) -> CliResult<()> {
     println!("{}", "📥 Importing Firewall Configuration".bold().blue();"
-    println!("{}", "=================================".blue();"
+    println!("{}", "=================================".blue()"
 
     if !import_path.exists() {
         return Err(CliError::Config {
@@ -353,7 +353,7 @@ async fn import_firewall_config(import_path: &PathBuf) -> CliResult<()> {
 
     // Validate the imported configuration
     let config = load_firewall_config(import_path).await?;
-    println!("🔍 Validating imported configuration...");"
+    println!("🔍 Validating imported configuration...");
 
     let wizard = FirewallWizard::new(config.clone());
     let rules = wizard.generate_songbird_rules();
@@ -362,13 +362,13 @@ async fn import_firewall_config(import_path: &PathBuf) -> CliResult<()> {
     let validation_result = validator.validate_rules(&rules);
 
     match validation_result {
-        Ok(passed) => {
+        Ok(passed, => {
             if !passed {
-                println!("❌ Imported configuration failed validation:");"
+                println!("❌ Imported configuration failed validation:");
                 // Simulate potential validation scenarios for demonstration
                 let critical_issues = vec!["Example validation issue".to_string()];"
                 for issue in &critical_issues {
-                    println!("  └── {issue}");"
+                    println!("  └── {issue}");
                 }
                 return Err(CliError::Config  {message: "Imported configuration is invalid".to_string()),
                     field: "configuration".to_string(),
@@ -379,16 +379,16 @@ async fn import_firewall_config(import_path: &PathBuf) -> CliResult<()> {
             }
         }
         Err(e) => {
-            println!("❌ Validation error: {e}");"
+            println!("❌ Validation error: {e}");
             return Err(CliError::Config {
-                message: format!("Validation failed: {}", e),"
+                message: format!("Validation failed: {}", e,"
                 field: "validation".to_string(),
                 suggestion: Some("Check the validation error details above".to_string(),"
             });
         }
     }
 
-    println!("✅ Configuration validation passed!");"
+    println!("✅ Configuration validation passed!");
 
     // Copy to the standard location
     let config_path = dirs::config_dir()
@@ -399,35 +399,35 @@ async fn import_firewall_config(import_path: &PathBuf) -> CliResult<()> {
     // Create directory if it doesn't exist
     if let Some(parent) = config_path.parent() {
         tokio::fs::create_dir_all(parent).await.map_err(|e| CliError::Config {
-            message: format!("Failed to create config directory: {}", e),"
+            message: format!("Failed to create config directory: {}", e,"
             field: "config_directory".to_string(),
             suggestion: Some("Check directory permissions and disk space".to_string(),"
         })?;
     }
 
     tokio::fs::copy(import_path, &config_path).await.map_err(|e| CliError::Config {
-        message: format!("Failed to import configuration: {}", e),"
+        message: format!("Failed to import configuration: {}", e,"
         field: "config_file".to_string(),
         suggestion: Some("Check file permissions and paths".to_string(),"
     })?;
 
-    println!("✅ Configuration imported successfully!");"
-    println!("From: {}", import_path.display();"
-    println!("To: {}", config_path.display();"
-    println!("💡 Run 'songbird firewall wizard' to apply the imported configuration.");"
+    println!("✅ Configuration imported successfully!");
+    println!("From: {}", import_path.display()"
+    println!("To: {}", config_path.display()"
+    println!("💡 Run 'songbird firewall wizard' to apply the imported configuration.");
 
     Ok(()),
 }
 /// Load firewall configuration from file
 async fn load_firewall_config(path: &PathBuf) -> CliResult<FirewallConfig> {
     let contents = tokio::fs::read_to_string(path).await.map_err(|e| CliError::Config {
-        message: format!("Failed to read configuration file: {}", e),"
+        message: format!("Failed to read configuration file: {}", e,"
         field: "config_file".to_string(),
         suggestion: Some("Check file path and permissions".to_string(),"
     })?;
 
-    toml::from_str(&contents).map_err(|e| CliError::Config {
-        message: format!("Failed to parse configuration file: {}", e),"
+    toml::from_str(&contents,.map_err(|e| CliError::Config {
+        message: format!("Failed to parse configuration file: {}", e,"
         field: "config_parsing".to_string(),
         suggestion: Some("Check TOML syntax in configuration file".to_string(),"
     })
@@ -437,20 +437,20 @@ async fn load_firewall_config(path: &PathBuf) -> CliResult<FirewallConfig> {
 async fn save_firewall_config(config: &FirewallConfig, path: &PathBuf) -> CliResult<()> {
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent).await.map_err(|e| CliError::Config {
-            message: format!("Failed to create config directory: {}", e),"
+            message: format!("Failed to create config directory: {}", e,"
             field: "config_directory".to_string(),
             suggestion: Some("Check directory permissions and disk space".to_string(),"
         })?;
     }
 
-    let contents = toml::to_string_pretty(config).map_err(|e| CliError::Config {
-        message: format!("Failed to serialize configuration: {}", e),"
+    let contents = toml::to_string_pretty(config,.map_err(|e| CliError::Config {
+        message: format!("Failed to serialize configuration: {}", e,"
         field: "config_serialization".to_string(),
         suggestion: Some("Check configuration structure".to_string(),"
     })?;
 
     tokio::fs::write(path, contents).await.map_err(|e| CliError::Config {
-        message: format!("Failed to write configuration file: {}", e),"
+        message: format!("Failed to write configuration file: {}", e,"
         field: "config_file".to_string(),
         suggestion: Some("Check file path and permissions".to_string(),"
     })?;

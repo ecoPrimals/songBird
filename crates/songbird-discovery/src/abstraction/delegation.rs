@@ -34,14 +34,14 @@ pub enum DelegationStrategy  {/// Use the first available provider
 /// Discovery delegator that routes requests to providers
 pub struct DiscoveryDelegator  {registry: ProviderRegistry,
     default_strategy: DelegationStrategy,
-    round_robin_state: std::sync::Arc<std::sync::Mutex<HashMap<String, usize>>>)
+    round_robin_state: std::sync::Arc<std::sync::Mutex<HashMap<String, usize>>>,
 }
 
 impl DiscoveryDelegator  {/// Create a new discovery delegator
     pub fn new(registry: ProviderRegistry) -> Self  {Self {
             registry)
             default_strategy: DelegationStrategy::BestMatch,
-            round_robin_state: std::sync::Arc::new(std::sync::Mutex::new(HashMap::new()),
+            round_robin_state: std::sync::Arc::new(std::sync::Mutex::new(HashMap::new(),
         }
     }
 
@@ -52,7 +52,8 @@ impl DiscoveryDelegator  {/// Create a new discovery delegator
     }
 
     /// Register a service using delegation
-    pub async fn register_service(&self, service: ServiceInfo) -> Result<()>  {let query = CapabilityQuery::new(
+    pub async fn register(&self, service: ServiceInfo) -> Result<()> {
+        let query = CapabilityQuery::new(
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceRegistration)
         );
 
@@ -61,7 +62,8 @@ impl DiscoveryDelegator  {/// Create a new discovery delegator
     }
 
     /// Unregister a service using delegation
-    pub async fn unregister_service(&self, service_id: &str) -> Result<()>  {let query = CapabilityQuery::new(
+    pub async fn unregister(&self, service_id: &str) -> Result<()> {
+        let query = CapabilityQuery::new(
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceUnregistration)
         );
 
@@ -71,7 +73,8 @@ impl DiscoveryDelegator  {/// Create a new discovery delegator
     }
 
     /// Discover services using delegation
-    pub async fn discover_services(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>>  {let capability_query = CapabilityQuery::new(
+    pub async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
+        let capability_query = CapabilityQuery::new(
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceDiscovery)
         );
 
@@ -87,10 +90,11 @@ impl DiscoveryDelegator  {/// Create a new discovery delegator
     }
 
     /// Watch services using delegation
-    pub async fn watch_services(
-        &self)
+    pub async fn watch(
+        &self,
         query: ServiceQuery,
-    ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>>  {let capability_query = CapabilityQuery::new(
+    ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>> {
+        let capability_query = CapabilityQuery::new(
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceWatching)
         );
 
@@ -101,11 +105,12 @@ impl DiscoveryDelegator  {/// Create a new discovery delegator
     }
 
     /// Update service health using delegation
-    pub async fn update_service_health(
-        &self)
+    pub async fn update_health(
+        &self,
         service_id: &str,
         health: ServiceHealthStatus,
-    ) -> Result<()>  {let query = CapabilityQuery::new(
+    ) -> Result<()> {
+        let query = CapabilityQuery::new(
             CapabilityMatcher::new().require(DiscoveryCapability::HealthChecking)
         );
 
@@ -115,7 +120,8 @@ impl DiscoveryDelegator  {/// Create a new discovery delegator
     }
 
     /// List all services using delegation
-    pub async fn list_all_services(&self) -> Result<Vec<ServiceInfo>>  {let query = CapabilityQuery::new(
+    pub async fn list_all(&self) -> Result<Vec<ServiceInfo>> {
+        let query = CapabilityQuery::new(
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceListing)
         );
 
@@ -129,7 +135,8 @@ impl DiscoveryDelegator  {/// Create a new discovery delegator
     }
 
     /// Check if service exists using delegation
-    pub async fn service_exists(&self, service_id: &str) -> Result<bool>  {let query = CapabilityQuery::new(
+    pub async fn exists(&self, service_id: &str) -> Result<bool> {
+        let query = CapabilityQuery::new(
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceExistence)
         );
 
@@ -138,7 +145,8 @@ impl DiscoveryDelegator  {/// Create a new discovery delegator
     }
 
     /// Get service metrics using delegation
-    pub async fn get_service_metrics(&self, service_id: &str) -> Result<ServiceMetrics>  {let query = CapabilityQuery::new(
+    pub async fn get_service_metrics(&self, service_id: &str) -> Result<ServiceMetrics> {
+        let query = CapabilityQuery::new(
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceMetrics)
         );
 
@@ -384,7 +392,7 @@ mod tests {
             DiscoveryDelegator::new(registry).with_strategy(DelegationStrategy::LeastLoad);
 
         // Test that delegator is created with correct strategy
-        assert_eq!(delegator.default_strategy, DelegationStrategy::LeastLoad);
+        assert_eq!(delegator.default_strategy, DelegationStrategy::LeastLoad)
     }
 
     #[test]

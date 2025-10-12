@@ -51,14 +51,15 @@ pub mod network {
 }
 
 /// Mock circuit breaker for testing
-pub mod circuit_breaker  {
+pub mod circuit_breaker {
     /// Mock circuit breaker implementation for testing
     pub struct MockCircuitBreaker {
         /// Whether the circuit is open
         pub is_open: bool,
     }
 
-    impl MockCircuitBreaker  {/// Create a new mock circuit breaker
+    impl MockCircuitBreaker {
+        /// Create a new mock circuit breaker
         #[must_use]
         pub fn new() -> Self {
             Self {

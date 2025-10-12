@@ -12,7 +12,8 @@ use crate::config::network::PortRange;
 
 /// Central configuration for eliminating hardcoded values
 #[derive(Debug, Clone, Default)]
-pub struct HardcodingEliminationConfig  {/// Network configuration patterns
+pub struct HardcodingEliminationConfig {
+    /// Network configuration patterns
     pub network: NetworkConfig,
     /// Service configuration patterns
     pub service: ServiceConfig,
@@ -29,7 +30,8 @@ pub struct HardcodingEliminationConfig  {/// Network configuration patterns
 }
 
 #[derive(Debug, Clone)]
-pub struct ServiceConfig  {pub service_name: String,
+pub struct ServiceConfig {
+    pub service_name: String,
     pub version: String,
     pub base_url: String,
     pub health_endpoint: String,
@@ -37,7 +39,8 @@ pub struct ServiceConfig  {pub service_name: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct SecurityConfig  {pub encryption_key_size: usize,
+pub struct SecurityConfig {
+    pub encryption_key_size: usize,
     pub session_timeout: Duration,
     pub beardog_endpoint: String,
     pub oauth_redirect_uri: String,
@@ -45,10 +48,11 @@ pub struct SecurityConfig  {pub encryption_key_size: usize,
 }
 
 #[derive(Debug, Clone)]
-pub struct NetworkConfig  {pub bind_address: IpAddr,
+pub struct NetworkConfig {
+    pub bind_address: IpAddr,
     pub production_bind_address: IpAddr,
     pub stun_servers: Vec<String>,
-    pub port_ranges: HashMap<String, (u16, u16)>)
+    pub port_ranges: HashMap<String, (u16, u16)>,
     pub orchestrator_endpoint: Arc<str>,
     pub gaming_endpoint: Arc<str>,
     pub federation_endpoint: Arc<str>,
@@ -57,7 +61,8 @@ pub struct NetworkConfig  {pub bind_address: IpAddr,
 }
 
 #[derive(Debug, Clone)]
-pub struct TimeoutConfig  {pub connection_timeout: Duration,
+pub struct TimeoutConfig {
+    pub connection_timeout: Duration,
     pub request_timeout: Duration,
     pub health_check_timeout: Duration,
     pub heartbeat_interval: Duration,
@@ -65,7 +70,8 @@ pub struct TimeoutConfig  {pub connection_timeout: Duration,
 }
 
 #[derive(Debug, Clone)]
-pub struct PerformanceConfig  {pub small_buffer_size: usize,
+pub struct PerformanceConfig {
+    pub small_buffer_size: usize,
     pub large_buffer_size: usize,
     pub max_packet_size: usize,
     pub connection_pool_size: usize,
@@ -73,17 +79,19 @@ pub struct PerformanceConfig  {pub small_buffer_size: usize,
 }
 
 #[derive(Debug, Clone)]
-pub struct PrimalConfig  {pub beardog_endpoint: Arc<str>,
+pub struct PrimalConfig {
+    pub beardog_endpoint: Arc<str>,
     pub nestgate_endpoint: Arc<str>,
     pub toadstool_endpoint: Arc<str>,
     pub squirrel_endpoint: Arc<str>,
     pub discovery_endpoints: Vec<String>,
     pub base_port: u16,
-    pub port_range: (u16, u16)
+    pub port_range: (u16, u16),
 }
 
 #[derive(Debug, Clone)]
-pub struct FederationConfig  {pub cluster_endpoints: Vec<String>,
+pub struct FederationConfig {
+    pub cluster_endpoints: Vec<String>,
     pub heartbeat_endpoint: String,
     pub broadcast_ports: Vec<u16>,
     pub discovery_ports: Vec<u16>,
@@ -91,207 +99,230 @@ pub struct FederationConfig  {pub cluster_endpoints: Vec<String>,
     pub auto_discovery_enabled: bool,
 }
 
-impl Default for SecurityConfig  {fn default() -> Self  {Self {
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
             encryption_key_size: 256,
-            session_timeout: Duration::from_secs(3600,
-            beardog_endpoint: env_or_default("SONGBIRD_BEARDOG_ENDPOINT", "https://songbird_config::constants::network::DEFAULT_HOST:8443")
+            session_timeout: Duration::from_secs(3600),
+            beardog_endpoint: env_or_default(
+                "SONGBIRD_BEARDOG_ENDPOINT",
+                &format!("https://{}:8443", crate::constants::network::DEFAULT_HOST),
+            ),
             oauth_redirect_uri: env_or_default(
-                "SONGBIRD_OAUTH_REDIRECT")
-                "http://songbird_config::constants::network::DEFAULT_HOST:8080/auth/callback")
-            )
-            tls_cert_path: env_or_default("SONGBIRD_TLS_CERT", "/etc/ssl/certs/songbird.crt")
+                "SONGBIRD_OAUTH_REDIRECT",
+                &format!("http://{}:8080/auth/callback", crate::constants::network::DEFAULT_HOST),
+            ),
+            tls_cert_path: env_or_default("SONGBIRD_TLS_CERT", "/etc/ssl/certs/songbird.crt"),
         }
     }
 }
 
-impl Default for ServiceConfig  {fn default() -> Self  {let base_url = env_or_default("SONGBIRD_BASE_URL", &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT);
+impl Default for ServiceConfig {
+    fn default() -> Self {
+        let base_url = env_or_default(
+            "SONGBIRD_BASE_URL",
+            &format!(
+                "http://{}:{}",
+                crate::constants::network::DEFAULT_HOST,
+                crate::constants::network::DEFAULT_ORCHESTRATOR_PORT
+            ),
+        );
         Self {
-            service_name: env_or_default("SONGBIRD_SERVICE_NAME", "songbird-orchestrator")
-            version: env_or_default("SONGBIRD_VERSION", "0.1.0")
-            base_url: base_url.clone(,
-            health_endpoint: format!("{base_url}/health")
-            metrics_endpoint: format!("{base_url}/metrics")
+            service_name: env_or_default("SONGBIRD_SERVICE_NAME", "songbird-orchestrator"),
+            version: env_or_default("SONGBIRD_VERSION", "0.1.0"),
+            base_url: base_url.clone(),
+            health_endpoint: format!("{base_url}/health"),
+            metrics_endpoint: format!("{base_url}/metrics"),
         }
     }
 }
 
 impl Default for NetworkConfig {
     fn default() -> Self {
-        let bind_ip = env_or_default("SONGBIRD_BIND_ADDRESS", &songbird_config::constants::network::DEFAULT_HOST);
-        let orchestrator_port = env_or_default("SONGBIRD_ORCHESTRATOR_PORT", &songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string());
+        let bind_ip =
+            env_or_default("SONGBIRD_BIND_ADDRESS", &crate::constants::network::DEFAULT_HOST);
+        let orchestrator_port = env_or_default(
+            "SONGBIRD_ORCHESTRATOR_PORT",
+            &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
+        );
         let gaming_port = env_or_default("SONGBIRD_GAMING_PORT", "8081");
         let federation_port = env_or_default("SONGBIRD_FEDERATION_PORT", "8082");
-        let dashboard_port = env_or_default("SONGBIRD_DASHBOARD_PORT", &songbird_config::constants::network::DEFAULT_DEV_PORT.to_string());
+        let dashboard_port = env_or_default(
+            "SONGBIRD_DASHBOARD_PORT",
+            &crate::constants::network::DEFAULT_DEV_PORT.to_string(),
+        );
 
         Self {
             bind_address: bind_ip.parse().unwrap_or_else(|e| {
-                tracing::warn!(
-                    "Invalid SONGBIRD_BIND_ADDRESS, using default songbird_config::constants::network::DEFAULT_HOST: {}")
-                    e
-                );
-                &songbird_config::constants::network::DEFAULT_HOST
-                    .parse()
-                    .expect("songbird_config::constants::network::DEFAULT_HOST is a valid IP address")
-            })
+                tracing::warn!("Invalid SONGBIRD_BIND_ADDRESS, using default localhost: {}", e);
+                crate::constants::network::DEFAULT_HOST.parse().unwrap_or_else(|_| {
+                    // Final fallback to localhost if constant is invalid
+                    std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
+                })
+            }),
             production_bind_address: env_or_default("SONGBIRD_PRODUCTION_BIND_ADDRESS", "0.0.0.0")
                 .parse()
                 .unwrap_or_else(|e| {
                     tracing::warn!(
-                        "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}")
+                        "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}",
                         e
                     );
-                    "0.0.0.0".parse().expect("0.0.0.0 is a valid IP address")
-                })
+                    "0.0.0.0".parse().unwrap_or_else(|_| {
+                        // Final fallback to UNSPECIFIED
+                        std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
+                    })
+                }),
             stun_servers: vec![
-                env_or_default("SONGBIRD_STUN_SERVER_1", "stun.l.google.com:19302")
-                env_or_default("SONGBIRD_STUN_SERVER_2", "stun1.l.google.com:19302")
-            ])
+                env_or_default("SONGBIRD_STUN_SERVER_1", "stun.l.google.com:19302"),
+                env_or_default("SONGBIRD_STUN_SERVER_2", "stun1.l.google.com:19302"),
+            ],
             port_ranges: {
                 let mut ranges = HashMap::new();
-                ranges.insert("orchestrator".to_string(), (8080, 8090);
-                ranges.insert("gaming".to_string(), (7000, 7100);
-                ranges.insert("federation".to_string(), (8080, 8090);
-                ranges.insert("primals".to_string(), (8080, 8090);
+                ranges.insert("orchestrator".to_string(), (8080, 8090));
+                ranges.insert("gaming".to_string(), (7000, 7100));
+                ranges.insert("federation".to_string(), (8080, 8090));
+                ranges.insert("primals".to_string(), (8080, 8090));
                 ranges
-            })
-            orchestrator_endpoint: Arc::from(format!("http://{bind_ip}:{orchestrator_port}"))
-            gaming_endpoint: Arc::from(format!("http://{bind_ip}:{gaming_port}"))
-            federation_endpoint: Arc::from(format!("http://{bind_ip}:{federation_port}"))
-            dashboard_endpoint: Arc::from(format!("http://{bind_ip}:{dashboard_port}"))
-            gaming_port_range: PortRange  {start: 7000,
+            },
+            orchestrator_endpoint: Arc::from(format!("http://{bind_ip}:{orchestrator_port}")),
+            gaming_endpoint: Arc::from(format!("http://{bind_ip}:{gaming_port}")),
+            federation_endpoint: Arc::from(format!("http://{bind_ip}:{federation_port}")),
+            dashboard_endpoint: Arc::from(format!("http://{bind_ip}:{dashboard_port}")),
+            gaming_port_range: PortRange {
+                start: 7000,
                 end: 7100,
-            })
+            },
         }
     }
 }
 
-impl Default for TimeoutConfig  {fn default() -> Self  {Self {
+impl Default for TimeoutConfig {
+    fn default() -> Self {
+        Self {
             connection_timeout: Duration::from_secs(
-                env_or_default("SONGBIRD_CONNECTION_TIMEOUT", "30")
-                    .parse()
-                    .unwrap_or(30)
-            )
+                env_or_default("SONGBIRD_CONNECTION_TIMEOUT", "30").parse().unwrap_or(30),
+            ),
             request_timeout: Duration::from_secs(
-                env_or_default("SONGBIRD_REQUEST_TIMEOUT", "60")
-                    .parse()
-                    .unwrap_or(60)
-            )
+                env_or_default("SONGBIRD_REQUEST_TIMEOUT", "60").parse().unwrap_or(60),
+            ),
             health_check_timeout: Duration::from_secs(
-                env_or_default("SONGBIRD_HEALTH_CHECK_TIMEOUT", "5")
-                    .parse()
-                    .unwrap_or(5)
-            )
+                env_or_default("SONGBIRD_HEALTH_CHECK_TIMEOUT", "5").parse().unwrap_or(5),
+            ),
             heartbeat_interval: Duration::from_secs(
-                env_or_default("SONGBIRD_HEARTBEAT_INTERVAL", "30")
-                    .parse()
-                    .unwrap_or(30)
-            )
+                env_or_default("SONGBIRD_HEARTBEAT_INTERVAL", "30").parse().unwrap_or(30),
+            ),
             scaling_check_interval: Duration::from_secs(
-                env_or_default("SONGBIRD_SCALING_CHECK_INTERVAL", "30")
-                    .parse()
-                    .unwrap_or(30)
-            )
+                env_or_default("SONGBIRD_SCALING_CHECK_INTERVAL", "30").parse().unwrap_or(30),
+            ),
         }
     }
 }
 
-impl Default for PerformanceConfig  {fn default() -> Self  {Self {
+impl Default for PerformanceConfig {
+    fn default() -> Self {
+        Self {
             small_buffer_size: env_or_default("SONGBIRD_SMALL_BUFFER_SIZE", "1024")
                 .parse()
-                .unwrap_or(1024)
+                .unwrap_or(1024),
             large_buffer_size: env_or_default("SONGBIRD_LARGE_BUFFER_SIZE", "8192")
                 .parse()
-                .unwrap_or(8192)
+                .unwrap_or(8192),
             max_packet_size: env_or_default("SONGBIRD_MAX_PACKET_SIZE", "65536")
                 .parse()
-                .unwrap_or(65536)
+                .unwrap_or(65536),
             connection_pool_size: env_or_default("SONGBIRD_CONNECTION_POOL_SIZE", "10")
                 .parse()
-                .unwrap_or(10)
+                .unwrap_or(10),
             cache_ttl: Duration::from_secs(
-                env_or_default("SONGBIRD_CACHE_TTL", "300")
-                    .parse()
-                    .unwrap_or(300)
-            )
+                env_or_default("SONGBIRD_CACHE_TTL", "300").parse().unwrap_or(300),
+            ),
         }
     }
 }
 
-impl Default for PrimalConfig  {fn default() -> Self {
-        let base_ip = env_or_default("SONGBIRD_PRIMAL_BASE_IP", &songbird_config::constants::network::DEFAULT_HOST);
-        let base_port: u16 = env_or_default("SONGBIRD_PRIMAL_BASE_PORT", &songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string()),
-            .parse()
-            .unwrap_or(8080);
+impl Default for PrimalConfig {
+    fn default() -> Self {
+        let base_ip =
+            env_or_default("SONGBIRD_PRIMAL_BASE_IP", &crate::constants::network::DEFAULT_HOST);
+        let base_port: u16 = env_or_default(
+            "SONGBIRD_PRIMAL_BASE_PORT",
+            &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
+        )
+        .parse()
+        .unwrap_or(8080);
 
         Self {
             beardog_endpoint: Arc::from(env_or_default(
-                "SONGBIRD_BEARDOG_ENDPOINT")
-                &format!("https://{base_ip}:8443")
-            ))
+                "SONGBIRD_BEARDOG_ENDPOINT",
+                &format!("https://{base_ip}:8443"),
+            )),
             nestgate_endpoint: Arc::from(env_or_default(
-                "SONGBIRD_NESTGATE_ENDPOINT")
-                &format!("http://{base_ip}:{base_port}/storage")
-            ))
+                "SONGBIRD_NESTGATE_ENDPOINT",
+                &format!("http://{base_ip}:{base_port}/storage"),
+            )),
             toadstool_endpoint: Arc::from(env_or_default(
-                "SONGBIRD_TOADSTOOL_ENDPOINT")
-                &format!("http://{base_ip}:8082")
-            ))
+                "SONGBIRD_TOADSTOOL_ENDPOINT",
+                &format!("http://{base_ip}:8082"),
+            )),
             squirrel_endpoint: Arc::from(env_or_default(
-                "SONGBIRD_SQUIRREL_ENDPOINT")
-                &format!("http://{base_ip}:8083")
-            ))
+                "SONGBIRD_SQUIRREL_ENDPOINT",
+                &format!("http://{base_ip}:8083"),
+            )),
             discovery_endpoints: vec![
                 env_or_default(
-                    "SONGBIRD_DISCOVERY_ENDPOINT_1")
-                    &format!("http://{base_ip}:{base_port}/discovery")
-                )
+                    "SONGBIRD_DISCOVERY_ENDPOINT_1",
+                    &format!("http://{base_ip}:{base_port}/discovery"),
+                ),
                 env_or_default(
-                    "SONGBIRD_DISCOVERY_ENDPOINT_2")
-                    &format!("http://{base_ip}:8081/discovery")
-                )
-            ])
+                    "SONGBIRD_DISCOVERY_ENDPOINT_2",
+                    &format!("http://{base_ip}:8081/discovery"),
+                ),
+            ],
             base_port,
             port_range: (
-                env_or_default("SONGBIRD_PRIMAL_PORT_START", &songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string()),
-                    .parse()
-                    .unwrap_or(8080)
-                env_or_default("SONGBIRD_PRIMAL_PORT_END", "8090")
-                    .parse()
-                    .unwrap_or(8090)
-            )
+                env_or_default(
+                    "SONGBIRD_PRIMAL_PORT_START",
+                    &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
+                )
+                .parse()
+                .unwrap_or(8080),
+                env_or_default("SONGBIRD_PRIMAL_PORT_END", "8090").parse().unwrap_or(8090),
+            ),
         }
     }
 }
 
-impl Default for FederationConfig  {fn default() -> Self {
-        let base_ip = env_or_default("SONGBIRD_FEDERATION_BASE_IP", &songbird_config::constants::network::DEFAULT_HOST);
-        let base_port = env_or_default("SONGBIRD_FEDERATION_BASE_PORT", &songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string());
+impl Default for FederationConfig {
+    fn default() -> Self {
+        let base_ip =
+            env_or_default("SONGBIRD_FEDERATION_BASE_IP", &crate::constants::network::DEFAULT_HOST);
+        let base_port = env_or_default(
+            "SONGBIRD_FEDERATION_BASE_PORT",
+            &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
+        );
 
         Self {
             cluster_endpoints: vec![
                 env_or_default(
-                    "SONGBIRD_CLUSTER_ENDPOINT_1")
-                    &format!("http://{base_ip}:{base_port}")
-                )
-                env_or_default(
-                    "SONGBIRD_CLUSTER_ENDPOINT_2")
-                    &format!("http://{base_ip}:8081")
-                )
-            ])
+                    "SONGBIRD_CLUSTER_ENDPOINT_1",
+                    &format!("http://{base_ip}:{base_port}"),
+                ),
+                env_or_default("SONGBIRD_CLUSTER_ENDPOINT_2", &format!("http://{base_ip}:8081")),
+            ],
             heartbeat_endpoint: env_or_default(
-                "SONGBIRD_HEARTBEAT_ENDPOINT")
-                &format!("http://{base_ip}:{base_port}/federation/heartbeat")
-            )
-            broadcast_ports: vec![8080, 8081, 8082, 8090])
-            discovery_ports: vec![8080, 8000, 3000, 5000])
-            default_cluster_id: env_or_default("SONGBIRD_CLUSTER_ID", "songbird-cluster")
-            auto_discovery_enabled: env_or_default("SONGBIRD_AUTO_DISCOVERY", "true") == "true")
+                "SONGBIRD_HEARTBEAT_ENDPOINT",
+                &format!("http://{base_ip}:{base_port}/federation/heartbeat"),
+            ),
+            broadcast_ports: vec![8080, 8081, 8082, 8090],
+            discovery_ports: vec![8080, 8000, 3000, 5000],
+            default_cluster_id: env_or_default("SONGBIRD_CLUSTER_ID", "songbird-cluster"),
+            auto_discovery_enabled: env_or_default("SONGBIRD_AUTO_DISCOVERY", "true") == "true",
         }
     }
 }
 
 fn env_or_default(key: &str, default: &str) -> String {
-    std::env::var(key).unwrap_or_else(|_| default.to_string()),
+    std::env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
 /// Thread-safe global configuration using `OnceLock` (idiomatic Rust,
@@ -308,33 +339,33 @@ pub fn get_config() -> &'static HardcodingEliminationConfig {
 pub mod replace {
     use super::{get_config, Duration, IpAddr};
     use std::sync::Arc;
-use songbird_config;
+    // use songbird_config; // FIXED: Circular import removed
 
-    /// Replace hardcoded &songbird_config::constants::network::DEFAULT_HOST
+    /// Replace hardcoded &crate::constants::network::DEFAULT_HOST
     #[must_use]
     pub fn bind_address() -> IpAddr {
         get_config().network.bind_address
     }
 
-    /// Replace hardcoded &format!("{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT)
+    /// Replace hardcoded &format!("{}:{}", crate::constants::network::DEFAULT_HOST, crate::constants::network::DEFAULT_ORCHESTRATOR_PORT);
     #[must_use]
     pub fn orchestrator_endpoint() -> Arc<str> {
         Arc::clone(&get_config().network.orchestrator_endpoint)
     }
 
-    /// Replace hardcoded "songbird_config::constants::network::DEFAULT_HOST:8081"
+    /// Replace hardcoded "crate::constants::network::DEFAULT_HOST:8081"
     #[must_use]
     pub fn gaming_endpoint() -> Arc<str> {
         Arc::clone(&get_config().network.gaming_endpoint)
     }
 
-    /// Replace hardcoded "songbird_config::constants::network::DEFAULT_HOST:8443"
+    /// Replace hardcoded "crate::constants::network::DEFAULT_HOST:8443"
     #[must_use]
     pub fn beardog_endpoint() -> Arc<str> {
         Arc::clone(&get_config().primals.beardog_endpoint)
     }
 
-    /// Replace hardcoded "songbird_config::constants::network::DEFAULT_HOST:8080/storage"
+    /// Replace hardcoded "crate::constants::network::DEFAULT_HOST:8080/storage"
     #[must_use]
     pub fn nestgate_endpoint() -> Arc<str> {
         Arc::clone(&get_config().primals.nestgate_endpoint)
@@ -394,7 +425,7 @@ use songbird_config;
         get_config().federation.discovery_ports.clone()
     }
 
-    /// Get production-ready bind address (0.0.0.0 vs songbird_config::constants::network::DEFAULT_HOST)
+    /// Get production-ready bind address (0.0.0.0 vs crate::constants::network::DEFAULT_HOST)
     #[must_use]
     pub fn production_bind_address() -> IpAddr {
         if std::env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default() == "production" {
@@ -414,15 +445,20 @@ use songbird_config;
             config.network.bind_address
         };
 
-        let port = port_override.unwrap_or(match service  {"gaming" => 8081,
+        let port = port_override.unwrap_or(match service {
+            "gaming" => 8081,
             "federation" | "toadstool" => 8082,
             "beardog" => 8443,
             "squirrel" => 8083,
             _ => 8080, // Default for orchestrator, nestgate, and others
         });
 
-        let protocol = if port == 8443 { "https" } else { "http" };
-        Arc::from(format!("{protocol}://{ip}:{port}")
+        let protocol = if port == 8443 {
+            "https"
+        } else {
+            "http"
+        };
+        Arc::from(format!("{protocol}://{ip}:{port}"))
     }
 
     /// Format service endpoint with path
@@ -433,11 +469,7 @@ use songbird_config;
         port_override: Option<u16>,
     ) -> String {
         let base = format_endpoint(service, port_override);
-        format!(
-            "{}/{}")
-            base.trim_end_matches('/')
-            path.trim_start_matches('/')
-        )
+        format!("{}/{}", base.trim_end_matches('/'), path.trim_start_matches('/'))
     }
 
     /// Replace hardcoded gaming port

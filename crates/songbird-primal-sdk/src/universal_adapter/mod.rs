@@ -6,7 +6,7 @@
 /// - `core` - Main UniversalPrimalAdapter implementation and core functionality
 /// - `adapter_types` - Extracted type definitions for better organization
 /// - `registry` - Capability registry and service registration
-/// - `events` - Event handling and broadcasting system  
+/// - `events` - Event handling and broadcasting system
 /// - `roles` - Role matching and service role definitions
 /// - `types` - Shared types, structs, and enums
 ///

@@ -43,11 +43,11 @@ pub trait EventHook: Send + Sync {
 pub struct HookContext  {/// Orchestrator instance ID
     pub orchestrator_id: String,
     /// Hook configuration
-    pub config: HashMap<String, serde_json::Value>)
+    pub config: HashMap<String, serde_json::Value>,
     /// Environment variables
-    pub environment: HashMap<String, String>)
+    pub environment: HashMap<String, String>,
     /// Shared context between hooks
-    pub shared_context: HashMap<String, serde_json::Value>)
+    pub shared_context: HashMap<String, serde_json::Value>,
 }
 
 /// Generic orchestrator event for hooks
@@ -103,11 +103,11 @@ pub enum OrchestratorEvent  {/// Service lifecycle events
     })
     HealthCheckCompleted  {service_id: String,
         healthy: bool,
-        details: HashMap<String, serde_json::Value>)
+        details: HashMap<String, serde_json::Value>,
         timestamp: DateTime<Utc>,
     })
     MetricsCollected  {service_id: Option<String>)
-        metrics: HashMap<String, f64>)
+        metrics: HashMap<String, f64>,
         timestamp: DateTime<Utc>,
     })
     /// Discovery events
@@ -128,12 +128,12 @@ pub enum OrchestratorEvent  {/// Service lifecycle events
     /// Error events
     ErrorOccurred  {error_type: String,
         error_message: String,
-        context: HashMap<String, serde_json::Value>)
+        context: HashMap<String, serde_json::Value>,
         timestamp: DateTime<Utc>,
     })
     /// Custom events
     Custom  {event_type: String,
-        data: HashMap<String, serde_json::Value>)
+        data: HashMap<String, serde_json::Value>,
         timestamp: DateTime<Utc>,
     })
 }
@@ -147,7 +147,7 @@ pub struct HookResult  {/// Whether the hook execution was successful
     /// Whether to allow the original operation to continue
     pub allow_operation: bool,
     /// Optional modifications to the event/context
-    pub modifications: Option<HashMap<String, serde_json::Value>>)
+    pub modifications: Option<HashMap<String, serde_json::Value>>,
     /// Log messages from the hook
     pub log_messages: Vec<String>,
     /// Execution duration
@@ -171,7 +171,7 @@ impl Default for HookResult  {fn default() -> Self  {Self {
 /// Hook configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HookConfig  {/// Hook-specific settings
-    pub settings: HashMap<String, serde_json::Value>)
+    pub settings: HashMap<String, serde_json::Value>,
     /// Event filter - which events this hook cares about
     pub event_filter: EventFilter,
     /// Execution settings
@@ -380,7 +380,7 @@ impl Default for HookSystemConfig  {fn default() -> Self  {Self {
 }
 
 impl Default for HookConfig  {fn default() -> Self  {Self {
-            settings: HashMap::new()),
+            settings: HashMap::new(),
             event_filter: EventFilter {
                 event_types: Vec::new(),
                 service_ids: Vec::new(),

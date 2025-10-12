@@ -22,21 +22,14 @@ pub mod unified_adapter;
 
 // Re-export the unified adapter as the primary interface
 pub use unified_adapter::{
-    UnifiedUniversalAdapter,
-    UnifiedAdapterConfig,
-    CapabilityRegistry,
-    ServiceConnection,
-    RegistryStats,
-    UniversalAdapterError,
+    CapabilityRegistry, RegistryStats, ServiceConnection, UnifiedAdapterConfig,
+    UnifiedUniversalAdapter, UniversalAdapterError,
 };
 
 // Re-export modernized sovereignty system
 pub use sovereignty::{
-    SovereigntyAwareAdapter,
-    SovereigntyAdapterConfig,
+    PathSegment, RoutingPath, SovereigntyAdapterConfig, SovereigntyAwareAdapter,
     SovereigntyAwareRoutingDecision,
-    RoutingPath,
-    PathSegment,
 };
 
 // Re-export core types
@@ -48,6 +41,8 @@ pub fn create_universal_adapter() -> UnifiedUniversalAdapter {
 }
 
 /// Create a new unified universal adapter with custom configuration
-pub fn create_universal_adapter_with_config(config: UnifiedAdapterConfig) -> UnifiedUniversalAdapter {
+pub fn create_universal_adapter_with_config(
+    config: UnifiedAdapterConfig,
+) -> UnifiedUniversalAdapter {
     UnifiedUniversalAdapter::with_config(config)
 }

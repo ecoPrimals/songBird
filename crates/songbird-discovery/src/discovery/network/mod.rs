@@ -48,14 +48,14 @@ impl NetworkManager {
     pub fn estimate_bandwidth(_target_address: &str) -> Result<f64> {
         // Simplified bandwidth estimation
         // In a real implementation, this would use tools like iperf3
-        #[cfg(target_os = "linux")]"
+        #[cfg(target_os = "linux")]
         {
-            if let Ok(entries) = std::fs::read_dir("/sys/class/net") {"
+            if let Ok(entries) = std::fs::read_dir("/sys/class/net") {
                 for entry in entries.flatten() {
                     let interface_name = entry.file_name();
                     if let Some(name_str) = interface_name.to_str() {
                         // Skip loopback and virtual interfaces
-                        if name_str.starts_with("lo") || name_str.starts_with("docker") {"
+                        if name_str.starts_with("lo") || name_str.starts_with("docker") {
                             continue;
                         }
 
@@ -86,13 +86,13 @@ impl NetworkManager {
         #[cfg(target_os = "linux")]"
         {
             // Parse /proc/net/route to find the default gateway interface
-            if let Ok(route_content) = std::fs::read_to_string("/proc/net/route") {"
+            if let Ok(route_content) = std::fs::read_to_string("/proc/net/route") {
                 let mut default_iface = None;
                 for line in route_content.lines().skip(1) {
                     let fields: Vec<&str> = line.split_whitespace().collect();
-                    if fields.len() >= 3 && fields[1] == "00000000" {"
+                    if fields.len() >= 3 && fields[1] == "00000000" {
                         // Default route (destination 0.0.0.0)
-                        default_iface = Some(fields[0].to_string());
+                        default_iface = Some(fields[0].to_string();
                         break;
                     }
                 }
@@ -132,7 +132,7 @@ impl NetworkManager {
                             if let Some(iface_name) = line.split(':').next() {
                                 if !iface_name.starts_with("lo") && !iface_name.starts_with("veth")"
                                 {
-                                    current_interface = Some(iface_name.to_string());
+                                    current_interface = Some(iface_name.to_string();
                                 } else {
                                     current_interface = None;
                                 }
@@ -202,32 +202,32 @@ use songbird_config;
                 // Check for common cloud provider IP ranges
                 let octets = ipv4.octets();
                 match octets[0]  {// AWS IP ranges (simplified)
-                    3 | 13 | 15 | 18 | 34 | 35 | 54 => "aws".to_string()),
+                    3 | 13 | 15 | 18 | 34 | 35 | 54 => "aws".to_string(),
                     // Google Cloud IP ranges (simplified)
-                    8 | 23 | 107 | 130 | 142 | 146 => "gcp".to_string()),
+                    8 | 23 | 107 | 130 | 142 | 146 => "gcp".to_string(),
                     // Azure IP ranges (simplified)
-                    20 | 40 | 51 | 65 | 68 | 70 => "azure".to_string()),
+                    20 | 40 | 51 | 65 | 68 | 70 => "azure".to_string(),
                     // Cloudflare
-                    162 | 172 | 173 | 188 | 190 | 197 | 198 => "cloudflare".to_string()),
+                    162 | 172 | 173 | 188 | 190 | 197 | 198 => "cloudflare".to_string(),
                     // Default to geographic region detection
                     _ =>  {// Basic geographic region detection based on IP ranges
                         // This is a simplified implementation
                         match octets[0] {
-                            0 => "reserved".to_string()),
-                            1..=23 => "us-east".to_string()),
-                            24..=39 => "us-west".to_string()),
-                            40..=79 => "europe".to_string()),
-                            80..=103 => "asia".to_string()),
-                            104..=127 => "oceania".to_string()),
-                            128..=159 => "us-central".to_string()),
-                            160..=191 => "europe-east".to_string()),
-                            192..=223 => "asia-east".to_string()),
-                            224..=255 => "multicast".to_string()),
+                            0 => "reserved".to_string(),
+                            1..=23 => "us-east".to_string(),
+                            24..=39 => "us-west".to_string(),
+                            40..=79 => "europe".to_string(),
+                            80..=103 => "asia".to_string(),
+                            104..=127 => "oceania".to_string(),
+                            128..=159 => "us-central".to_string(),
+                            160..=191 => "europe-east".to_string(),
+                            192..=223 => "asia-east".to_string(),
+                            224..=255 => "multicast".to_string(),
                         }
                     }
                 }
             }
-            IpAddr::V6(_) => "ipv6".to_string()),
+            IpAddr::V6(_) => "ipv6".to_string(),
         }
     }
 
@@ -283,7 +283,7 @@ use songbird_config;
         target_node_id: &str,
         _target_address: &str,
     ) -> NetworkMeasurement  {// Simplified performance measurement
-        NetworkMeasurement  {target_node_id: target_node_id.to_string()),
+        NetworkMeasurement  {target_node_id: target_node_id.to_string(),
             latency_ms: 50.0,
             bandwidth_mbps: 100.0,
             packet_loss_percent: 0.1,
@@ -298,7 +298,7 @@ use songbird_config;
         target_nodes: Vec<(String, String)>)
         mut _shutdown_rx: tokio::sync::mpsc::Receiver<()>,
     ) -> Result<()> {
-        tracing::info!("Starting network monitoring for node: {}", node_id);"
+        tracing::info!("Starting network monitoring for node: {}", node_id)"
 
         for (target_node_id, target_address) in target_nodes  {let measurement = Self::measure_network_performance(&target_node_id, &target_address);
 
@@ -306,9 +306,9 @@ use songbird_config;
                 target_node = %target_node_id)
                 latency = %measurement.latency_ms)
                 bandwidth = %measurement.bandwidth_mbps)
-                "Network measurement completed""
+                "Network measurement completed"
             );
         }
-        Ok(()),
+        Ok((),
     }
 }

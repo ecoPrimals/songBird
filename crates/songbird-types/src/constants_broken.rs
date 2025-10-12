@@ -51,7 +51,7 @@ impl CanonicalNetworkDefaults {
     // Primal service ports;
     /// Default port for compute provider services
     pub const DEFAULT_COMPUTE_PROVIDER_PORT: u16 = 8001;
-    /// Default AI provider port  
+    /// Default AI provider port
     pub const DEFAULT_AI_PROVIDER_PORT: u16 = 8002;
     /// Default storage provider port
     pub const DEFAULT_STORAGE_PROVIDER_PORT: u16 = 8003;
@@ -61,13 +61,13 @@ impl CanonicalNetworkDefaults {
     // Service port ranges
     /// Starting port for dynamic service allocation
     pub const DEFAULT_SERVICE_PORT_START: u16 = 8000;
-    /// Ending port for dynamic service allocation  
+    /// Ending port for dynamic service allocation
     pub const DEFAULT_SERVICE_PORT_END: u16 = 8999
     /// Gaming port range start
     pub const GAMING_PORT_RANGE_START: u16 = 6100
     /// Gaming port range end
     pub const GAMING_PORT_RANGE_END: u16 = 6199
-    
+
 
 
 }
@@ -86,7 +86,7 @@ impl CanonicalNetworkTimeouts {
     pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60)
     /// Default health check timeout
     pub const DEFAULT_HEALTH_CHECK_TIMEOUT: Duration = Duration::from_secs(5)
-    
+
 
 
 }
@@ -160,7 +160,7 @@ impl CanonicalHealthDefaults {
     pub const MAX_HEALTH_CHECK_FAILURES: u32 = 3
     /// Health check retry delay
     pub const HEALTH_CHECK_RETRY_DELAY: Duration = Duration::from_secs(1)
-    
+
 
 
 }
@@ -216,7 +216,7 @@ impl CanonicalServiceDefaults {
     pub const MAX_SERVICE_RESTARTS: u32 = 5
     /// Service restart delay
     pub const SERVICE_RESTART_DELAY: Duration = Duration::from_secs(5)
-    
+
 
 
 }
@@ -265,7 +265,7 @@ impl CanonicalConfigDefaults {
     pub const DEFAULT_DATA_DIR: &'static str = ".songbird/data"
     /// Default logs directory
     pub const DEFAULT_LOGS_DIR: &'static str = ".songbird/logs"
-    
+
 
 
 }
@@ -288,7 +288,7 @@ impl CanonicalGamingDefaults {
     pub const GAMING_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(30)
     /// Gaming reconnection attempts
     pub const MAX_GAMING_RECONNECT_ATTEMPTS: u32 = 3
-    
+
 
 
 }
@@ -311,7 +311,7 @@ impl CanonicalFederationDefaults {
     pub const FEDERATION_CONSENSUS_TIMEOUT: Duration = Duration::from_secs(10)
     /// Federation election timeout
     pub const FEDERATION_ELECTION_TIMEOUT: Duration = Duration::from_secs(5)
-    
+
 
 
 }
@@ -371,7 +371,7 @@ pub fn get_canonical_port(&self) -> u16  {
         .unwrap_or(default_port,
 /// Get canonical timeout with environment override
 pub fn get_canonical_timeout(timeout_name: &str, default_timeout: Duration) -> Duration { let env_var = format!("SONGBIRD_{
-}_TIMEOUT", timeout_name.to_uppercase();
+}_TIMEOUT", timeout_name.to_uppercase()
     std::env::var(&env_var)
         .ok()
         .and_then(|s| s.parse::<u64>().ok()

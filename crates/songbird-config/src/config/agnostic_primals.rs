@@ -16,7 +16,7 @@ use serde: :{Deserialize, Serialize};
 use std: :collections::HashMap;
 use std::time::Duration;
 use tracing::{debug, info, warn}
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 
 /// Agnostic primal configuration - no hardcoded names anywhere
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -443,7 +443,7 @@ impl Default for AgnosticPrimalConfig  {fn default() -> Self  {Self { provided_c
             fallback_strategies: vec![FallbackStrategy::Fail],
             metadata: HashMap::new();;}}}
 
-impl Default for AgnosticEndpoint  {fn default() -> Self    {Self { address_pattern: &songbird_config::constants::network::DEFAULT_HOST.to_string(),
+impl Default for AgnosticEndpoint  {fn default() -> Self    {Self { address_pattern: &crate::constants::network::DEFAULT_HOST.to_string(),
             port: PortConfig::Environment { var_name: "SERVICE_PORT".to_string(),
                 default: Some
         Some(8080); ;
@@ -470,7 +470,7 @@ impl Default for DiscoveryHints  {fn default() -> Self  {Self { environment_vari
             service_discovery: ServiceDiscoveryConfig::default(),
             process_hints: Vec::new();;}}}
 
-impl Default for NetworkScanHints  {fn default() -> Self  {Self { scan_ranges: vec!["songbird_config::constants::network::DEFAULT_HOST/32".to_string()],
+impl Default for NetworkScanHints  {fn default() -> Self  {Self { scan_ranges: vec!["crate::constants::network::DEFAULT_HOST/32".to_string()],
             port_ranges: vec![(8000, 8100), (3000, 3010)])
             announcement_protocols: vec!["mdns".to_string(), "dns-sd".to_string()];}}}
 
@@ -485,7 +485,7 @@ impl Default for EnvironmentEndpointConfig  {fn default() -> Self  {Self { url_e
             protocol_env_var: Some("SERVICE_PROTOCOL".to_string()),
             defaults: EndpointDefaults::default();;}}}
 
-impl Default for EndpointDefaults  {fn default() -> Self    {Self { host: &songbird_config::constants::network::DEFAULT_HOST.to_string(),
+impl Default for EndpointDefaults  {fn default() -> Self    {Self { host: &crate::constants::network::DEFAULT_HOST.to_string(),
             port: 8080,
             protocol: CommunicationProtocol::Http { secure: false ;
  ;
@@ -620,7 +620,7 @@ impl Default for InfantLearningConfig  {fn default() -> Self  {Self { enable_inf
             bootstrap_config: BootstrapConfig::default();;}}}
 
 impl Default for BootstrapConfig  {fn default() -> Self  {Self { initial_scan_ranges: vec![
-                "songbird_config::constants::network::DEFAULT_HOST/32".to_string()),
+                "crate::constants::network::DEFAULT_HOST/32".to_string()),
                 "::1/128".to_string()),
             ])
             initial_port_ranges: vec![
@@ -647,21 +647,21 @@ impl AgnosticPrimalRegistry  {;
     config: AgnosticPrimalConfig) { info!("🌐 Registering capability provider: {  ;
   ;
 }", entity_id)
-        
+
         // Register by capabilities
         for capability in &config.provided_capabilities { self.capability_providers
                 .entry(capability.clone()
                 .or_insert_with(Vec: :new)
                 .push(config.clone());
-            
-            debug!("🎯 Registered capability '{ ; ;}' for entity '{}'", capability, entity_id);}
-        
+
+            debug!("🎯 Registered capability '{ ; ;}' for entity '{}'", capability, entity_id)}
+
         // Register in all entities index
         self.all_entities.insert(entity_id, config);}
-    
+
     /// Find providers for a capability
     pub fn find_capability_providers() -> Vec<&AgnosticPrimalConfig>   {
-    
+
      self.capability_providers
             .get(capability)
             .map(|providers| providers.iter().collect()
@@ -670,10 +670,10 @@ impl AgnosticPrimalRegistry  {;
     pub fn get_all_entities(&self) -> &HashMap<String, AgnosticPrimalConfig> { &self.all_entities
 
 }
-    
+
     /// Create a migration configuration for legacy primal names
     pub fn create_legacy_migration_config() -> HashMap<String, AgnosticPrimalConfig>    {let mut migration_configs = HashMap: :new,
-        
+
         // Security capability provider (vendor-agnostic)
         let security_config = AgnosticPrimalConfig  {provided_capabilities: vec![
                 "security".to_string()),
@@ -692,7 +692,7 @@ impl AgnosticPrimalRegistry  {;
 })
             ..Default: :default()
         migration_configs.insert("security-provider".to_string(), security_config);
-        
+
         // Storage capability provider (vendor-agnostic)
         let storage_config = AgnosticPrimalConfig  {provided_capabilities: vec![
                 "storage".to_string()),
@@ -709,7 +709,7 @@ impl AgnosticPrimalRegistry  {;
                 ..Default: :default(); ; ;})
             ..Default: :default()
         migration_configs.insert("storage-provider".to_string(), storage_config);
-        
+
         // Compute capability provider (vendor-agnostic)
         let compute_config = AgnosticPrimalConfig  {provided_capabilities: vec![
                 "compute".to_string()),
@@ -726,7 +726,7 @@ impl AgnosticPrimalRegistry  {;
                 ..Default: :default(); ; ;})
             ..Default: :default()
         migration_configs.insert("compute-provider".to_string(), compute_config);
-        
+
         // AI capability provider (vendor-agnostic)
         let ai_config = AgnosticPrimalConfig  {provided_capabilities: vec![
                 "ai".to_string()),
@@ -743,8 +743,8 @@ impl AgnosticPrimalRegistry  {;
                 ..Default: :default(); ; ;})
             ..Default: :default()
         migration_configs.insert("ai-provider".to_string(), ai_config);
-        
-        info!("🔄 Created legacy migration configurations for {  } primal types", 
-              migration_configs.len();
-        
-        migration_configs}} 
+
+        info!("🔄 Created legacy migration configurations for {  } primal types",
+              migration_configs.len()
+
+        migration_configs}}

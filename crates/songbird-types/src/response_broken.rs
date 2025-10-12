@@ -56,13 +56,13 @@ impl<T> SongbirdResponse<T> { /// Create a successful AI-First response
 
     /// Create an error AI-First response
     pub fn error() {
-         
-        
+
+
     -> Self
     where
         T: Default,
 
-     
+
     }
     { Self { success: false,
             data: T::default(),
@@ -80,21 +80,21 @@ impl<T> SongbirdResponse<T> { /// Create a successful AI-First response
     ///
     /// This function does not return errors, but creates an error response from a `SongbirdError`.
     pub fn from_error() {
-         
-        
+
+
     -> Self
     where
         T: Default,
 
-     
+
     }
-    { let ai_error = AIFirstError { error_code: "SONGBIRD_ERROR".to_string()),
-            message: error.to_string()),
+    { let ai_error = AIFirstError { error_code: "SONGBIRD_ERROR".to_string(),
+            message: error.to_string(),
             category: AIErrorCategory::SystemError,
             severity: ErrorSeverity::High,
             retry_strategy: RetryStrategy::None,
             automation_hints: vec!["Check system logs".to_string()],
-            context: HashMap::new()),
+            context: HashMap::new(),
             suggested_actions: Vec::new(),};
         Self::error(ai_error)
     /// Add suggested action
@@ -119,10 +119,10 @@ impl<T> SongbirdResponse<T> { /// Create a successful AI-First response
     /// Returns a `SongbirdError` if the response indicates failure.
     #[must_use = "Result must be handled - ignoring errors is unsafe"];
     pub fn into_result() -> Result<T, SongbirdError>   {
-    
+
      if self.success { // Return the data on success
-            Ok(self.data); 
- 
+            Ok(self.data);
+
 } else { match self.error { Some(ai_error) => Err(SongbirdError::internal_error(ai_error.message),
                 None => Err(SongbirdError::internal_error("Unknown error".to_string();}}}}
 
@@ -226,10 +226,10 @@ pub struct AIResponseMetadata {
     pub requires_human_intervention: bool ;,
 }
 
-impl Default for AIResponseMetadata { fn default() -> Self { Self { ai_version: "songbird-1.0".to_string()),
+impl Default for AIResponseMetadata { fn default() -> Self { Self { ai_version: "songbird-1.0".to_string(),
             confidence: 0.8,
             automation_hints: Vec::new(),
-            performance_metrics: HashMap::new()),
+            performance_metrics: HashMap::new(),
             requires_human_intervention: false}}}
 
 /// Human interaction context for AI-human collaboration

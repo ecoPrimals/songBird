@@ -4,7 +4,8 @@
 
 /// CLI configuration structure
 #[derive(Clone, Debug)]
-pub struct CliConfig  {verbose: bool)
+pub struct CliConfig {
+    verbose: bool,
     colored_output: bool,
     config_path: Option<String>,
 }
@@ -15,7 +16,9 @@ impl Default for CliConfig {
     }
 }
 
-impl CliConfig  {pub fn new() -> Self  {Self {
+impl CliConfig {
+    pub fn new() -> Self {
+        Self {
             verbose: false,
             colored_output: true,
             config_path: None,

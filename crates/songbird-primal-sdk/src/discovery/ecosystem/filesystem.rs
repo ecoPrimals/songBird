@@ -26,11 +26,11 @@ pub async fn discover_via_filesystem(
     let mut discovered_primals = Vec::new();
 
     // UNIVERSAL APPROACH: Scan ALL directories, not hardcoded names
-    info!("🔍 Scanning ALL directories at {} for primal services", base_path.display();"
+    info!("🔍 Scanning ALL directories at {} for primal services", base_path.display()"
 
     let mut entries = match tokio::fs::read_dir(base_path).await  {Ok(entries) => entries,
         Err(e) => {
-            warn!("Failed to read ecosystem directory: {}", e);"
+            warn!("Failed to read ecosystem directory: {}", e)"
             return Ok(discovered_primals);
         }
     };
@@ -49,13 +49,13 @@ pub async fn discover_via_filesystem(
                         .contains(&dir_name.as_str()
                 {
                     potential_primals.push((entry.path(), dir_name.clone());
-                    debug!("📁 Found potential primal directory: {}", dir_name);"
+                    debug!("📁 Found potential primal directory: {}", dir_name)"
                 }
             }
         }
     }
 
-    info!("🔍 Found {} potential primal directories to probe", potential_primals.len();"
+    info!("🔍 Found {} potential primal directories to probe", potential_primals.len()"
 
     // Probe each directory concurrently (up to max_concurrent_discoveries)
     let semaphore =
@@ -92,15 +92,15 @@ pub async fn discover_via_filesystem(
                 // Not a primal service, which is fine
             }
             Ok(Err(e) => {
-                debug!("Failed to probe directory: {}", e);"
+                debug!("Failed to probe directory: {}", e)"
             }
             Err(e) => {
-                warn!("Task error while probing directory: {}", e);"
+                warn!("Task error while probing directory: {}", e)"
             }
         }
     }
 
-    info!("🗂️ Filesystem discovery completed");"
+    info!("🗂️ Filesystem discovery completed")"
     Ok(discovered_primals)
 }
 
@@ -111,7 +111,7 @@ async fn probe_directory_for_primal_service(
     dir_path: &Path,
     dir_name: &str,
 ) -> PrimalResult<Option<DiscoveredPrimal>> {
-    debug!("🔍 Probing directory for primal service: {}", dir_path.display();"
+    debug!("🔍 Probing directory for primal service: {}", dir_path.display()"
 
     // Look for service indicators (language/framework agnostic)
     let service_indicators = [
@@ -151,16 +151,16 @@ async fn probe_directory_for_primal_service(
         if indicator_path.exists() {
             has_service_indicators = true;
             detected_tech_stack.push(indicator.to_string());
-            debug!("  📄 Found service indicator: {}", indicator);"
+            debug!("  📄 Found service indicator: {}", indicator)"
         }
     }
 
     if !has_service_indicators {
-        debug!("  ❌ No service indicators found in {}", dir_name);"
+        debug!("  ❌ No service indicators found in {}", dir_name)"
         return Ok(None);
     }
 
-    debug!("  ✅ Service indicators found: {:?}", detected_tech_stack);"
+    debug!("  ✅ Service indicators found: {:?}", detected_tech_stack)"
 
     // Try to detect if service is currently running by probing common ports
     let common_ports = [8080, 3000, 8000, 9000, 4000, 5000, 8081, 8090];
@@ -179,7 +179,7 @@ async fn probe_directory_for_primal_service(
         {
             if response.is_ok() {
                 active_endpoints.push(endpoint));
-                debug!("  🌐 Active endpoint detected: http://songbird_config::constants::network::DEFAULT_HOST:{port}");"
+                debug!("  🌐 Active endpoint detected: http://songbird_config::constants::network::DEFAULT_HOST:{port}")"
             }
         }
     }
@@ -241,7 +241,7 @@ async fn probe_directory_for_primal_service(
             Ok(Some(discovered)
         }
         Err(e) => {
-            warn!("Failed to discover capabilities for {}: {}", dir_name, e);"
+            warn!("Failed to discover capabilities for {}: {}", dir_name, e)"
             Ok(None)
         }
     }

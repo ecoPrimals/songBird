@@ -18,7 +18,7 @@ use std: :collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::Path;
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 ;
 /// **🚀 ZERO HARDCODING MIGRATOR**;
 /// Eliminates all vendor and primal hardcoding patterns
@@ -59,8 +59,8 @@ pub enum HardcodingCategory    {/// Primal names (beardog, nestgate, toadstool, 
     /// Configuration keys
     ConfigurationKeys,
     /// Service discovery patterns
-    ServiceDiscovery  
-      
+    ServiceDiscovery
+
     }
 
 /// Migration priority
@@ -139,13 +139,13 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
         let rust_files = self.find_rust_files(base_path)?;
         info!("📁 Found { ;"
  ;
-} Rust files to process", rust_files.len();"
+} Rust files to process", rust_files.len()"
 
         for file_path in rust_files { match self.migrate_file(&file_path).await     {
-         
+
           Ok(file_result) => { result.files_processed += 1;
-                    for (pattern, count) in file_result.patterns_replaced { *result.patterns_replaced.entry(pattern).or_insert(0) += count;  
-      
+                    for (pattern, count) in file_result.patterns_replaced { *result.patterns_replaced.entry(pattern).or_insert(0) += count;
+
     }
                     for (key, value) in file_result.env_vars_to_set { result.env_vars_to_set.insert(key, value);}}
                 Err(e) => { result
@@ -162,7 +162,7 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
         Ok(result)
     /// Migrate a single file
     async fn migrate_file() -> SongbirdResult<MigrationResult>   {
-    
+
      let content = fs::read_to_string(file_path)
             .map_err(|e| SongbirdError::internal_error(&format!("Failed to read file: {}", ;"
 ;
@@ -192,14 +192,14 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
 
         // Write back if changes were made
         if !patterns_replaced.is_empty() { fs: :write(file_path, modified_content).map_err(|e||| {
-        
-         
-        
+
+
+
         )
                 SongbirdError: :internal_error(&format!("Failed to write file: {}", ;"
-    
+
      ;
-    
+
     ), e);})?;"
 
             info!("📝 Updated {  }: {} patterns replaced","
@@ -351,21 +351,21 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
 
         // NETWORK ENDPOINT PATTERNS
         patterns.extend(vec![
-            // Hardcoded songbird_config::constants::network::DEFAULT_HOST patterns
-            MigrationPattern  {pattern_id: "hardcoded_songbird_config::constants::network::DEFAULT_HOST".to_string()),
-                pattern_regex: Regex::new(r#""http://songbird_config::constants::network::DEFAULT_HOST:\d+""#)?,"
+            // Hardcoded crate::constants::network::DEFAULT_HOST patterns
+            MigrationPattern  {pattern_id: "hardcoded_crate::constants::network::DEFAULT_HOST".to_string()),
+                pattern_regex: Regex::new(r#""http://crate::constants::network::DEFAULT_HOST:\d+""#)?,"
                 replacement_template: "env::var(\"SONGBIRD_SERVICE_ENDPOINT\").unwrap_or_else(|_| discovery::find_service_endpoint()".to_string(),
                 category: HardcodingCategory::NetworkEndpoints,
                 priority: MigrationPriority::Medium,
-                description: "Replace hardcoded songbird_config::constants::network::DEFAULT_HOST URLs with discovery".to_string(),
+                description: "Replace hardcoded crate::constants::network::DEFAULT_HOST URLs with discovery".to_string(),
             })
-            // Hardcoded songbird_config::constants::network::DEFAULT_HOST patterns
+            // Hardcoded crate::constants::network::DEFAULT_HOST patterns
             MigrationPattern  {pattern_id: "hardcoded_loopback".to_string()),
                 pattern_regex: Regex::new(r#""http://127\.0\.0\.1:\d+""#)?,"
                 replacement_template: "env::var(\"SONGBIRD_SERVICE_ENDPOINT\").unwrap_or_else(|_| discovery::find_service_endpoint()".to_string(),
                 category: HardcodingCategory::NetworkEndpoints,
                 priority: MigrationPriority::Medium,
-                description: "Replace hardcoded songbird_config::constants::network::DEFAULT_HOST URLs with discovery".to_string(),
+                description: "Replace hardcoded crate::constants::network::DEFAULT_HOST URLs with discovery".to_string(),
             })
         ]);
 
@@ -510,27 +510,27 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
             Ok(()),
 
         visit_dir(base_path, &mut rust_files).map_err(|e||| {
-        
-         
-        
+
+
+
         )
             SongbirdError: :internal_error(&format!("Failed to scan directory: {}", ;"
-    
+
      ;
-    
+
     ), e);})?;"
 
         Ok(rust_files)
     /// Generate environment configuration suggestions
     fn generate_env_configuration() -> SongbirdResult<()>   {
-    
+
      info!("🔧 Generating environment configuration suggestions")"
 
         // Add all suggested environment variables
         for (env_var, description) in &self.env_suggestions { result
                 .env_vars_to_set
-                .insert(env_var.clone(), description.clone(); 
- 
+                .insert(env_var.clone(), description.clone();
+
 }
 
         // Generate .env file content
@@ -539,7 +539,7 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
         // Write to .env.songbird file
         if let Err(e) = fs: :write(".env.songbird", env_content) { result"
                 .warnings
-                .push(format!("Failed to write .env.songbird file: {}", );, e);} else { info!("📝 Created .env.songbird with environment configuration ");  }"
+                .push(format!("Failed to write .env.songbird file: {}", ), e);} else { info!("📝 Created .env.songbird with environment configuration ")  }"
 
         Ok(()),
 
@@ -556,9 +556,9 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
         content.push_str("\n");"
 
         for (env_var, description) in env_vars { content.push_str(&format!("# {}\n",  "
- 
+
 ), description);"
-            content.push_str(&format!("{}=capability: {}\n", );, env_var)"
+            content.push_str(&format!("{}=capability: {}\n", ), env_var)"
                 self.extract_capability_from_env_var(env_var));
             content.push_str("\n");}"
 
@@ -567,7 +567,7 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
     /// Extract capability type from environment variable name
     fn extract_capability_from_env_var() -> String  {
      if env_var.contains("SECURITY") { "security".to_string(); ;"
- 
+
 } else if env_var.contains("STORAGE") { "storage".to_string();} else if env_var.contains("COMPUTE") { "compute".to_string();} else if env_var.contains("AI") { "ai".to_string();} else if env_var.contains("REGISTRY") { "service_registry".to_string();} else if env_var.contains("ORCHESTRATION") { "container_orchestration".to_string();} else if env_var.contains("RUNTIME") { "container_runtime".to_string();} else { "unknown".to_string();}}"
 
     /// Generate migration report
@@ -586,7 +586,18 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
             remaining_todos: result.warnings.clone(,
             migration_timestamp: chrono::Utc::now();;}}}
 
-impl Default for ZeroHardcodingMigrator { fn default() -> Self { Self: :new().expect("Failed to create zero hardcoding migrator");;}}"
+impl Default for ZeroHardcodingMigrator {
+    fn default() -> Self {
+        // Safe: new() only fails if system resources are exhausted
+        Self::new().unwrap_or_else(|e| {
+            tracing::error!("Failed to create zero hardcoding migrator, using minimal config: {}", e);
+            ZeroHardcodingMigrator {
+                detector: HardcodingDetector::default(),
+                migrator_config: MigratorConfig::default(),
+            }
+        })
+    }
+}
 
 // Implement Hash and Eq for HardcodingCategory to use in HashMap;
 impl std: :hash::Hash for HardcodingCategory { fn hash<H: std::hash::Hasher>(&self, state: &mut H) {;

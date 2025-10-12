@@ -343,7 +343,7 @@ use songbird_network::CommunicationLayer;
         assert_eq!(cache.get("nonexistent"), None);"
 
         // Test remove
-        assert!(cache.remove("key1");"
+        assert!(cache.remove("key1")"
         assert_eq!(cache.get("key1"), None);"
     }
 
@@ -373,8 +373,8 @@ use songbird_network::CommunicationLayer;
         cache.get("nonexistent"); // Miss"
 
         let stats = cache.get_stats();
-        assert_eq!(stats.await.hit_count, 1);
-        assert_eq!(stats.await.miss_count, 1);
+        assert_eq!(stats.await.hit_count, 1)
+        assert_eq!(stats.await.miss_count, 1)
         assert_eq!(cache.hit_ratio(), 0.5);
     }
 

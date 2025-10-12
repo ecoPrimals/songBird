@@ -130,7 +130,7 @@ fn get_ai_capabilities() -> Vec<PrimalCapability> {
     ]
 }
 
-/// Get orchestration capabilities (universal - not biomeOS-specific,  
+/// Get orchestration capabilities (universal - not biomeOS-specific,
 fn get_orchestration_capabilities() -> Vec<PrimalCapability> {
     vec![
         PrimalCapability::Orchestration {

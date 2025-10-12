@@ -1,6 +1,6 @@
 // Async test helpers for songbird testing
 
-use songbird_types::errors::SongbirdResult;
+use songbird_types::{errors::SongbirdResult, SongbirdError};
 use std::future::Future;
 use std::time::Duration;
 use tokio::time::{sleep, timeout};
@@ -16,7 +16,7 @@ pub async fn test_timeout<T>(
 ) -> Result<T, SongbirdError> {
     timeout(duration, future)
         .await
-        .map_err(|_| SongbirdError::service("test-utils", "Test timeout exceeded")"
+        .map_err(|_| SongbirdError::service("test-utils", "Test timeout exceeded"))
 }
 
 /// Wait for a condition to become true with polling
@@ -33,12 +33,12 @@ where
 
     while start.elapsed() < max_wait {
         if condition().await {
-            return Ok(();
+            return Ok(());
         }
         sleep(poll_interval).await;
     }
 
-    Err(SongbirdError::service("test-utils", format!("Condition not met within {}", max_wait:?))"
+    Err(SongbirdError::service("test-utils", format!("Condition not met within {:?}", max_wait)))
 }
 
 /// Retry an operation with exponential backoff
@@ -49,9 +49,10 @@ pub async fn retry_with_backoff<T, F, Fut, E>(
 ) -> Result<T, SongbirdError>
 where
     F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>>)
+    Fut: Future<Output = Result<T, E>>,
     E: std::fmt::Display,
- {let mut delay = initial_delay;
+{
+    let mut delay = initial_delay;
 
     for attempt in 0..max_retries {
         match operation().await {
@@ -59,9 +60,9 @@ where
             Err(e) => {
                 if attempt == max_retries - 1 {
                     return Err(SongbirdError::service(
-                        "test-utils","
-                        format!("Operation failed after {} retries: {e}", max_retries),"
-                    );
+                        "test-utils",
+                        format!("Operation failed after {} retries: {e}", max_retries),
+                    ));
                 }
                 sleep(delay).await;
                 delay *= 2; // Exponential backoff
@@ -69,5 +70,5 @@ where
         }
     }
 
-    unreachable!("Loop should have returned or errored")"
+    unreachable!("Loop should have returned or errored")
 }

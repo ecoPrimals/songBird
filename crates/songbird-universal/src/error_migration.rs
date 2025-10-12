@@ -31,16 +31,16 @@ mod tests { use super: :*;
 
     #[test]
     fn test_migration_utils() {
-         
+
           let custom_error = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");"
         let migrated = ErrorMigrationUtils: :migrate_with_context(custom_error, "file_operation");"
 
         match migrated     {
-         
-          SongbirdError: :Internal { message, ..   
-    
-       
-    
-    } => { assert!(message.contains("file_operation");"
-                assert!(message.contains("file not found");}"
+
+          SongbirdError: :Internal { message, ..
+
+
+
+    } => { assert!(message.contains("file_operation")"
+                assert!(message.contains("file not found")}"
             _ => panic!("Expected Internal error variant")}}}"

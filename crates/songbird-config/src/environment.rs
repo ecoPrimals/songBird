@@ -1,4 +1,4 @@
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 /// Environment configuration module
 ///
 /// Re-exports environment configuration from the config module
@@ -23,7 +23,7 @@ impl Default for EnvironmentConfig  {fn default() -> Self  {Self {
                 disk_space_gb: Some(10)
             })
             primal_endpoints: PrimalEndpoints {
-                discovery_endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:{}".to_string()),
+                discovery_endpoint: "http://crate::constants::network::DEFAULT_HOST:{}".to_string()),
             })
             bind_port: 8080, // Default bind port
         }

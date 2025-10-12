@@ -35,7 +35,7 @@ impl EventStreaming  {/// Create a new event streaming service
         let event = ServiceEvent::ServiceRegistered(Box::new(service_info);
 
         if let Err(e) = self.event_sender.send(event) {
-            debug!("No active listeners for service registered event: {}", e);"
+            debug!("No active listeners for service registered event: {}", e)"
         }
     }
 
@@ -47,7 +47,7 @@ impl EventStreaming  {/// Create a new event streaming service
             debug!(
                 "No active listeners for service unregistration event: {}","
                 e
-            );
+            )
         }
     }
 
@@ -62,7 +62,7 @@ impl EventStreaming  {/// Create a new event streaming service
         };
 
         if let Err(e) = self.event_sender.send(event) {
-            debug!("No active listeners for service health change event: {}", e);"
+            debug!("No active listeners for service health change event: {}", e)"
         }
     }
 
@@ -100,7 +100,7 @@ pub mod utils {
     pub fn wait_for_service_event(bool)
         timeout_duration: Duration,
     ) -> SongbirdResult<Option<ServiceEvent>) ->  {
-        debug!("🎼 Event streaming: Waiting for specific service event");"
+        debug!("🎼 Event streaming: Waiting for specific service event")"
 
         let receiver = event_streaming.event_sender.subscribe();
         let stream = tokio_stream::wrappers::BroadcastStream::new(receiver);
@@ -115,7 +115,7 @@ pub mod utils {
                         }
                     }
                     Err(e) => {
-                        debug!("⚠️ Event stream error while waiting: {}", e);"
+                        debug!("⚠️ Event stream error while waiting: {}", e)"
                     }
                 }
             }
@@ -124,7 +124,7 @@ pub mod utils {
 
         match timeout(timeout_duration, wait_future).await  {Ok(result) => result.map(songbird_errors::success),
             Err(_) => {
-                debug!("⏰ Event wait timeout exceeded");"
+                debug!("⏰ Event wait timeout exceeded")"
                 Ok(songbird_errors::success(None)
             }
         }
@@ -149,7 +149,7 @@ pub mod utils {
                         collected_events.push(event));
                     }
                     Err(e) => {
-                        debug!("⚠️ Event stream error during collection: {}", e);"
+                        debug!("⚠️ Event stream error during collection: {}", e)"
                     }
                 }
             }
@@ -157,7 +157,7 @@ pub mod utils {
 
         let _ = timeout(duration, collect_future).await;
 
-        debug!("📊 Collected {} events", collected_events.len();"
+        debug!("📊 Collected {} events", collected_events.len()"
         Ok(songbird_errors::success(collected_events)
     }
 }
@@ -168,13 +168,22 @@ mod tests  {use std::collections::HashMap;
 use songbird_config;
 
     fn create_test_service(name: &str) -> ServiceInfo {
+        use songbird_config::config::constants;
+        
+        let test_host = std::env::var("TEST_EVENT_HOST")
+            .unwrap_or_else(|_| constants::network::DEFAULT_HOST.to_string());
+        let test_port = std::env::var("TEST_EVENT_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080);
+        
         ServiceInfo {
             name: name.to_string(),
             primal_type: Some("test".to_string(),"
-            endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:{}".to_string()),
+            endpoint: format!("http://{}:{}", test_host, test_port),
             capabilities: vec![],
             health: songbird_universal::UniversalHealthStatus::Healthy,
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
             primal_id: None,
             version: None,
             last_seen: Some(std::time::SystemTime::now(),
@@ -288,7 +297,7 @@ use songbird_config;
                 panic!(
                     "Test assertion should not fail - {}: {:?}","
                     "Test operation should succeed", e"
-                );
+                )
             })
             .data;
         assert!(events.len() >= 2); // Should have collected at least the events we sent

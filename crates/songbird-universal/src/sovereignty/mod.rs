@@ -7,20 +7,15 @@
 //! into focused, maintainable modules under 500 lines each.
 
 pub mod adapter;
-pub mod router;
 pub mod federation;
 pub mod network_optimizer;
+pub mod router;
 pub mod types;
 
 // Re-export main interfaces
 pub use adapter::SovereigntyAwareAdapter;
 pub use types::{
-    SovereigntyAdapterConfig,
+    ExpectedNetworkEffect, FederationCapability, PathSegment, PathSovereigntyAssessment,
+    RoutingDecisionMetadata, RoutingPath, SovereigntyAdapterConfig,
     SovereigntyAwareRoutingDecision,
-    RoutingPath,
-    PathSegment,
-    PathSovereigntyAssessment,
-    FederationCapability,
-    ExpectedNetworkEffect,
-    RoutingDecisionMetadata,
-}; 
+};

@@ -29,10 +29,10 @@ pub enum CliError {
     UserCancelled,
 
     #[error("Serialization error")]
-    Serialization(#[from] serde_json::Error),
+    Serialization(#[from] serde_json::Error,
 
     #[error("IO error")]
-    Io(#[from] std::io::Error),
+    Io(#[from] std::io::Error,
 }
 
 // Use canonical result type throughout CLI
@@ -44,7 +44,7 @@ impl From<CliError> for SongbirdError {
             CliError::Command { command, message } => {
                 SongbirdError::Service {
                     service: "cli".to_string(),
-                    message: format!("{}: {}", command, message),
+                    message: format!("{}: {}", command, message,
                     suggested_alternatives: vec!["--help".to_string()],
                     recovery_actions: vec!["Check command syntax".to_string()],
                 }
@@ -60,7 +60,7 @@ impl From<CliError> for SongbirdError {
             }
             CliError::Network { message, interface, suggestion } => {
                 SongbirdError::Network {
-                    message: format!("CLI network error: {}", message),
+                    message: format!("CLI network error: {}", message,
                     operation: interface,
                     suggestion,
                 }
@@ -72,15 +72,15 @@ impl From<CliError> for SongbirdError {
                 expected_format: None,
                 suggestion: Some("Try again or use --force to skip confirmations".to_string()),
             },
-            CliError::Serialization(e) => SongbirdError::Serialization {
+            CliError::Serialization(e, => SongbirdError::Serialization {
                 format: "json".to_string(),
                 message: e.to_string(),
                 field: None,
                 suggestion: Some("Check data format and try again".to_string()),
             },
-            CliError::Io(e) => SongbirdError::Configuration {
+            CliError::Io(e, => SongbirdError::Configuration {
                 field: "file_system".to_string(),
-                message: format!("IO error: {}", e),
+                message: format!("IO error: {}", e,
                 current_value: None,
                 expected_format: None,
                 suggestion: Some("Check file permissions and paths".to_string()),

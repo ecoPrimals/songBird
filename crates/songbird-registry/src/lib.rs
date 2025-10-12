@@ -1,98 +1,54 @@
-//! Dynamic Service Registry for Songbird Universal Orchestrator
+//! Songbird Registry
 //!
-//! This crate provides a comprehensive service registry system with health monitoring)
-//! plugin management, and dynamic service discovery capabilities.
+//! Plugin registry and management system for Songbird.
 //!
-//! ## Features
+//! # Features
+//! - Plugin registration and discovery
+//! - Health monitoring
+//! - Auto-scaling
+//! - Event streaming
 //!
-//! - **Dynamic Service Registration**: Register and discover services dynamically
-//! - **Health Monitoring**: Continuous health checks and monitoring
-//! - **Plugin Management**: Dynamic plugin loading and management
-//! - **Service Metadata**: Rich metadata support for services
-//! - **Performance Metrics**: Built-in performance tracking
-//! - **Event System**: Comprehensive event handling for service lifecycle
-//!
-//! ## Architecture
-//!
-//! The registry uses a multi-layered architecture:
-//!
-//! 1. **Service Layer**: Core service registration and discovery
-//! 2. **Health Layer**: Health monitoring and alerting
-//! 3. **Plugin Layer**: Dynamic plugin loading and management
-//! 4. **Event Layer**: Event handling and notification
-//!
-//! ## Usage
-//!
-//! ```rust
-//! use songbird_registry::service::ServiceRegistry;
+//! # Example
+//! ```no_run
+//! use songbird_registry::{Registry, Plugin, PluginRegistry};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let registry = ServiceRegistry::new().await?;
+//!     let mut registry = Registry::new();
 //!     
-//!     // Register a service
-//!     registry.register_service("my-service", &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).await?;"
+//!     let plugin = Plugin::new("my-plugin", "My Plugin", "1.0.0");
+//!     registry.register(plugin).await?;
 //!     
-//!     // Discover services
-//!     let services = registry.discover_services().await?;
+//!     let plugins = registry.list().await;
+//!     println!("Registered {} plugins", plugins.len());
 //!     
-//!     Ok(()),
+//!     Ok(())
 //! }
 //! ```
-//!
-//! ## Service Management
-//!
-//! The registry provides comprehensive service management:
-//!
-//! - Service registration and deregistration
-//! - Health check management
-//! - Service metadata management
-//! - Performance monitoring
-//! - Event handling
-//!
-//! ## Health Monitoring
-//!
-//! Built-in health monitoring provides:
-//!
-//! - Continuous health checks
-//! - Health status tracking
-//! - Alert thresholds
-//! - Health event notifications
-//!
-//! ## Plugin System
-//!
-//! The dynamic plugin system supports:
-//!
-//! - Runtime plugin loading
-//! - Plugin dependency management
-//! - Plugin hooks and events
-//! - Plugin metadata and requirements
-//!
-//! ## Error Handling
-//!
-//! All registry operations return `Result<T, SongbirdError>` with detailed
-//! error information including service registration failures, health check
-//! errors, and plugin loading issues.
 
-use songbird_config;
-#![allow(dead_code)]
+// Core modules
+pub mod registry;
+pub mod types;
 
-pub mod health;
-pub mod plugin;
-pub mod scaling;
-pub mod service;
+// Health and scaling modules (new clean implementations)
+pub mod health_new;
+pub mod scaling_new;
 
-pub use health::*;
-pub use plugin::*;
-// Use specific imports to avoid ambiguous re-exports
-pub use scaling::{
-    AutoScalingEngine, AutoScalingPolicy, ScalingDecision, ScalingDirection, ScalingState,
-    ScalingStrategy, ScalingThreshold,
-};
-pub use service::{
-    DynUniversalService, ServiceEntry, ServiceEvent, ServiceHandle, ServiceHealthStatus,
-    ServiceLifecycleState, ServiceMetrics, ServiceRegistry,
+// Re-export commonly used types
+pub use types::{
+    Capability, CapabilityType, EventType, HealthCheckConfig, HealthCheckType, HealthStatus,
+    Plugin, PluginId, PluginMetadata, RegistryEvent,
 };
 
-// Re-export traits from discovery for convenience
-pub use songbird_discovery::traits::PluginRegistry;
+pub use registry::{Composable, PluginRegistry, Query, Registry};
+
+// Note: Old modules (health, scaling, plugin, service) are temporarily disabled
+// during the rebuild. They will be replaced with modern implementations.
+
+// Note: Service module functionality integrated into main registry module
+// pub mod service;
+// pub use service::{ServiceInstance, ServiceMetrics};
+
+// Production modules remain for reference
+// pub mod production;
+// pub mod persistence;

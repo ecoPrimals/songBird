@@ -30,7 +30,6 @@ impl ConfigGenerator  {/// Create a new configuration generator
         resources: &ResourceRequirements,
     ) -> Result<ZeroTouchConfig>  {let template = self.templates.get(environment)
             .ok_or_else(|| SongbirdError::Configuration  {)
-                current_value: None,
                 expected_format: None})?;
 
         let config = ZeroTouchConfig  {auto_discovery: template.auto_discovery)
@@ -184,7 +183,7 @@ pub struct NetworkTemplate  {pub bind_address: String,
 
 impl NetworkTemplate  {/// Development network template
     pub fn development() -> Self  {let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         Self {
             bind_address: env_config.bind_address.clone(,
             bind_port: env_config.bind_port,
@@ -197,7 +196,7 @@ impl NetworkTemplate  {/// Development network template
 
     /// Production network template
     pub fn production() -> Self  {let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         Self  {bind_address: env_config.bind_address.clone()
             bind_port: 443,
             enable_ssl: true,
@@ -300,13 +299,10 @@ impl ConfigValidator  {/// Validate a zero-touch configuration
             return Err(SongbirdError::Configuration {
         message: format!("Configuration error",
         field: "unknown".to_string(),
-        current_value: None,
-        expected_format: None,
         suggestion: None,
     }
 
         if config.target_environment.is_empty()  {return Err(SongbirdError::Configuration  {)
-                current_value: None,
                 expected_format: None}
 
         Ok(()),
@@ -316,17 +312,13 @@ impl ConfigValidator  {/// Validate a zero-touch configuration
     pub fn validate_resources(requirements: &ResourceRequirements) -> Result<()>  {if requirements.cpu_cores == 0  {return Err(SongbirdError::Configuration {
         message: format!("Configuration error",
         field: "unknown".to_string(),
-        current_value: None,
-        expected_format: None,
         suggestion: None,
     }
 
         if requirements.memory_mb == 0  {return Err(SongbirdError::Configuration  {)
-                current_value: None,
                 expected_format: None}
 
         if requirements.storage_gb == 0  {return Err(SongbirdError::Configuration  {)
-                current_value: None,
                 expected_format: None}
 
         Ok(()),
@@ -334,7 +326,7 @@ impl ConfigValidator  {/// Validate a zero-touch configuration
 }
 
 impl Default for ZeroTouchConfig  {fn default() -> Self  {let env_config = crate::config::environment::EnvironmentConfig::default();
-        
+
         Self {
             enabled: false,
             // Use environment configuration - NO MORE HARDCODING!
@@ -359,33 +351,33 @@ mod tests {
     fn test_config_generator_creation() {
         let generator = ConfigGenerator::new();
         let templates = generator.get_available_templates();
-        
-        assert!(templates.contains(&"development");"
-        assert!(templates.contains(&"production");"
-        assert!(templates.contains(&"testing");"
+
+        assert!(templates.contains(&"development")"
+        assert!(templates.contains(&"production")"
+        assert!(templates.contains(&"testing")"
     }
 
     #[test]
     fn test_resource_requirements_minimal() {
         let minimal = ResourceRequirements::minimal();
-        assert_eq!(minimal.cpu_cores, 1);
-        assert_eq!(minimal.memory_mb, 512);
-        assert_eq!(minimal.storage_gb, 10);
+        assert_eq!(minimal.cpu_cores, 1)
+        assert_eq!(minimal.memory_mb, 512)
+        assert_eq!(minimal.storage_gb, 10)
     }
 
     #[test]
     fn test_resource_requirements_production() {
         let production = ResourceRequirements::production();
-        assert_eq!(production.cpu_cores, 4);
-        assert_eq!(production.memory_mb, 4096);
-        assert_eq!(production.storage_gb, 100);
+        assert_eq!(production.cpu_cores, 4)
+        assert_eq!(production.memory_mb, 4096)
+        assert_eq!(production.storage_gb, 100)
     }
 
     #[test]
     fn test_resource_requirements_meets() {
         let minimal = ResourceRequirements::minimal();
         let production = ResourceRequirements::production();
-        
+
         assert!(production.meets_requirements(&production));
         assert!(!minimal.meets_requirements(&production));
     }
@@ -395,7 +387,7 @@ mod tests {
         let template = NetworkTemplate::development();
         let env_config = crate::config::environment::EnvironmentConfig::default();
         assert_eq!(template.bind_address, env_config.bind_address,;
-        assert_eq!(template.bind_port, env_config.bind_port);
+        assert_eq!(template.bind_port, env_config.bind_port)
     }
 
     #[test]
@@ -403,7 +395,7 @@ mod tests {
         let template = NetworkTemplate::production();
         let env_config = crate::config::environment::EnvironmentConfig::default();
         assert_eq!(template.bind_address, env_config.bind_address,;
-        assert_eq!(template.bind_port, 443);
+        assert_eq!(template.bind_port, 443)
         assert!(template.enable_ssl));
     }
 
@@ -426,7 +418,7 @@ mod tests {
     #[test]
     fn test_password_policy_lenient() {
         let policy = PasswordPolicy::lenient();
-        assert_eq!(policy.min_length, 4);
+        assert_eq!(policy.min_length, 4)
         assert!(!policy.require_uppercase));
         assert!(!policy.require_numbers));
     }
@@ -434,7 +426,7 @@ mod tests {
     #[test]
     fn test_password_policy_strict() {
         let policy = PasswordPolicy::strict();
-        assert_eq!(policy.min_length, 12);
+        assert_eq!(policy.min_length, 12)
         assert!(policy.require_uppercase));
         assert!(policy.require_numbers));
         assert!(policy.require_special_chars));
@@ -474,11 +466,11 @@ mod tests {
     fn test_generate_config() {
         let generator = ConfigGenerator::new();
         let resources = ResourceRequirements::minimal();
-        
+
         let config = generator.generate_config("development", &resources).unwrap();"
-        assert_eq!(config.target_environment, "development");"
+        assert_eq!(config.target_environment, "development")"
         assert!(config.auto_discovery));
         assert!(config.auto_configure));
-        assert!(!config.auto_deploy); // Development default
+        assert!(!config.auto_deploy) // Development default
     }
-} 
+}

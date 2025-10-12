@@ -6,23 +6,27 @@ use clap::Subcommand;
 use crate::errors::{CliError, CliResult};
 
 #[derive(Debug, Clone, Subcommand)]
-pub enum NetworkCommand  {/// Optimize network for gaming performance
-    #[command(about = "⚡ Optimize network settings for gaming")]"
-    Optimize  {/// Enable gaming mode optimization
+pub enum NetworkCommand {
+    /// Optimize network for gaming performance
+    #[command(about = "⚡ Optimize network settings for gaming")]
+    Optimize {
+        /// Enable gaming mode optimization
         #[arg(long)]
         game_mode: bool,
         
         /// Target latency in milliseconds
-        #[arg(long, default_value = "50")]"
+        #[arg(long, default_value = "50")]
         target_latency: u32,
+        
         /// Gaming protocol to optimize for
         #[arg(long, value_enum)]
         protocol: Option<GamingProtocol>,
-    })
+    },
 
     /// Test gaming network performance
-    #[command(about = "🧪 Test gaming network performance and latency")]"
-    Test  {/// Test gaming-specific protocols
+    #[command(about = "🧪 Test gaming network performance and latency")]
+    Test {
+        /// Test gaming-specific protocols
         #[arg(long)]
         gaming_protocols: bool,
         
@@ -31,13 +35,14 @@ pub enum NetworkCommand  {/// Optimize network for gaming performance
         server: Option<String>,
         
         /// Number of test iterations
-        #[arg(long, default_value = "10")]"
+        #[arg(long, default_value = "10")]
         iterations: u32,
-    })
+    },
 
     /// Configure gaming network ports
-    #[command(about = "🔌 Configure gaming network ports and forwarding")]"
-    Ports  {/// Enable gaming port configuration
+    #[command(about = "🔌 Configure gaming network ports and forwarding")]
+    Ports {
+        /// Enable gaming port configuration
         #[arg(long)]
         gaming: bool,
         
@@ -48,12 +53,13 @@ pub enum NetworkCommand  {/// Optimize network for gaming performance
         /// Specific port range to configure
         #[arg(long)]
         port_range: Option<String>,
-    })
+    },
 
     /// Monitor gaming network metrics
-    #[command(about = "📊 Monitor real-time gaming network metrics")]"
-    Monitor  {/// Update interval in seconds
-        #[arg(long, default_value = "1")]"
+    #[command(about = "📊 Monitor real-time gaming network metrics")]
+    Monitor {
+        /// Update interval in seconds
+        #[arg(long, default_value = "1")]
         interval: u64,
         
         /// Focus on specific gaming protocol
@@ -63,22 +69,24 @@ pub enum NetworkCommand  {/// Optimize network for gaming performance
         /// Enable continuous monitoring
         #[arg(long)]
         continuous: bool,
-    })
+    },
 
     /// Diagnose gaming network issues
-    #[command(about = "🔍 Diagnose gaming network connectivity issues")]"
-    Diagnose  {/// Run comprehensive diagnostics
+    #[command(about = "🔍 Diagnose gaming network connectivity issues")]
+    Diagnose {
+        /// Run comprehensive diagnostics
         #[arg(long)]
         comprehensive: bool,
         
         /// Export diagnostic report
         #[arg(long)]
         export: Option<String>,
-    })
+    },
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]
-pub enum GamingProtocol  {Udp)
+pub enum GamingProtocol {
+    Udp,
     Tcp,
     Ipx,
     DirectPlay,
@@ -108,106 +116,107 @@ pub async fn handle_network_command(command: NetworkCommand) -> CliResult<()> {
 }
 
 async fn optimize_gaming_network(game_mode: bool, target_latency: u32, protocol: Option<GamingProtocol>) -> CliResult<()> {
-    println!("🎮 Optimizing gaming network...");"
-    
+    println!("🎮 Optimizing gaming network...");
+
     if game_mode {
-        println!("⚡ Gaming mode enabled");"
+        println!("⚡ Gaming mode enabled");
     }
-    
-    println!("🎯 Target latency: {}ms", target_latency);"
-    
+
+    println!("🎯 Target latency: {}ms", target_latency);
+
     if let Some(protocol) = protocol {
-        println!("🌐 Optimizing for protocol: {:?}", protocol);"
+        println!("🌐 Optimizing for protocol: {:?}", protocol);
     }
-    
+
     // Using canonical network federation for optimization
-    println!("✅ Gaming network optimization complete");"
-    Ok(()),
+    println!("✅ Gaming network optimization complete");
+    Ok(())
 }
 
 async fn test_gaming_network(gaming_protocols: bool, server: Option<String>, iterations: u32) -> CliResult<()> {
-    println!("🧪 Testing gaming network performance...");"
-    
+    println!("🧪 Testing gaming network performance...");
+
     if gaming_protocols {
-        println!("🎮 Testing gaming-specific protocols");"
+        println!("🎮 Testing gaming-specific protocols");
     }
-    
+
     if let Some(server) = server {
-        println!("🌐 Testing against server: {}", server);"
+        println!("🌐 Testing against server: {}", server);
     }
-    
-    println!("🔄 Running {} test iterations", iterations);"
-    
+
+    println!("🔄 Running {} test iterations", iterations);
+
     // Network testing implementation using canonical federation
     for i in 1..=iterations {
-        println!("📊 Test {}/{}: Latency: {}ms, Jitter: {}ms", i, iterations, "
-                fastrand::u32(10..100), fastrand::u32(1..10);
+        let latency = fastrand::u32(10..100);
+        let jitter = fastrand::u32(1..10);
+        println!("📊 Test {}/{}: Latency: {}ms, Jitter: {}ms", i, iterations, latency, jitter);
     }
-    
-    println!("✅ Gaming network test complete");"
-    Ok(()),
+
+    println!("✅ Gaming network test complete");
+    Ok(())
 }
 
 async fn configure_gaming_ports(gaming: bool, auto_configure: bool, port_range: Option<String>) -> CliResult<()> {
-    println!("🔌 Configuring gaming network ports...");"
-    
+    println!("🔌 Configuring gaming network ports...");
+
     if gaming {
-        println!("🎮 Gaming port configuration enabled");"
+        println!("🎮 Gaming port configuration enabled");
     }
-    
+
     if auto_configure {
-        println!("🤖 Auto-configuring port forwarding");"
+        println!("🤖 Auto-configuring port forwarding");
     }
-    
+
     if let Some(range) = port_range {
-        println!("🔢 Configuring port range: {}", range);"
+        println!("🔢 Configuring port range: {}", range);
     }
-    
+
     // Port management using canonical network federation
-    println!("✅ Gaming port configuration complete");"
-    Ok(()),
+    println!("✅ Gaming port configuration complete");
+    Ok(())
 }
 
 async fn monitor_gaming_network(interval: u64, protocol: Option<GamingProtocol>, continuous: bool) -> CliResult<()> {
-    println!("📊 Starting gaming network monitoring...");"
-    
+    println!("📊 Starting gaming network monitoring...");
+
     if let Some(protocol) = protocol {
-        println!("🌐 Monitoring protocol: {:?}", protocol);"
+        println!("🌐 Monitoring protocol: {:?}", protocol);
     }
-    
+
     if continuous {
-        println!("🔄 Continuous monitoring enabled (Ctrl+C to stop)");"
+        println!("🔄 Continuous monitoring enabled (Ctrl+C to stop)");
         // Continuous monitoring using canonical observability
-        tokio::time::sleep(tokio::time::Duration::from_secs(5).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     } else {
-        println!("📈 Current gaming network metrics:");"
-        println!("  Latency: {}ms", fastrand::u32(10..50);"
-        println!("  Jitter: {}ms", fastrand::u32(1..5);"
-        println!("  Packet Loss: {}%", fastrand::f32() * 0.1);"
-        println!("  Bandwidth: {}Mbps", fastrand::u32(50..1000);"
+        println!("📈 Current gaming network metrics:");
+        println!("  Latency: {}ms", fastrand::u32(10..50));
+        println!("  Jitter: {}ms", fastrand::u32(1..5));
+        println!("  Packet Loss: {:.2}%", fastrand::f32() * 0.1);
+        println!("  Bandwidth: {}Mbps", fastrand::u32(50..1000));
     }
-    
-    println!("✅ Gaming network monitoring complete");"
-    Ok(()),
+
+    println!("✅ Gaming network monitoring complete");
+    Ok(())
 }
 
 async fn diagnose_gaming_network(comprehensive: bool, export: Option<String>) -> CliResult<()> {
-    println!("🔍 Diagnosing gaming network...");"
-    
+    println!("🔍 Diagnosing gaming network...");
+
     if comprehensive {
-        println!("🔬 Running comprehensive diagnostics");"
+        println!("🔬 Running comprehensive diagnostics");
     }
-    
+
     // Network diagnostics using canonical network federation
-    println!("✅ Network connectivity: OK");"
-    println!("✅ Gaming ports: Open");"
-    println!("✅ Protocol support: Available");"
-    println!("⚠️  High latency detected (>100ms)");"
-    
+    println!("✅ Network connectivity: OK");
+    println!("✅ Gaming ports: Open");
+    println!("✅ Protocol support: Available");
+    println!("⚠️  High latency detected (>100ms)");
+
     if let Some(export_path) = export {
-        println!("📄 Exporting diagnostic report to: {}", export_path);"
+        println!("📄 Exporting diagnostic report to: {}", export_path);
     }
-    
-    println!("✅ Gaming network diagnosis complete");"
-    Ok(()),
-} 
+
+    println!("✅ Gaming network diagnosis complete");
+    Ok(())
+}

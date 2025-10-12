@@ -14,7 +14,7 @@ use super::types::{DiscoveredPrimal, DiscoveryMethod};
 use crate::discovery::network_scan::probing::probe_primal_endpoint;
 
 /// Query universal primal services using dynamic capability-based discovery
-pub async fn query_universal_primal_services(&self) -> SongbirdResult<()> {debug!("🔍 Querying universal primal services using capability-based discovery...");"
+pub async fn query_universal_primal_services(&self) -> SongbirdResult<()> {debug!("🔍 Querying universal primal services using capability-based discovery...")"
     let mut discovered_primals = Vec::new();
     // Get dynamically configured service endpoints
     let configured_services = get_configured_service_endpoints();
@@ -22,7 +22,7 @@ pub async fn query_universal_primal_services(&self) -> SongbirdResult<()> {debug
         // Test connectivity first
         if let Ok(connectivity_response) = probe_primal_endpoint(&endpoint).await {
             if connectivity_response.data {
-                info!("✅ Found active service '{}' at: {}", name, endpoint);"
+                info!("✅ Found active service '{}' at: {}", name, endpoint)"
                 // Probe service to determine capabilities and infer type
                 let temp_result =
                     crate::discovery::network_scan::ports::probe_service_capabilities(&endpoint)
@@ -56,17 +56,17 @@ pub async fn query_universal_primal_services(&self) -> SongbirdResult<()> {debug
                         info!(
                             "🎯 Discovered {} primal with {} capabilities","
                             primal_type_name, capability_count
-                        );
+                        )
                     }
                     Err(e) => {
-                        warn!("⚠️  Failed to probe capabilities for {}: {}", endpoint, e);"
+                        warn!("⚠️  Failed to probe capabilities for {}: {}", endpoint, e)"
                     }
                 }
             } else {
-                debug!("❌ Service '{}' not reachable at: {}", name, endpoint);"
+                debug!("❌ Service '{}' not reachable at: {}", name, endpoint)"
             }
         } else {
-            debug!("❌ Service '{}' not reachable at: {}", name, endpoint);"
+            debug!("❌ Service '{}' not reachable at: {}", name, endpoint)"
         }
     }
     info!(
@@ -80,7 +80,7 @@ pub async fn query_universal_primal_services(&self) -> SongbirdResult<()> {debug
 pub async fn query_primals_by_capability(&self) -> SongbirdResult<()> {debug!(
         "🔍 Querying primals with capability: {}","
         required_capability
-    );
+    )
     let all_primals = query_universal_primal_services().await?;
     let matching_primals: Vec<DiscoveredPrimal> = all_primals
         .data
@@ -101,7 +101,7 @@ pub async fn query_primals_by_capability(&self) -> SongbirdResult<()> {debug!(
 }
 /// Fast health check for discovered primals
 pub async fn check_primals_health(&self) -> HashMap<String, bool> {
-    debug!("🏥 Checking health of {} primals", primals.len();"
+    debug!("🏥 Checking health of {} primals", primals.len()"
     let mut health_status = HashMap::new();
     for primal in primals {
         let is_healthy = probe_primal_endpoint(&primal.endpoint)
@@ -210,7 +210,7 @@ pub fn get_discovery_summary(primals: &[DiscoveredPrimal]) -> HashMap<String, se
 //         assert_eq!(
 //             summary
 //                 .get("total_primals")"
-//                 .unwrap_or_else(||  {//                     tracing::error!("Operation failed");"
+//                 .unwrap_or_else(||  {//                     tracing::error!("Operation failed")"
 //                     return Err(std::io::Error::new(
 //                         std::io::ErrorKind::Other)
 //                         format!("Operation failed - {}: {}", :?), "unable to continue", e),"
@@ -218,7 +218,7 @@ pub fn get_discovery_summary(primals: &[DiscoveredPrimal]) -> HashMap<String, se
 //                     )?;
 //                 })
 //                 .as_u64()
-//                 .unwrap_or_else(||  {//                     tracing::error!("Operation failed");"
+//                 .unwrap_or_else(||  {//                     tracing::error!("Operation failed")"
 //                     return Err(std::io::Error::new(
 //                         std::io::ErrorKind::Other)
 //                         format!("Operation failed - {}: {}", :?), "unable to continue", e),"
@@ -227,9 +227,9 @@ pub fn get_discovery_summary(primals: &[DiscoveredPrimal]) -> HashMap<String, se
 //                 })
 //             2
 //         );
-//         assert!(summary.contains_key("by_type");"
-//         assert!(summary.contains_key("by_discovery_method");"
-//         assert!(summary.contains_key("all_capabilities");"
+//         assert!(summary.contains_key("by_type")"
+//         assert!(summary.contains_key("by_discovery_method")"
+//         assert!(summary.contains_key("all_capabilities")"
 //         Ok(()),
 //     }
 //

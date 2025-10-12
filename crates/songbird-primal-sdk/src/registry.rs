@@ -87,7 +87,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
         for primal_config in config.primal_instances.values() {
             // Create primal instances based on configuration
             // This would be expanded to handle different primal types
-            info!("Primal instance configured: {}", primal_config.instance_id);"
+            info!("Primal instance configured: {}", primal_config.instance_id)"
         }
 
         Ok(()),
@@ -149,7 +149,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
                 warn!(
                     "Primal instance {} is degraded but registering anyway: {:?}","
                     instance_id, issues
-                );
+                )
 
                 // Register despite degraded state
                 {
@@ -176,14 +176,14 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
                 info!(
                     "Registered degraded primal instance: {} for user: {}","
                     instance_id, context.user_id
-                );
+                )
                 Ok(()),
             }
             PrimalHealth::Unhealthy { reason } => {
                 warn!(
                     "Primal instance {} is unhealthy, skipping registration: {}","
                     instance_id, reason
-                );
+                )
                 Err(PrimalError::ServiceUnavailable(format!(
                     "Primal instance {instance_id} is unhealthy: {reason}""
                 ))
@@ -192,7 +192,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
                 warn!(
                     "Primal instance {} returned unknown health status, registering anyway","
                     instance_id
-                );
+                )
                 // Register despite unknown status
                 {
                     let mut primals = self.registered_primals.write().await;
@@ -218,7 +218,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
                 info!(
                     "Registered primal instance with unknown health status: {}","
                     instance_id
-                );
+                )
                 Ok(()),
             }
         }
@@ -400,7 +400,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
                 port_manager.remove(instance_id);
             }
 
-            info!("Unregistered primal instance: {}", instance_id);"
+            info!("Unregistered primal instance: {}", instance_id)"
             Ok(()),
         } else {
             Err(PrimalError::NotFound(format!(
@@ -457,7 +457,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
             self.remove_from_capability_index(id, &primal.capabilities()
                 .await;
 
-            info!("Unregistered primal: {}", id);"
+            info!("Unregistered primal: {}", id)"
             Ok(()),
         } else {
             Err(PrimalError::NotFound(format!("Primal not found: {}", id))"

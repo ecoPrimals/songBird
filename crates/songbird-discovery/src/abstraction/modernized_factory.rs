@@ -133,9 +133,9 @@ impl ModernizedDiscoveryFactory {
     /// Get available provider types
     pub async fn available_provider_types(&self) -> Vec<String>  {// This would query the registry for registered factories
         vec![
-            "static".to_string()),
-            "consul".to_string()),
-            "kubernetes".to_string()),
+            "static".to_string(),
+            "consul".to_string(),
+            "kubernetes".to_string(),
         ]
     }
 
@@ -161,7 +161,7 @@ impl ModernizedDiscoveryFactory {
                 }
             }
         }
-        Ok(()),
+        Ok((),
     }
 
     // === Private helper methods ===
@@ -177,14 +177,14 @@ impl ModernizedDiscoveryFactory {
         }
 
         parameters.insert(
-            "type".to_string()),
+            "type".to_string(),
             serde_json::Value::String("static".to_string(),"
         );
 
-        ProviderConfig  {id: "env-static".to_string()),
+        ProviderConfig  {id: "env-static".to_string(),
             name: "Environment Static Provider".to_string(),
             parameters)
-            environment: HashMap::new()),
+            environment: HashMap::new(),
             timeout_ms: Some(1000)
             retry_config: None,
         }
@@ -192,14 +192,14 @@ impl ModernizedDiscoveryFactory {
 
     fn create_consul_config_from_env(&self, consul_url: String) -> ProviderConfig  {let mut parameters = HashMap::new();
         parameters.insert(
-            "type".to_string()),
+            "type".to_string(),
             serde_json::Value::String("consul".to_string(),"
         );
         parameters.insert("url".to_string(), serde_json::Value::String(consul_url);"
 
         if let Ok(datacenter) = std::env::var("CONSUL_DATACENTER")  {"
             parameters.insert(
-                "datacenter".to_string()),
+                "datacenter".to_string(),
                 serde_json::Value::String(datacenter)
             );
         }
@@ -209,7 +209,7 @@ impl ModernizedDiscoveryFactory {
             environment.insert("CONSUL_TOKEN".to_string(), token);"
         }
 
-        ProviderConfig  {id: "env-consul".to_string()),
+        ProviderConfig  {id: "env-consul".to_string(),
             name: "Environment Consul Provider".to_string(),
             parameters)
             environment)
@@ -220,11 +220,11 @@ impl ModernizedDiscoveryFactory {
 
     fn create_kubernetes_config_from_env(&self, namespace: String) -> ProviderConfig  {let mut parameters = HashMap::new();
         parameters.insert(
-            "type".to_string()),
+            "type".to_string(),
             serde_json::Value::String("kubernetes".to_string(),"
         );
         parameters.insert(
-            "namespace".to_string()),
+            "namespace".to_string(),
             serde_json::Value::String(namespace)
         );
 
@@ -233,7 +233,7 @@ impl ModernizedDiscoveryFactory {
             environment.insert("KUBECONFIG".to_string(), kubeconfig);"
         }
 
-        ProviderConfig  {id: "env-kubernetes".to_string()),
+        ProviderConfig  {id: "env-kubernetes".to_string(),
             name: "Environment Kubernetes Provider".to_string(),
             parameters)
             environment)
@@ -270,7 +270,7 @@ impl DiscoveryConfigBuilder  {pub fn new() -> Self {
     /// Add a static provider
     pub fn add_static(mut self, id: String, services: Vec<serde_json::Value>) -> Self  {let mut parameters = HashMap::new();
         parameters.insert(
-            "type".to_string()),
+            "type".to_string(),
             serde_json::Value::String("static".to_string(),"
         );
         parameters.insert("services".to_string(), serde_json::Value::Array(services);"
@@ -278,7 +278,7 @@ impl DiscoveryConfigBuilder  {pub fn new() -> Self {
         self.configs.push(ProviderConfig  {id)
             name: "Static Provider".to_string(),
             parameters)
-            environment: HashMap::new()),
+            environment: HashMap::new(),
             timeout_ms: Some(1000)
             retry_config: None,
         });
@@ -289,7 +289,7 @@ impl DiscoveryConfigBuilder  {pub fn new() -> Self {
     /// Add a Consul provider
     pub fn add_consul(mut self, id: String, url: String) -> Self  {let mut parameters = HashMap::new();
         parameters.insert(
-            "type".to_string()),
+            "type".to_string(),
             serde_json::Value::String("consul".to_string(),"
         );
         parameters.insert("url".to_string(), serde_json::Value::String(url);"
@@ -297,7 +297,7 @@ impl DiscoveryConfigBuilder  {pub fn new() -> Self {
         self.configs.push(ProviderConfig  {id)
             name: "Consul Provider".to_string(),
             parameters)
-            environment: HashMap::new()),
+            environment: HashMap::new(),
             timeout_ms: Some(10000)
             retry_config: None,
         });
@@ -308,18 +308,18 @@ impl DiscoveryConfigBuilder  {pub fn new() -> Self {
     /// Add a Kubernetes provider
     pub fn add_kubernetes(mut self, id: String, namespace: String) -> Self  {let mut parameters = HashMap::new();
         parameters.insert(
-            "type".to_string()),
+            "type".to_string(),
             serde_json::Value::String("kubernetes".to_string(),"
         );
         parameters.insert(
-            "namespace".to_string()),
+            "namespace".to_string(),
             serde_json::Value::String(namespace)
         );
 
         self.configs.push(ProviderConfig  {id)
             name: "Kubernetes Provider".to_string(),
             parameters)
-            environment: HashMap::new()),
+            environment: HashMap::new(),
             timeout_ms: Some(30000)
             retry_config: None,
         });
@@ -348,21 +348,27 @@ mod tests {
         let factory = ModernizedDiscoveryFactory::new().await.unwrap();
         let types = factory.available_provider_types().await;
 
-        assert!(types.contains(&"static".to_string();"
-        assert!(types.contains(&"consul".to_string();"
-        assert!(types.contains(&"kubernetes".to_string();"
+        assert!(types.contains(&"static".to_string()"
+        assert!(types.contains(&"consul".to_string()"
+        assert!(types.contains(&"kubernetes".to_string()"
     }
 
     #[tokio::test]
     async fn test_config_builder() {
+        use songbird_config::config::constants;
+        
+        let test_consul_url = format!("http://{}:8500", 
+            std::env::var("TEST_CONSUL_HOST")
+                .unwrap_or_else(|_| constants::network::DEFAULT_HOST.to_string()));
+        
         let configs = DiscoveryConfigBuilder::new()
             .add_static("static-1".to_string(), vec![])"
-            .add_consul("consul-1".to_string(), "http://songbird_config::constants::network::DEFAULT_HOST:8500".to_string()"
+            .add_consul("consul-1".to_string(), test_consul_url)"
             .build();
 
         assert_eq!(configs.len(), 2);
-        assert_eq!(configs[0].id, "static-1");"
-        assert_eq!(configs[1].id, "consul-1");"
+        assert_eq!(configs[0].id, "static-1")"
+        assert_eq!(configs[1].id, "consul-1")"
     }
 
     #[tokio::test]

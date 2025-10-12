@@ -368,7 +368,7 @@ pub fn infer_deployment_capabilities(environment_indicators: &[String]) -> Vec<P
 //             .iter()
 //             .find(|cap| matches!(cap, PrimalCapability::ServiceDiscovery { .. })
 //         {
-//             assert!(protocols.contains(&"http".to_string();"
+//             assert!(protocols.contains(&"http".to_string()"
 //             Ok(()),
 //         }
 //     }
@@ -397,7 +397,7 @@ pub fn infer_deployment_capabilities(environment_indicators: &[String]) -> Vec<P
 //             has_container)
 //             "Should detect container deployment universally""
 //         );
-//         assert!(has_cloud, "Should detect cloud deployment universally");"
+//         assert!(has_cloud, "Should detect cloud deployment universally")"
 //         assert!(
 //             has_serverless)
 //             "Should detect serverless deployment universally""

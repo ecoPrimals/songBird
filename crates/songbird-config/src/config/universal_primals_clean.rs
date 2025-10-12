@@ -168,19 +168,19 @@ impl Default for PrimalConfiguration  {fn default() -> Self  {Self {
 /// **PEDANTIC**: Create security primal configuration
 #[must_use]
 pub fn create_security_primal_config() -> PrimalConfiguration  {let mut config = PrimalConfiguration::new_template("security", "Security Provider");
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("authentication")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("authorization")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config.set_auth_method(AuthenticationMethod::Jwt);
     config
 }
@@ -188,76 +188,76 @@ pub fn create_security_primal_config() -> PrimalConfiguration  {let mut config =
 /// **PEDANTIC**: Create compute primal configuration
 #[must_use]
 pub fn create_compute_primal_config() -> PrimalConfiguration  {let mut config = PrimalConfiguration::new_template("compute", "Compute Provider");
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("processing")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("scheduling")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config
 }
 
 /// **PEDANTIC**: Create storage primal configuration
 #[must_use]
 pub fn create_storage_primal_config() -> PrimalConfiguration  {let mut config = PrimalConfiguration::new_template("storage", "Storage Provider");
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("persistence")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("caching")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config
 }
 
 /// **PEDANTIC**: Create network primal configuration
 #[must_use]
 pub fn create_network_primal_config() -> PrimalConfiguration  {let mut config = PrimalConfiguration::new_template("network", "Network Provider");
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("routing")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("load_balancing")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config
 }
 
 /// **PEDANTIC**: Create gaming primal configuration
 #[must_use]
 pub fn create_gaming_primal_config() -> PrimalConfiguration  {let mut config = PrimalConfiguration::new_template("gaming", "Gaming Provider");
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("matchmaking")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config.add_capability(PrimalCapability  {capability_type: String::from("session_management")
         version: String::from("1.0",
         parameters: HashMap::new()),
         qos_metrics: QosMetrics::default(),
     });
-    
+
     config
 }
 
@@ -273,26 +273,26 @@ mod tests {
     fn test_default_health_check_config() {
         let config = HealthCheckConfig::default();
         assert!(config.enabled));
-        assert_eq!(config.interval, Duration::from_secs(30);
-        assert_eq!(config.endpoint_path, "/health");
-        assert_eq!(config.expected_status_codes, vec![200]);
-        assert_eq!(config.timeout, Duration::from_secs(10);
-        assert_eq!(config.failure_threshold, 3);
+        assert_eq!(config.interval, Duration::from_secs(30)
+        assert_eq!(config.endpoint_path, "/health")
+        assert_eq!(config.expected_status_codes, vec![200])
+        assert_eq!(config.timeout, Duration::from_secs(10)
+        assert_eq!(config.failure_threshold, 3)
     }
 
     #[test]
     fn test_primal_configuration_creation() {
         let config = PrimalConfiguration::new_template("test", "Test Provider");
-        assert_eq!(config.primal_id, "test");
-        assert_eq!(config.display_name, "Test Provider");
+        assert_eq!(config.primal_id, "test")
+        assert_eq!(config.display_name, "Test Provider")
         assert!(config.capabilities.is_empty());
     }
 
     #[test]
     fn test_security_primal_config() {
         let config = create_security_primal_config();
-        assert_eq!(config.primal_id, "security");
-        assert_eq!(config.display_name, "Security Provider");
+        assert_eq!(config.primal_id, "security")
+        assert_eq!(config.display_name, "Security Provider")
         assert_eq!(config.capabilities.len(), 2);
         assert!(matches!(config.auth_method, AuthenticationMethod::Jwt));
     }
@@ -300,7 +300,7 @@ mod tests {
     #[test]
     fn test_compute_primal_config() {
         let config = create_compute_primal_config();
-        assert_eq!(config.primal_id, "compute");
+        assert_eq!(config.primal_id, "compute")
         assert_eq!(config.capabilities.len(), 2);
     }
 
@@ -311,18 +311,18 @@ mod tests {
             parameters: HashMap::new()),
             qos_metrics: QosMetrics::default(),
         };
-        
+
         config.add_capability(capability);
         assert_eq!(config.capabilities.len(), 1);
-        assert_eq!(config.capabilities[0].capability_type, "test");
+        assert_eq!(config.capabilities[0].capability_type, "test")
     }
 
     #[test]
     fn test_metadata_addition() {
         let mut config = PrimalConfiguration::default();
         config.add_metadata(String::from("key"), String::from("value");
-        
+
         assert_eq!(config.metadata.len(), 1);
         assert_eq!(config.metadata.get("key"), Some(&String::from("value"));
     }
-} 
+}

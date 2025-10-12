@@ -90,16 +90,13 @@ impl ConfigMigrationUtils {
 
     /// Check if a field is a known configuration field
     fn is_known_field(field_name: &str) -> bool {
-        matches!(
-            field_name,
-            "environment" | "system_id" | "network" | "security" | "performance"
-        )
+        matches!(field_name, "environment" | "system_id" | "network" | "security" | "performance")
     }
 
     /// Generate migration report
     #[must_use]
     pub fn generate_migration_report() -> String {
-        "✅ Migration completed successfully!".to_string()),
+        "✅ Migration completed successfully!".to_string()
     }
 }
 

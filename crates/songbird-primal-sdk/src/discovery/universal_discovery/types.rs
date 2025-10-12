@@ -171,4 +171,4 @@ pub enum DiscoveryEvent  {ServiceDiscovered  {service_id: String,
         error: String,
         timestamp: SystemTime,
     })
-} 
+}

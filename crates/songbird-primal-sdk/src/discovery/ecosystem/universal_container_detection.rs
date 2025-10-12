@@ -16,7 +16,7 @@ const CONTAINER_FILE_PATTERNS: &[&str] = &[
     "compose.yml","
 ];
 
-/// Orchestration file patterns that indicate orchestration capability  
+/// Orchestration file patterns that indicate orchestration capability
 const ORCHESTRATION_FILE_PATTERNS: &[&str] = &[
     "k8s","
     "kubernetes","
@@ -350,7 +350,7 @@ fn has_serverless_patterns(text: &str) -> bool {
 //         let has_runtime = capabilities
 //             .iter()
 //             .any(|cap| matches!(cap, PrimalCapability::Compute { .. }));
-//         assert!(has_runtime, "Should detect container runtime capability");"
+//         assert!(has_runtime, "Should detect container runtime capability")"
 //         Ok(()),
 //     }
 //
@@ -366,7 +366,7 @@ fn has_serverless_patterns(text: &str) -> bool {
 //         let has_orchestration = capabilities
 //             .iter()
 //             .any(|cap| cap.capability_type().contains("orchestration");"
-//         assert!(has_orchestration, "Should detect orchestration universally");"
+//         assert!(has_orchestration, "Should detect orchestration universally")"
 //         Ok(()),
 //     }
 //
@@ -398,7 +398,7 @@ fn has_serverless_patterns(text: &str) -> bool {
 //         let has_cloud_native = capabilities
 //             .iter()
 //             .any(|cap| cap.capability_type().contains("cloud-native");"
-//         assert!(has_cloud_native, "Should detect cloud-native patterns");"
+//         assert!(has_cloud_native, "Should detect cloud-native patterns")"
 //         Ok(()),
 //     }
 //
@@ -424,9 +424,9 @@ fn has_serverless_patterns(text: &str) -> bool {
 //             .iter()
 //             .any(|cap| cap.capability_type().contains("edge-deployment");"
 //
-//         assert!(has_container, "Should detect container deployment");"
-//         assert!(has_cloud, "Should detect cloud deployment");"
-//         assert!(has_edge, "Should detect edge deployment");"
+//         assert!(has_container, "Should detect container deployment")"
+//         assert!(has_cloud, "Should detect cloud deployment")"
+//         assert!(has_edge, "Should detect edge deployment")"
 //
 //         Ok(()),
 //     }

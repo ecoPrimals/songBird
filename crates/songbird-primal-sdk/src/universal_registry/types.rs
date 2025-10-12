@@ -86,7 +86,7 @@ pub enum ServiceCapability  {/// Compute capabilities
         container_runtime: Option<String>,
     })
 
-    /// Storage capabilities  
+    /// Storage capabilities
     Storage  {storage_gb: Option<f64>)
         storage_type: StorageType,
         backup_support: bool,

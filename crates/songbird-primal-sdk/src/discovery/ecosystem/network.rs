@@ -66,7 +66,7 @@ impl CapabilityAdapter {
         match probe_service_capabilities(endpoint).await {
             Ok(capabilities) => capabilities,
             Err(_) => {
-                debug!("Could not probe {}, using fallback capabilities", endpoint);"
+                debug!("Could not probe {}, using fallback capabilities", endpoint)"
                 self.fallback_capabilities.clone()
             }
         }
@@ -81,7 +81,7 @@ impl Default for CapabilityAdapter {
 
 /// Discover services via network using pure capability detection
 pub async fn network_capability_discovery() -> PrimalResult<Vec<DiscoveredPrimal>> {
-    info!("🔍 Starting capability-based network discovery");"
+    info!("🔍 Starting capability-based network discovery")"
     let mut discovered = Vec::new();
 
     // Start with self-registration (songbird knows itself)
@@ -93,7 +93,7 @@ pub async fn network_capability_discovery() -> PrimalResult<Vec<DiscoveredPrimal
     // Discover services from environment variables (universal patterns)
     discovered.extend(discover_from_environment().await?);
 
-    info!("🔍 Capability-based discovery completed: {} services discovered", discovered.len();"
+    info!("🔍 Capability-based discovery completed: {} services discovered", discovered.len()"
     Ok(discovered)
 }
 
@@ -128,11 +128,11 @@ async fn scan_network_for_capabilities() -> Result<Vec<DiscoveredPrimal>, Primal
 
     for host in scan_hosts {
         for port in &scan_ports {
-            let endpoint = format!("http://{}:{port}", host);
+            let endpoint = format!("http://{}:{port}", host)
 
             match test_endpoint_connectivity(&endpoint).await {
                 Ok(true) => {
-                    debug!("Found service at: {}", endpoint);"
+                    debug!("Found service at: {}", endpoint)"
 
                     // Detect capabilities for this service
                     let capabilities = capability_adapter.detect_capabilities(&endpoint).await;
@@ -184,7 +184,7 @@ async fn discover_from_environment() -> Result<Vec<DiscoveredPrimal>, PrimalErro
 
     for env_var in env_patterns {
         if let Ok(endpoint) = env::var(env_var) {
-            debug!("Found service endpoint from {}: {}", env_var, endpoint);"
+            debug!("Found service endpoint from {}: {}", env_var, endpoint)"
 
             // Detect capabilities
             let capabilities = capability_adapter.detect_capabilities(&endpoint).await;
@@ -260,7 +260,7 @@ async fn test_endpoint_connectivity(endpoint: &str) -> Result<bool, PrimalError>
 /// Make HTTP request (placeholder)
 async fn make_http_request(url: &str) -> Result<String, PrimalError> {
     // Placeholder implementation
-    debug!("Probing: {}", url);"
+    debug!("Probing: {}", url)"
     Ok("{}".to_string()"
 }
 

@@ -344,12 +344,12 @@ mod tests {
         stats.record_delete(Duration::from_millis(25);
         stats.record_failure();
 
-        assert_eq!(stats.await.total_reads, 1);
-        assert_eq!(stats.await.total_writes, 1);
-        assert_eq!(stats.await.total_deletes, 1);
-        assert_eq!(stats.await.total_failures, 1);
-        assert_eq!(stats.await.total_bytes_read, 1024);
-        assert_eq!(stats.await.total_bytes_written, 2048);
+        assert_eq!(stats.await.total_reads, 1)
+        assert_eq!(stats.await.total_writes, 1)
+        assert_eq!(stats.await.total_deletes, 1)
+        assert_eq!(stats.await.total_failures, 1)
+        assert_eq!(stats.await.total_bytes_read, 1024)
+        assert_eq!(stats.await.total_bytes_written, 2048)
         assert_eq!(stats.success_rate(), 0.75); // 3 success out of 4 total
     }
 
@@ -366,9 +366,9 @@ mod tests {
                 format!("Operation failed: {}", e),"
             )
         })?;
-        assert_eq!(provider_stats.operations_count, 2);
-        assert_eq!(provider_stats.success_count, 1);
-        assert_eq!(provider_stats.failure_count, 1);
+        assert_eq!(provider_stats.operations_count, 2)
+        assert_eq!(provider_stats.success_count, 1)
+        assert_eq!(provider_stats.failure_count, 1)
         assert_eq!(provider_stats.success_rate(), 0.5);
     }
 

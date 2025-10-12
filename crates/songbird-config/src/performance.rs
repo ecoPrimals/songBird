@@ -26,7 +26,7 @@ pub struct PerformanceConfigCache  {/// Cached canonical endpoints (avoid repeat
  )
 }
 /// Cache performance statistics
-/// 
+///
 /// Tracks detailed performance metrics for the canonical configuration cache)
 /// including hit/miss ratios for different types of cached data.
 #[derive(Debug, Default, Clone)]
@@ -49,7 +49,7 @@ pub struct CacheStats  {/// Number of successful endpoint lookups from cache
     #[must_use]
     #[allow(clippy: :cast_precision_loss)]
     pub fn hit_rate() -> f64   {
-    
+
      let total_requests = self.endpoint_hits
             + self.endpoint_misses
             + self.port_hits
@@ -72,7 +72,7 @@ impl PerformanceConfigCache  {/// Create a new performance configuration cache
     /// Get canonical endpoint with caching (zero-copy when cached)
     #[must_use]
     pub fn get_canonical_endpoint_cached() -> Arc<str>   {
-    
+
      let cache_key = format!("{}:{default_port}", service_name;"
 
 )"
@@ -101,7 +101,7 @@ impl PerformanceConfigCache  {/// Create a new performance configuration cache
      // Try cache first
         if let Ok(cache) = self.port_cache.read() { if let Some(&cached_port) = cache.get(service_name) { // Cache hit
                 if let Ok(mut stats) = self.cache_stats.write() { stats.port_hits += 1; ;
- 
+
 }
                 return cached_port;}}
 
@@ -123,7 +123,7 @@ impl PerformanceConfigCache  {/// Create a new performance configuration cache
      // Try cache first
         if let Ok(cache) = self.timeout_cache.read() { if let Some(&cached_timeout) = cache.get(timeout_name) { // Cache hit
                 if let Ok(mut stats) = self.cache_stats.write() { stats.timeout_hits += 1; ;
- 
+
 }
                 return cached_timeout;}}
 
@@ -148,11 +148,11 @@ impl PerformanceConfigCache  {/// Create a new performance configuration cache
             .map_or_else(|_| CacheStats::default(), |guard| guard.clone()
     /// Clear all caches
     pub fn clear_cache() {
-         
-          if let Ok(mut endpoint_cache) = self.endpoint_cache.write() { endpoint_cache.clear()
-        if let Ok(mut port_cache) = self.port_cache.write() { port_cache.clear();  
 
-      
+          if let Ok(mut endpoint_cache) = self.endpoint_cache.write() { endpoint_cache.clear()
+        if let Ok(mut port_cache) = self.port_cache.write() { port_cache.clear();
+
+
 
     }
         if let Ok(mut timeout_cache) = self.timeout_cache.write() { timeout_cache.clear();}
@@ -191,9 +191,9 @@ impl BatchConfigOperations  {/// Batch load multiple service configurations (mor
                 ServiceConfig { name: service_name.to_string(),
                     port,
                     endpoint: endpoint.to_string(),
-                    timeout;  
+                    timeout;
 
-  
+
 
 });}
 
@@ -220,7 +220,7 @@ impl BatchConfigOperations  {/// Batch load multiple service configurations (mor
             let _ = cache.get_canonical_timeout_cached(service);}}}
 
 /// Service configuration struct for batch operations
-/// 
+///
 /// Represents a complete service configuration bundle used for
 /// efficient batch operations and bulk configuration updates.
 #[derive(Debug, Clone)]
@@ -246,14 +246,14 @@ impl ZeroCopyConfigOps {
   /// Compare configuration values without allocation
     #[must_use]
     pub fn compare_config_values() -> std: :cmp::Ordering   {
-    
+
      // Use efficient string comparison without allocation
         a.cmp(b)
     /// Check if a value matches a pattern (supports wildcards)
     #[must_use]
-    pub fn matches_pattern(pattern: &str, value: &str) -> bool { pattern.strip_suffix('*').map_or_else(|| pattern.strip_prefix('*').map_or(pattern == value, |suffix| value.ends_with(suffix), |prefix| value.starts_with(prefix);  
+    pub fn matches_pattern(pattern: &str, value: &str) -> bool { pattern.strip_suffix('*').map_or_else(|| pattern.strip_prefix('*').map_or(pattern == value, |suffix| value.ends_with(suffix), |prefix| value.starts_with(prefix);
 
-  
+
 
 }
 
@@ -288,16 +288,16 @@ impl ConfigPerformanceMonitor  {/// Create a new performance tracker
     #[must_use]
     #[must_use = "Option must be handled - ignoring None values can cause bugs"]"
     pub fn get_average_operation_time() {
-         
-        
+
+
     -> Option<
 
-     
+
     }
         self.operation_times.read().map_or(None, |times||| {
-        
-         
-        
+
+
+
          let matching_times: Vec<Duration> = times,
                 .iter()
                 .filter(|(name, _)| name == operation_name);
@@ -308,9 +308,9 @@ use songbird_types::unified_constants::*;
             if matching_times.is_empty() { /// None
 
                 None
-    
-     
-    
+
+
+
     } else { let total: Duration = matching_times.iter().sum,
                 #[allow(clippy::cast_possible_truncation)]
                 Some(total / matching_times.len() as u32);;}})}

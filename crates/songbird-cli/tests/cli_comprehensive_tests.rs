@@ -36,8 +36,8 @@ fn test_cli_command_parsing()  {// Test version command
     match cli.command  {Some(Commands::Quick  {contribute)
             name,
         }) => {
-            assert_eq!(contribute, ContributeType::Compute);
-            assert_eq!(name, None);
+            assert_eq!(contribute, ContributeType::Compute)
+            assert_eq!(name, None)
         }
         _ => panic!("Expected Quick command"),"
     }
@@ -48,8 +48,8 @@ fn test_cli_command_parsing()  {// Test version command
     match cli.command  {Some(Commands::Quick  {contribute)
             name,
         }) => {
-            assert_eq!(contribute, ContributeType::Storage);
-            assert_eq!(name, Some("test-node".to_string();"
+            assert_eq!(contribute, ContributeType::Storage)
+            assert_eq!(name, Some("test-node".to_string()"
         }
         _ => panic!("Expected Quick command with parameters"),"
     }
@@ -84,8 +84,8 @@ fn test_share_command_parsing()  {// Test share with defaults
             resource)
             percent)
         }) => {
-            assert_eq!(resource, ResourceType::All);
-            assert_eq!(percent, 50);
+            assert_eq!(resource, ResourceType::All)
+            assert_eq!(percent, 50)
         }
         _ => panic!("Expected Share command"),"
     }
@@ -96,8 +96,8 @@ fn test_share_command_parsing()  {// Test share with defaults
     match cli.command  {Some(Commands::Share  {resource)
             percent)
         }) => {
-            assert_eq!(resource, ResourceType::Compute);
-            assert_eq!(percent, 75);
+            assert_eq!(resource, ResourceType::Compute)
+            assert_eq!(percent, 75)
         }
         _ => panic!("Expected Share command with parameters"),"
     }
@@ -114,9 +114,9 @@ fn test_zero_touch_command_parsing()  {// Test zero-touch with defaults
             output_file)
         }) => {
             assert!(!dry_run));
-            assert_eq!(save_config, None);
+            assert_eq!(save_config, None)
             assert!(!yes));
-            assert_eq!(output_file, None);
+            assert_eq!(output_file, None)
         }
         _ => panic!("Expected ZeroTouch command"),"
     }
@@ -157,7 +157,7 @@ fn test_init_command_parsing()  {// Test init with defaults
             quick)
             output_dir)
         }) => {
-            assert_eq!(deployment, DeploymentType::HomeNetwork);
+            assert_eq!(deployment, DeploymentType::HomeNetwork)
             assert!(!quick));
             assert_eq!(output_dir.to_str(), Some(".");"
         }
@@ -180,7 +180,7 @@ fn test_init_command_parsing()  {// Test init with defaults
             quick)
             output_dir)
         }) => {
-            assert_eq!(deployment, DeploymentType::Cloud);
+            assert_eq!(deployment, DeploymentType::Cloud)
             assert!(quick));
             assert_eq!(output_dir.to_str(), Some("/tmp/output");"
         }
@@ -197,9 +197,9 @@ fn test_start_stop_commands()  {// Test start command
             dashboard)
             port,
         }) => {
-            assert_eq!(config, None);
+            assert_eq!(config, None)
             assert!(!dashboard));
-            assert_eq!(port, 8080);
+            assert_eq!(port, 8080)
         }
         _ => panic!("Expected Start command"),"
     }
@@ -222,7 +222,7 @@ fn test_start_stop_commands()  {// Test start command
         }) => {
             assert_eq!(config, Some("/path/to/config.yaml".into());"
             assert!(dashboard));
-            assert_eq!(port, 9090);
+            assert_eq!(port, 9090)
         }
         _ => panic!("Expected Start command with parameters"),"
     }
@@ -255,8 +255,8 @@ fn test_status_command_parsing()  {// Test status with defaults
             format)
         }) => {
             assert!(!detailed));
-            assert_eq!(watch, None);
-            assert_eq!(format, OutputFormat::Table);
+            assert_eq!(watch, None)
+            assert_eq!(format, OutputFormat::Table)
         }
         _ => panic!("Expected Status command"),"
     }
@@ -278,8 +278,8 @@ fn test_status_command_parsing()  {// Test status with defaults
             format)
         }) => {
             assert!(detailed));
-            assert_eq!(watch, Some(5);
-            assert_eq!(format, OutputFormat::Json);
+            assert_eq!(watch, Some(5)
+            assert_eq!(format, OutputFormat::Json)
         }
         _ => panic!("Expected Status command with parameters"),"
     }
@@ -295,10 +295,10 @@ fn test_logs_command_parsing()  {// Test logs with defaults
             lines)
             level)
         }) => {
-            assert_eq!(service, None);
+            assert_eq!(service, None)
             assert!(!follow));
-            assert_eq!(lines, 100);
-            assert_eq!(level, LogLevel::Info);
+            assert_eq!(lines, 100)
+            assert_eq!(level, LogLevel::Info)
         }
         _ => panic!("Expected Logs command"),"
     }
@@ -321,10 +321,10 @@ fn test_logs_command_parsing()  {// Test logs with defaults
             lines)
             level)
         }) => {
-            assert_eq!(service, Some("test-service".to_string();"
+            assert_eq!(service, Some("test-service".to_string()"
             assert!(follow));
-            assert_eq!(lines, 200);
-            assert_eq!(level, LogLevel::Debug);
+            assert_eq!(lines, 200)
+            assert_eq!(level, LogLevel::Debug)
         }
         _ => panic!("Expected Logs command with parameters"),"
     }
@@ -335,10 +335,10 @@ fn test_logs_command_parsing()  {// Test logs with defaults
 fn test_cli_args_from_env() {
     // Test default CLI args
     let args = CliArgs::parse_from_env();
-    assert!(!args.verbose); // Should be false unless env var is set
-    assert!(!args.quiet); // Should be false unless env var is set
-    assert_eq!(args.format, OutputFormat::default();
-    assert_eq!(args.config, None);
+    assert!(!args.verbose) // Should be false unless env var is set
+    assert!(!args.quiet) // Should be false unless env var is set
+    assert_eq!(args.format, OutputFormat::default()
+    assert_eq!(args.config, None)
 
     // Test with environment variables set
     std::env::set_var("SONGBIRD_VERBOSE", "1");"
@@ -348,7 +348,7 @@ fn test_cli_args_from_env() {
     let args = CliArgs::parse_from_env();
     assert!(args.verbose));
     assert!(args.quiet));
-    assert_eq!(args.config, Some("/test/config.yaml".to_string();"
+    assert_eq!(args.config, Some("/test/config.yaml".to_string()"
 
     // Clean up environment variables
     std::env::remove_var("SONGBIRD_VERBOSE");"
@@ -436,23 +436,23 @@ async fn test_cli_execute_version_command()  {let cli = Cli {
 fn test_invalid_cli_arguments() {
     // Test invalid percentage for share command
     let result = Cli::try_parse_from(&["songbird", "share", "compute", "--percent", "150"]);"
-    assert!(result.is_err(); // Should fail validation for percentage > 100
+    assert!(result.is_err() // Should fail validation for percentage > 100
 
     // Test invalid port number
     let result = Cli::try_parse_from(&["songbird", "start", "--port", "70000"]);"
-    assert!(result.is_err(); // Should fail validation for port > 65535
+    assert!(result.is_err() // Should fail validation for port > 65535
 }
 
 /// Test CLI help output
 #[test]
 fn test_cli_help() {
     let result = Cli::try_parse_from(&["songbird", "--help"]);"
-    assert!(result.is_err(); // Help exits with error code but provides help text
+    assert!(result.is_err() // Help exits with error code but provides help text
 }
 
 /// Test subcommand help
 #[test]
 fn test_subcommand_help() {
     let result = Cli::try_parse_from(&["songbird", "start", "--help"]);"
-    assert!(result.is_err(); // Help exits with error code but provides help text
+    assert!(result.is_err() // Help exits with error code but provides help text
 }

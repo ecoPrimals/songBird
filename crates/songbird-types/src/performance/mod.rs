@@ -90,17 +90,17 @@ impl<T, const N: usize> Drop for ConstBuffer<T, N> {
 pub const fn const_hash(s: &str) -> u64 {
     const FNV_OFFSET_BASIS: u64 = 14695981039346656037;
     const FNV_PRIME: u64 = 1099511628211;
-    
+
     let bytes = s.as_bytes();
     let mut hash = FNV_OFFSET_BASIS;
     let mut i = 0;
-    
+
     while i < bytes.len() {
         hash ^= bytes[i] as u64;
         hash = hash.wrapping_mul(FNV_PRIME);
         i += 1;
     }
-    
+
     hash
 }
 
@@ -115,10 +115,10 @@ impl<const HASH: u64> ConstStringId<HASH> {
     #[must_use]
     pub const fn new() -> Self {
         Self
-    
+
 
 }
-    
+
     /// Get the hash value - compile-time constant
     #[must_use]
     pub const fn hash() -> u64 {
@@ -199,22 +199,22 @@ impl<const FAST_MODE: bool, const DEBUG_MODE: bool> PerformanceConfig<FAST_MODE,
     #[must_use]
     pub const fn new() -> Self {
         Self
-    
+
 
 }
-    
+
     /// Check if fast mode enabled - compile-time constant
     #[must_use]
     pub const fn is_fast_mode() -> bool {
         FAST_MODE
     }
-    
+
     /// Check if debug mode enabled - compile-time constant
     #[must_use]
     pub const fn is_debug_mode() -> bool {
         DEBUG_MODE
     }
-    
+
     /// Execute code only in debug mode - zero cost in release
     #[inline]
     pub fn debug_only<F: FnOnce()>(f: F) {
@@ -240,4 +240,4 @@ pub type StackString<const N: usize> = arrayvec::ArrayString<N>;
 pub type StackVec<T, const N: usize> = arrayvec::ArrayVec<T, N>;
 
 // Re-export enhanced zero-copy types
-pub use zero_copy_enhanced::{ZeroCopyString, ZeroCopyBytes}; 
+pub use zero_copy_enhanced::{ZeroCopyString, ZeroCopyBytes};

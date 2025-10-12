@@ -13,22 +13,17 @@ use serde::{Deserialize, Serialize};
 /// **CANONICAL**: Service discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalDiscoveryConfig {
-
-/// Enable service discovery
+    /// Enable service discovery
     pub enabled: bool,
     /// Discovery backend
     pub backend: String,
-
-
 }
 
 impl Default for CanonicalDiscoveryConfig {
-
-fn default() -> Self  {Self {
+    fn default() -> Self {
+        Self {
             enabled: true,
-            backend: "universal".to_string()),
-        
-
-}
+            backend: "universal".to_string(),
+        }
     }
-} 
+}

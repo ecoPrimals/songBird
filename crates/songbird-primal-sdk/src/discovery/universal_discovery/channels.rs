@@ -154,4 +154,4 @@ impl DiscoveryChannel for ConsulDiscoveryChannel {
             Ok(success(Vec::new())
         })
     }
-} 
+}

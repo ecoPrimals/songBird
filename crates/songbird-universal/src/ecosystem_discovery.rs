@@ -1,4 +1,5 @@
 /// Universal Ecosystem Primal Discovery
+use tracing::{debug, info, warn, error};
 ///
 /// Discovers actual primal instances in the ecosystem by scanning the parent directory
 /// and probing for health endpoints and capability manifests. Replaces all hardcoded
@@ -34,7 +35,7 @@ impl EcosystemPrimalDiscovery {
             .timeout(timeout)
             .build()
             .map_err(|e| {
-                tracing::error!("Failed to create HTTP client: {:?}", e);"
+                tracing::error!("Failed to create HTTP client: {:?}", e)"
                 SongbirdError::Network {
                     message: format!("Failed to create HTTP client: {}", e),"
                     operation: Some("create_http_client".to_string(),"
@@ -51,7 +52,7 @@ impl EcosystemPrimalDiscovery {
     }
 
     /// Discover all primals in the configured directories
-    pub async fn discover_all(&self) -> SongbirdResult<()> {info!("🚀 Starting ecosystem discovery...");"
+    pub async fn discover_all(&self) -> SongbirdResult<()> {info!("🚀 Starting ecosystem discovery...")"
         let mut discovered = Vec::new();
 
         // Scan parent directory for any primal directories dynamically
@@ -74,10 +75,10 @@ impl EcosystemPrimalDiscovery {
 
         for path_str in discovery_paths {
             let path = PathBuf::from(&path_str);
-            info!("🔍 Scanning path: {}", path.display();"
+            info!("🔍 Scanning path: {}", path.display()"
 
             if !path.exists() {
-                warn!("⚠️  Path does not exist: {}", path.display();"
+                warn!("⚠️  Path does not exist: {}", path.display()"
                 continue;
             }
 
@@ -87,7 +88,7 @@ impl EcosystemPrimalDiscovery {
                     info!(
                         "✅ Discovered primal: {} at {}","
                         primal.name, primal.endpoint
-                    );
+                    )
                     self.discovered_primals
                         .insert(primal.id.clone(), primal.clone());
                     discovered.push(primal));
@@ -95,7 +96,7 @@ impl EcosystemPrimalDiscovery {
             }
         }
 
-        info!("🎯 Discovery complete: {} primals found", discovered.len();"
+        info!("🎯 Discovery complete: {} primals found", discovered.len()"
         Ok(SongbirdResponse::success(discovered)
     }
 
@@ -155,7 +156,11 @@ impl EcosystemPrimalDiscovery {
             id: format!("ecosystem-{}", name),"
             name: name.to_string(),
             primal_type: self.infer_primal_type(name,
-            endpoint: format!("http://songbird_config::constants::network::DEFAULT_HOST:{}", self.get_default_port(name),"
+            endpoint: format!("http://{}:{}", 
+                std::env::var("ECOSYSTEM_DISCOVERY_HOST")
+                    .unwrap_or_else(|_| "127.0.0.1".to_string()),
+                self.get_default_port(name)
+            ),
             health_status: songbird_config::UniversalHealthStatus::unknown(,
             capabilities: self.infer_capabilities(name,
             version: version.to_string(),
@@ -201,7 +206,7 @@ impl EcosystemPrimalDiscovery {
         }
     }
 
-    /// Infer capabilities from directory name  
+    /// Infer capabilities from directory name
     fn infer_capabilities(&self, dir_name: &str) -> Vec<String>  {let mut capabilities = Vec::new();
 
         let name_lower = dir_name.to_lowercase();

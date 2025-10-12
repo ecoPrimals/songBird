@@ -10,28 +10,35 @@ pub type NodeId = String;
 
 /// Federation discovery protocol messages
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum FederationMessage  {/// Node announces itself to the federation
-    NodeAnnouncement  {node: Box<NodeInfo>)
+pub enum FederationMessage {
+    /// Node announces itself to the federation
+    NodeAnnouncement {
+        node: Box<NodeInfo>,
         timestamp: DateTime<Utc>,
-    })
+    },
     /// Request for node information
-    NodeDiscoveryRequest  {sender_id: NodeId,
-    })
+    NodeDiscoveryRequest {
+        sender_id: NodeId,
+    },
     /// Response to discovery request
-    NodeDiscoveryResponse  {nodes: Vec<NodeInfo>)
-    })
+    NodeDiscoveryResponse {
+        nodes: Vec<NodeInfo>,
+    },
     /// Periodic heartbeat
-    Heartbeat  {node_id: NodeId,
+    Heartbeat {
+        node_id: NodeId,
         resource_usage: ResourceUsage,
-    })
+    },
     /// Service advertisement
-    ServiceAdvertisement  {services: Vec<ServiceInfo>)
-    })
+    ServiceAdvertisement {
+        services: Vec<ServiceInfo>,
+    },
 }
 
 /// Local node information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LocalNode  {pub id: NodeId,
+pub struct LocalNode {
+    pub id: NodeId,
     pub node_type: NodeType,
     pub institution: Option<String>,
     pub resources: ComputeResources,
@@ -41,7 +48,8 @@ pub struct LocalNode  {pub id: NodeId,
 
 /// Information about a node in the federation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NodeInfo  {/// Basic identification
+pub struct NodeInfo {
+    /// Basic identification
     pub id: NodeId,
     pub node_type: NodeType,
     pub institution: Option<String>,
@@ -51,7 +59,7 @@ pub struct NodeInfo  {/// Basic identification
     pub resources: ComputeResources,
     pub current_load: ResourceUsage,
 
-    /// Data capabilities  
+    /// Data capabilities
     pub available_datasets: Vec<DatasetInfo>,
     pub storage_capacity: StorageInfo,
 
@@ -71,7 +79,8 @@ pub struct NodeInfo  {/// Basic identification
 
 /// Type of node in the federation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum NodeType  {/// Compute-focused node (CPUs, GPUs,
+pub enum NodeType {
+    /// Compute-focused node (CPUs, GPUs,
     Compute,
     /// Storage-focused node (large datasets)
     Storage,
@@ -85,7 +94,8 @@ pub enum NodeType  {/// Compute-focused node (CPUs, GPUs,
 
 /// Compute resource description
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ComputeResources  {pub cpu_cores: u32,
+pub struct ComputeResources {
+    pub cpu_cores: u32,
     pub cpu_architecture: String, // "x86_64", "ARM64", etc."
     pub memory_total_gb: u64,
     pub memory_available_gb: u64,
@@ -96,7 +106,8 @@ pub struct ComputeResources  {pub cpu_cores: u32,
 
 /// GPU information for scientific computing
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GpuInfo  {pub model: String,                      // "NVIDIA A100", "AMD MI250X""
+pub struct GpuInfo {
+    pub model: String,                      // "NVIDIA A100", "AMD MI250X""
     pub memory_gb: u32,                     // GPU memory
     pub compute_capability: Option<String>, // For CUDA compatibility
     pub utilization_percent: f32,
@@ -104,7 +115,8 @@ pub struct GpuInfo  {pub model: String,                      // "NVIDIA A100", "
 
 /// Storage device information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StorageDevice  {pub device_type: String, // "NVMe", "SSD", "HDD""
+pub struct StorageDevice {
+    pub device_type: String, // "NVMe", "SSD", "HDD""
     pub capacity_gb: u64,
     pub available_gb: u64,
     pub mount_point: String,
@@ -121,7 +133,8 @@ pub enum StoragePerformanceTier {
 
 /// Current resource usage
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ResourceUsage  {pub cpu_utilization_percent: f32,
+pub struct ResourceUsage {
+    pub cpu_utilization_percent: f32,
     pub memory_used_gb: u64,
     pub gpu_utilization: Vec<f32>, // Per-GPU utilization
     pub storage_used_gb: u64,
@@ -131,7 +144,8 @@ pub struct ResourceUsage  {pub cpu_utilization_percent: f32,
 
 /// Scientific dataset information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DatasetInfo  {pub id: String,
+pub struct DatasetInfo {
+    pub id: String,
     pub name: String,
     pub dataset_type: DatasetType,
     pub size_bytes: u64,
@@ -143,13 +157,14 @@ pub struct DatasetInfo  {pub id: String,
 
 /// Scientific dataset types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum DatasetType  {Genomic)
+pub enum DatasetType {
+    Genomic,
     Proteomic,
     Imaging,
     Metabolomic,
     Clinical,
     Environmental,
-    Other(String)
+    Other(String),
 }
 
 /// Data access levels
@@ -163,14 +178,16 @@ pub enum AccessLevel {
 
 /// Storage capacity information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StorageInfo  {pub total_capacity_gb: u64,
+pub struct StorageInfo {
+    pub total_capacity_gb: u64,
     pub available_capacity_gb: u64,
-    pub performance_tier_breakdown: HashMap<StoragePerformanceTier, u64>)
+    pub performance_tier_breakdown: HashMap<StoragePerformanceTier, u64>,
 }
 
 /// Trust level in federation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Eq, Default)]
-pub enum TrustLevel  {#[default]
+pub enum TrustLevel {
+    #[default]
     Unknown,
     Basic,
     Verified,
@@ -180,7 +197,8 @@ pub enum TrustLevel  {#[default]
 
 /// Network location for optimization
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkLocation  {pub region: String,         // "us-east", "eu-west", etc."
+pub struct NetworkLocation {
+    pub region: String,         // "us-east", "eu-west", etc."
     pub subnet: Option<String>, // For local optimization
     pub external_ip: Option<String>,
     pub internal_ip: Option<String>,
@@ -188,7 +206,8 @@ pub struct NetworkLocation  {pub region: String,         // "us-east", "eu-west"
 
 /// Resource query for finding optimal compute nodes
 #[derive(Debug, Clone, Default)]
-pub struct ResourceQuery  {pub min_cpu_cores: Option<u32>,
+pub struct ResourceQuery {
+    pub min_cpu_cores: Option<u32>,
     pub min_memory_gb: Option<u64>,
     pub required_node_type: Option<NodeType>,
     pub institution_filter: Option<String>,
@@ -199,7 +218,8 @@ pub struct ResourceQuery  {pub min_cpu_cores: Option<u32>,
 
 /// Federation statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct FederationStats  {pub total_nodes: u32,
+pub struct FederationStats {
+    pub total_nodes: u32,
     pub total_services: u32,
     pub compute_nodes: u32,
     pub storage_nodes: u32,
@@ -215,7 +235,8 @@ pub struct FederationStats  {pub total_nodes: u32,
 
 /// Federation health metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FederationHealth  {pub healthy_nodes: u32,
+pub struct FederationHealth {
+    pub healthy_nodes: u32,
     pub degraded_nodes: u32,
     pub unhealthy_nodes: u32,
     pub overall_health_score: f64, // 0-100
@@ -226,7 +247,8 @@ pub struct FederationHealth  {pub healthy_nodes: u32,
 
 /// Node interaction result for reputation updates
 #[derive(Debug, Clone, Copy)]
-pub enum InteractionResult  {Success)
+pub enum InteractionResult {
+    Success,
     SlowResponse,
     Failure,
     Timeout,
@@ -235,15 +257,17 @@ pub enum InteractionResult  {Success)
 
 /// Network topology information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkTopology  {pub nodes_by_region: HashMap<String, u32>)
-    pub average_latencies: HashMap<NodeId, f64>)
+pub struct NetworkTopology {
+    pub nodes_by_region: HashMap<String, u32>,
+    pub average_latencies: HashMap<NodeId, f64>,
     pub network_partitions: Vec<NetworkPartition>,
-    pub bandwidth_measurements: HashMap<NodeId, f64>)
+    pub bandwidth_measurements: HashMap<NodeId, f64>,
 }
 
 /// Network partition information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkPartition  {pub partition_id: String,
+pub struct NetworkPartition {
+    pub partition_id: String,
     pub affected_nodes: Vec<NodeId>,
     pub detected_at: DateTime<Utc>,
     pub severity: PartitionSeverity,
@@ -259,7 +283,8 @@ pub enum PartitionSeverity {
 
 /// Network performance measurement result
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkMeasurement  {pub target_node_id: NodeId,
+pub struct NetworkMeasurement {
+    pub target_node_id: NodeId,
     pub latency_ms: f64,
     pub bandwidth_mbps: f64,
     pub packet_loss_percent: f64,
@@ -269,7 +294,8 @@ pub struct NetworkMeasurement  {pub target_node_id: NodeId,
 
 /// Resource monitoring update
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceUpdate  {pub node_id: NodeId,
+pub struct ResourceUpdate {
+    pub node_id: NodeId,
     pub cpu_usage: CpuUsage,
     pub memory_usage: MemoryUsage,
     pub gpu_usage: Vec<GpuUsage>,
@@ -280,16 +306,18 @@ pub struct ResourceUpdate  {pub node_id: NodeId,
 
 /// Detailed CPU usage information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CpuUsage  {pub overall_percent: f32,
+pub struct CpuUsage {
+    pub overall_percent: f32,
     pub per_core_percent: Vec<f32>,
     pub load_average: [f64; 3], // 1min, 5min, 15min
     pub context_switches_per_sec: u64,
     pub interrupts_per_sec: u64,
 }
 
-/// Detailed memory usage information  
+/// Detailed memory usage information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MemoryUsage  {pub total_gb: u64,
+pub struct MemoryUsage {
+    pub total_gb: u64,
     pub used_gb: u64,
     pub cached_gb: u64,
     pub buffer_gb: u64,
@@ -299,7 +327,8 @@ pub struct MemoryUsage  {pub total_gb: u64,
 
 /// GPU usage information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GpuUsage  {pub gpu_index: u32,
+pub struct GpuUsage {
+    pub gpu_index: u32,
     pub utilization_percent: f32,
     pub memory_used_mb: u32,
     pub memory_total_mb: u32,
@@ -309,7 +338,8 @@ pub struct GpuUsage  {pub gpu_index: u32,
 
 /// Network interface usage
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkUsage  {pub bytes_sent_per_sec: u64,
+pub struct NetworkUsage {
+    pub bytes_sent_per_sec: u64,
     pub bytes_received_per_sec: u64,
     pub packets_sent_per_sec: u64,
     pub packets_received_per_sec: u64,
@@ -319,7 +349,8 @@ pub struct NetworkUsage  {pub bytes_sent_per_sec: u64,
 
 /// Storage device usage
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StorageUsage  {pub device_name: String,
+pub struct StorageUsage {
+    pub device_name: String,
     pub reads_per_sec: u64,
     pub writes_per_sec: u64,
     pub read_bytes_per_sec: u64,

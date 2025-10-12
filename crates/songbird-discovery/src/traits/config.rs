@@ -31,7 +31,8 @@ where
 
 /// Provider information struct
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigProviderInfo  {pub name: String,
+pub struct ConfigProviderInfo {
+    pub name: String,
     pub version: String,
     pub supports_reload: bool,
     pub description: String,
@@ -41,7 +42,8 @@ pub struct ConfigProviderInfo  {pub name: String,
 
 /// Configuration metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigMetadata  {pub source: String,
+pub struct ConfigMetadata {
+    pub source: String,
     pub last_modified: chrono::DateTime<chrono::Utc>,
     pub checksum: String,
     pub version: u64,
@@ -49,7 +51,8 @@ pub struct ConfigMetadata  {pub source: String,
 
 /// Configuration format enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ConfigFormat  {Json)
+pub enum ConfigFormat {
+    Json,
     Yaml,
     Toml,
     Env,

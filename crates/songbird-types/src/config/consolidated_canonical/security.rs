@@ -13,22 +13,17 @@ use serde::{Deserialize, Serialize};
 /// **CANONICAL**: Security and authentication configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalSecurityConfig {
-
-/// Enable security features
+    /// Enable security features
     pub enabled: bool,
     /// Authentication method
     pub auth_method: String,
-
-
 }
 
 impl Default for CanonicalSecurityConfig {
-
-fn default() -> Self  {Self {
+    fn default() -> Self {
+        Self {
             enabled: true,
-            auth_method: "jwt".to_string()),
-        
-
-}
+            auth_method: "jwt".to_string(),
+        }
     }
-} 
+}

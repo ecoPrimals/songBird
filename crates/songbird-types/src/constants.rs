@@ -5,6 +5,18 @@
 
 use std::env;
 
+// NOTE: canonical.rs has corruption, so we're not importing it yet
+// Note: canonical.rs has been consolidated into unified constants system
+// pub mod canonical;
+// pub use self::canonical::*;
+
+// Alias module for backward compatibility
+// Files should migrate to using songbird_types::constants directly
+pub mod unified_constants {
+    // Re-export everything from parent module
+    pub use super::*;
+}
+
 /// **CANONICAL**: Network addresses and endpoints
 pub struct CanonicalNetworkAddresses;
 
@@ -97,15 +109,12 @@ impl CanonicalEnvironmentConstants {
     #[must_use]
     pub fn get_bind_address() -> String {
         let bind_address = CanonicalNetworkAddresses::get_bind_address_string(false);
-        Self::get_env_or_default("SONGBIRD_BIND_ADDRESS", &bind_address,
+        Self::get_env_or_default("SONGBIRD_BIND_ADDRESS", &bind_address)
     }
 
     /// Get port from environment
     #[must_use]
     pub fn get_port(default_port: u16) -> u16 {
-        env::var("SONGBIRD_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(default_port,
+        env::var("SONGBIRD_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(default_port)
     }
 }

@@ -1,0 +1,66 @@
+    Checking songbird-config v0.1.0 (/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-config)
+    Checking songbird-universal v0.1.0 (/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-universal)
+    Checking songbird-canonical v0.1.0 (/home/eastgate/Development/ecoPrimals/songbird/crates/songbird-canonical)
+error: unexpected closing delimiter: `)`
+   --> crates/songbird-universal/src/sovereignty/adapter.rs:248:10
+    |
+ 34 | impl SovereigntyAwareAdapter {
+    |                              - the nearest open delimiter
+...
+152 |     ) -> SongbirdResult<SovereigntyAwareRoutingDecision>  {use super::types::*;
+    |     - missing open `(` for this delimiter
+...
+244 |     pub async fn get_stats(&self) -> SongbirdResult<AdapterStats>  {Ok(AdapterStats  {sovereignty_routing_enabled: self.config.enable_sovereignty_routing)
+    |                                                                                      - the nearest open delimiter                                        - missing open `(` for this delimiter
+...
+248 |         })
+    |          ^ unexpected closing delimiter
+
+error: could not compile `songbird-universal` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: unexpected closing delimiter: `}`
+   --> crates/songbird-config/src/config/constants.rs:347:9
+    |
+337 |         if cfg!(windows) {
+    |                          - the nearest open delimiter
+...
+341 |             )
+    |             - missing open `(` for this delimiter
+342 |         } else {
+    |                - the nearest open delimiter
+...
+346 |             )
+    |             - missing open `(` for this delimiter
+347 |         }
+    |         ^ unexpected closing delimiter
+
+error: could not compile `songbird-config` (lib) due to 1 previous error
+error[E0432]: unresolved import `songbird_types::adapters::canonical`
+ --> crates/songbird-canonical/src/adapters.rs:9:35
+  |
+9 | pub use songbird_types::adapters::canonical::*;
+  |                                   ^^^^^^^^^ could not find `canonical` in `adapters`
+
+error[E0432]: unresolved import `songbird_types::config::consolidated_canonical`
+ --> crates/songbird-canonical/src/config/adapters.rs:8:29
+  |
+8 | use songbird_types::config::consolidated_canonical::CanonicalHealthCheckConfig as HealthCheckConfig;
+  |                             ^^^^^^^^^^^^^^^^^^^^^^ could not find `consolidated_canonical` in `config`
+
+error[E0432]: unresolved import `songbird_types::traits::canonical`
+  --> crates/songbird-canonical/src/providers.rs:15:33
+   |
+15 | pub use songbird_types::traits::canonical::{Provider,
+   |                                 ^^^^^^^^^ could not find `canonical` in `traits`
+
+warning: unused import: `adapters::*`
+  --> crates/songbird-canonical/src/lib.rs:49:9
+   |
+49 | pub use adapters::*;
+   |         ^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+For more information about this error, try `rustc --explain E0432`.
+warning: `songbird-canonical` (lib) generated 1 warning
+error: could not compile `songbird-canonical` (lib) due to 3 previous errors; 1 warning emitted

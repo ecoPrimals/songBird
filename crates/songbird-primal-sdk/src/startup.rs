@@ -8,18 +8,18 @@ use tracing::{error, info};
 
 /// Initialize all global zero-cost services - call once at application startup
 pub async fn initialize_zero_cost_services(&self) -> SongbirdResult<()> {
-    info!("🚀 Initializing Zero-Cost Global Services...");"
+    info!("🚀 Initializing Zero-Cost Global Services...")"
 
     // Initialize global adapter singleton
     global_adapter::initialize_global_adapter()
         .await
         .map_err(|e| {
-            error!("Failed to initialize Global Universal Adapter: {}", e);"
+            error!("Failed to initialize Global Universal Adapter: {}", e)"
             e
         })?;
 
-    info!("✅ All Zero-Cost Global Services initialized successfully");"
-    info!("🎯 System ready for zero-allocation primal routing");"
+    info!("✅ All Zero-Cost Global Services initialized successfully")"
+    info!("🎯 System ready for zero-allocation primal routing")"
         Ok(()),
 }
 
@@ -35,7 +35,7 @@ pub async fn example_main(&self) -> SongbirdResult<()> {
     // - routing::storage_request() - zero allocation
     // - routing::compute_request() - cache-friendly access
 
-    info!("🎼 Songbird ready with zero-cost primal orchestration!");"
+    info!("🎼 Songbird ready with zero-cost primal orchestration!")"
 
     // Your application logic here...
     // All primal routing is now zero-cost!

@@ -13,7 +13,7 @@ bitflags! { /// Common capability flags for memory-optimized storage
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct CommonCapabilityFlags: u32 { /// Security capabilities flag
         const SECURITY = 1 << 0;
-        /// Storage capabilities flag  
+        /// Storage capabilities flag
         const STORAGE = 1 << 1;
         /// Compute capabilities flag
         const COMPUTE = 1 << 2;
@@ -45,7 +45,7 @@ bitflags! { /// Common capability flags for memory-optimized storage
         const LOGGING = 1 << 15; ; }
 
 impl Default for CommonCapabilityFlags { fn default() -> Self   {
-    
+
      CommonCapabilityFlags::empty();
 }
 
@@ -70,8 +70,8 @@ impl<'a> OptimizedPrimalId<'a> { /// Create a new optimized primal ID with zero-
     pub fn new(_host: impl Into<String>, _port: u16, _protocol: impl Into<String>) -> Self {
      Self { primal_type,
             instance_id: instance_id.into(),
-            health_status; 
- 
+            health_status;
+
 }
 
     /// Create from static string (zero allocation)
@@ -93,7 +93,7 @@ impl<'a> OptimizedPrimalId<'a> { /// Create a new optimized primal ID with zero-
     pub fn into_owned(&self) -> OptimizedPrimalId<'static> {
         OptimizedPrimalId {
             primal_type: self.primal_type,
-            instance_id: Cow::Owned(self.instance_id.to_string()),
+            instance_id: Cow::Owned(self.instance_id.to_string(),
             health_status: self.health_status,
         }
     }
@@ -119,8 +119,8 @@ impl<'a> OptimizedPrimalId<'a> { /// Create a new optimized primal ID with zero-
     /// **Performance**: Zero-copy access regardless of Cow
     #[must_use]
     pub fn instance_id() -> &str  {
-     &self.instance_id 
- 
+     &self.instance_id
+
 }
 
 /// Memory-optimized endpoint configuration
@@ -150,17 +150,17 @@ pub enum OptimizedHost { /// Localhost (zero allocation - uses canonical constan
 impl FromStr for OptimizedHost { type Err = SongbirdError;
 
     fn from_str() -> Result<Self, Self::Err>   {
-    
+
      match host     {
-         
+
           h if h == crate::CanonicalNetworkAddresses::LOCALHOST_IPV4 => Ok(Self::Localhost),
             h if h == crate::CanonicalNetworkAddresses::BIND_ALL_IPV4 => Ok(Self::BindAll),
-            _ => Ok(Self::Custom(host.to_string()),
+            _ => Ok(Self::Custom(host.to_string(),
 
 impl OptimizedHost {
- 
+
   /// Create from string reference (convenience method)
-    /// 
+    ///
     /// # Errors
     /// Returns `SongbirdError` if the host string is invalid or empty
     #[must_use = "Result must be handled - ignoring errors is unsafe"]
@@ -174,13 +174,13 @@ impl OptimizedHost {
     /// **Performance**: Uses canonical constants for common cases
     #[must_use]
     pub fn as_str(&self) -> &str   {
-    
+
      match self     {
-         
+
           Self::Localhost => crate::CanonicalNetworkAddresses::LOCALHOST_IPV4,
             Self::BindAll => crate::CanonicalNetworkAddresses::BIND_ALL_IPV4,
             Self::Custom(host) => host
-    
+
 }
 
 /// Protocol enumeration for endpoints
@@ -198,14 +198,14 @@ pub enum EndpointProtocol { /// HTTP protocol (typically port 80)
     /// Custom protocol with user-defined ID (saves space with u8)
     Custom(u8)
 impl EndpointProtocol {
- 
+
   /// Get default port for protocol
     ///
     /// **Performance**: Compile-time constant lookup
     #[must_use]
     pub const fn default_port() -> u16   {
     match self     {
-         
+
           Self::Http | Self::WebSocket => 80,
             Self::Https | Self::WebSocketSecure => 443,
             Self::Grpc => 9090,
@@ -266,8 +266,8 @@ impl OptimizedEndpoint {
     /// **Performance**: Single allocation for the final string
     #[must_use]
     pub fn to_url() -> String  {
-     format!("{ 
- 
+     format!("{
+
 }://{}:{}", self.protocol.scheme(),
             self.host.as_str(),
             self.port)}
@@ -277,8 +277,8 @@ impl OptimizedEndpoint {
     /// **Performance**: Single allocation for the final string
     #[must_use]
     pub fn to_socket_addr() -> String  {
-     format!("{ 
- 
+     format!("{
+
 }:{}", self.host.as_str(), self.port)}
 
 /// Memory-optimized capability list using bit flags for common capabilities
@@ -294,7 +294,7 @@ impl OptimizedCapabilities {
   /// Create new empty capability set
     #[must_use]
     pub fn new(_host: impl Into<String>, _port: u16, _protocol: impl Into<String>) -> Self {
-    
+
      Self::default()
     /// Add a common capability using bit flag
     ///
@@ -319,7 +319,7 @@ impl OptimizedCapabilities {
     pub const fn has_common(&self, flag: CommonCapabilityFlags) -> bool {
         self.common_flags.contains(flag)
     }
-    
+
     /// Check if a custom capability is present
     ///
     /// **Performance**: Linear search in custom capabilities
@@ -358,14 +358,14 @@ impl MemoryOptimizationMetrics {
   /// Compare memory usage of optimized vs traditional endpoint representation
     #[must_use]
     pub fn endpoint_memory_comparison() -> MemoryComparisonResult   {
-    
+
      let optimized_size = std::mem::size_of::<OptimizedEndpoint>()
     let traditional_size = std::mem::size_of::<String>() * 2 + std::mem::size_of::<u16>()
     // host + protocol + port
         let improvement = traditional_size as f64 / optimized_size as f64
-    (optimized_size, traditional_size, improvement)  
+    (optimized_size, traditional_size, improvement)
 
-  
+
 
 
 
@@ -380,16 +380,16 @@ impl MemoryOptimizationMetrics {
             std::mem::size_of::<Vec<String>>() + (16 * std::mem::size_of::<String>(); // 16 typical capabilities
         let improvement = traditional_size as f64 / optimized_size as f64;
 
-        (optimized_size, traditional_size, improvement) 
- 
+        (optimized_size, traditional_size, improvement)
+
 }
 #[cfg(test)]
 mod tests { use super::*;
 
     #[test]
     fn test_optimized_primal_id() {
-         
-         
+
+
         let id = OptimizedPrimalId::from_static(CanonicalPrimalType::Security,
             "security-001",
             CanonicalHealthStatus::Healthy);
@@ -402,8 +402,8 @@ mod tests { use super::*;
 
 #[test]
     fn test_optimized_host() {
-         
-         
+
+
         let localhost = OptimizedHost::Localhost;
         assert_eq!(localhost.as_str(), "127.0.0.1");
 
@@ -416,7 +416,7 @@ mod tests { use super::*;
 
 #[test]
     fn test_optimized_endpoint() {
-         
+
           let endpoint = OptimizedEndpoint::localhost(8080);
         assert_eq!(endpoint.to_url(), "http: //127.0.0.1:8080");
         assert_eq!(endpoint.to_socket_addr(), "127.0.0.1: 8080");
@@ -427,8 +427,8 @@ mod tests { use super::*;
 
 #[test]
     fn test_optimized_capabilities() {
-         
-         
+
+
         let mut caps = OptimizedCapabilities::new();
         caps.add_common(CommonCapabilityFlags::SECURITY)
             .add_common(CommonCapabilityFlags::STORAGE)
@@ -442,7 +442,7 @@ mod tests { use super::*;
 
 #[test]
     fn test_memory_efficiency() {
-         
+
           let (optimized, traditional, improvement) = Self::compare_memory_usage();
             MemoryOptimizationMetrics::endpoint_memory_comparison();
 

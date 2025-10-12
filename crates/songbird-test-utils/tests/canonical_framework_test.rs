@@ -1,8 +1,9 @@
 // Canonical Test Framework Tests
 
-use songbird_types::{SongbirdError as ErrorType, SongbirdResult};
-use songbird_test_utils::canonical_test_framework::{CanonicalAssertions, TestContext, TestEnvironment, TestResult,
+use songbird_test_utils::canonical_test_framework::{
+    CanonicalAssertions, TestContext, TestEnvironment, TestResult,
 };
+use songbird_types::{SongbirdError as ErrorType, SongbirdResult};
 use std::time::Duration;
 
 #[cfg(test)]
@@ -14,10 +15,10 @@ mod canonical_framework_tests {
         TestEnvironment::setup()?;
 
         // Test basic assertions with available methods
-        let success_result: SongbirdResult<String> = Ok("test success".to_string();"
+        let success_result: SongbirdResult<String> = Ok("test success".to_string());
         CanonicalAssertions::assert_success(&success_result)?;
 
-        let error_result: SongbirdResult<String> = Err(ErrorType::service("test", "test error");"
+        let error_result: SongbirdResult<String> = Err(ErrorType::service("test", "test error"));
         CanonicalAssertions::assert_error(&error_result)?;
 
         // Test duration assertions
@@ -29,32 +30,32 @@ mod canonical_framework_tests {
         // Test range assertions
         CanonicalAssertions::assert_range(5, 1, 10)?;
 
-        Ok(()),
+        Ok(())
     }
 
     #[tokio::test]
     async fn test_mock_service() -> TestResult<()> {
         TestEnvironment::setup()?;
 
-        let context = TestContext::new("mock_service_test");"
+        let context = TestContext::new("mock_service_test");
 
         // Test that context is properly created
-        assert!(!context.name.is_empty(), "Test context should have a name");"
-        assert!(context.elapsed() < Duration::from_secs(1), "Test should start quickly");"
+        assert!(!context.name.is_empty(), "Test context should have a name");
+        assert!(context.elapsed() < Duration::from_secs(1), "Test should start quickly");
 
-        Ok(()),
+        Ok(())
     }
 
     #[tokio::test]
     async fn test_unhealthy_mock_service() -> TestResult<()> {
         TestEnvironment::setup()?;
 
-        let context = TestContext::new("unhealthy_service_test");"
+        let context = TestContext::new("unhealthy_service_test");
 
         // Test unhealthy service handling
-        assert!(!context.name.is_empty(), "Test context should have a name");"
+        assert!(!context.name.is_empty(), "Test context should have a name");
 
-        Ok(()),
+        Ok(())
     }
 
     #[tokio::test]
@@ -65,26 +66,26 @@ mod canonical_framework_tests {
         let start = std::time::Instant::now();
 
         // Simulate some work
-        tokio::time::sleep(Duration::from_millis(10).await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
 
         let elapsed = start.elapsed();
-        assert!(elapsed >= Duration::from_millis(5), "Should take some time");"
+        assert!(elapsed >= Duration::from_millis(5), "Should take some time");
 
-        Ok(()),
+        Ok(())
     }
 
     #[tokio::test]
     async fn test_multiple_mock_services() -> TestResult<()> {
         TestEnvironment::setup()?;
 
-        let context1 = TestContext::new("service1");"
-        let context2 = TestContext::new("service2");"
+        let context1 = TestContext::new("service1");
+        let context2 = TestContext::new("service2");
 
         // Test multiple services
-        assert!(!context1.name.is_empty(), "First context should have a name");"
-        assert!(!context2.name.is_empty(), "Second context should have a name");"
+        assert!(!context1.name.is_empty(), "First context should have a name");
+        assert!(!context2.name.is_empty(), "Second context should have a name");
 
-        Ok(()),
+        Ok(())
     }
 
     #[tokio::test]
@@ -96,27 +97,27 @@ mod canonical_framework_tests {
 
         let result = CanonicalAssertions::assert_timeout(
             || async {
-                tokio::time::sleep(Duration::from_millis(50).await;
-                Ok(()),
-            })
-            timeout_duration)
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                Ok(())
+            },
+            timeout_duration,
         )
         .await;
 
-        assert!(result.is_ok(), "Should complete within timeout");"
+        assert!(result.is_ok(), "Should complete within timeout");
 
         let result = CanonicalAssertions::assert_timeout(
             || async {
-                tokio::time::sleep(Duration::from_millis(200).await;
-                Ok(()),
-            })
-            timeout_duration)
+                tokio::time::sleep(Duration::from_millis(200)).await;
+                Ok(())
+            },
+            timeout_duration,
         )
         .await;
 
-        assert!(result.is_err(), "Should timeout");"
+        assert!(result.is_err(), "Should timeout");
 
-        Ok(()),
+        Ok(())
     }
 
     #[tokio::test]
@@ -124,12 +125,12 @@ mod canonical_framework_tests {
         TestEnvironment::setup()?;
 
         let error_result: SongbirdResult<String> =
-            Err(ErrorType::service("test_service", "specific error message");"
+            Err(ErrorType::service("test_service", "specific error message"));
 
         CanonicalAssertions::assert_error(&error_result)?;
-        CanonicalAssertions::assert_error_contains(&error_result, "specific")?;"
+        CanonicalAssertions::assert_error_contains(&error_result, "specific")?;
 
-        Ok(()),
+        Ok(())
     }
 
     #[tokio::test]
@@ -145,8 +146,8 @@ mod canonical_framework_tests {
         }
 
         let elapsed = start.elapsed();
-        assert!(elapsed < Duration::from_secs(1), "Should complete quickly");"
+        assert!(elapsed < Duration::from_secs(1), "Should complete quickly");
 
-        Ok(()),
+        Ok(())
     }
 }

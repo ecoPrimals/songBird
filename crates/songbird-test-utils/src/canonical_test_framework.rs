@@ -3,7 +3,7 @@
 // This module provides standardized testing patterns, utilities, and assertions
 // that ensure consistent testing across all Songbird crates.
 
-use songbird_types::errors::SongbirdResult;
+use songbird_types::{errors::SongbirdResult, SongbirdError};
 use std::collections::HashMap;
 use std::future::Future;
 use std::time::Duration;
@@ -22,18 +22,21 @@ pub type TestResult<T> = SongbirdResult<T>;
 
 /// Test execution context with timing and resource tracking
 #[derive(Debug)]
-pub struct TestContext  {pub name: String,
+pub struct TestContext {
+    pub name: String,
     pub start_time: std::time::Instant,
     pub timeout: Duration,
-    pub metadata: HashMap<String, String>)
+    pub metadata: HashMap<String, String>,
 }
 
-impl TestContext  {/// Create a new test context
-    pub fn new(name: impl Into<String>) -> Self  {Self {
-            name: name.into(,
-            start_time: std::time::Instant::now(,
+impl TestContext {
+    /// Create a new test context
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            start_time: std::time::Instant::now(),
             timeout: DEFAULT_TEST_TIMEOUT,
-            metadata: HashMap::new()),
+            metadata: HashMap::new(),
         }
     }
 
@@ -66,21 +69,23 @@ impl TestContext  {/// Create a new test context
 /// Canonical test assertions for Songbird types
 pub struct CanonicalAssertions;
 
-impl CanonicalAssertions  {/// Assert that a result is successful
+impl CanonicalAssertions {
+    /// Assert that a result is successful
     pub fn assert_success<T>(result: &SongbirdResult<T>) -> TestResult<()> {
         match result {
-            Ok(_) => Ok((),
+            Ok(_) => Ok(()),
             Err(e) => Err(SongbirdError::service(
-                "test-utils","
-                format!("Expected success but got error: {}", e),"
-            ))
+                "test-utils",
+                format!("Expected success but got error: {}", e),
+            )),
         }
     }
 
     /// Assert that a result is an error
-    pub fn assert_error<T>(result: &SongbirdResult<T>) -> TestResult<()>  {match result {
-            Ok(_) => Err(SongbirdError::service("test-utils", "Expected error but got success"),"
-            Err(_) => Ok((),
+    pub fn assert_error<T>(result: &SongbirdResult<T>) -> TestResult<()> {
+        match result {
+            Ok(_) => Err(SongbirdError::service("test-utils", "Expected error but got success")),
+            Err(_) => Ok(()),
         }
     }
 
@@ -90,16 +95,16 @@ impl CanonicalAssertions  {/// Assert that a result is successful
         expected_msg: &str,
     ) -> TestResult<()> {
         match result {
-            Ok(_) => Err(SongbirdError::service("test-utils", "Expected error but got success"),"
+            Ok(_) => Err(SongbirdError::service("test-utils", "Expected error but got success")),
             Err(e) => {
-                let error_str = e.to_string());
+                let error_str = e.to_string();
                 if error_str.contains(expected_msg) {
-                    Ok(()),
+                    Ok(())
                 } else {
                     Err(SongbirdError::service(
-                        "test-utils","
-                        format!("Error '{}' does not contain '{expected_msg}'", error_str),"
-                    )
+                        "test-utils",
+                        format!("Error '{}' does not contain '{expected_msg}'", error_str),
+                    ))
                 }
             }
         }
@@ -109,7 +114,7 @@ impl CanonicalAssertions  {/// Assert that a result is successful
     pub fn assert_response_success<T>(_response: &SongbirdResult<T>) -> TestResult<()> {
         // SongbirdResponse doesn't have a success field - it's always successful if Ok
         // The presence of data indicates success
-        Ok(()),
+        Ok(())
     }
 
     /// Assert that an operation completes within timeout
@@ -120,9 +125,10 @@ impl CanonicalAssertions  {/// Assert that a result is successful
     where
         F: FnOnce() -> Fut,
         Fut: Future<Output = SongbirdResult<T>>,
-     {match tokio::time::timeout(timeout_duration, operation().await {
+    {
+        match tokio::time::timeout(timeout_duration, operation()).await {
             Ok(result) => result,
-            Err(_) => Err(SongbirdError::service("test-utils", "Operation timed out"),"
+            Err(_) => Err(SongbirdError::service("test-utils", "Operation timed out")),
         }
     }
 
@@ -133,12 +139,12 @@ impl CanonicalAssertions  {/// Assert that a result is successful
         max: T,
     ) -> TestResult<()> {
         if value >= min && value <= max {
-            Ok(()),
+            Ok(())
         } else {
             Err(SongbirdError::service(
-                "test-utils","
-                format!("Value {} is not in range [{min:?}, {max:?}]", value:?),"
-            )
+                "test-utils",
+                format!("Value {value:?} is not in range [{min:?}, {max:?}]"),
+            ))
         }
     }
 
@@ -146,14 +152,14 @@ impl CanonicalAssertions  {/// Assert that a result is successful
     pub fn assert_approx_equal(actual: f64, expected: f64, tolerance: f64) -> TestResult<()> {
         let diff = (actual - expected).abs();
         if diff <= tolerance {
-            Ok(()),
+            Ok(())
         } else {
             Err(SongbirdError::service(
-                "test-utils","
+                "test-utils",
                 format!(
-                    "Values not approximately equal: {actual} vs {expected} (tolerance: {tolerance})""
-                )
-            )
+                    "Values not approximately equal: {actual} vs {expected} (tolerance: {tolerance})"
+                ),
+            ))
         }
     }
 
@@ -170,12 +176,12 @@ impl CanonicalAssertions  {/// Assert that a result is successful
         };
 
         if diff <= tolerance {
-            Ok(()),
+            Ok(())
         } else {
             Err(SongbirdError::service(
-                "test-utils","
-                format!("Duration {} is not within {tolerance:?} of expected {expected:?}", actual:?),"
-            )
+                "test-utils",
+                format!("Duration {actual:?} is not within {tolerance:?} of expected {expected:?}"),
+            ))
         }
     }
 }
@@ -183,8 +189,9 @@ impl CanonicalAssertions  {/// Assert that a result is successful
 /// Performance testing utilities
 pub struct PerformanceTestUtils;
 
-impl PerformanceTestUtils  {/// Measure execution time of an operation
-    pub async fn measure_async<F, Fut, T>(operation: F) -> (T, Duration,
+impl PerformanceTestUtils {
+    /// Measure execution time of an operation
+    pub async fn measure_async<F, Fut, T>(operation: F) -> (T, Duration)
     where
         F: FnOnce() -> Fut,
         Fut: Future<Output = T>,
@@ -196,7 +203,7 @@ impl PerformanceTestUtils  {/// Measure execution time of an operation
     }
 
     /// Measure execution time of a synchronous operation
-    pub fn measure_sync<F, T>(operation: F) -> (T, Duration,
+    pub fn measure_sync<F, T>(operation: F) -> (T, Duration)
     where
         F: FnOnce() -> T,
     {
@@ -215,8 +222,8 @@ impl PerformanceTestUtils  {/// Measure execution time of an operation
         let mut durations = Vec::with_capacity(iterations);
 
         for _ in 0..iterations {
-            let (_, duration) = Self::measure_async(operation.clone().await;
-            durations.push(duration));
+            let (_, duration) = Self::measure_async(operation.clone()).await;
+            durations.push(duration);
         }
 
         PerformanceResults::new(durations)
@@ -235,29 +242,31 @@ impl PerformanceTestUtils  {/// Measure execution time of an operation
         let results = Self::benchmark_async(operation, iterations).await;
 
         if results.average() <= max_duration {
-            Ok(()),
+            Ok(())
         } else {
             Err(SongbirdError::service(
-                "test-utils","
+                "test-utils",
                 format!(
-                    "Performance requirement failed: average {:?} > max {:?}","
-                    results.average()
+                    "Performance requirement failed: average {:?} > max {:?}",
+                    results.average(),
                     max_duration
-                )
-            )
+                ),
+            ))
         }
     }
 }
 
 /// Performance benchmark results
 #[derive(Debug, Clone)]
-pub struct PerformanceResults  {durations: Vec<Duration>)
+pub struct PerformanceResults {
+    durations: Vec<Duration>,
 }
 
-impl PerformanceResults  {#[must_use]
+impl PerformanceResults {
+    #[must_use]
     pub fn new(durations: Vec<Duration>) -> Self {
         Self {
-            durations)
+            durations,
         }
     }
 
@@ -291,7 +300,7 @@ impl PerformanceResults  {#[must_use]
             return Duration::ZERO;
         }
 
-        let mut sorted = self.durations.clone());
+        let mut sorted = self.durations.clone();
         sorted.sort();
 
         let mid = sorted.len() / 2;
@@ -329,7 +338,8 @@ impl PerformanceResults  {#[must_use]
 
 /// Mock service for testing
 #[derive(Debug, Clone)]
-pub struct MockService  {/// Service name
+pub struct MockService {
+    /// Service name
     pub name: String,
     /// Service port
     pub port: u16,
@@ -337,12 +347,14 @@ pub struct MockService  {/// Service name
     pub healthy: bool,
 }
 
-impl MockService  {/// Create a mock service
+impl MockService {
+    /// Create a mock service
     #[must_use]
-    pub fn new(service_id: &str, healthy: bool) -> Self  {Self {
+    pub fn new(service_id: &str, healthy: bool) -> Self {
+        Self {
             name: service_id.to_string(),
             port: 8080, // Default test port
-            healthy)
+            healthy,
         }
     }
 
@@ -352,12 +364,12 @@ impl MockService  {/// Create a mock service
     /// Returns an error if the service is unhealthy.
     pub async fn call(&self, _input: &str) -> SongbirdResult<String> {
         // Simulate response delay
-        tokio::time::sleep(Duration::from_millis(10).await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
 
         if self.healthy {
-            Ok(format!("Response from {}", self.name)"
+            Ok(format!("Response from {}", self.name))
         } else {
-            Err(SongbirdError::service("test-utils", format!("Service {} unavailable", &self.name))"
+            Err(SongbirdError::service("test-utils", format!("Service {} unavailable", &self.name)))
         }
     }
 
@@ -375,20 +387,23 @@ impl MockService  {/// Create a mock service
 
 /// Test environment for canonical testing
 #[derive(Debug, Clone)]
-pub struct TestEnvironment  {/// Environment name
+pub struct TestEnvironment {
+    /// Environment name
     pub name: String,
     /// Environment configuration
-    pub config: HashMap<String, String>)
+    pub config: HashMap<String, String>,
     /// Test timeout
     pub timeout: Duration,
 }
 
-impl TestEnvironment  {/// Create a new test environment
+impl TestEnvironment {
+    /// Create a new test environment
     #[must_use]
-    pub fn new(name: String) -> Self  {Self {
+    pub fn new(name: String) -> Self {
+        Self {
             name,
-            config: HashMap::new()),
-            timeout: Duration::from_secs(30)
+            config: HashMap::new(),
+            timeout: Duration::from_secs(30),
         }
     }
 
@@ -400,7 +415,7 @@ impl TestEnvironment  {/// Create a new test environment
         // Initialize logging for tests if not already done
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();
 
-        Ok(()),
+        Ok(())
     }
 
     /// Clean up test environment
@@ -409,17 +424,17 @@ impl TestEnvironment  {/// Create a new test environment
     /// Returns an error if cleanup fails.
     pub async fn cleanup() -> TestResult<()> {
         // Perform any necessary cleanup
-        tokio::time::sleep(Duration::from_millis(10).await;
-        Ok(()),
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        Ok(())
     }
 
     /// Create a test configuration with sensible defaults
     #[must_use]
     pub fn create_test_config() -> HashMap<String, String> {
         let mut config = HashMap::new();
-        config.insert("test_mode".to_string(), "true".to_string();"
-        config.insert("log_level".to_string(), "debug".to_string();"
-        config.insert("timeout_ms".to_string(), "30000".to_string();"
+        config.insert("test_mode".to_string(), "true".to_string());
+        config.insert("log_level".to_string(), "debug".to_string());
+        config.insert("timeout_ms".to_string(), "30000".to_string());
         config
     }
 }
@@ -436,7 +451,7 @@ macro_rules! canonical_test {
             TestEnvironment::setup().await?;
 
             // Create test context
-            let ctx = TestContext::new(stringify!($name);
+            let ctx = TestContext::new(stringify!($name));
 
             // Run the test
             let result = $test_fn(ctx).await;

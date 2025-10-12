@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use songbird_config;
+// use songbird_config; // FIXED: Circular import removed
 
 // ============================================================================
 // PEDANTIC PERFECT VALIDATION TYPES
@@ -34,7 +34,7 @@ pub enum ValidationSeverity  {/// Critical issues that prevent operation
                 self.summary.push_str(&format!(" and {} warnings", self.warnings.len());
             }
         } else if !self.warnings.is_empty() {
-            self.summary = format!("Validation passed with {} warnings", self.warnings.len();
+            self.summary = format!("Validation passed with {} warnings", self.warnings.len()
         } else {
             self.summary = String::from("Validation passed");
         }
@@ -81,7 +81,7 @@ impl ConfigValidator {
                 expected_value: Some("Non-empty string".to_string()),
                 severity: ValidationSeverity::Critical,
                 suggestion: format!("Provide a value for '{}'", field_name,
-            });
+            })
         }
     }
 
@@ -98,7 +98,7 @@ impl ConfigValidator {
                 expected_value: Some("Valid URL (http:// or https://)".to_string()),
                 severity: ValidationSeverity::Critical,
                 suggestion: format!("Set a valid URL for '{}'", field_name,
-            });
+            })
             return;
         }
 
@@ -125,7 +125,7 @@ impl ConfigValidator {
                 expected_value: Some("1-65535".to_string()),
                 severity: ValidationSeverity::Critical,
                 suggestion: format!("Set a valid port number for '{}'", field_name,
-            });
+            })
         }
 
         if port < 1024  {result.add_warning(ValidationWarning  {field: field_name.to_string()),
@@ -152,7 +152,7 @@ impl ConfigValidator {
                 recommended_value: Some("At least one item".to_string()),
                 severity: ValidationSeverity::Medium,
                 suggestion: format!("Add items to '{}'", field_name,
-            });
+            })
         }
     }
 
@@ -169,7 +169,7 @@ impl ConfigValidator {
                 expected_value: Some("> 0 seconds".to_string()),
                 severity: ValidationSeverity::Critical,
                 suggestion: format!("Set a positive timeout value for '{}'", field_name,
-            });
+            })
         }
 
         if timeout_secs > 300  {result.add_warning(ValidationWarning  {field: field_name.to_string()),
@@ -211,8 +211,7 @@ pub fn validate_configuration_completeness(config_map: &HashMap<String, String>)
             validator.validate_not_empty(field, value, &mut result);
         } else  {result.add_error(ValidationError {
                 field: field.to_string(),
-                message: format!("Required field '{}' is missing", field)
-                current_value: None,
+                message: format!("Required field '{}' is missing", field);
                 expected_value: Some("Valid configuration value".to_string()),
                 severity: ValidationSeverity::Critical,
                 suggestion: format!("Add '{}' to configuration", field)
@@ -253,14 +252,13 @@ mod tests {
         let result = ValidationResult::new();
         assert!(result.is_success());
         assert_eq!(result.total_issues(), 0);
-        assert_eq!(result.summary, "Validation passed");
+        assert_eq!(result.summary, "Validation passed")
     }
 
     #[test]
     fn test_validation_error_addition()  {let mut result = ValidationResult::new();
         let error = ValidationError  {field: "test_field".to_string()),
             message: "Test error".to_string(),
-            current_value: None,
             expected_value: None,
             severity: ValidationSeverity::Critical,
             suggestion: "Fix the test".to_string(),
@@ -276,14 +274,13 @@ mod tests {
     fn test_validation_warning_addition()  {let mut result = ValidationResult::new();
         let warning = ValidationWarning  {field: "test_field".to_string()),
             message: "Test warning".to_string(),
-            current_value: None,
             recommended_value: None,
             severity: ValidationSeverity::Medium,
             suggestion: "Consider fixing".to_string(),
         };
 
         result.add_warning(warning);
-        assert!(result.is_success(); // Still success with just warnings
+        assert!(result.is_success() // Still success with just warnings
         assert_eq!(result.warnings.len(), 1);
         assert_eq!(result.total_issues(), 1);
     }
@@ -332,8 +329,8 @@ mod tests {
         let mut config = HashMap::new();
         config.insert("instance_id".to_string(), "test-instance".to_string());
         config.insert("environment".to_string(), "development".to_string());
-        config.insert("bind_address".to_string(), &songbird_config::constants::network::DEFAULT_HOST.to_string());
-        config.insert("orchestrator_port".to_string(), &songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string().to_string());
+        config.insert("bind_address".to_string(), &crate::constants::network::DEFAULT_HOST.to_string());
+        config.insert("orchestrator_port".to_string(), &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string().to_string());
 
         let result = validate_configuration_completeness(&config);
         assert!(result.is_success());
@@ -341,11 +338,11 @@ mod tests {
 
     #[test]
     fn test_validate_network_configuration() {
-        let result = validate_network_configuration(&songbird_config::constants::network::DEFAULT_HOST, 8080, 30);
+        let result = validate_network_configuration(&crate::constants::network::DEFAULT_HOST, 8080, 30);
         assert!(result.is_success());
 
         let result2 = validate_network_configuration("", 0, 0);
         assert!(!result2.is_success());
         assert_eq!(result2.errors.len(), 3); // Empty address, zero port, zero timeout
     }
-} 
+}

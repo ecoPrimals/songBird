@@ -28,8 +28,8 @@ songbird-discovery = { path = "../songbird-discovery" }
 songbird-observability = { path = "../songbird-observability" }
 songbird-registry = { path = "../songbird-registry" }
 songbird-universal = { path = "../songbird-universal" }
-songbird-primal-sdk = { path = "../songbird-primal-sdk" }
-songbird-cli = { path = "../songbird-cli" }
+# songbird-primal-sdk = { path = "../songbird-primal-sdk" }  # TEMPORARILY DISABLED: Syntax errors need fixing
+# songbird-cli = { path = "../songbird-cli" }  # TEMPORARILY DISABLED: Syntax errors need fixing
 
 # Runtime
 tokio = { workspace = true }

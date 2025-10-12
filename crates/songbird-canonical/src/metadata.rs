@@ -5,7 +5,8 @@ use std::collections::HashMap;
 
 /// AI-optimized metadata for responses
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct AIResponseMetadata  {/// AI decision-making context
+pub struct AIResponseMetadata {
+    /// AI decision-making context
     pub decision_context: DecisionContext,
 
     /// Automation capabilities for this response
@@ -15,14 +16,14 @@ pub struct AIResponseMetadata  {/// AI decision-making context
     pub quality_metrics: QualityMetrics,
 
     /// Custom metadata fields
-    pub custom_fields: HashMap<String, serde_json::Value>)
+    pub custom_fields: HashMap<String, serde_json::Value>,
 }
 
 impl AIResponseMetadata {
     /// Add an automation capability
     #[must_use]
     pub fn with_automation_capability(mut self, capability: AutomationCapability) -> Self {
-        self.automation_capabilities.push(capability));
+        self.automation_capabilities.push(capability);
         self
     }
 
@@ -36,7 +37,8 @@ impl AIResponseMetadata {
 
 /// Context for AI decision making
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DecisionContext  {/// Factors that influenced this response
+pub struct DecisionContext {
+    /// Factors that influenced this response
     pub influencing_factors: Vec<String>,
 
     /// Alternative options that were considered
@@ -49,7 +51,9 @@ pub struct DecisionContext  {/// Factors that influenced this response
     pub risk_level: RiskLevel,
 }
 
-impl Default for DecisionContext  {fn default() -> Self  {Self {
+impl Default for DecisionContext {
+    fn default() -> Self {
+        Self {
             influencing_factors: Vec::new(),
             alternatives_considered: Vec::new(),
             reasoning: None,
@@ -60,7 +64,8 @@ impl Default for DecisionContext  {fn default() -> Self  {Self {
 
 /// Risk levels for AI assessment
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RiskLevel  {/// Low risk operation
+pub enum RiskLevel {
+    /// Low risk operation
     Low,
     /// Medium risk operation
     Medium,
@@ -72,7 +77,8 @@ pub enum RiskLevel  {/// Low risk operation
 
 /// Automation capabilities for AI agents
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct AutomationCapability  {/// Capability identifier
+pub struct AutomationCapability {
+    /// Capability identifier
     pub capability: String,
 
     /// Description of what can be automated
@@ -85,16 +91,18 @@ pub struct AutomationCapability  {/// Capability identifier
     pub confidence_threshold: f64,
 }
 
-impl AutomationCapability  {/// Create a new automation capability
+impl AutomationCapability {
+    /// Create a new automation capability
     pub fn new(
         capability: impl Into<String>,
         description: impl Into<String>,
         confidence_threshold: f64,
-    ) -> Self  {Self {
-            capability: capability.into(,
-            description: description.into(,
+    ) -> Self {
+        Self {
+            capability: capability.into(),
+            description: description.into(),
             prerequisites: Vec::new(),
-            confidence_threshold: confidence_threshold.clamp(0.0, 1.0)
+            confidence_threshold: confidence_threshold.clamp(0.0, 1.0),
         }
     }
 
@@ -108,7 +116,8 @@ impl AutomationCapability  {/// Create a new automation capability
 
 /// Quality metrics for AI evaluation
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct QualityMetrics  {/// Accuracy score (0.0-1.0)
+pub struct QualityMetrics {
+    /// Accuracy score (0.0-1.0)
     pub accuracy: Option<f64>,
 
     /// Completeness score (0.0-1.0)
@@ -144,7 +153,7 @@ impl QualityMetrics {
     /// Set accuracy score
     #[must_use]
     pub fn with_accuracy(mut self, accuracy: f64) -> Self {
-        self.accuracy = Some(accuracy.clamp(0.0, 1.0);
+        self.accuracy = Some(accuracy.clamp(0.0, 1.0));
         self.calculate_overall();
         self
     }
@@ -152,7 +161,7 @@ impl QualityMetrics {
     /// Set completeness score
     #[must_use]
     pub fn with_completeness(mut self, completeness: f64) -> Self {
-        self.completeness = Some(completeness.clamp(0.0, 1.0);
+        self.completeness = Some(completeness.clamp(0.0, 1.0));
         self.calculate_overall();
         self
     }
@@ -160,7 +169,7 @@ impl QualityMetrics {
     /// Set relevance score
     #[must_use]
     pub fn with_relevance(mut self, relevance: f64) -> Self {
-        self.relevance = Some(relevance.clamp(0.0, 1.0);
+        self.relevance = Some(relevance.clamp(0.0, 1.0));
         self.calculate_overall();
         self
     }
@@ -168,7 +177,7 @@ impl QualityMetrics {
     /// Set timeliness score
     #[must_use]
     pub fn with_timeliness(mut self, timeliness: f64) -> Self {
-        self.timeliness = Some(timeliness.clamp(0.0, 1.0);
+        self.timeliness = Some(timeliness.clamp(0.0, 1.0));
         self.calculate_overall();
         self
     }

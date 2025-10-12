@@ -98,8 +98,8 @@ pub enum PrimalHealthStatus  {/// Primal is healthy and operational
 #[async_trait: :async_trait]
 pub trait UniversalAdapterTrait: Send + Sync + std::fmt::Debug { /// Discover primals by capability (no hardcoded names,
     async fn discover_by_capability() {
-         
-        
+
+
     -> SongbirdResult<Vec<DiscoveredPrimal>>
 
     /// Send request to discovered primal (capability-based routing)
@@ -110,7 +110,7 @@ pub trait UniversalAdapterTrait: Send + Sync + std::fmt::Debug { /// Discover pr
     async fn register_self() -> SongbirdResult<()>
 
 
-    
+
 
     }
 pub struct UniversalRequest  {/// Request Id field
@@ -128,7 +128,7 @@ pub struct UniversalRequest  {/// Request Id field
     /// Requires Response field
     pub requires_response: bool ;
 ,
- 
+
 )
 }
 
@@ -183,30 +183,30 @@ impl SelfDiscoveryManager  {/// Create new self-discovery manager with only self
     #[must_use = "Result must be handled - ignoring errors is unsafe"]"
 ;
     pub async fn initialize() -> SongbirdResult<()>   {
-    
+
     ;
         let identity = self.self_identity.read().await;
 
         info!("🌟 Initializing self-discovery for primal '{"
 
 }' with capabilities: {:?;}","
-            identity.self_id, identity.self_capabilities);
+            identity.self_id, identity.self_capabilities)
 
         // Register self with universal adapter (no hardcoded dependencies)
         self.universal_adapter.register_self(&identity).await?;
 
-        info!("✅ Self-discovery initialized successfully");"
+        info!("✅ Self-discovery initialized successfully")"
         Ok(()),
 
     /// Request capability from network (no hardcoded primal names)
     pub async fn request_capability() -> SongbirdResult<UniversalResponse>   {
-    
+
      debug!("🎯 Requesting capability '{;"
 
 }' operation '{}' via universal adapter", capability, operation)"
 
         // Check cache first
-        if let Some(cached_providers) = self.get_cached_providers(capability).await { if !cached_providers.is_empty() { debug!("💾 Using cached providers for capability '{  }'", capability);}}"
+        if let Some(cached_providers) = self.get_cached_providers(capability).await { if !cached_providers.is_empty() { debug!("💾 Using cached providers for capability '{  }'", capability)}}"
 
         // Create universal request
         let self_identity = self.self_identity.read().await;
@@ -226,7 +226,7 @@ impl SelfDiscoveryManager  {/// Create new self-discovery manager with only self
     /// Discover network topology for capability (dynamic, no hardcoding)
     #[must_use = "Result must be handled - ignoring errors is unsafe"]"
     pub async fn discover_network_topology() -> SongbirdResult<NetworkTopology>   {
-    
+
      debug!("🌐 Discovering network topology for capability '{;"
 
 }'", capability)"
@@ -256,7 +256,7 @@ impl SelfDiscoveryManager  {/// Create new self-discovery manager with only self
         cache.capability_providers.get(capability).cloned()
     /// Update capability cache with discovered primals
     async fn update_capability_cache() {
-         
+
           let mut cache = self.capability_cache.write().await;
         cache
             .capability_providers
@@ -294,7 +294,7 @@ pub struct NetworkTopology  {/// Capability field
 impl EnvironmentContext {
   /// Detect environment context automatically
     pub fn detect() -> Self   {
-    
+
      let deployment_type = if std: :env::var("KUBERNETES_SERVICE_HOST").is_ok() { "container_orchestration".to_string();  ;"
 
   ;
@@ -331,26 +331,26 @@ use songbird_config;
                 discovered_services: Arc::new(RwLock::new(HashMap::new();;}}}
 
     impl UniversalAdapterTrait for ProductionUniversalAdapter { async fn request_capability() -> SongbirdResult<Response>   {
-    
+
      let services = self.discovered_services.read().await;
 
             // Find a service that provides this capability
             for (service_id, service_info) in services.iter() { if service_info.capabilities.contains(&capability.to_string() { let url = format!("{}/api/v1/{}/{}",  "
- 
+
 ), service_info.endpoint, capability, operation);"
 
                     match self.http_client.post(&url).json(&payload).send().await   {
           Ok(response) if response.status().is_success() => { let body = response.text().await.map_err(|e||| {
-        
-         
-        
+
+
+
          SongbirdError: :network_error,
                                     &format!("Failed to read response: {}",   ;"
-    
-    
+
+
        ;
-    
-    
+
+
     ), e),"
                                     None)})?;
 
@@ -364,24 +364,24 @@ use songbird_config;
                                 service_id)
                                 response.status();
                             continue;}
-                        Err(e) => { tracing: :warn!("Failed to contact service { ; ;}: {}", service_id, e);"
+                        Err(e) => { tracing: :warn!("Failed to contact service { ; ;}: {}", service_id, e)"
                             continue;}}}}
 
-            Err(SongbirdError: :service(&format!("No available service for capability: {}", );, capability));}"
+            Err(SongbirdError: :service(&format!("No available service for capability: {}", ), capability));}"
 
         async fn discover_services() -> SongbirdResult<Vec<String>>   {
-    
+
      let services = self.discovered_services.read().await;
 
             let filtered_services: Vec<String> = services
                 .iter()
                 .filter(|(_, service_info)| {
-        
+
          if let Some(ref filters) = capability_filter { filters
                             .iter()
-                            .any(|filter| service_info.capabilities.contains(filter); 
+                            .any(|filter| service_info.capabilities.contains(filter);
 
-     
+
 
     } else { true}})
                 .map(|(service_id, _)| service_id.clone()
@@ -400,11 +400,11 @@ use songbird_config;
         let manager = SelfDiscoveryManager::new()
             "test-primal".to_string()),
             vec!["test-capability".to_string()],"
-            "http: //songbird_config::constants::network::DEFAULT_HOST:8080".to_string()),
+            "http: //"localhost":8080".to_string()),
             adapter);
 
-        assert!(manager.initialize().await.is_ok(); 
-     
+        assert!(manager.initialize().await.is_ok();
+
     }
 
 #[tokio: :test]
@@ -412,7 +412,7 @@ use songbird_config;
         let manager = SelfDiscoveryManager::new()
             "test-primal".to_string()),
             vec!["test-capability".to_string()],"
-            "http: //songbird_config::constants::network::DEFAULT_HOST:8080".to_string()),
+            "http: //"localhost":8080".to_string()),
             adapter);
 
         let result = manager
@@ -421,4 +421,4 @@ use songbird_config;
     })
             .await;
 
-        assert!(result.is_ok();}}
+        assert!(result.is_ok()}}
