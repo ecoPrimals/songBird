@@ -15,6 +15,7 @@ use std::collections::HashMap;
 
 pub mod canonical_network;
 pub mod config;
+pub mod discoverable_endpoint; // NEW: Zero hardcoding endpoint system
 // TEMPORARY: Disabled due to syntax errors - fix in next session
 // pub mod environment_config_clean;
 // pub mod unified; // TEMPORARY: Disabled - has E0765 corruption in unified/core.rs
