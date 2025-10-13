@@ -19,7 +19,7 @@ type Result<T> = SongbirdResult<T>;
 
 /// Main Songbird Discovery Service
 pub struct SongbirdDiscovery {
-    config: SongbirdDiscoveryConfig,
+    config: Arc<SongbirdDiscoveryConfig>,  // ✅ Shared via Arc for zero-copy
     local_node: LocalNode,
     known_nodes: Arc<RwLock<HashMap<NodeId, NodeInfo>>>,
     registered_services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
@@ -47,7 +47,7 @@ impl SongbirdDiscovery {
         let (event_sender, _) = broadcast::channel(1000);
 
         Self {
-            config,
+            config: Arc::new(config),  // ✅ Wrap in Arc
             local_node,
             known_nodes: Arc::new(RwLock::new(HashMap::new())),
             registered_services: Arc::new(RwLock::new(HashMap::new())),
@@ -64,7 +64,7 @@ impl SongbirdDiscovery {
 
     /// Register a new node in the discovery system
     pub fn register_node(&self, node: NodeInfo) -> Result<()> {
-        let node_id = node.id.clone();
+        let node_id = node.id.clone();  // Need clone for logging
 
         tracing::info!(
             node_id = %node_id,
@@ -72,7 +72,7 @@ impl SongbirdDiscovery {
             "Registering node in Songbird Discovery"
         );
 
-        self.known_nodes.write().insert(node_id.clone(), node);
+        self.known_nodes.write().insert(node_id, node);  // ✅ Move node_id instead of clone
 
         // Node registered successfully - event broadcasting handled by federation layer
         tracing::debug!("Node registered: {}", node_id);
@@ -175,7 +175,7 @@ impl SongbirdDiscovery {
     /// Start resource monitoring
     fn start_resource_monitoring(&self) -> Result<()> {
         let node_id = self.local_node.id.clone();
-        let config = self.config.monitoring.clone();
+        let config = Arc::clone(&self.config);  // ✅ Cheap Arc clone instead of data clone
         let (_shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
 
         tokio::spawn(async move {
