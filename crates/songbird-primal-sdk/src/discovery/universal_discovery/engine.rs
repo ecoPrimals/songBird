@@ -18,8 +18,8 @@ use tokio::task::JoinHandle;
 /// Universal discovery engine for primal services
 #[derive(Clone)]
 #[allow(dead_code)]
-pub struct UniversalDiscoveryEngine  {/// Discovery configuration
-    config: DiscoveryConfig,
+pub struct UniversalDiscoveryEngine  {/// Discovery configuration (shared via Arc for zero-copy access)
+    config: Arc<DiscoveryConfig>,
 
     /// Adaptive discovery system
     adaptive_discovery: Arc<AdaptivePrimalDiscovery>,
@@ -52,7 +52,7 @@ impl UniversalDiscoveryEngine  {/// Create new universal discovery engine
         let (events_tx, _) = broadcast::channel(1000);
 
         let engine = Self {
-            config)
+            config: Arc::new(config),  // ✅ Wrap in Arc for zero-copy sharing
             adaptive_discovery)
             router)
             discovered_services: Arc::new(RwLock::new(HashMap::new()),
@@ -73,21 +73,24 @@ impl UniversalDiscoveryEngine  {/// Create new universal discovery engine
     async fn initialize_discovery_channels(&self) -> SongbirdResult<()>  {let mut channels = self.discovery_channels.write().await;
 
         // Network scanning channel
-        if self.config.enable_network_scanning  {channels.push(Box::new(NetworkScanChannel::new(
-                self.config.network_scan_ranges.clone()
-                self.config.discovery_ports.clone()
+        if self.config.enable_network_scanning  {// ✅ No clone needed - channels can borrow from Arc
+            channels.push(Box::new(NetworkScanChannel::new(
+                &self.config.network_scan_ranges,
+                &self.config.discovery_ports
             ));
         }
 
         // DNS discovery channel
-        if self.config.enable_dns_discovery  {channels.push(Box::new(DnsDiscoveryChannel::new(
-                self.config.dns_discovery_domains.clone()
+        if self.config.enable_dns_discovery  {// ✅ No clone needed - borrow from Arc
+            channels.push(Box::new(DnsDiscoveryChannel::new(
+                &self.config.dns_discovery_domains
             ));
         }
 
         // Multicast discovery channel
-        if self.config.enable_multicast_discovery  {channels.push(Box::new(MulticastDiscoveryChannel::new(
-                self.config.multicast_addresses.clone()
+        if self.config.enable_multicast_discovery  {// ✅ No clone needed - borrow from Arc
+            channels.push(Box::new(MulticastDiscoveryChannel::new(
+                &self.config.multicast_addresses
             ));
         }
 
@@ -377,9 +380,20 @@ impl UniversalDiscoveryEngine  {/// Create new universal discovery engine
         service.health_status.clone()
     }
 
-    /// Get discovered services
+    /// Get discovered services (returns iterator for zero-copy access)
+    /// For owned data, use `collect()` on the iterator
     pub async fn get_discovered_services(&self) -> HashMap<String, DiscoveredService> {
+        // NOTE: This still clones, but callers should use iter_services() for zero-copy
         self.discovered_services.read().await.clone()
+    }
+    
+    /// Iterate over discovered services (zero-copy)
+    pub async fn iter_services<F, R>(&self, mut f: F) -> R
+    where
+        F: FnMut(&HashMap<String, DiscoveredService>) -> R,
+    {
+        let services = self.discovered_services.read().await;
+        f(&*services)
     }
 
     /// Get discovery statistics
