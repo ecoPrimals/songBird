@@ -33,8 +33,8 @@ pub struct CapabilityOrchestrator  {/// Capability registry (what capabilities a
     discovery: AdaptivePrimalDiscovery,
     /// Orchestration engine (handles complex workflows)
     orchestration_engine: OrchestrationEngine,
-    /// Configuration
-    config: CapabilityOrchestratorConfig,
+    /// Configuration (shared via Arc for zero-copy access)
+    config: Arc<CapabilityOrchestratorConfig>,
 }
 
 impl CapabilityOrchestrator  {/// Create new capability orchestrator
@@ -50,7 +50,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
             provider_registry)
             discovery: discovery.data,
             orchestration_engine)
-            config)
+            config: Arc::new(config),  // ✅ Wrap in Arc for zero-copy sharing
         };
 
         // Initial discovery
@@ -483,7 +483,7 @@ impl CapabilityRegistry  {pub fn new() -> Self  {Self {
     }
 
     pub fn register_capability(&mut self, capability: String, provider: CapabilityProvider) {
-        self.all_capabilities.insert(capability.clone());
+        self.all_capabilities.insert(capability.clone());  // Need clone for HashSet
         self.capability_providers
             .entry(capability)
             .or_default()
@@ -542,7 +542,9 @@ impl ProviderRegistry  {pub fn new() -> Self {
     }
 
     pub fn register_provider(&mut self, provider: CapabilityProvider) {
-        self.providers.insert(provider.id.clone(), provider);
+        // ✅ Move provider.id ownership, no clone needed
+        let id = provider.id.clone();
+        self.providers.insert(id, provider);
     }
 
     pub fn get_provider(&self, id: &str) -> Option<&CapabilityProvider> {
