@@ -210,10 +210,8 @@ impl DiscoverableEndpoint {
         }
 
         Err(SongbirdError::Configuration {
-            field: "endpoint".to_string(),
             message: "Could not discover endpoint using any method".to_string(),
-            current_value: None,
-            expected_format: None,
+            field: Some("endpoint".to_string()),
             suggestion: Some("Check environment variables or network connectivity".to_string()),
         })
     }
@@ -223,10 +221,11 @@ impl DiscoverableEndpoint {
         match method {
             DiscoveryMethod::Environment { var_name, parser } => {
                 let value = std::env::var(var_name).map_err(|_| {
-                    SongbirdError::configuration_error(&format!(
-                        "Environment variable {} not found",
-                        var_name
-                    ))
+                    SongbirdError::Configuration {
+                        message: format!("Environment variable {} not found", var_name),
+                        field: Some(var_name.clone()),
+                        suggestion: Some(format!("Set {} environment variable", var_name)),
+                    }
                 })?;
 
                 parse_endpoint(&value, parser)
@@ -252,7 +251,11 @@ impl DiscoverableEndpoint {
                         }
                     }
                 }
-                Err(SongbirdError::configuration_error("Network probe failed"))
+                Err(SongbirdError::Configuration {
+                    message: "Network probe failed".to_string(),
+                    field: None,
+                    suggestion: Some("Check network connectivity".to_string()),
+                })
             }
 
             DiscoveryMethod::KubernetesService {
@@ -280,7 +283,11 @@ impl DiscoverableEndpoint {
                         path: None,
                     })
                 } else {
-                    Err(SongbirdError::configuration_error("Not in Kubernetes environment"))
+                    Err(SongbirdError::Configuration {
+                        message: "Not in Kubernetes environment".to_string(),
+                        field: None,
+                        suggestion: Some("Run inside a Kubernetes pod".to_string()),
+                    })
                 }
             }
 
@@ -289,16 +296,20 @@ impl DiscoverableEndpoint {
                 consul_addr,
             } => {
                 // For now, return error - full consul integration would go here
-                Err(SongbirdError::configuration_error(
-                    "Consul discovery not yet implemented",
-                ))
+                Err(SongbirdError::Configuration {
+                    message: "Consul discovery not yet implemented".to_string(),
+                    field: Some("consul".to_string()),
+                    suggestion: Some("Use environment variables or static configuration instead".to_string()),
+                })
             }
 
             DiscoveryMethod::DnsServiceDiscovery { service_name } => {
                 // For now, return error - full DNS-SD would go here
-                Err(SongbirdError::configuration_error(
-                    "DNS-SD not yet implemented",
-                ))
+                Err(SongbirdError::Configuration {
+                    message: "DNS-SD not yet implemented".to_string(),
+                    field: Some("dns_sd".to_string()),
+                    suggestion: Some("Use environment variables or static configuration instead".to_string()),
+                })
             }
         }
     }
@@ -310,13 +321,21 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
         EndpointParser::Url => {
             // Parse full URL
             let url = url::Url::parse(value).map_err(|e| {
-                SongbirdError::configuration_error(&format!("Invalid URL: {}", e))
+                SongbirdError::Configuration {
+                    message: format!("Invalid URL: {}", e),
+                    field: Some("url".to_string()),
+                    suggestion: Some("Provide a valid HTTP/HTTPS URL".to_string()),
+                }
             })?;
 
             Ok(EndpointSpec {
                 host: url
                     .host_str()
-                    .ok_or_else(|| SongbirdError::configuration_error("URL missing host"))?
+                    .ok_or_else(|| SongbirdError::Configuration {
+                        message: "URL missing host".to_string(),
+                        field: Some("url".to_string()),
+                        suggestion: Some("Provide a URL with a hostname".to_string()),
+                    })?
                     .to_string(),
                 port: url.port().unwrap_or(80),
                 protocol: Some(url.scheme().to_string()),
@@ -328,13 +347,19 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
             // Parse host:port
             let parts: Vec<&str> = value.split(':').collect();
             if parts.len() != 2 {
-                return Err(SongbirdError::configuration_error(
-                    "Expected host:port format",
-                ));
+                return Err(SongbirdError::Configuration {
+                    message: "Expected host:port format".to_string(),
+                    field: Some("endpoint".to_string()),
+                    suggestion: Some("Use format: hostname:port (e.g., localhost:8080)".to_string()),
+                });
             }
 
             let port = parts[1].parse().map_err(|_| {
-                SongbirdError::configuration_error("Invalid port number")
+                SongbirdError::Configuration {
+                    message: "Invalid port number".to_string(),
+                    field: Some("port".to_string()),
+                    suggestion: Some("Port must be between 0 and 65535".to_string()),
+                }
             })?;
 
             Ok(EndpointSpec {
@@ -357,9 +382,11 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
 
         EndpointParser::Pattern(pattern) => {
             // Custom pattern parsing would go here
-            Err(SongbirdError::configuration_error(
-                "Custom patterns not yet implemented",
-            ))
+            Err(SongbirdError::Configuration {
+                message: "Custom patterns not yet implemented".to_string(),
+                field: Some("pattern".to_string()),
+                suggestion: Some("Use Url or HostPort parser instead".to_string()),
+            })
         }
     }
 }
@@ -375,7 +402,11 @@ async fn probe_endpoint(host: &str, port: u16, health_path: &str) -> SongbirdRes
     .await
     {
         Ok(Ok(_)) => Ok(()),
-        _ => Err(SongbirdError::network_error("Probe failed")),
+        _ => Err(SongbirdError::Network {
+            message: "Probe failed".to_string(),
+            interface: None,
+            suggestion: Some("Check network connectivity and firewall settings".to_string()),
+        }),
     }
 }
 
@@ -385,10 +416,11 @@ fn resolve_named_port(name: &str) -> SongbirdResult<u16> {
         "http" => Ok(80),
         "https" => Ok(443),
         "grpc" => Ok(9090),
-        _ => Err(SongbirdError::configuration_error(&format!(
-            "Unknown port name: {}",
-            name
-        ))),
+        _ => Err(SongbirdError::Configuration {
+            message: format!("Unknown port name: {}", name),
+            field: Some("port".to_string()),
+            suggestion: Some("Use 'http' (80), 'https' (443), or 'grpc' (9090)".to_string()),
+        }),
     }
 }
 
@@ -418,9 +450,11 @@ impl EndpointSpec {
         }
 
         // For hostnames, return error - DNS resolution would happen elsewhere
-        Err(SongbirdError::configuration_error(
-            "Cannot convert hostname to SocketAddr without DNS resolution",
-        ))
+        Err(SongbirdError::Configuration {
+            message: "Cannot convert hostname to SocketAddr without DNS resolution".to_string(),
+            field: Some("host".to_string()),
+            suggestion: Some("Use an IP address or resolve DNS separately".to_string()),
+        })
     }
 }
 
