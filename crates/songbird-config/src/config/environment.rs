@@ -392,6 +392,10 @@ impl EnvironmentConfig {
     }
 
     /// Validate configuration consistency
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if there are port conflicts or configuration inconsistencies
     pub fn validate(&self) -> Result<(), String> {
         // Validate port ranges don't conflict
         let endpoints = &self.service_endpoints;
