@@ -25,6 +25,10 @@ impl MetricsCollector {
     }
 
     /// Collect all metrics
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn collect_all_metrics(&self) -> Result<MetricsSnapshot> {
         let metrics = MetricsSnapshot {
             system: SystemMetrics {
@@ -60,6 +64,10 @@ impl MetricsCollector {
     }
 
     /// Get current metrics snapshot
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if metrics collection fails when no snapshot exists
     pub async fn get_current_snapshot(&self) -> Result<MetricsSnapshot> {
         let current = self.current_metrics.read().await;
         match current.as_ref() {
@@ -69,11 +77,19 @@ impl MetricsCollector {
     }
 
     /// Get current metrics (alias for compatibility)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if metrics collection fails when no snapshot exists
     pub async fn get_current_metrics(&self) -> Result<MetricsSnapshot> {
         self.get_current_snapshot().await
     }
 
     /// Export metrics in Prometheus format
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if metrics collection fails
     pub async fn export_prometheus(&self) -> Result<String> {
         let metrics = self.get_current_snapshot().await?;
 

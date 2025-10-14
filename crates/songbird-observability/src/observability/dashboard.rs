@@ -42,6 +42,10 @@ impl SimpleDashboard {
     }
 
     /// Start the dashboard server
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn start(&self) -> Result<()> {
         if self.running.load(Ordering::Relaxed) {
             warn!("Dashboard already running on port {}", self.port);
@@ -59,6 +63,10 @@ impl SimpleDashboard {
     }
 
     /// Stop the dashboard server
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn stop(&self) -> Result<()> {
         if !self.running.load(Ordering::Relaxed) {
             return Ok(());
@@ -76,6 +84,10 @@ impl SimpleDashboard {
     }
 
     /// Handle HTTP requests
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP response cannot be constructed
     pub async fn handle_request(&self, req: Request<Incoming>) -> Result<Response<Full<Bytes>>> {
         match (req.method(), req.uri().path()) {
             (&Method::GET, "/") => self.serve_dashboard().await,

@@ -28,6 +28,10 @@ impl HealthMonitor {
     }
 
     /// Register a service for monitoring
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn register_service(&self, service_id: String) -> Result<()> {
         let health = ServiceHealth {
             service_id: service_id.clone(),
@@ -43,6 +47,10 @@ impl HealthMonitor {
     }
 
     /// Update service health status
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn update_service_health(
         &self,
         service_id: &str,
@@ -57,18 +65,30 @@ impl HealthMonitor {
     }
 
     /// Get service health status
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_service_health(&self, service_id: &str) -> Result<Option<ServiceHealth>> {
         let services = self.services.read().await;
         Ok(services.get(service_id).cloned())
     }
 
     /// Get all service health statuses
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_all_service_health(&self) -> Result<Vec<ServiceHealth>> {
         let services = self.services.read().await;
         Ok(services.values().cloned().collect())
     }
 
     /// Run health checks for all registered services
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn run_health_checks(&self) -> Result<()> {
         debug!("Running health checks");
         // In a real implementation, this would check actual service endpoints
