@@ -114,6 +114,10 @@ impl UnifiedUniversalAdapter {
     }
 
     /// Discover services and their capabilities
+    ///
+    /// # Errors
+    ///
+    /// This function logs errors but does not fail - it returns all successfully discovered services
     pub async fn discover_services(&self) -> Result<Vec<ServiceInfo>, UniversalAdapterError> {
         info!("🔍 Starting universal service discovery");
 
@@ -151,6 +155,10 @@ impl UnifiedUniversalAdapter {
     }
 
     /// Find services that provide specific capabilities
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn find_capability_providers(
         &self,
         capability_type: &str,
@@ -172,6 +180,13 @@ impl UnifiedUniversalAdapter {
     }
 
     /// Route a request to the best available service
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The required capability is not found
+    /// - No services are available for the capability
+    /// - All service requests fail
     pub async fn route_request(
         &self,
         request: UniversalRequest,
