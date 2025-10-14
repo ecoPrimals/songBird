@@ -34,6 +34,10 @@ pub struct SovereigntyAwareAdapter {
 
 impl SovereigntyAwareAdapter {
     /// Create new sovereignty-aware adapter
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn new() -> SongbirdResult<Self> {
         let base_adapter = UnifiedUniversalAdapter::new();
         let sovereignty_router = SovereigntyRouter::new();
@@ -49,6 +53,10 @@ impl SovereigntyAwareAdapter {
     }
 
     /// Create with custom configuration
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn with_config(config: SovereigntyAdapterConfig) -> SongbirdResult<Self> {
         let base_adapter = UnifiedUniversalAdapter::new();
         let sovereignty_router = SovereigntyRouter::new();
@@ -63,6 +71,10 @@ impl SovereigntyAwareAdapter {
     }
 
     /// Route request with sovereignty awareness
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if path finding, optimization, or routing decision creation fails
     pub async fn route_request(
         &self,
         request: UniversalRequest,
@@ -103,6 +115,10 @@ impl SovereigntyAwareAdapter {
     }
 
     /// Execute request through sovereignty-aware routing
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if routing decision fails or request execution fails
     pub async fn execute_request(
         &self,
         request: UniversalRequest,
@@ -255,6 +271,10 @@ impl SovereigntyAwareAdapter {
     }
 
     /// Get adapter statistics
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_stats(&self) -> SongbirdResult<AdapterStats> {
         Ok(AdapterStats {
             sovereignty_routing_enabled: self.config.enable_sovereignty_routing,

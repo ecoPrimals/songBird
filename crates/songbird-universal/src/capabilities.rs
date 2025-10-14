@@ -163,6 +163,10 @@ impl UniversalCapabilityAdapter {
     }
 
     /// Discover capabilities for a primal by name
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the primal is unreachable or does not respond with valid capabilities
     pub async fn discover_primal_capabilities(
         &self,
         primal_name: &str,
@@ -574,6 +578,10 @@ impl UniversalCapabilityAdapter {
     }
 
     /// Establish connection to a primal
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the connection test fails or the primal health check fails
     pub async fn connect_to_primal(
         &self,
         name: &str,
@@ -648,6 +656,10 @@ impl UniversalCapabilityAdapter {
     }
 
     /// Disconnect from a primal
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the primal is not currently connected
     pub async fn disconnect_from_primal(&self, name: &str) -> Result<(), CapabilityError> {
         let mut connections = self.primal_connections.write().await;
         if connections.remove(name).is_some() {

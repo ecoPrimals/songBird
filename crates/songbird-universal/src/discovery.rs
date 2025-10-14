@@ -125,6 +125,10 @@ impl UniversalPrimalDiscovery {
     }
 
     /// Discover all available primals using all methods
+    ///
+    /// # Errors
+    ///
+    /// This function logs individual discovery failures but returns all successfully discovered primals
     pub async fn discover_all_primals(&mut self) -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
         info!("🔍 Starting universal primal discovery...");
 
