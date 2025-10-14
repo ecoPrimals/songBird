@@ -189,6 +189,10 @@ impl DiscoverableEndpoint {
     }
 
     /// Discover the endpoint using configured methods
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if discovery fails for all configured methods (primary and fallback)
     pub async fn discover(&self) -> SongbirdResult<EndpointSpec> {
         // Try primary method
         if let Ok(endpoint) = self.try_discovery_method(&self.discovery_method).await {
@@ -443,6 +447,10 @@ impl EndpointSpec {
     }
 
     /// Convert to socket address
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the host is a hostname rather than an IP address (DNS resolution required)
     pub fn to_socket_addr(&self) -> SongbirdResult<SocketAddr> {
         // Try to parse host as IP
         if let Ok(ip) = IpAddr::from_str(&self.host) {
