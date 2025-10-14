@@ -68,6 +68,10 @@ impl SovereigntyRouter {
     }
 
     /// Find sovereignty-aware routing paths
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if path generation or sovereignty assessment fails
     pub async fn find_sovereignty_aware_paths(
         &self,
         request: &UniversalRequest,

@@ -44,6 +44,10 @@ impl SovereigntyFederationManager {
     }
 
     /// Coordinate federation request
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn coordinate_request(
         &self,
         request: &UniversalRequest,

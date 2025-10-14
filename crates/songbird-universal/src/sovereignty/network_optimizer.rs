@@ -57,6 +57,10 @@ impl NetworkEffectsOptimizer {
     }
 
     /// Optimize paths for network effects
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if optimization strategies fail to apply
     pub async fn optimize_for_network_effects(
         &self,
         paths: &[RoutingPath],
