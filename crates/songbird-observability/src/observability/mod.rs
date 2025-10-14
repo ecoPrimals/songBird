@@ -163,6 +163,10 @@ impl ObservabilityManager {
     }
 
     /// Start observability monitoring
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if metrics collection or health monitoring fails to start
     pub async fn start(&self) -> Result<()> {
         info!("Starting observability manager");
 
@@ -177,12 +181,20 @@ impl ObservabilityManager {
     }
 
     /// Stop observability monitoring
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn stop(&self) -> Result<()> {
         info!("Stopping observability manager");
         Ok(())
     }
 
     /// Get current system metrics
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_metrics(&self) -> Result<SystemMetrics> {
         let metrics = SystemMetrics {
             cpu_usage: 0.0,
@@ -200,12 +212,20 @@ impl ObservabilityManager {
     }
 
     /// Get service health status
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_service_health(&self, service_id: &str) -> Result<Option<ServiceHealth>> {
         let health_store = self.health_store.read().await;
         Ok(health_store.get(service_id).cloned())
     }
 
     /// Get cluster status
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_cluster_status(&self) -> Result<ClusterStatus> {
         let status = self.cluster_status.read().await;
         Ok(status.clone())
@@ -222,6 +242,10 @@ impl ObservabilityManager {
     }
 
     /// Record a health check result
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn record_health_check(
         &self,
         service_id: String,
