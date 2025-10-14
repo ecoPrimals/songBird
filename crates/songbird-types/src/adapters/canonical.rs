@@ -401,6 +401,10 @@ impl CanonicalUniversalAdapter {
     }
 
     /// Register a service with the adapter
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn register_service(
         &self,
         service: CanonicalServiceInfo,
@@ -444,6 +448,13 @@ impl CanonicalUniversalAdapter {
     }
 
     /// Handle a capability request
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - No services are available for the requested capability
+    /// - Service selection fails
+    /// - The protocol router fails to route the request
     pub async fn handle_request(
         &self,
         request: CanonicalAdapterRequest,
@@ -528,6 +539,10 @@ impl CanonicalUniversalAdapter {
     }
 
     /// Perform health check on all registered services
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn health_check_all(&self) -> SongbirdResult<HashMap<String, CanonicalHealthStatus>> {
         let registry = self.registry.read().await;
         let mut results = HashMap::new();
@@ -561,6 +576,12 @@ impl CanonicalProtocolRouter {
     }
 
     /// Route request to appropriate protocol handler
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The requested protocol is not supported
+    /// - The protocol handler fails to process the request
     pub async fn route_request(
         &self,
         service: &CanonicalServiceInfo,
@@ -600,6 +621,10 @@ impl CanonicalLoadBalancer {
     }
 
     /// Select best service from available services
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no services are available for the requested capability
     pub fn select_service(
         &self,
         services: &[CanonicalRegisteredService],
