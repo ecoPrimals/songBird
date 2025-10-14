@@ -6,6 +6,10 @@
 use songbird_types::SongbirdError;
 
 /// Initialize performance monitoring system
+///
+/// # Errors
+///
+/// This function is currently infallible but returns a Result for future extensibility
 #[must_use = "Result must be handled - ignoring errors is unsafe"]
 pub async fn initialize_performance_monitoring() -> Result<(), SongbirdError> {
     tracing::info!("🚀 Initializing canonical performance monitoring ");
