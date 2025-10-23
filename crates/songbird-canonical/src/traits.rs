@@ -23,7 +23,7 @@ pub struct Capability {
 // ============================================================================
 
 /// Migration notice for deprecated traits
-pub const TRAIT_MIGRATION_NOTICE: &str = r#"
+pub const TRAIT_MIGRATION_NOTICE: &str = r"
 🚨 TRAIT MIGRATION COMPLETE 🚨
 
 All provider traits have been migrated to the canonical trait system:
@@ -44,4 +44,4 @@ use songbird_types::traits::{
 
 All deprecated trait re-exports have been removed.
 Update your imports to use songbird_types::traits directly.
-"#;
+";

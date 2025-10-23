@@ -15,11 +15,21 @@ use tracing;
 type LocalResult<T> = SongbirdResult<T>;
 
 // NOTE: Plugin types defined locally until architecture is finalized
-// TODO: Move to songbird-discovery::traits once plugin system is implemented
+// FUTURE WORK: Move to songbird-discovery::traits once plugin system is fully implemented
+// This is a deferred architectural decision pending plugin ecosystem maturity
 
 #[async_trait]
 pub trait ComposablePlugin: Send + Sync {
+    /// Get the capabilities provided by this plugin
     fn capabilities(&self) -> Vec<PluginCapability>;
+    
+    /// Check if this plugin is healthy and operational
+    /// 
+    /// Returns `true` if the plugin is healthy, `false` otherwise
+    async fn health_check(&self) -> bool {
+        // Default implementation assumes healthy
+        true
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -237,14 +247,29 @@ impl DynamicPluginRegistry {
     /// Check system health for given plugins
     #[allow(dead_code)]
     async fn check_system_health(&self, plugin_ids: &[String]) -> LocalResult<SystemHealth> {
-        // TODO: Implement proper health checking when ComposablePlugin trait includes health_check
-        let plugin_health = plugin_ids
-            .iter()
-            .map(|id| (id.clone(), true))
-            .collect();
+        let plugins = self.plugins.read().await;
+        let mut plugin_health = HashMap::new();
+        let mut all_healthy = true;
+
+        // Check health of each requested plugin
+        for plugin_id in plugin_ids {
+            if let Some(plugin) = plugins.get(plugin_id) {
+                let is_healthy = plugin.health_check().await;
+                plugin_health.insert(plugin_id.clone(), is_healthy);
+                if !is_healthy {
+                    all_healthy = false;
+                    tracing::warn!("Plugin '{}' is unhealthy", plugin_id);
+                }
+            } else {
+                // Plugin not found - mark as unhealthy
+                plugin_health.insert(plugin_id.clone(), false);
+                all_healthy = false;
+                tracing::warn!("Plugin '{}' not found in registry", plugin_id);
+            }
+        }
 
         Ok(SystemHealth {
-            overall_healthy: !plugin_ids.is_empty(),
+            overall_healthy: all_healthy && !plugin_ids.is_empty(),
             plugin_health,
             integration_health: HashMap::new(),
         })
@@ -258,7 +283,8 @@ impl Default for DynamicPluginRegistry {
 }
 
 // NOTE: PluginRegistry trait impl commented out until trait is defined
-// TODO: Define PluginRegistry trait in discovery or registry
+// FUTURE WORK: Define PluginRegistry trait in songbird-discovery or songbird-registry
+// This requires cross-crate trait coordination and is deferred to plugin ecosystem v2.0
 /* 
 #[async_trait]
 impl PluginRegistry for DynamicPluginRegistry {

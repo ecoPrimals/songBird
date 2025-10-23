@@ -3,15 +3,8 @@
 //! This module provides performance monitoring initialization for the Songbird Songbird
 //! canonical architecture, enabling zero-cost performance tracking.
 
-use songbird_types::SongbirdError;
-
 /// Initialize performance monitoring system
-///
-/// # Errors
-///
-/// This function is currently infallible but returns a Result for future extensibility
-#[must_use = "Result must be handled - ignoring errors is unsafe"]
-pub async fn initialize_performance_monitoring() -> Result<(), SongbirdError> {
+pub fn initialize_performance_monitoring() {
     tracing::info!("🚀 Initializing canonical performance monitoring ");
 
     // Initialize metrics collection
@@ -21,7 +14,6 @@ pub async fn initialize_performance_monitoring() -> Result<(), SongbirdError> {
     initialize_performance_tracking();
 
     tracing::info!("✅ Performance monitoring initialized successfully");
-    Ok(())
 }
 
 /// Initialize metrics collection system

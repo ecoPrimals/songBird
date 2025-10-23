@@ -9,7 +9,14 @@ use songbird_types::SongbirdResult;
 #[derive(Debug)]
 pub struct FederationCoordinator;
 
+impl Default for FederationCoordinator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FederationCoordinator {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

@@ -335,7 +335,7 @@ use songbird_config;
 
         assert!(factory.validate_config(&config).is_ok());
 
-        let provider = factory.create_provider(config).await.unwrap();
+        let provider = factory.create_provider(config).await.map_err(|e| SongbirdError::configuration(format!("Static adapter operation failed: {}", e)))?;
         assert_eq!(provider.metadata().id, "test");
     }
 
@@ -350,6 +350,6 @@ use songbird_config;
             .metadata()
             .capabilities
             .contains(&DiscoveryCapability::ServiceRegistration));
-        assert!(adapter.health_check().await.unwrap());
+        assert!(adapter.health_check().await.map_err(|e| SongbirdError::configuration(format!("Static adapter operation failed: {}", e)))?);
     }
 }

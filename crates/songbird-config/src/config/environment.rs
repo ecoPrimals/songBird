@@ -3,7 +3,11 @@
 //! All configuration values are determined dynamically from environment)
 //! system capabilities, or calculated defaults.
 
-use crate::config::constants::*;
+use crate::config::constants::{
+    enable_zero_copy, get_batch_size, get_bind_address, get_buffer_pool_size,
+    get_connection_timeout_ms, get_dashboard_port, get_log_level, get_max_connections,
+    get_primal_endpoint, get_worker_threads,
+};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::time::Duration;
@@ -30,6 +34,7 @@ impl Default for LogConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)] // Endpoint suffix is intentional and clear
 pub struct ServiceEndpoints {
     pub beardog_endpoint: String,
     pub nestgate_endpoint: String,
@@ -41,6 +46,7 @@ pub struct ServiceEndpoints {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)] // Max prefix is intentional for limits
 pub struct ResourceLimits {
     pub max_connections: usize,
     pub max_memory_mb: Option<u64>,
@@ -187,6 +193,7 @@ pub struct EnvironmentConfig {
 }
 
 /// Get current environment from multiple sources
+#[must_use]
 pub fn get_environment() -> String {
     env::var("SONGBIRD_ENV")
         .or_else(|_| env::var("NODE_ENV"))
@@ -236,13 +243,12 @@ fn detect_environment_from_system() -> String {
 }
 
 /// Determine if TLS should be required based on environment and security context
+#[must_use]
 pub fn should_require_tls() -> bool {
     env::var("SONGBIRD_REQUIRE_TLS").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         match get_environment().as_str() {
-            "production" => true,   // Always require TLS in production
-            "staging" => true,      // Require TLS in staging for testing
-            "testing" => false,     // Optional in testing for flexibility
-            "development" => false, // Optional in development for ease
+            "production" | "staging" => true, // Always require TLS in production and staging
+            "testing" | "development" => false, // Optional in testing and development for flexibility
             _ => {
                 // Require TLS if we detect sensitive data or external access
                 detect_tls_requirement()
@@ -326,6 +332,7 @@ fn get_cpu_limit() -> Option<f64> {
                 (quota.trim().parse::<i64>(), period.trim().parse::<i64>())
             {
                 if quota_val > 0 && period_val > 0 {
+                    #[allow(clippy::cast_precision_loss)] // CPU cores as f64 is acceptable
                     return Some(quota_val as f64 / period_val as f64);
                 }
             }
@@ -333,6 +340,7 @@ fn get_cpu_limit() -> Option<f64> {
     }
 
     // Use available parallelism as fallback
+    #[allow(clippy::cast_precision_loss)] // CPU cores as f64 is acceptable
     std::thread::available_parallelism().map(|n| n.get() as f64).ok()
 }
 
@@ -373,9 +381,17 @@ impl EnvironmentConfig {
             "staging" => {
                 self.performance_config.buffer_pool_size =
                     (self.performance_config.buffer_pool_size * 3) / 2; // 1.5x buffering
-                self.max_connections = (self.max_connections as f32 * 1.5) as usize; // Increase staging connections
-                self.resource_limits.max_connections =
-                    (self.resource_limits.max_connections as f32 * 1.5) as usize;
+                                                                        // Scale connections by 1.5x for staging
+                #[allow(
+                    clippy::cast_precision_loss,
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss
+                )]
+                {
+                    self.max_connections = (self.max_connections as f32 * 1.5) as usize;
+                    self.resource_limits.max_connections =
+                        (self.resource_limits.max_connections as f32 * 1.5) as usize;
+                }
             }
             "development" => {
                 self.performance_config.buffer_pool_size /= 2; // Less memory usage
@@ -387,6 +403,7 @@ impl EnvironmentConfig {
     }
 
     /// Get connection timeout as Duration
+    #[must_use]
     pub fn connection_timeout(&self) -> Duration {
         Duration::from_secs(self.connection_timeout_secs)
     }

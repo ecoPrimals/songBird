@@ -13,7 +13,9 @@ use tracing::{debug, info};
 /// Federation manager for sovereignty-aware systems
 #[derive(Debug)]
 pub struct SovereigntyFederationManager {
+    /// Available federation capabilities
     pub federation_capabilities: Vec<FederationCapability>,
+    /// Expected network effects by network identifier
     pub network_effects: HashMap<String, ExpectedNetworkEffect>,
 }
 
@@ -25,6 +27,7 @@ impl Default for SovereigntyFederationManager {
 
 impl SovereigntyFederationManager {
     /// Create new federation manager
+    #[must_use]
     pub fn new() -> Self {
         Self {
             federation_capabilities: Vec::new(),
@@ -39,6 +42,7 @@ impl SovereigntyFederationManager {
     }
 
     /// Get available federation capabilities
+    #[must_use]
     pub fn get_capabilities(&self) -> &[FederationCapability] {
         &self.federation_capabilities
     }

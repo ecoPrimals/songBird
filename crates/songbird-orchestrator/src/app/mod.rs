@@ -139,11 +139,13 @@ impl SongbirdOrchestrator {
     }
 
     /// Get configuration reference
+    #[must_use]
     pub fn config(&self) -> &SongbirdConfig {
         &self._config
     }
 
     /// Get service registry reference
+    #[must_use]
     pub fn service_registry(&self) -> &Arc<ServiceRegistry> {
         &self._service_registry
     }
@@ -301,7 +303,7 @@ impl SongbirdOrchestrator {
         match command.as_str() {
             "status" => {
                 let status = self.get_status().await?;
-                Ok(format!("Status: {:?}", status))
+                Ok(format!("Status: {status:?}"))
             }
             "health" => {
                 // Comprehensive health check implementation
@@ -339,10 +341,10 @@ impl SongbirdOrchestrator {
                             health_report.timestamp
                         ))
                     }
-                    Err(e) => Ok(format!("Health check failed: {}", e)),
+                    Err(e) => Ok(format!("Health check failed: {e}")),
                 }
             }
-            _ => Ok(format!("Unknown command: {}", command)),
+            _ => Ok(format!("Unknown command: {command}")),
         }
     }
 
@@ -403,6 +405,7 @@ pub struct Orchestrator {
 }
 
 impl Orchestrator {
+    #[must_use]
     pub fn new(config: SongbirdConfig) -> Self {
         Self {
             _config: config,

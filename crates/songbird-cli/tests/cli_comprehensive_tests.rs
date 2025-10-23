@@ -3,6 +3,7 @@
 //! Tests for all CLI commands, argument parsing, and functionality
 //! to achieve 90% test coverage for the songbird-cli crate.
 
+use songbird_types::SongbirdError;
 use clap::Parser;
 use songbird_cli::cli::{
 use songbird_config;
@@ -14,7 +15,7 @@ use songbird_config;
 /// Test CLI argument parsing for all major commands
 #[test]
 fn test_cli_command_parsing()  {// Test version command
-    let cli = Cli::try_parse_from(&["songbird", "version"]).expect("Version command should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "version"]).map_err(|e| SongbirdError::configuration(format!("Version command should parse: {}", e)))?;"
     match cli.command {
         Some(Commands::Version {
             detailed)
@@ -24,7 +25,7 @@ fn test_cli_command_parsing()  {// Test version command
 
     // Test version command with detailed flag
     let cli = Cli::try_parse_from(&["songbird", "version", "--detailed"])"
-        .expect("Detailed version should parse");"
+        .map_err(|e| SongbirdError::configuration(format!("Detailed version should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Version {
             detailed)
         }) => assert!(detailed),
@@ -32,7 +33,7 @@ fn test_cli_command_parsing()  {// Test version command
     }
 
     // Test quick command with defaults
-    let cli = Cli::try_parse_from(&["songbird", "quick"]).expect("Quick command should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "quick"]).map_err(|e| SongbirdError::configuration(format!("Quick command should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Quick  {contribute)
             name,
         }) => {
@@ -44,7 +45,7 @@ fn test_cli_command_parsing()  {// Test version command
 
     // Test quick command with parameters
     let cli = Cli::try_parse_from(&["songbird", "quick", "storage", "test-node"])"
-        .expect("Quick with params should parse");"
+        .map_err(|e| SongbirdError::configuration(format!("Quick with params should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Quick  {contribute)
             name,
         }) => {
@@ -58,7 +59,7 @@ fn test_cli_command_parsing()  {// Test version command
 /// Test join command parsing
 #[test]
 fn test_join_command_parsing()  {// Test join without network name
-    let cli = Cli::try_parse_from(&["songbird", "join"]).expect("Join command should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "join"]).map_err(|e| SongbirdError::configuration(format!("Join command should parse: {}", e)))?;"
     match cli.command {
         Some(Commands::Join {
             network)
@@ -68,7 +69,7 @@ fn test_join_command_parsing()  {// Test join without network name
 
     // Test join with network name
     let cli = Cli::try_parse_from(&["songbird", "join", "test-network"])"
-        .expect("Join with network should parse");"
+        .map_err(|e| SongbirdError::configuration(format!("Join with network should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Join {
             network)
         }) => assert_eq!(network, Some("test-network".to_string(),"
@@ -79,7 +80,7 @@ fn test_join_command_parsing()  {// Test join without network name
 /// Test share command parsing
 #[test]
 fn test_share_command_parsing()  {// Test share with defaults
-    let cli = Cli::try_parse_from(&["songbird", "share"]).expect("Share command should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "share"]).map_err(|e| SongbirdError::configuration(format!("Share command should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Share {
             resource)
             percent)
@@ -92,7 +93,7 @@ fn test_share_command_parsing()  {// Test share with defaults
 
     // Test share with specific resource and percentage
     let cli = Cli::try_parse_from(&["songbird", "share", "compute", "--percent", "75"])"
-        .expect("Share with params should parse");"
+        .map_err(|e| SongbirdError::configuration(format!("Share with params should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Share  {resource)
             percent)
         }) => {
@@ -106,7 +107,7 @@ fn test_share_command_parsing()  {// Test share with defaults
 /// Test zero-touch command parsing
 #[test]
 fn test_zero_touch_command_parsing()  {// Test zero-touch with defaults
-    let cli = Cli::try_parse_from(&["songbird", "zero-touch"]).expect("Zero-touch should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "zero-touch"]).map_err(|e| SongbirdError::configuration(format!("Zero-touch should parse: {}", e)))?;"
     match cli.command  {Some(Commands::ZeroTouch {
             dry_run)
             save_config)
@@ -132,7 +133,7 @@ fn test_zero_touch_command_parsing()  {// Test zero-touch with defaults
         "--output-file","
         "/tmp/output.txt","
     ])
-    .expect("Zero-touch with flags should parse");"
+    .map_err(|e| SongbirdError::configuration(format!("Zero-touch with flags should parse: {}", e)))?;"
 
     match cli.command  {Some(Commands::ZeroTouch  {dry_run)
             save_config)
@@ -151,7 +152,7 @@ fn test_zero_touch_command_parsing()  {// Test zero-touch with defaults
 /// Test init command parsing
 #[test]
 fn test_init_command_parsing()  {// Test init with defaults
-    let cli = Cli::try_parse_from(&["songbird", "init"]).expect("Init should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "init"]).map_err(|e| SongbirdError::configuration(format!("Init should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Init {
             deployment)
             quick)
@@ -174,7 +175,7 @@ fn test_init_command_parsing()  {// Test init with defaults
         "--output-dir","
         "/tmp/output","
     ])
-    .expect("Init with params should parse");"
+    .map_err(|e| SongbirdError::configuration(format!("Init with params should parse: {}", e)))?;"
 
     match cli.command  {Some(Commands::Init  {deployment)
             quick)
@@ -191,7 +192,7 @@ fn test_init_command_parsing()  {// Test init with defaults
 /// Test start and stop commands
 #[test]
 fn test_start_stop_commands()  {// Test start command
-    let cli = Cli::try_parse_from(&["songbird", "start"]).expect("Start should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "start"]).map_err(|e| SongbirdError::configuration(format!("Start should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Start {
             config)
             dashboard)
@@ -214,7 +215,7 @@ fn test_start_stop_commands()  {// Test start command
         "--port","
         &songbird_config::constants::network::DEFAULT_METRICS_PORT.to_string(),"
     ])
-    .expect("Start with params should parse");"
+    .map_err(|e| SongbirdError::configuration(format!("Start with params should parse: {}", e)))?;"
 
     match cli.command  {Some(Commands::Start  {config)
             dashboard)
@@ -228,7 +229,7 @@ fn test_start_stop_commands()  {// Test start command
     }
 
     // Test stop command
-    let cli = Cli::try_parse_from(&["songbird", "stop"]).expect("Stop should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "stop"]).map_err(|e| SongbirdError::configuration(format!("Stop should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Stop {
             force)
         }) => assert!(!force),
@@ -237,7 +238,7 @@ fn test_start_stop_commands()  {// Test start command
 
     // Test stop with force
     let cli = Cli::try_parse_from(&["songbird", "stop", "--force"])"
-        .expect("Stop with force should parse");"
+        .map_err(|e| SongbirdError::configuration(format!("Stop with force should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Stop {
             force)
         }) => assert!(force),
@@ -248,7 +249,7 @@ fn test_start_stop_commands()  {// Test start command
 /// Test status command parsing
 #[test]
 fn test_status_command_parsing()  {// Test status with defaults
-    let cli = Cli::try_parse_from(&["songbird", "status"]).expect("Status should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "status"]).map_err(|e| SongbirdError::configuration(format!("Status should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Status {
             detailed)
             watch)
@@ -271,7 +272,7 @@ fn test_status_command_parsing()  {// Test status with defaults
         "--format","
         "json","
     ])
-    .expect("Status with params should parse");"
+    .map_err(|e| SongbirdError::configuration(format!("Status with params should parse: {}", e)))?;"
 
     match cli.command  {Some(Commands::Status  {detailed)
             watch)
@@ -288,7 +289,7 @@ fn test_status_command_parsing()  {// Test status with defaults
 /// Test logs command parsing
 #[test]
 fn test_logs_command_parsing()  {// Test logs with defaults
-    let cli = Cli::try_parse_from(&["songbird", "logs"]).expect("Logs should parse");"
+    let cli = Cli::try_parse_from(&["songbird", "logs"]).map_err(|e| SongbirdError::configuration(format!("Logs should parse: {}", e)))?;"
     match cli.command  {Some(Commands::Logs {
             service)
             follow)
@@ -314,7 +315,7 @@ fn test_logs_command_parsing()  {// Test logs with defaults
         "--level","
         "debug","
     ])
-    .expect("Logs with params should parse");"
+    .map_err(|e| SongbirdError::configuration(format!("Logs with params should parse: {}", e)))?;"
 
     match cli.command  {Some(Commands::Logs  {service)
             follow)

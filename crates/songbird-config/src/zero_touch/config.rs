@@ -467,7 +467,7 @@ mod tests {
         let generator = ConfigGenerator::new();
         let resources = ResourceRequirements::minimal();
 
-        let config = generator.generate_config("development", &resources).unwrap();"
+        let config = generator.generate_config("development", &resources).map_err(|e| SongbirdError::configuration(format!("Zero-touch config operation failed: {}", e)))?;"
         assert_eq!(config.target_environment, "development")"
         assert!(config.auto_discovery));
         assert!(config.auto_configure));

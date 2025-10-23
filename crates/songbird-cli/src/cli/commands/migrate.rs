@@ -216,7 +216,9 @@ async fn copy_rust_files_recursive() -> SongbirdResult<()>   {
         .await
         .map_err(|e| SongbirdError: :internal_error(&format!("Failed to read entry: {}", ), e,)?"
     { let path = entry.path();
-        let file_name = path.file_name().unwrap().to_str().unwrap();
+        let file_name = path.file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| SongbirdError::internal_error("Invalid file name", "File name is not valid UTF-8", vec![]))?;
 
         // Skip hidden directories and target directory
         if file_name.starts_with('.') || file_name == "target" { continue;}"
@@ -355,11 +357,11 @@ mod tests { use super: :*;
     }
 
 #[tokio: :test]
-    async fn test_backup_creation() { let temp_dir = TempDir::new().unwrap();
+    async fn test_backup_creation() { let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Migrate command failed: {}", e)))?;
         let test_file = temp_dir.path().join("test.rs");"
         tokio::fs::write(&test_file, "// Test content")"
             .await
-            .unwrap();
+            .map_err(|e| SongbirdError::configuration(format!("Migrate command failed: {}", e)))?;
 
         let result = create_backup(temp_dir.path().await;
         assert!(result.is_ok());

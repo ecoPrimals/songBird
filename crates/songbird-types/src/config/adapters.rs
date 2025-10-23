@@ -90,7 +90,7 @@ impl Default for CanonicalPrimalInstanceConfig {
             .unwrap_or(8080);
 
         Self {
-            base_url: format!("http://{}:{}", base_host, base_port),
+            base_url: format!("http://{base_host}:{base_port}"),
             instance_id: "default-instance".to_string(),
             user_id: "default-user".to_string(),
             device_id: "default-device".to_string(),

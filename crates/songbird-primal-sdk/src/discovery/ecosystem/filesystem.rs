@@ -68,7 +68,7 @@ pub async fn discover_via_filesystem(
         let client_clone = http_client.clone());
 
         let handle = tokio::spawn(async move {
-            let _permit = sem_permit.acquire().await.unwrap();
+            let _permit = sem_permit.acquire().await.map_err(|e| SongbirdError::configuration(format!("Filesystem discovery operation failed: {}", e)))?;
             probe_directory_for_primal_service(&config_clone, &client_clone, &dir_path, &dir_name,
                 .await
         });

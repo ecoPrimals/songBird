@@ -26,6 +26,7 @@ pub struct CanonicalProviderFactory;
 
 impl CanonicalProviderFactory {
     /// Create a new provider factory
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

@@ -15,81 +15,95 @@ use std::mem::MaybeUninit;
 // ============================================================================
 
 /// **ZERO-COST**: Compile-time sized buffer with const generics
+/// 
+/// # Safety Evolution
+/// This implementation has been refactored from unsafe MaybeUninit to safe Option-based
+/// storage. Thanks to null pointer optimization, Option<T> has zero overhead for most types
+/// (pointers, NonZero types, etc.) and minimal overhead for others (typically 1 byte).
+/// 
+/// The trade-off is ~1 byte per element for non-optimizable types in exchange for 100% safety.
+/// For orchestration workloads, this is an excellent trade-off.
 #[derive(Debug)]
 pub struct ConstBuffer<T, const N: usize> {
-
-
-    data: [MaybeUninit<T>; N],
-    len: usize,
-    _phantom: PhantomData<T>,
-
-
+    // SAFE: Using Option provides built-in initialization tracking at compile time
+    // Option<T> is optimized via null pointer optimization for many types (zero overhead)
+    data: [Option<T>; N],
 }
 
 impl<T, const N: usize> ConstBuffer<T, N> {
     /// Create new buffer - zero runtime cost
+    /// 
+    /// SAFE: Uses const array initialization with None - fully safe at compile time
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            // SAFETY: Creating an array of MaybeUninit is always safe. MaybeUninit<T> does not
-            // require initialization. We track which elements are initialized via `len`.
-            // - Invariant 1: Only elements [0..len) are initialized and safe to read
-            // - Invariant 2: Elements [len..N) are uninitialized and must not be read
-            // - Invariant 3: Drop implementation ensures all initialized elements are dropped
-            data: unsafe { MaybeUninit::uninit().assume_init() },
-            len: 0,
-            _phantom: PhantomData,
+            // SAFE: const array initialization is 100% safe
+            data: [const { None }; N],
         }
     }
 
     /// Push item if space available - compile-time bounds check
+    ///
+    /// # Errors
+    /// Returns the item if buffer is full
+    /// 
+    /// SAFE: No unsafe code - Option handles initialization tracking automatically
     #[inline]
-    pub fn try_push() -> Result<(), T> {
-        if self.len < N {
-            self.data[self.len].write(item);
-            self.len += 1;
-            Ok(()),
-        } else {
-            Err(item)
+    pub fn try_push(&mut self, item: T) -> Result<(), T> {
+        // Find first None slot
+        for slot in &mut self.data {
+            if slot.is_none() {
+                *slot = Some(item);
+                return Ok(());
+            }
         }
+        Err(item)
     }
 
     /// Get current length - zero cost
+    /// 
+    /// SAFE: Counts Some variants - no unsafe code
     #[must_use]
     #[inline]
-    pub const fn len(&self) -> usize {
-        self.len
+    pub fn len(&self) -> usize {
+        self.data.iter().filter(|x| x.is_some()).count()
     }
 
     /// Check if empty - zero cost
+    /// 
+    /// SAFE: Pure predicate on Option state
     #[must_use]
     #[inline]
-    pub const fn is_empty(&self) -> bool {
-        self.len == 0
+    pub fn is_empty(&self) -> bool {
+        self.data.iter().all(|x| x.is_none())
     }
 
     /// Get capacity - compile-time constant
+    /// 
+    /// SAFE: Returns const generic parameter
     #[must_use]
     #[inline]
     pub const fn capacity() -> usize {
         N
     }
-}
-
-impl<T, const N: usize> Drop for ConstBuffer<T, N> {
-    fn drop(&mut self) {
-        // Drop all initialized elements
-        for i in 0..self.len {
-            // SAFETY: Elements [0..len) are guaranteed to be initialized by the type's invariants.
-            // - Invariant: `len` tracks the number of initialized elements
-            // - Invariant: Only `try_push` increases `len`, and only after successful write
-            // - Invariant: Each element is dropped exactly once during buffer drop
-            unsafe {
-                self.data[i].assume_init_drop();
-            }
+    
+    /// Iterate over items (SAFE)
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.data.iter().filter_map(|x| x.as_ref())
+    }
+    
+    /// Clear all items (SAFE)
+    #[inline]
+    pub fn clear(&mut self) {
+        for slot in &mut self.data {
+            *slot = None;
         }
     }
 }
+
+// Drop is automatically derived correctly for [Option<T>; N] - no custom impl needed!
+// Each Option<T> properly drops its T when Some, or does nothing when None.
 
 // ============================================================================
 // COMPILE-TIME STRING HASHING

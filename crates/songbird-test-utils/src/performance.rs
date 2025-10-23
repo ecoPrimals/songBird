@@ -107,7 +107,7 @@ where
         let start = Instant::now();
 
         operation().await.map_err(|e| {
-            SongbirdError::service("benchmark", format!("Benchmark iteration {} failed: {e}", i))
+            SongbirdError::service("benchmark", format!("Benchmark iteration {i} failed: {e}"))
         })?;
 
         let duration = start.elapsed();
@@ -132,7 +132,7 @@ where
         let start = Instant::now();
 
         operation().map_err(|e| {
-            SongbirdError::service("benchmark", format!("Benchmark iteration {} failed: {e}", i))
+            SongbirdError::service("benchmark", format!("Benchmark iteration {i} failed: {e}"))
         })?;
 
         let duration = start.elapsed();
@@ -235,7 +235,7 @@ impl LoadTester {
         // Collect results from all users
         for handle in handles {
             let user_samples = handle.await.map_err(|e| {
-                SongbirdError::service("load-test ", format!("Load test task failed: {}", e))
+                SongbirdError::service("load-test ", format!("Load test task failed: {e}"))
             })?;
 
             results.samples.extend(user_samples);

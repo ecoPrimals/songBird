@@ -152,7 +152,7 @@ pub struct StorageProviderConfigStorageConfig {
 }
 
 /// Health check configuration
-
+///
 /// Adapter-wide settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdapterSettings {

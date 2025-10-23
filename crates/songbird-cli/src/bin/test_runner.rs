@@ -632,8 +632,8 @@ async fn main() -> SongbirdResult<()>  {let matches = Command::new("Songbird Tes
         .get_matches();
 
     let config = TestConfig {
-        songbird_url: matches.get_one::<String>("url").unwrap().clone(),"
-        timeout_seconds: matches.get_one::<String>("timeout").unwrap().parse()?,"
+        songbird_url: matches.get_one::<String>("url").map_err(|e| SongbirdError::configuration(format!("Test runner operation failed: {}", e)))?.clone(),"
+        timeout_seconds: matches.get_one::<String>("timeout").map_err(|e| SongbirdError::configuration(format!("Test runner operation failed: {}", e)))?.parse()?,"
         verbose: matches.get_flag("verbose"),"
         quiet: matches.get_flag("quiet"),"
     };

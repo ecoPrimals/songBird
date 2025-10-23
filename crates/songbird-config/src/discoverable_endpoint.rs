@@ -11,7 +11,7 @@
 //! 3. Fall back to safe defaults only for development
 
 use serde::{Deserialize, Serialize};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
 use songbird_types::{SongbirdError, SongbirdResult};
@@ -37,7 +37,7 @@ pub struct DiscoverableEndpoint {
 pub enum DiscoveryMethod {
     /// Environment variable
     Environment {
-        /// Variable name (e.g., "SERVICE_ENDPOINT")
+        /// Variable name (e.g., "`SERVICE_ENDPOINT`")
         var_name: String,
         /// Optional parser for the value
         parser: EndpointParser,
@@ -118,15 +118,16 @@ pub enum EndpointParser {
 
 impl DiscoverableEndpoint {
     /// Create a new discoverable endpoint with environment variable discovery
-    pub fn from_env(var_name: String) -> Self {
+    #[must_use]
+    pub fn from_env(var_name: &str) -> Self {
         Self {
             discovery_method: DiscoveryMethod::Environment {
-                var_name: var_name.clone(),
+                var_name: var_name.to_string(),
                 parser: EndpointParser::Url,
             },
             fallback_methods: vec![
                 DiscoveryMethod::Environment {
-                    var_name: format!("{}_HOST", var_name),
+                    var_name: format!("{var_name}_HOST"),
                     parser: EndpointParser::Hostname,
                 },
                 DiscoveryMethod::NetworkProbe {
@@ -146,11 +147,12 @@ impl DiscoverableEndpoint {
     }
 
     /// Create for kubernetes service
-    pub fn from_k8s_service(service_name: String, namespace: String, port: u16) -> Self {
+    #[must_use]
+    pub fn from_k8s_service(service_name: &str, namespace: &str, port: u16) -> Self {
         Self {
             discovery_method: DiscoveryMethod::KubernetesService {
-                service_name: service_name.clone(),
-                namespace: namespace.clone(),
+                service_name: service_name.to_string(),
+                namespace: namespace.to_string(),
                 port: PortSpec::Number(port),
             },
             fallback_methods: vec![DiscoveryMethod::Environment {
@@ -158,7 +160,7 @@ impl DiscoverableEndpoint {
                 parser: EndpointParser::Hostname,
             }],
             dev_fallback: Some(EndpointSpec {
-                host: format!("{}.{}.svc.cluster.local", service_name, namespace),
+                host: format!("{service_name}.{namespace}.svc.cluster.local"),
                 port,
                 protocol: Some("http".to_string()),
                 path: None,
@@ -168,10 +170,11 @@ impl DiscoverableEndpoint {
     }
 
     /// Create for consul service
-    pub fn from_consul_service(service_name: String) -> Self {
+    #[must_use]
+    pub fn from_consul_service(service_name: &str) -> Self {
         Self {
             discovery_method: DiscoveryMethod::ConsulService {
-                service_name: service_name.clone(),
+                service_name: service_name.to_string(),
                 consul_addr: None, // Will use default consul addr
             },
             fallback_methods: vec![
@@ -180,7 +183,7 @@ impl DiscoverableEndpoint {
                     parser: EndpointParser::HostPort,
                 },
                 DiscoveryMethod::DnsServiceDiscovery {
-                    service_name: format!("_{}.service.consul", service_name),
+                    service_name: format!("_{service_name}.service.consul"),
                 },
             ],
             dev_fallback: None, // Consul services don't have dev fallbacks
@@ -223,19 +226,22 @@ impl DiscoverableEndpoint {
     /// Try a single discovery method
     async fn try_discovery_method(&self, method: &DiscoveryMethod) -> SongbirdResult<EndpointSpec> {
         match method {
-            DiscoveryMethod::Environment { var_name, parser } => {
-                let value = std::env::var(var_name).map_err(|_| {
-                    SongbirdError::Configuration {
-                        message: format!("Environment variable {} not found", var_name),
-                        field: Some(var_name.clone()),
-                        suggestion: Some(format!("Set {} environment variable", var_name)),
-                    }
+            DiscoveryMethod::Environment {
+                var_name,
+                parser,
+            } => {
+                let value = std::env::var(var_name).map_err(|_| SongbirdError::Configuration {
+                    message: format!("Environment variable {var_name} not found"),
+                    field: Some(var_name.clone()),
+                    suggestion: Some(format!("Set {var_name} environment variable")),
                 })?;
 
                 parse_endpoint(&value, parser)
             }
 
-            DiscoveryMethod::Static { endpoint } => Ok(endpoint.clone()),
+            DiscoveryMethod::Static {
+                endpoint,
+            } => Ok(endpoint.clone()),
 
             DiscoveryMethod::NetworkProbe {
                 host_patterns,
@@ -245,7 +251,7 @@ impl DiscoverableEndpoint {
                 // Try probing each host pattern
                 for host in host_patterns {
                     for port in port_range.0..=port_range.1 {
-                        if let Ok(_) = probe_endpoint(host, port, health_path).await {
+                        if let Ok(()) = probe_endpoint(host, port, health_path).await {
                             return Ok(EndpointSpec {
                                 host: host.clone(),
                                 port,
@@ -273,15 +279,12 @@ impl DiscoverableEndpoint {
                         PortSpec::Number(n) => *n,
                         PortSpec::Named(name) => resolve_named_port(name)?,
                         PortSpec::Environment(var) => {
-                            std::env::var(var)
-                                .ok()
-                                .and_then(|v| v.parse().ok())
-                                .unwrap_or(8080)
+                            std::env::var(var).ok().and_then(|v| v.parse().ok()).unwrap_or(8080)
                         }
                     };
 
                     Ok(EndpointSpec {
-                        host: format!("{}.{}.svc.cluster.local", service_name, namespace),
+                        host: format!("{service_name}.{namespace}.svc.cluster.local"),
                         port: port_num,
                         protocol: Some("http".to_string()),
                         path: None,
@@ -296,23 +299,29 @@ impl DiscoverableEndpoint {
             }
 
             DiscoveryMethod::ConsulService {
-                service_name,
-                consul_addr,
+                service_name: _,
+                consul_addr: _,
             } => {
                 // For now, return error - full consul integration would go here
                 Err(SongbirdError::Configuration {
                     message: "Consul discovery not yet implemented".to_string(),
                     field: Some("consul".to_string()),
-                    suggestion: Some("Use environment variables or static configuration instead".to_string()),
+                    suggestion: Some(
+                        "Use environment variables or static configuration instead".to_string(),
+                    ),
                 })
             }
 
-            DiscoveryMethod::DnsServiceDiscovery { service_name } => {
+            DiscoveryMethod::DnsServiceDiscovery {
+                service_name: _,
+            } => {
                 // For now, return error - full DNS-SD would go here
                 Err(SongbirdError::Configuration {
                     message: "DNS-SD not yet implemented".to_string(),
                     field: Some("dns_sd".to_string()),
-                    suggestion: Some("Use environment variables or static configuration instead".to_string()),
+                    suggestion: Some(
+                        "Use environment variables or static configuration instead".to_string(),
+                    ),
                 })
             }
         }
@@ -324,12 +333,10 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
     match parser {
         EndpointParser::Url => {
             // Parse full URL
-            let url = url::Url::parse(value).map_err(|e| {
-                SongbirdError::Configuration {
-                    message: format!("Invalid URL: {}", e),
-                    field: Some("url".to_string()),
-                    suggestion: Some("Provide a valid HTTP/HTTPS URL".to_string()),
-                }
+            let url = url::Url::parse(value).map_err(|e| SongbirdError::Configuration {
+                message: format!("Invalid URL: {e}"),
+                field: Some("url".to_string()),
+                suggestion: Some("Provide a valid HTTP/HTTPS URL".to_string()),
             })?;
 
             Ok(EndpointSpec {
@@ -354,16 +361,16 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
                 return Err(SongbirdError::Configuration {
                     message: "Expected host:port format".to_string(),
                     field: Some("endpoint".to_string()),
-                    suggestion: Some("Use format: hostname:port (e.g., localhost:8080)".to_string()),
+                    suggestion: Some(
+                        "Use format: hostname:port (e.g., localhost:8080)".to_string(),
+                    ),
                 });
             }
 
-            let port = parts[1].parse().map_err(|_| {
-                SongbirdError::Configuration {
-                    message: "Invalid port number".to_string(),
-                    field: Some("port".to_string()),
-                    suggestion: Some("Port must be between 0 and 65535".to_string()),
-                }
+            let port = parts[1].parse().map_err(|_| SongbirdError::Configuration {
+                message: "Invalid port number".to_string(),
+                field: Some("port".to_string()),
+                suggestion: Some("Port must be between 0 and 65535".to_string()),
             })?;
 
             Ok(EndpointSpec {
@@ -384,7 +391,7 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
             })
         }
 
-        EndpointParser::Pattern(pattern) => {
+        EndpointParser::Pattern(_pattern) => {
             // Custom pattern parsing would go here
             Err(SongbirdError::Configuration {
                 message: "Custom patterns not yet implemented".to_string(),
@@ -396,9 +403,9 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
 }
 
 /// Probe an endpoint to see if it's available
-async fn probe_endpoint(host: &str, port: u16, health_path: &str) -> SongbirdResult<()> {
+async fn probe_endpoint(host: &str, port: u16, _health_path: &str) -> SongbirdResult<()> {
     // Quick TCP connection test
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
     match tokio::time::timeout(
         std::time::Duration::from_millis(100),
         tokio::net::TcpStream::connect(&addr),
@@ -421,7 +428,7 @@ fn resolve_named_port(name: &str) -> SongbirdResult<u16> {
         "https" => Ok(443),
         "grpc" => Ok(9090),
         _ => Err(SongbirdError::Configuration {
-            message: format!("Unknown port name: {}", name),
+            message: format!("Unknown port name: {name}"),
             field: Some("port".to_string()),
             suggestion: Some("Use 'http' (80), 'https' (443), or 'grpc' (9090)".to_string()),
         }),
@@ -430,16 +437,13 @@ fn resolve_named_port(name: &str) -> SongbirdResult<u16> {
 
 /// Check if we're in development mode
 fn is_development_mode() -> bool {
-    std::env::var("SONGBIRD_ENV")
-        .map(|v| v == "development" || v == "dev")
-        .unwrap_or(false)
-        || std::env::var("RUST_ENV")
-            .map(|v| v == "development" || v == "dev")
-            .unwrap_or(false)
+    std::env::var("SONGBIRD_ENV").map(|v| v == "development" || v == "dev").unwrap_or(false)
+        || std::env::var("RUST_ENV").map(|v| v == "development" || v == "dev").unwrap_or(false)
 }
 
 impl EndpointSpec {
     /// Convert to full URL
+    #[must_use]
     pub fn to_url(&self) -> String {
         let protocol = self.protocol.as_deref().unwrap_or("http");
         let path = self.path.as_deref().unwrap_or("");
@@ -468,7 +472,7 @@ impl EndpointSpec {
 
 impl Default for DiscoverableEndpoint {
     fn default() -> Self {
-        Self::from_env("SERVICE_ENDPOINT".to_string())
+        Self::from_env("SERVICE_ENDPOINT")
     }
 }
 
@@ -477,25 +481,33 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_url() {
-        let spec = parse_endpoint("http://example.com:8080/api", &EndpointParser::Url).unwrap();
+    fn test_parse_url() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let spec = parse_endpoint("http://example.com:8080/api", &EndpointParser::Url)
+            .map_err(|e| SongbirdError::configuration(format!("Test: URL should parse: {}", e)))?;
         assert_eq!(spec.host, "example.com");
         assert_eq!(spec.port, 8080);
         assert_eq!(spec.protocol, Some("http".to_string()));
+        Ok(())
     }
 
     #[test]
-    fn test_parse_host_port() {
-        let spec = parse_endpoint("localhost:3000", &EndpointParser::HostPort).unwrap();
+    fn test_parse_host_port() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let spec = parse_endpoint("localhost:3000", &EndpointParser::HostPort).map_err(|e| {
+            SongbirdError::configuration(format!("Test: localhost:3000 should parse: {}", e))
+        })?;
         assert_eq!(spec.host, "localhost");
         assert_eq!(spec.port, 3000);
+        Ok(())
     }
 
     #[test]
-    fn test_parse_hostname() {
-        let spec = parse_endpoint("myservice", &EndpointParser::Hostname).unwrap();
+    fn test_parse_hostname() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let spec = parse_endpoint("myservice", &EndpointParser::Hostname).map_err(|e| {
+            SongbirdError::configuration(format!("Test: myservice should parse: {}", e))
+        })?;
         assert_eq!(spec.host, "myservice");
         assert_eq!(spec.port, 8080); // Default
+        Ok(())
     }
 
     #[test]
@@ -509,4 +521,3 @@ mod tests {
         assert_eq!(spec.to_url(), "https://localhost:8080/api/v1");
     }
 }
-

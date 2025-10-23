@@ -513,7 +513,7 @@ mod tests  {use super::*;
     use tempfile::tempdir;
 
     #[tokio::test]
-    async fn test_service_registration_and_discovery()  {let temp_dir = tempdir().unwrap();
+    async fn test_service_registration_and_discovery()  {let temp_dir = tempdir().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for registry test: {}", e)))?;
         let backup_path = temp_dir.path().join("test_services.json");"
 
         let config = RegistryConfig {
@@ -524,7 +524,7 @@ mod tests  {use super::*;
             ..Default::default()
         };
 
-        let registry = ProductionServiceRegistry::new(config).await.unwrap();
+        let registry = ProductionServiceRegistry::new(config).await.map_err(|e| SongbirdError::configuration(format!("Failed to create production service registry: {}", e)))?;
 
         // Register a test service
         let service_info = ServiceInfo  {service_id: String::new(), // Will be auto-generated
@@ -534,21 +534,21 @@ mod tests  {use super::*;
             ..Default::default()
         };
 
-        let service_id = registry.register_service(service_info).await.unwrap();
+        let service_id = registry.register_service(service_info).await.map_err(|e| SongbirdError::configuration(format!("Failed during production registry operation: {}", e)))?;
         assert!(!service_id.is_empty());
 
         // Discover services
-        let services = registry.discover_services(None).await.unwrap();
+        let services = registry.discover_services(None).await.map_err(|e| SongbirdError::configuration(format!("Failed during production registry operation: {}", e)))?;
         assert_eq!(services.len(), 1);
         assert_eq!(services[0].name, "test-service")"
 
         // Test heartbeat
-        registry.heartbeat(&service_id).await.unwrap();
+        registry.heartbeat(&service_id).await.map_err(|e| SongbirdError::configuration(format!("Failed during production registry operation: {}", e)))?;
 
         // Deregister service
-        registry.deregister_service(&service_id).await.unwrap();
+        registry.deregister_service(&service_id).await.map_err(|e| SongbirdError::configuration(format!("Failed during production registry operation: {}", e)))?;
 
-        let services = registry.discover_services(None).await.unwrap();
+        let services = registry.discover_services(None).await.map_err(|e| SongbirdError::configuration(format!("Failed during production registry operation: {}", e)))?;
         assert_eq!(services.len(), 0);
     }
 }

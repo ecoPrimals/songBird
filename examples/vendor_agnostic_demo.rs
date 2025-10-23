@@ -1,4 +1,4 @@
-use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
+// Removed unused import: CanonicalSongbirdConfig
 // # Vendor Agnostic Discovery Demo
 //
 // This example demonstrates how Songbird's universal discovery system
@@ -27,8 +27,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
             warn!("⚠️ Auto-detection failed, this is expected in demo environment: {}", e);
-            info!("🔄 Falling back to capability-based discovery...");
-            UniversalDiscoveryFactory::create_for_capability("service_discovery").await?
+            info!("🔄 Falling back to auto-detect...");
+            // Use public API - create_auto_detect() instead of private create_from_environment()
+            UniversalDiscoveryFactory::create_auto_detect().await?
         }
     };
 
@@ -49,9 +50,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Demonstrate environment-based discovery
-    info!("🌍 Testing environment-based discovery...");
-    let env_discovery = UniversalDiscoveryFactory::create_from_environment().await?;
+    // Demonstrate auto-detect based discovery
+    info!("🌍 Testing auto-detect based discovery...");
+    let env_discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
 
     match env_discovery.list_all().await {
         Ok(services) => {

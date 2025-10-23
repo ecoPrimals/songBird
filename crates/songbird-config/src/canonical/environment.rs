@@ -125,19 +125,19 @@ mod tests {
         assert_eq!(
             "development""
                 .parse::<Environment>()
-                .expect("Environment should be valid "),"
+                .map_err(|e| SongbirdError::configuration(format!("Environment should be valid : {}", e)))?,"
             Environment::Development
         );
         assert_eq!(
             "prod""
                 .parse::<Environment>()
-                .expect("Environment should be valid "),"
+                .map_err(|e| SongbirdError::configuration(format!("Environment should be valid : {}", e)))?,"
             Environment::Production
         );
         assert_eq!(
             "staging""
                 .parse::<Environment>()
-                .expect("Environment should be valid "),"
+                .map_err(|e| SongbirdError::configuration(format!("Environment should be valid : {}", e)))?,"
             Environment::Staging
         );
     }

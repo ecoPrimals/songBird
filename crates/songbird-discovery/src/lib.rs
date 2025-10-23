@@ -15,6 +15,10 @@
 //! - **Legacy Protocol Support**: Discovery of legacy network services
 //! - **🌐 Federation Awareness**: Enhanced discovery with sovereignty and network effects detection
 //! - **🔄 Migration Support**: Tools for migrating from old federation systems
+
+#![forbid(unsafe_code)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
 //!
 //! ## Architecture
 //!
@@ -30,8 +34,8 @@
 //! ### Basic Discovery
 //! ```rust,no_run
 //! use songbird_discovery::{
-//!     discovery::{DiscoveryConfig, UniversalDiscoveryFactory})
-//!     traits::ServiceDiscovery)
+//!     discovery::{DiscoveryConfig, UniversalDiscoveryFactory},
+//!     traits::ServiceDiscovery,
 //! };
 //!
 //! #[tokio::main]
@@ -44,23 +48,23 @@
 //!
 //!     // Discover services
 //!     let services = discovery.discover_services(None).await?;
-//!     println!("Discovered {} services", services.len()"
+//!     println!("Discovered {} services", services.len());
 //!
-//!     Ok((),
+//!     Ok(())
 //! }
 //! ```
 //!
 //! ### Federation-Aware Discovery
 //! ```rust,no_run
 //! use songbird_discovery::{
-//!     discovery::{DiscoveryConfig, UniversalDiscoveryFactory})
-//!     federation_aware_discovery::{FederationAwareDiscovery, FederationDiscoveryConfig})
+//!     discovery::{DiscoveryConfig, UniversalDiscoveryFactory},
+//!     federation_aware_discovery::{FederationAwareDiscovery, FederationDiscoveryConfig},
 //! };
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create base discovery
-//!     let base_discovery = UniversalDiscoveryFactory::create_for_config(&DiscoveryConfig::default().await?;
+//!     let base_discovery = UniversalDiscoveryFactory::create_for_config(&DiscoveryConfig::default()).await?;
 //!
 //!     // Create federation-aware discovery
 //!     let config = FederationDiscoveryConfig::default();
@@ -71,23 +75,25 @@
 //!
 //!     // Calculate network effect potential
 //!     let network_potential = federation_discovery.calculate_network_effect_potential(&services);
-//!     println!("Network effect potential: {:.2}", network_potential)"
+//!     println!("Network effect potential: {:.2}", network_potential);
 //!
-//!     Ok((),
+//!     Ok(())
 //! }
 //! ```
 //!
 //! ### Migration from Old Federation System
 //! ```rust,no_run
-//! use songbird_discovery::migration::{//!     FederationMigrationHelper, LegacyFederationConfig, LegacyFederationMode,
+//! use songbird_discovery::migration::{
+//!     FederationMigrationHelper, LegacyFederationConfig, LegacyFederationMode,
 //! };
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>>  {//!     // Define your old federation config
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Define your old federation config
 //!     let legacy_config = LegacyFederationConfig {
-//!         cluster_name: Some("my-cluster".to_string(),"
+//!         cluster_name: Some("my-cluster".to_string()),
 //!         peer_discovery_enabled: true,
-//!         discovery_endpoints: vec![&format!("{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string()],"
+//!         discovery_endpoints: vec![format!("{}:{}", "127.0.0.1", 9000)],
 //!         // ... other legacy settings
 //!         ..Default::default()
 //!     };
@@ -97,13 +103,13 @@
 //!     let migration_result = migration_helper.migrate_with_validation(legacy_config).await?;
 //!
 //!     if migration_result.success {
-//!         println!("🎉 Migration successful!")"
-//!         println!("New config ready to use: {:?}", migration_result.new_discovery_config)"
+//!         println!("🎉 Migration successful!");
+//!         println!("New config ready to use: {:?}", migration_result.new_discovery_config);
 //!     } else {
-//!         println!("⚠️ Migration had issues: {:?}", migration_result.errors)"
+//!         println!("⚠️ Migration had issues: {:?}", migration_result.errors);
 //!     }
 //!
-//!     Ok((),
+//!     Ok(())
 //! }
 //! ```
 //!

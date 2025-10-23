@@ -29,6 +29,7 @@ pub struct Query {
 
 impl Query {
     /// Create a new empty query
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -46,6 +47,7 @@ impl Query {
     }
 
     /// Add a capability requirement
+    #[must_use]
     pub fn with_capability(mut self, capability: CapabilityType) -> Self {
         self.capabilities.push(capability);
         self
@@ -64,6 +66,7 @@ impl Query {
     }
 
     /// Limit the number of results
+    #[must_use]
     pub fn with_limit(mut self, limit: usize) -> Self {
         self.limit = limit;
         self

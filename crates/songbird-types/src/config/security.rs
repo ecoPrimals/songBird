@@ -153,7 +153,7 @@ impl Default for SecurityProviderConfig {
 
         Self {
             name: "default".to_string(),
-            endpoint: format!("https://{}:{}", security_host, security_port),
+            endpoint: format!("https://{security_host}:{security_port}"),
             credentials: HashMap::new(),
         }
     }

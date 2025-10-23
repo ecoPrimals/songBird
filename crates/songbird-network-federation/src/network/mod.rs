@@ -49,6 +49,7 @@ pub struct NetworkManager {
 
 impl NetworkManager {
     /// Create a new network manager
+    #[must_use]
     pub fn new(config: NetworkConfig) -> Self {
         Self {
             config,
@@ -103,7 +104,7 @@ impl NetworkManager {
             overall_status: NetworkStatus::Healthy,
             provider_health,
             gaming_health,
-            active_connections: active_connections as u64,
+            active_connections: u64::from(active_connections),
             bandwidth_usage,
             latency_ms,
         })
@@ -131,7 +132,7 @@ impl NetworkManager {
         // In a real implementation, this would query system network statistics
         // For now, return a simulated value based on connection count
         let connections = self.get_active_connections_count().await?;
-        Ok(connections as f64 * 1.5) // Simulate ~1.5 MB/s per connection
+        Ok(f64::from(connections) * 1.5) // Simulate ~1.5 MB/s per connection
     }
 
     /// Get average network latency in milliseconds
@@ -152,7 +153,7 @@ impl NetworkManager {
 }
 
 /// Network configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NetworkConfig {
     /// Network interface configuration
     pub interface: InterfaceConfig,
@@ -168,18 +169,6 @@ pub struct NetworkConfig {
 
     /// Performance settings
     pub performance: PerformanceConfig,
-}
-
-impl Default for NetworkConfig {
-    fn default() -> Self {
-        Self {
-            interface: InterfaceConfig::default(),
-            gaming: GamingConfig::default(),
-            proxy: ProxyConfig::default(),
-            discovery: DiscoveryConfig::default(),
-            performance: PerformanceConfig::default(),
-        }
-    }
 }
 
 /// Network interface configuration
@@ -204,12 +193,10 @@ pub struct InterfaceConfig {
 impl Default for InterfaceConfig {
     fn default() -> Self {
         Self {
-            bind_address: songbird_config::constants::network::DEFAULT_HOST.parse().unwrap_or_else(
-                |_| {
-                    // Fallback to localhost if constant parsing fails
-                    std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
-                },
-            ),
+            bind_address: songbird_config::constants::network::DEFAULT_HOST.parse().unwrap_or({
+                // Fallback to localhost if constant parsing fails
+                std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
+            }),
             port: 8080,
             port_ranges: PortRanges::default(),
             max_connections: 1000,

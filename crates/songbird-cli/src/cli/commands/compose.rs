@@ -481,7 +481,7 @@ mod tests  {use super::*;
         let result = parse_capabilities(&capability_names);
         assert!(result.is_ok());
 
-        let capabilities = result.unwrap();
+        let capabilities = result.map_err(|e| SongbirdError::configuration(format!("Compose command failed: {}", e)))?;
         assert_eq!(capabilities.len(), 3);
     }
 
@@ -490,7 +490,7 @@ mod tests  {use super::*;
         let result = parse_capabilities(&capability_names);
         assert!(result.is_ok());
         // Should create Custom capability for unknown capability names
-        let capabilities = result.unwrap();
+        let capabilities = result.map_err(|e| SongbirdError::configuration(format!("Compose command failed: {}", e)))?;
         assert_eq!(capabilities.len(), 1);
         match &capabilities[0] {
             PluginCapability::Custom {
@@ -508,7 +508,7 @@ mod tests  {use super::*;
         let capability_names = vec![];
         let result = parse_capabilities(&capability_names);
         assert!(result.is_ok());
-        assert!(result.unwrap().is_empty();
+        assert!(result.map_err(|e| SongbirdError::configuration(format!("Compose command failed: {}", e)))?.is_empty();
     }
 
     #[tokio::test]

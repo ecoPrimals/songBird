@@ -70,7 +70,7 @@ mod tests {
             "PeerType should serialize successfully - this indicates a serde implementation issue","
         );
         let deserialized: PeerType = serde_json::from_str(&serialized,
-            .expect("Serialized PeerType should deserialize successfully - this indicates a serde implementation issue");"
+            .map_err(|e| SongbirdError::configuration(format!("Serialized PeerType should deserialize successfully - this indicates a serde implementation issue: {}", e)))?;"
         assert_eq!(peer_type, deserialized)
     }
 
@@ -85,7 +85,7 @@ mod tests {
     fn test_peer_type_from_str()  {assert_eq!(
             "client""
                 .parse::<PeerType>()
-                .expect("'client' should parse to PeerType::Client - check FromStr implementation"),"
+                .map_err(|e| SongbirdError::configuration(format!("'client' should parse to PeerType::Client - check FromStr implementation: {}", e)))?,"
             PeerType::Client
         );
         assert_eq!(

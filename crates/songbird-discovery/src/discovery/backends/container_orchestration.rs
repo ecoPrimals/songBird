@@ -642,7 +642,7 @@ impl UniversalContainerOrchestration {
             name: name.to_string(),
             version: "1.0.0".to_string(),
             service_type: orchestration_type.to_string(),
-            description: Some(format!("Service discovered via {}", orchestration_type)),
+            description: Some(format!("Service discovered via {orchestration_type}")),
             endpoints: Vec::new(), // Would be populated from actual discovery
             health_check_endpoint: None,
             metadata: HashMap::new(),
@@ -651,7 +651,7 @@ impl UniversalContainerOrchestration {
             status: ServiceStatus::Running,
             created_at: Utc::now(),
             updated_at: Utc::now(),
-            instance_id: format!("{}-instance", name),
+            instance_id: format!("{name}-instance"),
             host: songbird_config::constants::network::DEFAULT_HOST.to_string(),
             port: 8080,
         }

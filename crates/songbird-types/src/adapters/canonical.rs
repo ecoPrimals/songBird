@@ -112,7 +112,7 @@ pub struct CanonicalCircuitBreaker {
 // ============================================================================
 
 /// **CANONICAL**: Configuration for the universal adapter
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CanonicalAdapterConfig {
     /// Service discovery configuration
     pub discovery: CanonicalDiscoveryConfig,
@@ -186,6 +186,7 @@ pub struct CanonicalRetryConfig {
 
 /// **CANONICAL**: Timeout configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)] // "timeout" suffix is intentionally descriptive
 pub struct CanonicalTimeoutConfig {
     /// Request timeout
     pub request_timeout: Duration,
@@ -389,6 +390,7 @@ pub trait CanonicalProtocolHandler: Send + Sync {
 
 impl CanonicalUniversalAdapter {
     /// Create a new canonical universal adapter
+    #[must_use]
     pub fn new(config: CanonicalAdapterConfig) -> Self {
         Self {
             registry: Arc::new(RwLock::new(CanonicalServiceRegistry::default())),
@@ -499,25 +501,24 @@ impl CanonicalUniversalAdapter {
         let result = self.protocol_router.route_request(&selected_service.service, &request).await;
 
         // Update circuit breaker and metrics based on result
-        match &result {
-            Ok(_response) => {
-                self.circuit_breaker.record_success(&selected_service.service.id).await;
-                let mut metrics = self.metrics.write().await;
-                metrics.successful_requests += 1;
+        if let Ok(_response) = &result {
+            self.circuit_breaker.record_success(&selected_service.service.id).await;
+            let mut metrics = self.metrics.write().await;
+            metrics.successful_requests += 1;
 
-                // Update average response time
-                let processing_time = start_time.elapsed().unwrap_or(Duration::from_millis(0));
-                let avg_nanos = metrics.avg_response_time.as_nanos() as u64;
-                let processing_nanos = processing_time.as_nanos() as u64;
-                let new_avg = (avg_nanos * (metrics.successful_requests - 1) + processing_nanos)
-                    / metrics.successful_requests;
-                metrics.avg_response_time = Duration::from_nanos(new_avg);
-            }
-            Err(_) => {
-                self.circuit_breaker.record_failure(&selected_service.service.id).await;
-                let mut metrics = self.metrics.write().await;
-                metrics.failed_requests += 1;
-            }
+            // Update average response time
+            let processing_time = start_time.elapsed().unwrap_or(Duration::from_millis(0));
+            #[allow(clippy::cast_possible_truncation)] // Truncation acceptable for perf metrics
+            let avg_nanos = metrics.avg_response_time.as_nanos() as u64;
+            #[allow(clippy::cast_possible_truncation)] // Truncation acceptable for perf metrics
+            let processing_nanos = processing_time.as_nanos() as u64;
+            let new_avg = (avg_nanos * (metrics.successful_requests - 1) + processing_nanos)
+                / metrics.successful_requests;
+            metrics.avg_response_time = Duration::from_nanos(new_avg);
+        } else {
+            self.circuit_breaker.record_failure(&selected_service.service.id).await;
+            let mut metrics = self.metrics.write().await;
+            metrics.failed_requests += 1;
         }
 
         result
@@ -547,7 +548,7 @@ impl CanonicalUniversalAdapter {
         let registry = self.registry.read().await;
         let mut results = HashMap::new();
 
-        for (service_id, _service) in &registry.all_services {
+        for service_id in registry.all_services.keys() {
             // Perform health check (simplified)
             let health_status = CanonicalHealthStatus::Healthy; // Would perform actual check
             results.insert(service_id.clone(), health_status);
@@ -561,8 +562,15 @@ impl CanonicalUniversalAdapter {
 // CANONICAL PROTOCOL ROUTER IMPLEMENTATION
 // ============================================================================
 
+impl Default for CanonicalProtocolRouter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CanonicalProtocolRouter {
     /// Create a new protocol router
+    #[must_use]
     pub fn new() -> Self {
         Self {
             handlers: HashMap::new(),
@@ -591,13 +599,12 @@ impl CanonicalProtocolRouter {
         let protocol = service
             .endpoints
             .first()
-            .map(|e| e.protocol.clone())
-            .unwrap_or_else(|| self.default_protocol.clone());
+            .map_or_else(|| self.default_protocol.clone(), |e| e.protocol.clone());
 
         // Get appropriate handler
         let handler = self.handlers.get(&protocol).ok_or_else(|| SongbirdError::Service {
-            service: format!("protocol:{}", protocol),
-            message: format!("Protocol '{}' is not supported", protocol),
+            service: format!("protocol:{protocol}"),
+            message: format!("Protocol '{protocol}' is not supported"),
             suggested_alternatives: self.handlers.keys().cloned().collect(),
             recovery_actions: vec![],
         })?;
@@ -613,6 +620,7 @@ impl CanonicalProtocolRouter {
 
 impl CanonicalLoadBalancer {
     /// Create a new load balancer
+    #[must_use]
     pub fn new(config: CanonicalLoadBalancingConfig) -> Self {
         Self {
             strategy: config.strategy,
@@ -658,10 +666,10 @@ impl CanonicalLoadBalancer {
                     .ok_or_else(|| {
                         SongbirdError::service(
                             "load-balancer",
-                            "No services available for LeastResponseTime strategy"
+                            "No services available for LeastResponseTime strategy",
                         )
                     })
-                    .map(|s| s.clone())
+                    .cloned()
             }
             CanonicalLoadBalancingStrategy::HealthAware => {
                 // Select healthiest service (would check actual health)
@@ -678,6 +686,7 @@ impl CanonicalLoadBalancer {
 
 impl CanonicalCircuitBreaker {
     /// Create a new circuit breaker
+    #[must_use]
     pub fn new(config: CanonicalCircuitBreakerConfig) -> Self {
         Self {
             states: Arc::new(RwLock::new(HashMap::new())),
@@ -712,20 +721,6 @@ impl CanonicalCircuitBreaker {
 // ============================================================================
 // DEFAULT IMPLEMENTATIONS
 // ============================================================================
-
-impl Default for CanonicalAdapterConfig {
-    fn default() -> Self {
-        Self {
-            discovery: CanonicalDiscoveryConfig::default(),
-            load_balancing: CanonicalLoadBalancingConfig::default(),
-            circuit_breaker: CanonicalCircuitBreakerConfig::default(),
-            retry: CanonicalRetryConfig::default(),
-            timeouts: CanonicalTimeoutConfig::default(),
-            health_check: CanonicalHealthCheckConfig::default(),
-            monitoring: CanonicalMonitoringConfig::default(),
-        }
-    }
-}
 
 impl Default for CanonicalDiscoveryConfig {
     fn default() -> Self {
@@ -838,11 +833,13 @@ impl Default for CanonicalAdapterMetrics {
 // ============================================================================
 
 /// Create a new canonical universal adapter with default configuration
+#[must_use]
 pub fn create_canonical_adapter() -> CanonicalUniversalAdapter {
     CanonicalUniversalAdapter::new(CanonicalAdapterConfig::default())
 }
 
 /// Create a canonical adapter request
+#[must_use]
 pub fn create_adapter_request(
     capability: &str,
     payload: serde_json::Value,

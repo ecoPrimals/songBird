@@ -240,7 +240,7 @@ mod tests { use super: :*;
         let result = collector.collect_system_metrics().await;
         assert!(result.is_ok());
 
-        let metrics = result.unwrap();
+        let metrics = result.map_err(|e| SongbirdError::configuration(format!("Metrics operation failed: {}", e)))?;
         // Store the metrics to verify storage functionality
         let store_result = collector.store_metrics("comprehensive_test".to_string(), metrics).await;"
         assert!(store_result.is_ok());

@@ -19,6 +19,7 @@ pub struct ServerManager {
 
 impl ServerManager {
     /// Create new server manager
+    #[must_use]
     pub fn new() -> Self {
         Self {
             health_check_interval: Duration::from_secs(30),
@@ -27,6 +28,7 @@ impl ServerManager {
     }
 
     /// Set health check interval
+    #[must_use]
     pub fn with_health_check_interval(mut self, interval: Duration) -> Self {
         self.health_check_interval = interval;
         self
@@ -182,6 +184,7 @@ pub struct HealthCheckService {
 
 impl HealthCheckService {
     /// Create new health check service
+    #[must_use]
     pub fn new(check_interval: Duration) -> Self {
         Self {
             check_interval,
@@ -278,6 +281,7 @@ pub struct ServiceMonitor {
 
 impl ServiceMonitor {
     /// Create new service monitor
+    #[must_use]
     pub fn new(check_interval: Duration) -> Self {
         Self {
             check_interval,

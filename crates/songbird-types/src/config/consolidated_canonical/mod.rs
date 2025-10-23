@@ -54,7 +54,7 @@ pub use system::*;
 /// - `songbird-config::SongbirdConfig`
 /// - `songbird-types::config::UnifiedSongbirdConfig` (multiple versions,
 /// - All 25+ fragmented config types across modules
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CanonicalSongbirdConfig {
     /// System-wide configuration
     pub system: CanonicalSystemConfig,
@@ -88,22 +88,4 @@ pub struct CanonicalSongbirdConfig {
 
     /// Extensibility - custom configuration fields
     pub custom: HashMap<String, serde_json::Value>,
-}
-
-impl Default for CanonicalSongbirdConfig {
-    fn default() -> Self {
-        Self {
-            system: CanonicalSystemConfig::default(),
-            network: CanonicalNetworkConfig::default(),
-            security: CanonicalSecurityConfig::default(),
-            performance: CanonicalPerformanceConfig::default(),
-            discovery: CanonicalDiscoveryConfig::default(),
-            observability: CanonicalObservabilityConfig::default(),
-            gaming: CanonicalGamingConfig::default(),
-            primals: CanonicalPrimalConfig::default(),
-            federation: CanonicalFederationConfig::default(),
-            environment: CanonicalEnvironmentConfig::default(),
-            custom: HashMap::new(),
-        }
-    }
 }

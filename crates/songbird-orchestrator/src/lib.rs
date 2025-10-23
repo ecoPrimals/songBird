@@ -23,17 +23,19 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,no_run
 //! use songbird_orchestrator::SongbirdOrchestrator;
+//! use songbird_config::SongbirdConfig;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let orchestrator = SongbirdOrchestrator::new().await?;
+//!     let config = SongbirdConfig::from_env()?;
+//!     let orchestrator = SongbirdOrchestrator::new(config).await?;
 //!
 //!     // Start the orchestrator
 //!     orchestrator.start().await?;
 //!
-//!     Ok(()),
+//!     Ok(())
 //! }
 //! ```
 //!

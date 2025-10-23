@@ -163,64 +163,64 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
     /// Initialize code migration patterns
     fn initialize_code_patterns(&mut self)  {// Replace hardcoded primal name strings
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""beardog""#).unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""beardog""#).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for beardog primal name detection: {}", e)))?,"
             replacement: r#"capability_discovery.request_capability("security")"#.to_string(),
             description: "Replace hardcoded 'beardog' with security capability request".to_string(),
             is_critical: true,
         });
 
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""nestgate""#).unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""nestgate""#).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for nestgate primal name detection: {}", e)))?,"
             replacement: r#"capability_discovery.request_capability("storage")"#.to_string(),
             description: "Replace hardcoded 'nestgate' with storage capability request".to_string(),
             is_critical: true,
         });
 
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""toadstool""#).unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""toadstool""#).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for toadstool primal name detection: {}", e)))?,"
             replacement: r#"capability_discovery.request_capability("compute")"#.to_string(),
             description: "Replace hardcoded 'toadstool' with compute capability request".to_string(),
             is_critical: true,
         });
 
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""squirrel""#).unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""squirrel""#).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for squirrel primal name detection: {}", e)))?,"
             replacement: r#"capability_discovery.request_capability("ai")"#.to_string(),
             description: "Replace hardcoded 'squirrel' with AI capability request".to_string(),
             is_critical: true,
         });
 
         // Replace primal-specific function calls
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r"get_beardog_endpoint\(\)").unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r"get_beardog_endpoint\(\)").map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for beardog endpoint function detection: {}", e)))?,"
             replacement: r#"capability_discovery.get_capability_endpoint("security").await?"#.to_string(),
             description: "Replace beardog endpoint getter with security capability lookup".to_string(),
             is_critical: true,
         });
 
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r"connect_to_nestgate\(([^)]+)\)").unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r"connect_to_nestgate\(([^)]+)\)").map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?,"
             replacement: r#"capability_discovery.connect_to_capability("storage", $1).await?"#.to_string()),
             description: "Replace nestgate connection with storage capability connection".to_string(),
             is_critical: true,
         });
 
         // Replace primal-specific configuration keys
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r"config\.beardog\.").unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r"config\.beardog\.").map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?,"
             replacement: r#"config.capabilities.security."#.to_string(),
             description: "Replace beardog config section with security capability config".to_string(),
             is_critical: false,
         });
 
         // Replace hardcoded vendor service names
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""kubernetes""#).unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""kubernetes""#).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?,"
             replacement: r#"capability_discovery.request_capability("container_orchestration")"#.to_string(),
             description: "Replace hardcoded 'kubernetes' with container orchestration capability".to_string(),
             is_critical: true,
         });
 
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""consul""#).unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""consul""#).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?,"
             replacement: r#"capability_discovery.request_capability("service_discovery")"#.to_string(),
             description: "Replace hardcoded 'consul' with service discovery capability".to_string(),
             is_critical: true,
         });
 
-        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""docker""#).unwrap(),"
+        self.code_patterns.push(CodePattern  {pattern: Regex::new(r#""docker""#).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?,"
             replacement: r#"capability_discovery.request_capability("container_runtime")"#.to_string(),
             description: "Replace hardcoded 'docker' with container runtime capability".to_string(),
             is_critical: true,
@@ -229,26 +229,26 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
     /// Initialize configuration migration patterns
     fn initialize_config_patterns(&mut self)  {// Migrate primal-specific config sections
-        self.config_patterns.push(ConfigPattern  {key_pattern: Regex::new(r"^beardog\.(.+)$").unwrap(),"
+        self.config_patterns.push(ConfigPattern  {key_pattern: Regex::new(r"^beardog\.(.+)$").map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?,"
             new_key: "capabilities.security.$1".to_string(),
             value_transform: "preserve".to_string(),
             description: "Migrate beardog config to security capability config".to_string(),
         });
 
-        self.config_patterns.push(ConfigPattern  {key_pattern: Regex::new(r"^nestgate\.(.+)$").unwrap(),"
+        self.config_patterns.push(ConfigPattern  {key_pattern: Regex::new(r"^nestgate\.(.+)$").map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?,"
             new_key: "capabilities.storage.$1".to_string(),
             value_transform: "preserve".to_string(),
             description: "Migrate nestgate config to storage capability config".to_string(),
         });
 
-        self.config_patterns.push(ConfigPattern  {key_pattern: Regex::new(r"^toadstool\.(.+)$").unwrap(),"
+        self.config_patterns.push(ConfigPattern  {key_pattern: Regex::new(r"^toadstool\.(.+)$").map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?,"
             new_key: "capabilities.compute.$1".to_string(),
             value_transform: "preserve".to_string(),
             description: "Migrate toadstool config to compute capability config".to_string(),
         });
 
         // Migrate vendor-specific service configs
-        self.config_patterns.push(ConfigPattern  {key_pattern: Regex::new(r"^kubernetes\.(.+)$").unwrap(),"
+        self.config_patterns.push(ConfigPattern  {key_pattern: Regex::new(r"^kubernetes\.(.+)$").map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?,"
             new_key: "capabilities.container_orchestration.$1".to_string(),
             value_transform: "preserve".to_string(),
             description: "Migrate kubernetes config to container orchestration capability".to_string(),
@@ -409,7 +409,7 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
         ];
 
         for term in hardcoded_terms { // Case-insensitive search for remaining references
-            let pattern = Regex::new(&format!(r"(?i)\b{}\b", regex::escape(term)).unwrap();"
+            let pattern = Regex::new(&format!(r"(?i)\b{}\b", regex::escape(term)).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?;"
             if pattern.is_match(content) {
                 warnings.push(format!("Potential remaining hardcoded reference to '{}'", term));
             }
@@ -474,7 +474,7 @@ impl AgnosticPrimalMigrator  {/// Create a new agnostic primal migrator with sta
 
         let mut count = 0;
         for term in hardcoded_terms {
-            let pattern = Regex::new(&format!(r"(?i)\b{}\b", regex::escape(term)).unwrap();"
+            let pattern = Regex::new(&format!(r"(?i)\b{}\b", regex::escape(term)).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?;"
             count += pattern.find_iter(content).count();
         }
         count
@@ -542,7 +542,7 @@ mod tests { use super::*;
         let migrator = AgnosticPrimalMigrator::new();
         let source = r#"let primal = "beardog";"#;"
 
-        let result = migrator.migrate_source_file(source).unwrap();
+        let result = migrator.migrate_source_file(source).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?;
         assert!(result.migrated_content.contains("security")"
         assert!(!result.applied_patterns.is_empty());
     }
@@ -557,7 +557,7 @@ beardog.enabled = true
 nestgate.storage_path = "/data""
         "#;"
 
-        let result = migrator.migrate_config_file(config).unwrap();
+        let result = migrator.migrate_config_file(config).map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?;
         assert!(result.migrated_content.contains("capabilities.security")"
         assert!(result.migrated_content.contains("capabilities.storage")"
     }
@@ -567,7 +567,7 @@ nestgate.storage_path = "/data""
 
 
         let migrator = AgnosticPrimalMigrator::new();
-        let mapping = migrator.get_capability_mapping("beardog").unwrap();"
+        let mapping = migrator.get_capability_mapping("beardog").map_err(|e| SongbirdError::configuration(format!("Failed to compile regex pattern for migration: {}", e)))?;"
         assert_eq!(mapping.primary_capability, "security")"
         assert!(mapping.secondary_capabilities.contains(&"authentication".to_string()"
     }

@@ -103,7 +103,7 @@ impl ServiceDiscovery for StaticServiceDiscovery {
             "Discovered {} services{}",
             filtered_services.len(),
             match query.name.as_ref() {
-                Some(name) => format!(" for {}", name),
+                Some(name) => format!(" for {name}"),
                 None => String::new(),
             }
         );

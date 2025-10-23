@@ -13,6 +13,7 @@
 // UNIFIED ADAPTER SYSTEM - Primary Interface
 // ============================================================================
 
+pub mod adapters;
 pub mod capabilities;
 pub mod discovery;
 pub mod sovereignty;
@@ -35,12 +36,18 @@ pub use sovereignty::{
 // Re-export core types
 pub use types::*;
 
+// Explicitly re-export capability types to avoid confusion
+pub use capabilities::Capability as CapabilityDefinition;
+pub use types::DiscoveredCapability;
+
 /// Create a new unified universal adapter with default configuration
+#[must_use]
 pub fn create_universal_adapter() -> UnifiedUniversalAdapter {
     UnifiedUniversalAdapter::new()
 }
 
 /// Create a new unified universal adapter with custom configuration
+#[must_use]
 pub fn create_universal_adapter_with_config(
     config: UnifiedAdapterConfig,
 ) -> UnifiedUniversalAdapter {

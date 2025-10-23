@@ -20,7 +20,7 @@ pub async fn handle_service_command(service_command: Option<ServiceCommands>) ->
         Some(ServiceCommands::Show {
             service_name,
         }) => {
-            print_info(&format!("ℹ️ Service Information: {}", service_name));
+            print_info(&format!("ℹ️ Service Information: {service_name}"));
             match service_name.as_str() {
                 "orchestrator" => {
                     print_info("  Type: Core Service");
@@ -28,29 +28,29 @@ pub async fn handle_service_command(service_command: Option<ServiceCommands>) ->
                     print_info("  Port: 8080");
                     print_info("  Description: Main orchestration service");
                 }
-                _ => print_error(&format!("Unknown service: {}", service_name)),
+                _ => print_error(&format!("Unknown service: {service_name}")),
             }
             Ok(())
         }
         Some(ServiceCommands::Start {
             service_name,
         }) => {
-            print_info(&format!("🚀 Starting service: {}", service_name));
-            print_success(&format!("Service {} started", service_name));
+            print_info(&format!("🚀 Starting service: {service_name}"));
+            print_success(&format!("Service {service_name} started"));
             Ok(())
         }
         Some(ServiceCommands::Stop {
             service_name,
         }) => {
-            print_info(&format!("🛑 Stopping service: {}", service_name));
-            print_success(&format!("Service {} stopped", service_name));
+            print_info(&format!("🛑 Stopping service: {service_name}"));
+            print_success(&format!("Service {service_name} stopped"));
             Ok(())
         }
         Some(ServiceCommands::Restart {
             service_name,
         }) => {
-            print_info(&format!("🔄 Restarting service: {}", service_name));
-            print_success(&format!("Service {} restarted", service_name));
+            print_info(&format!("🔄 Restarting service: {service_name}"));
+            print_success(&format!("Service {service_name} restarted"));
             Ok(())
         }
     }

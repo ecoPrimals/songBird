@@ -7,13 +7,13 @@
 //!
 //! ## Consolidation Summary
 //! - **Provider**: Base trait for all providers (replaces 3+ definitions)
-//! - **ServiceProvider**: Service-oriented operations (unified from discovery traits)
-//! - **PrimalProvider**: Primal-specific operations (moved from songbird-universal-primals)
-//! - **DiscoveryProvider**: Service discovery (consolidated from 4+ definitions)
-//! - **CapabilityProvider**: Capability-based systems (unified interface)
-//! - **SecurityProvider**: Security operations (consolidated)
-//! - **OrchestrationProvider**: Service orchestration (unified)
-//! - **ObservabilityProvider**: Metrics & monitoring (consolidated)
+//! - **`ServiceProvider`**: Service-oriented operations (unified from discovery traits)
+//! - **`PrimalProvider`**: Primal-specific operations (moved from songbird-universal-primals)
+//! - **`DiscoveryProvider`**: Service discovery (consolidated from 4+ definitions)
+//! - **`CapabilityProvider`**: Capability-based systems (unified interface)
+//! - **`SecurityProvider`**: Security operations (consolidated)
+//! - **`OrchestrationProvider`**: Service orchestration (unified)
+//! - **`ObservabilityProvider`**: Metrics & monitoring (consolidated)
 
 use async_trait::async_trait;
 use futures_util::Stream;
@@ -71,7 +71,7 @@ pub trait Provider: Send + Sync + 'static {
 /// **CANONICAL**: Service provider trait - for service-oriented providers
 ///
 /// Consolidates service-related functionality from multiple trait definitions.
-/// Replaces ServiceProvider from unified_providers and discovery traits.
+/// Replaces `ServiceProvider` from `unified_providers` and discovery traits.
 #[async_trait]
 pub trait ServiceProvider: Provider {
     /// Get service type identifier
@@ -144,7 +144,7 @@ pub trait PrimalProvider: Provider {
 /// **CANONICAL**: Discovery provider trait - for service discovery
 ///
 /// Consolidates all discovery functionality from multiple definitions.
-/// Replaces CanonicalServiceDiscovery, ServiceDiscovery, and DiscoveryProvider.
+/// Replaces `CanonicalServiceDiscovery`, `ServiceDiscovery`, and `DiscoveryProvider`.
 #[async_trait]
 pub trait DiscoveryProvider: Provider {
     /// Discover services matching criteria

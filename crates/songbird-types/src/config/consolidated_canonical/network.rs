@@ -14,7 +14,7 @@ use std::time::Duration;
 // ============================================================================
 
 /// **CANONICAL**: Network and communication configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CanonicalNetworkConfig {
     /// Server binding configuration
     pub bind: CanonicalBindConfig,
@@ -233,27 +233,13 @@ pub struct CanonicalRateLimitConfig {
     /// Rate limit window
     pub window: Duration,
 
-    /// Rate limit strategy (token_bucket, sliding_window, fixed_window,
+    /// Rate limit strategy (`token_bucket`, `sliding_window`, `fixed_window`)
     pub strategy: String,
 }
 
 // ============================================================================
 // DEFAULT IMPLEMENTATIONS
 // ============================================================================
-
-impl Default for CanonicalNetworkConfig {
-    fn default() -> Self {
-        Self {
-            bind: CanonicalBindConfig::default(),
-            client: CanonicalClientConfig::default(),
-            tls: None,
-            proxy: None,
-            connection_pool: CanonicalConnectionPoolConfig::default(),
-            timeouts: CanonicalTimeoutConfig::default(),
-            rate_limiting: CanonicalRateLimitConfig::default(),
-        }
-    }
-}
 
 impl Default for CanonicalBindConfig {
     fn default() -> Self {

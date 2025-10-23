@@ -1,12 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_types::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::debug;
 
 use super::{HealthStatus, NodeHealth, ServiceHealth};
-use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 
 /// Health monitor for services and nodes
@@ -153,23 +153,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_health_status_update() {
+    async fn test_health_status_update() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let monitor = HealthMonitor::new();
-        monitor
-            .register_service("test-service".to_string())
-            .await
-            .expect("Failed to register service in test");
+        monitor.register_service("test-service".to_string()).await?;
 
         assert!(monitor.update_service_health("test-service", HealthStatus::Healthy).await.is_ok());
 
-        let health = monitor
-            .get_service_health("test-service")
-            .await
-            .expect("Failed to get service health in test");
+        let health = monitor.get_service_health("test-service").await?;
         assert!(health.is_some());
-        assert!(matches!(
-            health.expect("Health should be Some in test").status,
-            HealthStatus::Healthy
-        ));
+        if let Some(h) = health {
+            assert!(matches!(h.status, HealthStatus::Healthy));
+        }
+        Ok(())
     }
 }

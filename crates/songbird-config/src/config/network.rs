@@ -125,6 +125,7 @@ pub struct PortRange {
 
 /// Timeout configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)] // timeout_secs suffix is intentional for clarity
 pub struct TimeoutConfig {
     /// Default operation timeout
     pub default_timeout_secs: u64,
@@ -202,7 +203,7 @@ impl NetworkConfig {
     ///
     /// # Panics
     ///
-    /// Panics if &crate::constants::network::DEFAULT_HOST cannot be parsed as an IP address
+    /// Panics if &`crate::constants::network::DEFAULT_HOST` cannot be parsed as an IP address
     pub fn from_env() -> Result<Self> {
         let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
             .unwrap_or_else(|_| crate::constants::network::DEFAULT_HOST.to_string())
@@ -220,12 +221,11 @@ impl NetworkConfig {
                 .parse()
                 .unwrap_or_else(|e| {
                     tracing::warn!(
-                        "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}",
-                        e
+                        "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {e}"
                     );
-                    get_bind_address().parse().unwrap_or_else(|_| {
-                        std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
-                    })
+                    get_bind_address()
+                        .parse()
+                        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
                 }),
             orchestrator_port: std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
                 .unwrap_or_else(|_| {
@@ -261,11 +261,10 @@ impl NetworkConfig {
             federation_port: 8005,
             cors: CorsConfig {
                 enabled: false,
-                origins: std::env::var("SONGBIRD_CORS_ORIGINS")
-                    .map(|origins| origins.split(',').map(String::from).collect())
-                    .unwrap_or_else(|_| {
-                        vec!["http://crate::constants::network::DEFAULT_HOST:3000".to_string()]
-                    }),
+                origins: std::env::var("SONGBIRD_CORS_ORIGINS").map_or_else(
+                    |_| vec!["http://crate::constants::network::DEFAULT_HOST:3000".to_string()],
+                    |origins| origins.split(',').map(String::from).collect(),
+                ),
                 allowed_methods: vec!["GET".to_string(), "POST".to_string()],
                 allowed_headers: vec!["Content-Type".to_string()],
             },
@@ -276,15 +275,15 @@ impl NetworkConfig {
     ///
     /// # Panics
     ///
-    /// Panics if &crate::constants::network::DEFAULT_HOST cannot be parsed as an IP address
+    /// Panics if &`crate::constants::network::DEFAULT_HOST` cannot be parsed as an IP address
     #[must_use]
     pub fn secure_defaults() -> Self {
         Self {bind_address: get_bind_address()
                 .parse()
-                .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))),
+                .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)),
             production_bind_address: "0.0.0.0"
                 .parse()
-                .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))),
+                .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
             orchestrator_port: 8080,
             discovery_port: 8001,
             gaming_port: 6112,
@@ -327,9 +326,7 @@ impl NetworkConfig {
             }),
             federation_port: 8005,
             cors: CorsConfig  {enabled: false,
-                origins: std::env::var("SONGBIRD_CORS_ORIGINS")
-                    .map(|origins| origins.split(',').map(String::from).collect())
-                    .unwrap_or_else(|_| vec!["http://crate::constants::network::DEFAULT_HOST:3000".to_string()]),
+                origins: std::env::var("SONGBIRD_CORS_ORIGINS").map_or_else(|_| vec!["http://crate::constants::network::DEFAULT_HOST:3000".to_string()], |origins| origins.split(',').map(String::from).collect()),
                 allowed_methods: vec!["GET".to_string(), "POST".to_string()],
                 allowed_headers: vec!["Content-Type".to_string()],
             },
@@ -357,7 +354,7 @@ impl NetworkConfig {
         if self.federation_endpoints.is_empty()
             && std::env::var("SONGBIRD_ENV").unwrap_or_default() == "production"
         {
-            tracing::warn!("Production environment without federation endpoints configured")
+            tracing::warn!("Production environment without federation endpoints configured");
         }
 
         Ok(())
@@ -404,7 +401,7 @@ impl NetworkConfig {
                 self.bind_address.to_string().parse::<IpAddr>().map_or_else(
                     |_| {
                         Ok(SocketAddr::new(
-                            IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+                            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                             self.orchestrator_port,
                         ))
                     },
@@ -416,12 +413,9 @@ impl NetworkConfig {
     }
 
     /// Get default endpoint for services
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the endpoint cannot be determined
-    pub const fn default_endpoint(&self) -> Result<SocketAddr> {
-        Ok(self.orchestrator_endpoint())
+    #[must_use]
+    pub const fn default_endpoint(&self) -> SocketAddr {
+        self.orchestrator_endpoint()
     }
 
     /// Get gaming port for protocol
@@ -556,7 +550,7 @@ impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
             bind_address: get_bind_address().parse().unwrap_or_else(|e| {
-                warn!("Failed to parse bind address, using 127.0.0.1: {}", e);
+                warn!("Failed to parse bind address, using 127.0.0.1: {e}");
                 std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
             }),
             production_bind_address: "0.0.0.0".parse().unwrap_or_else(|_| {
@@ -598,11 +592,10 @@ impl Default for NetworkConfig {
             federation_port: 8005,
             cors: CorsConfig {
                 enabled: false,
-                origins: std::env::var("SONGBIRD_CORS_ORIGINS")
-                    .map(|origins| origins.split(',').map(String::from).collect())
-                    .unwrap_or_else(|_| {
-                        vec!["http://crate::constants::network::DEFAULT_HOST:3000".to_string()]
-                    }),
+                origins: std::env::var("SONGBIRD_CORS_ORIGINS").map_or_else(
+                    |_| vec!["http://crate::constants::network::DEFAULT_HOST:3000".to_string()],
+                    |origins| origins.split(',').map(String::from).collect(),
+                ),
                 allowed_methods: vec!["GET".to_string(), "POST".to_string()],
                 allowed_headers: vec!["Content-Type".to_string()],
             },
@@ -690,11 +683,24 @@ mod tests {
     }
 
     #[test]
-    fn test_gaming_port_lookup() {
+    fn test_gaming_port_lookup() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let config = NetworkConfig::default();
-        assert_eq!(config.gaming_port("starcraft").unwrap(), 6112);
-        assert_eq!(config.gaming_port("aoe2").unwrap(), 2300);
+        assert_eq!(
+            config.gaming_port("starcraft").map_err(|e| SongbirdError::configuration(format!(
+                "Test: starcraft port should be found: {}",
+                e
+            )))?,
+            6112
+        );
+        assert_eq!(
+            config.gaming_port("aoe2").map_err(|e| SongbirdError::configuration(format!(
+                "Test: aoe2 port should be found: {}",
+                e
+            )))?,
+            2300
+        );
         assert!(config.gaming_port("unknown").is_err());
+        Ok(())
     }
 
     #[test]

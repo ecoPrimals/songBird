@@ -155,10 +155,7 @@ impl PerformanceTestFramework {
     ) -> SongbirdResult<()> {
         let results = self.results.read().await;
         let result = results.get(benchmark_name).ok_or_else(|| {
-            SongbirdError::service(
-                "test-utils",
-                format!("Benchmark '{}' not found", benchmark_name),
-            )
+            SongbirdError::service("test-utils", format!("Benchmark '{benchmark_name}' not found"))
         })?;
 
         if result.throughput < self.config.target_throughput {

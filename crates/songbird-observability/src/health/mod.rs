@@ -109,7 +109,7 @@ impl HealthChecker {
                 Err(err) => results.push(HealthCheckResult {
                     name: "Unknown".to_string(),
                     status: HealthStatus::Unhealthy,
-                    message: format!("Check failed: {:?}", err),
+                    message: format!("Check failed: {err:?}"),
                     response_time_ms: 0,
                 }),
             }

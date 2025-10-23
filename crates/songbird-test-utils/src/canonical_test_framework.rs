@@ -76,7 +76,7 @@ impl CanonicalAssertions {
             Ok(_) => Ok(()),
             Err(e) => Err(SongbirdError::service(
                 "test-utils",
-                format!("Expected success but got error: {}", e),
+                format!("Expected success but got error: {e}"),
             )),
         }
     }
@@ -103,7 +103,7 @@ impl CanonicalAssertions {
                 } else {
                     Err(SongbirdError::service(
                         "test-utils",
-                        format!("Error '{}' does not contain '{expected_msg}'", error_str),
+                        format!("Error '{error_str}' does not contain '{expected_msg}'"),
                     ))
                 }
             }

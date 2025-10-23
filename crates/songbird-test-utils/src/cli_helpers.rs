@@ -1,11 +1,11 @@
 /// CLI testing helpers and utilities
 ///
 /// Provides utilities for testing CLI components and formatting
-use colored::*;
+use colored::{Color, Colorize};
 
 /// CLI output utilities for testing and debugging
 pub mod output {
-    use super::*;
+    use super::{Color, Colorize};
 
     /// Print informational message (centralized)
     pub fn print_info(msg: &str) {
@@ -30,7 +30,7 @@ pub mod output {
     /// Print debug message (only in debug builds)
     pub fn print_debug(msg: &str) {
         #[cfg(debug_assertions)]
-        println!("{}", format!("DEBUG: {}", msg).dimmed());
+        println!("{}", format!("DEBUG: {msg}").dimmed());
         #[cfg(not(debug_assertions))]
         let _ = msg; // Prevent unused variable warning in release builds
     }

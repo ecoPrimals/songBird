@@ -32,9 +32,9 @@ pub enum Commands {
         /// Federation command
         federation_command: String,
     },
-    /// IoT device management
+    /// `IoT` device management
     Iot {
-        /// IoT command
+        /// `IoT` command
         iot_command: String,
     },
     /// Plugin composition and management

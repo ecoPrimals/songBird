@@ -270,20 +270,20 @@ mod tests {
         // Test CPU usage collection
         let cpu_usage = collector.get_cpu_usage().await;
         assert!(cpu_usage.is_ok());
-        let cpu = cpu_usage.unwrap();
+        let cpu = cpu_usage.map_err(|e| SongbirdError::configuration(format!("Production metrics operation failed: {}", e)))?;
         assert!(cpu >= 0.0 && cpu <= 100.0));
 
         // Test memory collection
         let memory_result = collector.get_memory_usage().await;
         assert!(memory_result.is_ok());
-        let (mem_pct, total, available) = memory_result.unwrap();
+        let (mem_pct, total, available) = memory_result.map_err(|e| SongbirdError::configuration(format!("Production metrics operation failed: {}", e)))?;
         assert!(mem_pct >= 0.0 && mem_pct <= 100.0));
         assert!(available <= total));
 
         // Test comprehensive metrics collection
         let metrics = collector.collect_metrics().await;
         assert!(metrics.is_ok());
-        let m = metrics.unwrap();
+        let m = metrics.map_err(|e| SongbirdError::configuration(format!("Production metrics operation failed: {}", e)))?;
         assert!(m.cpu_utilization >= 0.0 && m.cpu_utilization <= 100.0));
         assert!(m.memory_available <= m.memory_total));
     }
@@ -293,7 +293,7 @@ mod tests {
         let collector = ProductionMetricsCollector::new();
         let health_score = collector.get_health_score().await;
         assert!(health_score.is_ok());
-        let score = health_score.unwrap();
+        let score = health_score.map_err(|e| SongbirdError::configuration(format!("Production metrics operation failed: {}", e)))?;
         assert!(score >= 0.0 && score <= 1.0));
     }
 }

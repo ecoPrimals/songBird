@@ -39,7 +39,7 @@ impl UniversalDiscoveryFactory {
                 return Ok(adapter);
             }
             Err(e) => {
-                warn!("Universal adapter creation failed: {}", e)
+                warn!("Universal adapter creation failed: {}", e);
             }
         }
 
@@ -82,7 +82,7 @@ impl UniversalDiscoveryFactory {
         Ok(Box::new(StaticServiceDiscovery::new()))
     }
 
-    /// Detect Kubernetes environment (replaces hardcoded KubernetesServiceDiscovery)
+    /// Detect Kubernetes environment (replaces hardcoded `KubernetesServiceDiscovery`)
     async fn detect_kubernetes_environment() -> bool {
         // Check for Kubernetes service account
         if std::path::Path::new("/var/run/secrets/kubernetes.io/serviceaccount").exists() {
@@ -93,7 +93,7 @@ impl UniversalDiscoveryFactory {
         std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
     }
 
-    /// Detect Consul environment (replaces hardcoded ConsulServiceDiscovery)
+    /// Detect Consul environment (replaces hardcoded `ConsulServiceDiscovery`)
     async fn detect_consul_environment() -> bool {
         // Check for Consul environment variables
         std::env::var("CONSUL_HTTP_ADDR").is_ok()
@@ -169,7 +169,7 @@ impl UniversalDiscoveryFactory {
 /// capability-based discovery that can work with any environment.
 pub struct UniversalServiceDiscoveryAdapter {
     universal_adapter: UnifiedUniversalAdapter,
-    capability_adapter: UniversalCapabilityAdapter,
+    _capability_adapter: UniversalCapabilityAdapter,
     kubernetes_enabled: bool,
     consul_enabled: bool,
     container_enabled: bool,
@@ -179,11 +179,11 @@ impl UniversalServiceDiscoveryAdapter {
     /// Create new universal service discovery adapter
     pub async fn new() -> Result<Self> {
         let universal_adapter = UnifiedUniversalAdapter::new();
-        let capability_adapter = UniversalCapabilityAdapter::new(Default::default());
+        let _capability_adapter = UniversalCapabilityAdapter::new(Default::default());
 
         Ok(Self {
             universal_adapter,
-            capability_adapter,
+            _capability_adapter,
             kubernetes_enabled: false,
             consul_enabled: false,
             container_enabled: false,
@@ -259,7 +259,7 @@ impl ServiceDiscovery for UniversalServiceDiscoveryAdapter {
             }
             Err(e) => Err(SongbirdError::Service {
                 service: "UniversalDiscovery".to_string(),
-                message: format!("Service discovery failed: {}", e),
+                message: format!("Service discovery failed: {e}"),
                 suggested_alternatives: vec![],
                 recovery_actions: vec![
                     "Check network connectivity".to_string(),
@@ -273,7 +273,7 @@ impl ServiceDiscovery for UniversalServiceDiscoveryAdapter {
         info!("Registering service: {}", service.service_id);
 
         // Convert discovery ServiceInfo to universal format and register
-        let universal_service = self.convert_from_discovery_service_info(service);
+        let _universal_service = self.convert_from_discovery_service_info(service);
 
         // Use capability adapter for registration
         // Implementation would use the universal registration system
@@ -315,8 +315,27 @@ impl ServiceDiscovery for UniversalServiceDiscoveryAdapter {
 
     async fn exists(&self, service_id: &str) -> Result<bool> {
         // Check if service exists using universal adapter
-        info!("Checking if service exists: {}", service_id);
-        Ok(false) // TODO: Implement actual existence check
+        debug!("Checking if service exists: {}", service_id);
+
+        // Query all services to check for existence
+        match self.list_all().await {
+            Ok(services) => {
+                let exists = services.iter().any(|s| s.service_id == service_id);
+                if exists {
+                    debug!("✅ Service '{}' exists", service_id);
+                } else {
+                    debug!("❌ Service '{}' not found", service_id);
+                }
+                Ok(exists)
+            }
+            Err(e) => {
+                warn!("Failed to check service existence for '{}': {}", service_id, e);
+                Err(SongbirdError::service(
+                    "UniversalDiscovery",
+                    format!("Failed to check service existence for '{service_id}': {e}"),
+                ))
+            }
+        }
     }
 
     async fn is_registered(&self, service_id: &str) -> Result<bool> {
@@ -340,7 +359,7 @@ impl ServiceDiscovery for UniversalServiceDiscoveryAdapter {
 }
 
 impl UniversalServiceDiscoveryAdapter {
-    /// Convert universal ServiceInfo to discovery ServiceInfo
+    /// Convert universal `ServiceInfo` to discovery `ServiceInfo`
     fn convert_to_discovery_service_info(
         &self,
         service: songbird_universal::ServiceInfo,
@@ -349,7 +368,7 @@ impl UniversalServiceDiscoveryAdapter {
         service.into()
     }
 
-    /// Convert discovery ServiceInfo to universal format
+    /// Convert discovery `ServiceInfo` to universal format
     fn convert_from_discovery_service_info(
         &self,
         service: crate::traits::service::ServiceInfo,

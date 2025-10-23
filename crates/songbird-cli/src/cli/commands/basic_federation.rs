@@ -310,7 +310,7 @@ mod tests  {use super::*;
 
     #[allow(dead_code)] // Helper function for future tests
     fn setup_test_config() -> (TempDir, std::path::PathBuf) {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for federation test: {}", e)))?;
         let config_path = temp_dir.path().join("test_config.toml");"
         fs::write(
             &config_path,
@@ -325,7 +325,7 @@ bind_address = "0.0.0.0:8080""
 discovery_port = 8081
 "#,"
         )
-        .unwrap();
+        .map_err(|e| SongbirdError::configuration(format!("Failed to write test configuration file: {}", e)))?;
         (temp_dir, config_path,
     }
 
@@ -347,9 +347,9 @@ discovery_port = 8081
 
     #[tokio::test]
     async fn test_share_folder() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let folder_path = temp_dir.path().join("test_folder");"
-        fs::create_dir(&folder_path,.unwrap();
+        fs::create_dir(&folder_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let result = share_folder(&folder_path, "Alice,Bob", "read").await;"
         assert!(result.is_ok());
@@ -357,9 +357,9 @@ discovery_port = 8081
 
     #[tokio::test]
     async fn test_share_folder_with_different_permissions() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let folder_path = temp_dir.path().join("test_folder");"
-        fs::create_dir(&folder_path,.unwrap();
+        fs::create_dir(&folder_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let permissions = vec!["read", "backup", "sync"];"
 
@@ -371,9 +371,9 @@ discovery_port = 8081
 
     #[tokio::test]
     async fn test_share_folder_multiple_friends() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let folder_path = temp_dir.path().join("test_folder");"
-        fs::create_dir(&folder_path,.unwrap();
+        fs::create_dir(&folder_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let result = share_folder(&folder_path, "Alice,Bob,Charlie,Diana", "read").await;"
         assert!(result.is_ok());
@@ -387,9 +387,9 @@ discovery_port = 8081
 
     #[tokio::test]
     async fn test_backup_to_friends() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let backup_path = temp_dir.path().join("backup_data");"
-        fs::create_dir(&backup_path,.unwrap();
+        fs::create_dir(&backup_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let result = backup_to_friends(&backup_path, "Alice,Bob", true).await;"
         assert!(result.is_ok());
@@ -397,9 +397,9 @@ discovery_port = 8081
 
     #[tokio::test]
     async fn test_backup_to_friends_without_encryption() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let backup_path = temp_dir.path().join("backup_data");"
-        fs::create_dir(&backup_path,.unwrap();
+        fs::create_dir(&backup_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let result = backup_to_friends(&backup_path, "Alice", false).await;"
         assert!(result.is_ok());
@@ -407,9 +407,9 @@ discovery_port = 8081
 
     #[tokio::test]
     async fn test_backup_to_friends_single_friend() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let backup_path = temp_dir.path().join("backup_data");"
-        fs::create_dir(&backup_path,.unwrap();
+        fs::create_dir(&backup_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let result = backup_to_friends(&backup_path, "Alice", true).await;"
         assert!(result.is_ok());
@@ -432,9 +432,9 @@ discovery_port = 8081
     }
 
     #[tokio::test]
-    async fn test_handle_basic_federation_command_share()  {let temp_dir = TempDir::new().unwrap();
+    async fn test_handle_basic_federation_command_share()  {let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let folder_path = temp_dir.path().join("test_folder");"
-        fs::create_dir(&folder_path,.unwrap();
+        fs::create_dir(&folder_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let command = BasicFederationCommands::Share  {folder: folder_path,
             friends: "Alice,Bob".to_string()),
@@ -454,9 +454,9 @@ discovery_port = 8081
     }
 
     #[tokio::test]
-    async fn test_handle_basic_federation_command_backup()  {let temp_dir = TempDir::new().unwrap();
+    async fn test_handle_basic_federation_command_backup()  {let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let backup_path = temp_dir.path().join("backup_data");"
-        fs::create_dir(&backup_path,.unwrap();
+        fs::create_dir(&backup_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let command = BasicFederationCommands::Backup  {path: backup_path,
             friends: "Alice".to_string(),
@@ -485,9 +485,9 @@ discovery_port = 8081
 
     #[tokio::test]
     async fn test_edge_case_empty_friends_list() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let folder_path = temp_dir.path().join("test_folder");"
-        fs::create_dir(&folder_path,.unwrap();
+        fs::create_dir(&folder_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let result = share_folder(&folder_path, "", "read").await;"
         assert!(result.is_ok() // Should handle gracefully
@@ -501,9 +501,9 @@ discovery_port = 8081
 
     #[tokio::test]
     async fn test_edge_case_invalid_permission() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
         let folder_path = temp_dir.path().join("test_folder");"
-        fs::create_dir(&folder_path,.unwrap();
+        fs::create_dir(&folder_path,.map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for test: {}", e)))?;
 
         let result = share_folder(&folder_path, "Alice", "invalid_permission").await;"
         assert!(result.is_ok() // Should handle gracefully

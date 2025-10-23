@@ -277,7 +277,7 @@ mod tests {
             endpoint.protocol,
             endpoint.host,
             endpoint.port,
-            endpoint.path.as_ref().unwrap()
+            endpoint.path.as_ref().unwrap_or(&String::new())
         );
         assert_eq!(endpoint.url(), expected_url);
         assert!(endpoint.is_available());
@@ -323,15 +323,21 @@ mod tests {
     }
 
     #[test]
-    fn test_canonical_node_type() {
+    fn test_canonical_node_type() -> Result<(), Box<dyn std::error::Error>> {
         let node_type = CanonicalNodeType::Tower;
         assert_eq!(node_type.to_string(), "Tower");
 
         let parsed: Result<CanonicalNodeType, _> = "tower".parse();
         assert!(parsed.is_ok());
-        assert_eq!(parsed.unwrap(), CanonicalNodeType::Tower);
+        assert_eq!(
+            parsed.map_err(|e| SongbirdError::configuration(format!(
+                "Test: 'tower' should parse to CanonicalNodeType: {e}"
+            )))?,
+            CanonicalNodeType::Tower
+        );
 
         let invalid: Result<CanonicalNodeType, _> = "invalid".parse();
         assert!(invalid.is_err());
+        Ok(())
     }
 }
