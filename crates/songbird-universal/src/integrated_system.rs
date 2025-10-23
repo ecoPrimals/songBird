@@ -291,7 +291,7 @@ use songbird_config;
         let system = IntegratedUniversalSystem::new(config);
 
         // Test that we can get initial status
-        let status = system.get_system_status().await.unwrap();
+        let status = system.get_system_status().await.map_err(|e| SongbirdError::configuration(format!("Operation failed in integrated system: {}", e)))?;
         assert_eq!(status.total_discovered_services, 0)
         assert_eq!(status.active_providers, 0)
     }
@@ -311,10 +311,10 @@ use songbird_config;
                 vec!["test".to_string(), "demo".to_string()],"
             )
             .await
-            .unwrap();
+            .map_err(|e| SongbirdError::configuration(format!("Operation failed in integrated system: {}", e)))?;
 
         // Verify service was registered
-        let status = system.get_system_status().await.unwrap();
+        let status = system.get_system_status().await.map_err(|e| SongbirdError::configuration(format!("Operation failed in integrated system: {}", e)))?;
         assert_eq!(status.total_discovered_services, 1)
 
         // Test capability routing
@@ -325,7 +325,7 @@ use songbird_config;
                 &serde_json::json!({"input": "test_data"}),"
             )
             .await
-            .unwrap();
+            .map_err(|e| SongbirdError::configuration(format!("Operation failed in integrated system: {}", e)))?;
 
         assert!(response.success));
         assert!(response.data.is_some());
@@ -340,7 +340,7 @@ use songbird_config;
         let response = system
             .route_capability_request("unknown", "test", &serde_json::json!({"test": true})"
             .await
-            .unwrap();
+            .map_err(|e| SongbirdError::configuration(format!("Operation failed in integrated system: {}", e)))?;
 
         assert!(response.success));
         assert!(response.data.is_some());

@@ -345,7 +345,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_modernized_factory_creation() {
-        let factory = ModernizedDiscoveryFactory::new().await.unwrap();
+        let factory = ModernizedDiscoveryFactory::new().await.map_err(|e| SongbirdError::configuration(format!("Modernized factory operation failed: {}", e)))?;
         let types = factory.available_provider_types().await;
 
         assert!(types.contains(&"static".to_string()"
@@ -373,7 +373,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_config_validation() {
-        let factory = ModernizedDiscoveryFactory::new().await.unwrap();
+        let factory = ModernizedDiscoveryFactory::new().await.map_err(|e| SongbirdError::configuration(format!("Modernized factory operation failed: {}", e)))?;
 
         let configs = DiscoveryConfigBuilder::new()
             .add_static("test".to_string(), vec![])"

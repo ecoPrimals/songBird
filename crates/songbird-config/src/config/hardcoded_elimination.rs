@@ -140,7 +140,7 @@ impl Default for ServiceConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         let bind_ip =
-            env_or_default("SONGBIRD_BIND_ADDRESS", &crate::constants::network::DEFAULT_HOST);
+            env_or_default("SONGBIRD_BIND_ADDRESS", crate::constants::network::DEFAULT_HOST);
         let orchestrator_port = env_or_default(
             "SONGBIRD_ORCHESTRATOR_PORT",
             &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
@@ -155,7 +155,7 @@ impl Default for NetworkConfig {
         Self {
             bind_address: bind_ip.parse().unwrap_or_else(|e| {
                 tracing::warn!("Invalid SONGBIRD_BIND_ADDRESS, using default localhost: {}", e);
-                crate::constants::network::DEFAULT_HOST.parse().unwrap_or_else(|_| {
+                crate::constants::network::DEFAULT_HOST.parse().unwrap_or({
                     // Final fallback to localhost if constant is invalid
                     std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
                 })
@@ -167,7 +167,7 @@ impl Default for NetworkConfig {
                         "Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}",
                         e
                     );
-                    "0.0.0.0".parse().unwrap_or_else(|_| {
+                    "0.0.0.0".parse().unwrap_or({
                         // Final fallback to UNSPECIFIED
                         std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
                     })
@@ -243,7 +243,7 @@ impl Default for PerformanceConfig {
 impl Default for PrimalConfig {
     fn default() -> Self {
         let base_ip =
-            env_or_default("SONGBIRD_PRIMAL_BASE_IP", &crate::constants::network::DEFAULT_HOST);
+            env_or_default("SONGBIRD_PRIMAL_BASE_IP", crate::constants::network::DEFAULT_HOST);
         let base_port: u16 = env_or_default(
             "SONGBIRD_PRIMAL_BASE_PORT",
             &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
@@ -295,7 +295,7 @@ impl Default for PrimalConfig {
 impl Default for FederationConfig {
     fn default() -> Self {
         let base_ip =
-            env_or_default("SONGBIRD_FEDERATION_BASE_IP", &crate::constants::network::DEFAULT_HOST);
+            env_or_default("SONGBIRD_FEDERATION_BASE_IP", crate::constants::network::DEFAULT_HOST);
         let base_port = env_or_default(
             "SONGBIRD_FEDERATION_BASE_PORT",
             &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
@@ -341,31 +341,31 @@ pub mod replace {
     use std::sync::Arc;
     // use songbird_config; // FIXED: Circular import removed
 
-    /// Replace hardcoded &crate::constants::network::DEFAULT_HOST
+    /// Replace hardcoded &`crate::constants::network::DEFAULT_HOST`
     #[must_use]
     pub fn bind_address() -> IpAddr {
         get_config().network.bind_address
     }
 
-    /// Replace hardcoded &format!("{}:{}", crate::constants::network::DEFAULT_HOST, crate::constants::network::DEFAULT_ORCHESTRATOR_PORT);
+    /// Replace hardcoded &format!("{}:{}", `crate::constants::network::DEFAULT_HOST`, `crate::constants::network::DEFAULT_ORCHESTRATOR_PORT`);
     #[must_use]
     pub fn orchestrator_endpoint() -> Arc<str> {
         Arc::clone(&get_config().network.orchestrator_endpoint)
     }
 
-    /// Replace hardcoded "crate::constants::network::DEFAULT_HOST:8081"
+    /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8081`"
     #[must_use]
     pub fn gaming_endpoint() -> Arc<str> {
         Arc::clone(&get_config().network.gaming_endpoint)
     }
 
-    /// Replace hardcoded "crate::constants::network::DEFAULT_HOST:8443"
+    /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8443`"
     #[must_use]
     pub fn beardog_endpoint() -> Arc<str> {
         Arc::clone(&get_config().primals.beardog_endpoint)
     }
 
-    /// Replace hardcoded "crate::constants::network::DEFAULT_HOST:8080/storage"
+    /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8080/storage`"
     #[must_use]
     pub fn nestgate_endpoint() -> Arc<str> {
         Arc::clone(&get_config().primals.nestgate_endpoint)
@@ -425,7 +425,7 @@ pub mod replace {
         get_config().federation.discovery_ports.clone()
     }
 
-    /// Get production-ready bind address (0.0.0.0 vs crate::constants::network::DEFAULT_HOST)
+    /// Get production-ready bind address (0.0.0.0 vs `crate::constants::network::DEFAULT_HOST`)
     #[must_use]
     pub fn production_bind_address() -> IpAddr {
         if std::env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default() == "production" {

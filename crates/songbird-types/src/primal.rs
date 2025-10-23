@@ -275,7 +275,7 @@ mod tests {
             std::env::var("TEST_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
 
         let mut id = CanonicalPrimalId::new(CanonicalPrimalType::Security, "security-001", "1.0.0");
-        id.with_endpoint("health", &format!("http://{}:{}/health", test_host, test_port));
+        id.with_endpoint("health", format!("http://{test_host}:{test_port}/health"));
         id.with_metadata("region", "us-west-2");
 
         assert!(id.is_security());

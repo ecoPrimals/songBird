@@ -23,6 +23,7 @@ pub struct GamingManager {
 
 impl GamingManager {
     /// Create a new gaming manager
+    #[must_use]
     pub fn new(config: GamingConfig) -> Self {
         Self {
             config,
@@ -57,6 +58,7 @@ impl GamingManager {
     }
 
     /// Get session by ID
+    #[must_use]
     pub fn get_session(&self, session_id: &Uuid) -> Option<&GameSession> {
         self.active_sessions.get(session_id)
     }
@@ -90,9 +92,9 @@ pub enum GameProtocolType {
     TCP,
     /// IPX protocol (legacy)
     IPX,
-    /// DirectPlay protocol (legacy)
+    /// `DirectPlay` protocol (legacy)
     DirectPlay,
-    /// NetBIOS protocol (legacy)
+    /// `NetBIOS` protocol (legacy)
     NetBIOS,
     /// Custom protocol
     Custom(String),
@@ -125,6 +127,7 @@ pub struct GameSession {
 
 impl GameSession {
     /// Create a new game session
+    #[must_use]
     pub fn new(session_id: Uuid, protocol: GameProtocolType, config: SessionConfig) -> Self {
         let now = SystemTime::now();
 
@@ -152,6 +155,7 @@ impl GameSession {
     }
 
     /// Check if session is expired
+    #[must_use]
     pub fn is_expired(&self, timeout: Duration) -> bool {
         self.last_activity.elapsed().unwrap_or(Duration::ZERO) > timeout
     }
@@ -250,7 +254,7 @@ pub fn create_protocol_handler(
         GameProtocolType::DirectPlay => Ok(Box::new(DirectPlayProtocolHandler::new())),
         GameProtocolType::NetBIOS => Ok(Box::new(NetBiosProtocolHandler::new())),
         GameProtocolType::Custom(name) => Err(SongbirdError::Network {
-            message: format!("Custom protocol '{}' not supported", name),
+            message: format!("Custom protocol '{name}' not supported"),
             interface: None,
             suggestion: Some(
                 "Use a standard protocol (UDP, TCP, IPX, DirectPlay, NetBIOS)".to_string(),
@@ -265,7 +269,14 @@ pub fn create_protocol_handler(
 #[derive(Debug)]
 pub struct UdpProtocolHandler;
 
+impl Default for UdpProtocolHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UdpProtocolHandler {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -295,7 +306,14 @@ impl ProtocolHandler for UdpProtocolHandler {
 #[derive(Debug)]
 pub struct TcpProtocolHandler;
 
+impl Default for TcpProtocolHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TcpProtocolHandler {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -325,7 +343,14 @@ impl ProtocolHandler for TcpProtocolHandler {
 #[derive(Debug)]
 pub struct IpxProtocolHandler;
 
+impl Default for IpxProtocolHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IpxProtocolHandler {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -351,11 +376,18 @@ impl ProtocolHandler for IpxProtocolHandler {
     }
 }
 
-/// DirectPlay protocol handler (legacy)
+/// `DirectPlay` protocol handler (legacy)
 #[derive(Debug)]
 pub struct DirectPlayProtocolHandler;
 
+impl Default for DirectPlayProtocolHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DirectPlayProtocolHandler {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -381,11 +413,18 @@ impl ProtocolHandler for DirectPlayProtocolHandler {
     }
 }
 
-/// NetBIOS protocol handler (legacy)
+/// `NetBIOS` protocol handler (legacy)
 #[derive(Debug)]
 pub struct NetBiosProtocolHandler;
 
+impl Default for NetBiosProtocolHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetBiosProtocolHandler {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

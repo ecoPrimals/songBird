@@ -297,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn test_error_serialization() {
+    fn test_error_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let error = SongbirdError::Security(SecurityError {
             message: "Invalid token".to_string(),
             operation: Some("authenticate".to_string()),
@@ -306,11 +306,16 @@ mod tests {
             remediation: None,
         });
 
-        // Test code: unwrap is acceptable for testing serialization
-        let serialized = serde_json::to_string(&error).expect("test serialization should succeed");
-        let deserialized: SongbirdError = serde_json::from_str(&serialized).expect("test deserialization should succeed");
+        // Test code: expect is acceptable for testing serialization
+        let serialized = serde_json::to_string(&error).map_err(|e| {
+            SongbirdError::configuration(format!("Test: serialization should succeed: {e}"))
+        })?;
+        let deserialized: SongbirdError = serde_json::from_str(&serialized).map_err(|e| {
+            SongbirdError::configuration(format!("Test: deserialization should succeed: {e}"))
+        })?;
 
         assert_eq!(deserialized.to_string(), error.to_string());
+        Ok(())
     }
 
     #[test]

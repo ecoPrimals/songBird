@@ -38,7 +38,7 @@ where
         sleep(poll_interval).await;
     }
 
-    Err(SongbirdError::service("test-utils", format!("Condition not met within {:?}", max_wait)))
+    Err(SongbirdError::service("test-utils", format!("Condition not met within {max_wait:?}")))
 }
 
 /// Retry an operation with exponential backoff
@@ -61,7 +61,7 @@ where
                 if attempt == max_retries - 1 {
                     return Err(SongbirdError::service(
                         "test-utils",
-                        format!("Operation failed after {} retries: {e}", max_retries),
+                        format!("Operation failed after {max_retries} retries: {e}"),
                     ));
                 }
                 sleep(delay).await;

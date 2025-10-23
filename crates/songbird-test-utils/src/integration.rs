@@ -104,7 +104,7 @@ impl IntegrationTestContext {
             };
             Ok(status)
         } else {
-            Err(SongbirdError::service("test-utils", format!("Service '{}' not found", name)))
+            Err(SongbirdError::service("test-utils", format!("Service '{name}' not found")))
         }
     }
 

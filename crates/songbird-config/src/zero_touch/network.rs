@@ -458,9 +458,9 @@ mod tests {
     #[test]
     fn test_interface_type_serialization()  {let interface_type = InterfaceType::Ethernet;
         let serialized = serde_json::to_string(&interface_type)
-            .expect("Interface type serialization should succeed");"
+            .map_err(|e| SongbirdError::configuration(format!("Interface type serialization should succeed: {}", e)))?;"
         let deserialized: InterfaceType = serde_json::from_str(&serialized,
-            .expect("Interface type deserialization should succeed");"
+            .map_err(|e| SongbirdError::configuration(format!("Interface type deserialization should succeed: {}", e)))?;"
 
         assert!(matches!(deserialized, InterfaceType::Ethernet)
             "Serialization/deserialization should preserve interface type ");"

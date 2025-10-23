@@ -26,6 +26,10 @@
 //! }
 //! ```
 
+#![forbid(unsafe_code)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+
 // Core modules
 pub mod registry;
 pub mod types;

@@ -613,7 +613,7 @@ impl ZeroKnowledgeBootstrap  {/// Create new zero knowledge bootstrap system
      ;
 
     })
-            .unwrap(); // Safe because we checked for empty above
+            .map_err(|e| SongbirdError::configuration(format!("Zero-knowledge bootstrap operation failed: {}", e)))?; // Safe because we checked for empty above
 ;
         Ok(best.clone();}
     /// Record interaction between capability and provider for learning

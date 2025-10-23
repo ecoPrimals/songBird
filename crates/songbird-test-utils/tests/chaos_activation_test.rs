@@ -1,9 +1,11 @@
+use songbird_types::SongbirdError;
 #[cfg(test)]
 mod chaos_activation_tests {
     use songbird_test_utils::chaos_engineering::{
         ChaosEngineeringManager, ExperimentConfig, ExperimentStatus, ExperimentType,
         NetworkFaultConfig,
     };
+    use songbird_types::SongbirdError;
 
     #[tokio::test]
     async fn test_chaos_manager_creation() {
@@ -46,7 +48,7 @@ mod chaos_activation_tests {
         assert!(experiment_config.service_failure.is_none());
     }
     #[test]
-    fn test_experiment_types() {
+    fn test_experiment_types() -> Result<(), Box<dyn std::error::Error>> {
         // Test that all experiment types can be created
         let experiment_types = vec![
             ExperimentType::NetworkFault,
@@ -63,13 +65,15 @@ mod chaos_activation_tests {
 
         // Verify we can serialize/deserialize experiment types
         for exp_type in experiment_types {
-            let serialized = serde_json::to_string(&exp_type).expect("Should serialize");
-            let _deserialized: ExperimentType =
-                serde_json::from_str(&serialized).expect("Operation failed");
+            let serialized = serde_json::to_string(&exp_type)
+                .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+            let _deserialized: ExperimentType = serde_json::from_str(&serialized)
+                .map_err(|e| SongbirdError::configuration(format!("Operation failed: {}", e)))?;
         }
+        Ok(())
     }
     #[test]
-    fn test_experiment_status() {
+    fn test_experiment_status() -> Result<(), Box<dyn std::error::Error>> {
         let statuses = vec![
             ExperimentStatus::Preparing,
             ExperimentStatus::Running,
@@ -82,9 +86,11 @@ mod chaos_activation_tests {
 
         // Verify serialization works for all statuses
         for status in statuses {
-            let serialized = serde_json::to_string(&status).expect("Should serialize");
-            let _deserialized: ExperimentStatus =
-                serde_json::from_str(&serialized).expect("Operation failed");
+            let serialized = serde_json::to_string(&status)
+                .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+            let _deserialized: ExperimentStatus = serde_json::from_str(&serialized)
+                .map_err(|e| SongbirdError::configuration(format!("Operation failed: {}", e)))?;
         }
+        Ok(())
     }
 }

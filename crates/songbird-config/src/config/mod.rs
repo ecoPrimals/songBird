@@ -90,15 +90,16 @@ impl SongbirdConfig {
     }
 
     /// Check if a primal is enabled
+    #[must_use]
     pub fn is_primal_enabled(&self, primal_name: &str) -> bool {
         self.primal_registry
             .as_ref()
             .and_then(|registry| registry.get_primal(primal_name))
-            .map(|primal| primal.enabled)
-            .unwrap_or(false)
+            .is_some_and(|primal| primal.enabled)
     }
 
     /// Get primal configuration
+    #[must_use]
     pub fn get_primal_config(
         &self,
         primal_name: &str,
@@ -116,6 +117,7 @@ impl SongbirdConfig {
     }
 
     /// Get all enabled primals
+    #[must_use]
     pub fn get_enabled_primals(&self) -> Vec<&universal_primals::PrimalConfiguration> {
         self.primal_registry
             .as_ref()
@@ -127,7 +129,7 @@ impl SongbirdConfig {
 /// Network configuration with zero hardcoded values
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {
-    /// Bind address (configurable, no hardcoded crate::constants::network::DEFAULT_HOST)
+    /// Bind address (configurable, no hardcoded `crate::constants::network::DEFAULT_HOST`)
     pub bind_address: String,
 
     /// Port range for dynamic allocation

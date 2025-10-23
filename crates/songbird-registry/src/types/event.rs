@@ -66,6 +66,7 @@ pub struct RegistryEvent {
 
 impl RegistryEvent {
     /// Create a new event
+    #[must_use]
     pub fn new(event_type: EventType) -> Self {
         Self {
             event_type,
@@ -75,12 +76,14 @@ impl RegistryEvent {
     }
 
     /// Add context to this event
+    #[must_use]
     pub fn with_context(mut self, context: serde_json::Value) -> Self {
         self.context = Some(context);
         self
     }
 
     /// Get the plugin ID associated with this event, if any
+    #[must_use]
     pub fn plugin_id(&self) -> Option<&PluginId> {
         match &self.event_type {
             EventType::PluginRegistered {
@@ -116,7 +119,7 @@ mod tests {
         });
 
         assert!(event.plugin_id().is_some());
-        assert_eq!(event.plugin_id().unwrap().as_str(), "test");
+        assert_eq!(event.plugin_id().expect("Test: plugin_id should be present").as_str(), "test");
     }
 
     #[test]

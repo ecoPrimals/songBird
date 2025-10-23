@@ -328,7 +328,7 @@ use songbird_config;
         let config = ServiceDiscoveryConfig::default();
         let discovery = ProductionServiceDiscovery::new(config);
 
-        let stats = discovery.get_discovery_stats().await.unwrap();
+        let stats = discovery.get_discovery_stats().await.map_err(|e| SongbirdError::configuration(format!("Service discovery operation failed: {}", e)))?;
         assert_eq!(stats.total_services, 0)
         assert_eq!(stats.total_capabilities, 0)
     }
@@ -352,13 +352,13 @@ use songbird_config;
         discovery
             .register_discovered_services(vec![test_service.clone()])
             .await
-            .unwrap();
+            .map_err(|e| SongbirdError::configuration(format!("Service discovery operation failed: {}", e)))?;
 
-        let services = discovery.get_services_by_capability("test").await.unwrap();"
+        let services = discovery.get_services_by_capability("test").await.map_err(|e| SongbirdError::configuration(format!("Service discovery operation failed: {}", e)))?;"
         assert_eq!(services.len(), 1);
         assert_eq!(services[0].name, "test-service")"
 
-        let all_services = discovery.get_all_services().await.unwrap();
+        let all_services = discovery.get_all_services().await.map_err(|e| SongbirdError::configuration(format!("Service discovery operation failed: {}", e)))?;
         assert_eq!(all_services.len(), 1);
     }
 

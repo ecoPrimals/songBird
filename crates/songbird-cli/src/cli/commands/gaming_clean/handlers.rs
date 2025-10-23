@@ -28,7 +28,7 @@ pub async fn handle_scan(
     print!("📡 Analyzing network traffic");"
     for _ in 0..5 {
         print!(".");"
-        std::io::Write::flush(&mut std::io::stdout().unwrap();
+        let _ = std::io::Write::flush(&mut std::io::stdout()); // Best-effort flush, ignore if stdout unavailable
         tokio::time::sleep(Duration::from_millis(500).await;
     }
     println!()

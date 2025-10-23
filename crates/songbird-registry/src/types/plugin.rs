@@ -12,12 +12,13 @@ use std::sync::Arc;
 pub struct PluginId(Arc<str>);
 
 impl PluginId {
-    /// Create a new PluginId
+    /// Create a new `PluginId`
     pub fn new(id: impl Into<String>) -> Self {
         Self(Arc::from(id.into().as_str()))
     }
 
     /// Get the plugin ID as a string slice
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -133,6 +134,7 @@ impl Plugin {
     }
 
     /// Add a capability to this plugin
+    #[must_use]
     pub fn with_capability(mut self, capability: Capability) -> Self {
         self.capabilities.push(capability);
         self
@@ -145,6 +147,7 @@ impl Plugin {
     }
 
     /// Set metadata for this plugin
+    #[must_use]
     pub fn with_metadata(mut self, metadata: PluginMetadata) -> Self {
         self.metadata = metadata;
         self

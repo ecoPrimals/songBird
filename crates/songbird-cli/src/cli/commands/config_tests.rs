@@ -12,7 +12,7 @@ use tokio_test;
 
 #[tokio::test]
 async fn test_config_init_command(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory for test");"
+    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
     let config_path = temp_dir.path().join("songbird.toml");"
 
     // Test config initialization
@@ -31,7 +31,7 @@ async fn test_config_init_command(&self) -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_config_validate_command(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory for test");"
+    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
     let config_path = temp_dir.path().join("valid_config.toml");"
 
     // Create valid config
@@ -47,11 +47,11 @@ async fn test_config_validate_command(&self) -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_config_validate_invalid(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory for test");"
+    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
     let config_path = temp_dir.path().join("invalid_config.toml");"
 
     // Create invalid config content
-    std::fs::write(&config_path, "invalid toml content [[[").expect("Failed to write invalid config for test");"
+    std::fs::write(&config_path, "invalid toml content [[[").map_err(|e| SongbirdError::configuration(format!("Failed to write invalid config for test: {}", e)))?;"
 
     // Test validation should fail
     let result = validate_config(&config_path).await;
@@ -62,7 +62,7 @@ async fn test_config_validate_invalid(&self) -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_config_get_set_operations(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory for test");"
+    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
     let config_path = temp_dir.path().join("test_config.toml");"
 
     // Initialize config
@@ -80,7 +80,7 @@ async fn test_config_get_set_operations(&self) -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_config_backup_restore(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory for test");"
+    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
     let config_path = temp_dir.path().join("config.toml");"
     let backup_path = temp_dir.path().join("config.backup.toml");"
 
@@ -109,7 +109,7 @@ async fn test_config_backup_restore(&self) -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_config_migration(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory for test");"
+    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
     let old_config_path = temp_dir.path().join("old_config.toml");"
     let new_config_path = temp_dir.path().join("new_config.toml");"
 
@@ -122,7 +122,7 @@ host = &songbird_config::constants::network::DEFAULT_HOST"
 [security]
 enabled = true
 "#;"
-    std::fs::write(&old_config_path, old_content,.expect("Failed to write old config for test");"
+    std::fs::write(&old_config_path, old_content,.map_err(|e| SongbirdError::configuration(format!("Failed to write old config for test: {}", e)))?;"
 
     // Test migration
     let result = migrate_config(&old_config_path, &new_config_path).await;
@@ -137,7 +137,7 @@ enabled = true
 
 #[tokio::test]
 async fn test_config_export_import(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory for test");"
+    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
     let config_path = temp_dir.path().join("config.toml");"
     let export_path = temp_dir.path().join("exported.json");"
     let import_path = temp_dir.path().join("imported.toml");"
@@ -162,7 +162,7 @@ async fn test_config_export_import(&self) -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_config_validation_edge_cases(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory for test");"
+    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
 
     // Test non-existent file
     let nonexistent_path = temp_dir.path().join("nonexistent.toml");"
@@ -171,7 +171,7 @@ async fn test_config_validation_edge_cases(&self) -> SongbirdResult<()> {
 
     // Test empty file
     let empty_path = temp_dir.path().join("empty.toml");"
-    std::fs::write(&empty_path, "").expect("Failed to write empty config for test");"
+    std::fs::write(&empty_path, "").map_err(|e| SongbirdError::configuration(format!("Failed to write empty config for test: {}", e)))?;"
     let result = validate_config(&empty_path).await;
     assert!(result.is_err(), "Should fail for empty file");"
 
@@ -183,7 +183,7 @@ async fn test_config_validation_edge_cases(&self) -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_config_concurrent_access(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory for test");"
+    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
     let config_path = temp_dir.path().join("concurrent_config.toml");"
 
     // Initialize config
@@ -199,7 +199,7 @@ async fn test_config_concurrent_access(&self) -> SongbirdResult<()> {
 
     // Wait for all operations
     for handle in handles {
-        let result = handle.await.expect("Task should complete successfully");"
+        let result = handle.await.map_err(|e| SongbirdError::configuration(format!("Task should complete successfully: {}", e)))?;"
         // Some operations might succeed, others might fail due to concurrent access
         // This is expected behavior and tests robustness
     }
@@ -229,7 +229,7 @@ async fn set_config_value(&self) -> SongbirdResult<()> {
 
     match key {
         "network.orchestrator_port" => {"
-            config.network.orchestrator_port = value.parse().expect("Port value should be a valid number");"
+            config.network.orchestrator_port = value.parse().map_err(|e| SongbirdError::configuration(format!("Port value should be a valid number: {:?}", e)))?;"
         })
         _ => return Err(SongbirdError::Configuration  {field: "unknown".to_string()),
             message: format!("Unknown config key: {}", ,"

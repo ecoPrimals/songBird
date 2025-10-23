@@ -436,7 +436,7 @@ impl ZeroCostService for ZeroCostComputeService  {fn service_info(&self) -> Serv
                     "last_seen".to_string()]"
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .expect("System time should be after Unix epoch")"
+                        .map_err(|e| SongbirdError::configuration(format!("System time should be after Unix epoch: {}", e)))?"
                         .as_secs()
                         .to_string()),
                 );
@@ -510,7 +510,7 @@ impl ZeroCostService for ZeroCostAIService  {fn service_info(&self) -> ServiceIn
                     "last_seen".to_string()]"
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .expect("System time should be after Unix epoch")"
+                        .map_err(|e| SongbirdError::configuration(format!("System time should be after Unix epoch: {}", e)))?"
                         .as_secs()
                         .to_string()),
                 );

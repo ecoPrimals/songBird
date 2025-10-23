@@ -41,6 +41,7 @@ pub struct FileConfigProvider<T> {
 }
 
 impl<T> FileConfigProvider<T> {
+    #[must_use]
     pub fn new(path: PathBuf, format: ConfigFormat) -> Self {
         Self {
             path,
@@ -49,10 +50,12 @@ impl<T> FileConfigProvider<T> {
         }
     }
 
+    #[must_use]
     pub fn path(&self) -> &PathBuf {
         &self.path
     }
 
+    #[must_use]
     pub fn format(&self) -> &ConfigFormat {
         &self.format
     }
@@ -66,7 +69,7 @@ where
     async fn load(&self) -> Result<T> {
         let content = tokio::fs::read_to_string(&self.path).await.map_err(|e| {
             SongbirdError::Configuration {
-                message: format!("Failed to read config file: {}", e),
+                message: format!("Failed to read config file: {e}"),
                 field: Some("config_file".to_string()),
                 suggestion: Some("Check if the file exists and is readable".to_string()),
             }
@@ -75,21 +78,21 @@ where
         let config: T = match &self.format {
             ConfigFormat::Toml => {
                 toml::from_str(&content).map_err(|e| SongbirdError::Configuration {
-                    message: format!("Failed to parse TOML config: {}", e),
+                    message: format!("Failed to parse TOML config: {e}"),
                     field: Some("config_parsing".to_string()),
                     suggestion: Some("Check TOML syntax".to_string()),
                 })?
             }
             ConfigFormat::Json => {
                 serde_json::from_str(&content).map_err(|e| SongbirdError::Configuration {
-                    message: format!("Failed to parse JSON config: {}", e),
+                    message: format!("Failed to parse JSON config: {e}"),
                     field: Some("config_parsing".to_string()),
                     suggestion: Some("Check JSON syntax".to_string()),
                 })?
             }
             ConfigFormat::Yaml => {
                 serde_yaml::from_str(&content).map_err(|e| SongbirdError::Configuration {
-                    message: format!("Failed to parse YAML config: {}", e),
+                    message: format!("Failed to parse YAML config: {e}"),
                     field: Some("config_parsing".to_string()),
                     suggestion: Some("Check YAML syntax".to_string()),
                 })?
@@ -103,21 +106,21 @@ where
         let content = match &self.format {
             ConfigFormat::Toml => {
                 toml::to_string_pretty(config).map_err(|e| SongbirdError::Configuration {
-                    message: format!("Failed to serialize config to TOML: {}", e),
+                    message: format!("Failed to serialize config to TOML: {e}"),
                     field: Some("config_serialization".to_string()),
                     suggestion: Some("Check if the config structure is valid".to_string()),
                 })?
             }
             ConfigFormat::Json => {
                 serde_json::to_string_pretty(config).map_err(|e| SongbirdError::Configuration {
-                    message: format!("Failed to serialize config to JSON: {}", e),
+                    message: format!("Failed to serialize config to JSON: {e}"),
                     field: Some("config_serialization".to_string()),
                     suggestion: Some("Check if the config structure is valid".to_string()),
                 })?
             }
             ConfigFormat::Yaml => {
                 serde_yaml::to_string(config).map_err(|e| SongbirdError::Configuration {
-                    message: format!("Failed to serialize config to YAML: {}", e),
+                    message: format!("Failed to serialize config to YAML: {e}"),
                     field: Some("config_serialization".to_string()),
                     suggestion: Some("Check if the config structure is valid".to_string()),
                 })?
@@ -125,7 +128,7 @@ where
         };
 
         tokio::fs::write(&self.path, content).await.map_err(|e| SongbirdError::Configuration {
-            message: format!("Failed to write config file: {}", e),
+            message: format!("Failed to write config file: {e}"),
             field: Some("config_file".to_string()),
             suggestion: Some("Check if you have write permissions for this file".to_string()),
         })?;

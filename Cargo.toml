@@ -59,9 +59,11 @@ toml = "0.8"
 
 # Random number generation
 fastrand = "2.0"
+getrandom = "0.3"  # Force latest version to unify dependencies
 
 # Concurrency
 parking_lot = "0.12"
+bitflags = "2.9"  # Force latest version to unify dependencies
 
 # CLI
 clap = { version = "4.0", features = ["derive"] }
@@ -70,7 +72,7 @@ colored = "2.0"
 # Networking
 hickory-resolver = "0.24"  # Updated from trust-dns-resolver (unmaintained)
 trust-dns-resolver = "0.23"  # Legacy support for migration
-socket2 = "0.5"
+socket2 = "0.6"  # Updated to latest version to unify dependencies
 
 # Time
 chrono = { version = "0.4", features = ["serde"] }
@@ -95,6 +97,7 @@ bytes = "1.0"
 # System info (needed by workspace members)
 sys-info = "0.9"
 num_cpus = "1.0"
+wasi = "0.14"  # Force latest version to unify dependencies
 
 # File/Directory operations
 dirs = "5.0"
@@ -114,10 +117,13 @@ codegen-units = 1
 inherits = "release"
 debug = true
 
-[workspace.lints]
-rust.unsafe_code = "forbid"
-rust.unused_must_use = "warn"
-clippy.all = "warn"
-clippy.pedantic = "warn"
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "warn"
 
-# Duplicate lints section removed - using existing clippy configuration above
+[workspace.lints.clippy]
+# Lint groups must have lower priority than individual lints
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Allow multiple crate versions from transitive dependencies (we don't control them)
+multiple_crate_versions = "allow"

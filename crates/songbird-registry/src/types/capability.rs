@@ -77,6 +77,7 @@ fn default_true() -> bool {
 
 impl Capability {
     /// Create a new capability
+    #[must_use]
     pub fn new(capability_type: CapabilityType) -> Self {
         Self {
             capability_type,
@@ -92,12 +93,14 @@ impl Capability {
     }
 
     /// Set whether this capability is active
+    #[must_use]
     pub fn with_active(mut self, active: bool) -> Self {
         self.active = active;
         self
     }
 
     /// Check if this capability is compatible with another
+    #[must_use]
     pub fn compatible_with(&self, other: &Capability) -> bool {
         // For now, just check if types match
         // Could be extended with version compatibility checking

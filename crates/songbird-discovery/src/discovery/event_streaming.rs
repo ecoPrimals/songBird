@@ -252,7 +252,7 @@ use songbird_config;
             .map_err(|e| SongbirdError::operation_error(format!(
                 "Operation failed: {e}""
             ))
-            .expect("Test operation should succeed")"
+            .map_err(|e| SongbirdError::configuration(format!("Test operation should succeed: {}", e)))?"
             .data
             .is_some();
     }

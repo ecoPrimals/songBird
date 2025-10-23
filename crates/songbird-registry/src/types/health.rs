@@ -26,6 +26,7 @@ pub struct HealthStatus {
 
 impl HealthStatus {
     /// Create a healthy status
+    #[must_use]
     pub fn healthy() -> Self {
         Self {
             healthy: true,
@@ -59,8 +60,19 @@ impl HealthStatus {
     }
 
     /// Set the response time for this check
+    #[must_use]
     pub fn with_response_time(mut self, response_time: Duration) -> Self {
         self.response_time = response_time;
+        self
+    }
+
+    /// Add metadata to the health status message
+    pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        let metadata = format!("{}={}", key.into(), value.into());
+        self.message = Some(match self.message {
+            Some(existing) => format!("{existing}, {metadata}"),
+            None => metadata,
+        });
         self
     }
 }
@@ -132,7 +144,7 @@ impl Default for HealthCheckConfig {
 
         Self {
             check_type: HealthCheckType::HttpEndpoint {
-                url: format!("http://{}:{}/health", health_host, health_port),
+                url: format!("http://{health_host}:{health_port}/health"),
                 expected_status: 200,
             },
             interval: Duration::from_secs(30),

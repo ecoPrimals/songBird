@@ -9,7 +9,14 @@ use songbird_types::SongbirdResult;
 #[derive(Debug)]
 pub struct NetworkDiscovery;
 
+impl Default for NetworkDiscovery {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkDiscovery {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

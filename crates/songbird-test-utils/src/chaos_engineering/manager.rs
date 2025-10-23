@@ -3,7 +3,11 @@
 // Core chaos engineering management following canonical patterns.
 // Extracted from monolithic fault_injection.rs for maintainability.
 
-use crate::chaos_engineering::config::*;
+use crate::chaos_engineering::config::{
+    ByzantineFailureConfig, ChaosExperiment, ExperimentStatus, ExperimentType, MetricSnapshot,
+    NetworkFaultConfig, PerformanceDegradationConfig, ResourceConstraintConfig,
+    ServiceFailureConfig,
+};
 use songbird_types::{errors::SongbirdResult, SongbirdError};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -78,7 +82,7 @@ impl ChaosEngineeringManager {
         // Store experiment
         {
             let mut experiments = self.experiments.write().map_err(|e| {
-                SongbirdError::service("test-utils", format!("Failed to acquire write lock: {}", e))
+                SongbirdError::service("test-utils", format!("Failed to acquire write lock: {e}"))
             })?;
             experiments.insert(experiment_id.clone(), experiment.clone());
         }
@@ -129,7 +133,7 @@ impl ChaosEngineeringManager {
         // Update experiment status
         {
             let mut experiments = self.experiments.write().map_err(|e| {
-                SongbirdError::service("test-utils", format!("Failed to acquire write lock: {}", e))
+                SongbirdError::service("test-utils", format!("Failed to acquire write lock: {e}"))
             })?;
 
             if let Some(experiment) = experiments.get_mut(experiment_id) {
@@ -138,7 +142,7 @@ impl ChaosEngineeringManager {
             } else {
                 return Err(SongbirdError::service(
                     "test-utils",
-                    format!("Experiment {} not found", experiment_id),
+                    format!("Experiment {experiment_id} not found"),
                 ));
             }
         }
@@ -158,18 +162,18 @@ impl ChaosEngineeringManager {
         experiment_id: &str,
     ) -> SongbirdResult<ChaosExperiment> {
         let experiments = self.experiments.read().map_err(|e| {
-            SongbirdError::service("test-utils", format!("Failed to acquire read lock: {}", e))
+            SongbirdError::service("test-utils", format!("Failed to acquire read lock: {e}"))
         })?;
 
         experiments.get(experiment_id).cloned().ok_or_else(|| {
-            SongbirdError::service("test-utils", format!("Experiment {} not found", experiment_id))
+            SongbirdError::service("test-utils", format!("Experiment {experiment_id} not found"))
         })
     }
 
     /// List all active experiments
     pub async fn list_experiments(&self) -> SongbirdResult<Vec<ChaosExperiment>> {
         let experiments = self.experiments.read().map_err(|e| {
-            SongbirdError::service("test-utils", format!("Failed to acquire read lock: {}", e))
+            SongbirdError::service("test-utils", format!("Failed to acquire read lock: {e}"))
         })?;
 
         Ok(experiments.values().cloned().collect())

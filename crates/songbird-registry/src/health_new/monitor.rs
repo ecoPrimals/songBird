@@ -18,6 +18,7 @@ pub struct HealthMonitor {
 
 impl HealthMonitor {
     /// Create a new health monitor
+    #[must_use]
     pub fn new() -> Self {
         Self {
             checks: Arc::new(RwLock::new(HashMap::new())),

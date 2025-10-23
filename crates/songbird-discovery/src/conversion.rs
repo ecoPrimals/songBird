@@ -9,10 +9,10 @@ use std::collections::HashMap;
 use crate::traits::service::{ServiceEndpoint, ServiceInfo as DiscoveryServiceInfo, ServiceStatus};
 use songbird_universal::ServiceInfo as UniversalServiceInfo;
 
-/// Convert from discovery ServiceInfo to universal ServiceInfo
+/// Convert from discovery `ServiceInfo` to universal `ServiceInfo`
 ///
 /// This conversion loses some information (version, timestamps, etc.)
-/// as the universal ServiceInfo is a simpler representation.
+/// as the universal `ServiceInfo` is a simpler representation.
 impl From<DiscoveryServiceInfo> for UniversalServiceInfo {
     fn from(discovery: DiscoveryServiceInfo) -> Self {
         // Convert metadata from HashMap<String, Value> to HashMap<String, String>
@@ -33,10 +33,10 @@ impl From<DiscoveryServiceInfo> for UniversalServiceInfo {
     }
 }
 
-/// Convert from universal ServiceInfo to discovery ServiceInfo
+/// Convert from universal `ServiceInfo` to discovery `ServiceInfo`
 ///
 /// This conversion requires sensible defaults for fields not present
-/// in the universal ServiceInfo.
+/// in the universal `ServiceInfo`.
 impl From<UniversalServiceInfo> for DiscoveryServiceInfo {
     fn from(universal: UniversalServiceInfo) -> Self {
         // Convert metadata from HashMap<String, String> to HashMap<String, Value>
@@ -111,19 +111,19 @@ fn parse_endpoint(endpoint: &str) -> (String, u16) {
     }
 }
 
-/// Extension trait for DiscoveryServiceInfo to add utility methods
+/// Extension trait for `DiscoveryServiceInfo` to add utility methods
 pub trait ServiceInfoExt {
-    /// Create a minimal DiscoveryServiceInfo with sensible defaults
+    /// Create a minimal `DiscoveryServiceInfo` with sensible defaults
     fn minimal(name: String, host: String, port: u16) -> Self;
 
-    /// Update from a universal ServiceInfo, preserving existing fields
+    /// Update from a universal `ServiceInfo`, preserving existing fields
     fn update_from_universal(&mut self, universal: UniversalServiceInfo);
 }
 
 impl ServiceInfoExt for DiscoveryServiceInfo {
     fn minimal(name: String, host: String, port: u16) -> Self {
         let now = Utc::now();
-        let endpoint = format!("http://{}:{}", host, port);
+        let _endpoint = format!("http://{host}:{port}");
 
         Self {
             service_id: uuid::Uuid::new_v4().to_string(),

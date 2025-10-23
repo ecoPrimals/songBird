@@ -14,6 +14,10 @@
 //! - **Security**: Integrated security and provider systems
 //! - **Performance**: Const generics and compile-time optimizations
 
+#![forbid(unsafe_code)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+
 use songbird_types::{SongbirdError,
     performance::{ConstBuffer, PerformanceConfig, ProductionConfig, StackString, StackVec}
 };

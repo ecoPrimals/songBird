@@ -18,7 +18,8 @@ pub struct SovereigntyRouter {
     /// Sovereignty preferences configuration
     sovereignty_preferences: SovereigntyPreferences,
 
-    /// Path assessment cache
+    /// Path assessment cache (reserved for future caching implementation)
+    #[allow(dead_code)]
     path_assessments: HashMap<String, PathSovereigntyAssessment>,
 }
 
@@ -52,7 +53,15 @@ impl Default for SovereigntyPreferences {
     }
 }
 
+impl Default for SovereigntyRouter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SovereigntyRouter {
+    /// Create a new `SovereigntyRouter` with default preferences
+    #[must_use]
     pub fn new() -> Self {
         Self {
             sovereignty_preferences: SovereigntyPreferences::default(),
@@ -60,6 +69,8 @@ impl SovereigntyRouter {
         }
     }
 
+    /// Create a new `SovereigntyRouter` with custom sovereignty preferences
+    #[must_use]
     pub fn with_preferences(preferences: SovereigntyPreferences) -> Self {
         Self {
             sovereignty_preferences: preferences,
@@ -156,7 +167,7 @@ impl SovereigntyRouter {
 
         for (i, segment) in path.segments.iter().enumerate() {
             let segment_assessment = SegmentSovereigntyAssessment {
-                segment_id: format!("segment_{}", i),
+                segment_id: format!("segment_{i}"),
                 sovereignty_score: segment.sovereignty_level.score(),
                 sovereignty_level: segment.sovereignty_level.clone(),
                 security_assessment: SecurityAssessment {
@@ -193,14 +204,14 @@ impl SovereigntyRouter {
 
     async fn assess_service_sovereignty(
         &self,
-        service: &ServiceInfo,
+        _service: &ServiceInfo,
     ) -> SongbirdResult<SovereigntyLevel> {
         // In a real implementation, this would assess the service's sovereignty characteristics
         // For now, return a default moderate level
         Ok(SovereigntyLevel::ModeratelySovereign)
     }
 
-    async fn calculate_service_efficiency(&self, service: &ServiceInfo) -> SongbirdResult<f64> {
+    async fn calculate_service_efficiency(&self, _service: &ServiceInfo) -> SongbirdResult<f64> {
         // In a real implementation, this would calculate efficiency based on:
         // - Latency, throughput, resource usage, etc.
         Ok(0.8) // Default efficiency score
@@ -208,7 +219,7 @@ impl SovereigntyRouter {
 
     async fn assess_service_security_capabilities(
         &self,
-        service: &ServiceInfo,
+        _service: &ServiceInfo,
     ) -> SongbirdResult<Vec<SecurityCapability>> {
         // In a real implementation, this would assess the service's security capabilities
         Ok(vec![SecurityCapability::Encryption, SecurityCapability::Authentication])
@@ -244,7 +255,7 @@ impl SovereigntyRouter {
 
     async fn assess_path_security_level(
         &self,
-        services: &[&ServiceInfo],
+        _services: &[&ServiceInfo],
     ) -> SongbirdResult<SecurityLevel> {
         // In a real implementation, this would assess the overall security level
         // based on the weakest link in the path

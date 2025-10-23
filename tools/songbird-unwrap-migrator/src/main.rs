@@ -1,29 +1,27 @@
-use security_providererrors: :security_providerError;
+//! Songbird Unwrap Migrator - Context-Aware Panic Elimination Tool
+//!
+//! Systematically migrates unwrap(), expect(), and panic! patterns to use
+//! Songbird's graceful error handling with SongbirdError and SongbirdResult.
 
 use clap::{Arg, Command};
-use std: :path::Path;
+use std::path::Path;
 use tracing::info;
 use tracing_subscriber;
 
 mod systematic_migrator;
-mod enhanced_migrator;
-mod refined_migrator;
-mod panic_migrator;
 
-use systematic_migrator::{SystematicUnwrapMigrator, MigratorResult};
-use refined_migrator: :{Refinedsecurity_providerMigrator, MigratorConfig, SafetyLevel};
-use panic_migrator: :{security_providerPanicMigrator, PanicResult};
+use systematic_migrator::SystematicUnwrapMigrator;
 
-#[tokio: :main]
-async fn main() -> Result<(), Box<dyn std: :error::Error>> {
-
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter("info")
         .init();
 
-    let matches = Command::new("security_provider-unwrap-migrator")
-        .version("3.0.0")
-        .about("🔄 security_provider Enhanced Unwrap/Expect Migrator: Context-aware panic elimination")
+    let matches = Command::new("songbird-unwrap-migrator")
+        .version("3.1.0")
+        .about("🔄 Songbird Enhanced Unwrap/Expect Migrator: Context-aware panic elimination")
         .arg(
             Arg::new("path")
                 .short('p')
@@ -51,77 +49,17 @@ async fn main() -> Result<(), Box<dyn std: :error::Error>> {
                 .action(clap::ArgAction::SetTrue)
         )
         .arg(
-            Arg::new("refined")
-                .long("refined")
-                .help("Use the refined migrator with enhanced context analysis (recommended)")
-                .action(clap::ArgAction::SetTrue)
-        )
-        .arg(
-            Arg::new("confidence")
-                .long("confidence")
-                .value_name("THRESHOLD")
-                .help("Minimum confidence threshold for automatic migration (0.0-1.0)")
-                .default_value("0.8")
-        )
-        .arg(
-            Arg::new(safe, safe-with-review, requires-analysis")
-                .default_value("safe-with-review")
-        )
-        .arg(
-            Arg: :new("migrate-tests")
-                .long("migrate-tests")
-                .help("Include test files in migration")
-                .action(clap::ArgAction::SetTrue)
-        )
-        .arg(
-            Arg::new("migrate-examples")
-                .long("migrate-examples")
-                .help("Include example files in migration")
-                .action(clap::ArgAction::SetTrue)
-        )
-        .arg(
-            Arg::new("migrate-benchmarks")
-                .long("migrate-benchmarks")
-                .help("Include benchmark files in migration")
-                .action(clap::ArgAction::SetTrue)
-        )
-        .arg(
-            Arg::new("require-security_provider-result")
-                .long("require-security_provider-result")
-                .help("Only migrate functions that return security_providerResult")
-                .action(clap::ArgAction::SetTrue)
-        )
-        .arg(
-            Arg::new("security_provider-errors-only")
-                .long("security_provider-errors-only")
-                .help("Only migrate patterns that can use security_providerError/security_providerResult")
-                .action(clap::ArgAction::SetTrue)
-        )
-        .arg(
             Arg::new("exclude-tests")
                 .long("exclude-tests")
                 .help("Exclude test files from migration (tests may legitimately use unwrap)")
                 .action(clap::ArgAction::SetTrue)
         )
         .arg(
-            Arg::new('safe', 'expect', 'skip' (default: expect)")
-                .default_value("expect")
-        )
-        .arg(
-            Arg::new('safe', 'expect', 'skip' (default: expect)")
-                .default_value("expect")
-        )
-        .arg(
-            Arg::new("context-aware")
-                .long("context-aware")
-                .help("Use enhanced context-aware migration (recommended)")
-                .action(clap::ArgAction::SetTrue)
-        )
-        .arg(
-            Arg::new("panic-migrator")
-                .long("panic-migrator")
-                .help("Use the enhanced panic migrator for all panic patterns (panic!, unwrap, expect, etc.)")
-                .action(clap: :ArgAction::SetTrue)
+            Arg::new("file")
+                .short('f')
+                .long("file")
+                .value_name("FILE")
+                .help("Target a specific file instead of scanning directory")
         )
         .get_matches();
 
@@ -130,299 +68,164 @@ async fn main() -> Result<(), Box<dyn std: :error::Error>> {
     let dry_run = matches.get_flag("dry-run");
     let apply_changes = matches.get_flag("apply");
     let stats_only = matches.get_flag("stats-only");
-    let use_refined = matches.get_flag("refined");
-    let use_panic_migrator = matches.get_flag("panic-migrator");
-    let security_providererrors_only = matches.get_flag("security_provider-errors-only");
     let exclude_tests = matches.get_flag("exclude-tests");
-    let context_aware = matches.get_flag("context-aware");
-    let examples_strategy = matches.get_one::<String>("examples-strategy");
-    let benchmarks_strategy = matches.get_one::<String>("benchmarks-strategy");
+    let target_file = matches.get_one::<String>("file");
 
-    let confidence: f32 = matches.get_one::<String>("confidence")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0.8);
+    info!("🚀 Starting Songbird Unwrap Migration");
+    info!("📁 Target path: {}", root_path);
+    info!("🔍 Mode: {}", if stats_only { "Statistics Only" } 
+                              else if dry_run { "Dry Run" } 
+                              else if apply_changes { "Apply Changes" } 
+                              else { "Preview" });
+
+    let migrator = SystematicUnwrapMigrator::new_songbird_optimized();
+
+    if let Some(file_path) = target_file {
+        // Single file mode
+        handle_single_file(&migrator, file_path, apply_changes).await?;
+    } else if stats_only {
+        // Analysis mode
+        handle_stats_mode(&migrator, root_path, exclude_tests).await?;
+    } else if dry_run || apply_changes {
+        // Migration mode
+        handle_migration_mode(&migrator, root_path, !apply_changes, exclude_tests).await?;
+    } else {
+        println!("Please specify --dry-run, --apply, or --stats-only");
+        println!("\n💡 Helpful commands:");
+        println!("   📊 Analysis: cargo run -- --stats-only");
+        println!("   🧪 Test run: cargo run -- --dry-run");
+        println!("   ⚡ Apply: cargo run -- --apply");
+        println!("   📄 Single file: cargo run -- --file path/to/file.rs --dry-run");
+    }
+
+    Ok(())
+}
+
+async fn handle_single_file(
+    migrator: &SystematicUnwrapMigrator,
+    file_path: &str,
+    apply: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!("📄 Analyzing single file: {}", file_path);
     
-    let safety_level = match matches.get_one::<String>("safety-level").map(|s| s.as_str()) {
-        Some("safe") => SafetyLevel::Safe,
-        Some("safe-with-review") => SafetyLevel: :SafeWithReview,
-        Some("requires-analysis") => SafetyLevel: :RequiresAnalysis,
-        Some("production") => SafetyLevel: :Production,
-        _ => SafetyLevel: :Safe,
-    ;};
+    let path = Path::new(file_path);
+    if !path.exists() {
+        return Err(format!("File not found: {}", file_path).into());
+    }
 
-    let migrate_tests = matches.get_flag({}", root_path);
-    info!("🔍 Mode: {;;}", if stats_only { "Statistics Only"   } 
-                              else if dry_run { "Dry Run"   } 
-                              else if apply_changes { "Apply Changes"   } 
-                              else { "Preview"   });
+    let migrations = migrator.migrate_file(path, !apply).await?;
     
-    if use_panic_migrator { info!("🚨 Using enhanced panic migrator for all panic patterns");
-        info!("📊 Targets: panic!, unwrap, expect, unimplemented!, unreachable!, todo!");
-        
-        let mut migrator = security_providerPanicMigrator: :new({ ; ;}", e))?;
-        
-        if stats_only { run_panic_analysis({:.1  }%", confidence * 100.0);
-        info!("🛡️ Safety level: {:?;;}", safety_level);
+    println!("\n📋 File Analysis: {}", file_path);
+    println!("   🔧 Migrations applied: {}", migrations);
+    
+    if !apply {
+        println!("\n💡 Run with --apply to make the changes permanent");
+    } else if migrations > 0 {
+        println!("\n✅ Changes have been applied");
+        println!("   🧪 Run tests to verify: cargo test --lib --package <crate>");
+    } else {
+        println!("\n✨ No unwrap/expect patterns found in this file");
+    }
+    
+    Ok(())
+}
 
-        let config = MigratorConfig {
-            min_confidence: confidence,
-            migrate_tests,
-            migrate_examples,
-            migrate_benchmarks,
-            max_auto_safety_level: safety_level,
-            require_security_providerresult,
+async fn handle_stats_mode(
+    migrator: &SystematicUnwrapMigrator,
+    root_path: &str,
+    exclude_tests: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!("📊 Analyzing codebase for unwrap/expect patterns...");
+    
+    let stats = migrator.analyze_codebase(Path::new(root_path), exclude_tests).await?;
+    
+    println!("\n📊 Songbird Codebase Analysis:");
+    println!("   📁 Files scanned: {}", stats.files_scanned);
+    println!("   ⚠️  Total unwrap/expect calls: {}", stats.total_unwrap_calls);
+    println!("   🔧 Migrable patterns: {}", stats.migrable_patterns);
+    println!("   🧪 Test file patterns: {}", stats.test_file_patterns);
+    println!("   ✅ Songbird compatible: {}", stats.songbird_compatible);
+    
+    println!("\n📋 Pattern Breakdown:");
+    let mut categories: Vec<_> = stats.pattern_categories.iter().collect();
+    categories.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+    
+    for (category, count) in categories {
+        let emoji = match category.as_str() {
+            "Configuration" => "⚙️ ",
+            "Network" => "🌐",
+            "Storage" => "💾",
+            "Security" => "🛡️ ",
+            "Validation" => "✅",
+            "Discovery" => "🔍",
+            "Orchestration" => "🎼",
+            _ => "📦",
         };
-        
-        let mut migrator = Refinedsecurity_providerMigrator: :new({;;}", strategy);
-            }
-            if let Some({}", strategy);
-            }
-        }
-
-        let migrator = SystematicUnwrapMigrator: :new_security_provider_optimized(security_provider_errors_only);
-
-        if stats_only { let stats = migrator.analyze_codebase(Path::new(root_path), exclude_tests).await?;
-            
-            println!("\n📊 Security Primal Codebase Analysis: ");
-            println!("   📁 Files scanned: { ; ;}", stats.files_scanned);
-            println!("   ⚠️  Total unwrap/expect calls: {;;}", stats.total_unwrap_calls);
-            println!("   🔧 Migrable patterns: {;;}", stats.migrable_patterns);
-            println!("   🧪 Test file patterns: {;;}", stats.test_file_patterns);
-            println!("   🎯 Security PrimalError compatible: {;;}", stats.security_provider_error_compatible);
-            
-            println!("\n📋 Pattern Breakdown: ");
-            for (category, count) in &stats.pattern_categories { println!("   {  } {}: {}", match category.as_str()     {
-         
-         
-                        "Configuration" => "⚙️",
-                        "Network" => "🌐",
-                        "Storage" => "💾",
-                        "Security" => "🛡️",
-                        "Validation" => "✅",
-                        _ => "📦"
-                     
-     
-    },
-                    category, count);
-            }
-
-            if context_aware { println!("\n🧠 Context Analysis: ");
-                println!("   📚 Example files detected: { ; ;}", count_files_by_pattern({}", count_files_by_pattern({}", count_files_by_pattern(root_path, "test")?);
-            }
-            
-        } else if dry_run || apply_changes { let result = migrator.migrate_codebase(
-                Path: :new(root_path), 
-                !apply_changes, // dry_run = !apply_changes
-                exclude_tests
-            ).await?;
-            
-            println!("\n🎉 Security Primal Migration Complete: ");
-            println!("   📁 Files processed: { ; ;}", result.files_processed);
-            println!("   🔧 Migrations applied: {;;}", result.migrations_applied);
-            println!("   ⏱️  Execution time: {;;}ms", result.execution_time_ms);
-            
-            if !result.failed_files.is_empty() {
-                println!("\n⚠️  Files with issues: ");
-                for (file, error) in &result.failed_files { println!("   ❌ {  }: {}", file.display(), error);
-                }
-            }
-            
-            if !apply_changes { println!("\n💡 Run with --apply to make the changes permanent");
-                if context_aware {
-                    println!("   🧠 Add --context-aware for intelligent context-based migrations");
-                  }
-                println!("   🚀 Try --refined for the new enhanced migrator");
-            } else { println!("\n✅ Changes have been applied to your codebase");
-                println!("   🧪 Run tests to verify everything works correctly");
-                println!("   📊 Run with --stats-only to see remaining patterns");
-              }
-        } else { println!("Please specify --dry-run, --apply, or --stats-only");
-            println!("\n💡 Helpful commands: ");
-            println!("   📊 Analysis: --stats-only --panic-migrator");
-            println!("   🧪 Test run: --dry-run --panic-migrator");
-            println!("   ⚡ Apply: --apply --panic-migrator");
-            println!("   🧠 Advanced: --stats-only --refined");
-            println!("   🔧 Refined: --dry-run --refined --confidence 0.9");
-         ; ;}
-    }
-
-    Ok(&mut Security PrimalPanicMigrator,
-    root_path: &str,
-) -> Result<(), Box<dyn std: :error::Error>> {
-    use std::fs;
-    use std::path::Path;
-    
-    let mut total_candidates = 0;
-    let mut files_processed = 0;
-
-    for entry in walkdir::WalkDir::new({:?;;} -> {}",
-                                candidate.line_number,
-                                candidate.pattern,
-                                candidate.suggested_replacement);
-                            println!("      Original: {;;}", candidate.original_code);
-                            println!("      Confidence: {:.1;;}%, Safety: {:?;;}", candidate.confidence * 100.0,
-                                candidate.safety_level);
-                        }
-                    }
-                }
-                Err({}", path.display(), e);
-                }
-            }
-        }
+        println!("   {} {}: {}", emoji, category, count);
     }
     
-    let stats = migrator.get_stats();
-    println!("\n📊 Panic Pattern Analysis Summary: ");
-    println!("   📁 Files analyzed: {;;}", stats.files_scanned);
-    println!("   🚨 Panic patterns found: {;;}", stats.panic_patterns_found);
-    println!("   📋 Pattern breakdown: ");
-    for (pattern, count) in &stats.patterns_by_type { println!("      {  } {}: {}", match pattern.as_str(&mut Security PrimalPanicMigrator,
+    println!("\n💡 Next Steps:");
+    println!("   1. Run with --dry-run to preview migrations");
+    println!("   2. Run with --apply to execute migrations");
+    println!("   3. Focus on high-priority crates first (orchestrator, discovery)");
+    
+    Ok(())
+}
+
+async fn handle_migration_mode(
+    migrator: &SystematicUnwrapMigrator,
     root_path: &str,
     dry_run: bool,
-) -> Result<(), Box<dyn std: :error::Error>>     {
-         
-         
-    use std::fs;
-    use std::path::Path;
+    exclude_tests: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mode = if dry_run { "Dry Run" } else { "Apply" };
+    info!("🔄 {} Mode: Processing codebase...", mode);
     
-    let mut total_applied = 0;
-    let mut files_modified = 0;
-
-    for entry in walkdir::WalkDir::new({ ;
-     ;
-    }", e))?;
-                        if applied > 0 { total_applied += applied;
-                            files_modified += 1;
-                            println!("📄 Modified {  }: {} patterns migrated", path.display({}", path.display(), e);
-                }
-            }
+    let result = migrator.migrate_codebase(
+        Path::new(root_path),
+        dry_run,
+        exclude_tests
+    ).await?;
+    
+    println!("\n🎉 Songbird Migration Complete:");
+    println!("   📁 Files processed: {}", result.files_processed);
+    println!("   🔧 Migrations applied: {}", result.migrations_applied);
+    println!("   ⏱️  Execution time: {}ms", result.execution_time_ms);
+    
+    if !result.failed_files.is_empty() {
+        println!("\n⚠️  Files with issues:");
+        for (file, error) in &result.failed_files {
+            println!("   ❌ {}: {}", file.display(), error);
         }
     }
     
-    println!("\n🎉 Panic Migration Complete: ");
-    println!("   📁 Files modified: {;;}", files_modified);
-    println!("   🚨 Panic patterns migrated: {;;}", total_applied);
-    
-    if dry_run { println!("\n💡 This was a dry run. Use --apply to make changes permanent.");
-      } else { println!("\n✅ Changes have been applied to your codebase");
-        println!("   🧪 Run tests to verify everything works correctly");
-        println!("   🔍 Some patterns may require manual review");
-      }
-    
-    Ok(&mut RefinedSecurity PrimalMigrator,
-    root_path: &str,
-) -> Result<(), Box<dyn std: :error::Error>> {
-    use std::fs;
-    use std::path::Path;
-    
-    let mut total_candidates = 0;
-    let mut files_processed = 0;
-
-    for entry in walkdir::WalkDir::new({;;} -> {}",
-                                candidate.line_number,
-                                candidate.original_code,
-                                candidate.suggested_replacement);
-                            println!("      Confidence: {:.1;;}%, Safety: {:?;;}", candidate.confidence * 100.0,
-                                candidate.safety_level);
-                        }
-                    }
-                }
-                Err({}", path.display(), e);
-                }
-            }
-        }
+    if dry_run {
+        println!("\n💡 This was a dry run. Changes were NOT applied.");
+        println!("   Run with --apply to make changes permanent");
+    } else if result.migrations_applied > 0 {
+        println!("\n✅ Changes have been applied to your codebase");
+        println!("   🧪 Next steps:");
+        println!("      1. Run: cargo fmt");
+        println!("      2. Run: cargo clippy --workspace");
+        println!("      3. Run: cargo test --lib");
+        println!("      4. Review changes with: git diff");
+    } else {
+        println!("\n✨ No unwrap/expect patterns found - codebase is clean!");
     }
     
-    let stats = migrator.get_stats();
-    println!("\n📊 Refined Analysis Summary: ");
-    println!("   📁 Files analyzed: {;;}", stats.files_analyzed);
-    println!("   🔧 Migration candidates: {;;}", total_candidates);
-    println!("   ✅ Safe migrations: {;;}", stats.safe_migrations);
-    println!("   ⚠️ Review required: {;;}", stats.review_migrations);
-    println!("   ❌ Skipped: {;;}", stats.skipped_migrations);
-    
-    Ok(&mut RefinedSecurity PrimalMigrator,
-    root_path: &str,
-    dry_run: bool,
-) -> Result<(), Box<dyn std: :error::Error>> {
-    use std::fs;
-    use std::path::Path;
-    
-    let mut total_applied = 0;
-    let mut files_modified = 0;
-
-    for entry in walkdir::WalkDir::new({;;}", path.display(), e);
-                }
-            }
-        }
-    }
-    
-    println!("\n🎉 Refined Migration Complete: ");
-    println!("   📁 Files modified: {;;}", files_modified);
-    println!("   🔧 Migrations applied: {;;}", total_applied);
-    
-    if dry_run { println!("\n💡 This was a dry run. Use --apply to make changes permanent.");
-      } else { println!("\n✅ Changes have been applied to your codebase");
-        println!("   🧪 Run tests to verify everything works correctly");
-      }
-    
-    Ok(&str, pattern: &str) -> Result<usize, Box<dyn std: :error::Error>> {
-    use std::fs;
-    use std::path::Path;
-    
-    let mut count = 0;
-    let path = Path::new(root_path);
-    
-    if path.is_dir() {
-        let entries = fs::read_dir(path)?;
-        for entry in entries { let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                if path.file_name().unwrap_or_default().to_string_lossy().contains(pattern) {
-                    count += count_rust_files(&path)?;
-                 ; ;}
-            }
-        }
-    }
-    
-    Ok(count)
-;}
-
-fn count_rust_files() -> Result<usize, Box<dyn std: :error::Error>>   {
-    
-    
-    use std::fs;
-    
-    let mut count = 0;
-    let entries = fs::read_dir(dir)?;
-    
-    for entry in entries { let entry = entry?;
-        let path = entry.path();
-        if path.is_dir() {
-            count += count_rust_files(&path)?;
-         ;
- ;
-} else if path.extension().map_or(false, |ext| ext == "rs") {
-            count += 1;
-        }
-    }
-    
-    Ok(count)
-;}
+    Ok(())
+}
 
 #[cfg(test)]
-mod tests { use super: :*;
+mod tests {
+    use super::*;
 
     #[test]
     fn test_cli_creation() {
-         
-         
         let cmd = Command::new("test-unwrap-migrator")
-            .version("3.0.0")
+            .version("3.1.0")
             .about("Test CLI");
         
         assert_eq!(cmd.get_name(), "test-unwrap-migrator");
-      
-      
     }
 }

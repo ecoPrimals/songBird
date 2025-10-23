@@ -17,16 +17,19 @@ pub struct CanonicalConfigFactory;
 
 impl CanonicalConfigFactory {
     /// Create a new configuration factory
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Create a default configuration
+    #[must_use]
     pub fn create_default() -> CanonicalSongbirdConfig {
         CanonicalSongbirdConfig::default()
     }
 
     /// Create a configuration for the given environment
+    #[must_use]
     pub fn create_for_environment(env: &str) -> CanonicalSongbirdConfig {
         let mut config = CanonicalSongbirdConfig::default();
         config.system.environment = env.to_string();

@@ -1,6 +1,6 @@
 //! Canonical Network Configuration - Unified Modern Implementation
 //!
-//! This module provides the single, canonical NetworkConfig definition that replaces
+//! This module provides the single, canonical `NetworkConfig` definition that replaces
 //! all fragmented and deprecated network configuration structs across the codebase.
 
 use serde::{Deserialize, Serialize};
@@ -168,7 +168,7 @@ impl CanonicalNetworkConfig {
             .unwrap_or_else(|_| "0.0.0.0".to_string())
             .parse()
             .map_err(|e| SongbirdError::Configuration {
-                message: format!("Invalid bind address: {}", e),
+                message: format!("Invalid bind address: {e}"),
                 field: Some("bind_address".to_string()),
                 suggestion: Some("Provide a valid IP address".to_string()),
             })?;
@@ -180,7 +180,7 @@ impl CanonicalNetworkConfig {
                 .parse()
                 .unwrap_or_else(|e| {
                     warn!("Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}", e);
-                    std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))
+                    std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
                 }),
             orchestrator_port: std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
                 .unwrap_or_else(|_| "8080".to_string())
@@ -220,7 +220,7 @@ impl CanonicalNetworkConfig {
     ///
     /// Returns an error if the bind address is set to localhost in production
     pub async fn validate_production_readiness(&self) -> SongbirdResult<()> {
-        let localhost_v4 = std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1));
+        let localhost_v4 = std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
         if self.bind_address == localhost_v4 {
             return Err(SongbirdError::Configuration {
                 message: "Production deployment should not use localhost bind address".to_string(),
@@ -239,7 +239,7 @@ impl CanonicalNetworkConfig {
     pub async fn local_bind_address(&self) -> SongbirdResult<SocketAddr> {
         let addr = format!("{}:{}", self.bind_address, self.orchestrator_port);
         let socket_addr = addr.parse::<SocketAddr>().map_err(|e| SongbirdError::Configuration {
-            message: format!("Invalid address: {}", e),
+            message: format!("Invalid address: {e}"),
             field: Some("address".to_string()),
             suggestion: Some("Provide a valid IP and port format".to_string()),
         })?;
@@ -257,7 +257,7 @@ impl CanonicalNetworkConfig {
             "aoe2" | "udp" => self.gaming.aoe2_port,
             _ => {
                 return Err(SongbirdError::Configuration {
-                    message: format!("Unknown protocol: {}", protocol),
+                    message: format!("Unknown protocol: {protocol}"),
                     field: Some("protocol".to_string()),
                     suggestion: Some("Use 'starcraft', 'aoe2', or 'udp'".to_string()),
                 });
@@ -267,21 +267,25 @@ impl CanonicalNetworkConfig {
     }
 
     /// Get orchestrator endpoint
+    #[must_use]
     pub fn orchestrator_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.bind_address, self.orchestrator_port)
     }
 
     /// Get discovery endpoint
+    #[must_use]
     pub fn discovery_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.bind_address, self.discovery_port)
     }
 
     /// Get metrics endpoint
+    #[must_use]
     pub fn metrics_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.metrics_bind_address, self.metrics_port)
     }
 
     /// Get federation endpoint
+    #[must_use]
     pub fn federation_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.federation_bind_address, self.federation_port)
     }
@@ -296,7 +300,7 @@ impl Default for CanonicalNetworkConfig {
 
         Self {
             bind_address,
-            production_bind_address: "0.0.0.0".parse().unwrap_or_else(|_| {
+            production_bind_address: "0.0.0.0".parse().unwrap_or({
                 // This should never fail as 0.0.0.0 is always valid, but handle gracefully
                 std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
             }),

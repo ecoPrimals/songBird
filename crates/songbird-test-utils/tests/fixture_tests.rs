@@ -3,6 +3,7 @@
 // Tests for test fixture management and setup utilities
 
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn test_test_fixtures_creation() {
@@ -65,12 +66,14 @@ struct TestFixtures {
 
 impl TestFixtures {
     fn new() -> Self {
-        let temp_dir = std::env::temp_dir().join("songbird_test_fixtures");
+        // Create unique temp directory for each test to avoid parallel test interference
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let temp_dir = std::env::temp_dir().join(format!("songbird_test_fixtures_{}", timestamp));
         let config_dir = temp_dir.join("config");
         let data_dir = temp_dir.join("data");
 
-        std::fs::create_dir_all(&config_dir).unwrap_or(());
-        std::fs::create_dir_all(&data_dir).unwrap_or(());
+        std::fs::create_dir_all(&config_dir).expect("Failed to create config dir");
+        std::fs::create_dir_all(&data_dir).expect("Failed to create data dir");
 
         Self {
             temp_dir,

@@ -15,6 +15,7 @@ use songbird_discovery::{
         service::{ServiceEndpoint, ServiceInfo, ServiceStatus},
     },
 };
+use songbird_types::SongbirdError;
 use std::collections::HashMap;
 
 /// Test discovery configuration creation and defaults
@@ -147,7 +148,7 @@ fn test_static_discovery_creation() {
 
 /// Test service info serialization
 #[test]
-fn test_service_info_serialization() {
+fn test_service_info_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let mut metadata = HashMap::new();
     metadata.insert("env".to_string(), Value::String("test".to_string()));
 
@@ -182,10 +183,12 @@ fn test_service_info_serialization() {
     };
 
     // Test serialization
-    let serialized = serde_json::to_string(&service_info).expect("Failed to serialize");
+    let serialized = serde_json::to_string(&service_info)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
     assert!(!serialized.is_empty());
     assert!(serialized.contains("serialize-test"));
     assert!(serialized.contains("Serialize Test"));
+    Ok(())
 }
 
 /// Test minimal service creation

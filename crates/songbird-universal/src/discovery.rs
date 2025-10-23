@@ -13,6 +13,7 @@ use tracing::{debug, info, warn};
 // String constants to avoid Rust 2021 prefix parsing issues
 const DISCOVERED_FROM_ENVIRONMENT_MSG: &str = "✅ Discovered {} primals from environment";
 const DISCOVERED_FROM_CONTAINERS_MSG: &str = "✅ Discovered {} primals from containers";
+#[allow(dead_code)] // Reserved for future network scanning error messages
 const NETWORK_SCAN_FAILED_MSG: &str = "Network scan failed: {}";
 const HEALTH_PATH: &str = "/health";
 const API_V1_HEALTH_PATH: &str = "/api/v1/health";
@@ -32,17 +33,23 @@ pub struct UniversalPrimalDiscovery {
 }
 
 // DiscoveryConfig is now re-exported from canonical types
-// Use a simple configuration for now
+/// Configuration for service discovery mechanisms
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
+    /// Discovery mechanisms to enable
     pub mechanisms: DiscoveryMechanisms,
+    /// Timeout for discovery operations
     pub timeout: Duration,
 }
 
+/// Discovery mechanisms configuration
 #[derive(Debug, Clone)]
 pub struct DiscoveryMechanisms {
+    /// Enable environment variable scanning
     pub enable_environment_scan: bool,
+    /// Enable network scanning for services
     pub enable_network_scanning: bool,
+    /// Enable container/orchestration discovery
     pub enable_container_discovery: bool,
 }
 
@@ -116,7 +123,7 @@ impl UniversalPrimalDiscovery {
     /// Create a new universal primal discovery engine
     #[must_use]
     pub fn new(config: DiscoveryConfig) -> Self {
-        let capability_config = crate::capabilities::DiscoveryConfig::default();
+        let _capability_config = crate::capabilities::DiscoveryConfig::default();
         Self {
             _capability_adapter: (),
             config,
@@ -193,7 +200,7 @@ impl UniversalPrimalDiscovery {
                 .ok()
                 .and_then(|p| p.parse::<u16>().ok())
                 .unwrap_or(8080);
-            let endpoint = format!("http://{}:{}/{}", discovery_host, discovery_port, primal_name);
+            let endpoint = format!("http://{discovery_host}:{discovery_port}/{primal_name}");
 
             // Test connectivity and discover capabilities
             match timeout(
@@ -208,10 +215,10 @@ impl UniversalPrimalDiscovery {
                     discovered.push(env_primal);
                 }
                 Ok(Err(e)) => {
-                    debug!("Failed to discover primal {} at {}: {}", primal_name, endpoint, e)
+                    debug!("Failed to discover primal {} at {}: {}", primal_name, endpoint, e);
                 }
                 Err(_) => {
-                    debug!("Timeout discovering primal {} at {}", primal_name, endpoint)
+                    debug!("Timeout discovering primal {} at {}", primal_name, endpoint);
                 }
             }
         }
@@ -225,7 +232,7 @@ impl UniversalPrimalDiscovery {
 
         // Network scanning implementation would require additional config fields
         // For now, return empty to avoid accessing non-existent config fields
-        // Note: network_scan_ranges, discovery_ports, max_concurrent_discoveries 
+        // Note: network_scan_ranges, discovery_ports, max_concurrent_discoveries
         // are part of the main config system in songbird-config crate
         Ok(Vec::new())
     }
@@ -308,8 +315,8 @@ impl UniversalPrimalDiscovery {
                 Ok(response) if response.status().is_server_error() => {
                     return PrimalHealth::Degraded;
                 }
-                Ok(_) => continue,
-                Err(_) => continue,
+                Ok(_) => {}
+                Err(_) => {}
             }
         }
 
@@ -335,6 +342,7 @@ impl UniversalPrimalDiscovery {
     }
 
     /// Scan a network range for primals
+    #[allow(dead_code)] // Reserved for future network scanning functionality
     async fn scan_network_range(
         &self,
         _network: &str,
@@ -408,14 +416,308 @@ pub enum DiscoveryError {
 impl std::fmt::Display for DiscoveryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DiscoveryError::NetworkError(msg) => write!(f, "Network error: {}", msg),
+            DiscoveryError::NetworkError(msg) => write!(f, "Network error: {msg}"),
             DiscoveryError::UnreachableEndpoint(endpoint) => {
-                write!(f, "Unreachable endpoint: {}", endpoint)
+                write!(f, "Unreachable endpoint: {endpoint}")
             }
-            DiscoveryError::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),
-            DiscoveryError::Timeout(msg) => write!(f, "Timeout: {}", msg),
+            DiscoveryError::ConfigurationError(msg) => write!(f, "Configuration error: {msg}"),
+            DiscoveryError::Timeout(msg) => write!(f, "Timeout: {msg}"),
         }
     }
 }
 
 impl std::error::Error for DiscoveryError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_discovery_creation() {
+        let config = DiscoveryConfig::default();
+        let discovery = UniversalPrimalDiscovery::new(config);
+
+        // Discovery should be created successfully
+        assert!(discovery.get_discovered_primals().is_empty());
+    }
+
+    #[test]
+    fn test_discovery_config_default() {
+        let config = DiscoveryConfig::default();
+
+        assert_eq!(config.timeout, Duration::from_secs(30));
+        assert!(config.mechanisms.enable_environment_scan);
+        assert!(config.mechanisms.enable_network_scanning);
+        assert!(config.mechanisms.enable_container_discovery);
+    }
+
+    #[test]
+    fn test_discovery_config_custom() {
+        let config = DiscoveryConfig {
+            mechanisms: DiscoveryMechanisms {
+                enable_environment_scan: true,
+                enable_network_scanning: false,
+                enable_container_discovery: true,
+            },
+            timeout: Duration::from_secs(60),
+        };
+
+        assert_eq!(config.timeout, Duration::from_secs(60));
+        assert!(config.mechanisms.enable_environment_scan);
+        assert!(!config.mechanisms.enable_network_scanning);
+        assert!(config.mechanisms.enable_container_discovery);
+    }
+
+    #[test]
+    fn test_discovery_mechanisms_all_enabled() {
+        let mechanisms = DiscoveryMechanisms {
+            enable_environment_scan: true,
+            enable_network_scanning: true,
+            enable_container_discovery: true,
+        };
+
+        assert!(mechanisms.enable_environment_scan);
+        assert!(mechanisms.enable_network_scanning);
+        assert!(mechanisms.enable_container_discovery);
+    }
+
+    #[test]
+    fn test_discovery_mechanisms_all_disabled() {
+        let mechanisms = DiscoveryMechanisms {
+            enable_environment_scan: false,
+            enable_network_scanning: false,
+            enable_container_discovery: false,
+        };
+
+        assert!(!mechanisms.enable_environment_scan);
+        assert!(!mechanisms.enable_network_scanning);
+        assert!(!mechanisms.enable_container_discovery);
+    }
+
+    #[test]
+    fn test_discovered_primal_structure() {
+        let primal = DiscoveredPrimal {
+            name: "test_primal".to_string(),
+            primal_type: PrimalType::new("compute"),
+            endpoint: "http://localhost:8080".to_string(),
+            capabilities: vec![],
+            health: PrimalHealth::Healthy,
+            discovery_method: DiscoveryMethod::Environment,
+            discovered_at: chrono::Utc::now(),
+            metadata: HashMap::new(),
+        };
+
+        assert_eq!(primal.name, "test_primal");
+        assert_eq!(primal.primal_type.category, "compute");
+        assert_eq!(primal.health, PrimalHealth::Healthy);
+        assert_eq!(primal.discovery_method, DiscoveryMethod::Environment);
+    }
+
+    #[test]
+    fn test_discovery_method_variants() {
+        assert!(matches!(DiscoveryMethod::Environment, DiscoveryMethod::Environment));
+        assert!(matches!(DiscoveryMethod::NetworkScan, DiscoveryMethod::NetworkScan));
+        assert!(matches!(DiscoveryMethod::Mdns, DiscoveryMethod::Mdns));
+        assert!(matches!(DiscoveryMethod::Configuration, DiscoveryMethod::Configuration));
+        assert!(matches!(DiscoveryMethod::Kubernetes, DiscoveryMethod::Kubernetes));
+        assert!(matches!(DiscoveryMethod::Docker, DiscoveryMethod::Docker));
+    }
+
+    #[test]
+    fn test_discovery_method_equality() {
+        assert_eq!(DiscoveryMethod::Environment, DiscoveryMethod::Environment);
+        assert_ne!(DiscoveryMethod::NetworkScan, DiscoveryMethod::Mdns);
+        assert_ne!(DiscoveryMethod::Docker, DiscoveryMethod::Kubernetes);
+    }
+
+    #[test]
+    fn test_primal_health_variants() {
+        assert!(matches!(PrimalHealth::Healthy, PrimalHealth::Healthy));
+        assert!(matches!(PrimalHealth::Degraded, PrimalHealth::Degraded));
+        assert!(matches!(PrimalHealth::Unhealthy, PrimalHealth::Unhealthy));
+        assert!(matches!(PrimalHealth::Unknown, PrimalHealth::Unknown));
+    }
+
+    #[test]
+    fn test_primal_health_equality() {
+        assert_eq!(PrimalHealth::Healthy, PrimalHealth::Healthy);
+        assert_ne!(PrimalHealth::Healthy, PrimalHealth::Degraded);
+        assert_ne!(PrimalHealth::Unhealthy, PrimalHealth::Unknown);
+    }
+
+    #[test]
+    fn test_discovery_error_network() {
+        let error = DiscoveryError::NetworkError("Connection failed".to_string());
+        assert_eq!(error.to_string(), "Network error: Connection failed");
+    }
+
+    #[test]
+    fn test_discovery_error_unreachable() {
+        let error = DiscoveryError::UnreachableEndpoint("http://localhost:9999".to_string());
+        assert_eq!(error.to_string(), "Unreachable endpoint: http://localhost:9999");
+    }
+
+    #[test]
+    fn test_discovery_error_configuration() {
+        let error = DiscoveryError::ConfigurationError("Invalid config".to_string());
+        assert_eq!(error.to_string(), "Configuration error: Invalid config");
+    }
+
+    #[test]
+    fn test_discovery_error_timeout() {
+        let error = DiscoveryError::Timeout("Discovery timed out".to_string());
+        assert_eq!(error.to_string(), "Timeout: Discovery timed out");
+    }
+
+    #[test]
+    fn test_get_discovered_primals_empty() {
+        let config = DiscoveryConfig::default();
+        let discovery = UniversalPrimalDiscovery::new(config);
+
+        let primals = discovery.get_discovered_primals();
+        assert!(primals.is_empty());
+    }
+
+    #[test]
+    fn test_find_primals_with_capability_empty() {
+        let config = DiscoveryConfig::default();
+        let discovery = UniversalPrimalDiscovery::new(config);
+
+        let primals = discovery.find_primals_with_capability("compute");
+        assert!(primals.is_empty());
+    }
+
+    #[test]
+    fn test_discovered_primal_with_metadata() {
+        let mut metadata = HashMap::new();
+        metadata.insert("version".to_string(), "1.0.0".to_string());
+        metadata.insert("region".to_string(), "us-west-2".to_string());
+
+        let primal = DiscoveredPrimal {
+            name: "test".to_string(),
+            primal_type: PrimalType::new("storage"),
+            endpoint: "http://localhost:8082".to_string(),
+            capabilities: vec![],
+            health: PrimalHealth::Healthy,
+            discovery_method: DiscoveryMethod::Docker,
+            discovered_at: chrono::Utc::now(),
+            metadata: metadata.clone(),
+        };
+
+        assert_eq!(primal.metadata.len(), 2);
+        assert_eq!(primal.metadata.get("version"), Some(&"1.0.0".to_string()));
+        assert_eq!(primal.metadata.get("region"), Some(&"us-west-2".to_string()));
+    }
+
+    #[test]
+    fn test_discovered_primal_with_capabilities() {
+        use crate::capabilities::{Capability, QoSMetrics};
+
+        let capability = Capability {
+            capability_type: "storage".to_string(),
+            name: "s3_compatible".to_string(),
+            version: "1.0.0".to_string(),
+            parameters: HashMap::new(),
+            qos_metrics: QoSMetrics::default(),
+            available: true,
+        };
+
+        let primal = DiscoveredPrimal {
+            name: "storage_primal".to_string(),
+            primal_type: PrimalType::new("storage"),
+            endpoint: "http://localhost:8082".to_string(),
+            capabilities: vec![capability.clone()],
+            health: PrimalHealth::Healthy,
+            discovery_method: DiscoveryMethod::Kubernetes,
+            discovered_at: chrono::Utc::now(),
+            metadata: HashMap::new(),
+        };
+
+        assert_eq!(primal.capabilities.len(), 1);
+        assert_eq!(primal.capabilities[0].capability_type, "storage");
+        assert_eq!(primal.capabilities[0].name, "s3_compatible");
+    }
+
+    #[test]
+    fn test_discovery_config_with_custom_timeout() {
+        let config = DiscoveryConfig {
+            mechanisms: DiscoveryMechanisms {
+                enable_environment_scan: true,
+                enable_network_scanning: true,
+                enable_container_discovery: true,
+            },
+            timeout: Duration::from_secs(120),
+        };
+
+        assert_eq!(config.timeout, Duration::from_secs(120));
+    }
+
+    #[test]
+    fn test_primal_type_creation() {
+        let security = PrimalType::new("security");
+        let compute = PrimalType::new("compute");
+        let storage = PrimalType::new("storage");
+        let ai = PrimalType::new("ai");
+
+        assert_eq!(security.category, "security");
+        assert_eq!(compute.category, "compute");
+        assert_eq!(storage.category, "storage");
+        assert_eq!(ai.category, "ai");
+    }
+
+    #[test]
+    fn test_discovered_primal_different_health_states() {
+        let healthy = DiscoveredPrimal {
+            name: "healthy".to_string(),
+            primal_type: PrimalType::new("compute"),
+            endpoint: "http://localhost:8080".to_string(),
+            capabilities: vec![],
+            health: PrimalHealth::Healthy,
+            discovery_method: DiscoveryMethod::Environment,
+            discovered_at: chrono::Utc::now(),
+            metadata: HashMap::new(),
+        };
+
+        let degraded = DiscoveredPrimal {
+            name: "degraded".to_string(),
+            primal_type: PrimalType::new("compute"),
+            endpoint: "http://localhost:8081".to_string(),
+            capabilities: vec![],
+            health: PrimalHealth::Degraded,
+            discovery_method: DiscoveryMethod::NetworkScan,
+            discovered_at: chrono::Utc::now(),
+            metadata: HashMap::new(),
+        };
+
+        assert_eq!(healthy.health, PrimalHealth::Healthy);
+        assert_eq!(degraded.health, PrimalHealth::Degraded);
+        assert_ne!(healthy.health, degraded.health);
+    }
+
+    #[test]
+    fn test_discovery_mechanisms_selective() {
+        let config1 = DiscoveryConfig {
+            mechanisms: DiscoveryMechanisms {
+                enable_environment_scan: true,
+                enable_network_scanning: false,
+                enable_container_discovery: false,
+            },
+            timeout: Duration::from_secs(30),
+        };
+
+        let config2 = DiscoveryConfig {
+            mechanisms: DiscoveryMechanisms {
+                enable_environment_scan: false,
+                enable_network_scanning: true,
+                enable_container_discovery: false,
+            },
+            timeout: Duration::from_secs(30),
+        };
+
+        assert!(config1.mechanisms.enable_environment_scan);
+        assert!(!config1.mechanisms.enable_network_scanning);
+
+        assert!(!config2.mechanisms.enable_environment_scan);
+        assert!(config2.mechanisms.enable_network_scanning);
+    }
+}

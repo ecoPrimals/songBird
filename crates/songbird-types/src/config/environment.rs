@@ -304,7 +304,7 @@ impl Default for NetworkBindingConfig {
                     // Default to 0.0.0.0 for binding, with fallback
                     "0.0.0.0"
                         .parse()
-                        .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED))
+                        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED))
                 }),
             production_bind_address: std::env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS")
                 .ok()
@@ -313,7 +313,7 @@ impl Default for NetworkBindingConfig {
                     // Default to localhost, with fallback
                     "127.0.0.1"
                         .parse()
-                        .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+                        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
                 }),
             bind_port: std::env::var("SONGBIRD_BIND_PORT")
                 .ok()

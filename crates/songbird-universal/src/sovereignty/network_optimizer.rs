@@ -44,12 +44,16 @@ impl Default for OptimizationConfig {
 }
 
 impl NetworkEffectsOptimizer {
+    /// Create a new `NetworkEffectsOptimizer` with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self {
             optimization_config: OptimizationConfig::default(),
         }
     }
 
+    /// Create a new `NetworkEffectsOptimizer` with custom configuration
+    #[must_use]
     pub fn with_config(config: OptimizationConfig) -> Self {
         Self {
             optimization_config: config,
@@ -237,6 +241,7 @@ impl NetworkEffectsOptimizer {
     }
 
     /// Get optimization statistics
+    #[must_use]
     pub fn get_optimization_stats(&self) -> OptimizationStats {
         OptimizationStats {
             strategies_enabled: self.count_enabled_strategies(),
@@ -269,8 +274,11 @@ impl Default for NetworkEffectsOptimizer {
 }
 
 /// Optimization statistics
+/// Statistics about optimization operations
 #[derive(Debug, Clone)]
 pub struct OptimizationStats {
+    /// Number of optimization strategies currently enabled
     pub strategies_enabled: usize,
+    /// Current optimization configuration
     pub optimization_config: OptimizationConfig,
 }

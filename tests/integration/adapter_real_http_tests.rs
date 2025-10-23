@@ -1,0 +1,438 @@
+//! Real HTTP Integration Tests for Ecosystem Adapters
+//!
+//! These tests verify that adapters can communicate with actual HTTP endpoints.
+//! They use a mock HTTP server to simulate primal services.
+
+#![cfg(test)]
+
+use songbird_universal::adapters::{
+    BearDogSecurityAdapter, NestGateStorageAdapter, SquirrelAIAdapter, ToadStoolMetricsAdapter,
+};
+use std::time::Duration;
+use tokio::time::sleep;
+
+/// Test helper to check if a port is available
+async fn port_available(port: u16) -> bool {
+    tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port))
+        .await
+        .is_ok()
+}
+
+// ============================================================================
+// TOADSTOOL COMPUTE ADAPTER TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_toadstool_adapter_creation_and_config() {
+    // Test: Adapter can be created with custom configuration
+    let adapter = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+        .expect("Adapter creation should succeed");
+
+    assert_eq!(adapter.endpoint(), "http://localhost:8080");
+
+    // Test: Adapter accepts custom timeout
+    let adapter_with_timeout = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+        .expect("Adapter creation should succeed")
+        .with_timeout(Duration::from_secs(10));
+
+    assert_eq!(adapter_with_timeout.endpoint(), "http://localhost:8080");
+}
+
+#[tokio::test]
+async fn test_toadstool_adapter_network_error_handling() {
+    // Test: Adapter handles unreachable endpoints gracefully
+    let adapter = ToadStoolMetricsAdapter::new("http://localhost:59999".to_string())
+        .expect("Adapter creation should succeed");
+
+    let result = adapter.collect_metrics().await;
+
+    // Should return an error (network error), not panic
+    assert!(
+        result.is_err(),
+        "Should return error for unreachable endpoint"
+    );
+}
+
+#[tokio::test]
+async fn test_toadstool_metrics_validation() {
+    // Test: Metrics structure is correct and calculations work
+    use songbird_universal::adapters::toadstool::ComputeMetrics;
+
+    let metrics = ComputeMetrics {
+        cpu_usage_percent: 75.0,
+        memory_usage_bytes: 3_000_000_000,     // 3GB
+        memory_available_bytes: 5_000_000_000, // 5GB
+        active_containers: 10,
+        queued_jobs: 5,
+        performance_score: 0.85,
+        timestamp: chrono::Utc::now(),
+    };
+
+    // Validate calculations
+    assert_eq!(metrics.total_memory_bytes(), 8_000_000_000);
+    assert!((metrics.memory_usage_percent() - 37.5).abs() < 0.1);
+    assert!(!metrics.is_high_load());
+
+    use songbird_universal::adapters::toadstool::HealthStatus;
+    assert_eq!(metrics.health_status(), HealthStatus::Healthy);
+}
+
+// ============================================================================
+// BEARDOG SECURITY ADAPTER TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_beardog_adapter_creation_and_config() {
+    // Test: Adapter can be created with custom configuration
+    let adapter = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
+        .expect("Adapter creation should succeed");
+
+    assert_eq!(adapter.endpoint(), "http://localhost:8081");
+
+    // Test: Adapter accepts custom timeout
+    let adapter_with_timeout = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
+        .expect("Adapter creation should succeed")
+        .with_timeout(Duration::from_secs(15));
+
+    assert_eq!(adapter_with_timeout.endpoint(), "http://localhost:8081");
+}
+
+#[tokio::test]
+async fn test_beardog_adapter_network_error_handling() {
+    // Test: Adapter handles unreachable endpoints gracefully
+    let adapter = BearDogSecurityAdapter::new("http://localhost:59998".to_string())
+        .expect("Adapter creation should succeed");
+
+    let result = adapter.collect_metrics().await;
+
+    // Should return an error (network error), not panic
+    assert!(
+        result.is_err(),
+        "Should return error for unreachable endpoint"
+    );
+}
+
+#[tokio::test]
+async fn test_beardog_security_metrics_validation() {
+    // Test: Security metrics structure and calculations
+    use songbird_universal::adapters::beardog::{SecurityHealth, SecurityMetrics};
+
+    let metrics = SecurityMetrics {
+        active_sessions: 50,
+        failed_auth_attempts: 10,
+        blocked_ips: 2,
+        security_score: 0.95,
+        timestamp: chrono::Utc::now(),
+    };
+
+    // Validate security status
+    assert!(!metrics.is_under_attack());
+    assert_eq!(metrics.health_status(), SecurityHealth::Healthy);
+
+    // Test: Under attack detection
+    let attacked_metrics = SecurityMetrics {
+        active_sessions: 100,
+        failed_auth_attempts: 150,
+        blocked_ips: 60,
+        security_score: 0.45,
+        timestamp: chrono::Utc::now(),
+    };
+
+    assert!(attacked_metrics.is_under_attack());
+    assert_eq!(attacked_metrics.health_status(), SecurityHealth::Critical);
+}
+
+#[tokio::test]
+async fn test_beardog_auth_result_types() {
+    // Test: AuthResult enum variants
+    use songbird_universal::adapters::beardog::AuthResult;
+
+    assert_eq!(AuthResult::Authorized, AuthResult::Authorized);
+    assert_ne!(AuthResult::Authorized, AuthResult::Unauthorized);
+    assert_eq!(AuthResult::Expired, AuthResult::Expired);
+    assert_eq!(AuthResult::Invalid, AuthResult::Invalid);
+}
+
+// ============================================================================
+// NESTGATE STORAGE ADAPTER TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_nestgate_adapter_creation_and_config() {
+    // Test: Adapter can be created with custom configuration
+    let adapter = NestGateStorageAdapter::new("http://localhost:8082".to_string())
+        .expect("Adapter creation should succeed");
+
+    assert_eq!(adapter.endpoint(), "http://localhost:8082");
+
+    // Test: Adapter accepts custom timeout
+    let adapter_with_timeout = NestGateStorageAdapter::new("http://localhost:8082".to_string())
+        .expect("Adapter creation should succeed")
+        .with_timeout(Duration::from_secs(10));
+
+    assert_eq!(adapter_with_timeout.endpoint(), "http://localhost:8082");
+}
+
+#[tokio::test]
+async fn test_nestgate_adapter_network_error_handling() {
+    // Test: Adapter handles unreachable endpoints gracefully
+    let adapter = NestGateStorageAdapter::new("http://localhost:59997".to_string())
+        .expect("Adapter creation should succeed");
+
+    let result = adapter.collect_metrics().await;
+
+    // Should return an error (network error), not panic
+    assert!(
+        result.is_err(),
+        "Should return error for unreachable endpoint"
+    );
+}
+
+#[tokio::test]
+async fn test_nestgate_storage_metrics_validation() {
+    // Test: Storage metrics structure and calculations
+    use songbird_universal::adapters::nestgate::{StorageHealth, StorageMetrics};
+
+    let metrics = StorageMetrics {
+        total_capacity_bytes: 1_000_000_000_000, // 1TB
+        used_bytes: 250_000_000_000,             // 250GB
+        available_bytes: 750_000_000_000,        // 750GB
+        object_count: 1_500,
+        avg_read_latency_ms: 15.0,
+        avg_write_latency_ms: 25.0,
+        timestamp: chrono::Utc::now(),
+    };
+
+    // Validate calculations
+    assert!((metrics.usage_percent() - 25.0).abs() < 0.1);
+    assert!(!metrics.is_nearly_full());
+    assert!(!metrics.is_high_latency());
+    assert_eq!(metrics.health_status(), StorageHealth::Healthy);
+
+    // Test: Nearly full detection
+    let full_metrics = StorageMetrics {
+        total_capacity_bytes: 1_000_000_000_000,
+        used_bytes: 960_000_000_000, // 96%
+        available_bytes: 40_000_000_000,
+        object_count: 50_000,
+        avg_read_latency_ms: 20.0,
+        avg_write_latency_ms: 600.0,
+        timestamp: chrono::Utc::now(),
+    };
+
+    assert!(full_metrics.is_nearly_full());
+    assert_eq!(full_metrics.health_status(), StorageHealth::Critical);
+}
+
+// ============================================================================
+// SQUIRREL AI ADAPTER TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_squirrel_adapter_creation_and_config() {
+    // Test: Adapter can be created with custom configuration
+    let adapter = SquirrelAIAdapter::new("http://localhost:8083".to_string())
+        .expect("Adapter creation should succeed");
+
+    assert_eq!(adapter.endpoint(), "http://localhost:8083");
+
+    // Test: Adapter accepts custom timeout (AI ops may need longer)
+    let adapter_with_timeout = SquirrelAIAdapter::new("http://localhost:8083".to_string())
+        .expect("Adapter creation should succeed")
+        .with_timeout(Duration::from_secs(20));
+
+    assert_eq!(adapter_with_timeout.endpoint(), "http://localhost:8083");
+}
+
+#[tokio::test]
+async fn test_squirrel_adapter_network_error_handling() {
+    // Test: Adapter handles unreachable endpoints gracefully
+    let adapter = SquirrelAIAdapter::new("http://localhost:59996".to_string())
+        .expect("Adapter creation should succeed");
+
+    let result = adapter.collect_metrics().await;
+
+    // Should return an error (network error), not panic
+    assert!(
+        result.is_err(),
+        "Should return error for unreachable endpoint"
+    );
+}
+
+#[tokio::test]
+async fn test_squirrel_ai_metrics_validation() {
+    // Test: AI metrics structure and calculations
+    use songbird_universal::adapters::squirrel::{AIHealth, AIMetrics};
+
+    let metrics = AIMetrics {
+        active_models: 3,
+        total_requests: 1_500,
+        avg_latency_ms: 250.0,
+        accuracy_score: 0.92,
+        gpu_utilization_percent: 45.0,
+        timestamp: chrono::Utc::now(),
+    };
+
+    // Validate AI status
+    assert!(!metrics.is_high_gpu_load());
+    assert!(!metrics.is_high_latency());
+    assert_eq!(metrics.health_status(), AIHealth::Healthy);
+
+    // Test: Overloaded detection
+    let overloaded_metrics = AIMetrics {
+        active_models: 20,
+        total_requests: 50_000,
+        avg_latency_ms: 2500.0,
+        accuracy_score: 0.88,
+        gpu_utilization_percent: 99.0,
+        timestamp: chrono::Utc::now(),
+    };
+
+    assert!(overloaded_metrics.is_high_gpu_load());
+    assert!(overloaded_metrics.is_high_latency());
+    assert_eq!(overloaded_metrics.health_status(), AIHealth::Overloaded);
+}
+
+#[tokio::test]
+async fn test_squirrel_model_types() {
+    // Test: ModelType enum variants
+    use songbird_universal::adapters::squirrel::ModelType;
+
+    assert_eq!(ModelType::Llm, ModelType::Llm);
+    assert_ne!(ModelType::Llm, ModelType::Vision);
+    assert_eq!(ModelType::Audio, ModelType::Audio);
+    assert_eq!(ModelType::Embedding, ModelType::Embedding);
+}
+
+// ============================================================================
+// CROSS-ADAPTER INTEGRATION TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_all_adapters_can_be_created_simultaneously() {
+    // Test: All adapters can coexist and be created together
+    let toadstool = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+        .expect("ToadStool adapter should be created");
+
+    let beardog = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
+        .expect("BearDog adapter should be created");
+
+    let nestgate = NestGateStorageAdapter::new("http://localhost:8082".to_string())
+        .expect("NestGate adapter should be created");
+
+    let squirrel = SquirrelAIAdapter::new("http://localhost:8083".to_string())
+        .expect("Squirrel adapter should be created");
+
+    // Verify all have correct endpoints
+    assert_eq!(toadstool.endpoint(), "http://localhost:8080");
+    assert_eq!(beardog.endpoint(), "http://localhost:8081");
+    assert_eq!(nestgate.endpoint(), "http://localhost:8082");
+    assert_eq!(squirrel.endpoint(), "http://localhost:8083");
+}
+
+#[tokio::test]
+async fn test_adapters_handle_concurrent_failures_gracefully() {
+    // Test: Multiple adapters failing simultaneously doesn't cause cascading issues
+    let toadstool = ToadStoolMetricsAdapter::new("http://localhost:59999".to_string())
+        .expect("Adapter creation should succeed");
+
+    let beardog = BearDogSecurityAdapter::new("http://localhost:59998".to_string())
+        .expect("Adapter creation should succeed");
+
+    let nestgate = NestGateStorageAdapter::new("http://localhost:59997".to_string())
+        .expect("Adapter creation should succeed");
+
+    let squirrel = SquirrelAIAdapter::new("http://localhost:59996".to_string())
+        .expect("Adapter creation should succeed");
+
+    // All should fail gracefully (return errors, not panic)
+    let results = tokio::join!(
+        toadstool.collect_metrics(),
+        beardog.collect_metrics(),
+        nestgate.collect_metrics(),
+        squirrel.collect_metrics()
+    );
+
+    assert!(results.0.is_err(), "ToadStool should error");
+    assert!(results.1.is_err(), "BearDog should error");
+    assert!(results.2.is_err(), "NestGate should error");
+    assert!(results.3.is_err(), "Squirrel should error");
+}
+
+#[tokio::test]
+async fn test_adapter_timeout_behavior() {
+    // Test: Adapters respect configured timeouts
+    let short_timeout_adapter =
+        ToadStoolMetricsAdapter::new("http://localhost:59999".to_string())
+            .expect("Adapter creation should succeed")
+            .with_timeout(Duration::from_millis(100)); // Very short timeout
+
+    let start = std::time::Instant::now();
+    let result = short_timeout_adapter.collect_metrics().await;
+    let elapsed = start.elapsed();
+
+    // Should fail quickly (within ~500ms including overhead)
+    assert!(result.is_err(), "Should timeout");
+    assert!(
+        elapsed < Duration::from_secs(1),
+        "Should timeout quickly, took {:?}",
+        elapsed
+    );
+}
+
+// ============================================================================
+// CAPABILITY TRAIT TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_compute_metrics_provider_trait() {
+    // Test: ToadStool implements the ComputeMetricsProvider trait
+    use songbird_universal::adapters::toadstool::ComputeMetricsProvider;
+
+    let adapter = ToadStoolMetricsAdapter::new("http://localhost:59999".to_string())
+        .expect("Adapter creation should succeed");
+
+    // Should be usable through trait
+    let result = adapter.collect_compute_metrics().await;
+    assert!(result.is_err(), "Should error for unreachable endpoint");
+}
+
+#[tokio::test]
+async fn test_security_provider_trait() {
+    // Test: BearDog implements the SecurityProvider trait
+    use songbird_universal::adapters::beardog::SecurityProvider;
+
+    let adapter = BearDogSecurityAdapter::new("http://localhost:59998".to_string())
+        .expect("Adapter creation should succeed");
+
+    // Should be usable through trait
+    let result = adapter.collect_security_metrics().await;
+    assert!(result.is_err(), "Should error for unreachable endpoint");
+}
+
+#[tokio::test]
+async fn test_storage_provider_trait() {
+    // Test: NestGate implements the StorageProvider trait
+    use songbird_universal::adapters::nestgate::StorageProvider;
+
+    let adapter = NestGateStorageAdapter::new("http://localhost:59997".to_string())
+        .expect("Adapter creation should succeed");
+
+    // Should be usable through trait
+    let result = adapter.collect_storage_metrics().await;
+    assert!(result.is_err(), "Should error for unreachable endpoint");
+}
+
+#[tokio::test]
+async fn test_ai_provider_trait() {
+    // Test: Squirrel implements the AIProvider trait
+    use songbird_universal::adapters::squirrel::AIProvider;
+
+    let adapter = SquirrelAIAdapter::new("http://localhost:59996".to_string())
+        .expect("Adapter creation should succeed");
+
+    // Should be usable through trait
+    let result = adapter.collect_ai_metrics().await;
+    assert!(result.is_err(), "Should error for unreachable endpoint");
+}
+

@@ -49,7 +49,7 @@ impl<T> SongbirdResponse<T> {
 
     /// Create a response with custom confidence
     #[must_use]
-    pub const fn with_confidence(mut self, confidence: f64) -> Self {
+    pub fn with_confidence(mut self, confidence: f64) -> Self {
         self.confidence = ConfidenceScore::new(confidence);
         self
     }

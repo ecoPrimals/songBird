@@ -19,6 +19,7 @@ pub struct ScalingEngine {
 
 impl ScalingEngine {
     /// Create a new scaling engine
+    #[must_use]
     pub fn new() -> Self {
         Self {
             policies: Arc::new(RwLock::new(HashMap::new())),

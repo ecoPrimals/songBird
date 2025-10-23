@@ -274,9 +274,13 @@ mod tests {
     }
 
     #[test]
-    fn test_host_optimization() {
-        let localhost = OptimizedHost::from_str("localhost").unwrap();
+    fn test_host_optimization() -> Result<(), Box<dyn std::error::Error>> {
+        use crate::SongbirdError;
+        let localhost = OptimizedHost::from_str("localhost").map_err(|e| {
+            SongbirdError::configuration(format!("Test: localhost should parse: {e}"))
+        })?;
         assert!(matches!(localhost, OptimizedHost::Localhost));
         assert_eq!(localhost.as_str(), "127.0.0.1");
+        Ok(())
     }
 }

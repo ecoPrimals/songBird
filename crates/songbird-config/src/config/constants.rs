@@ -20,6 +20,7 @@ pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:8080";
 pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
 
 /// Get bind address from environment or calculate from system capabilities
+#[must_use]
 pub fn get_bind_address() -> String {
     env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
         // Detect if running in container/kubernetes or production
@@ -35,6 +36,7 @@ pub fn get_bind_address() -> String {
 }
 
 /// Get port range start from environment or system-based calculation
+#[must_use]
 pub fn get_port_range_start() -> u16 {
     env::var("SONGBIRD_PORT_START").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         // Calculate based on environment and user permissions
@@ -47,6 +49,7 @@ pub fn get_port_range_start() -> u16 {
 }
 
 /// Get port range end from environment or calculated from start
+#[must_use]
 pub fn get_port_range_end() -> u16 {
     env::var("SONGBIRD_PORT_END").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         let start = get_port_range_start();
@@ -84,7 +87,7 @@ fn calculate_user_port_offset() -> u16 {
     let user = env::var("USER")
         .or_else(|_| env::var("USERNAME"))
         .unwrap_or_else(|_| "default".to_string());
-    let hash = user.bytes().fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32));
+    let hash = user.bytes().fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(u32::from(b)));
     (hash % 500) as u16 // Limit to reasonable range
 }
 
@@ -121,6 +124,7 @@ fn get_expected_service_count() -> u16 {
 }
 
 /// Get connection timeout from environment or calculate based on network conditions
+#[must_use]
 pub fn get_connection_timeout_ms() -> u64 {
     env::var("SONGBIRD_CONNECTION_TIMEOUT_MS").ok().and_then(|s| s.parse().ok()).unwrap_or_else(
         || {
@@ -166,13 +170,14 @@ fn get_primal_port_offset(primal_type: &str) -> u16 {
             // Calculate deterministic offset from name
             let hash = primal_type
                 .bytes()
-                .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32));
+                .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(u32::from(b)));
             100 + (hash % 900) as u16 // Offset from base + 100
         }
     }
 }
 
 /// Get log level from environment or default
+#[must_use]
 pub fn get_log_level() -> String {
     env::var("SONGBIRD_LOG_LEVEL")
         .or_else(|_| env::var("LOG_LEVEL"))
@@ -181,8 +186,7 @@ pub fn get_log_level() -> String {
             match env::var("SONGBIRD_ENV").as_deref() {
                 Ok("production") => "warn".to_string(),
                 Ok("staging") => "info".to_string(),
-                Ok("testing") => "debug".to_string(),
-                _ => "debug".to_string(), // Development default
+                _ => "debug".to_string(), // Testing and development default
             }
         })
 }
@@ -197,6 +201,7 @@ pub const DEFAULT_EVALUATION_TIMEOUT: Duration = Duration::from_secs(30);
 pub const DEFAULT_METRICS_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Get maximum connections allowed
+#[must_use]
 pub fn get_max_connections() -> usize {
     env::var("SONGBIRD_MAX_CONNECTIONS").ok().and_then(|c| c.parse().ok()).unwrap_or_else(|| {
         match env::var("SONGBIRD_ENV").as_deref() {
@@ -209,14 +214,18 @@ pub fn get_max_connections() -> usize {
 }
 
 /// Get worker thread count based on system resources
+#[must_use]
 pub fn get_worker_threads() -> usize {
     env::var("SONGBIRD_WORKER_THREADS").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         // Use CPU count or container limits
-        std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4) // Fallback to 4 threads
+        // Fallback to 4 threads
+        #[allow(clippy::incompatible_msrv)] // NonZero::get is the clearest API
+        std::thread::available_parallelism().map(std::num::NonZero::get).unwrap_or(4)
     })
 }
 
 /// Get buffer pool size based on available memory
+#[must_use]
 pub fn get_buffer_pool_size() -> usize {
     env::var("SONGBIRD_BUFFER_POOL_SIZE").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         // Calculate based on available memory
@@ -231,7 +240,9 @@ pub fn get_buffer_pool_size() -> usize {
         if let Ok(memory_limit) = env::var("MEMORY_LIMIT") {
             if let Ok(limit_mb) = memory_limit.parse::<u64>() {
                 // Use 1% of available memory for buffer pool
-                std::cmp::min(base_size, (limit_mb as usize * 10) / 1024)
+                #[allow(clippy::cast_possible_truncation)]
+                let adjusted_size = (limit_mb as usize * 10) / 1024;
+                std::cmp::min(base_size, adjusted_size)
             } else {
                 base_size
             }
@@ -242,6 +253,7 @@ pub fn get_buffer_pool_size() -> usize {
 }
 
 /// Get batch processing size based on workload characteristics
+#[must_use]
 pub fn get_batch_size() -> usize {
     env::var("SONGBIRD_BATCH_SIZE").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         // Calculate optimal batch size based on system characteristics
@@ -257,25 +269,25 @@ pub fn get_batch_size() -> usize {
 }
 
 /// Check if zero-copy optimizations should be enabled
+#[must_use]
 pub fn enable_zero_copy() -> bool {
     env::var("SONGBIRD_ENABLE_ZERO_COPY").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
         // Enable zero-copy in production and for high-performance environments
         match env::var("SONGBIRD_ENV").as_deref() {
-            Ok("production") => true,
-            Ok("staging") => true,
+            Ok("production" | "staging") => true,
             _ => {
                 // Enable if system has sufficient memory
                 env::var("MEMORY_LIMIT")
                     .ok()
                     .and_then(|s| s.parse::<u64>().ok())
-                    .map(|mb| mb > 2048) // Enable if > 2GB memory
-                    .unwrap_or(true) // Default to enabled
+                    .map_or(true, |mb| mb > 2048) // Default to enabled
             }
         }
     })
 }
 
 /// Get common primal service ports from environment
+#[must_use]
 pub fn get_common_primal_ports() -> Vec<u16> {
     env::var("SONGBIRD_COMMON_PORTS")
         .unwrap_or_else(|_| {
@@ -304,6 +316,7 @@ pub fn get_common_primal_ports() -> Vec<u16> {
 }
 
 /// Get log directory from environment or calculate default
+#[must_use]
 pub fn get_log_dir() -> String {
     env::var("SONGBIRD_LOG_DIR").unwrap_or_else(|_| {
         // Use platform-appropriate log directory
@@ -322,6 +335,7 @@ pub fn get_log_dir() -> String {
 }
 
 /// Get cache directory from environment or calculate default
+#[must_use]
 pub fn get_cache_dir() -> String {
     env::var("SONGBIRD_CACHE_DIR").unwrap_or_else(|_| {
         // Use platform-appropriate cache directory
@@ -337,6 +351,7 @@ pub fn get_cache_dir() -> String {
 }
 
 /// Get data directory from environment or calculate default
+#[must_use]
 pub fn get_data_dir() -> String {
     env::var("SONGBIRD_DATA_DIR").unwrap_or_else(|_| {
         // Use platform-appropriate data directory
@@ -355,6 +370,7 @@ pub fn get_data_dir() -> String {
 }
 
 /// Get configuration directory from environment or calculate default
+#[must_use]
 pub fn get_config_dir() -> String {
     env::var("SONGBIRD_CONFIG_DIR").unwrap_or_else(|_| {
         // Use platform-appropriate config directory
@@ -370,12 +386,14 @@ pub fn get_config_dir() -> String {
 }
 
 /// Get temporary directory from environment or use system default
+#[must_use]
 pub fn get_temp_dir() -> String {
     env::var("SONGBIRD_TEMP_DIR")
         .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().to_string())
 }
 
 /// Universal primal endpoint discovery - works with any primal name
+#[must_use]
 pub fn get_primal_endpoint(primal_name: &str) -> String {
     // First try primal-specific environment variable
     let env_var = format!("{}_ENDPOINT", primal_name.to_uppercase());
@@ -455,6 +473,7 @@ fn should_use_tls_for_primal(primal_name: &str) -> bool {
 }
 
 /// Get all configured primal names from environment
+#[must_use]
 pub fn get_configured_primal_names() -> Vec<String> {
     let mut primal_names = Vec::new();
 
@@ -486,6 +505,7 @@ pub fn get_configured_primal_names() -> Vec<String> {
 }
 
 /// Get dashboard port from environment or calculated default
+#[must_use]
 pub fn get_dashboard_port() -> u16 {
     env::var("SONGBIRD_DASHBOARD_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or_else(|| {
         // Calculate based on environment
@@ -499,6 +519,7 @@ pub fn get_dashboard_port() -> u16 {
 }
 
 /// Get protocol port mappings for gaming network
+#[must_use]
 pub fn protocol_port_mappings() -> std::collections::HashMap<String, u16> {
     let mut mappings = std::collections::HashMap::new();
     mappings.insert("udp".to_string(), 6112);
@@ -509,17 +530,20 @@ pub fn protocol_port_mappings() -> std::collections::HashMap<String, u16> {
 }
 
 /// Get external address for network configuration
+#[must_use]
 pub fn external_address() -> String {
     env::var("SONGBIRD_EXTERNAL_ADDRESS")
         .unwrap_or_else(|_| crate::constants::network::DEFAULT_HOST.to_string())
 }
 
 /// Get default subnet configuration
+#[must_use]
 pub fn default_subnet() -> String {
     env::var("SONGBIRD_SUBNET").unwrap_or_else(|_| "10.0.0.0/24".to_string())
 }
 
 /// Universal capability query - works with any capability name
+#[must_use]
 pub fn find_primals_with_capability(_capability: &str) -> Vec<String> {
     // This would integrate with the capability discovery system
     // For now, return configured primals (will be enhanced with actual capability detection)
@@ -581,11 +605,13 @@ pub mod services {
 }
 
 /// Get default bind address for the current environment
+#[must_use]
 pub fn get_default_bind_address() -> String {
     default_bind_address()
 }
 
 /// Generate a unique node ID for this instance
+#[must_use]
 pub fn node_id() -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -602,6 +628,7 @@ pub fn node_id() -> String {
 }
 
 /// Get default discovery port
+#[must_use]
 pub fn default_discovery_port() -> u16 {
     env::var("SONGBIRD_DISCOVERY_PORT")
         .and_then(|p| p.parse().map_err(|_| env::VarError::NotPresent))
@@ -609,6 +636,7 @@ pub fn default_discovery_port() -> u16 {
 }
 
 /// Get default bind address for the current environment
+#[must_use]
 pub fn default_bind_address() -> String {
     get_bind_address()
 }
@@ -621,7 +649,7 @@ pub mod network {
     pub const DEFAULT_HOST: &str = "localhost";
 
     /// Default host IPv4 constant
-    pub const DEFAULT_HOST_v4: &str = "127.0.0.1";
+    pub const DEFAULT_HOST_V4: &str = "127.0.0.1";
 
     /// Default bind address constant
     pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:8080";
@@ -647,27 +675,24 @@ pub mod network {
     /// Default Squirrel port
     pub const DEFAULT_SQUIRREL_PORT: u16 = 8002;
 
-    /// Default NestGate endpoint
+    /// Default `NestGate` endpoint
     pub const DEFAULT_NESTGATE_ENDPOINT: &str = "http://localhost:8003";
 
-    /// Default NestGate port
+    /// Default `NestGate` port
     pub const DEFAULT_NESTGATE_PORT: u16 = 8003;
 
-    /// Default BearDog endpoint
+    /// Default `BearDog` endpoint
     pub const DEFAULT_BEARDOG_ENDPOINT: &str = "http://localhost:8004";
 
-    /// Default BearDog port
+    /// Default `BearDog` port
     pub const DEFAULT_BEARDOG_PORT: u16 = 8004;
 
     /// Default connection timeout
     // MIGRATED: Use songbird_types::unified_constants::timeouts::DEFAULT_CONNECTION_TIMEOUT instead
-
     /// Default retry delay
     pub const DEFAULT_RETRY_DELAY: Duration = Duration::from_millis(1000);
-
-    /// Default crate::constants::network::DEFAULT_HOST address
+    /// Default `crate::constants::network::DEFAULT_HOST` address
     // MIGRATED: Use songbird_types::unified_constants::network::DEFAULT_LOCALHOST instead
-
     /// Production bind address
     pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
 }

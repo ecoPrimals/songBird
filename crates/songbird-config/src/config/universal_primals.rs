@@ -2,7 +2,7 @@
 //!
 //! **UNIVERSAL EXTENSIBILITY SOLUTION**
 //!
-//! This module replaces hardcoded primal-specific configurations (BearDog, NestGate, etc.)
+//! This module replaces hardcoded primal-specific configurations (`BearDog`, `NestGate`, etc.)
 //! with a generic, extensible primal registry system that supports any primal type
 //! without requiring code changes.
 //!
@@ -247,6 +247,7 @@ pub enum DiscoveryMethod {
 
 /// Configuration template for unknown primals
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)] // default_ prefix is intentional for template values
 pub struct PrimalConfigurationTemplate {
     /// Default connection timeout
     pub default_connection_timeout: Duration,
@@ -359,6 +360,7 @@ pub struct ConnectionPoolConfig {
 
 /// Token refresh configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)] // refresh_ prefix is intentional for refresh-related fields
 pub struct TokenRefreshConfig {
     /// Refresh threshold (refresh when token expires in this time)
     pub refresh_threshold: Duration,
@@ -461,6 +463,7 @@ impl Default for AutoDiscoveryConfig {
 
 impl PrimalRegistry {
     /// Create a new empty primal registry
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -471,21 +474,25 @@ impl PrimalRegistry {
     }
 
     /// Get primal configuration by type
+    #[must_use]
     pub fn get_primal(&self, primal_type: &str) -> Option<&PrimalConfiguration> {
         self.primals.get(primal_type)
     }
 
     /// Get all enabled primals
+    #[must_use]
     pub fn get_enabled_primals(&self) -> Vec<&PrimalConfiguration> {
         self.primals.values().filter(|p| p.enabled).collect()
     }
 
     /// Find primals with specific capability
+    #[must_use]
     pub fn find_primals_with_capability(&self, capability_type: &str) -> Vec<&PrimalConfiguration> {
         self.primals.values().filter(|p| p.enabled && p.has_capability(capability_type)).collect()
     }
 
-    /// Create security primal configuration (replaces legacy BearDog,
+    /// Create security primal configuration (replaces legacy `BearDog`,
+    #[must_use]
     pub fn create_security_primal_config() -> PrimalConfiguration {
         let mut config =
             PrimalConfiguration::new_template("security", "Universal Security Provider");
@@ -507,6 +514,7 @@ impl PrimalRegistry {
     }
 
     /// Create compute primal configuration (replaces legacy Toadstool,
+    #[must_use]
     pub fn create_compute_primal_config() -> PrimalConfiguration {
         let mut config = PrimalConfiguration::new_template("compute", "Universal Compute Provider");
         config.capabilities = vec![PrimalCapability {
@@ -521,6 +529,7 @@ impl PrimalRegistry {
 
 impl PrimalConfiguration {
     /// Create a new primal configuration from template
+    #[must_use]
     pub fn new_template(primal_type: &str, display_name: &str) -> Self {
         Self {
             primal_type: primal_type.to_string(),
@@ -538,11 +547,13 @@ impl PrimalConfiguration {
     }
 
     /// Check if this primal has a specific capability
+    #[must_use]
     pub fn has_capability(&self, capability_type: &str) -> bool {
         self.capabilities.iter().any(|c| c.capability_type == capability_type)
     }
 
     /// Get capability configuration
+    #[must_use]
     pub fn get_capability(&self, capability_type: &str) -> Option<&PrimalCapability> {
         self.capabilities.iter().find(|c| c.capability_type == capability_type)
     }

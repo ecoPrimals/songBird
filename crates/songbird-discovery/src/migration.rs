@@ -603,7 +603,7 @@ mod tests  {use super::*;
         };
 
         let mut helper = FederationMigrationHelper::default();
-        let new_config = helper.migrate_config(legacy_config).unwrap();
+        let new_config = helper.migrate_config(legacy_config).map_err(|e| SongbirdError::configuration(format!("Migration operation failed: {}", e)))?;
 
         assert!(new_config.enable_federation_patterns));
         assert!(new_config.enable_sovereignty_assessment));
@@ -614,7 +614,7 @@ mod tests  {use super::*;
     #[tokio::test]
     async fn test_compatibility_wrapper() {
         let config = FederationDiscoveryConfig::default();
-        let mut wrapper = LegacyFederationWrapper::new(config).await.unwrap();
+        let mut wrapper = LegacyFederationWrapper::new(config).await.map_err(|e| SongbirdError::configuration(format!("Migration operation failed: {}", e)))?;
 
         // Test legacy API
         if let Ok(peers) = wrapper.discover_peers().await {

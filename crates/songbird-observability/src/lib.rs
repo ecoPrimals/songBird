@@ -13,6 +13,10 @@
 //! - **Dashboard System**: Advanced web-based monitoring dashboards
 //! - **Alerting**: Intelligent alerting with multiple notification channels
 //! - **Log Aggregation**: Centralized log collection and analysis
+
+#![forbid(unsafe_code)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
 //!
 //! ## Architecture
 //!
@@ -25,8 +29,8 @@
 //!
 //! ```rust,no_run
 //! use songbird_observability::{
-//!     health::{HealthMonitor, HealthCheckConfig})
-//!     observability::{ObservabilityManager, MetricsConfig})
+//!     health::{HealthMonitor, HealthCheckConfig},
+//!     observability::{ObservabilityManager, MetricsConfig},
 //! };
 //!
 //! #[tokio::main]
@@ -43,8 +47,8 @@
 //!     health_monitor.start().await?;
 //!     observability.start_metrics_collection().await?;
 //!
-//!     println!("Songbird observability system running")"
-//!     Ok(()),
+//!     println!("Songbird observability system running");
+//!     Ok(())
 //! }
 //! ```
 //!

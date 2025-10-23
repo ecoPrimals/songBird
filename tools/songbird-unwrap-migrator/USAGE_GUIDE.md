@@ -1,255 +1,255 @@
-# 🔄 Security Primal Enhanced Unwrap Migrator - Usage Guide
+# Songbird Unwrap Migrator - Quick Usage Guide
 
-**Version**: 2.0.0  
-**Status**: Production Ready  
-**Context-Aware**: ✅ Yes
-
----
-
-## 🎯 Overview
-
-The Security Primal Enhanced Unwrap Migrator is a sophisticated tool for systematically eliminating unwrap/expect/panic patterns from Rust codebases with context-aware intelligence.
-
-### 🚀 Key Features
-
-- **Context-Aware Processing**: Different migration strategies for production/examples/benchmarks/tests
-- **Unicode-Safe Handling**: Proper boundary detection for international characters
-- **Pattern Recognition**: 50+ specific migration patterns for different contexts
-- **Safety Classification**: Automatic assessment of migration safety levels
-- **Security PrimalError Integration**: Intelligent error handling integration
+## 🎯 Goal
+Systematically eliminate **210 unwraps** and **157 expects** from Songbird codebase.
 
 ---
 
-## 📋 Usage Examples
+## ⚡ Quick Commands
 
-### Basic Analysis
+### 1. **Analyze the Codebase** (Start Here)
 ```bash
-# Analyze production code only
-./target/release/beardog-unwrap-migrator --path ../crates --stats-only --exclude-tests
-
-# Analyze entire codebase with context awareness
-./target/release/beardog-unwrap-migrator --path .. --stats-only --context-aware
+cd tools/songbird-unwrap-migrator
+cargo run -- --stats-only
 ```
 
-### Migration Operations
-```bash
-# Dry run with context awareness
-./target/release/beardog-unwrap-migrator --path ../crates --dry-run --context-aware
-
-# Apply migrations to production code
-./target/release/beardog-unwrap-migrator --path ../crates --apply --exclude-tests
-
-# Apply with specific strategies for different contexts
-./target/release/beardog-unwrap-migrator --path ../examples --apply --context-aware --examples-strategy expect
+**Expected output**:
+```
+📊 Songbird Codebase Analysis:
+   📁 Files scanned: ~400
+   ⚠️  Total unwrap/expect calls: ~367
+   🔧 Migrable patterns: ~350
+   🧪 Test file patterns: ~50
+   ✅ Songbird compatible: ~350
 ```
 
-### Advanced Options
+### 2. **Preview Changes** (Always Do This First)
 ```bash
-# Focus on Security PrimalError compatible patterns only
-./target/release/beardog-unwrap-migrator --path ../crates --apply --beardog-errors-only
-
-# Custom strategies for different code types
-./target/release/beardog-unwrap-migrator --path .. --apply --context-aware \
-  --examples-strategy expect \
-  --benchmarks-strategy expect
+cargo run -- --dry-run
 ```
 
----
+Shows what would be changed without actually changing files.
 
-## 🎛️ Command Line Options
-
-| Option | Description | Values |
-|--------|-------------|---------|
-| `--path` | Root path to scan | Directory path (default: `./crates`) |
-| `--dry-run` | Preview changes without applying | Flag |
-| `--apply` | Apply migrations to files | Flag |
-| `--stats-only` | Show statistics only | Flag |
-| `--exclude-tests` | Skip test files | Flag |
-| `--context-aware` | Use enhanced context analysis | Flag |
-| `--examples-strategy` | Strategy for example code | `safe`, `expect`, `skip` |
-| `--benchmarks-strategy` | Strategy for benchmark code | `safe`, `expect`, `skip` |
-| `--beardog-errors-only` | Only Security PrimalError compatible | Flag |
-
----
-
-## 🔍 Migration Strategies
-
-### Production Code Strategy
-- **Unwrap → Error Propagation**: Convert to `?` operator where possible
-- **Panic → Security PrimalError**: Convert panics to proper error returns
-- **Expect → Context**: Add meaningful error context
-
-### Example Code Strategy (`expect`)
-- **Unwrap → Expect**: Add clear error messages
-- **Focus on Clarity**: Prioritize educational value
-- **Non-Blocking**: Allow examples to demonstrate concepts
-
-### Benchmark Code Strategy (`expect`)
-- **Performance Focus**: Minimize overhead
-- **Clear Failures**: Obvious benchmark setup failures
-- **Non-Critical**: Benchmark failures shouldn't crash
-
-### Test Code Strategy (preserved)
-- **Standard Practice**: Tests legitimately use unwrap
-- **Panic on Failure**: Expected test behavior
-- **No Migration**: Preserve existing patterns
-
----
-
-## 🛡️ Safety Levels
-
-### ✅ Safe
-- Can be automatically migrated
-- No risk of changing behavior
-- Improves error handling
-
-### ⚠️ Caution
-- Requires review after migration
-- May change error propagation
-- Generally safe but verify
-
-### ❌ Unsafe
-- Should not be auto-migrated
-- Complex context dependencies
-- Manual review required
-
-### 🧪 TestOnly
-- Only applies to test code
-- Standard test practices
-- Preserve existing behavior
-
----
-
-## 📊 Pattern Recognition
-
-### Supported Patterns
-
-#### Option Patterns
-- `option.unwrap()` → `option.ok_or_else(...)?`
-- `option.expect("msg")` → Enhanced context
-
-#### Result Patterns  
-- `result.unwrap()` → `result?`
-- `result.expect("msg")` → Enhanced error propagation
-
-#### Panic Patterns
-- `panic!("msg")` → `return Err(Security PrimalError::...)`
-- Context-specific panic handling
-
-#### Runtime Patterns
-- `Runtime::new().unwrap()` → Context-appropriate expect
-- JSON serialization unwraps → Proper error handling
-- Buffer creation unwraps → Safe alternatives
-
----
-
-## 🎯 Best Practices
-
-### Before Running
-1. **Backup Code**: Ensure version control is clean
-2. **Review Context**: Understand your codebase structure
-3. **Start Small**: Begin with `--dry-run` on subset
-4. **Test Strategy**: Plan testing after migration
-
-### During Migration
-1. **Use Context-Aware**: Enable `--context-aware` for intelligence
-2. **Exclude Tests**: Use `--exclude-tests` for production focus
-3. **Review Output**: Check migration suggestions carefully
-4. **Incremental**: Migrate in small batches
-
-### After Migration
-1. **Compile Check**: Ensure code still compiles
-2. **Run Tests**: Verify functionality unchanged
-3. **Review Changes**: Manual review of critical paths
-4. **Performance Test**: Ensure no performance regression
-
----
-
-## 🔧 Building the Tool
-
+### 3. **Apply All Migrations** (Production)
 ```bash
-# Build release version
-cargo build --release
+cargo run -- --apply
+```
 
-# Run tests
-cargo test
+Migrates all unwrap/expect calls to proper error handling.
 
-# Check tool help
-./target/release/beardog-unwrap-migrator --help
+---
+
+## 🎓 Recommended Workflow
+
+### Step 1: Test on One File
+```bash
+# Pick a small file with unwraps
+cargo run -- --file ../../crates/songbird-config/src/discoverable_endpoint.rs --dry-run
+
+# If it looks good, apply
+cargo run -- --file ../../crates/songbird-config/src/discoverable_endpoint.rs --apply
+
+# Test the changes
+cd ../..
+cargo test --lib --package songbird-config
+```
+
+### Step 2: Process One Crate
+```bash
+# Preview
+cargo run -- --path ../../crates/songbird-config --dry-run
+
+# Apply
+cargo run -- --path ../../crates/songbird-config --apply
+
+# Test
+cd ../..
+cargo test --lib --package songbird-config
+cargo fmt
+git diff
+```
+
+### Step 3: Process All Crates
+```bash
+# High-priority crates first
+cargo run -- --path ../../crates/songbird-orchestrator --apply
+cargo run -- --path ../../crates/songbird-discovery --apply
+cargo run -- --path ../../crates/songbird-universal --apply
+
+# Then supporting crates
+cargo run -- --path ../../crates/songbird-config --apply
+cargo run -- --path ../../crates/songbird-registry --apply
+
+# Finally all others
+cargo run -- --apply
 ```
 
 ---
 
-## 📈 Expected Results
+## 📋 Crate Priority Order
 
-### Typical Migration Results
-- **Production Code**: 80-90% unwrap reduction
-- **Examples**: Clear error messages added
-- **Benchmarks**: Performance-focused error handling
-- **Tests**: Appropriately preserved
+Based on audit findings:
 
-### Quality Improvements
-- **Error Handling**: Comprehensive error propagation
-- **Code Clarity**: Better error messages and context
-- **Maintainability**: Easier debugging and maintenance
-- **Robustness**: Graceful failure handling
+### **P0 - Critical Path** (Fix First)
+1. `songbird-orchestrator` (~60 unwraps)
+2. `songbird-discovery` (~40 unwraps)
+3. `songbird-universal` (~30 unwraps)
 
----
+### **P1 - High Traffic**
+4. `songbird-config` (~35 unwraps)
+5. `songbird-registry` (~30 unwraps)
+6. `songbird-network` (~20 unwraps)
 
-## 🚨 Troubleshooting
-
-### Common Issues
-
-#### Unicode Errors
-- **Fixed**: Tool handles Unicode boundaries safely
-- **Solution**: Use latest version (2.0.0+)
-
-#### Context Detection
-- **Issue**: Tool doesn't detect test/example context
-- **Solution**: Use `--context-aware` flag
-
-#### Over-Migration
-- **Issue**: Tool migrates test code unnecessarily
-- **Solution**: Use `--exclude-tests` for production focus
-
-#### Compilation Errors
-- **Issue**: Migrated code doesn't compile
-- **Solution**: Review Security PrimalError imports and usage
+### **P2 - Supporting**
+7. `songbird-observability`
+8. `songbird-types`
+9. Other crates
 
 ---
 
-## 🎊 Success Stories
+## ✅ After Each Migration
 
-### Security Primal Codebase Results
-- **Before**: 50+ unwrap calls in production
-- **After**: 9 unwrap calls (acceptable patterns)
-- **Improvement**: 82% reduction in unwrap usage
-- **Status**: Production ready
+```bash
+# 1. Format
+cargo fmt
 
-### Migration Statistics
-- **Files Processed**: 773 production files
-- **Patterns Migrated**: 41 successful migrations
-- **Safety Level**: 100% safe migrations applied
-- **Compilation**: Zero errors after migration
+# 2. Check compilation
+cargo check --package <crate-name>
 
----
+# 3. Run tests
+cargo test --lib --package <crate-name>
 
-## 🔮 Future Enhancements
+# 4. Review changes
+git diff crates/<crate-name>
 
-### Planned Features
-- **Custom Pattern Support**: User-defined migration patterns
-- **IDE Integration**: VSCode/IntelliJ plugins
-- **Batch Processing**: Multi-project migration support
-- **Rollback Support**: Automatic rollback on failure
-
-### Contributing
-- **Pattern Suggestions**: Submit new migration patterns
-- **Bug Reports**: Report issues with context
-- **Feature Requests**: Suggest improvements
-- **Testing**: Help test on different codebases
+# 5. Commit
+git add crates/<crate-name>
+git commit -m "chore: migrate unwraps in <crate-name>"
+```
 
 ---
 
-*Tool Documentation - Version 2.0.0*  
-*Last Updated: January 12, 2025*  
-*Status: Production Ready* 
+## 🔍 What Gets Changed
+
+### Before:
+```rust
+let port = env::var("PORT").unwrap();
+let config = serde_json::from_str(&data).expect("Invalid JSON");
+let first = collection.first().unwrap();
+```
+
+### After:
+```rust
+let port = env::var("PORT").map_err(|e| SongbirdError::internal_error(&format!("Environment variable 'PORT' not found: {}", e)))?;
+let config = serde_json::from_str(&data).map_err(|e| SongbirdError::internal_error(&format!("Invalid JSON: {}", e)))?;
+let first = collection.first().ok_or_else(|| SongbirdError::internal_error("Collection is empty when accessing first element"))?;
+```
+
+---
+
+## 🚨 What Needs Manual Review
+
+After running the tool, manually check:
+
+1. **Function signatures** - Some may need `-> SongbirdResult<T>`
+2. **Import statements** - May need `use songbird_errors::SongbirdError;`
+3. **Complex contexts** - Some errors may benefit from specific error variants
+4. **Test code** - Some test unwraps are intentional
+
+---
+
+## 📊 Progress Tracking
+
+Create a checklist as you go:
+
+```
+[ ] songbird-orchestrator (60 unwraps)
+[ ] songbird-discovery (40 unwraps)
+[ ] songbird-universal (30 unwraps)
+[ ] songbird-config (35 unwraps)
+[ ] songbird-registry (30 unwraps)
+[ ] songbird-network (20 unwraps)
+[ ] songbird-observability (15 unwraps)
+[ ] Other crates (remaining)
+```
+
+---
+
+## 💡 Pro Tips
+
+1. **Start small**: Test on one file first
+2. **Commit often**: After each successful crate
+3. **Test thoroughly**: Run tests after each migration
+4. **Review changes**: Use `git diff` to review
+5. **Exclude tests if needed**: Use `--exclude-tests` flag
+
+---
+
+## 🎯 Expected Timeline
+
+- **Week 1**: 3-4 hours → 100 migrations
+- **Week 2**: 3-4 hours → 100 migrations  
+- **Week 3**: 3-4 hours → 100 migrations
+- **Week 4**: 2 hours → Final 67 + cleanup
+
+**Total**: ~8-10 hours of systematic work
+
+---
+
+## 🚀 One-Command Full Migration
+
+If you're confident:
+
+```bash
+# Backup first!
+git checkout -b unwrap-migration
+
+# Run full migration
+cargo run -- --apply
+
+# Format and test
+cd ../..
+cargo fmt
+cargo test --lib
+
+# Review
+git diff --stat
+git diff
+
+# Commit if good
+git commit -am "chore: systematic unwrap/expect migration to SongbirdError"
+```
+
+---
+
+## 📞 Quick Reference
+
+```bash
+# Analyze
+cargo run -- --stats-only
+
+# Preview one file
+cargo run -- --file path/to/file.rs --dry-run
+
+# Apply to one file
+cargo run -- --file path/to/file.rs --apply
+
+# Preview one crate
+cargo run -- --path ../../crates/<crate-name> --dry-run
+
+# Apply to one crate
+cargo run -- --path ../../crates/<crate-name> --apply
+
+# Preview everything
+cargo run -- --dry-run
+
+# Apply everything
+cargo run -- --apply
+
+# Exclude tests
+cargo run -- --apply --exclude-tests
+```
+
+---
+
+**Good luck! You're about to eliminate 367 panic points! 🚀**

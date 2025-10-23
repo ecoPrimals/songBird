@@ -13,6 +13,7 @@ use songbird_discovery::{
         service::{ServiceEndpoint, ServiceInfo, ServiceStatus},
     },
 };
+use songbird_types::SongbirdError;
 use std::collections::HashMap;
 
 /// Test discovery configuration creation and defaults
@@ -194,7 +195,7 @@ fn test_comprehensive_metadata() {
 
 /// Test service serialization and deserialization
 #[test]
-fn test_service_round_trip_serialization() {
+fn test_service_round_trip_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let now = Utc::now();
     let service = ServiceInfo {
         service_id: "test-serialization".to_string(),
@@ -215,11 +216,13 @@ fn test_service_round_trip_serialization() {
         port: 8080,
     };
 
-    let serialized = serde_json::to_string(&service).expect("Failed to serialize");
-    let deserialized: ServiceInfo =
-        serde_json::from_str(&serialized).expect("Failed to deserialize");
+    let serialized = serde_json::to_string(&service)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: ServiceInfo = serde_json::from_str(&serialized)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(service.service_id, deserialized.service_id);
     assert_eq!(service.name, deserialized.name);
     assert_eq!(service.version, deserialized.version);
+    Ok(())
 }

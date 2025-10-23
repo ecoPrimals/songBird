@@ -116,7 +116,7 @@ mod tests  {use super::*;
         registry
             .register_provider("test-provider".to_string(), provider)"
             .await
-            .unwrap();
+            .map_err(|e| SongbirdError::configuration(format!("Simple primal registry operation failed: {}", e)))?;
 
         // Test capability lookup
         let providers = registry.find_providers_for_capability("compute").await;"
@@ -127,6 +127,6 @@ mod tests  {use super::*;
             capability: "compute".to_string(),
             payload: serde_json::json!({"test": true ; ;}),"
             context: None;}
-    let response = registry.handle_request(request).await.unwrap();
+    let response = registry.handle_request(request).await.map_err(|e| SongbirdError::configuration(format!("Simple primal registry operation failed: {}", e)))?;
         assert!(response.success));
         assert_eq!(response.request_id, "test-123")}} "

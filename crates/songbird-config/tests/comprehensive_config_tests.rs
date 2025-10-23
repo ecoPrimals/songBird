@@ -10,6 +10,7 @@ use songbird_config::{
     config::{constants::*, hardcoded_elimination::*, universal_primals::*},
     EnvironmentConfig,
 };
+use songbird_types::SongbirdError;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -23,7 +24,7 @@ mod comprehensive_config_tests {
         assert!(!DEFAULT_BIND_ADDRESS.is_empty());
         assert!(!DEFAULT_LOCALHOST.is_empty());
         assert!(!LOCALHOST_IPV4.is_empty());
-        assert_eq!(DEFAULT_BIND_ADDRESS, "127.0.0.1");
+        assert_eq!(DEFAULT_BIND_ADDRESS, "127.0.0.1:8080");
         assert_eq!(DEFAULT_LOCALHOST, "127.0.0.1");
         assert_eq!(LOCALHOST_IPV4, "127.0.0.1");
     }
@@ -302,13 +303,13 @@ mod comprehensive_config_tests {
         let primal = PrimalConfiguration::new_template("test", "Test");
 
         // Test JSON serialization
-        let json = serde_json::to_string(&primal).expect("Should serialize to JSON");
+        let json = serde_json::to_string(&primal).expect("Test: Should serialize to JSON");
         assert!(json.contains("test"));
         assert!(json.contains("Test"));
 
         // Test deserialization
         let deserialized: PrimalConfiguration =
-            serde_json::from_str(&json).expect("Should deserialize from JSON");
+            serde_json::from_str(&json).expect("Test: Should deserialize from JSON");
         assert_eq!(deserialized.primal_type, primal.primal_type);
         assert_eq!(deserialized.display_name, primal.display_name);
     }
@@ -361,7 +362,7 @@ mod comprehensive_config_tests {
         }
 
         for handle in handles {
-            handle.join().expect("Thread should complete successfully");
+            handle.join().expect("Test: Thread should complete successfully");
         }
     }
 }

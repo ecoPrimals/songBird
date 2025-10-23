@@ -29,7 +29,8 @@ use tracing::{debug, error, info, warn};
 pub struct UnifiedUniversalAdapter {
     /// Registry of discovered capabilities
     capability_registry: Arc<RwLock<CapabilityRegistry>>,
-    /// Active service connections
+    /// Active service connections (reserved for connection pooling implementation)
+    #[allow(dead_code)]
     service_connections: Arc<RwLock<HashMap<String, ServiceConnection>>>,
     /// Adapter configuration
     config: UnifiedAdapterConfig,
@@ -292,23 +293,30 @@ impl Default for UnifiedUniversalAdapter {
 // ============================================================================
 
 /// **UNIFIED**: Error types for universal adapter operations
+/// Errors that can occur during universal adapter operations
 #[derive(Debug, thiserror::Error)]
 pub enum UniversalAdapterError {
+    /// Network communication error
     #[error("Network error: {0}")]
     NetworkError(String),
 
+    /// Failed to parse response or configuration
     #[error("Parse error: {0}")]
     ParseError(String),
 
+    /// Service discovery failed
     #[error("Discovery error: {0}")]
     DiscoveryError(String),
 
+    /// Service-level error
     #[error("Service error: {0}")]
     ServiceError(String),
 
+    /// Required capability is missing
     #[error("Missing required capability")]
     MissingCapability,
 
+    /// No providers available for the requested capability
     #[error("No providers available for capability: {0}")]
     NoProvidersAvailable(String),
 }
@@ -320,7 +328,127 @@ pub enum UniversalAdapterError {
 /// Registry statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistryStats {
+    /// Total number of registered services
     pub total_services: usize,
+    /// Total number of available capabilities
     pub total_capabilities: usize,
+    /// Number of healthy services
     pub healthy_services: usize,
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_unified_adapter_creation() {
+        let adapter = UnifiedUniversalAdapter::new();
+        // Default config has 2 discovery endpoints
+        assert_eq!(adapter.config.discovery_endpoints.len(), 2);
+        assert!(adapter.config.auto_discovery);
+    }
+
+    #[test]
+    fn test_capability_registry_default() {
+        let registry = CapabilityRegistry::default();
+        assert!(registry.service_capabilities.is_empty());
+        assert!(registry.capability_providers.is_empty());
+        assert!(registry.service_info.is_empty());
+        assert!(registry.last_updated.is_empty());
+    }
+
+    #[test]
+    fn test_unified_adapter_config_default() {
+        let config = UnifiedAdapterConfig::default();
+        // Default config includes 2 discovery endpoints
+        assert_eq!(config.discovery_endpoints.len(), 2);
+        assert!(config.auto_discovery);
+        assert_eq!(config.discovery_timeout, std::time::Duration::from_secs(30));
+        assert_eq!(config.health_check_interval, std::time::Duration::from_secs(60));
+        assert_eq!(config.max_concurrent_requests, 100);
+    }
+
+    #[tokio::test]
+    async fn test_discover_services_empty_endpoints() {
+        let adapter = UnifiedUniversalAdapter::new();
+        let result = adapter.discover_services().await;
+
+        assert!(result.is_ok());
+        let services = result.unwrap();
+        assert!(services.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_find_capability_providers_empty_registry() {
+        let adapter = UnifiedUniversalAdapter::new();
+        let result = adapter.find_capability_providers("compute").await;
+
+        assert!(result.is_ok());
+        let providers = result.unwrap();
+        assert!(providers.is_empty());
+    }
+
+    #[test]
+    fn test_universal_adapter_error_display() {
+        let err = UniversalAdapterError::MissingCapability;
+        assert_eq!(err.to_string(), "Missing required capability");
+
+        let err = UniversalAdapterError::NoProvidersAvailable("compute".to_string());
+        assert_eq!(err.to_string(), "No providers available for capability: compute");
+
+        let err = UniversalAdapterError::NetworkError("timeout".to_string());
+        assert_eq!(err.to_string(), "Network error: timeout");
+
+        let err = UniversalAdapterError::ParseError("invalid json".to_string());
+        assert_eq!(err.to_string(), "Parse error: invalid json");
+
+        let err = UniversalAdapterError::DiscoveryError("failed".to_string());
+        assert_eq!(err.to_string(), "Discovery error: failed");
+
+        let err = UniversalAdapterError::ServiceError("500".to_string());
+        assert_eq!(err.to_string(), "Service error: 500");
+    }
+
+    #[test]
+    fn test_registry_stats_creation() {
+        let stats = RegistryStats {
+            total_services: 5,
+            total_capabilities: 10,
+            healthy_services: 4,
+        };
+
+        assert_eq!(stats.total_services, 5);
+        assert_eq!(stats.total_capabilities, 10);
+        assert_eq!(stats.healthy_services, 4);
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_registry_access() {
+        let adapter = Arc::new(UnifiedUniversalAdapter::new());
+        let adapter1 = Arc::clone(&adapter);
+        let adapter2 = Arc::clone(&adapter);
+
+        // Spawn concurrent tasks
+        let task1 = tokio::spawn(async move {
+            let _ = adapter1.find_capability_providers("compute").await;
+        });
+
+        let task2 = tokio::spawn(async move {
+            let _ = adapter2.find_capability_providers("storage").await;
+        });
+
+        // Both should complete without deadlock
+        let _ = tokio::join!(task1, task2);
+    }
+
+    #[test]
+    fn test_health_status_equality() {
+        assert_eq!(HealthStatus::Healthy, HealthStatus::Healthy);
+        assert_ne!(HealthStatus::Healthy, HealthStatus::Unhealthy);
+        assert_ne!(HealthStatus::Healthy, HealthStatus::Degraded);
+    }
 }
