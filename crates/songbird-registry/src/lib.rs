@@ -29,6 +29,14 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::return_self_not_must_use,
+    clippy::if_same_then_else,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::cast_precision_loss,
+    clippy::unused_async
+)]
 
 // Core modules
 pub mod registry;

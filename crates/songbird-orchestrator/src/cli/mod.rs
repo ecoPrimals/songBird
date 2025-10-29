@@ -243,7 +243,6 @@ mod tests {
     use super::*;
     use crate::app::SongbirdOrchestrator;
     use songbird_config::SongbirdConfig;
-    use songbird_types::unified_constants::*;
 
     #[test]
     fn test_cli_config_creation() {
@@ -279,6 +278,5 @@ mod tests {
         let config = SongbirdConfig::default();
         let _orchestrator = SongbirdOrchestrator::new(config);
         // If this compiles and doesn't panic, initialization is successful
-        assert!(true);
     }
 }

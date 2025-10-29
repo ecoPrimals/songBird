@@ -20,19 +20,19 @@ mod convenience {
     pub async fn grandparent_setup() -> SongbirdResult<()> {
         // Simplified setup for accessibility
         println!("🏠 Setting up family-friendly configuration...");
-        Ok(()),
+        Ok(())
     }
 
     pub async fn family_setup(_name: &str) -> SongbirdResult<()> {
         // Family protection setup
         println!("👨‍👩‍👧‍👦 Configuring family protection...");
-        Ok(()),
+        Ok(())
     }
 
     pub async fn emergency_fix_everything() -> SongbirdResult<()> {
         // Emergency recovery procedures
         println!("🚨 Running emergency diagnostics and fixes...");
-        Ok(()),
+        Ok(())
     }
 }
 

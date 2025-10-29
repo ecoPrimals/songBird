@@ -1,4 +1,17 @@
 //! Comprehensive tests for defaults module
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //! Tests all default configuration functions with and without environment variables
 
 use serial_test::serial;
@@ -130,6 +143,7 @@ fn test_port_invalid_env_uses_default() {
 // ============================================================================
 
 #[test]
+#[serial]
 fn test_default_host() {
     env::remove_var("SONGBIRD_HOST");
     assert_eq!(hosts::default_host(), "127.0.0.1");
@@ -150,6 +164,7 @@ fn test_bind_address_default() {
 }
 
 #[test]
+#[serial]
 fn test_discovery_host_default() {
     env::remove_var("SONGBIRD_DISCOVERY_HOST");
     env::remove_var("SONGBIRD_HOST");
@@ -247,7 +262,10 @@ fn test_discovery_endpoint_default() {
     env::remove_var("SONGBIRD_DISCOVERY_HOST");
     env::remove_var("SONGBIRD_HOST");
     env::remove_var("SONGBIRD_DISCOVERY_PORT");
+    env::remove_var("SONGBIRD_DISCOVERY_URL");
+    env::remove_var("SONGBIRD_BIND_ADDRESS");
     let endpoint = endpoints::discovery_endpoint();
+    // Should use default_host() which is 127.0.0.1
     assert_eq!(endpoint, "http://127.0.0.1:8081");
 }
 
@@ -301,6 +319,7 @@ fn test_cors_origins_single_value() {
 // ============================================================================
 
 #[test]
+#[serial]
 fn test_full_config_from_defaults() {
     // Clear all env vars (including ones that might affect the endpoint)
     env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");

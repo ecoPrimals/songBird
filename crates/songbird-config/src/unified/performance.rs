@@ -6,12 +6,15 @@ use std::time::Duration;
 
 /// Object pool size configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ObjectPoolSizes  {pub message: usize,
+pub struct ObjectPoolSizes {
+    pub message: usize,
     pub buffer: usize,
     pub connection: usize,
 }
 
-impl Default for ObjectPoolSizes  {fn default() -> Self  {Self {
+impl Default for ObjectPoolSizes {
+    fn default() -> Self {
+        Self {
             message: 1000,
             buffer: 500,
             connection: 100,
@@ -22,7 +25,8 @@ impl Default for ObjectPoolSizes  {fn default() -> Self  {Self {
 /// Unified performance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
-pub struct UnifiedPerformanceConfig  {pub thread_pool_size: usize,
+pub struct UnifiedPerformanceConfig {
+    pub thread_pool_size: usize,
     pub max_concurrent_requests: usize,
     pub request_buffer_size: usize,
     pub enable_zero_copy: bool,
@@ -41,14 +45,16 @@ pub struct UnifiedPerformanceConfig  {pub thread_pool_size: usize,
     pub auto_tuning_sensitivity: f64,
 }
 
-impl Default for UnifiedPerformanceConfig  {fn default() -> Self  {Self {
-            thread_pool_size: env::var("SONGBIRD_THREAD_POOL_SIZE")"
+impl Default for UnifiedPerformanceConfig {
+    fn default() -> Self {
+        Self {
+            thread_pool_size: env::var("SONGBIRD_THREAD_POOL_SIZE")
                 .ok()
-                .and_then(|s| s.parse().ok()
-                .unwrap_or_else(num_cpus::get)
+                .and_then(|s| s.parse().ok())
+                .unwrap_or_else(num_cpus::get),
             max_concurrent_requests: 1000,
             request_buffer_size: 8192,
-            enable_zero_copy: env::var("SONGBIRD_ZERO_COPY_ENABLED").is_ok(),"
+            enable_zero_copy: env::var("SONGBIRD_ZERO_COPY_ENABLED").is_ok(),
             connection_pool_size: 50,
             cache: CacheConfig::default(),
             metrics: MetricsConfig::default(),
@@ -66,12 +72,15 @@ impl Default for UnifiedPerformanceConfig  {fn default() -> Self  {Self {
 
 /// Cache configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CacheConfig  {pub enabled: bool,
+pub struct CacheConfig {
+    pub enabled: bool,
     pub max_size: usize,
     pub ttl_secs: u64,
 }
 
-impl Default for CacheConfig  {fn default() -> Self  {Self {
+impl Default for CacheConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             max_size: 1000,
             ttl_secs: 300,
@@ -81,22 +90,26 @@ impl Default for CacheConfig  {fn default() -> Self  {Self {
 
 /// Metrics configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MetricsConfig  {pub enabled: bool,
+pub struct MetricsConfig {
+    pub enabled: bool,
     pub collection_interval_secs: u64,
     pub export_prometheus: bool,
 }
 
-impl Default for MetricsConfig  {fn default() -> Self  {Self {
+impl Default for MetricsConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             collection_interval_secs: 60,
-            export_prometheus: env::var("SONGBIRD_PROMETHEUS_ENABLED").is_ok(),"
+            export_prometheus: env::var("SONGBIRD_PROMETHEUS_ENABLED").is_ok(),
         }
     }
 }
 
 /// Benchmark configuration for performance testing
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BenchmarkConfig  {pub enabled: bool,
+pub struct BenchmarkConfig {
+    pub enabled: bool,
     pub duration_secs: u64,
     pub concurrent_requests: usize,
     pub warmup_duration_secs: u64,
@@ -104,7 +117,9 @@ pub struct BenchmarkConfig  {pub enabled: bool,
     pub batch_test_size: usize, // Added for backward compatibility
 }
 
-impl Default for BenchmarkConfig  {fn default() -> Self  {Self {
+impl Default for BenchmarkConfig {
+    fn default() -> Self {
+        Self {
             enabled: false,
             duration_secs: 60,
             concurrent_requests: 100,

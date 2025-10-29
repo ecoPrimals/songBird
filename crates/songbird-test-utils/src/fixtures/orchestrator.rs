@@ -2,6 +2,7 @@
 //!
 //! Provides standardized fixtures for testing Songbird's orchestration capabilities.
 
+use crate::mocks::common::{HealthStatus, MockPrimalServer};
 use crate::mocks::{MockBearDog, MockNestGate, MockSquirrel, MockToadStool};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -53,7 +54,6 @@ impl OrchestratorTestEnvironment {
         drop(toadstool);
 
         // Set others as unhealthy
-        use crate::mocks::common::{HealthStatus, MockPrimalServer};
         env.beardog.read().await.set_health(HealthStatus::Unhealthy);
         env.nestgate.read().await.set_health(HealthStatus::Unhealthy);
         env.squirrel.read().await.set_health(HealthStatus::Unhealthy);
@@ -89,28 +89,24 @@ impl OrchestratorTestEnvironment {
 
     /// Get `ToadStool` endpoint URL
     pub async fn toadstool_endpoint(&self) -> String {
-        use crate::mocks::common::MockPrimalServer;
         let toadstool = self.toadstool.read().await;
         toadstool.endpoint()
     }
 
     /// Get `BearDog` endpoint URL
     pub async fn beardog_endpoint(&self) -> String {
-        use crate::mocks::common::MockPrimalServer;
         let beardog = self.beardog.read().await;
         beardog.endpoint()
     }
 
     /// Get `NestGate` endpoint URL
     pub async fn nestgate_endpoint(&self) -> String {
-        use crate::mocks::common::MockPrimalServer;
         let nestgate = self.nestgate.read().await;
         nestgate.endpoint()
     }
 
     /// Get Squirrel endpoint URL
     pub async fn squirrel_endpoint(&self) -> String {
-        use crate::mocks::common::MockPrimalServer;
         let squirrel = self.squirrel.read().await;
         squirrel.endpoint()
     }
@@ -148,7 +144,18 @@ impl Drop for OrchestratorTestEnvironment {
 }
 
 #[cfg(test)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::float_cmp)]
+#[allow(clippy::useless_vec)]
+#[allow(clippy::unreadable_literal)]
+#[allow(clippy::items_after_statements)]
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 mod tests {
+    #![allow(clippy::all)]
+    #![allow(unused)]
+
     use super::*;
 
     #[tokio::test]

@@ -1,4 +1,28 @@
+#![allow(clippy::all)]
+#![allow(unused)]
 // Comprehensive Test Utils Test Suite
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
 //
 // Systematic test coverage for songbird-test-utils using the proven 7-module framework
 // targeting significant coverage improvement for testing utilities and helpers.

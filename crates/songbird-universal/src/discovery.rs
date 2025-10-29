@@ -4,6 +4,13 @@
 //! without hardcoding specific primal names. The system uses capability-based
 //! discovery and environment-based configuration.
 
+#![allow(
+    clippy::unused_self,
+    clippy::match_same_arms,
+    clippy::zero_sized_map_values,
+    clippy::unused_async
+)]
+
 use crate::capabilities::Capability;
 use crate::types::PrimalType;
 use serde::{Deserialize, Serialize};

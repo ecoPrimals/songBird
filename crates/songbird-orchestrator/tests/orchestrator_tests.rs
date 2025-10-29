@@ -1,4 +1,26 @@
 //! Orchestrator Core Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
 //!
 //! Testing orchestrator functionality beyond main function.
 
@@ -17,7 +39,7 @@ async fn test_orchestrator_initialization() -> Result<()> {
 
     // Service registry should be initialized
     let _services = orchestrator.service_registry().get_services();
-    assert!(true); // Registry is accessible
+    // Registry is accessible if we can get services without panicking
 
     Ok(())
 }
@@ -48,8 +70,8 @@ async fn test_lifecycle_management() -> Result<()> {
     orchestrator.start().await?;
 
     // Verify orchestrator status
-    let status = orchestrator.get_status().await?;
-    assert!(status.gaming_active || !status.gaming_active);
+    let _status = orchestrator.get_status().await?;
+    // Status check succeeds if no error is returned
 
     // Stop orchestrator
     orchestrator.stop().await?;
@@ -143,7 +165,7 @@ async fn test_service_discovery_integration() -> Result<()> {
     // Service registry should be accessible
     let registry = orchestrator.service_registry();
     let _services = registry.get_services();
-    assert!(true); // Registry is accessible
+    // Registry is accessible if we can get services without panicking
 
     Ok(())
 }
@@ -176,7 +198,7 @@ async fn test_resource_management() -> Result<()> {
     // Service registry should manage resources
     let registry = orchestrator.service_registry();
     let _services = registry.get_services();
-    assert!(true); // Registry is accessible
+    // Registry is accessible if we can get services without panicking
 
     Ok(())
 }
@@ -210,9 +232,8 @@ async fn test_metrics_collection() -> Result<()> {
     );
 
     // Status command should provide metrics
-    let status = orchestrator.get_status().await?;
-    assert!(status.active_sessions >= 0);
-    assert!(status.total_players >= 0);
+    let _status = orchestrator.get_status().await?;
+    // Metrics are present if status check succeeds
 
     Ok(())
 }
@@ -265,8 +286,8 @@ async fn test_fault_tolerance() -> Result<()> {
     assert!(result.is_ok());
 
     // Orchestrator should still be operational
-    let status = orchestrator.get_status().await?;
-    assert!(status.gaming_active || !status.gaming_active);
+    let _status = orchestrator.get_status().await?;
+    // Status check succeeds if no error is returned
 
     // Graceful shutdown should still work
     orchestrator.stop().await?;

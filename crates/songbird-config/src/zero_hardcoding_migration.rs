@@ -12,31 +12,34 @@
 //! 3. **Configure**: Setup environment-based capability hints
 //! 4. **Validate**: Ensure zero hardcoded dependencies remain
 
-use regex: :Regex;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std: :collections::HashMap;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::Path;
-// use songbird_config; // FIXED: Circular import removed
-;
-/// **🚀 ZERO HARDCODING MIGRATOR**;
+use songbird_types::{SongbirdError, SongbirdResult};
+use tracing::{debug, info};
+
+/// **🚀 ZERO HARDCODING MIGRATOR**
 /// Eliminates all vendor and primal hardcoding patterns
 #[derive(Debug)]
-pub struct ZeroHardcodingMigrator  {/// Migration patterns to detect and replace
+pub struct ZeroHardcodingMigrator {
+    /// Migration patterns to detect and replace
     migration_patterns: Vec<MigrationPattern>,
     /// Configuration for capability-based replacements
-    capability_mappings: HashMap<String, CapabilityMapping>)
+    capability_mappings: HashMap<String, CapabilityMapping>,
     /// Environment variable suggestions
-    env_suggestions: HashMap<String, String> )
- )
+    env_suggestions: HashMap<String, String>,
 }
 
 /// Migration pattern for detecting hardcoded references
 #[derive(Debug, Clone)]
-pub struct MigrationPattern  {/// Pattern identifier
+pub struct MigrationPattern {
+    /// Pattern identifier
     pub pattern_id: String,
-    /// Regex pattern to match pub pattern_regex: Regex,
+    /// Regex pattern to match
+    pub pattern_regex: Regex,
     /// Replacement template
     pub replacement_template: String,
     /// Category of hardcoding
@@ -44,13 +47,13 @@ pub struct MigrationPattern  {/// Pattern identifier
     /// Priority level
     pub priority: MigrationPriority,
     /// Description of what this pattern does
-    pub description: String ;,
- )
+    pub description: String,
 }
 
 /// Category of hardcoded pattern
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum HardcodingCategory    {/// Primal names (beardog, nestgate, toadstool, squirrel)
+pub enum HardcodingCategory {
+    /// Primal names (beardog, nestgate, toadstool, squirrel)
     PrimalNames,
     /// External services (kubernetes, consul, docker, redis)
     ExternalServices,
@@ -59,9 +62,8 @@ pub enum HardcodingCategory    {/// Primal names (beardog, nestgate, toadstool, 
     /// Configuration keys
     ConfigurationKeys,
     /// Service discovery patterns
-    ServiceDiscovery
-
-    }
+    ServiceDiscovery,
+}
 
 /// Migration priority
 #[derive(Debug, Clone, PartialEq, Ord, PartialOrd, Eq)]
@@ -74,7 +76,8 @@ pub enum MigrationPriority {
 
 /// Capability mapping for replacements
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CapabilityMapping  {/// Original hardcoded name
+pub struct CapabilityMapping {
+    /// Original hardcoded name
     pub original_name: String,
     /// Capability type to use instead
     pub capability_type: String,
@@ -85,35 +88,37 @@ pub struct CapabilityMapping  {/// Original hardcoded name
     /// Fallback strategies
     pub fallback_strategies: Vec<String>,
     /// Migration notes
-    pub migration_notes: String ;,
- )
+    pub migration_notes: String,
 }
 
 /// Migration result
-#[derive(Debug)];
-pub struct MigrationResult  {/// Files processed
+#[derive(Debug)]
+pub struct MigrationResult {
+    /// Files processed
     pub files_processed: usize,
     /// Patterns found and replaced
-    pub patterns_replaced: HashMap<String, usize>)
+    pub patterns_replaced: HashMap<String, usize>,
     /// Environment variables to set
-    pub env_vars_to_set: HashMap<String, String>)
+    pub env_vars_to_set: HashMap<String, String>,
     /// Warnings encountered
     pub warnings: Vec<String>,
     /// Errors encountered
-    pub errors: Vec<String>,;};
+    pub errors: Vec<String>,
+}
+
 /// Migration report
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MigrationReport  {/// Total hardcoded patterns eliminated
+pub struct MigrationReport {
+    /// Total hardcoded patterns eliminated
     pub total_eliminated: usize,
     /// Breakdown by category
-    pub by_category: HashMap<HardcodingCategory, usize>)
+    pub by_category: HashMap<HardcodingCategory, usize>,
     /// Environment configuration needed
-    pub env_configuration: HashMap<String, String>)
+    pub env_configuration: HashMap<String, String>,
     /// Remaining TODOs
     pub remaining_todos: Vec<String>,
     /// Migration timestamp
-    pub migration_timestamp: chrono::DateTime<chrono::Utc> ;,
- )
+    pub migration_timestamp: chrono::DateTime<chrono::Utc>,
 }
 impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
     pub fn new() -> SongbirdResult<Self>  {let migration_patterns = Self::create_migration_patterns()?;

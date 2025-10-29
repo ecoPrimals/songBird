@@ -1,4 +1,16 @@
 //! Comprehensive tests for Network core functionality
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
 
 use songbird_network_federation::{NetworkConfig, NetworkManager};
 use songbird_types::SongbirdError;
@@ -27,7 +39,7 @@ fn test_network_config_custom_bind_address() -> Result<(), Box<dyn std::error::E
     let mut config = NetworkConfig::default();
     config.interface.bind_address = "192.168.1.100"
         .parse::<IpAddr>()
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     assert!(config.interface.bind_address.to_string().contains("192.168.1.100"));
     Ok(())
@@ -46,7 +58,7 @@ fn test_network_config_ipv6_bind() -> Result<(), Box<dyn std::error::Error>> {
     let mut config = NetworkConfig::default();
     config.interface.bind_address = "::1"
         .parse::<IpAddr>()
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     assert!(config.interface.bind_address.to_string().contains("::1"));
     Ok(())
@@ -86,7 +98,7 @@ fn test_multiple_network_managers() {
 fn test_network_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let config = NetworkConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
 
     assert!(!json.is_empty());
     Ok(())
@@ -96,9 +108,9 @@ fn test_network_config_serialization() -> Result<(), Box<dyn std::error::Error>>
 fn test_network_config_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let config = NetworkConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     let deserialized: NetworkConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
 
     assert_eq!(config.interface.bind_address, deserialized.interface.bind_address);
     Ok(())

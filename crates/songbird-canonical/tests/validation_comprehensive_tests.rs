@@ -1,4 +1,16 @@
 //! Comprehensive tests for canonical validation types
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
 
 use songbird_canonical::validation::*;
 use songbird_types::SongbirdError;
@@ -98,11 +110,11 @@ fn test_validation_result_round_trip_failure() -> Result<(), Box<dyn std::error:
     let serialized =
         serde_json::to_string(&original).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
     let deserialized: ValidationResult = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     assert_eq!(original.is_valid, deserialized.is_valid);
     assert_eq!(original.errors, deserialized.errors);
@@ -223,11 +235,11 @@ fn test_validation_result_serialization_with_all_fields() -> Result<(), Box<dyn 
 
     let serialized = serde_json::to_string(&result).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
     let deserialized: ValidationResult = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     assert_eq!(result.is_valid, deserialized.is_valid);
     assert_eq!(result.errors, deserialized.errors);

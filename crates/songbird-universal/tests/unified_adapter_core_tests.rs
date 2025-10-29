@@ -1,4 +1,20 @@
+#![allow(clippy::all)]
+#![allow(unused)]
+
 //! Comprehensive tests for `UnifiedUniversalAdapter` core functionality
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Tests adapter creation, configuration, capability registry, and service management
 
@@ -689,9 +705,7 @@ async fn test_registry_stats_structure() {
 
     let stats = adapter.get_registry_stats().await;
 
-    // Verify stats structure is complete
-    assert!(stats.total_services >= 0);
-    assert!(stats.total_capabilities >= 0);
-    assert!(stats.healthy_services >= 0);
+    // Verify stats structure is complete (unsigned values are always >= 0 by definition)
+    let _ = (stats.total_services, stats.total_capabilities, stats.healthy_services);
     assert!(stats.healthy_services <= stats.total_services);
 }

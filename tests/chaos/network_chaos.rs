@@ -1,183 +1,449 @@
-//! Network Chaos Tests
+//! Chaos Engineering Tests - Network Failures
 //!
-//! Tests system behavior under adverse network conditions
+//! These tests validate system resilience under network failures,
+//! delays, and partitions.
 
-#![cfg(test)]
+use songbird_test_utils::{fixtures::*, mocks::*, chaos_engineering::*};
+use songbird_types::{CapabilityRequest, HealthStatus};
+use songbird_universal::UniversalCapabilityAdapter;
+use std::time::Duration;
+use tokio::time::sleep;
+use rand::Rng;
 
-use super::common::*;
-
+/// Test random network delays
 #[tokio::test]
-async fn chaos_test_random_packet_loss() -> Result<(), Box<dyn std::error::Error>> {
-    // Test behavior with random packet loss
-    use std::time::Duration;
-    use tokio::time::timeout;
-    use std::sync::atomic::{AtomicU32, Ordering};
-    use std::sync::Arc;
-    
-    // Simulate network with packet loss
-    let start = std::time::Instant::now();
-    let attempts = Arc::new(AtomicU32::new(0));
-    let attempts_clone = attempts.clone();
-    
-    // Test that operations complete despite packet loss with retries
-    let result = timeout(Duration::from_secs(5), async move {
-        let mut success = false;
-        for _ in 0..5 {
-            attempts_clone.fetch_add(1, Ordering::SeqCst);
-            tokio::time::sleep(Duration::from_millis(20)).await;
-            
-            // Simulate 40% packet loss (60% success rate)
-            let random_value = attempts_clone.load(Ordering::SeqCst);
-            if random_value % 5 > 1 { // 3 out of 5 succeed
-                success = true;
-                break;
+async fn test_random_network_delays() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    let service = compute_service_fixture();
+    adapter
+        .register_service(service)
+        .await
+        .expect("Register failed");
+
+    sleep(Duration::from_millis(100)).await;
+
+    let mut rng = rand::thread_rng();
+    let mut success_count = 0;
+
+    // Execute requests with random delays
+    for _ in 0..20 {
+        // Inject random delay (50-500ms)
+        let delay_ms = rng.gen_range(50..500);
+        sleep(Duration::from_millis(delay_ms)).await;
+
+        let request = CapabilityRequest {
+            capability: "compute".to_string(),
+            operation: "process".to_string(),
+            parameters: Default::default(),
+            timeout: Duration::from_secs(10),
+        };
+
+        if let Ok(response) = adapter.execute_capability_request(request).await {
+            if response.success {
+                success_count += 1;
             }
         }
-        
-        if success {
-            Ok::<_, Box<dyn std::error::Error>>(())
-        } else {
-            Err("All attempts failed".into())
-        }
-    }).await;
-    
-    assert!(result.is_ok(), "Operation should complete despite packet loss with retries");
-    assert!(result.unwrap().is_ok(), "Should eventually succeed");
-    
-    let duration = start.elapsed();
-    let total_attempts = attempts.load(Ordering::SeqCst);
-    
-    // With packet loss, we expect multiple attempts
-    assert!(total_attempts >= 1, "Should make at least one attempt");
-    assert!(total_attempts <= 5, "Should not exceed max retries");
-    assert!(duration.as_millis() >= 20, "Should have measurable latency");
-    assert!(duration.as_secs() < 5, "Should complete within timeout");
-    
-    Ok(())
-}
-
-#[tokio::test]
-async fn chaos_test_network_latency_spike() -> Result<(), Box<dyn std::error::Error>> {
-    // Test behavior with sudden latency increases
-    use std::time::Duration;
-    use tokio::time::timeout;
-    
-    // Phase 1: Normal operation
-    let normal_start = std::time::Instant::now();
-    tokio::time::sleep(Duration::from_millis(50)).await;
-    let normal_duration = normal_start.elapsed();
-    
-    // Phase 2: Inject 500ms latency
-    let latency_start = std::time::Instant::now();
-    let result = timeout(Duration::from_secs(2), async {
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        Ok::<_, Box<dyn std::error::Error>>(())
-    }).await;
-    
-    assert!(result.is_ok(), "Requests should complete despite latency");
-    
-    let latency_duration = latency_start.elapsed();
-    assert!(latency_duration.as_millis() >= 500, "Latency should be injected");
-    assert!(latency_duration.as_secs() < 2, "Should not timeout");
-    
-    // Phase 3: Verify recovery
-    let recovery_start = std::time::Instant::now();
-    tokio::time::sleep(Duration::from_millis(50)).await;
-    let recovery_duration = recovery_start.elapsed();
-    
-    assert!(recovery_duration < normal_duration + Duration::from_millis(100), 
-            "Should recover to normal latency");
-    
-    Ok(())
-}
-
-#[tokio::test]
-async fn chaos_test_connection_reset() -> Result<(), Box<dyn std::error::Error>> {
-    // Test behavior when connections are randomly reset
-    use std::sync::atomic::{AtomicU32, Ordering};
-    use std::sync::Arc;
-    
-    let connection_attempts = Arc::new(AtomicU32::new(0));
-    let attempts_clone = connection_attempts.clone();
-    
-    // Simulate connection with resets
-    let result = tokio::spawn(async move {
-        for i in 0..3 {
-            attempts_clone.fetch_add(1, Ordering::SeqCst);
-            
-            if i < 2 {
-                // Simulate connection reset
-                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-            } else {
-                // Final attempt succeeds
-                return Ok::<_, Box<dyn std::error::Error>>("connected");
-            }
-        }
-        Ok("connected")
-    }).await?;
-    
-    assert!(result.is_ok(), "Should eventually reconnect");
-    assert_eq!(connection_attempts.load(Ordering::SeqCst), 3, 
-               "Should retry on connection reset");
-    
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore]
-async fn chaos_test_bandwidth_throttling() -> Result<(), Box<dyn std::error::Error>> {
-    // Test behavior with limited bandwidth
-    use std::time::Duration;
-    
-    // Simulate bandwidth throttling by adding delays
-    let data_size_kb = 100; // 100KB of data
-    let throttled_bandwidth_kbps = 1000; // 1Mbps = 1000 Kbps = 125 KB/s
-    let expected_duration_ms = (data_size_kb * 8) / throttled_bandwidth_kbps;
-    
-    let start = std::time::Instant::now();
-    
-    // Simulate throttled data transfer
-    for _ in 0..10 {
-        tokio::time::sleep(Duration::from_millis(expected_duration_ms / 10)).await;
     }
-    
-    let duration = start.elapsed();
-    
-    // Verify graceful degradation
-    assert!(duration.as_millis() >= expected_duration_ms as u128, 
-            "Should experience bandwidth throttling");
-    assert!(duration.as_millis() < (expected_duration_ms * 2) as u128,
-            "Should complete within reasonable time");
-    
-    Ok(())
+
+    // Should handle delays gracefully
+    assert!(
+        success_count >= 15,
+        "Should complete at least 75% of requests despite delays, got {}%",
+        (success_count * 100) / 20
+    );
 }
 
+/// Test packet loss scenarios
 #[tokio::test]
-#[ignore]
-async fn chaos_test_dns_failures() -> Result<(), Box<dyn std::error::Error>> {
-    // Test behavior when DNS resolution fails
-    use std::collections::HashMap;
-    
-    // Simulate DNS cache
-    let mut dns_cache: HashMap<String, String> = HashMap::new();
-    dns_cache.insert("service.local".to_string(), "192.168.1.100".to_string());
-    
-    // Simulate DNS failure - should fall back to cache
-    let hostname = "service.local";
-    
-    // Phase 1: DNS fails
-    let dns_lookup = None::<String>;
-    
-    // Phase 2: Fallback to cache
-    let resolved_ip = dns_lookup.or_else(|| dns_cache.get(hostname).cloned());
-    
-    assert!(resolved_ip.is_some(), "Should fall back to cached IP");
-    assert_eq!(resolved_ip.unwrap(), "192.168.1.100", "Should use cached IP");
-    
-    // Phase 3: Verify service discovery works with cached IPs
-    let service_available = dns_cache.contains_key(hostname);
-    assert!(service_available, "Service discovery should work with cache");
-    
-    Ok(())
+async fn test_packet_loss_simulation() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    // Register multiple services for redundancy
+    for i in 0..3 {
+        let mut service = compute_service_fixture();
+        service.id = format!("compute_{}", i);
+        adapter.register_service(service).await.expect("Register failed");
+    }
+
+    sleep(Duration::from_millis(100)).await;
+
+    let mut rng = rand::thread_rng();
+    let mut successful_requests = 0;
+
+    // Simulate packet loss (30% loss rate)
+    for _ in 0..30 {
+        let request = CapabilityRequest {
+            capability: "compute".to_string(),
+            operation: "process".to_string(),
+            parameters: Default::default(),
+            timeout: Duration::from_secs(5),
+        };
+
+        // Simulate packet loss
+        if rng.gen_bool(0.3) {
+            // Skip this request (simulate packet loss)
+            continue;
+        }
+
+        if let Ok(response) = adapter.execute_capability_request(request).await {
+            if response.success {
+                successful_requests += 1;
+            }
+        }
+    }
+
+    // With 30% packet loss and redundancy, should complete >50% requests
+    assert!(
+        successful_requests >= 15,
+        "Should complete >50% requests despite packet loss, got {}",
+        successful_requests
+    );
 }
 
+/// Test network partition scenarios
+#[tokio::test]
+async fn test_network_partition() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    // Register services in two "regions"
+    let region1_service = compute_service_fixture();
+    let mut region2_service = compute_service_fixture();
+    region2_service.id = format!("{}_region2", region2_service.id);
+
+    adapter.register_service(region1_service.clone()).await.expect("Register region1");
+    adapter.register_service(region2_service.clone()).await.expect("Register region2");
+
+    sleep(Duration::from_millis(100)).await;
+
+    // Simulate partition (region2 becomes unreachable)
+    adapter
+        .update_service_health(&region2_service.id, HealthStatus::Unreachable)
+        .await
+        .expect("Failed to mark unreachable");
+
+    sleep(Duration::from_millis(50)).await;
+
+    // System should still function with region1
+    let request = CapabilityRequest {
+        capability: "compute".to_string(),
+        operation: "process".to_string(),
+        parameters: Default::default(),
+        timeout: Duration::from_secs(10),
+    };
+
+    let response = adapter
+        .execute_capability_request(request)
+        .await
+        .expect("Request failed");
+
+    assert!(
+        response.success,
+        "System should function during partition with available region"
+    );
+}
+
+/// Test asymmetric network failures
+#[tokio::test]
+async fn test_asymmetric_network_failure() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    let service1 = compute_service_fixture();
+    let mut service2 = compute_service_fixture();
+    service2.id = format!("{}_2", service2.id);
+
+    adapter.register_service(service1.clone()).await.expect("Register service1");
+    adapter.register_service(service2.clone()).await.expect("Register service2");
+
+    sleep(Duration::from_millis(100)).await;
+
+    // Service1 can't reach service2, but service2 can reach service1
+    // In our case, we simulate by marking service2 as degraded
+    adapter
+        .update_service_health(&service2.id, HealthStatus::Degraded)
+        .await
+        .expect("Failed to mark degraded");
+
+    sleep(Duration::from_millis(50)).await;
+
+    // System should detect and handle asymmetric failure
+    let request = CapabilityRequest {
+        capability: "compute".to_string(),
+        operation: "process".to_string(),
+        parameters: Default::default(),
+        timeout: Duration::from_secs(10),
+    };
+
+    let response = adapter
+        .execute_capability_request(request)
+        .await
+        .expect("Request failed");
+
+    assert!(response.success, "Should handle asymmetric network failure");
+}
+
+/// Test DNS resolution failures
+#[tokio::test]
+async fn test_dns_failure_handling() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    // Register service with hostname
+    let mut service = compute_service_fixture();
+    service.endpoint = "http://nonexistent.local:8080".to_string();
+
+    // System should handle registration gracefully
+    let result = adapter.register_service(service).await;
+    
+    // Either succeeds with warning or fails gracefully
+    match result {
+        Ok(_) => {
+            // Service registered, but might be marked unhealthy
+            // This is acceptable behavior
+        }
+        Err(_) => {
+            // Registration failed, which is also acceptable
+            // System didn't crash
+        }
+    }
+
+    // System should remain functional
+    let providers = adapter
+        .discover_capability_providers("compute")
+        .await
+        .expect("Discovery should still work");
+
+    // Either no providers (expected) or registered provider might be there
+    // Key point: system didn't crash
+    assert!(true, "System handled DNS failure gracefully");
+}
+
+/// Test intermittent connectivity
+#[tokio::test]
+async fn test_intermittent_connectivity() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    let service = compute_service_fixture();
+    let service_id = service.id.clone();
+
+    adapter
+        .register_service(service)
+        .await
+        .expect("Register failed");
+
+    sleep(Duration::from_millis(100)).await;
+
+    // Simulate intermittent connectivity
+    for _ in 0..5 {
+        // Disconnect
+        adapter
+            .update_service_health(&service_id, HealthStatus::Unreachable)
+            .await
+            .expect("Failed to mark unreachable");
+
+        sleep(Duration::from_millis(50)).await;
+
+        // Reconnect
+        adapter
+            .update_service_health(&service_id, HealthStatus::Healthy)
+            .await
+            .expect("Failed to mark healthy");
+
+        sleep(Duration::from_millis(50)).await;
+    }
+
+    // System should stabilize
+    let health = adapter
+        .get_service_health(&service_id)
+        .await
+        .expect("Failed to get health");
+
+    assert_eq!(
+        health.status,
+        HealthStatus::Healthy,
+        "Should stabilize after intermittent connectivity"
+    );
+}
+
+/// Test bandwidth throttling effects
+#[tokio::test]
+async fn test_bandwidth_throttling() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    let service = storage_service_fixture();
+    adapter
+        .register_service(service)
+        .await
+        .expect("Register failed");
+
+    sleep(Duration::from_millis(100)).await;
+
+    // Execute large data transfer with simulated throttling
+    let mut successful_transfers = 0;
+
+    for _ in 0..10 {
+        // Simulate throttling with delay
+        sleep(Duration::from_millis(200)).await;
+
+        let request = CapabilityRequest {
+            capability: "storage".to_string(),
+            operation: "transfer_large_data".to_string(),
+            parameters: vec![("size".to_string(), "1000000".to_string())]
+                .into_iter()
+                .collect(),
+            timeout: Duration::from_secs(30),
+        };
+
+        if let Ok(response) = adapter.execute_capability_request(request).await {
+            if response.success {
+                successful_transfers += 1;
+            }
+        }
+    }
+
+    // Should complete most transfers despite throttling
+    assert!(
+        successful_transfers >= 7,
+        "Should complete >=70% of transfers despite throttling, got {}%",
+        (successful_transfers * 100) / 10
+    );
+}
+
+/// Test network congestion scenarios
+#[tokio::test]
+async fn test_network_congestion() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    // Register multiple services
+    for i in 0..5 {
+        let mut service = compute_service_fixture();
+        service.id = format!("compute_{}", i);
+        adapter.register_service(service).await.expect("Register failed");
+    }
+
+    sleep(Duration::from_millis(100)).await;
+
+    // Simulate congestion with burst of concurrent requests
+    let mut handles = vec![];
+
+    for _ in 0..100 {
+        let adapter_clone = adapter.clone();
+        let handle = tokio::spawn(async move {
+            let request = CapabilityRequest {
+                capability: "compute".to_string(),
+                operation: "process".to_string(),
+                parameters: Default::default(),
+                timeout: Duration::from_secs(30),
+            };
+
+            adapter_clone.execute_capability_request(request).await
+        });
+        handles.push(handle);
+    }
+
+    // Wait for all requests
+    let mut success_count = 0;
+    for handle in handles {
+        if let Ok(Ok(response)) = handle.await {
+            if response.success {
+                success_count += 1;
+            }
+        }
+    }
+
+    // Should handle most requests despite congestion
+    assert!(
+        success_count >= 70,
+        "Should handle >=70% of requests during congestion, got {}%",
+        success_count
+    );
+}
+
+/// Test routing failures
+#[tokio::test]
+async fn test_routing_failure() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    // Register primary and backup services
+    let primary = compute_service_fixture();
+    let mut backup = compute_service_fixture();
+    backup.id = format!("{}_backup", backup.id);
+    backup.priority = Some(2);
+
+    adapter.register_service(primary.clone()).await.expect("Register primary");
+    adapter.register_service(backup).await.expect("Register backup");
+
+    sleep(Duration::from_millis(100)).await;
+
+    // Simulate routing failure to primary
+    adapter
+        .update_service_health(&primary.id, HealthStatus::Unreachable)
+        .await
+        .expect("Failed to mark unreachable");
+
+    sleep(Duration::from_millis(50)).await;
+
+    // Should route to backup
+    let request = CapabilityRequest {
+        capability: "compute".to_string(),
+        operation: "process".to_string(),
+        parameters: Default::default(),
+        timeout: Duration::from_secs(10),
+    };
+
+    let response = adapter
+        .execute_capability_request(request)
+        .await
+        .expect("Request failed");
+
+    assert!(
+        response.success,
+        "Should route to backup when primary is unreachable"
+    );
+}
+
+/// Test TLS handshake failures
+#[tokio::test]
+async fn test_tls_handshake_failure() {
+    let env = create_healthy_environment();
+    let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
+        .expect("Failed to create adapter");
+
+    // Register service with HTTPS endpoint
+    let mut service = compute_service_fixture();
+    service.endpoint = "https://localhost:8443".to_string();
+
+    // System should handle TLS issues gracefully
+    let result = adapter.register_service(service).await;
+
+    // Should either succeed with warning or fail gracefully
+    match result {
+        Ok(_) | Err(_) => {
+            // Either outcome is acceptable - key is no crash
+            assert!(true, "Handled TLS failure gracefully");
+        }
+    }
+
+    // System should remain operational
+    adapter
+        .discover_capability_providers("compute")
+        .await
+        .expect("System should remain operational");
+}

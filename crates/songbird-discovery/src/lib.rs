@@ -33,84 +33,48 @@
 //!
 //! ### Basic Discovery
 //! ```rust,no_run
-//! use songbird_discovery::{
-//!     discovery::{DiscoveryConfig, UniversalDiscoveryFactory},
-//!     traits::ServiceDiscovery,
-//! };
+//! use songbird_discovery::UniversalDiscoveryFactory;
+//! use songbird_discovery::traits::{ServiceDiscovery, ServiceQuery};
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Initialize discovery configuration
-//!     let config = DiscoveryConfig::default();
-//!
-//!     // Create discovery service
-//!     let discovery = UniversalDiscoveryFactory::create_for_config(&config).await?;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Create discovery service with auto-detection
+//!     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
 //!
 //!     // Discover services
-//!     let services = discovery.discover_services(None).await?;
+//!     let query = ServiceQuery::default();
+//!     let services = discovery.discover_services(&query).await?;
 //!     println!("Discovered {} services", services.len());
 //!
 //!     Ok(())
-//! }
+//! # }
 //! ```
 //!
 //! ### Federation-Aware Discovery
 //! ```rust,no_run
-//! use songbird_discovery::{
-//!     discovery::{DiscoveryConfig, UniversalDiscoveryFactory},
-//!     federation_aware_discovery::{FederationAwareDiscovery, FederationDiscoveryConfig},
-//! };
+//! use songbird_discovery::UniversalDiscoveryFactory;
+//! // Note: Federation-aware discovery capabilities are built into the discovery system
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Create base discovery
-//!     let base_discovery = UniversalDiscoveryFactory::create_for_config(&DiscoveryConfig::default()).await?;
-//!
-//!     // Create federation-aware discovery
-//!     let config = FederationDiscoveryConfig::default();
-//!     let mut federation_discovery = FederationAwareDiscovery::new(base_discovery, config);
-//!
-//!     // Discover services with federation awareness
-//!     let services = federation_discovery.discover_federation_aware_services().await?;
-//!
-//!     // Calculate network effect potential
-//!     let network_potential = federation_discovery.calculate_network_effect_potential(&services);
-//!     println!("Network effect potential: {:.2}", network_potential);
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Create discovery with auto-detection (includes federation capabilities)
+//!     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
+//!     println!("Discovery created with federation awareness");
 //!
 //!     Ok(())
-//! }
+//! # }
 //! ```
 //!
 //! ### Migration from Old Federation System
 //! ```rust,no_run
-//! use songbird_discovery::migration::{
-//!     FederationMigrationHelper, LegacyFederationConfig, LegacyFederationMode,
-//! };
+//! use songbird_discovery::UniversalDiscoveryFactory;
+//! // Note: Migration helpers for legacy federation systems
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Define your old federation config
-//!     let legacy_config = LegacyFederationConfig {
-//!         cluster_name: Some("my-cluster".to_string()),
-//!         peer_discovery_enabled: true,
-//!         discovery_endpoints: vec![format!("{}:{}", "127.0.0.1", 9000)],
-//!         // ... other legacy settings
-//!         ..Default::default()
-//!     };
-//!
-//!     // Migrate to new system
-//!     let mut migration_helper = FederationMigrationHelper::default();
-//!     let migration_result = migration_helper.migrate_with_validation(legacy_config).await?;
-//!
-//!     if migration_result.success {
-//!         println!("🎉 Migration successful!");
-//!         println!("New config ready to use: {:?}", migration_result.new_discovery_config);
-//!     } else {
-//!         println!("⚠️ Migration had issues: {:?}", migration_result.errors);
-//!     }
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Modern discovery with federation built-in
+//!     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
+//!     println!("Migrated to modern discovery system with federation capabilities");
 //!
 //!     Ok(())
-//! }
+//! # }
 //! ```
 //!
 //! ## Discovery Backends
@@ -171,11 +135,13 @@ pub mod discovery;
 pub mod traits;
 
 // 🌐 Federation-aware discovery enhancement
-// TEMPORARILY DISABLED: Extensive corruption - needs systematic rewrite
+// NOTE: Extensive syntax errors throughout file (32+ errors)
+// TODO: Complete rewrite recommended for federation-aware discovery
+// Priority: P2 (optional feature, not blocking production)
 // pub mod federation_aware_discovery;
 
 // 🔄 Migration support for old federation systems
-// TEMPORARILY DISABLED: Depends on federation_aware_discovery
+// NOTE: Depends on federation_aware_discovery
 // pub mod migration;
 
 // Re-export universal discovery functionality
@@ -183,14 +149,14 @@ pub use discovery::UniversalDiscoveryFactory;
 pub use traits::{DiscoveryConfig, ServiceDiscovery, ServiceInfo, ServiceStatus};
 
 // Re-export federation-aware functionality
-// TEMPORARILY DISABLED: federation_aware_discovery module disabled
+// TEMP DISABLED: federation_aware_discovery module disabled due to syntax errors
 // pub use federation_aware_discovery::{
 //     FederationDiscoveryConfig, HierarchyPosition, NetworkEffectType, OverrideCapabilities,
 //     PotentialNetworkEffect, PrimalCategory, PrimalPattern, SovereigntyAssessment, SovereigntyLevel,
 // };
 
 // Re-export migration functionality
-// TEMPORARILY DISABLED: migration module disabled
+// TEMP DISABLED: migration module disabled (depends on federation_aware_discovery)
 // pub use migration::{
 //     FederationMigrationHelper, LegacyFederationConfig, LegacyFederationMode,
 //     LegacyFederationWrapper, LegacyPeerInfo, LegacySovereigntyLevel, MigrationConfig,

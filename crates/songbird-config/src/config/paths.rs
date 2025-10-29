@@ -71,7 +71,7 @@ impl PathConfig {
     /// Returns an error if:
     /// - Unable to determine home directory
     /// - HOME environment variable is not set
-    pub async fn new() -> Result<Self> {
+    pub fn new() -> Result<Self> {
         debug!("Creating new PathConfig instance");
 
         // Use simple path implementation
@@ -170,8 +170,8 @@ impl PathConfig {
     /// Returns an error if:
     /// - Unable to determine home directory
     /// - System paths are not accessible
-    pub async fn production() -> Result<Self> {
-        Self::new().await
+    pub fn production() -> Result<Self> {
+        Self::new()
     }
 
     /// Get default configuration paths for the current platform
@@ -181,7 +181,7 @@ impl PathConfig {
     /// Returns an error if:
     /// - Unable to determine home directory
     /// - HOME environment variable is not set
-    pub async fn get_default_paths() -> Result<PathConfig> {
+    pub fn get_default_paths() -> Result<PathConfig> {
         debug!("Getting default paths for current platform");
 
         // Simple path implementation without substrate
@@ -297,7 +297,7 @@ impl PathConfig {
     /// - Failed to create any required directory
     /// - Insufficient write permissions for directory creation
     /// - Suggestion: Check directory permissions and available disk space
-    pub async fn create_directories(&self) -> Result<()> {
+    pub fn create_directories(&self) -> Result<()> {
         // Create directories directly without substrate
         let directories = vec![
             &self.data_dir,
@@ -341,7 +341,7 @@ impl PathConfig {
     /// - Unknown path type provided (valid: config, data, log, cache, runtime)
     /// - Failed to create service directory
     /// - Insufficient write permissions
-    pub async fn get_service_path(&self, service_name: &str, path_type: &str) -> Result<PathBuf> {
+    pub fn get_service_path(&self, service_name: &str, path_type: &str) -> Result<PathBuf> {
         let service_dir = match path_type {
             "config" => self.config_dir.join(service_name),
             "data" => self.data_dir.join(service_name),
@@ -379,7 +379,7 @@ impl PathConfig {
     /// - Any configured path does not exist
     /// - Path is not accessible due to permissions
     /// - Suggestion: Ensure all paths exist and are accessible
-    pub async fn validate_paths(&self) -> Result<()> {
+    pub fn validate_paths(&self) -> Result<()> {
         let paths = vec![
             &self.data_dir,
             &self.config_dir,
@@ -408,7 +408,7 @@ impl PathConfig {
     /// Returns an error if:
     /// - Failed to create temporary directory
     /// - Insufficient write permissions for temp directory
-    pub async fn get_temp_path(&self, operation: &str) -> Result<PathBuf> {
+    pub fn get_temp_path(operation: &str) -> Result<PathBuf> {
         let temp_dir = std::env::temp_dir().join("songbird").join(operation);
 
         // Ensure directory exists
@@ -433,7 +433,7 @@ impl PathConfig {
     /// - Failed to create secure directory
     /// - Insufficient write permissions for secure directory
     /// - Unable to set restricted permissions
-    pub async fn get_secure_path(&self, operation: &str) -> Result<PathBuf> {
+    pub fn get_secure_path(&self, operation: &str) -> Result<PathBuf> {
         let secure_dir = self.data_dir.join("secure").join(operation);
 
         // Ensure directory exists with restricted permissions
@@ -457,7 +457,7 @@ impl PathConfig {
     /// Returns an error if:
     /// - Failed to create service directory
     /// - Insufficient write permissions
-    pub async fn initialize_service_paths(&self, base_dir: &Path) -> Result<ServiceDataDirs> {
+    pub fn initialize_service_paths(base_dir: &Path) -> Result<ServiceDataDirs> {
         let service_dirs = ServiceDataDirs {
             orchestrator: base_dir.join("orchestrator"),
             federation: base_dir.join("federation"),
@@ -491,21 +491,19 @@ impl PathConfig {
 
 /// Get the best available path configuration
 ///
-/// # Errors
-///
 /// This function attempts to use substrate-based paths first, then falls back
-/// to a simpler implementation. It should not return errors under normal conditions
-/// as fallback is always available.
-pub async fn get_path_config() -> Result<PathConfig> {
+/// to a simpler implementation. Always succeeds as fallback is always available.
+#[must_use]
+pub fn get_path_config() -> PathConfig {
     // Try to use substrate first
-    match PathConfig::new().await {
+    match PathConfig::new() {
         Ok(config) => {
             debug!("✅ Using substrate-based path configuration");
-            Ok(config)
+            config
         }
         Err(e) => {
             warn!("⚠️ Substrate path configuration failed: {}, using fallback", e);
-            Ok(PathConfig::new_fallback())
+            PathConfig::new_fallback()
         }
     }
 }
@@ -517,7 +515,7 @@ pub async fn get_path_config() -> Result<PathConfig> {
 /// Returns an error if:
 /// - Failed to create service directory
 /// - Insufficient write permissions for /`tmp/songbird/{service_name`}
-pub async fn initialize_service_paths(service_name: &str) -> Result<ServiceDataDirs> {
+pub fn initialize_service_paths(service_name: &str) -> Result<ServiceDataDirs> {
     let base_dir = PathBuf::from(format!("/tmp/songbird/{service_name}"));
 
     let service_dirs = ServiceDataDirs {

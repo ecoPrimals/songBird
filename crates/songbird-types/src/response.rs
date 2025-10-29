@@ -102,11 +102,10 @@ impl<T> SongbirdResponse<T> {
     /// Returns error if response contains an error instead of data
     pub fn get_data(&self) -> Result<&T, String> {
         if self.success {
-            if let Some(data) = &self.data {
-                Ok(data)
-            } else {
-                Err("Response marked as successful but contains no data".to_string())
-            }
+            self.data.as_ref().map_or_else(
+                || Err("Response marked as successful but contains no data".to_string()),
+                Ok,
+            )
         } else {
             let error_message = self
                 .error
@@ -123,11 +122,10 @@ impl<T> SongbirdResponse<T> {
     /// Returns error if response contains an error instead of data
     pub fn into_result(self) -> Result<T, String> {
         if self.success {
-            if let Some(data) = self.data {
-                Ok(data)
-            } else {
-                Err("Response marked as successful but contains no data".to_string())
-            }
+            self.data.map_or_else(
+                || Err("Response marked as successful but contains no data".to_string()),
+                |data| Ok(data),
+            )
         } else {
             let error_message = self
                 .error
@@ -173,7 +171,7 @@ impl<T> PaginatedResponse<T> {
     /// Create a new paginated response
     #[must_use]
     pub fn new(items: Vec<T>, page: usize, per_page: usize, total: usize) -> Self {
-        let total_pages = (total + per_page - 1) / per_page; // Ceiling division
+        let total_pages = total.div_ceil(per_page);
         let has_more = page + 1 < total_pages;
 
         Self {
@@ -249,7 +247,18 @@ impl<T> From<Result<T, SongbirdError>> for SongbirdResponse<T> {
 }
 
 #[cfg(test)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::float_cmp)]
+#[allow(clippy::useless_vec)]
+#[allow(clippy::unreadable_literal)]
+#[allow(clippy::items_after_statements)]
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 mod tests {
+    #![allow(clippy::all)]
+    #![allow(unused)]
+
     use super::*;
 
     #[test]

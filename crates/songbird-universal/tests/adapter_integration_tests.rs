@@ -1,12 +1,23 @@
 //! # 🔌 Comprehensive Adapter Integration Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Tests all 4 production adapters working together in various scenarios.
 //! This validates the complete adapter system for `ToadStool`, `BearDog`, `NestGate`, and Squirrel.
 
 use songbird_types::SongbirdError;
-use songbird_universal::adapters::{
-    BearDogSecurityAdapter, NestGateStorageAdapter, SquirrelAIAdapter, ToadStoolMetricsAdapter,
-};
+use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
 
 #[cfg(test)]
 mod integration_tests {
@@ -16,14 +27,14 @@ mod integration_tests {
     #[test]
     fn test_all_adapters_creation() {
         // Create all 4 production adapters
-        let toadstool = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
-            .expect("ToadStool adapter");
-        let beardog = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
-            .expect("BearDog adapter");
-        let nestgate = NestGateStorageAdapter::new("http://localhost:8082".to_string())
-            .expect("NestGate adapter");
+        let toadstool =
+            ComputeAdapter::new("http://localhost:8080".to_string()).expect("ToadStool adapter");
+        let beardog =
+            SecurityAdapter::new("http://localhost:8081".to_string()).expect("BearDog adapter");
+        let nestgate =
+            StorageAdapter::new("http://localhost:8082".to_string()).expect("NestGate adapter");
         let squirrel =
-            SquirrelAIAdapter::new("http://localhost:8083".to_string()).expect("Squirrel adapter");
+            AIAdapter::new("http://localhost:8083".to_string()).expect("Squirrel adapter");
 
         // Verify endpoints
         assert_eq!(toadstool.endpoint(), "http://localhost:8080");
@@ -37,19 +48,19 @@ mod integration_tests {
     fn test_all_adapters_custom_timeouts() {
         use std::time::Duration;
 
-        let toadstool = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+        let toadstool = ComputeAdapter::new("http://localhost:8080".to_string())
             .expect("ToadStool adapter")
             .with_timeout(Duration::from_secs(10));
 
-        let beardog = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
+        let beardog = SecurityAdapter::new("http://localhost:8081".to_string())
             .expect("BearDog adapter")
             .with_timeout(Duration::from_secs(10));
 
-        let nestgate = NestGateStorageAdapter::new("http://localhost:8082".to_string())
+        let nestgate = StorageAdapter::new("http://localhost:8082".to_string())
             .expect("NestGate adapter")
             .with_timeout(Duration::from_secs(10));
 
-        let squirrel = SquirrelAIAdapter::new("http://localhost:8083".to_string())
+        let squirrel = AIAdapter::new("http://localhost:8083".to_string())
             .expect("Squirrel adapter")
             .with_timeout(Duration::from_secs(20));
 
@@ -62,6 +73,7 @@ mod integration_tests {
     /// Test: Adapter factory pattern for dynamic creation
     #[test]
     fn test_adapter_factory_pattern() {
+        #[derive(Copy, Clone)]
         enum AdapterType {
             Compute,
             Security,
@@ -93,8 +105,8 @@ mod integration_tests {
     #[test]
     fn test_metrics_type_system() {
         use songbird_universal::adapters::{
-            beardog::SecurityMetrics, nestgate::StorageMetrics, squirrel::AIMetrics,
-            toadstool::ComputeMetrics,
+            ai::AIMetrics, compute::ComputeMetrics, security::SecurityMetrics,
+            storage::StorageMetrics,
         };
 
         // Compute metrics
@@ -141,27 +153,28 @@ mod integration_tests {
         // Verify all metrics are healthy
         assert_eq!(
             compute.health_status(),
-            songbird_universal::adapters::toadstool::HealthStatus::Healthy
+            songbird_universal::adapters::compute::HealthStatus::Healthy
         );
         assert_eq!(
             security.health_status(),
-            songbird_universal::adapters::beardog::SecurityHealth::Healthy
+            songbird_universal::adapters::security::SecurityHealth::Healthy
         );
         assert_eq!(
             storage.health_status(),
-            songbird_universal::adapters::nestgate::StorageHealth::Healthy
+            songbird_universal::adapters::storage::StorageHealth::Healthy
         );
-        assert_eq!(ai.health_status(), songbird_universal::adapters::squirrel::AIHealth::Healthy);
+        assert_eq!(ai.health_status(), songbird_universal::adapters::ai::AIHealth::Healthy);
     }
 
     /// Test: Health status aggregation across all adapters
     #[test]
     fn test_ecosystem_health_aggregation() {
         use songbird_universal::adapters::{
-            beardog::SecurityMetrics, nestgate::StorageMetrics, squirrel::AIMetrics,
-            toadstool::ComputeMetrics,
+            ai::AIMetrics, compute::ComputeMetrics, security::SecurityMetrics,
+            storage::StorageMetrics,
         };
 
+        #[allow(clippy::struct_excessive_bools)]
         struct EcosystemHealth {
             compute_healthy: bool,
             security_healthy: bool,
@@ -243,7 +256,7 @@ mod integration_tests {
     /// Test: Degraded service detection
     #[test]
     fn test_degraded_service_detection() {
-        use songbird_universal::adapters::toadstool::ComputeMetrics;
+        use songbird_universal::adapters::compute::ComputeMetrics;
 
         // Create metrics for a degraded service
         let degraded_compute = ComputeMetrics {
@@ -259,14 +272,14 @@ mod integration_tests {
         assert!(degraded_compute.is_high_load());
         assert_eq!(
             degraded_compute.health_status(),
-            songbird_universal::adapters::toadstool::HealthStatus::Degraded
+            songbird_universal::adapters::compute::HealthStatus::Degraded
         );
     }
 
     /// Test: Critical service detection
     #[test]
     fn test_critical_service_detection() {
-        use songbird_universal::adapters::beardog::SecurityMetrics;
+        use songbird_universal::adapters::security::SecurityMetrics;
 
         // Create metrics for a critical security state
         let critical_security = SecurityMetrics {
@@ -280,7 +293,7 @@ mod integration_tests {
         assert!(critical_security.is_under_attack());
         assert_eq!(
             critical_security.health_status(),
-            songbird_universal::adapters::beardog::SecurityHealth::Critical
+            songbird_universal::adapters::security::SecurityHealth::Critical
         );
     }
 
@@ -297,24 +310,24 @@ mod integration_tests {
 
         fn select_adapter_for_capability(cap: Capability) -> &'static str {
             match cap {
-                Capability::Compute => "ToadStoolMetricsAdapter",
-                Capability::Security => "BearDogSecurityAdapter",
-                Capability::Storage => "NestGateStorageAdapter",
-                Capability::AI => "SquirrelAIAdapter",
+                Capability::Compute => "ComputeAdapter",
+                Capability::Security => "SecurityAdapter",
+                Capability::Storage => "StorageAdapter",
+                Capability::AI => "AIAdapter",
             }
         }
 
-        assert_eq!(select_adapter_for_capability(Capability::Compute), "ToadStoolMetricsAdapter");
-        assert_eq!(select_adapter_for_capability(Capability::Security), "BearDogSecurityAdapter");
-        assert_eq!(select_adapter_for_capability(Capability::Storage), "NestGateStorageAdapter");
-        assert_eq!(select_adapter_for_capability(Capability::AI), "SquirrelAIAdapter");
+        assert_eq!(select_adapter_for_capability(Capability::Compute), "ComputeAdapter");
+        assert_eq!(select_adapter_for_capability(Capability::Security), "SecurityAdapter");
+        assert_eq!(select_adapter_for_capability(Capability::Storage), "StorageAdapter");
+        assert_eq!(select_adapter_for_capability(Capability::AI), "AIAdapter");
     }
 
     /// Test: Multi-service orchestration scenario
     #[test]
     fn test_multi_service_orchestration() {
         use songbird_universal::adapters::{
-            beardog::SecurityMetrics, nestgate::StorageMetrics, toadstool::ComputeMetrics,
+            compute::ComputeMetrics, security::SecurityMetrics, storage::StorageMetrics,
         };
 
         struct OrchestrationDecision {
@@ -376,19 +389,19 @@ mod integration_tests {
     fn test_adapter_endpoint_validation() {
         // All adapters should accept various endpoint formats
         let adapters = [
-            ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+            ComputeAdapter::new("http://localhost:8080".to_string())
                 .expect("ToadStool adapter")
                 .endpoint()
                 .to_string(),
-            BearDogSecurityAdapter::new("https://secure-beardog:8081".to_string())
+            SecurityAdapter::new("https://secure-beardog:8081".to_string())
                 .expect("BearDog adapter")
                 .endpoint()
                 .to_string(),
-            NestGateStorageAdapter::new("http://nestgate.local:8082".to_string())
+            StorageAdapter::new("http://nestgate.local:8082".to_string())
                 .expect("NestGate adapter")
                 .endpoint()
                 .to_string(),
-            SquirrelAIAdapter::new("http://192.168.1.100:8083".to_string())
+            AIAdapter::new("http://192.168.1.100:8083".to_string())
                 .expect("Squirrel adapter")
                 .endpoint()
                 .to_string(),
@@ -403,7 +416,7 @@ mod integration_tests {
     /// Test: Time-series metrics collection pattern
     #[test]
     fn test_metrics_time_series_pattern() {
-        use songbird_universal::adapters::toadstool::ComputeMetrics;
+        use songbird_universal::adapters::compute::ComputeMetrics;
 
         struct MetricsTimeSeries {
             metrics: Vec<ComputeMetrics>,

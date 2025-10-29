@@ -1,5 +1,9 @@
 //! Canonical error types for the Songbird ecosystem
 
+#[cfg(test)]
+#[path = "errors_tests.rs"]
+mod errors_tests;
+
 /// Canonical error context wrapper
 #[derive(Debug, Clone)]
 pub struct ErrorContext {

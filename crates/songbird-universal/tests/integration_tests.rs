@@ -1,13 +1,23 @@
 //! Integration Tests - All 4 Adapters
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Tests that validate the complete adapter ecosystem working together,
 //! simulating real-world orchestration scenarios across all primals.
 
 use songbird_test_utils::OrchestratorTestEnvironment;
-use songbird_types::SongbirdError;
-use songbird_universal::adapters::{
-    BearDogSecurityAdapter, NestGateStorageAdapter, SquirrelAIAdapter, ToadStoolMetricsAdapter,
-};
+use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
 
 #[tokio::test]
 async fn test_all_adapters_collect_metrics() {
@@ -15,10 +25,10 @@ async fn test_all_adapters_collect_metrics() {
     let env = OrchestratorTestEnvironment::with_healthy_primals().await;
 
     // Create all 4 adapters
-    let toadstool = ToadStoolMetricsAdapter::new(env.toadstool_endpoint().await);
-    let beardog = BearDogSecurityAdapter::new(env.beardog_endpoint().await);
-    let nestgate = NestGateStorageAdapter::new(env.nestgate_endpoint().await);
-    let squirrel = SquirrelAIAdapter::new(env.squirrel_endpoint().await);
+    let toadstool = ComputeAdapter::new(env.toadstool_endpoint().await);
+    let beardog = SecurityAdapter::new(env.beardog_endpoint().await);
+    let nestgate = StorageAdapter::new(env.nestgate_endpoint().await);
+    let squirrel = AIAdapter::new(env.squirrel_endpoint().await);
 
     // Test Objective: All adapters should be able to collect metrics simultaneously
     // This validates that:
@@ -96,10 +106,10 @@ async fn test_multi_primal_orchestration_workflow() {
     // - Transaction-like semantics
 
     // Create all adapters
-    let toadstool = ToadStoolMetricsAdapter::new(env.toadstool_endpoint().await);
-    let beardog = BearDogSecurityAdapter::new(env.beardog_endpoint().await);
-    let nestgate = NestGateStorageAdapter::new(env.nestgate_endpoint().await);
-    let squirrel = SquirrelAIAdapter::new(env.squirrel_endpoint().await);
+    let toadstool = ComputeAdapter::new(env.toadstool_endpoint().await);
+    let beardog = SecurityAdapter::new(env.beardog_endpoint().await);
+    let nestgate = StorageAdapter::new(env.nestgate_endpoint().await);
+    let squirrel = AIAdapter::new(env.squirrel_endpoint().await);
 
     // Verify: All components initialized (unwrap Results first)
     assert!(!toadstool.expect("ToadStool adapter should be created").endpoint().is_empty());
@@ -163,9 +173,9 @@ async fn test_load_distribution_across_adapters() {
     // Expected: Round-robin or least-loaded distribution
     //
     // Implementation:
-    // let compute1 = ToadStoolMetricsAdapter::new("http://compute-1:8080");
-    // let compute2 = ToadStoolMetricsAdapter::new("http://compute-2:8080");
-    // let compute3 = ToadStoolMetricsAdapter::new("http://compute-3:8080");
+    // let compute1 = ComputeAdapter::new("http://compute-1:8080");
+    // let compute2 = ComputeAdapter::new("http://compute-2:8080");
+    // let compute3 = ComputeAdapter::new("http://compute-3:8080");
     //
     // orchestrator.register_adapter("compute", compute1);
     // orchestrator.register_adapter("compute", compute2);
@@ -260,10 +270,10 @@ async fn test_concurrent_adapter_access() {
     let env = OrchestratorTestEnvironment::with_healthy_primals().await;
 
     // Create adapters
-    let toadstool = ToadStoolMetricsAdapter::new(env.toadstool_endpoint().await);
-    let beardog = BearDogSecurityAdapter::new(env.beardog_endpoint().await);
-    let nestgate = NestGateStorageAdapter::new(env.nestgate_endpoint().await);
-    let squirrel = SquirrelAIAdapter::new(env.squirrel_endpoint().await);
+    let toadstool = ComputeAdapter::new(env.toadstool_endpoint().await);
+    let beardog = SecurityAdapter::new(env.beardog_endpoint().await);
+    let nestgate = StorageAdapter::new(env.nestgate_endpoint().await);
+    let squirrel = AIAdapter::new(env.squirrel_endpoint().await);
 
     // Test Objective: Multiple concurrent requests to different adapters
     //

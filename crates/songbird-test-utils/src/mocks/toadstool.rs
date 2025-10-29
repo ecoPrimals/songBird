@@ -2,6 +2,8 @@
 //!
 //! Provides HTTP endpoints that simulate `ToadStool`'s compute metrics and workload management.
 
+#![allow(clippy::unused_async)]
+
 use super::common::{HealthStatus, MockPrimalServer, MockServerState};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
@@ -229,7 +231,18 @@ impl MockPrimalServer for MockToadStool {
 }
 
 #[cfg(test)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::float_cmp)]
+#[allow(clippy::useless_vec)]
+#[allow(clippy::unreadable_literal)]
+#[allow(clippy::items_after_statements)]
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 mod tests {
+    #![allow(clippy::all)]
+    #![allow(unused)]
+
     use super::*;
 
     #[tokio::test]

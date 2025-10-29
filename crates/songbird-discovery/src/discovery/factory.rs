@@ -5,6 +5,13 @@
 //! This factory replaces hardcoded backend implementations with universal
 //! capability detection and adapter-based discovery.
 
+#![allow(
+    clippy::unused_async,
+    clippy::unused_self,
+    clippy::missing_errors_doc,
+    clippy::default_constructed_unit_structs
+)]
+
 use crate::discovery::backends::StaticServiceDiscovery;
 use crate::traits::discovery::{
     DiscoveryBackend, DiscoveryConfig, ServiceDiscovery, ServiceHealthStatus,
@@ -179,11 +186,13 @@ impl UniversalServiceDiscoveryAdapter {
     /// Create new universal service discovery adapter
     pub async fn new() -> Result<Self> {
         let universal_adapter = UnifiedUniversalAdapter::new();
-        let _capability_adapter = UniversalCapabilityAdapter::new(Default::default());
+        let capability_adapter = UniversalCapabilityAdapter::new(
+            songbird_universal::capabilities::DiscoveryConfig::default(),
+        );
 
         Ok(Self {
             universal_adapter,
-            _capability_adapter,
+            _capability_adapter: capability_adapter,
             kubernetes_enabled: false,
             consul_enabled: false,
             container_enabled: false,

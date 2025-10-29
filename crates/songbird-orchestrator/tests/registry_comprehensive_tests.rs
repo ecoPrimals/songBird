@@ -1,4 +1,25 @@
 //! Comprehensive tests for Service Registry
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
 
 use songbird_orchestrator::core::registry::ServiceStatus;
 use songbird_orchestrator::core::{
@@ -46,7 +67,7 @@ async fn test_registry_health_check() -> Result<(), Box<dyn std::error::Error>> 
     let health = registry
         .health_check()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Health check should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Health check should succeed: {e}")))?;
 
     assert_eq!(health.status, HealthStatus::Healthy);
     assert!(health.message.is_some());
@@ -117,7 +138,7 @@ async fn test_service_count_after_registration() -> Result<(), Box<dyn std::erro
     registry
         .register_service(service)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Registration should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Registration should succeed: {e}")))?;
     let final_count = registry.get_services().len();
 
     assert_eq!(final_count, initial_count + 1, "Service count should increase by 1");
@@ -143,7 +164,7 @@ async fn test_service_lookup() -> Result<(), Box<dyn std::error::Error>> {
     registry
         .register_service(service.clone())
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Registration should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Registration should succeed: {e}")))?;
 
     let services = registry.get_services();
     let found = services.get(&service_id);
@@ -225,7 +246,7 @@ async fn test_service_info_serialization() -> Result<(), Box<dyn std::error::Err
     };
 
     let json = serde_json::to_string(&service)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(json.contains("serialize-test"));
     assert!(json.contains("8080"));
     Ok(())
@@ -244,9 +265,9 @@ async fn test_service_info_deserialization() -> Result<(), Box<dyn std::error::E
     };
 
     let json = serde_json::to_string(&service)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     let deserialized: ServiceInfo = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
 
     assert_eq!(service.name, deserialized.name);
     assert_eq!(service.port, deserialized.port);
@@ -335,7 +356,7 @@ async fn test_service_with_metadata() -> Result<(), Box<dyn std::error::Error>> 
     registry
         .register_service(service)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Registration should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Registration should succeed: {e}")))?;
 
     assert_eq!(metadata.len(), 3);
     Ok(())
@@ -350,22 +371,22 @@ async fn test_registry_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
     registry
         .initialize()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Initialize should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Initialize should succeed: {e}")))?;
     registry
         .start()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Start should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Start should succeed: {e}")))?;
 
     let health = registry
         .health_check()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Health check should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Health check should succeed: {e}")))?;
     assert_eq!(health.status, HealthStatus::Healthy);
 
     registry
         .stop()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Stop should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Stop should succeed: {e}")))?;
     Ok(())
 }
 
@@ -398,7 +419,7 @@ async fn test_concurrent_service_registration() -> Result<(), Box<dyn std::error
     for handle in handles {
         let result = handle
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Task should complete: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Task should complete: {e}")))?;
         assert!(result.is_ok(), "Concurrent registration should succeed");
     }
     Ok(())
@@ -425,7 +446,7 @@ async fn test_service_status_transitions() -> Result<(), Box<dyn std::error::Err
     registry
         .register_service(service)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Registration should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Registration should succeed: {e}")))?;
 
     // Update to Running state
     let updated_service = ServiceInfo {
@@ -441,7 +462,7 @@ async fn test_service_status_transitions() -> Result<(), Box<dyn std::error::Err
     registry
         .register_service(updated_service)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Update should succeed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Update should succeed: {e}")))?;
     Ok(())
 }
 

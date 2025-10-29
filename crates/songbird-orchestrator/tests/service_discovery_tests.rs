@@ -1,12 +1,36 @@
 //! Service Discovery Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
 //!
 //! Comprehensive tests for service discovery and routing functionality.
 //! These tests validate the orchestrator's ability to discover services,
 //! route requests, handle failures, and maintain service registry state.
 
 use songbird_test_utils::{
-    ai_service, compute_service, security_service, storage_service, MockBearDog, MockNestGate,
-    MockSquirrel, MockToadStool, OrchestratorTestEnvironment,
+    ai_service, compute_service,
+    mocks::common::{HealthStatus, MockPrimalServer},
+    security_service, storage_service, MockBearDog, MockNestGate, MockSquirrel, MockToadStool,
+    OrchestratorTestEnvironment,
 };
 use songbird_types::SongbirdError;
 
@@ -148,8 +172,6 @@ async fn test_route_with_failover() {
 async fn test_high_load_routing() {
     // Arrange: Create high load scenario
     let env = OrchestratorTestEnvironment::with_high_load().await;
-
-    use songbird_test_utils::mocks::common::{HealthStatus, MockPrimalServer};
 
     // Act: Check service health under load
     let services_health = [
@@ -320,19 +342,19 @@ async fn test_mock_server_isolation() -> Result<(), Box<dyn std::error::Error>> 
     let port1 = mock1
         .start()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Mock 1 should start: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Mock 1 should start: {e}")))?;
     let port2 = mock2
         .start()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Mock 2 should start: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Mock 2 should start: {e}")))?;
     let port3 = mock3
         .start()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Mock 3 should start: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Mock 3 should start: {e}")))?;
     let port4 = mock4
         .start()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Mock 4 should start: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Mock 4 should start: {e}")))?;
 
     // Assert: All servers have unique ports
     let all_ports = [port1, port2, port3, port4];

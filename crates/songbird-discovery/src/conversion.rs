@@ -9,6 +9,10 @@ use std::collections::HashMap;
 use crate::traits::service::{ServiceEndpoint, ServiceInfo as DiscoveryServiceInfo, ServiceStatus};
 use songbird_universal::ServiceInfo as UniversalServiceInfo;
 
+#[cfg(test)]
+#[path = "conversion_comprehensive_tests.rs"]
+mod conversion_comprehensive_tests;
+
 /// Convert from discovery `ServiceInfo` to universal `ServiceInfo`
 ///
 /// This conversion loses some information (version, timestamps, etc.)
@@ -85,7 +89,8 @@ impl From<UniversalServiceInfo> for DiscoveryServiceInfo {
 }
 
 /// Helper function to parse endpoint string into host and port
-fn parse_endpoint(endpoint: &str) -> (String, u16) {
+#[must_use]
+pub fn parse_endpoint(endpoint: &str) -> (String, u16) {
     // Handle various endpoint formats:
     // - "host:port"
     // - "http://host:port"
@@ -168,7 +173,7 @@ impl ServiceInfoExt for DiscoveryServiceInfo {
 
         // Parse and update endpoint
         let (host, port) = parse_endpoint(&universal.endpoint);
-        self.host = host.clone();
+        self.host = host;
         self.port = port;
 
         // Update first endpoint description or add new one

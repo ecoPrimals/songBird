@@ -1,3 +1,32 @@
+//! # ⚠️ DEPRECATED: Legacy BearDog Primal (Hardcoded Security Service)
+//!
+//! **STATUS**: This module is deprecated. Use `security_capability_client` instead.
+//!
+//! **REASON**: Hardcoded "beardog" primal name violates zero-hardcoding philosophy.
+//!
+//! ## Migration Guide
+//!
+//! ```rust,ignore
+//! // ❌ OLD: Hardcoded beardog primal
+//! use songbird_primal_sdk::beardog::BearDogConfig;
+//! let beardog = BearDogConfig { endpoint: "...", ... };
+//!
+//! // ✅ NEW: Capability-based security client  
+//! use songbird_primal_sdk::security_capability_client::SecurityCapabilityClient;
+//! let security = SecurityCapabilityClient::new().await?;
+//! ```
+//!
+//! ## Why This Change?
+//!
+//! - **Zero Hardcoding**: No hardcoded primal names or endpoints
+//! - **Agnostic**: Works with ANY security provider, not just beardog
+//! - **Discovery**: Dynamically discovers security services at runtime
+//! - **Flexibility**: Easy to swap providers without code changes
+//!
+//! ---
+//!
+//! # Original Documentation (Legacy)
+//!
 /// BearDog primal configuration
 ///
 /// Configuration for connecting to and interacting with BearDog security services.

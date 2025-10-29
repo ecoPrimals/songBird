@@ -10,6 +10,10 @@ use tokio::time::{sleep, timeout};
 /// Default delay for async operations that need time to propagate
 // MOVED: Use songbird_config::constants::testing::ASYNC_DELAY
 /// Create a test timeout with custom duration
+///
+/// # Errors
+///
+/// Returns an error if the future does not complete within the specified duration.
 pub async fn test_timeout<T>(
     future: impl Future<Output = T>,
     duration: Duration,
@@ -20,6 +24,10 @@ pub async fn test_timeout<T>(
 }
 
 /// Wait for a condition to become true with polling
+///
+/// # Errors
+///
+/// Returns an error if the condition does not become true within the maximum wait time.
 pub async fn wait_for_condition<F, Fut>(
     mut condition: F,
     max_wait: Duration,
@@ -42,6 +50,10 @@ where
 }
 
 /// Retry an operation with exponential backoff
+///
+/// # Errors
+///
+/// Returns an error if the operation fails after all retry attempts are exhausted.
 pub async fn retry_with_backoff<T, F, Fut, E>(
     mut operation: F,
     max_retries: usize,

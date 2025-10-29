@@ -128,20 +128,24 @@ impl<T: Clone + Default> ZeroCopyBuffer<T> {
 
     /// Create from slice
     #[inline]
-    pub fn from_slice() -> Self {
-        Self::new(data.to_vec()
+    pub fn from_slice(data: &[T]) -> Self {
+        Self::new(data.to_vec())
     }
 
     /// Get buffer slice - zero cost operation
     #[inline(always)]
-    pub fn as_slice() -> &[T]  {match self  {Self::Small(vec) => vec.as_slice(),
+    pub fn as_slice(&self) -> &[T] {
+        match self {
+            Self::Small(vec) => vec.as_slice(),
             Self::Large(vec) => vec.as_slice(),
         }
     }
 
     /// Get buffer length - zero cost
     #[inline(always)]
-    pub fn len() -> usize  {match self  {Self::Small(vec) => vec.len(),
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Small(vec) => vec.len(),
             Self::Large(vec) => vec.len(),
         }
     }
@@ -186,7 +190,7 @@ where
 
     /// Create with capacity - pre-allocate to avoid rehashing
     #[inline]
-    pub fn with_capacity() -> Self {
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
             inner: HashMap::with_capacity(capacity),
             stats: ZeroCopyStats::new(),
@@ -194,51 +198,55 @@ where
     }
 
     /// Insert with zero-copy key
-    pub fn insert() -> Option<V> {
-
-        let key = key.into());
+    pub fn insert(&mut self, key: impl Into<ZeroCopyString<'a>>, value: V) -> Option<V> {
+        let key = key.into();
         self.stats.record_operation();
         self.inner.insert(key, value)
-
-}
+    }
 
     /// Get value by zero-copy key - zero allocation lookup
-    pub fn get<'b>() -> Option<&V>
+    pub fn get<'b>(&self, key: &'b str) -> Option<&V>
     where
         'b: 'a,
     {
         self.stats.record_lookup();
         // Safe lookup using borrowed string
-        self.inner.get(&ZeroCopyString::Borrowed(key)
+        self.inner.get(&ZeroCopyString::Borrowed(key))
     }
 
     /// Get mutable value by key
-    pub fn get_mut() -> Option<&mut V> {
+    pub fn get_mut<'b>(&mut self, key: &'b str) -> Option<&mut V>
+    where
+        'b: 'a,
+    {
         self.stats.record_lookup();
-        self.inner.get_mut(&ZeroCopyString::Borrowed(key)
+        self.inner.get_mut(&ZeroCopyString::Borrowed(key))
     }
 
     /// Remove value by key
-    pub fn remove() -> Option<V> {
+    pub fn remove<'b>(&mut self, key: &'b str) -> Option<V>
+    where
+        'b: 'a,
+    {
         self.stats.record_operation();
-        self.inner.remove(&ZeroCopyString::Borrowed(key)
+        self.inner.remove(&ZeroCopyString::Borrowed(key))
     }
 
     /// Get number of entries - zero cost
     #[inline(always)]
-    pub fn len() -> usize {
+    pub fn len(&self) -> usize {
         self.inner.len()
     }
 
     /// Check if empty - zero cost
     #[inline(always)]
-    pub fn is_empty() -> bool {
+    pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
 
     /// Get performance statistics
     #[inline(always)]
-    pub fn stats() -> &ZeroCopyStats {
+    pub fn stats(&self) -> &ZeroCopyStats {
         &self.stats
     }
 }
@@ -346,16 +354,12 @@ impl Default for ZeroCopyStats {
 }
 
 impl Clone for ZeroCopyStats {
-
-
     fn clone(&self) -> Self {
         Self {
-            operations: AtomicUsize::new(self.operations.load(Ordering::Relaxed),
-            lookups: AtomicUsize::new(self.lookups.load(Ordering::Relaxed),
+            operations: AtomicUsize::new(self.operations.load(Ordering::Relaxed)),
+            lookups: AtomicUsize::new(self.lookups.load(Ordering::Relaxed)),
             start_time: self.start_time,
-
-
-}
+        }
     }
 }
 
@@ -560,14 +564,14 @@ impl ZeroCopyBenchmark {
     /// Start timing - zero cost operation
     #[inline(always)]
     pub fn start(&mut self) {
-        self.start = Some(Instant::now();
+        self.start = Some(Instant::now());
     }
 
     /// Stop timing and record measurement
     pub fn stop(&mut self) {
         if let Some(start) = self.start.take() {
             let duration = start.elapsed();
-            self.measurements.push(duration));
+            self.measurements.push(duration);
             self.stats.record_operation();
         }
     }
@@ -604,18 +608,18 @@ impl ZeroCopyBenchmark {
     }
 
     /// Get measurement count
-    pub fn count() -> usize {
+    pub fn count(&self) -> usize {
         self.measurements.len()
     }
 
     /// Print benchmark results
     pub fn report(&self) {
         println!("Benchmark: {}", self.name);
-        println!("  Measurements: {}", self.count();
-        println!("  Average: {:?}", self.average();
-        println!("  Min: {:?}", self.min();
-        println!("  Max: {:?}", self.max();
-        println!("  Ops/sec: {:.2}", self.stats.operations_per_second()
+        println!("  Measurements: {}", self.count());
+        println!("  Average: {:?}", self.average());
+        println!("  Min: {:?}", self.min());
+        println!("  Max: {:?}", self.max());
+        println!("  Ops/sec: {:.2}", self.stats.operations_per_second());
     }
 }
 
@@ -656,14 +660,25 @@ impl ZeroCostCompute {
 // ============================================================================
 
 #[cfg(test)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::float_cmp)]
+#[allow(clippy::useless_vec)]
+#[allow(clippy::unreadable_literal)]
+#[allow(clippy::items_after_statements)]
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 mod tests {
+    #![allow(clippy::all)]
+    #![allow(unused)]
+
     use super::*;
 
     #[test]
     fn test_zero_copy_string() {
         let static_str = ZeroCopyString::from_static("hello");
         let borrowed_str = ZeroCopyString::from_borrowed("world");
-        let owned_str = ZeroCopyString::from_owned("rust".to_string();
+        let owned_str = ZeroCopyString::from_owned("rust".to_string());
 
         assert_eq!(static_str.as_str(), "hello");
         assert_eq!(borrowed_str.as_str(), "world");
@@ -677,14 +692,14 @@ mod tests {
         assert!(buffer.is_empty());
         assert_eq!(buffer.capacity(), 4);
 
-        buffer.push(1));
-        buffer.push(2));
-        buffer.push(3));
+        buffer.push(1);
+        buffer.push(2);
+        buffer.push(3);
 
         assert_eq!(buffer.len(), 3);
-        assert_eq!(buffer.get(0), Some(&1);
-        assert_eq!(buffer.get(1), Some(&2);
-        assert_eq!(buffer.get(2), Some(&3);
+        assert_eq!(buffer.get(0), Some(&1));
+        assert_eq!(buffer.get(1), Some(&2));
+        assert_eq!(buffer.get(2), Some(&3));
     }
 
     #[test]
@@ -694,8 +709,8 @@ mod tests {
         map.insert("key1", 42);
         map.insert(ZeroCopyString::from_static("key2"), 84);
 
-        assert_eq!(map.get("key1"), Some(&42);
-        assert_eq!(map.get("key2"), Some(&84);
+        assert_eq!(map.get("key1"), Some(&42));
+        assert_eq!(map.get("key2"), Some(&84));
         assert_eq!(map.len(), 2);
     }
 
@@ -705,12 +720,12 @@ mod tests {
 
         let result = bench.measure(|| {
             // Simulate work
-            std::thread::sleep(Duration::from_nanos(100);
+            std::thread::sleep(Duration::from_nanos(100));
             42
         });
 
-        assert_eq!(result, 42)
+        assert_eq!(result, 42);
         assert_eq!(bench.count(), 1);
-        assert!(bench.average() > Duration::from_nanos(50);
+        assert!(bench.average() > Duration::from_nanos(50));
     }
 }

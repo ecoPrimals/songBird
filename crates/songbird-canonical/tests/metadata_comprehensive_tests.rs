@@ -1,4 +1,16 @@
 //! Comprehensive tests for AI metadata types
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
 
 use serde_json::json;
 use songbird_canonical::metadata::*;
@@ -94,7 +106,7 @@ fn test_ai_response_metadata_deserialization() -> Result<(), Box<dyn std::error:
     let serialized =
         serde_json::to_string(&metadata).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
     let deserialized: Result<AIResponseMetadata, _> = serde_json::from_str(&serialized);
@@ -169,7 +181,7 @@ fn test_decision_context_deserialization() -> Result<(), Box<dyn std::error::Err
     let context = DecisionContext::default();
     let serialized = serde_json::to_string(&context).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
     let deserialized: Result<DecisionContext, _> = serde_json::from_str(&serialized);
@@ -219,7 +231,7 @@ fn test_risk_level_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let risk = RiskLevel::High;
     let serialized = serde_json::to_string(&risk).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
 
@@ -232,11 +244,11 @@ fn test_risk_level_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let risk = RiskLevel::Medium;
     let serialized = serde_json::to_string(&risk).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
     let deserialized: RiskLevel = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     assert_eq!(risk, deserialized);
     Ok(())
@@ -347,7 +359,7 @@ fn test_automation_capability_deserialization() -> Result<(), Box<dyn std::error
     let serialized =
         serde_json::to_string(&capability).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
     let deserialized: Result<AutomationCapability, _> = serde_json::from_str(&serialized);

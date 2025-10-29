@@ -1,9 +1,25 @@
+#![allow(clippy::all)]
+#![allow(unused)]
+
 //! Comprehensive tests for network management
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
 
 use async_trait::async_trait;
 use songbird_network_federation::network::*;
 use songbird_types::SongbirdError;
 use songbird_types::SongbirdResult;
+use std::collections::HashMap;
 use std::net::IpAddr;
 use std::time::Duration;
 
@@ -51,7 +67,7 @@ impl NetworkProvider for MockNetworkProvider {
     async fn health_check(&self) -> SongbirdResult<NetworkHealth> {
         Ok(NetworkHealth {
             overall_status: self.health_status.clone(),
-            provider_health: Default::default(),
+            provider_health: HashMap::default(),
             gaming_health: None,
             active_connections: 10,
             bandwidth_usage: 5.5,
@@ -127,13 +143,13 @@ async fn test_network_manager_health_check_no_providers() -> Result<(), Box<dyn 
     manager
         .initialize()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     let health = manager.health_check().await;
     assert!(health.is_ok());
 
-    let health = health
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    let health =
+        health.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
     assert_eq!(health.provider_health.len(), 0);
 
     Ok(())
@@ -149,13 +165,13 @@ async fn test_network_manager_health_check_with_provider() -> Result<(), Box<dyn
     manager
         .register_provider(provider)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     let health = manager.health_check().await;
     assert!(health.is_ok());
 
-    let health = health
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    let health =
+        health.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
     assert_eq!(health.provider_health.len(), 1);
     assert!(health.provider_health.contains_key("test-provider"));
 
@@ -172,12 +188,12 @@ async fn test_network_manager_health_check_overall_status() -> Result<(), Box<dy
     manager
         .register_provider(provider)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     let health = manager
         .health_check()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
     assert_eq!(health.overall_status, NetworkStatus::Healthy);
 
     Ok(())
@@ -195,7 +211,7 @@ async fn test_network_manager_health_check_degraded_provider(
     manager
         .register_provider(provider)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     let health = manager.health_check().await;
     assert!(health.is_ok());
@@ -213,12 +229,12 @@ async fn test_network_manager_health_check_active_connections(
     manager
         .register_provider(provider)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     let health = manager
         .health_check()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
     assert!(health.active_connections > 0);
 
     Ok(())
@@ -234,12 +250,12 @@ async fn test_network_manager_health_check_bandwidth_usage(
     manager
         .register_provider(provider)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     let health = manager
         .health_check()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
     assert!(health.bandwidth_usage >= 0.0);
 
     Ok(())
@@ -254,12 +270,12 @@ async fn test_network_manager_health_check_latency() -> Result<(), Box<dyn std::
     manager
         .register_provider(provider)
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     let health = manager
         .health_check()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
     assert!(health.latency_ms > 0.0);
 
     Ok(())
@@ -291,7 +307,7 @@ fn test_network_config_deserialization() -> Result<(), Box<dyn std::error::Error
     let config = NetworkConfig::default();
     let serialized = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
     let deserialized: Result<NetworkConfig, _> = serde_json::from_str(&serialized);
@@ -306,11 +322,11 @@ fn test_network_config_round_trip() -> Result<(), Box<dyn std::error::Error>> {
     let serialized =
         serde_json::to_string(&original).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
     let deserialized: NetworkConfig = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     assert_eq!(original.gaming.enabled, deserialized.gaming.enabled);
     assert_eq!(original.proxy.enabled, deserialized.proxy.enabled);
@@ -346,7 +362,7 @@ fn test_interface_config_port() {
 
     // Port should be in valid range
     assert!(config.port > 0);
-    assert!(config.port <= 65535);
+    // Port is u16, so always <= 65535
 }
 
 #[test]
@@ -385,7 +401,7 @@ fn test_port_ranges_gaming_valid() {
 
     assert!(ranges.gaming.0 < ranges.gaming.1);
     assert!(ranges.gaming.0 > 0);
-    assert!(ranges.gaming.1 <= 65535);
+    // Port is u16, so always <= 65535
 }
 
 #[test]
@@ -409,7 +425,7 @@ fn test_port_ranges_reserved_valid() {
 
     for port in &ranges.reserved {
         assert!(*port > 0);
-        assert!(*port <= 65535);
+        // Port is u16, so always <= 65535
     }
 }
 
@@ -490,7 +506,7 @@ fn test_proxy_type_http() -> Result<(), Box<dyn std::error::Error>> {
     let serialized =
         serde_json::to_string(&proxy_type).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
 
@@ -504,7 +520,7 @@ fn test_proxy_type_socks5() -> Result<(), Box<dyn std::error::Error>> {
     let serialized =
         serde_json::to_string(&proxy_type).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
 
@@ -518,7 +534,7 @@ fn test_proxy_type_transparent() -> Result<(), Box<dyn std::error::Error>> {
     let serialized =
         serde_json::to_string(&proxy_type).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
 
@@ -536,7 +552,7 @@ fn test_load_balancing_strategy_round_robin() -> Result<(), Box<dyn std::error::
     let serialized =
         serde_json::to_string(&strategy).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
 
@@ -550,7 +566,7 @@ fn test_load_balancing_strategy_least_connections() -> Result<(), Box<dyn std::e
     let serialized =
         serde_json::to_string(&strategy).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
 
@@ -564,7 +580,7 @@ fn test_load_balancing_strategy_weighted_round_robin() -> Result<(), Box<dyn std
     let serialized =
         serde_json::to_string(&strategy).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
 
@@ -578,7 +594,7 @@ fn test_load_balancing_strategy_ip_hash() -> Result<(), Box<dyn std::error::Erro
     let serialized =
         serde_json::to_string(&strategy).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
 
@@ -654,7 +670,7 @@ fn test_discovery_method_multicast() -> Result<(), Box<dyn std::error::Error>> {
     let method = DiscoveryMethod::Multicast;
     let serialized = serde_json::to_string(&method).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
 
@@ -667,7 +683,7 @@ fn test_discovery_method_broadcast() -> Result<(), Box<dyn std::error::Error>> {
     let method = DiscoveryMethod::Broadcast;
     let serialized = serde_json::to_string(&method).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
 
@@ -680,7 +696,7 @@ fn test_discovery_method_unicast() -> Result<(), Box<dyn std::error::Error>> {
     let method = DiscoveryMethod::Unicast;
     let serialized = serde_json::to_string(&method).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
 
@@ -693,7 +709,7 @@ fn test_discovery_method_dns() -> Result<(), Box<dyn std::error::Error>> {
     let method = DiscoveryMethod::Dns;
     let serialized = serde_json::to_string(&method).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
 
@@ -770,7 +786,7 @@ fn test_performance_config_keepalive_reasonable() {
 fn test_network_health_serialization() {
     let health = NetworkHealth {
         overall_status: NetworkStatus::Healthy,
-        provider_health: Default::default(),
+        provider_health: HashMap::default(),
         gaming_health: None,
         active_connections: 10,
         bandwidth_usage: 5.5,
@@ -791,7 +807,7 @@ fn test_network_health_with_gaming() {
 
     let health = NetworkHealth {
         overall_status: NetworkStatus::Healthy,
-        provider_health: Default::default(),
+        provider_health: HashMap::default(),
         gaming_health: Some(gaming_health),
         active_connections: 10,
         bandwidth_usage: 5.5,
@@ -834,7 +850,7 @@ fn test_network_status_serialization() -> Result<(), Box<dyn std::error::Error>>
     let status = NetworkStatus::Healthy;
     let serialized = serde_json::to_string(&status).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
 
@@ -916,7 +932,7 @@ fn test_network_capability_serialization() -> Result<(), Box<dyn std::error::Err
     let cap = NetworkCapability::Gaming;
     let serialized = serde_json::to_string(&cap).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
 
@@ -961,7 +977,7 @@ async fn test_provider_capabilities() -> Result<(), Box<dyn std::error::Error>> 
     let capabilities = provider
         .capabilities()
         .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
 
     assert!(!capabilities.is_empty());
     assert!(capabilities.contains(&NetworkCapability::Discovery));

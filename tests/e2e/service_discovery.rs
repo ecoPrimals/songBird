@@ -33,13 +33,12 @@ async fn test_service_registration_and_discovery() {
     let discovered = env.discover_services("compute").await
         .expect("Discovery should succeed");
     
-    // 4. Verify it's discoverable (will pass once implementation is complete)
-    // For now, this demonstrates the API
-    // TestAssertions::assert_services_found(&discovered);
-    // TestAssertions::assert_service_present(&discovered, "test-service");
-    
-    // Test passes - infrastructure is working
-    assert!(discovered.is_empty()); // TODO: Remove when implementation complete
+    // 4. Verify it's discoverable - NOW IMPLEMENTED!
+    assert!(!discovered.is_empty(), "Should find at least one service");
+    assert_eq!(discovered.len(), 1, "Should find exactly one service");
+    assert_eq!(discovered[0].name, "test-service", "Service name should match");
+    assert!(discovered[0].capabilities.contains(&"compute".to_string()), 
+            "Service should have compute capability");
 }
 
 #[tokio::test]
@@ -72,9 +71,13 @@ async fn test_multi_provider_discovery() {
     let discovered = env.discover_services("compute").await
         .expect("Discovery should succeed");
     
-    // 3. Verify providers (will work once implementation is complete)
-    // For now, test passes - infrastructure is working
-    assert!(discovered.len() <= 3); // TODO: Should be == 3 when implemented
+    // 3. Verify multiple providers found - NOW IMPLEMENTED!
+    assert_eq!(discovered.len(), 3, "Should find exactly 3 compute providers");
+    
+    // Verify all have compute capability
+    for service in &discovered {
+        assert!(service.capabilities.contains(&"compute".to_string()));
+    }
 }
 
 #[tokio::test]
@@ -100,8 +103,10 @@ async fn test_service_health_monitoring() {
     env.wait_for_healthy("healthy-service", 5).await
         .expect("Service should become healthy");
     
-    // Test infrastructure is working
-    assert!(true);
+    // Verify health monitoring is functional
+    let final_health = env.get_service_health("healthy-service").await
+        .expect("Should still have health status");
+    assert_eq!(final_health, HealthStatus::Healthy, "Service should remain healthy");
 }
 
 #[tokio::test]

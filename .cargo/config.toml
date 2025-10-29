@@ -1,18 +1,8 @@
 [build]
-rustflags = [
-    "-W", "warnings",                    # Warn on warnings (not deny)
-    "-W", "clippy::all",                # Warn on clippy lints
-    "-A", "missing_docs",               # Allow missing docs temporarily
-    "-A", "missing_debug_implementations", # Allow missing Debug temporarily
-    "-A", "unused_results",             # Allow unused results temporarily
-]
+rustflags = []
 
-# Performance optimizations (commented out to avoid conflicts)
-# [target.'cfg(all())']
-# rustflags = [
-#     "-C", "target-cpu=native",
-#     "-C", "opt-level=3", 
-#     "-C", "lto=fat",
-#     "-C", "codegen-units=1",
-#     "-C", "panic=abort",
-# ] 
+[target.'cfg(all())']
+rustflags = [
+    # Test-specific allows
+    "--cfg", "test_allow_pedantic"
+]

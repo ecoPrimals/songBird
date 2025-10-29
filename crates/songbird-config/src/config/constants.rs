@@ -22,17 +22,24 @@ pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
 /// Get bind address from environment or calculate from system capabilities
 #[must_use]
 pub fn get_bind_address() -> String {
-    env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
-        // Detect if running in container/kubernetes or production
-        if env::var("KUBERNETES_SERVICE_HOST").is_ok()
-            || env::var("CONTAINER").is_ok()
-            || env::var("SONGBIRD_ENV").as_deref() == Ok("production")
-        {
-            "0.0.0.0".to_string() // Container/production environment
-        } else {
-            "127.0.0.1".to_string() // Development/local environment
+    // Try to get from environment, but validate it
+    if let Ok(addr) = env::var("SONGBIRD_BIND_ADDRESS") {
+        // Validate that it's a valid IP address
+        if addr.parse::<std::net::IpAddr>().is_ok() {
+            return addr;
         }
-    })
+        // Invalid IP in env var, fall through to calculated default
+    }
+
+    // Detect if running in container/kubernetes or production
+    if env::var("KUBERNETES_SERVICE_HOST").is_ok()
+        || env::var("CONTAINER").is_ok()
+        || env::var("SONGBIRD_ENV").as_deref() == Ok("production")
+    {
+        "0.0.0.0".to_string() // Container/production environment
+    } else {
+        "127.0.0.1".to_string() // Development/local environment
+    }
 }
 
 /// Get port range start from environment or system-based calculation
@@ -237,18 +244,15 @@ pub fn get_buffer_pool_size() -> usize {
         };
 
         // Adjust for container memory limits
-        if let Ok(memory_limit) = env::var("MEMORY_LIMIT") {
-            if let Ok(limit_mb) = memory_limit.parse::<u64>() {
+        env::var("MEMORY_LIMIT")
+            .ok()
+            .and_then(|memory_limit| memory_limit.parse::<u64>().ok())
+            .map_or(base_size, |limit_mb| {
                 // Use 1% of available memory for buffer pool
                 #[allow(clippy::cast_possible_truncation)]
                 let adjusted_size = (limit_mb as usize * 10) / 1024;
                 std::cmp::min(base_size, adjusted_size)
-            } else {
-                base_size
-            }
-        } else {
-            base_size
-        }
+            })
     })
 }
 
@@ -280,7 +284,7 @@ pub fn enable_zero_copy() -> bool {
                 env::var("MEMORY_LIMIT")
                     .ok()
                     .and_then(|s| s.parse::<u64>().ok())
-                    .map_or(true, |mb| mb > 2048) // Default to enabled
+                    .is_none_or(|mb| mb > 2048) // Default to enabled
             }
         }
     })

@@ -4,6 +4,7 @@
 //! mock services, and cleanup.
 
 use super::{TestConfig, ServiceHelper, MockServiceConfig};
+use songbird_config::SongbirdConfig;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -14,7 +15,10 @@ use tokio::sync::Mutex;
 /// Automatically cleans up on drop.
 pub struct TestEnvironment {
     config: TestConfig,
+    songbird_config: SongbirdConfig,
     services: Arc<Mutex<HashMap<String, ServiceHelper>>>,
+    // Registry for service discovery (in-memory for tests)
+    service_registry: Arc<Mutex<HashMap<String, songbird_types::ServiceInfo>>>,
     cleanup_handlers: Vec<Box<dyn FnOnce() + Send>>,
 }
 
@@ -26,9 +30,13 @@ impl TestEnvironment {
 
     /// Create a new test environment with custom configuration
     pub async fn with_config(config: TestConfig) -> Self {
+        let songbird_config = SongbirdConfig::test_defaults();
+        
         let env = Self {
             config,
+            songbird_config,
             services: Arc::new(Mutex::new(HashMap::new())),
+            service_registry: Arc::new(Mutex::new(HashMap::new())),
             cleanup_handlers: Vec::new(),
         };
 
@@ -40,8 +48,9 @@ impl TestEnvironment {
 
     /// Initialize the test environment
     async fn initialize(&self) {
-        // TODO: Initialize orchestrator and core services
-        // This will be implemented with actual service startup
+        // Initialize in-memory registry for test
+        // Real orchestrator initialization would happen here in production
+        tracing::info!("Test environment initialized with in-memory registry");
     }
 
     /// Start a mock service with the given configuration
@@ -73,20 +82,36 @@ impl TestEnvironment {
 
     /// Register a service for discovery
     pub async fn register_service(&self, service_info: songbird_types::ServiceInfo) -> Result<(), String> {
-        // TODO: Register with orchestrator's service registry
-        // For now, just validate the service info
+        // Validate service info
         if service_info.name.is_empty() {
             return Err("Service name cannot be empty".to_string());
         }
+        
+        // Register in our in-memory registry (simulating real registry)
+        let mut registry = self.service_registry.lock().await;
+        registry.insert(service_info.name.clone(), service_info.clone());
+        
+        tracing::debug!("Registered service: {} with {} capabilities", 
+                       service_info.name, service_info.capabilities.len());
+        
         Ok(())
     }
 
     /// Query for services by capability
     pub async fn discover_services(&self, capability: &str) -> Result<Vec<songbird_types::ServiceInfo>, String> {
-        // TODO: Query orchestrator's service registry
-        // For now, return empty list
-        let _ = capability;
-        Ok(Vec::new())
+        // Query our in-memory registry (simulating real registry)
+        let registry = self.service_registry.lock().await;
+        
+        let matching_services: Vec<songbird_types::ServiceInfo> = registry
+            .values()
+            .filter(|service| service.capabilities.contains(&capability.to_string()))
+            .cloned()
+            .collect();
+        
+        tracing::debug!("Discovered {} services for capability '{}'", 
+                       matching_services.len(), capability);
+        
+        Ok(matching_services)
     }
 
     /// Get the health status of a service

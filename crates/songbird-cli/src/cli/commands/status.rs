@@ -1,8 +1,12 @@
 //! Enhanced status command with improved UI and error handling
 
-use crate::cli::ui::*;
-use crate::cli::{CliError, CliResult, OutputFormat};
-use colored::*;
+use crate::cli::types::OutputFormat;
+use crate::cli::ui::{
+    banner, clear_screen, error_with_suggestions, format_bytes, format_duration,
+    format_health_status, format_percentage, print_info, separator, subheader, system_info, Table,
+};
+use crate::errors::{CliError, CliResult};
+use colored::Colorize;
 use serde_json::json;
 use std::time::Duration;
 
@@ -76,11 +80,7 @@ pub async fn show_status(
 /// Display current timestamp for watch mode
 fn display_timestamp() {
     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-    println!(
-        "{} {}",
-        "Last Updated:".bright_blue().bold(),
-        timestamp.to_string().bright_white()
-    );
+    println!("{} {}", "Last Updated:".bright_blue().bold(), timestamp.to_string().bright_white());
     separator();
 }
 
@@ -169,10 +169,7 @@ async fn display_table_status(status: &SystemStatus, detailed: bool) -> CliResul
         ("Overall Status", overall_status),
         ("Version", &status.version),
         ("Uptime", &format_duration(status.uptime)),
-        (
-            "Last Updated",
-            &status.last_updated.format("%H:%M:%S UTC").to_string(),
-        ),
+        ("Last Updated", &status.last_updated.format("%H:%M:%S UTC").to_string()),
     ]);
 
     // Service status table
@@ -218,16 +215,10 @@ async fn display_table_status(status: &SystemStatus, detailed: bool) -> CliResul
                     format_percentage(status.memory_usage as f64 / status.memory_total as f64)
                 ),
             ),
-            (
-                "Network Throughput",
-                &format!("{}/s", format_bytes(status.network_throughput)),
-            ),
+            ("Network Throughput", &format!("{}/s", format_bytes(status.network_throughput))),
             ("Connected Nodes", &status.connected_nodes.to_string()),
             ("Active Services", &status.active_services.to_string()),
-            (
-                "Network Health",
-                &format_health_status(&status.network_health),
-            ),
+            ("Network Health", &format_health_status(&status.network_health)),
         ]);
 
         // Service details
@@ -240,18 +231,9 @@ async fn display_table_status(status: &SystemStatus, detailed: bool) -> CliResul
     // Quick actions
     subheader("Quick Actions");
     println!("• View logs: {}", "songbird logs --follow".bright_green());
-    println!(
-        "• Check configuration: {}",
-        "songbird config show".bright_green()
-    );
-    println!(
-        "• Restart services: {}",
-        "songbird stop && songbird start".bright_green()
-    );
-    println!(
-        "• Watch status: {}",
-        "songbird status --watch 5".bright_green()
-    );
+    println!("• Check configuration: {}", "songbird config show".bright_green());
+    println!("• Restart services: {}", "songbird stop && songbird start".bright_green());
+    println!("• Watch status: {}", "songbird status --watch 5".bright_green());
 
     Ok(())
 }
@@ -282,10 +264,7 @@ fn display_service_details(service: &ServiceStatus) {
     }
 
     if service.restart_count > 0 {
-        println!(
-            "  Restarts: {}",
-            service.restart_count.to_string().bright_yellow()
-        );
+        println!("  Restarts: {}", service.restart_count.to_string().bright_yellow());
     }
 }
 
@@ -316,14 +295,7 @@ async fn display_json_status(status: &SystemStatus, detailed: bool) -> CliResult
         });
     }
 
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&json_status).map_err(|e| CliError::command_error(
-            &format!("Failed to serialize JSON: {e}"),
-            Some("status"),
-            "Check system status and try again"
-        ))?
-    );
+    println!("{}", serde_json::to_string_pretty(&json_status).map_err(CliError::Serialization)?);
 
     Ok(())
 }
@@ -356,12 +328,10 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> CliResult
             "monitoring": service_to_json(&status.monitoring_status),
         }
     }))
-    .map_err(|e| {
-        CliError::command_error(
-            &format!("Failed to serialize YAML: {e}"),
-            Some("status"),
-            "Check system status and try again",
-        )
+    .map_err(|e| CliError::Config {
+        message: format!("Failed to serialize YAML: {e}"),
+        field: Some("status".to_string()),
+        suggestion: Some("Check system status and try again".to_string()),
     })?;
 
     if detailed {
@@ -376,12 +346,10 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> CliResult
                 "network_health": status.network_health,
             }
         }))
-        .map_err(|e| {
-            CliError::command_error(
-                &format!("Failed to serialize detailed YAML: {e}"),
-                Some("status"),
-                "Check system status and try again",
-            )
+        .map_err(|e| CliError::Config {
+            message: format!("Failed to serialize detailed YAML: {e}"),
+            field: Some("status".to_string()),
+            suggestion: Some("Check system status and try again".to_string()),
         })?;
 
         yaml_status.push_str(&detailed_yaml);
@@ -409,16 +377,10 @@ async fn display_text_status(status: &SystemStatus, detailed: bool) -> CliResult
             format_bytes(status.memory_total),
             format_percentage(status.memory_usage as f64 / status.memory_total as f64)
         );
-        println!(
-            "Network Throughput: {}/s",
-            format_bytes(status.network_throughput)
-        );
+        println!("Network Throughput: {}/s", format_bytes(status.network_throughput));
         println!("Connected Nodes: {}", status.connected_nodes);
         println!("Active Services: {}", status.active_services);
-        println!(
-            "Network Health: {}",
-            format_health_status(&status.network_health)
-        );
+        println!("Network Health: {}", format_health_status(&status.network_health));
     }
 
     Ok(())
@@ -427,9 +389,7 @@ async fn display_text_status(status: &SystemStatus, detailed: bool) -> CliResult
 /// Watch status with live updates and enhanced display
 async fn watch_status(detailed: bool, interval: u64, format: OutputFormat) -> CliResult<()> {
     banner("Songbird Status Monitor", Some("Live Updates"));
-    print_info(&format!(
-        "Updating every {interval} seconds (press Ctrl+C to stop,"
-    ));
+    print_info(&format!("Updating every {interval} seconds (press Ctrl+C to stop,"));
 
     loop {
         clear_screen();

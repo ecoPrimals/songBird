@@ -1,9 +1,24 @@
 //! # Comprehensive Discovery Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Tests for service discovery, endpoint scanning, and capability detection.
 //! These tests cover the critical discovery paths in `UnifiedUniversalAdapter`.
 
-use songbird_universal::types::{Capability, HealthStatus, PrimalType, QosMetrics, ServiceInfo};
+use songbird_universal::types::{
+    DiscoveredCapability, HealthStatus, PrimalType, QosMetrics, ServiceInfo,
+};
 use songbird_universal::{UnifiedAdapterConfig, UnifiedUniversalAdapter};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -20,12 +35,12 @@ fn create_test_service(name: &str, endpoint: &str, capabilities: Vec<&str>) -> S
         },
         capabilities: capabilities
             .iter()
-            .map(|c| Capability {
-                name: c.to_string(),
+            .map(|c| DiscoveredCapability {
+                name: (*c).to_string(),
                 version: "1.0".to_string(),
-                description: format!("{} capability", c),
+                description: format!("{c} capability"),
                 provider: name.to_string(),
-                endpoint: format!("{}/api/v1/{}", endpoint, c),
+                endpoint: format!("{endpoint}/api/v1/{c}"),
                 qos_metrics: QosMetrics {
                     latency_ms: Some(100.0),
                     throughput_ops_sec: Some(1000.0),
@@ -276,7 +291,7 @@ async fn test_capability_structure() {
     // Verify Capability structure contains all required information
 
     // ARRANGE & ACT: Create a capability
-    let capability = Capability {
+    let capability = DiscoveredCapability {
         name: "compute".to_string(),
         version: "1.0.0".to_string(),
         description: "Compute capability".to_string(),
@@ -488,7 +503,7 @@ async fn test_discover_services_repeated_calls() {
         let result = adapter.discover_services().await;
 
         // ASSERT: Each call succeeds
-        assert!(result.is_ok(), "Discovery call {} should succeed", i);
+        assert!(result.is_ok(), "Discovery call {i} should succeed");
     }
 }
 
@@ -695,7 +710,7 @@ async fn test_discovery_with_invalid_url_format() {
         discovery_endpoints: vec![
             "not-a-url".to_string(),
             "ftp://invalid:8080".to_string(),
-            "".to_string(),
+            String::new(),
         ],
         ..Default::default()
     };

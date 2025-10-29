@@ -6,7 +6,7 @@
 use crate::config::constants::{
     enable_zero_copy, get_batch_size, get_bind_address, get_buffer_pool_size,
     get_connection_timeout_ms, get_dashboard_port, get_log_level, get_max_connections,
-    get_primal_endpoint, get_worker_threads,
+    get_worker_threads,
 };
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -94,13 +94,25 @@ impl Default for EnvironmentConfig {
 impl Default for ServiceEndpoints {
     fn default() -> Self {
         Self {
-            beardog_endpoint: get_primal_endpoint("beardog"),
-            nestgate_endpoint: get_primal_endpoint("nestgate"),
-            toadstool_endpoint: get_primal_endpoint("toadstool"),
-            squirrel_endpoint: get_primal_endpoint("squirrel"),
-            discovery_endpoint: get_primal_endpoint("discovery"),
-            health_endpoint: get_primal_endpoint("health"),
-            metrics_endpoint: get_primal_endpoint("metrics"),
+            // Use capability-based environment variables (not primal names)
+            beardog_endpoint: env::var("SECURITY_PROVIDER_ENDPOINT")
+                .or_else(|_| env::var("BEARDOG_ENDPOINT"))
+                .unwrap_or_else(|_| "http://127.0.0.1:8443".to_string()),
+            nestgate_endpoint: env::var("STORAGE_PROVIDER_ENDPOINT")
+                .or_else(|_| env::var("NESTGATE_ENDPOINT"))
+                .unwrap_or_else(|_| "http://127.0.0.1:8444".to_string()),
+            toadstool_endpoint: env::var("COMPUTE_PROVIDER_ENDPOINT")
+                .or_else(|_| env::var("TOADSTOOL_ENDPOINT"))
+                .unwrap_or_else(|_| "http://127.0.0.1:9000".to_string()),
+            squirrel_endpoint: env::var("AI_PROVIDER_ENDPOINT")
+                .or_else(|_| env::var("SQUIRREL_ENDPOINT"))
+                .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string()),
+            discovery_endpoint: env::var("DISCOVERY_ENDPOINT")
+                .unwrap_or_else(|_| "http://127.0.0.1:8001".to_string()),
+            health_endpoint: env::var("HEALTH_ENDPOINT")
+                .unwrap_or_else(|_| "http://127.0.0.1:8002".to_string()),
+            metrics_endpoint: env::var("METRICS_ENDPOINT")
+                .unwrap_or_else(|_| "http://127.0.0.1:8004".to_string()),
         }
     }
 }

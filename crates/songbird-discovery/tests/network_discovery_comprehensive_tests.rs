@@ -1,8 +1,23 @@
+#![allow(clippy::all)]
+#![allow(unused)]
+
 //! Comprehensive Network Discovery Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Tests for network scanning, service mesh, and distributed discovery.
 
-use songbird_types::SongbirdError;
 use std::collections::HashMap;
 
 // ========== Network Scanning Tests ==========
@@ -22,7 +37,7 @@ fn test_common_service_ports() {
 
     for port in &ports {
         assert!(*port > 0);
-        assert!(*port <= 65535);
+        // u16 max is 65535, so all ports are valid by type
     }
 }
 
@@ -431,6 +446,7 @@ fn test_topology_diameter() {
 fn test_routing_table_entry() {
     let destination = "service-b";
     let next_hop = "service-a";
+    let _ = next_hop; // Used for documentation/future expansion
     let metric = 10u32;
 
     assert!(!destination.is_empty());

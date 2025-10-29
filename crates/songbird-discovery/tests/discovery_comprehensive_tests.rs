@@ -1,11 +1,23 @@
 //! Comprehensive Discovery Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Extended tests for discovery functionality with comprehensive coverage
 //!
 //! NOTE: This file was reconstructed after corruption. Original tests preserved where possible.
 
 use chrono::Utc;
-use songbird_config;
 use songbird_discovery::{
     discovery::{backends::StaticServiceDiscovery, core::CanonicalDiscoveryConfig},
     traits::{
@@ -31,7 +43,7 @@ fn test_discovery_config_comprehensive() {
 /// Test health status variants
 #[test]
 fn test_health_status_variants() {
-    let statuses = vec![HealthStatus::Healthy, HealthStatus::Unhealthy, HealthStatus::Unknown];
+    let statuses = [HealthStatus::Healthy, HealthStatus::Unhealthy, HealthStatus::Unknown];
 
     assert_eq!(statuses.len(), 3);
 }
@@ -71,9 +83,9 @@ fn test_comprehensive_service_creation() {
         version: "2.0.0".to_string(),
         service_type: "web_service".to_string(),
         description: Some("A comprehensive test service".to_string()),
-        endpoints: endpoints,
+        endpoints,
         health_check_endpoint: Some("/health".to_string()),
-        metadata: metadata,
+        metadata,
         tags: vec!["production".to_string(), "api".to_string()],
         dependencies: vec!["database".to_string(), "cache".to_string()],
         status: ServiceStatus::Running,
@@ -92,10 +104,10 @@ fn test_comprehensive_service_creation() {
 /// Test static discovery backend
 #[test]
 fn test_static_discovery_backend() {
-    let discovery = StaticServiceDiscovery::new();
+    let _discovery = StaticServiceDiscovery::new();
 
-    // Just validate creation
-    assert!(true);
+    // Just validate creation - test passes by construction
+    // Static discovery starts empty and is valid
 }
 
 /// Test backend type configuration
@@ -127,7 +139,7 @@ fn test_service_status_transitions() {
 
     for status in statuses {
         // Verify all statuses can be created
-        let _ = format!("{:?}", status);
+        let _ = format!("{status:?}");
     }
 }
 
@@ -217,9 +229,9 @@ fn test_service_round_trip_serialization() -> Result<(), Box<dyn std::error::Err
     };
 
     let serialized = serde_json::to_string(&service)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
     let deserialized: ServiceInfo = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {e}")))?;
 
     assert_eq!(service.service_id, deserialized.service_id);
     assert_eq!(service.name, deserialized.name);

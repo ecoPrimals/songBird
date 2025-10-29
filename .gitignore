@@ -100,10 +100,12 @@ perf.data*
 *.profraw
 build_rs_cov.profraw
 
-# Backup files
+# Backup files and archives
 backup/
+archive/
 *.backup
 *.bak
+*.old
 
 # Large binary files and media
 *.zip

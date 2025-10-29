@@ -14,7 +14,6 @@ use std::net::SocketAddr;
 /// # Errors
 ///
 /// Returns an error if the socket address parsing fails (should never occur with `127.0.0.1:0`).
-#[must_use]
 pub fn test_socket_addr() -> SongbirdResult<SocketAddr> {
     let port = 0; // OS will assign available port
     format!("127.0.0.1:{port}").parse().map_err(|e| {
@@ -29,7 +28,6 @@ pub fn test_socket_addr() -> SongbirdResult<SocketAddr> {
 /// # Errors
 ///
 /// Returns an error if the socket address parsing fails (should never occur with valid port).
-#[must_use]
 pub fn test_socket_addr_with_port(port: u16) -> SongbirdResult<SocketAddr> {
     format!("127.0.0.1:{port}").parse().map_err(|e| {
         SongbirdError::configuration(format!(

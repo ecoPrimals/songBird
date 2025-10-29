@@ -35,12 +35,13 @@ pub async fn discover_networks_api(
             }
             _ => {
                 return Err(CliError::Config {
-                    message: format!("Unknown discovery method: {}", method,
+                    message: format!("Unknown discovery method: {method}"),
                     field: Some("discovery_method".to_string()),
                     suggestion: Some(
-                        "Use 'subnet', 'dns', 'multicast', 'mdns', or 'broadcast'".to_string()
+                        "Use 'subnet', 'dns', 'multicast', 'mdns', or 'broadcast'".to_string(),
                     ),
-                });
+                }
+                .into());
             }
         }
 
@@ -55,14 +56,14 @@ pub async fn discover_networks_api(
         network.compatibility_score = calculate_compatibility_score(network);
     }
 
-    Ok(networks,
+    Ok(networks)
 }
 
 /// Calculate compatibility score for a network
 fn calculate_compatibility_score(network: &DiscoveredNetwork) -> f64 {
     let mut score: f64 = 0.5; // Base score - explicitly typed as f64
 
-    // Prefer networks with more nodes (up to a point,
+    // Prefer networks with more nodes (up to a point)
     if network.node_count >= 3 && network.node_count <= 20 {
         score += 0.2;
     } else if network.node_count > 20 {
@@ -102,7 +103,7 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
     use std::time::Duration;
 
     let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| CliError::Network {
-        message: format!("Failed to create socket: {}", e,
+        message: format!("Failed to create socket: {e}"),
         interface: Some("0.0.0.0:0".to_string()),
         suggestion: Some("Check network permissions and available ports ".to_string()),
     })?;
@@ -110,7 +111,7 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
     socket
         .set_read_timeout(Some(Duration::from_millis(timeout_ms.min(MAX_DISCOVERY_TIMEOUT_MS))))
         .map_err(|e| CliError::Network {
-            message: format!("Failed to set timeout: {}", e,
+            message: format!("Failed to set timeout: {e}"),
             interface: Some("socket".to_string()),
             suggestion: Some("Check socket configuration ".to_string()),
         })?;
@@ -126,8 +127,8 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
 
     // Only try a few times to avoid blocking
     for _ in 0..3 {
-        if let Ok((len, addr,) = socket.recv_from(&mut buf) {
-            if let Ok(response, = std::str::from_utf8(&buf[..len]) {
+        if let Ok((len, addr)) = socket.recv_from(&mut buf) {
+            if let Ok(response) = std::str::from_utf8(&buf[..len]) {
                 if let Some(network) = parse_discovery_response(response, addr.ip()) {
                     networks.push(network);
                 }
@@ -135,7 +136,7 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
         }
     }
 
-    Ok(networks,
+    Ok(networks)
 }
 
 /// Discover networks via mDNS
@@ -154,18 +155,18 @@ async fn discover_via_broadcast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
 fn parse_discovery_response(response: &str, source_ip: IpAddr) -> Option<DiscoveredNetwork> {
     // Parse JSON response format:
     // {"name": "Network-Name ", "nodes": 5, "type": "Academic", "institution": "University"}
-    if let Ok(data, = serde_json::from_str::<serde_json::Value>(response) {
+    if let Ok(data) = serde_json::from_str::<serde_json::Value>(response) {
         let name = data["name"].as_str()?.to_string();
         let node_count = data["nodes"].as_u64()? as usize;
         let network_type = data["type"].as_str()?.to_string();
-        let institution = data["institution"].as_str().map(|s| s.to_string());
+        let institution = data["institution"].as_str().map(std::string::ToString::to_string);
 
         Some(DiscoveredNetwork {
             name,
             node_count,
             network_type,
             institution,
-            endpoint: format!("{}:{}", source_ip, DEFAULT_DISCOVERY_HTTP_PORT),
+            endpoint: format!("{source_ip}:{DEFAULT_DISCOVERY_HTTP_PORT}"),
             compatibility_score: 0.0,
         })
     } else {

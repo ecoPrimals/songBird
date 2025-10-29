@@ -15,7 +15,8 @@ use tracing::info;
 ///
 /// This adds "a bit more awareness" of other primals for federation purposes"
 /// while maintaining each primal's self-knowledge and sovereignty
-pub struct FederationAwareDiscovery  {/// Base discovery system (already exists)
+pub struct FederationAwareDiscovery {
+    /// Base discovery system (already exists)
     base_discovery: Box<dyn ServiceDiscovery>,
 
     /// Federation pattern recognition (NOT hardcoded primal knowledge)
@@ -33,7 +34,8 @@ pub struct FederationAwareDiscovery  {/// Base discovery system (already exists)
 
 /// Configuration for federation-aware discovery
 #[derive(Debug, Clone)]
-pub struct FederationDiscoveryConfig  {/// Base discovery configuration
+pub struct FederationDiscoveryConfig {
+    /// Base discovery configuration
     pub base_config: DiscoveryConfig,
 
     /// Enable federation pattern recognition
@@ -248,25 +250,27 @@ pub struct DiscoveryMetadata  {/// When this service was discovered
     pub discovery_confidence: f64,
 }
 
-impl FederationAwareDiscovery  {/// Create new federation-aware discovery
+impl FederationAwareDiscovery {
+    /// Create new federation-aware discovery
     #[must_use]
     pub fn new(
         base_discovery: Box<dyn ServiceDiscovery>,
         config: FederationDiscoveryConfig,
-    ) -> Self  {Self {
-            base_discovery)
-            federation_patterns: FederationPatternRecognizer::new(,
-            sovereignty_assessor: SovereigntyAssessor::new(,
-            network_effects_detector: NetworkEffectsDetector::new(,
-            config)
+    ) -> Self {
+        Self {
+            base_discovery,
+            federation_patterns: FederationPatternRecognizer::new(),
+            sovereignty_assessor: SovereigntyAssessor::new(),
+            network_effects_detector: NetworkEffectsDetector::new(),
+            config,
         }
     }
 
     /// Discover services with federation awareness
     pub async fn discover_federation_aware_services(
-        &mut self)
+        &mut self,
     ) -> SongbirdResult<Vec<FederationAwareServiceInfo>> {
-        info!("🔍 Starting federation-aware discovery...")"
+        info!("🔍 Starting federation-aware discovery...");
 
         // 1. Use base discovery system (existing functionality)
         // Create empty query for discovery

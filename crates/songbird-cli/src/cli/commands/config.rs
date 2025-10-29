@@ -2,8 +2,8 @@
 //!
 //! **MODERN GAMING CONFIG MANAGEMENT** ✅
 
+use crate::errors::CliResult;
 use clap::Subcommand;
-use crate::errors::{CliError, CliResult};
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum ConfigCommand {
@@ -34,9 +34,16 @@ pub enum ConfigCommand {
 /// Handle configuration commands
 pub async fn handle_config_command(command: ConfigCommand) -> CliResult<()> {
     match command {
-        ConfigCommand::Show { detailed } => show_config(detailed).await,
-        ConfigCommand::Set { key, value } => set_config(key, value).await,
-        ConfigCommand::Reset { yes } => reset_config(yes).await,
+        ConfigCommand::Show {
+            detailed,
+        } => show_config(detailed).await,
+        ConfigCommand::Set {
+            key,
+            value,
+        } => set_config(key, value).await,
+        ConfigCommand::Reset {
+            yes,
+        } => reset_config(yes).await,
     }
 }
 
@@ -45,19 +52,19 @@ async fn show_config(detailed: bool) -> CliResult<()> {
     println!("  gaming_mode: enabled");
     println!("  target_latency: 50ms");
     println!("  auto_optimize: true");
-    
+
     if detailed {
         println!("\n📋 Detailed Settings:");
         println!("  network.port_range: 27015-27030");
         println!("  federation.auto_join: false");
         println!("  matchmaking.skill_based: true");
     }
-    
+
     Ok(())
 }
 
 async fn set_config(key: String, value: String) -> CliResult<()> {
-    println!("✏️  Setting configuration: {} = {}", key, value);
+    println!("✏️  Setting configuration: {key} = {value}");
     println!("✅ Configuration updated");
     Ok(())
 }
@@ -68,7 +75,7 @@ async fn reset_config(yes: bool) -> CliResult<()> {
         println!("💡 Use --yes to confirm");
         return Ok(());
     }
-    
+
     println!("🔄 Resetting gaming configuration to defaults...");
     println!("✅ Configuration reset complete");
     Ok(())

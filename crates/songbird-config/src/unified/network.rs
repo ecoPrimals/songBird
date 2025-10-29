@@ -8,14 +8,16 @@ use std::env;
 
 /// Service endpoint configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceEndpoint  {pub host: String,
+pub struct ServiceEndpoint {
+    pub host: String,
     pub port: u16,
     pub scheme: String, // http, https, tcp, etc.
     pub path: Option<String>,
     pub timeout_secs: Option<u64>,
 }
 
-impl ServiceEndpoint  {#[must_use]
+impl ServiceEndpoint {
+    #[must_use]
     pub fn new(host: &str, port: u16, scheme: &str) -> Self  {Self {
             host: host.to_string(),
             port,
@@ -29,7 +31,7 @@ impl ServiceEndpoint  {#[must_use]
     pub fn full_url(&self) -> String {
         let base = format!("{}://{}:{}", self.scheme, self.host, self.port);
         match &self.path {
-            Some(path) => format!("{}{path}", base),"
+            Some(path) => format!("{}{path}", base),
             None => base,
         }
     }
@@ -42,18 +44,22 @@ impl ServiceEndpoint  {#[must_use]
 
         let host = env::var(&host_env).ok()?;
         let port = env::var(&port_env).ok()?.parse().ok()?;
-        let scheme = env::var(&scheme_env).unwrap_or_else(|_| "http".to_string();"
+        let scheme = env::var(&scheme_env).unwrap_or_else(|_| "http".to_string());
 
-        Some(Self::new(&host, port, &scheme)
+        Some(Self::new(&host, port, &scheme))
     }
 }
 
-impl Default for ServiceEndpoint  {fn default() -> Self  {Self::new(&get_bind_address()
-            std::env::var("SONGBIRD_ORCHESTRATOR_PORT")"
+impl Default for ServiceEndpoint {
+    fn default() -> Self {
+        Self::new(
+            &get_bind_address(),
+            std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
                 .ok()
-                .and_then(|p| p.parse().ok()
-                .unwrap_or(8080)
-            "http")"
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(8080),
+            "http",
+        )
     }
 }
 
@@ -69,35 +75,38 @@ pub struct SelfAwareConfig  {/// This primal's unique identifier
 
 /// Universal adapter configuration for capability-based discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UniversalDiscoveryConfig  {/// Enable universal adapter for capability-based routing
+pub struct UniversalDiscoveryConfig {/// Enable universal adapter for capability-based routing
     pub enabled: bool,
     /// Discovery methods to use for finding other primals
     pub discovery_methods: Vec<String>,
-    /// Service discovery endpoints (infrastructure only, not specific primals)
+    /// Service discovery endpoints (infrastructure only, not specific primals}
     pub service_discovery: ServiceDiscoveryEndpoints,
 }
 
-impl Default for SelfAwareConfig  {fn default() -> Self {
+impl Default for SelfAwareConfig {
+    fn default() -> Self {
         Self {
-            id: env::var("SONGBIRD_PRIMAL_ID").unwrap_or_else(|_| "songbird".to_string(),"
-            endpoint: ServiceEndpoint::from_env("SONGBIRD_SELF")"
-                .unwrap_or_else(|| ServiceEndpoint::new(&get_bind_address(), 8080, "http"),"
-            capabilities: env::var("SONGBIRD_CAPABILITIES")"
-                .unwrap_or_else(|_| "orchestration,service_discovery,load_balancing".to_string()"
+            id: env::var("SONGBIRD_PRIMAL_ID").unwrap_or_else(|_| "songbird".to_string()),
+            endpoint: ServiceEndpoint::from_env("SONGBIRD_SELF")
+                .unwrap_or_else(|| ServiceEndpoint::new(&get_bind_address(), 8080, "http")),
+            capabilities: env::var("SONGBIRD_CAPABILITIES")
+                .unwrap_or_else(|_| "orchestration,service_discovery,load_balancing".to_string())
                 .split(',')
-                .map(|s| s.trim().to_string()),
-                .collect()
+                .map(|s| s.trim().to_string())
+                .collect(),
         }
     }
 }
 
-impl Default for UniversalDiscoveryConfig  {fn default() -> Self  {Self {
-            enabled: env::var("SONGBIRD_UNIVERSAL_DISCOVERY_ENABLED").is_ok(),"
-            discovery_methods: env::var("SONGBIRD_DISCOVERY_METHODS")"
-                .unwrap_or_else(|_| "network_scan,service_registry,mdns".to_string()"
+impl Default for UniversalDiscoveryConfig {
+    fn default() -> Self {
+        Self {
+            enabled: env::var("SONGBIRD_UNIVERSAL_DISCOVERY_ENABLED").is_ok(),
+            discovery_methods: env::var("SONGBIRD_DISCOVERY_METHODS")
+                .unwrap_or_else(|_| "network_scan,service_registry,mdns".to_string())
                 .split(',')
-                .map(|s| s.trim().to_string()),
-                .collect()
+                .map(|s| s.trim().to_string())
+                .collect(),
             service_discovery: ServiceDiscoveryEndpoints::default(),
         }
     }
@@ -115,27 +124,30 @@ pub struct ServiceDiscoveryEndpoints  {/// Consul endpoints
     pub docker: Vec<ServiceEndpoint>,
 }
 
-impl Default for ServiceDiscoveryEndpoints  {fn default() -> Self  {Self {
+impl Default for ServiceDiscoveryEndpoints {
+    fn default() -> Self {
+        Self {
             consul: vec![
-                ServiceEndpoint::new(&get_bind_address(), 8500, "http"),"
-                ServiceEndpoint::new(&crate::constants::network::DEFAULT_HOST, 8500, "http"),"
-            ])
+                ServiceEndpoint::new(&get_bind_address(), 8500, "http"),
+                ServiceEndpoint::new(&crate::constants::network::DEFAULT_HOST, 8500, "http"),
+            ],
             etcd: vec![
-                ServiceEndpoint::new(&get_bind_address(), 2379, "http"),"
-                ServiceEndpoint::new(&get_bind_address(), 2380, "http"),"
-            ])
-            kubernetes: vec![ServiceEndpoint::new(&get_bind_address(), 8080, "https")],"
+                ServiceEndpoint::new(&get_bind_address(), 2379, "http"),
+                ServiceEndpoint::new(&get_bind_address(), 2380, "http"),
+            ],
+            kubernetes: vec![ServiceEndpoint::new(&get_bind_address(), 8080, "https")],
             docker: vec![
-                ServiceEndpoint::new(&crate::constants::network::DEFAULT_HOST, 2375, "http"),"
-                ServiceEndpoint::new(&crate::constants::network::DEFAULT_HOST, 2376, "https"),"
-            ])
+                ServiceEndpoint::new(&crate::constants::network::DEFAULT_HOST, 2375, "http"),
+                ServiceEndpoint::new(&crate::constants::network::DEFAULT_HOST, 2376, "https"),
+            ],
         }
     }
 }
 
 /// Unified network configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnifiedNetworkConfig  {pub bind_address: String,
+pub struct UnifiedNetworkConfig {
+    pub bind_address: String,
     pub port: u16,
     pub max_connections: usize,
     pub keepalive_timeout_secs: u64,
@@ -144,7 +156,7 @@ pub struct UnifiedNetworkConfig  {pub bind_address: String,
     pub ssl: SslConfig,
     pub load_balancing: LoadBalancingConfig,
     pub rate_limiting: RateLimitingConfig,
-    /// Self-awareness configuration (this primal only knows itself)
+    /// Self-awareness configuration (this primal only knows itself}
     pub self_config: SelfAwareConfig,
     /// Universal discovery configuration for capability-based routing
     pub universal_discovery: UniversalDiscoveryConfig,
@@ -157,7 +169,7 @@ pub struct UnifiedNetworkConfig  {pub bind_address: String,
     /// UDP configuration
     pub udp: UdpConfig,
     /// Legacy compatibility fields
-    #[serde(default = "default_enabled")]"
+    #[serde(default = "default_enabled")]
     pub enabled: bool,
     #[serde(default)]
     pub host: String,
@@ -167,21 +179,23 @@ fn default_enabled() -> bool {
     true
 }
 
-impl Default for UnifiedNetworkConfig  {fn default() -> Self  {Self {
-            bind_address: env::var("SONGBIRD_BIND_ADDRESS").map_or_else("
-                |_| get_bind_address()
+impl Default for UnifiedNetworkConfig {
+    fn default() -> Self {
+        Self {
+            bind_address: env::var("SONGBIRD_BIND_ADDRESS").map_or_else(
+                |_| get_bind_address(),
                 |addr| {
                     // Validate the IP address and fall back to default if invalid
                     match addr.parse::<std::net::IpAddr>() {
-                        Ok(songbird_errors::evolved_success(_) => addr,
+                        Ok(_) => addr,
                         Err(_) => get_bind_address(),
                     }
-                })
-            )
-            port: env::var("SONGBIRD_PORT")"
+                }
+            ),
+            port: env::var("SONGBIRD_PORT")
                 .ok()
-                .and_then(|p| p.parse().ok()
-                .unwrap_or(8080)
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(8080),
             max_connections: 1000,
             keepalive_timeout_secs: 30,
             gaming: GamingNetworkConfig::default(),
@@ -204,7 +218,8 @@ impl Default for UnifiedNetworkConfig  {fn default() -> Self  {Self {
 
 /// Gaming network configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GamingNetworkConfig  {pub enable_gaming_protocols: bool,
+pub struct GamingNetworkConfig {
+    pub enable_gaming_protocols: bool,
     pub directplay_port: Option<u16>,
     pub ipx_support: bool,
     pub netbios_support: bool,
@@ -212,16 +227,18 @@ pub struct GamingNetworkConfig  {pub enable_gaming_protocols: bool,
     pub max_gaming_sessions: usize,
     pub packet_buffer_size: usize,
     // Add missing port_range field for backward compatibility
-    pub port_range: (u16, u16)
+    pub port_range: (u16, u16),
 }
 
-impl Default for GamingNetworkConfig  {fn default() -> Self  {Self {
-            enable_gaming_protocols: env::var("SONGBIRD_ENABLE_GAMING")"
-                .map(|val| val.to_lowercase() == "true" || val == "1")"
+impl Default for GamingNetworkConfig {
+    fn default() -> Self {
+        Self {
+            enable_gaming_protocols: env::var("SONGBIRD_ENABLE_GAMING")
+                .map(|val| val.to_lowercase() == "true" || val == "1")
                 .unwrap_or(true), // Default to enabled
-            directplay_port: env::var("SONGBIRD_DIRECTPLAY_PORT")"
+            directplay_port: env::var("SONGBIRD_DIRECTPLAY_PORT")
                 .ok()
-                .and_then(|p| p.parse().ok())
+                .and_then(|p| p.parse().ok()),
             ipx_support: true,
             netbios_support: true,
             gaming_session_timeout_secs: 300,
@@ -234,12 +251,15 @@ impl Default for GamingNetworkConfig  {fn default() -> Self  {Self {
 
 /// Reverse proxy configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ReverseProxyConfig  {pub enabled: bool,
+pub struct ReverseProxyConfig {
+    pub enabled: bool,
     pub upstream_timeout_secs: u64,
     pub max_upstream_connections: usize,
 }
 
-impl Default for ReverseProxyConfig  {fn default() -> Self  {Self {
+impl Default for ReverseProxyConfig {
+    fn default() -> Self {
+        Self {
             enabled: false,
             upstream_timeout_secs: 30,
             max_upstream_connections: 100,
@@ -249,7 +269,8 @@ impl Default for ReverseProxyConfig  {fn default() -> Self  {Self {
 
 /// SSL/TLS configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SslConfig  {pub enabled: bool,
+pub struct SslConfig {
+    pub enabled: bool,
     pub cert_path: Option<String>,
     pub key_path: Option<String>,
     pub ca_path: Option<String>,
@@ -258,24 +279,26 @@ pub struct SslConfig  {pub enabled: bool,
 impl Default for SslConfig {
     fn default() -> Self {
         Self {
-            enabled: env::var("SONGBIRD_SSL_ENABLED").is_ok(),"
-            cert_path: env::var("SONGBIRD_SSL_CERT").ok(),"
-            key_path: env::var("SONGBIRD_SSL_KEY").ok(),"
-            ca_path: env::var("SONGBIRD_SSL_CA").ok(),"
+            enabled: env::var("SONGBIRD_SSL_ENABLED").is_ok(),
+            cert_path: env::var("SONGBIRD_SSL_CERT").ok(),
+            key_path: env::var("SONGBIRD_SSL_KEY").ok(),
+            ca_path: env::var("SONGBIRD_SSL_CA").ok(),
         }
     }
 }
 
 /// Load balancing configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoadBalancingConfig  {pub strategy: String,
+pub struct LoadBalancingConfig {
+    pub strategy: String,
     pub health_check_interval_secs: u64,
 }
 
-impl Default for LoadBalancingConfig  {fn default() -> Self {
+impl Default for LoadBalancingConfig {
+    fn default() -> Self {
         Self {
-            strategy: env::var("SONGBIRD_LB_STRATEGY")"
-                .unwrap_or_else(|_| "round_robin".to_string(),"
+            strategy: env::var("SONGBIRD_LB_STRATEGY")
+                .unwrap_or_else(|_| "round_robin".to_string()),
             health_check_interval_secs: 30,
         }
     }
@@ -283,13 +306,16 @@ impl Default for LoadBalancingConfig  {fn default() -> Self {
 
 /// Rate limiting configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RateLimitingConfig  {pub enabled: bool,
+pub struct RateLimitingConfig {
+    pub enabled: bool,
     pub max_requests_per_minute: usize,
     pub burst_size: usize,
 }
 
-impl Default for RateLimitingConfig  {fn default() -> Self  {Self {
-            enabled: env::var("SONGBIRD_RATE_LIMIT_ENABLED").is_ok(),"
+impl Default for RateLimitingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: env::var("SONGBIRD_RATE_LIMIT_ENABLED").is_ok(),
             max_requests_per_minute: 1000,
             burst_size: 100,
         }
@@ -298,13 +324,16 @@ impl Default for RateLimitingConfig  {fn default() -> Self  {Self {
 
 /// Circuit breaker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnifiedCircuitBreakerConfig  {pub enabled: bool,
+pub struct UnifiedCircuitBreakerConfig {
+    pub enabled: bool,
     pub failure_threshold: u32,
     pub timeout_seconds: u64,
     pub recovery_timeout_seconds: u64,
 }
 
-impl Default for UnifiedCircuitBreakerConfig  {fn default() -> Self  {Self {
+impl Default for UnifiedCircuitBreakerConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             failure_threshold: 5,
             timeout_seconds: 60,
@@ -315,19 +344,22 @@ impl Default for UnifiedCircuitBreakerConfig  {fn default() -> Self  {Self {
 
 /// TURN relay configuration for NAT traversal
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TURNRelay  {pub host: String,
+pub struct TURNRelay {
+    pub host: String,
     pub port: u16,
     pub username: String,
     pub password: String,
     pub enabled: bool,
 }
 
-impl TURNRelay  {#[must_use]
-    pub fn new(host: String, port: u16, username: String, password: String) -> Self  {Self {
-            host)
+impl TURNRelay {
+    #[must_use]
+    pub fn new(host: String, port: u16, username: String, password: String) -> Self {
+        Self {
+            host,
             port,
             username,
-            password)
+            password,
             enabled: true,
         }
     }
@@ -339,24 +371,27 @@ impl TURNRelay  {#[must_use]
     pub fn is_expired(&self) -> bool {
         // ✅ IMPLEMENTED: Simple expiration based on enabled status
         // In production, this would check against creation timestamp or last validation
-        // For now, disabled relays are considered "expired""
+        // For now, disabled relays are considered "expired"
         !self.enabled
     }
 }
 
 /// `UPnP` device configuration for local network discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UPnPDevice  {pub device_id: String,
+pub struct UPnPDevice {
+    pub device_id: String,
     pub friendly_name: String,
     pub device_type: String,
     pub enabled: bool,
 }
 
-impl UPnPDevice  {#[must_use]
-    pub fn new(device_id: String, friendly_name: String, device_type: String) -> Self  {Self {
-            device_id)
+impl UPnPDevice {
+    #[must_use]
+    pub fn new(device_id: String, friendly_name: String, device_type: String) -> Self {
+        Self {
+            device_id,
             friendly_name,
-            device_type)
+            device_type,
             enabled: true,
         }
     }
@@ -364,14 +399,16 @@ impl UPnPDevice  {#[must_use]
 
 /// Network topology discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveryNetworkTopology  {pub discovery_enabled: bool,
+pub struct DiscoveryNetworkTopology {
+    pub discovery_enabled: bool,
     pub topology_mapping: bool,
     pub peer_discovery_timeout: u64,
 }
 
 /// Network connection information for unified management
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkConnection  {pub connection_id: String,
+pub struct NetworkConnection {
+    pub connection_id: String,
     pub remote_addr: String,
     pub connection_type: String,
     pub established_at: u64,
@@ -379,7 +416,8 @@ pub struct NetworkConnection  {pub connection_id: String,
 
 /// Network measurement and metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NetworkMeasurement  {pub latency_ms: u64,
+pub struct NetworkMeasurement {
+    pub latency_ms: u64,
     pub bandwidth_mbps: f64,
     pub packet_loss_rate: f64,
     pub jitter_ms: u64,
@@ -387,29 +425,33 @@ pub struct NetworkMeasurement  {pub latency_ms: u64,
 
 /// Unified connection information for network management
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnifiedConnectionInfo  {pub connection_id: String,
+pub struct UnifiedConnectionInfo {
+    pub connection_id: String,
     pub remote_address: String,
     pub status: String,
-    pub metadata: std::collections::HashMap<String, String>)
+    pub metadata: std::collections::HashMap<String, String>,
 }
 
 /// Unified domain configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnifiedDomainConfig  {pub domain_name: String,
+pub struct UnifiedDomainConfig {
+    pub domain_name: String,
     pub tls_enabled: bool,
     pub certificate_path: Option<String>,
 }
 
 /// Unified network manager configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnifiedNetworkManager  {pub enabled: bool,
+pub struct UnifiedNetworkManager {
+    pub enabled: bool,
     pub management_port: u16,
     pub auto_discovery: bool,
 }
 
 /// Unified SSL configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnifiedSslConfig  {pub enabled: bool,
+pub struct UnifiedSslConfig {
+    pub enabled: bool,
     pub certificate_path: String,
     pub private_key_path: String,
     pub ca_certificate_path: Option<String>,
@@ -417,7 +459,8 @@ pub struct UnifiedSslConfig  {pub enabled: bool,
 
 /// Degradation severity levels for system health monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum DegradationSeverity {Minor)
+pub enum DegradationSeverity {
+    Minor,
     Moderate,
     Major,
     Critical,
@@ -425,16 +468,19 @@ pub enum DegradationSeverity {Minor)
 
 /// Unified gaming configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnifiedGamingConfig  {pub enabled: bool,
+pub struct UnifiedGamingConfig {
+    pub enabled: bool,
     pub protocols: Vec<String>,
-    pub port_range: (u16, u16)
+    pub port_range: (u16, u16),
     pub max_sessions: usize,
 }
 
-impl Default for UnifiedGamingConfig  {fn default() -> Self  {Self {
+impl Default for UnifiedGamingConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
-            protocols: vec!["IPX".to_string(), "TCP".to_string(), "UDP".to_string()],"
-            port_range: (7000, 8000)
+            protocols: vec!["IPX".to_string(), "TCP".to_string(), "UDP".to_string()],
+            port_range: (7000, 8000),
             max_sessions: 100,
         }
     }
@@ -442,7 +488,8 @@ impl Default for UnifiedGamingConfig  {fn default() -> Self  {Self {
 
 /// Unified network statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnifiedNetworkStats  {pub bytes_sent: u64,
+pub struct UnifiedNetworkStats {
+    pub bytes_sent: u64,
     pub bytes_received: u64,
     pub connections_active: usize,
     pub connections_total: u64,
@@ -451,22 +498,25 @@ pub struct UnifiedNetworkStats  {pub bytes_sent: u64,
 
 /// Discovered peer information for network discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveredPeer  {pub peer_id: String,
+pub struct DiscoveredPeer {
+    pub peer_id: String,
     pub address: String,
     pub capabilities: Vec<String>,
     pub last_seen: u64,
     pub status: String,
 }
 
-impl DiscoveredPeer  {#[must_use]
-    pub fn new(peer_id: String, address: String) -> Self  {Self {
-            peer_id)
+impl DiscoveredPeer {
+    #[must_use]
+    pub fn new(peer_id: String, address: String) -> Self {
+        Self {
+            peer_id,
             address,
             capabilities: Vec::new(),
-            last_seen: std::time::SystemTime::now,
+            last_seen: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs()
+                .as_secs(),
             status: "active".to_string(),
         }
     }
@@ -474,29 +524,33 @@ impl DiscoveredPeer  {#[must_use]
 
 /// Connection quality metrics for network topology
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConnectionQuality  {pub latency_ms: u64,
+pub struct ConnectionQuality {
+    pub latency_ms: u64,
     pub bandwidth_mbps: f64,
     pub packet_loss_rate: f64,
     pub stability_score: f64,
     pub last_measured: u64,
 }
 
-impl Default for ConnectionQuality  {fn default() -> Self  {Self {
+impl Default for ConnectionQuality {
+    fn default() -> Self {
+        Self {
             latency_ms: 0,
             bandwidth_mbps: 0.0,
             packet_loss_rate: 0.0,
             stability_score: 1.0,
-            last_measured: std::time::SystemTime::now,
+            last_measured: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs()
+                .as_secs(),
         }
     }
 }
 
 /// Proxy configuration for network routing
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProxyConfig  {pub enabled: bool,
+pub struct ProxyConfig {
+    pub enabled: bool,
     pub bind_address: String,
     pub bind_port: u16,
     pub target_address: String,
@@ -504,7 +558,9 @@ pub struct ProxyConfig  {pub enabled: bool,
     pub connection_timeout_ms: u64,
 }
 
-impl Default for ProxyConfig  {fn default() -> Self  {Self {
+impl Default for ProxyConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             bind_address: get_bind_address().to_string(),
             bind_port: 8080,
@@ -517,7 +573,8 @@ impl Default for ProxyConfig  {fn default() -> Self  {Self {
 
 /// Proxy statistics for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ProxyStats  {pub total_connections: u64,
+pub struct ProxyStats {
+    pub total_connections: u64,
     pub active_connections: usize,
     pub bytes_transferred: u64,
     pub requests_processed: u64,
@@ -532,7 +589,7 @@ pub struct ProxyStats  {pub total_connections: u64,
 
 /// Connection pool configuration (consolidated from songbird-universal-primals)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConnectionPoolConfig  {/// Maximum number of connections
+pub struct ConnectionPoolConfig {/// Maximum number of connections
     pub max_connections: usize,
     /// Minimum number of connections
     pub min_connections: usize,
@@ -540,7 +597,7 @@ pub struct ConnectionPoolConfig  {/// Maximum number of connections
     pub connection_timeout_seconds: u64,
     /// Idle timeout for connections (in seconds)
     pub idle_timeout_seconds: u64,
-    /// Maximum lifetime of a connection (in seconds)
+    /// Maximum lifetime of a connection (in seconds}
     pub max_lifetime_seconds: u64,
     /// Connection validation query
     pub validation_query: Option<String>,
@@ -550,33 +607,35 @@ pub struct ConnectionPoolConfig  {/// Maximum number of connections
     pub validate_on_return: bool,
 }
 
-impl Default for ConnectionPoolConfig  {fn default() -> Self  {Self {
-            max_connections: env::var("SONGBIRD_POOL_MAX_CONNECTIONS")"
+impl Default for ConnectionPoolConfig {
+    fn default() -> Self {
+        Self {
+            max_connections: env::var("SONGBIRD_POOL_MAX_CONNECTIONS")
                 .ok()
-                .and_then(|s| s.parse().ok()
-                .unwrap_or(100)
-            min_connections: env::var("SONGBIRD_POOL_MIN_CONNECTIONS")"
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(100),
+            min_connections: env::var("SONGBIRD_POOL_MIN_CONNECTIONS")
                 .ok()
-                .and_then(|s| s.parse().ok()
-                .unwrap_or(5)
-            connection_timeout_seconds: env::var("SONGBIRD_POOL_CONNECTION_TIMEOUT")"
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(5),
+            connection_timeout_seconds: env::var("SONGBIRD_POOL_CONNECTION_TIMEOUT")
                 .ok()
-                .and_then(|s| s.parse().ok()
-                .unwrap_or(30)
-            idle_timeout_seconds: env::var("SONGBIRD_POOL_IDLE_TIMEOUT")"
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(30),
+            idle_timeout_seconds: env::var("SONGBIRD_POOL_IDLE_TIMEOUT")
                 .ok()
-                .and_then(|s| s.parse().ok()
-                .unwrap_or(600)
-            max_lifetime_seconds: env::var("SONGBIRD_POOL_MAX_LIFETIME")"
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(600),
+            max_lifetime_seconds: env::var("SONGBIRD_POOL_MAX_LIFETIME")
                 .ok()
-                .and_then(|s| s.parse().ok()
-                .unwrap_or(3600)
-            validation_query: env::var("SONGBIRD_POOL_VALIDATION_QUERY").ok(),"
-            validate_on_borrow: env::var("SONGBIRD_POOL_VALIDATE_ON_BORROW")"
-                .map(|v| v.to_lowercase() == "true")"
-                .unwrap_or(true)
-            validate_on_return: env::var("SONGBIRD_POOL_VALIDATE_ON_RETURN")"
-                .map(|v| v.to_lowercase() == "true")"
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(3600),
+            validation_query: env::var("SONGBIRD_POOL_VALIDATION_QUERY").ok(),
+            validate_on_borrow: env::var("SONGBIRD_POOL_VALIDATE_ON_BORROW")
+                .map(|v| v.to_lowercase() == "true")
+                .unwrap_or(true),
+            validate_on_return: env::var("SONGBIRD_POOL_VALIDATE_ON_RETURN")
+                .map(|v| v.to_lowercase() == "true")
                 .unwrap_or(false)
         }
     }
@@ -594,13 +653,15 @@ pub struct NetworkInterfaceConfig  {/// Bind address for services
     pub socket_buffer: SocketBufferConfig,
 }
 
-impl Default for NetworkInterfaceConfig  {fn default() -> Self  {Self {
-            bind_address: env::var("SONGBIRD_INTERFACE_BIND")"
-                .unwrap_or_else(|_| "0.0.0.0".to_string(),"
-            interface: env::var("SONGBIRD_NETWORK_INTERFACE").ok(),"
-            ipv6_enabled: env::var("SONGBIRD_IPV6_ENABLED")"
-                .map(|v| v.to_lowercase() == "true")"
-                .unwrap_or(false)
+impl Default for NetworkInterfaceConfig {
+    fn default() -> Self {
+        Self {
+            bind_address: env::var("SONGBIRD_INTERFACE_BIND")
+                .unwrap_or_else(|_| "0.0.0.0".to_string()),
+            interface: env::var("SONGBIRD_NETWORK_INTERFACE").ok(),
+            ipv6_enabled: env::var("SONGBIRD_IPV6_ENABLED")
+                .map(|v| v.to_lowercase() == "true")
+                .unwrap_or(false),
             socket_buffer: SocketBufferConfig::default(),
         }
     }
@@ -614,14 +675,16 @@ pub struct SocketBufferConfig  {/// Receive buffer size
     pub send_buffer_size: usize,
 }
 
-impl Default for SocketBufferConfig  {fn default() -> Self  {Self {
-            receive_buffer_size: env::var("SONGBIRD_SOCKET_RECV_BUFFER")"
+impl Default for SocketBufferConfig {
+    fn default() -> Self {
+        Self {
+            receive_buffer_size: env::var("SONGBIRD_SOCKET_RECV_BUFFER")
                 .ok()
-                .and_then(|s| s.parse().ok()
-                .unwrap_or(8192)
-            send_buffer_size: env::var("SONGBIRD_SOCKET_SEND_BUFFER")"
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(8192),
+            send_buffer_size: env::var("SONGBIRD_SOCKET_SEND_BUFFER")
                 .ok()
-                .and_then(|s| s.parse().ok()
+                .and_then(|s| s.parse().ok())
                 .unwrap_or(8192)
         }
     }
@@ -637,13 +700,15 @@ pub struct TcpConfig  {/// Whether to enable TCP keep-alive
     pub nodelay: bool,
 }
 
-impl Default for TcpConfig  {fn default() -> Self  {Self {
-            keepalive_enabled: env::var("SONGBIRD_TCP_KEEPALIVE")"
-                .map(|v| v.to_lowercase() == "true")"
-                .unwrap_or(true)
+impl Default for TcpConfig {
+    fn default() -> Self {
+        Self {
+            keepalive_enabled: env::var("SONGBIRD_TCP_KEEPALIVE")
+                .map(|v| v.to_lowercase() == "true")
+                .unwrap_or(true),
             keepalive: TcpKeepAliveConfig::default(),
-            nodelay: env::var("SONGBIRD_TCP_NODELAY")"
-                .map(|v| v.to_lowercase() == "true")"
+            nodelay: env::var("SONGBIRD_TCP_NODELAY")
+                .map(|v| v.to_lowercase() == "true")
                 .unwrap_or(true)
         }
     }
@@ -651,26 +716,28 @@ impl Default for TcpConfig  {fn default() -> Self  {Self {
 
 /// TCP keep-alive configuration (consolidated from songbird-universal-primals)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TcpKeepAliveConfig  {/// Time before sending keep-alive probes (in seconds)
+pub struct TcpKeepAliveConfig {/// Time before sending keep-alive probes (in seconds)
     pub time: u64,
-    /// Interval between keep-alive probes (in seconds)
+    /// Interval between keep-alive probes (in seconds}
     pub interval: u64,
     /// Number of keep-alive probes
     pub probes: u32,
 }
 
-impl Default for TcpKeepAliveConfig  {fn default() -> Self  {Self {
-            time: env::var("SONGBIRD_TCP_KEEPALIVE_TIME")"
+impl Default for TcpKeepAliveConfig {
+    fn default() -> Self {
+        Self {
+            time: env::var("SONGBIRD_TCP_KEEPALIVE_TIME")
                 .ok()
-                .and_then(|s| s.parse().ok()
-                .unwrap_or(7200)
-            interval: env::var("SONGBIRD_TCP_KEEPALIVE_INTERVAL")"
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(7200),
+            interval: env::var("SONGBIRD_TCP_KEEPALIVE_INTERVAL")
                 .ok()
-                .and_then(|s| s.parse().ok()
-                .unwrap_or(75)
-            probes: env::var("SONGBIRD_TCP_KEEPALIVE_PROBES")"
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(75),
+            probes: env::var("SONGBIRD_TCP_KEEPALIVE_PROBES")
                 .ok()
-                .and_then(|s| s.parse().ok()
+                .and_then(|s| s.parse().ok())
                 .unwrap_or(9)
         }
     }
@@ -686,16 +753,18 @@ pub struct UdpConfig  {/// Whether to enable broadcast
     pub multicast_ttl: u32,
 }
 
-impl Default for UdpConfig  {fn default() -> Self  {Self {
-            broadcast_enabled: env::var("SONGBIRD_UDP_BROADCAST")"
-                .map(|v| v.to_lowercase() == "true")"
-                .unwrap_or(false)
-            multicast_enabled: env::var("SONGBIRD_UDP_MULTICAST")"
-                .map(|v| v.to_lowercase() == "true")"
-                .unwrap_or(false)
-            multicast_ttl: env::var("SONGBIRD_UDP_MULTICAST_TTL")"
+impl Default for UdpConfig {
+    fn default() -> Self {
+        Self {
+            broadcast_enabled: env::var("SONGBIRD_UDP_BROADCAST")
+                .map(|v| v.to_lowercase() == "true")
+                .unwrap_or(false),
+            multicast_enabled: env::var("SONGBIRD_UDP_MULTICAST")
+                .map(|v| v.to_lowercase() == "true")
+                .unwrap_or(false),
+            multicast_ttl: env::var("SONGBIRD_UDP_MULTICAST_TTL")
                 .ok()
-                .and_then(|s| s.parse().ok()
+                .and_then(|s| s.parse().ok())
                 .unwrap_or(1)
         }
     }

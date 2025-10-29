@@ -1,3 +1,34 @@
+//! # ⚠️ DEPRECATED: Legacy Squirrel Primal (Hardcoded AI Service)
+//!
+//! **STATUS**: This module is deprecated. Use `ai_capability` instead.
+//!
+//! **REASON**: Hardcoded "squirrel" primal name violates zero-hardcoding philosophy.
+//!
+//! ## Migration Guide
+//!
+//! ```rust,ignore
+//! // ❌ OLD: Hardcoded squirrel primal
+//! use songbird_primal_sdk::squirrel::SquirrelPrimal;
+//! let squirrel = SquirrelPrimal::new(context);
+//! let result = squirrel.get_model_inference("gpt", prompt).await?;
+//!
+//! // ✅ NEW: Capability-based AI client  
+//! use songbird_primal_sdk::ai_capability::AiCapabilityClient;
+//! let ai = AiCapabilityClient::new().await?;
+//! let result = ai.get_model_inference("gpt", prompt).await?;
+//! ```
+//!
+//! ## Why This Change?
+//!
+//! - **Zero Hardcoding**: No hardcoded primal names or endpoints
+//! - **Agnostic**: Works with ANY AI provider, not just squirrel
+//! - **Discovery**: Dynamically discovers AI services at runtime
+//! - **Flexibility**: Easy to swap providers without code changes
+//!
+//! ---
+//!
+//! # Original Documentation (Legacy)
+//!
 //! Squirrel Primal - AI/ML focused Universal Primal
 //!
 //! Provides AI model inference, agent framework support, and natural language processing

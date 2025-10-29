@@ -1,8 +1,29 @@
 //! Comprehensive Health Monitoring Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
 //!
 //! Tests for health check types, configurations, and monitoring systems.
 
-use songbird_types::SongbirdError;
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
@@ -139,12 +160,14 @@ fn test_health_check_error_scenarios() {
 #[test]
 fn test_service_metrics_initialization() {
     let avg_response_time = 0.0f64;
-    let _p95_response_time = 0.0f64;
-    let _p99_response_time = 0.0f64;
+    let p95_response_time = 0.0f64;
+    let p99_response_time = 0.0f64;
     let success_rate = 1.0f64;
     let error_rate = 0.0f64;
 
     assert!((avg_response_time - 0.0).abs() < f64::EPSILON);
+    assert!((p95_response_time - 0.0).abs() < f64::EPSILON);
+    assert!((p99_response_time - 0.0).abs() < f64::EPSILON);
     assert!((success_rate - 1.0).abs() < f64::EPSILON);
     assert!((error_rate - 0.0).abs() < f64::EPSILON);
 }
@@ -318,6 +341,7 @@ fn test_error_details_structure() {
 fn test_metrics_aggregation() {
     let samples = [100.0, 150.0, 200.0, 250.0, 500.0];
     let sum: f64 = samples.iter().sum();
+    #[allow(clippy::cast_precision_loss)] // Test: usize to f64 is acceptable for array length
     let count = samples.len() as f64;
     let avg = sum / count;
 
@@ -329,7 +353,10 @@ fn test_percentile_calculation() {
     let mut values = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0];
     values.sort_by(|a, b| a.partial_cmp(b).expect("Test: f64 values should be comparable"));
 
+    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    // Test: Converting array length to f64 for percentile calculation, then back to usize for indexing
     let p50_index = (values.len() as f64 * 0.50) as usize;
+    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let p95_index = (values.len() as f64 * 0.95) as usize;
 
     assert!(p50_index < p95_index);

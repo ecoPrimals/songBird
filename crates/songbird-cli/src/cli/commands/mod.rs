@@ -8,10 +8,10 @@
 use clap::Subcommand;
 
 // Core gaming command modules
+pub mod config;
+pub mod federation;
 pub mod gaming;
 pub mod network;
-pub mod federation;
-pub mod config;
 pub mod status;
 pub mod version;
 

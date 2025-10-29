@@ -483,7 +483,7 @@ mod tests {
     #[test]
     fn test_parse_url() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let spec = parse_endpoint("http://example.com:8080/api", &EndpointParser::Url)
-            .map_err(|e| SongbirdError::configuration(format!("Test: URL should parse: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: URL should parse: {e}")))?;
         assert_eq!(spec.host, "example.com");
         assert_eq!(spec.port, 8080);
         assert_eq!(spec.protocol, Some("http".to_string()));
@@ -493,7 +493,7 @@ mod tests {
     #[test]
     fn test_parse_host_port() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let spec = parse_endpoint("localhost:3000", &EndpointParser::HostPort).map_err(|e| {
-            SongbirdError::configuration(format!("Test: localhost:3000 should parse: {}", e))
+            SongbirdError::configuration(format!("Test: localhost:3000 should parse: {e}"))
         })?;
         assert_eq!(spec.host, "localhost");
         assert_eq!(spec.port, 3000);
@@ -503,7 +503,7 @@ mod tests {
     #[test]
     fn test_parse_hostname() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let spec = parse_endpoint("myservice", &EndpointParser::Hostname).map_err(|e| {
-            SongbirdError::configuration(format!("Test: myservice should parse: {}", e))
+            SongbirdError::configuration(format!("Test: myservice should parse: {e}"))
         })?;
         assert_eq!(spec.host, "myservice");
         assert_eq!(spec.port, 8080); // Default

@@ -2,6 +2,10 @@
 //!
 //! This module handles CLI-specific configuration options and management.
 
+#[cfg(test)]
+#[path = "config_tests.rs"]
+mod config_tests;
+
 /// CLI configuration structure
 #[derive(Clone, Debug)]
 pub struct CliConfig {

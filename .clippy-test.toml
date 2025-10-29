@@ -1,0 +1,15 @@
+# Clippy configuration for test code only
+# Tests have different requirements than production
+
+[lints.clippy]
+# Allow pedantic warnings in tests
+uninlined_format_args = "allow"
+float_cmp = "allow" 
+useless_vec = "allow"
+unreadable_literal = "allow"
+items_after_statements = "allow"
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+needless_pass_by_value = "allow"
+

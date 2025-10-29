@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 /// Configuration actions for the config command
 #[derive(Debug, Clone)]
-pub enum ConfigAction  {/// Show current configuration
+pub enum ConfigAction {
+    /// Show current configuration
     Show,
     /// Edit configuration interactively
     Edit,
@@ -14,16 +15,18 @@ pub enum ConfigAction  {/// Show current configuration
     /// Reset configuration to defaults
     Reset {
         yes: bool,
-    })
+    },
     /// Export configuration to file
-    Export  {output: Option<String>)
+    Export {
+        output: Option<String>,
         format: ExportFormat,
-    })
+    },
 }
 
 /// Export format for configuration
 #[derive(Debug, Clone, ValueEnum)]
-pub enum ExportFormat  {/// TOML format
+pub enum ExportFormat {
+    /// TOML format
     Toml,
     /// JSON format
     Json,
@@ -39,21 +42,22 @@ impl Default for ExportFormat {
 
 /// Deployment types for Songbird orchestrator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
-pub enum DeploymentType  {/// Home network deployment
+pub enum DeploymentType {
+    /// Home network deployment
     HomeNetwork,
     /// Research cluster deployment
     ResearchCluster,
-    /// Edge deployment for IoT
+    /// Edge deployment for `IoT`
     EdgeDeployment,
     /// Development environment
     Development,
-    /// Container orchestration (Kubernetes,
+    /// Container orchestration (Kubernetes)
     ContainerOrchestration,
-    /// Container runtime (Docker,
+    /// Container runtime (Docker)
     ContainerRuntime,
     /// Bare metal deployment
     BareMetal,
-    /// Cloud deployment (AWS, GCP, Azure,
+    /// Cloud deployment (AWS, GCP, Azure)
     Cloud,
 }
 
@@ -63,9 +67,10 @@ impl Default for DeploymentType {
     }
 }
 
-/// Output format for CLI commands (from core/types.rs,
+/// Output format for CLI commands (from core/types.rs)
 #[derive(Debug, Clone, Serialize, Deserialize, ValueEnum, PartialEq, Eq)]
-pub enum OutputFormat  {/// Automatic format selection
+pub enum OutputFormat {
+    /// Automatic format selection
     Auto,
     /// Human-readable table format
     Table,
@@ -85,7 +90,8 @@ impl Default for OutputFormat {
 
 /// CLI arguments structure
 #[derive(Debug, Clone)]
-pub struct CliArgs  {/// Verbose output
+pub struct CliArgs {
+    /// Verbose output
     pub verbose: bool,
     /// Quiet mode
     pub quiet: bool,
@@ -95,41 +101,41 @@ pub struct CliArgs  {/// Verbose output
     pub config: Option<String>,
 }
 
-impl CliArgs  {/// Parse CLI arguments from environment (stub implementation,
+impl CliArgs {
+    /// Parse CLI arguments from environment (stub implementation)
+    #[must_use]
     pub fn parse_from_env() -> Self {
         Self {
-            verbose: std::env::var("SONGBIRD_VERBOSE").is_ok(),"
-            quiet: std::env::var("SONGBIRD_QUIET").is_ok(),"
+            verbose: std::env::var("SONGBIRD_VERBOSE").is_ok(),
+            quiet: std::env::var("SONGBIRD_QUIET").is_ok(),
             format: OutputFormat::default(),
-            config: std::env::var("SONGBIRD_CONFIG").ok(),"
+            config: std::env::var("SONGBIRD_CONFIG").ok(),
         }
     }
 }
 
 /// Main CLI application structure
 #[derive(Debug, Clone, clap::Parser)]
-#[command(name = "songbird")]"
-#[command(about = "Songbird Universal Orchestrator CLI")]"
-#[command(long_about = "Make distributed computing as simple as `songbird init`")]"
-pub struct Cli  {#[command(subcommand)]
+#[command(name = "songbird")]
+#[command(about = "Songbird Universal Orchestrator CLI")]
+#[command(long_about = "Make distributed computing as simple as 'songbird init'")]
+pub struct Cli {
+    #[command(subcommand)]
     pub command: Option<crate::cli::commands::Commands>,
 }
 
 impl Cli {
     /// Execute the CLI command
     pub async fn execute(&self) -> crate::errors::CliResult<()> {
-        match &self.command {
-            Some(cmd, => {
-                println!("🎼 Executing command: {:?}", cmd,"
-                // For now, just print success - actual command execution will be implemented
-                println!("✅ Command completed successfully");
-                Ok(()),
-            }
-            None => {
-                println!("🎼 Songbird Universal Orchestrator CLI");
-                println!("Use --help for available commands");
-                Ok(()),
-            }
+        if let Some(cmd) = &self.command {
+            println!("🎼 Executing command: {cmd:?}");
+            // For now, just print success - actual command execution will be implemented
+            println!("✅ Command completed successfully");
+            Ok(())
+        } else {
+            println!("🎼 Songbird Universal Orchestrator CLI");
+            println!("Use --help for available commands");
+            Ok(())
         }
     }
 }

@@ -1,13 +1,26 @@
 //! Capability-Based Routing Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Tests for Songbird's core orchestration capability: routing requests
 //! to appropriate primals based on capability matching.
 
 use songbird_test_utils::{
-    ai_service, compute_service, multi_capability_service, security_service, storage_service,
-    OrchestratorTestEnvironment,
+    ai_service, compute_service,
+    mocks::common::{HealthStatus, MockPrimalServer},
+    multi_capability_service, security_service, storage_service, OrchestratorTestEnvironment,
 };
-use songbird_types::SongbirdError;
 
 #[tokio::test]
 async fn test_route_to_single_provider_by_capability() {
@@ -70,8 +83,6 @@ async fn test_route_respects_health_status() {
     // Setup: Environment with degraded services
     let env = OrchestratorTestEnvironment::with_high_load().await;
 
-    use songbird_test_utils::mocks::common::{HealthStatus, MockPrimalServer};
-
     // Verify all services are degraded
     assert_eq!(env.toadstool.read().await.get_health(), HealthStatus::Degraded);
     assert_eq!(env.beardog.read().await.get_health(), HealthStatus::Degraded);
@@ -104,7 +115,6 @@ async fn test_route_fails_when_no_providers_available() {
     let env = OrchestratorTestEnvironment::new().await;
 
     // Make all services unhealthy
-    use songbird_test_utils::mocks::common::{HealthStatus, MockPrimalServer};
     env.toadstool.read().await.set_health(HealthStatus::Unhealthy);
     env.beardog.read().await.set_health(HealthStatus::Unhealthy);
     env.nestgate.read().await.set_health(HealthStatus::Unhealthy);

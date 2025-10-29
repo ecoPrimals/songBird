@@ -28,13 +28,14 @@ use uuid: :Uuid;
 use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_config;
 ;
-/// **🍼 ZERO KNOWLEDGE BOOTSTRAP MANAGER**;
+/// **🍼 ZERO KNOWLEDGE BOOTSTRAP MANAGER**
 /// Starts with absolutely no hardcoded knowledge and learns everything
 #[derive(Debug)]
-pub struct ZeroKnowledgeBootstrap  {/// Discovered capabilities (learned dynamically)
-    discovered_capabilities: Arc<RwLock<HashMap<String, Vec<CapabilityProvider>>>>)
+pub struct ZeroKnowledgeBootstrap {
+    /// Discovered capabilities (learned dynamically)
+    discovered_capabilities: Arc<RwLock<HashMap<String, Vec<CapabilityProvider>>>>,
     /// Network effects patterns (learned from observation)
-    network_patterns: Arc<RwLock<HashMap<String, NetworkEffectPattern>>>)
+    network_patterns: Arc<RwLock<HashMap<String, NetworkEffectPattern>>>,
     /// Universal adapter for capability routing
     universal_adapter: Arc<UniversalCapabilityAdapter>,
     /// Bootstrap configuration
@@ -42,8 +43,7 @@ pub struct ZeroKnowledgeBootstrap  {/// Discovered capabilities (learned dynamic
     /// HTTP client for probing
     http_client: reqwest::Client,
     /// Learning state
-    learning_state: Arc<RwLock<LearningState>> ;,
- )
+    learning_state: Arc<RwLock<LearningState>>,
 }
 
 /// Network effect pattern learned through observation

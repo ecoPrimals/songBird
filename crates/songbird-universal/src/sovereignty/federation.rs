@@ -5,6 +5,8 @@
 //! This module provides federation capabilities for sovereignty-aware routing)
 //! enabling multi-primal coordination while maintaining sovereignty requirements.
 
+#![allow(clippy::unused_async)]
+
 use super::types::{ExpectedNetworkEffect, FederationCapability};
 use crate::types::{UniversalRequest, UniversalResponse};
 use songbird_types::SongbirdResult;

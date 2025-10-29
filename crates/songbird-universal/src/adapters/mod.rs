@@ -1,28 +1,35 @@
-//! Primal Adapters for Songbird Universal Orchestrator
+//! Capability-Based Adapters for Universal Orchestration
 //!
-//! This module provides capability-based adapters for ingesting metrics and
-//! coordinating with ecosystem primals without hardcoded names.
+//! **SOVEREIGNTY PRINCIPLE**: These adapters work with capabilities, NOT primal names.
+//! Each primal only knows itself. Songbird discovers capabilities dynamically.
 //!
-//! ## Design Principles
+//! ## Design Philosophy
 //!
-//! 1. **Capability-Based**: Adapters work with capabilities, not primal names
-//! 2. **Graceful Degradation**: Handle failures without cascading
-//! 3. **Observability**: All operations are traced and measurable
-//! 4. **Zero Hardcoding**: No hardcoded IPs, ports, or primal names
+//! Like in ecology, each organism exists independently:
+//! - Songbird doesn't "know" specific primals exist (`BearDog`, `NestGate`, etc.)
+//! - Songbird only knows "something provides security capability"
+//! - Discovery is dynamic through `ZeroKnowledgeBootstrap`
+//! - No 2^n hardcoded connections - only universal adapter for network effects
 //!
-//! ## Available Adapters
+//! ## Capability-Based Adapters
 //!
-//! - `ToadStoolMetricsAdapter` - Compute metrics ingestion
-//! - `BearDogSecurityAdapter` - Security and auth coordination (planned)
-//! - `NestGateStorageAdapter` - Storage metrics and coordination (planned)
-//! - `SquirrelAIAdapter` - AI/MCP integration (planned)
+//! - `ComputeAdapter` - Any compute capability provider
+//! - `SecurityAdapter` - Any security capability provider
+//! - `StorageAdapter` - Any storage capability provider  
+//! - `AIAdapter` - Any AI capability provider
+//!
+//! ## Example Implementations
+//!
+//! See `examples/integration/ecosystem-primals/` for how specific primals
+//! in our ecosystem happen to implement these capabilities. But the production
+//! code here doesn't know about them!
 
-pub mod beardog;
-pub mod nestgate;
-pub mod squirrel;
-pub mod toadstool;
+pub mod ai;
+pub mod compute;
+pub mod security;
+pub mod storage;
 
-pub use beardog::BearDogSecurityAdapter;
-pub use nestgate::NestGateStorageAdapter;
-pub use squirrel::SquirrelAIAdapter;
-pub use toadstool::ToadStoolMetricsAdapter;
+pub use ai::AIAdapter;
+pub use compute::ComputeAdapter;
+pub use security::SecurityAdapter;
+pub use storage::StorageAdapter;

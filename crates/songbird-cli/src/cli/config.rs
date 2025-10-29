@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 /// CLI-specific configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CliConfig  {/// Default configuration directory
+pub struct CliConfig {
+    /// Default configuration directory
     pub config_dir: PathBuf,
     /// Default data directory
     pub data_dir: PathBuf,

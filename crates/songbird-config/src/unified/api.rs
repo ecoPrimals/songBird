@@ -45,9 +45,11 @@ pub struct SessionConfig  {/// Maximum concurrent sessions
     pub cleanup_interval: Duration,
 }
 
-impl Default for SessionConfig  {fn default() -> Self  {Self {
+impl Default for SessionConfig {
+    fn default() -> Self {
+        Self {
             max_concurrent_sessions: 1000,
-            session_timeout: Duration::from_secs(300,
+            session_timeout: Duration::from_secs(300),
             keep_alive_interval: Duration::from_secs(30)
             buffer_size: 8192,
             enable_persistence: true,
@@ -80,7 +82,9 @@ pub struct ConnectionConfig  {/// Maximum connections per client
     pub pool_timeout: Duration,
 }
 
-impl Default for ConnectionConfig  {fn default() -> Self  {Self {
+impl Default for ConnectionConfig {
+    fn default() -> Self {
+        Self {
             max_connections_per_client: 10,
             connection_timeout: Duration::from_secs(30)
             read_timeout: Duration::from_secs(60)
@@ -110,7 +114,9 @@ pub struct MeshConfig  {/// Health monitoring configuration
     pub max_nodes: usize,
 }
 
-impl Default for MeshConfig  {fn default() -> Self  {Self {
+impl Default for MeshConfig {
+    fn default() -> Self {
+        Self {
             health_monitoring: HealthMonitoringConfig::default(),
             performance_analysis: PerformanceAnalysisConfig::default(),
             enable_mesh: true,
@@ -138,7 +144,9 @@ pub struct HealthMonitoringConfig  {/// Health check interval
     pub enable_detailed_metrics: bool,
 }
 
-impl Default for HealthMonitoringConfig  {fn default() -> Self  {Self {
+impl Default for HealthMonitoringConfig {
+    fn default() -> Self {
+        Self {
             check_interval: Duration::from_secs(30)
             check_timeout: Duration::from_secs(10)
             failure_threshold: 3,
@@ -169,13 +177,15 @@ pub struct PerformanceAnalysisConfig  {/// Enable performance monitoring
     pub latency_threshold: Duration,
 }
 
-impl Default for PerformanceAnalysisConfig  {fn default() -> Self  {Self {
+impl Default for PerformanceAnalysisConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             metrics_interval: Duration::from_secs(10)
-            analysis_window: Duration::from_secs(300,
+            analysis_window: Duration::from_secs(300),
             cpu_threshold: 80.0,
             memory_threshold: 85.0,
-            latency_threshold: Duration::from_millis(100,
+            latency_threshold: Duration::from_millis(100),
         }
     }
 }
@@ -198,7 +208,9 @@ pub struct ServiceRegistrationConfig  {/// Health check configuration
     pub registration_timeout: Duration,
 }
 
-impl Default for ServiceRegistrationConfig  {fn default() -> Self  {Self {
+impl Default for ServiceRegistrationConfig {
+    fn default() -> Self {
+        Self {
             health_check: HealthCheckConfiguration::default(),
             circuit_breaker: CircuitBreakerConfig::default(),
             monitoring: MonitoringConfiguration::default(),
@@ -226,7 +238,9 @@ pub struct HealthCheckConfiguration  {/// Health check endpoint path
     pub failure_threshold: u32,
 }
 
-impl Default for HealthCheckConfiguration  {fn default() -> Self  {Self {
+impl Default for HealthCheckConfiguration {
+    fn default() -> Self {
+        Self {
             endpoint: "/health".to_string(),
             interval: Duration::from_secs(30)
             timeout: Duration::from_secs(10)
@@ -251,7 +265,9 @@ pub struct CircuitBreakerConfig  {/// Failure threshold to open circuit
     pub enabled: bool,
 }
 
-impl Default for CircuitBreakerConfig  {fn default() -> Self  {Self {
+impl Default for CircuitBreakerConfig {
+    fn default() -> Self {
+        Self {
             failure_threshold: 5,
             timeout: Duration::from_secs(60)
             recovery_timeout: Duration::from_secs(30)
@@ -275,7 +291,9 @@ pub struct MonitoringConfiguration  {/// Enable monitoring
     pub enable_tracing: bool,
 }
 
-impl Default for MonitoringConfiguration  {fn default() -> Self  {Self {
+impl Default for MonitoringConfiguration {
+    fn default() -> Self {
+        Self {
             enabled: true,
             metrics_interval: Duration::from_secs(60)
             log_level: "info".to_string(),

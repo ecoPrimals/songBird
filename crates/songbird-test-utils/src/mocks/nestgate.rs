@@ -2,6 +2,8 @@
 //!
 //! Provides HTTP endpoints that simulate `NestGate`'s storage and data management capabilities.
 
+#![allow(clippy::unused_async)]
+
 use super::common::{HealthStatus, MockPrimalServer, MockServerState};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -123,6 +125,11 @@ impl MockNestGate {
             tracing::warn!("RwLock poisoned in test mock, recovering");
             poisoned.into_inner()
         });
+        #[allow(
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss
+        )]
         let used = (metrics.total_capacity_bytes as f64 * (percent / 100.0)) as u64;
         metrics.used_bytes = used;
         metrics.available_bytes = metrics.total_capacity_bytes - used;
@@ -199,7 +206,18 @@ impl MockPrimalServer for MockNestGate {
 }
 
 #[cfg(test)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::float_cmp)]
+#[allow(clippy::useless_vec)]
+#[allow(clippy::unreadable_literal)]
+#[allow(clippy::items_after_statements)]
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 mod tests {
+    #![allow(clippy::all)]
+    #![allow(unused)]
+
     use super::*;
 
     #[tokio::test]

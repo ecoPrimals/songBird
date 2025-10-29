@@ -18,6 +18,15 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::pub_use)] // Re-exports are acceptable for consolidated crates
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::upper_case_acronyms,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::cast_possible_truncation,
+    clippy::unused_async,
+    clippy::if_same_then_else,
+    clippy::struct_field_names
+)]
 
 // Core modules
 pub mod federation;

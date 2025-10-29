@@ -13,6 +13,7 @@ mod systemtime_option {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::time::SystemTime;
 
+    #[allow(clippy::ref_option, clippy::trivially_copy_pass_by_ref)]
     pub fn serialize<S>(time: &Option<SystemTime>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -188,6 +189,7 @@ pub struct PerformanceImpact {
 
 /// Resource utilization changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)]
 pub struct ResourceUtilizationChange {
     /// CPU utilization change (percentage)
     pub cpu_change_percent: f64,

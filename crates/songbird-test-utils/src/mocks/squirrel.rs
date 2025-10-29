@@ -2,14 +2,16 @@
 //!
 //! Provides HTTP endpoints that simulate Squirrel's AI integration and MCP protocol capabilities.
 
+#![allow(clippy::unused_async)]
+
 use super::common::{HealthStatus, MockPrimalServer, MockServerState};
 use serde::{Deserialize, Serialize};
-use songbird_types::SongbirdError;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 /// AI model type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ModelType {
     /// Large language model
     LLM,
@@ -124,7 +126,7 @@ impl MockSquirrel {
     ///
     /// Panics if the internal locks are poisoned.
     #[must_use]
-    pub fn infer(&self, request: InferenceRequest) -> Option<InferenceResponse> {
+    pub fn infer(&self, request: &InferenceRequest) -> Option<InferenceResponse> {
         self.state.increment_requests();
 
         let responses = self.responses.read().unwrap_or_else(|poisoned| {
@@ -226,7 +228,18 @@ impl MockPrimalServer for MockSquirrel {
 }
 
 #[cfg(test)]
+#[allow(clippy::uninlined_format_args)]
+#[allow(clippy::float_cmp)]
+#[allow(clippy::useless_vec)]
+#[allow(clippy::unreadable_literal)]
+#[allow(clippy::items_after_statements)]
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 mod tests {
+    #![allow(clippy::all)]
+    #![allow(unused)]
+
     use super::*;
 
     #[tokio::test]
@@ -248,7 +261,7 @@ mod tests {
             parameters: HashMap::new(),
         };
 
-        let result = mock.infer(request);
+        let result = mock.infer(&request);
         assert!(result.is_some());
         if let Some(response) = result {
             assert_eq!(response.output, "Test output");
