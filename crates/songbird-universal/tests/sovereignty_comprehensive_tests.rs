@@ -1,4 +1,20 @@
+#![allow(clippy::all)]
+#![allow(unused)]
+
 //! Comprehensive Sovereignty Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Critical tests for sovereignty-aware routing and human dignity compliance.
 //! This module ensures our sovereignty system properly respects user autonomy.
@@ -8,7 +24,7 @@ use songbird_universal::sovereignty::{
     PathSegment, RoutingPath, SovereigntyAdapterConfig, SovereigntyAwareAdapter,
 };
 use songbird_universal::types::{
-    Capability, HealthStatus, PrimalType, QosMetrics, ServiceInfo, UniversalRequest,
+    DiscoveredCapability, HealthStatus, PrimalType, QosMetrics, ServiceInfo, UniversalRequest,
 };
 use std::collections::HashMap;
 use std::time::Duration;
@@ -24,18 +40,18 @@ fn create_test_service_with_sovereignty(
     sovereignty_level: SovereigntyLevel,
 ) -> ServiceInfo {
     let mut metadata = HashMap::new();
-    metadata.insert("sovereignty_level".to_string(), format!("{:?}", sovereignty_level));
+    metadata.insert("sovereignty_level".to_string(), format!("{sovereignty_level:?}"));
 
     ServiceInfo {
         name: name.to_string(),
         endpoint: endpoint.to_string(),
         primal_type: PrimalType::new("test"),
-        capabilities: vec![Capability {
+        capabilities: vec![DiscoveredCapability {
             name: "test_capability".to_string(),
             version: "1.0".to_string(),
             description: "Test capability".to_string(),
             provider: name.to_string(),
-            endpoint: format!("{}/api/v1/test", endpoint),
+            endpoint: format!("{endpoint}/api/v1/test"),
             qos_metrics: QosMetrics::default(),
             health_status: HealthStatus::Healthy,
         }],
@@ -190,16 +206,16 @@ fn test_sovereignty_level_variants() {
     let minimal = SovereigntyLevel::NonSovereign;
 
     // Ensure all variants are distinct
-    assert_ne!(format!("{:?}", fully), format!("{:?}", highly));
-    assert_ne!(format!("{:?}", highly), format!("{:?}", moderately));
-    assert_ne!(format!("{:?}", moderately), format!("{:?}", limited));
-    assert_ne!(format!("{:?}", limited), format!("{:?}", minimal));
+    assert_ne!(format!("{fully:?}"), format!("{:?}", highly));
+    assert_ne!(format!("{highly:?}"), format!("{:?}", moderately));
+    assert_ne!(format!("{moderately:?}"), format!("{:?}", limited));
+    assert_ne!(format!("{limited:?}"), format!("{:?}", minimal));
 }
 
 #[test]
 fn test_sovereignty_level_ordering() {
     // Ensure sovereignty levels can be compared
-    let levels = vec![
+    let levels = [
         SovereigntyLevel::FullySovereign,
         SovereigntyLevel::HighlySovereign,
         SovereigntyLevel::ModeratelySovereign,
@@ -211,7 +227,7 @@ fn test_sovereignty_level_ordering() {
     for (i, level1) in levels.iter().enumerate() {
         for (j, level2) in levels.iter().enumerate() {
             if i != j {
-                assert_ne!(format!("{:?}", level1), format!("{:?}", level2));
+                assert_ne!(format!("{level1:?}"), format!("{:?}", level2));
             }
         }
     }
@@ -223,7 +239,7 @@ fn test_sovereignty_level_ordering() {
 
 #[test]
 fn test_security_capability_variants() {
-    let capabilities = vec![
+    let capabilities = [
         SecurityCapability::Encryption,
         SecurityCapability::Authentication,
         SecurityCapability::Authorization,
@@ -238,7 +254,7 @@ fn test_security_capability_variants() {
     for (i, cap1) in capabilities.iter().enumerate() {
         for (j, cap2) in capabilities.iter().enumerate() {
             if i != j {
-                assert_ne!(format!("{:?}", cap1), format!("{:?}", cap2));
+                assert_ne!(format!("{cap1:?}"), format!("{:?}", cap2));
             }
         }
     }
@@ -246,7 +262,7 @@ fn test_security_capability_variants() {
 
 #[test]
 fn test_security_level_variants() {
-    let levels = vec![
+    let levels = [
         SecurityLevel::Maximum,
         SecurityLevel::High,
         SecurityLevel::Medium,
@@ -260,7 +276,7 @@ fn test_security_level_variants() {
     for (i, level1) in levels.iter().enumerate() {
         for (j, level2) in levels.iter().enumerate() {
             if i != j {
-                assert_ne!(format!("{:?}", level1), format!("{:?}", level2));
+                assert_ne!(format!("{level1:?}"), format!("{:?}", level2));
             }
         }
     }
@@ -541,11 +557,7 @@ fn test_human_dignity_sovereignty_levels_comprehensive() {
     for level in levels {
         let service =
             create_test_service_with_sovereignty("test", "http://localhost:8080", level.clone());
-        assert!(
-            !service.name.is_empty(),
-            "System MUST support all sovereignty levels: {:?}",
-            level
-        );
+        assert!(!service.name.is_empty(), "System MUST support all sovereignty levels: {level:?}");
     }
 }
 
@@ -564,9 +576,8 @@ fn test_human_dignity_security_capabilities_comprehensive() {
     for cap in capabilities {
         // Ensure all security capabilities are well-defined
         assert!(
-            !format!("{:?}", cap).is_empty(),
-            "System MUST support all security capabilities: {:?}",
-            cap
+            !format!("{cap:?}").is_empty(),
+            "System MUST support all security capabilities: {cap:?}"
         );
     }
 }

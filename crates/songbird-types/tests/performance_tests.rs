@@ -1,4 +1,26 @@
 //! Performance-related Type Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
 //!
 //! Testing performance characteristics of core types.
 
@@ -130,7 +152,7 @@ fn test_reference_counting_overhead() {
 
     // Arc adds pointer + atomic counter overhead
     let data = vec![1u8, 2, 3, 4, 5];
-    let arc_data = Arc::new(data.clone());
+    let arc_data = Arc::new(data);
 
     // Arc should only add minimal overhead (typically 2 * usize)
     assert!(size_of::<Arc<Vec<u8>>>() <= 16, "Arc overhead should be minimal");

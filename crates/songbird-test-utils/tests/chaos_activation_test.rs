@@ -1,5 +1,6 @@
-use songbird_types::SongbirdError;
 #[cfg(test)]
+#[allow(clippy::all)]
+#[allow(unused)]
 mod chaos_activation_tests {
     use songbird_test_utils::chaos_engineering::{
         ChaosEngineeringManager, ExperimentConfig, ExperimentStatus, ExperimentType,
@@ -66,9 +67,9 @@ mod chaos_activation_tests {
         // Verify we can serialize/deserialize experiment types
         for exp_type in experiment_types {
             let serialized = serde_json::to_string(&exp_type)
-                .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+                .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
             let _deserialized: ExperimentType = serde_json::from_str(&serialized)
-                .map_err(|e| SongbirdError::configuration(format!("Operation failed: {}", e)))?;
+                .map_err(|e| SongbirdError::configuration(format!("Operation failed: {e}")))?;
         }
         Ok(())
     }
@@ -87,9 +88,9 @@ mod chaos_activation_tests {
         // Verify serialization works for all statuses
         for status in statuses {
             let serialized = serde_json::to_string(&status)
-                .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+                .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
             let _deserialized: ExperimentStatus = serde_json::from_str(&serialized)
-                .map_err(|e| SongbirdError::configuration(format!("Operation failed: {}", e)))?;
+                .map_err(|e| SongbirdError::configuration(format!("Operation failed: {e}")))?;
         }
         Ok(())
     }

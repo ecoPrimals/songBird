@@ -1,4 +1,25 @@
 //! Comprehensive tests for `SongbirdError` types
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
 
 use songbird_types::{SecurityError, SongbirdError, SongbirdResult};
 
@@ -190,7 +211,7 @@ fn test_empty_error_message() {
 #[test]
 fn test_very_long_error_message() {
     let long_message = "Error ".repeat(1000);
-    let error = SongbirdError::configuration(long_message.clone());
+    let error = SongbirdError::configuration(long_message);
     assert!(error.to_string().contains("Error"));
 }
 

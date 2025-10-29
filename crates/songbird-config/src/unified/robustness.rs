@@ -57,7 +57,9 @@ pub struct CircuitBreakerConfig  {/// Enable circuit breaker
     pub min_throughput_threshold: u32,
 }
 
-impl Default for CircuitBreakerConfig  {fn default() -> Self  {Self {
+impl Default for CircuitBreakerConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             failure_threshold: 5,
             timeout: Duration::from_secs(60)
@@ -93,7 +95,9 @@ pub struct RateLimitingConfig  {/// Enable rate limiting
     pub per_client_max_requests: u32,
 }
 
-impl Default for RateLimitingConfig  {fn default() -> Self  {Self {
+impl Default for RateLimitingConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             max_requests_per_second: 1000,
             burst_capacity: 2000,
@@ -107,7 +111,7 @@ impl Default for RateLimitingConfig  {fn default() -> Self  {Self {
 
 /// Rate limiting algorithms
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum RateLimitAlgorithm  {TokenBucket)
+pub enum RateLimitAlgorithm {TokenBucket}
     LeakyBucket,
     FixedWindow,
     SlidingWindow,
@@ -134,7 +138,9 @@ pub struct BulkheadConfig  {/// Enable bulkhead pattern
     pub isolation_strategy: IsolationStrategy,
 }
 
-impl Default for BulkheadConfig  {fn default() -> Self  {Self {
+impl Default for BulkheadConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             max_concurrent_operations: 100,
             queue_size: 1000,
@@ -147,7 +153,7 @@ impl Default for BulkheadConfig  {fn default() -> Self  {Self {
 
 /// Isolation strategies for bulkhead pattern
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum IsolationStrategy  {ThreadPool)
+pub enum IsolationStrategy {ThreadPool}
     Semaphore,
     Queue,
 }
@@ -179,26 +185,28 @@ pub struct RetryConfig  {/// Enable retry mechanism
     pub retryable_errors: Vec<String>,
 }
 
-impl Default for RetryConfig  {fn default() -> Self  {Self {
+impl Default for RetryConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             max_attempts: 3,
-            initial_delay: Duration::from_millis(100,
+            initial_delay: Duration::from_millis(100),
             max_delay: Duration::from_secs(30)
             backoff_multiplier: 2.0,
             backoff_strategy: BackoffStrategy::Exponential,
             jitter_enabled: true,
             retryable_errors: vec![
-                "network_error".to_string()),
-                "timeout".to_string()),
-                "service_unavailable".to_string()),
-            ])
+                "network_error".to_string(),
+                "timeout".to_string(),
+                "service_unavailable".to_string(),
+            ],
         }
     }
 }
 
 /// Backoff strategies for retry mechanism
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum BackoffStrategy  {Fixed)
+pub enum BackoffStrategy {Fixed}
     Linear,
     Exponential,
     ExponentialWithJitter,
@@ -228,11 +236,13 @@ pub struct LoadBalancerConfig  {/// Load balancing algorithm
     pub fail_fast: bool,
 }
 
-impl Default for LoadBalancerConfig  {fn default() -> Self  {Self {
+impl Default for LoadBalancerConfig {
+    fn default() -> Self {
+        Self {
             algorithm: LoadBalancingAlgorithm::RoundRobin,
             health_check: HealthCheckConfig::default(),
             sticky_sessions: false,
-            session_timeout: Duration::from_secs(300,
+            session_timeout: Duration::from_secs(300),
             max_connections_per_backend: 100,
             connection_timeout: Duration::from_secs(30)
             fail_fast: true,
@@ -242,7 +252,7 @@ impl Default for LoadBalancerConfig  {fn default() -> Self  {Self {
 
 /// Load balancing algorithms
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LoadBalancingAlgorithm  {RoundRobin)
+pub enum LoadBalancingAlgorithm {RoundRobin}
     LeastConnections,
     WeightedRoundRobin,
     Random,
@@ -271,7 +281,9 @@ pub struct HealthCheckConfig  {/// Enable health checks
     pub path: String,
 }
 
-impl Default for HealthCheckConfig  {fn default() -> Self  {Self {
+impl Default for HealthCheckConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             interval: Duration::from_secs(30)
             timeout: Duration::from_secs(10)
@@ -303,10 +315,12 @@ pub struct ZeroCostRouterConfig  {/// Enable zero-cost routing
     pub discovery_timeout: Duration,
 }
 
-impl Default for ZeroCostRouterConfig  {fn default() -> Self  {Self {
+impl Default for ZeroCostRouterConfig {
+    fn default() -> Self {
+        Self {
             enabled: true,
             route_cache_size: 10000,
-            route_cache_ttl: Duration::from_secs(300,
+            route_cache_ttl: Duration::from_secs(300),
             optimize_routes: true,
             max_route_depth: 10,
             discovery_timeout: Duration::from_secs(30)

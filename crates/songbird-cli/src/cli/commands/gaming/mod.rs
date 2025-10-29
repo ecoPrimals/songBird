@@ -3,10 +3,13 @@
 //! Comprehensive gaming functionality including network scanning, hosting,
 //! joining sessions, and various family-safe setup modes.
 
+use crate::cli::ui::success;
+use crate::errors::CliResult;
 use clap::{Parser, Subcommand};
-use crate::cli::CliResult;
-use crate::cli::display::success_message;
-use songbird_types::SongbirdError;
+
+fn success_message(msg: &str) -> String {
+    success(msg)
+}
 
 /// Gaming command-line arguments
 ///
@@ -102,7 +105,9 @@ pub async fn handle_gaming_command(args: GamingArgs) -> CliResult<()> {
             encrypt,
             private,
         } => host_game(auto, name, encrypt, private).await,
-        GamingCommand::Join { code } => join_game(code).await,
+        GamingCommand::Join {
+            code,
+        } => join_game(code).await,
         GamingCommand::Status => show_gaming_status().await,
         GamingCommand::Browse => browse_available_games().await,
         GamingCommand::Diagnostics => run_gaming_diagnostics().await,
@@ -113,10 +118,13 @@ pub async fn handle_gaming_command(args: GamingArgs) -> CliResult<()> {
             parental_controls,
             guests,
         } => one_touch_setup(name, family_safe, parental_controls, guests).await,
-        GamingCommand::ZeroTouch { endpoint, token } => {
-            zero_touch_setup(endpoint, token).await
-        }
-        GamingCommand::FamilySafe { family_name } => family_safe_setup(family_name).await,
+        GamingCommand::ZeroTouch {
+            endpoint,
+            token,
+        } => zero_touch_setup(endpoint, token).await,
+        GamingCommand::FamilySafe {
+            family_name,
+        } => family_safe_setup(family_name).await,
         GamingCommand::QuickStart {
             auto_detect,
             game,

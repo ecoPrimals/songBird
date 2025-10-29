@@ -157,6 +157,7 @@ impl ChaosEngineeringManager {
     ///
     /// # Errors
     /// Returns an error if the experiment is not found.
+    #[allow(clippy::unused_async)]
     pub async fn get_experiment_status(
         &self,
         experiment_id: &str,
@@ -171,6 +172,11 @@ impl ChaosEngineeringManager {
     }
 
     /// List all active experiments
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the read lock cannot be acquired.
+    #[allow(clippy::unused_async)]
     pub async fn list_experiments(&self) -> SongbirdResult<Vec<ChaosExperiment>> {
         let experiments = self.experiments.read().map_err(|e| {
             SongbirdError::service("test-utils", format!("Failed to acquire read lock: {e}"))
@@ -180,6 +186,7 @@ impl ChaosEngineeringManager {
     }
 
     // Private fault injection methods...
+    #[allow(clippy::unused_async)]
     async fn inject_network_fault(
         &self,
         experiment_id: &str,
@@ -200,6 +207,7 @@ impl ChaosEngineeringManager {
         Ok(())
     }
 
+    #[allow(clippy::unused_async)]
     async fn inject_service_failure(
         &self,
         _experiment_id: &str,
@@ -211,6 +219,7 @@ impl ChaosEngineeringManager {
         Ok(())
     }
 
+    #[allow(clippy::unused_async)]
     async fn inject_resource_constraint(
         &self,
         experiment_id: &str,
@@ -220,6 +229,7 @@ impl ChaosEngineeringManager {
         Ok(())
     }
 
+    #[allow(clippy::unused_async)]
     async fn inject_byzantine_failure(
         &self,
         experiment_id: &str,
@@ -229,6 +239,7 @@ impl ChaosEngineeringManager {
         Ok(())
     }
 
+    #[allow(clippy::unused_async)]
     async fn inject_performance_degradation(
         &self,
         experiment_id: &str,
@@ -238,6 +249,7 @@ impl ChaosEngineeringManager {
         Ok(())
     }
 
+    #[allow(clippy::unused_async)]
     async fn stop_fault_injection(&self, experiment_id: &str) -> SongbirdResult<()> {
         tracing::info!("Stopped fault injection for experiment: {}", experiment_id);
         Ok(())

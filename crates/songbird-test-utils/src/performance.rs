@@ -43,9 +43,12 @@ impl PerformanceMeasurement {
             return None;
         }
 
+        #[allow(clippy::cast_possible_truncation)]
         let total_nanos: u64 = self.measurements.iter().map(|d| d.as_nanos() as u64).sum();
 
-        Some(Duration::from_nanos(total_nanos / self.measurements.len() as u64))
+        #[allow(clippy::cast_possible_truncation)]
+        let len = self.measurements.len() as u64;
+        Some(Duration::from_nanos(total_nanos / len))
     }
 
     /// Get percentile duration
@@ -58,6 +61,11 @@ impl PerformanceMeasurement {
         let mut sorted = self.measurements.clone();
         sorted.sort();
 
+        #[allow(
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss
+        )]
         let index = ((percentile / 100.0) * sorted.len() as f32) as usize;
         let index = index.min(sorted.len() - 1);
 
@@ -92,6 +100,10 @@ impl PerformanceMeasurement {
 }
 
 /// Benchmark a function multiple times
+///
+/// # Errors
+///
+/// Returns an error if any iteration of the operation fails.
 pub async fn benchmark_async<F, Fut, T>(
     name: &str,
     iterations: usize,
@@ -118,6 +130,10 @@ where
 }
 
 /// Benchmark a synchronous function multiple times
+///
+/// # Errors
+///
+/// Returns an error if any iteration of the operation fails.
 pub fn benchmark_sync<F, T>(
     name: &str,
     iterations: usize,
@@ -166,6 +182,10 @@ impl LoadTester {
     }
 
     /// Run a load test with concurrent operations
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the load test setup or execution fails.
     pub async fn run_load_test<F, Fut, T>(
         &self,
         name: &str,
@@ -181,7 +201,9 @@ impl LoadTester {
 
         // Calculate ramp-up delay between users
         let ramp_up_delay = if self.concurrent_users > 1 {
-            self.ramp_up_duration / (self.concurrent_users as u32 - 1)
+            #[allow(clippy::cast_possible_truncation)]
+            let users_minus_one = (self.concurrent_users as u32).saturating_sub(1);
+            self.ramp_up_duration / users_minus_one
         } else {
             Duration::ZERO
         };
@@ -286,19 +308,25 @@ impl LoadTestResults {
 
         let successful_samples: Vec<_> = self.samples.iter().filter(|s| s.success).collect();
 
-        self.success_rate = successful_samples.len() as f32 / self.samples.len() as f32;
+        #[allow(clippy::cast_precision_loss)]
+        {
+            self.success_rate = successful_samples.len() as f32 / self.samples.len() as f32;
+        }
 
         if !successful_samples.is_empty() {
+            #[allow(clippy::cast_possible_truncation)]
             let total_nanos: u64 =
                 successful_samples.iter().map(|s| s.duration.as_nanos() as u64).sum();
 
-            self.average_response_time =
-                Duration::from_nanos(total_nanos / successful_samples.len() as u64);
+            #[allow(clippy::cast_possible_truncation)]
+            let len = successful_samples.len() as u64;
+            self.average_response_time = Duration::from_nanos(total_nanos / len);
         }
 
         if self.total_duration.as_secs_f32() > 0.0 {
-            self.throughput_per_second =
-                successful_samples.len() as f32 / self.total_duration.as_secs_f32();
+            #[allow(clippy::cast_precision_loss)]
+            let throughput = successful_samples.len() as f32 / self.total_duration.as_secs_f32();
+            self.throughput_per_second = throughput;
         }
     }
 

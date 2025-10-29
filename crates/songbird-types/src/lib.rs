@@ -50,8 +50,7 @@ pub use traits::{
 
 // Re-export constants that actually exist
 pub use constants::{
-    CanonicalDiscoveryDefaults, CanonicalEnvironmentConstants, CanonicalNetworkAddresses,
-    CanonicalNetworkLimits, CanonicalPerformanceDefaults, CanonicalResourceDefaults,
+    DEFAULT_PORT, DEFAULT_RETRY_ATTEMPTS, DEFAULT_TIMEOUT_SECS, MAX_CONCURRENT_CONNECTIONS,
 };
 
 // Module declarations
@@ -61,6 +60,7 @@ pub mod constants;
 pub mod errors;
 pub mod health;
 pub mod memory_optimized;
+// pub mod performance;  // Temporarily disabled - syntax errors need fixing
 pub mod primal;
 pub mod response;
 pub mod service;

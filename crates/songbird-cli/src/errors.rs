@@ -2,7 +2,7 @@
 
 use songbird_types::{SongbirdError, SongbirdResult};
 
-/// CLI-specific error types - Modernized to integrate with SongbirdError
+/// CLI-specific error types - Modernized to integrate with `SongbirdError`
 #[derive(Debug, thiserror::Error)]
 pub enum CliError {
     #[error("Command error: {command} - {message}")]
@@ -29,10 +29,10 @@ pub enum CliError {
     UserCancelled,
 
     #[error("Serialization error")]
-    Serialization(#[from] serde_json::Error,
+    Serialization(#[from] serde_json::Error),
 
     #[error("IO error")]
-    Io(#[from] std::io::Error,
+    Io(#[from] std::io::Error),
 }
 
 // Use canonical result type throughout CLI
@@ -41,48 +41,46 @@ pub type CliResult<T> = SongbirdResult<T>;
 impl From<CliError> for SongbirdError {
     fn from(cli_error: CliError) -> Self {
         match cli_error {
-            CliError::Command { command, message } => {
-                SongbirdError::Service {
-                    service: "cli".to_string(),
-                    message: format!("{}: {}", command, message,
-                    suggested_alternatives: vec!["--help".to_string()],
-                    recovery_actions: vec!["Check command syntax".to_string()],
-                }
-            }
-            CliError::Config { message, field, suggestion } => {
-                SongbirdError::Configuration {
-                    field: field.unwrap_or_else(|| "unknown".to_string()),
-                    message,
-                    current_value: None,
-                    expected_format: None,
-                    suggestion,
-                }
-            }
-            CliError::Network { message, interface, suggestion } => {
-                SongbirdError::Network {
-                    message: format!("CLI network error: {}", message,
-                    operation: interface,
-                    suggestion,
-                }
-            }
-            CliError::UserCancelled => SongbirdError::Configuration {
-                field: "user_input".to_string(),
+            CliError::Command {
+                command,
+                message,
+            } => Self::Service {
+                service: "cli".to_string(),
+                message: format!("{command}: {message}"),
+                suggested_alternatives: vec!["--help".to_string()],
+                recovery_actions: vec!["Check command syntax".to_string()],
+            },
+            CliError::Config {
+                message,
+                field,
+                suggestion,
+            } => Self::Configuration {
+                message,
+                field,
+                suggestion,
+            },
+            CliError::Network {
+                message,
+                interface,
+                suggestion,
+            } => Self::Network {
+                message: format!("CLI network error: {message}"),
+                interface,
+                suggestion,
+            },
+            CliError::UserCancelled => Self::Configuration {
                 message: "Operation cancelled by user".to_string(),
-                current_value: None,
-                expected_format: None,
+                field: Some("user_input".to_string()),
                 suggestion: Some("Try again or use --force to skip confirmations".to_string()),
             },
-            CliError::Serialization(e, => SongbirdError::Serialization {
-                format: "json".to_string(),
+            CliError::Serialization(e) => Self::Serialization {
                 message: e.to_string(),
-                field: None,
-                suggestion: Some("Check data format and try again".to_string()),
+                format: Some("json".to_string()),
+                debug_info: None,
             },
-            CliError::Io(e, => SongbirdError::Configuration {
-                field: "file_system".to_string(),
-                message: format!("IO error: {}", e,
-                current_value: None,
-                expected_format: None,
+            CliError::Io(e) => Self::Configuration {
+                message: format!("IO error: {e}"),
+                field: Some("file_system".to_string()),
                 suggestion: Some("Check file permissions and paths".to_string()),
             },
         }

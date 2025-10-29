@@ -2,17 +2,20 @@
 //!
 //! **MODERN GAMING SERVICE DISCOVERY** ✅
 
-use crate::errors::{CliError, CliResult};
-use songbird_config;
+use crate::errors::CliResult;
 
-pub async fn execute_discovery(timeout: u64, protocol: Option<String>, continuous: bool) -> CliResult<()> {
+pub async fn execute_discovery(
+    timeout: u64,
+    protocol: Option<String>,
+    continuous: bool,
+) -> CliResult<()> {
     println!("🔍 Discovering gaming services...");
 
     if let Some(proto) = protocol {
-        println!("🌐 Filtering by protocol: {}", proto);
+        println!("🌐 Filtering by protocol: {proto}");
     }
 
-    println!("⏱️  Timeout: {}s", timeout);
+    println!("⏱️  Timeout: {timeout}s");
 
     if continuous {
         println!("🔄 Continuous discovery mode ");

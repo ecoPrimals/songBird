@@ -1,4 +1,25 @@
 //! Comprehensive tests for `SongbirdResponse` and `ResponseError`
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
 
 use songbird_types::{ResponseError, SongbirdError, SongbirdResponse};
 use std::collections::HashMap;
@@ -272,7 +293,7 @@ fn test_response_empty_vec() {
 #[test]
 fn test_response_large_data() {
     let large_vec: Vec<i32> = (0..10000).collect();
-    let response = SongbirdResponse::success(large_vec.clone());
+    let response = SongbirdResponse::success(large_vec);
 
     assert!(response.success);
     assert_eq!(response.data.unwrap().len(), 10000);

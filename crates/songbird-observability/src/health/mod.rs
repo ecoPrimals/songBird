@@ -28,6 +28,10 @@ pub enum HealthStatus {
     Unhealthy,
 }
 
+#[cfg(test)]
+#[path = "types_tests.rs"]
+mod types_tests;
+
 /// Health check result
 #[derive(Debug, Clone)]
 pub struct HealthCheckResult {
@@ -49,7 +53,7 @@ pub struct HealthStatusDetails {
 }
 
 /// Health state enumeration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum HealthState {
     Healthy,
     Degraded,
@@ -68,6 +72,7 @@ pub struct HealthRecord {
 }
 
 /// Health thresholds
+#[allow(clippy::struct_field_names)]
 pub struct HealthThresholds {
     pub response_time_threshold: std::time::Duration,
     pub error_rate_threshold: f64,

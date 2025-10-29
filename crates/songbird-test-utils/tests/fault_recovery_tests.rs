@@ -1,5 +1,28 @@
-use songbird_types::SongbirdError;
+#![allow(clippy::all)]
+#![allow(unused)]
 // Service Failure Recovery Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
 //
 // Comprehensive tests for service failure detection and recovery in the Songbird orchestrator.
 //
@@ -92,7 +115,7 @@ mod fault_recovery_tests {
                 }
             }
 
-            async fn check_health(&self) -> bool {
+            fn check_health(&self) -> bool {
                 let is_healthy = self.is_healthy.load(Ordering::SeqCst);
                 if !is_healthy {
                     self.failed_checks.fetch_add(1, Ordering::SeqCst);
@@ -121,20 +144,20 @@ mod fault_recovery_tests {
         let service_b = ServiceHealth::new("service-b");
 
         // Phase 1: All services healthy
-        assert!(service_a.check_health().await, "Service A should be healthy");
-        assert!(service_b.check_health().await, "Service B should be healthy");
+        assert!(service_a.check_health(), "Service A should be healthy");
+        assert!(service_b.check_health(), "Service B should be healthy");
         tracing::info!("   ✓ Phase 1: All services healthy");
 
         // Phase 2: Service A fails health check
         service_a.mark_unhealthy();
-        assert!(!service_a.check_health().await, "Service A should be unhealthy");
+        assert!(!service_a.check_health(), "Service A should be unhealthy");
         assert!(!service_a.should_route_traffic(), "Should not route to unhealthy service");
-        assert!(service_b.check_health().await, "Service B should still be healthy");
+        assert!(service_b.check_health(), "Service B should still be healthy");
         tracing::info!("   ✓ Phase 2: Service A isolated");
 
         // Phase 3: Multiple failed health checks
         for i in 1..=3 {
-            service_a.check_health().await;
+            service_a.check_health();
             tracing::debug!("   - Health check {} failed for Service A", i);
         }
         assert_eq!(
@@ -146,7 +169,7 @@ mod fault_recovery_tests {
 
         // Phase 4: Service recovery
         service_a.mark_healthy();
-        assert!(service_a.check_health().await, "Service A should recover");
+        assert!(service_a.check_health(), "Service A should recover");
         assert!(service_a.should_route_traffic(), "Should route to recovered service");
         assert_eq!(
             service_a.failed_checks.load(Ordering::SeqCst),

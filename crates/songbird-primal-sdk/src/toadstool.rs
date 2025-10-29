@@ -1,3 +1,34 @@
+//! # ⚠️ DEPRECATED: Legacy Toadstool Primal (Hardcoded Compute Service)
+//!
+//! **STATUS**: This module is deprecated. Use `compute_capability` instead.
+//!
+//! **REASON**: Hardcoded "toadstool" primal name violates zero-hardcoding philosophy.
+//!
+//! ## Migration Guide
+//!
+//! ```rust,ignore
+//! // ❌ OLD: Hardcoded toadstool primal
+//! use songbird_primal_sdk::toadstool::ToadstoolPrimal;
+//! let toadstool = ToadstoolPrimal::new(context);
+//! let result = toadstool.execute_workload(spec).await?;
+//!
+//! // ✅ NEW: Capability-based compute client  
+//! use songbird_primal_sdk::compute_capability::ComputeCapabilityClient;
+//! let compute = ComputeCapabilityClient::new().await?;
+//! let result = compute.execute_workload(spec).await?;
+//! ```
+//!
+//! ## Why This Change?
+//!
+//! - **Zero Hardcoding**: No hardcoded primal names or endpoints
+//! - **Agnostic**: Works with ANY compute provider, not just toadstool
+//! - **Discovery**: Dynamically discovers compute services at runtime
+//! - **Flexibility**: Easy to swap providers without code changes
+//!
+//! ---
+//!
+//! # Original Documentation (Legacy)
+//!
 //! Toadstool Primal - Network and Infrastructure focused Universal Primal
 //!
 //! Provides network services, container orchestration, and infrastructure management

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 /// Universal primal capability definition
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[allow(clippy::struct_field_names)]
 pub struct Capability {
     /// Capability type (e.g., "compute", "storage", "security", "ai")
     pub capability_type: String,

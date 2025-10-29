@@ -6,6 +6,8 @@
 //! - Any environment-based service configuration
 //! - Any capability-based service detection
 
+#![allow(clippy::unused_async, clippy::missing_errors_doc, clippy::unused_self)]
+
 use async_trait::async_trait;
 use futures_util::Stream;
 use std::collections::HashMap;
@@ -394,6 +396,7 @@ impl UniversalServiceDiscovery {
     }
 
     /// Parse service response from any HTTP registry
+    #[allow(clippy::unnecessary_wraps)]
     fn parse_universal_service_response(
         &self,
         data: &serde_json::Value,

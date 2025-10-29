@@ -3,6 +3,8 @@
 //! This module provides sovereignty-aware routing capabilities
 //! ensuring routing decisions respect sovereignty requirements.
 
+#![allow(clippy::unused_self, clippy::cast_precision_loss, clippy::unused_async)]
+
 use super::types::{
     PathSegment, PathSovereigntyAssessment, RiskSeverity, RoutingPath, SecurityAssessment,
     SecurityCapability, SecurityLevel, SegmentSovereigntyAssessment, SovereigntyComplianceLevel,

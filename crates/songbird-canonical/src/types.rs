@@ -3,6 +3,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
+
+#[cfg(test)]
+#[path = "types_tests.rs"]
+mod types_tests;
 /// Canonical service identifier type
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ServiceId(String);

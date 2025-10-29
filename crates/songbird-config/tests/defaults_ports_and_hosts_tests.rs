@@ -1,5 +1,18 @@
-//! Comprehensive tests for defaults::ports and defaults::hosts modules
+//! Comprehensive tests for `defaults::ports` and `defaults::hosts` modules
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
 
+use serial_test::serial;
 use songbird_config::defaults::{hosts, ports};
 
 // ============================================================================
@@ -14,6 +27,7 @@ fn test_orchestrator_port_default() {
 }
 
 #[test]
+#[serial]
 fn test_orchestrator_port_from_env() {
     std::env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "9000");
     let port = ports::orchestrator_port();
@@ -29,6 +43,7 @@ fn test_discovery_port_default() {
 }
 
 #[test]
+#[serial]
 fn test_discovery_port_from_env() {
     std::env::set_var("SONGBIRD_DISCOVERY_PORT", "9001");
     let port = ports::discovery_port();
@@ -44,6 +59,7 @@ fn test_dashboard_port_default() {
 }
 
 #[test]
+#[serial]
 fn test_dashboard_port_from_env() {
     std::env::set_var("SONGBIRD_DASHBOARD_PORT", "4000");
     let port = ports::dashboard_port();
@@ -59,6 +75,7 @@ fn test_metrics_port_default() {
 }
 
 #[test]
+#[serial]
 fn test_metrics_port_from_env() {
     std::env::set_var("SONGBIRD_METRICS_PORT", "9091");
     let port = ports::metrics_port();
@@ -74,6 +91,7 @@ fn test_federation_port_default() {
 }
 
 #[test]
+#[serial]
 fn test_federation_port_from_env() {
     std::env::set_var("SONGBIRD_FEDERATION_PORT", "8083");
     let port = ports::federation_port();
@@ -222,7 +240,7 @@ fn test_complete_endpoint_construction() {
 
     let host = hosts::default_host();
     let port = ports::orchestrator_port();
-    let endpoint = format!("http://{}:{}", host, port);
+    let endpoint = format!("http://{host}:{port}");
 
     assert_eq!(endpoint, "http://127.0.0.1:8080");
 }
@@ -234,7 +252,7 @@ fn test_discovery_endpoint_construction() {
 
     let host = hosts::discovery_host();
     let port = ports::discovery_port();
-    let endpoint = format!("http://{}:{}", host, port);
+    let endpoint = format!("http://{host}:{port}");
 
     assert_eq!(endpoint, "http://127.0.0.1:8081");
 }
@@ -246,7 +264,7 @@ fn test_dashboard_endpoint_construction() {
 
     let host = hosts::default_host();
     let port = ports::dashboard_port();
-    let endpoint = format!("http://{}:{}", host, port);
+    let endpoint = format!("http://{host}:{port}");
 
     assert_eq!(endpoint, "http://127.0.0.1:3000");
 }
@@ -258,7 +276,7 @@ fn test_metrics_endpoint_construction() {
 
     let host = hosts::default_host();
     let port = ports::metrics_port();
-    let endpoint = format!("http://{}:{}", host, port);
+    let endpoint = format!("http://{host}:{port}");
 
     assert_eq!(endpoint, "http://127.0.0.1:9090");
 }
@@ -303,6 +321,7 @@ fn test_empty_host_env_uses_default() {
 }
 
 #[test]
+#[serial]
 fn test_port_range_boundaries() {
     // Test minimum valid port (above privileged range)
     std::env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "1024");

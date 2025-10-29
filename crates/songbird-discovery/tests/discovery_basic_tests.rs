@@ -1,4 +1,17 @@
 //! Basic Discovery Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Simple tests for the discovery module to improve test coverage
 //! using the actual discovery API.
@@ -7,7 +20,6 @@
 
 use chrono::Utc;
 use serde_json::Value;
-use songbird_config;
 use songbird_discovery::{
     discovery::{backends::StaticServiceDiscovery, core::CanonicalDiscoveryConfig},
     traits::{
@@ -113,13 +125,13 @@ fn test_service_endpoint_creation() {
 
     assert_eq!(endpoint.path, "/v1/api");
     assert_eq!(endpoint.method, "POST");
-    assert_eq!(endpoint.auth_required, true);
+    assert!(endpoint.auth_required);
 }
 
 /// Test service status variants
 #[test]
 fn test_service_status_variants() {
-    let statuses = vec![
+    let statuses = [
         ServiceStatus::Starting,
         ServiceStatus::Running,
         ServiceStatus::Stopping,
@@ -134,7 +146,7 @@ fn test_service_status_variants() {
 /// Test health status variants
 #[test]
 fn test_health_status_variants() {
-    let statuses = vec![HealthStatus::Healthy, HealthStatus::Unhealthy, HealthStatus::Unknown];
+    let statuses = [HealthStatus::Healthy, HealthStatus::Unhealthy, HealthStatus::Unknown];
 
     assert_eq!(statuses.len(), 3);
 }
@@ -184,7 +196,7 @@ fn test_service_info_serialization() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test serialization
     let serialized = serde_json::to_string(&service_info)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
     assert!(!serialized.is_empty());
     assert!(serialized.contains("serialize-test"));
     assert!(serialized.contains("Serialize Test"));
@@ -245,7 +257,7 @@ fn test_metadata_value_types() {
         version: "1.0.0".to_string(),
         service_type: "database".to_string(),
         description: Some("Testing metadata types".to_string()),
-        endpoints: endpoints,
+        endpoints,
         health_check_endpoint: Some("/ping".to_string()),
         metadata: metadata.clone(),
         tags: vec!["metadata".to_string(), "test".to_string()],

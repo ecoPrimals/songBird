@@ -38,16 +38,16 @@ pub mod backends;
 pub mod factory;
 
 // Enhanced discovery with federation capabilities (NEW)
-// TEMP DISABLED: enhanced_discovery has extensive string corruption (622 lines), needs full rewrite
+// TEMP DISABLED: Has syntax errors (mismatched delimiters) - needs fixing
+// See: lines 260, 304, 339, 410, 414, 471, 480
 // pub mod enhanced_discovery;
 
 // Existing submodules (already well-organized)
 pub mod config;
-// TEMP DISABLED: monitoring, network, resources have persistent string corruption (needs systematic rewrite)
+// TEMP DISABLED: Depend on enhanced_discovery or have syntax issues
 // pub mod monitoring;
 // pub mod network;
 // pub mod resources;
-// TEMP DISABLED: songbird_discovery depends on the above broken modules
 // pub mod songbird_discovery;
 pub mod types;
 
@@ -81,15 +81,21 @@ pub mod migration_examples {
 
     /// Example: Migrating to canonical Provider-based discovery
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// // OLD (deprecated):
     /// // let discovery = KubernetesServiceDiscovery::new().await?;
     /// // let discovery = ConsulServiceDiscovery::new().await?;
     ///
     /// // NEW (canonical Provider system):
-    /// use songbird_types::traits::canonical::DiscoveryProvider;
+    /// use songbird_discovery::UniversalDiscoveryFactory;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
+    /// # Ok(())
+    /// # }
     /// ```
+    ///
+    /// # Errors
+    /// Returns an error if the auto-detection or creation of the discovery service fails.
     pub async fn migrate_to_canonical_providers() -> Result<Box<dyn crate::traits::ServiceDiscovery>>
     {
         UniversalDiscoveryFactory::create_auto_detect().await

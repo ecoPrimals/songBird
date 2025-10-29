@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -98,17 +99,16 @@ impl MetricsCollector {
         // System metrics
         output.push_str("# HELP songbird_cpu_usage_percent CPU usage percentage\n");
         output.push_str("# TYPE songbird_cpu_usage_percent gauge\n");
-        output.push_str(&format!("songbird_cpu_usage_percent {}\n", metrics.system.cpu_usage));
+        let _ = writeln!(output, "songbird_cpu_usage_percent {}", metrics.system.cpu_usage);
 
         output.push_str("# HELP songbird_memory_usage_ratio Memory usage ratio\n");
         output.push_str("# TYPE songbird_memory_usage_ratio gauge\n");
-        output.push_str(&format!("songbird_memory_usage_ratio {}\n", metrics.system.memory_usage));
+        let _ = writeln!(output, "songbird_memory_usage_ratio {}", metrics.system.memory_usage);
 
         // Application metrics
         output.push_str("# HELP songbird_active_services Number of active services\n");
         output.push_str("# TYPE songbird_active_services gauge\n");
-        output
-            .push_str(&format!("songbird_active_services {}\n", metrics.songbird.active_services));
+        let _ = writeln!(output, "songbird_active_services {}", metrics.songbird.active_services);
 
         Ok(output)
     }
@@ -121,6 +121,7 @@ impl MetricsCollector {
 
     /// Get last collection time
     #[must_use]
+    #[allow(clippy::unused_self, clippy::unnecessary_wraps)]
     pub fn last_collection_time(&self) -> Option<DateTime<Utc>> {
         // In a real implementation, this would track the actual last collection time
         Some(Utc::now())

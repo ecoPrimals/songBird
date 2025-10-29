@@ -1,4 +1,17 @@
 //! Comprehensive Configuration Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! This test suite provides extensive coverage for the songbird-config crate
 //! to achieve the target 90% test coverage for production readiness.
@@ -10,13 +23,14 @@ use songbird_config::{
     config::{constants::*, hardcoded_elimination::*, universal_primals::*},
     EnvironmentConfig,
 };
-use songbird_types::SongbirdError;
 use std::collections::HashMap;
 use std::time::Duration;
 
 #[cfg(test)]
 mod comprehensive_config_tests {
     use super::*;
+    use serial_test::serial;
+    use std::env;
 
     // Test Module 1: Constants and Environment Variables
     #[test]
@@ -30,15 +44,52 @@ mod comprehensive_config_tests {
     }
 
     #[test]
+    #[serial]
     fn test_environment_detection() {
+        // Save original values
+        let original_bind = env::var("SONGBIRD_BIND_ADDRESS").ok();
+        let original_k8s = env::var("KUBERNETES_SERVICE_HOST").ok();
+        let original_container = env::var("CONTAINER").ok();
+        let original_env = env::var("SONGBIRD_ENV").ok();
+
+        // Complete environment isolation to prevent contamination from other tests
+        env::remove_var("SONGBIRD_BIND_ADDRESS");
+        env::remove_var("KUBERNETES_SERVICE_HOST");
+        env::remove_var("CONTAINER");
+        env::remove_var("SONGBIRD_ENV");
+
         let bind_address = get_bind_address();
-        assert!(!bind_address.is_empty());
-        // Accept any valid IP address format, not just specific ones
+
+        // Restore original values
+        match original_bind {
+            Some(val) => env::set_var("SONGBIRD_BIND_ADDRESS", val),
+            None => env::remove_var("SONGBIRD_BIND_ADDRESS"),
+        }
+        match original_k8s {
+            Some(val) => env::set_var("KUBERNETES_SERVICE_HOST", val),
+            None => env::remove_var("KUBERNETES_SERVICE_HOST"),
+        }
+        match original_container {
+            Some(val) => env::set_var("CONTAINER", val),
+            None => env::remove_var("CONTAINER"),
+        }
+        match original_env {
+            Some(val) => env::set_var("SONGBIRD_ENV", val),
+            None => env::remove_var("SONGBIRD_ENV"),
+        }
+
+        // Verify we got a non-empty address
+        assert!(!bind_address.is_empty(), "Bind address should not be empty");
+
+        // Since we cleared all env vars, we should get the development default (127.0.0.1)
+        // However, due to parallel test execution, accept valid IPs that might come from
+        // other tests modifying env vars
         assert!(
             bind_address == "127.0.0.1"
                 || bind_address == "0.0.0.0"
                 || bind_address.parse::<std::net::IpAddr>().is_ok(),
-            "Expected valid IP address, got: {bind_address}"
+            "Expected valid IP address, got: {bind_address}. \
+             This test may be affected by parallel test execution."
         );
     }
 
@@ -280,11 +331,19 @@ mod comprehensive_config_tests {
 
     #[test]
     fn test_invalid_ip_addresses() {
+        // Save original value for cleanup
+        let original_bind = std::env::var("SONGBIRD_BIND_ADDRESS").ok();
+
         std::env::set_var("SONGBIRD_BIND_ADDRESS", "invalid.ip.address");
         let config = HardcodingEliminationConfig::default();
         // Should fallback to localhost
         assert!(config.network.bind_address.is_loopback());
-        std::env::remove_var("SONGBIRD_BIND_ADDRESS");
+
+        // Restore original value or remove if it didn't exist
+        match original_bind {
+            Some(val) => std::env::set_var("SONGBIRD_BIND_ADDRESS", val),
+            None => std::env::remove_var("SONGBIRD_BIND_ADDRESS"),
+        }
     }
 
     #[test]

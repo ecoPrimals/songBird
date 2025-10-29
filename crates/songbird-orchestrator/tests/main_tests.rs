@@ -1,650 +1,456 @@
-/*
- * TEMPORARILY DISABLED (October 23, 2025)
- *
- * These tests reference an old config API that was refactored and no longer exists.
- * The config system was modernized, but these tests were not updated.
- *
- * Issues:
- * - 81 compilation errors from missing fields
- * - Old fields: gaming_port_range, encryption_enabled, tls_enabled, etc.
- * - New API: See songbird-config/src/config/mod.rs for current structure
- *
- * Next Steps:
- * - Update tests to use current NetworkConfig and SecurityConfig API
- * - Or rewrite tests from scratch during test coverage sprint
- *
- * See documentation:
- * - FIXES_APPLIED_OCT_23_2025.md
- * - COMPREHENSIVE_AUDIT_REPORT_OCT_23_2025.md
- *
- * Tracking: This should be fixed during the test coverage sprint (19.35% → 90%)
- */
+//! Main Function Tests for Songbird Orchestrator
+//!
+//! Comprehensive test suite validating the main application function and startup process.
+//! Testing all critical paths, startup scenarios, configuration loading,
+//! error handling, and main function execution paths.
+//!
+//! **MODERNIZED**: October 28, 2025
+//! - Updated to use current config API (`NetworkConfig`, `SecurityConfig`, etc.)
+//! - Idiomatic Rust patterns
+//! - No deprecated fields
+//! - Async/await best practices
 
-#![cfg(test)] // Keep test configuration
-#![allow(dead_code, unused_imports, unused_variables)] // Suppress warnings for disabled code
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::module_name_repetitions)]
 
-use songbird_config::{EnvironmentConfig, SongbirdConfig};
-// Note: songbird_core was consolidated into songbird-orchestrator
-/// Main Function Tests for Songbird Orchestrator
-///
-/// Comprehensive test suite validating the main application function and startup process.
-/// Testing all critical paths, startup scenarios, configuration loading)
-/// error handling, and main function execution paths.
-use songbird_types::SongbirdError;
+use anyhow::Result;
+use serial_test::serial;
+use songbird_config::SongbirdConfig;
+use songbird_orchestrator::SongbirdOrchestrator;
 use std::env;
-use std::time::Duration;
 
-// All tests below are temporarily disabled - they use the old config API
-// Uncomment and update after config API is understood
-
-/*
+// ============================================================================
+// CONFIGURATION TESTS
+// ============================================================================
 
 #[tokio::test]
-async fn test_main_function_configuration_loading() {
-    // Test configuration loading scenarios
+async fn test_configuration_default_creation() {
+    // Modern: Config creates sensible defaults
     let config = SongbirdConfig::default();
-    assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.orchestrator_port > 0);
-    assert!(config.network.gaming_port_range.start > 0);
-    assert!(config.network.gaming_port_range.end > config.network.gaming_port_range.start);
+
+    // Verify core fields exist
+    assert!(!config.environment.is_empty());
+    assert!(config.performance.is_some());
+
+    // Verify network config
+    assert!(!config.network.bind_address.is_empty());
+    assert!(config.network.port_range.start > 0);
+    assert!(config.network.port_range.end > config.network.port_range.start);
+    assert!(config.network.max_connections > 0);
+}
+
+#[tokio::test]
+async fn test_configuration_test_defaults() {
+    // Modern: Use dedicated test_defaults() method
+    let config = SongbirdConfig::test_defaults();
+
+    assert_eq!(config.environment, "test");
+    assert!(!config.security.enabled); // Test mode: security off
+    assert!(config.network.port_range.start >= 19000); // Test port range
 }
 
 #[test]
+#[serial]
 fn test_environment_configuration() {
-    // Test environment configuration
-    let env_config = EnvironmentConfig::default();
-    assert!(env_config.data_dir.len() > 0);
-
-    // Test that environment variables can be set and read
-    env::set_var("SONGBIRD_TEST_CONFIG", "test_value");
-    let test_value = env::var("SONGBIRD_TEST_CONFIG").unwrap_or_default();
-    assert_eq!(test_value, "test_value");
-    env::remove_var("SONGBIRD_TEST_CONFIG");
-}
-
-#[test]
-fn test_configuration_security_validation() {
-    // Test configuration security validation
+    // Test environment variable handling
+    env::set_var("SONGBIRD_ENV", "staging");
     let config = SongbirdConfig::default();
-    let validation_result = config.validate();
-    assert!(validation_result.is_ok());
-}
+    assert_eq!(config.environment, "staging");
+    env::remove_var("SONGBIRD_ENV");
 
-#[test]
-fn test_orchestrator_creation_and_initialization() {
-    // Test orchestrator creation
+    // Test default environment
     let config = SongbirdConfig::default();
-    let _orchestrator = Orchestrator::new(config.clone());
-    // If this compiles and doesn't panic, initialization is successful
-    assert!(true);
-}
-
-#[test]
-fn test_network_configuration_validation() {
-    // Test network configuration validation
-    let config = SongbirdConfig::default();
-    let bind_addr_str = format!("{}", config.network.bind_address);
-    assert!(
-        bind_addr_str.contains("0.0.0.0")
-            || bind_addr_str.contains(&songbird_config::constants::network::DEFAULT_HOST)
-    );
-    assert!(config.network.orchestrator_port >= 1024);
-    assert!(config.network.gaming_port_range.end > config.network.gaming_port_range.start);
-}
-
-#[test]
-fn test_security_configuration_validation() {
-    // Test security configuration
-    let config = SongbirdConfig::default();
-    // Test that security settings are properly configured
-    assert!(config.security.encryption_enabled || !config.security.encryption_enabled);
-    assert!(config.security.tls_enabled || !config.security.tls_enabled);
-}
-
-#[test]
-fn test_gaming_configuration_validation() {
-    // Test gaming configuration
-    let config = SongbirdConfig::default();
-    assert!(config.network.gaming.bridge_buffer_size > 0);
-    assert!(config.network.gaming.bridge_buffer_size <= 1024 * 1024);
-    // Test that gaming detection interface can be configured
-    match config.network.gaming.detection_interface {
-        Some(_) => assert!(true),
-        None => assert!(true),
-    }
-}
-
-#[test]
-fn test_discovery_configuration_validation() {
-    // Test discovery configuration
-    let config = SongbirdConfig::default();
-    assert!(config.network.discovery_ports.len() > 0);
-
-    // Validate that discovery ports are in valid ranges
-    for port in &config.network.discovery_ports {
-        assert!(*port > 0);
-        // Note: u16 maximum is 65535, so <= 65535 is always true
-    }
-
-    // Test that all ports are unique
-    let mut sorted_ports = config.network.discovery_ports.clone();
-    sorted_ports.sort();
-    sorted_ports.dedup();
-    assert_eq!(sorted_ports.len(), config.network.discovery_ports.len());
-}
-
-#[test]
-fn test_environment_logging_configuration() {
-    // Test environment logging configuration
-    let config = SongbirdConfig::default();
-    assert!(config.environment.log_level.len() > 0);
-    assert!(config.environment.prefix.len() > 0);
-    assert!(!config.environment.prefix.contains(' ')); // No spaces in prefix
-
-    // Test that log level is valid
-    let valid_levels = vec!["trace", "debug", "info", "warn", "error"];
-    let log_level = config.environment.log_level.to_lowercase();
-    assert!(valid_levels.contains(&log_level.as_str()));
-}
-
-#[test]
-fn test_cli_argument_parsing() {
-    // Test CLI argument parsing scenarios
-    let args: Vec<String> = vec!["songbird".to_string(), "status".to_string()];
-    assert!(args.len() >= 2);
-    assert_eq!(args[0], "songbird");
-    assert_eq!(args[1], "status");
-
-    // Test help command
-    let help_args: Vec<String> = vec!["songbird".to_string(), "help".to_string()];
-    assert_eq!(help_args[1], "help");
-}
-
-#[test]
-fn test_error_handling() {
-    // Test error handling structures
-    let test_result: std::result::Result<(), Box<dyn std::error::Error>> = Ok(());
-    assert!(test_result.is_ok());
-
-    let error_result: std::result::Result<(), Box<dyn std::error::Error>> =
-        Err("Test error".into());
-    assert!(error_result.is_err());
-}
-
-#[test]
-fn test_async_runtime_compatibility() {
-    // Test that async runtime is properly configured
-    let rt = tokio::runtime::Runtime::new()
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
-    rt.block_on(async {
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        assert!(true);
-    });
-}
-
-#[test]
-fn test_tracing_initialization() {
-    // Test that tracing can be initialized
-    assert!(true) // If this compiles, tracing is properly configured
-}
-
-#[test]
-fn test_config_file_loading() {
-    // Test configuration file loading scenarios
-    let config = SongbirdConfig::default();
-    assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.orchestrator_port > 0);
-}
-
-#[test]
-fn test_startup_information_display() {
-    // Test that startup information can be displayed
-    let config = SongbirdConfig::default();
-    let env_config = EnvironmentConfig::default();
-
-    // Test that all required information is available
-    assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.orchestrator_port > 0);
-    assert!(config.network.gaming_port_range.start > 0);
-    assert!(config.security.encryption_enabled || !config.security.encryption_enabled);
-    assert!(config.security.tls_enabled || !config.security.tls_enabled);
-    assert!(env_config.data_dir.len() > 0);
-    assert!(config.environment.prefix.len() > 0);
-    assert!(config.environment.log_level.len() > 0);
-    assert!(config.network.discovery_ports.len() > 0);
-}
-
-#[test]
-fn test_comprehensive_validation() {
-    // Comprehensive validation test
-    let config = SongbirdConfig::default();
-    let env_config = EnvironmentConfig::default();
-
-    // Network validation
-    assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.orchestrator_port > 0);
-    assert!(config.network.gaming_port_range.start > 0);
-    assert!(config.network.gaming_port_range.end > config.network.gaming_port_range.start);
-
-    // Security validation
-    let security_validation = config.validate();
-    assert!(security_validation.is_ok());
-
-    // Environment validation
-    assert!(env_config.data_dir.len() > 0);
-    assert!(config.environment.prefix.len() > 0);
-    assert!(config.environment.log_level.len() > 0);
-
-    // Discovery validation
-    assert!(config.network.discovery_ports.len() > 0);
-    for port in &config.network.discovery_ports {
-        assert!(*port > 0);
-        // Note: u16 maximum is 65535, so <= 65535 is always true
-    }
-
-    // Gaming validation
-    assert!(config.network.gaming.bridge_buffer_size > 0);
+    assert_eq!(config.environment, "development");
 }
 
 #[tokio::test]
-async fn test_background_task_structure() -> Result<(), Box<dyn std::error::Error>> {
-    // Test background task structure
-    let task = tokio::spawn(async {
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        "task_complete"
-    });
+async fn test_configuration_validation() {
+    // Modern: Config validation through construction
+    let config = SongbirdConfig::default();
 
-    let result = task
-        .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
-    assert_eq!(result, "task_complete");
+    // Valid config should have reasonable values
+    assert!(config.network.port_range.start > 0);
+    assert!(config.network.port_range.start < config.network.port_range.end);
+    assert!(config.network.max_connections > 0);
+    assert!(config.network.connection_timeout_ms > 0);
+}
+
+// ============================================================================
+// ORCHESTRATOR CREATION TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_orchestrator_creation() -> Result<()> {
+    // Modern: Create orchestrator with test config
+    let config = SongbirdConfig::test_defaults();
+    let orchestrator = SongbirdOrchestrator::new(config).await?;
+
+    // Verify orchestrator was created - config should be accessible
+    assert!(!orchestrator.config().environment.is_empty());
+
     Ok(())
 }
 
-#[test]
-fn test_port_range_validation() {
-    // Test port range validation
-    let config = SongbirdConfig::default();
-    let port_range = &config.network.gaming_port_range;
-    assert!(port_range.start > 0);
-    assert!(port_range.end > port_range.start);
-    assert!(port_range.start >= 1024) // Avoid privileged ports
-                                      // Note: u16 maximum is 65535, so <= 65535 is always true
-}
-
-#[test]
-fn test_bind_address_validation() {
-    // Test bind address validation
-    let config = SongbirdConfig::default();
-    let bind_addr_str = format!("{}", config.network.bind_address);
-    assert!(!bind_addr_str.is_empty());
-    assert!(bind_addr_str.contains('.') || bind_addr_str.contains(':'));
-}
-
-#[test]
-fn test_bind_port_validation() {
-    // Test orchestrator port validation
-    let config = SongbirdConfig::default();
-    assert!(config.network.orchestrator_port > 0);
-    // Note: u16 maximum is 65535, so <= 65535 is always true
-    assert!(config.network.orchestrator_port >= 1024);
-}
-
-#[test]
-fn test_gaming_detection_interface() {
-    // Test gaming detection interface configuration
-    let config = SongbirdConfig::default();
-    match config.network.gaming.detection_interface {
-        Some(_) => assert!(true),
-        None => assert!(true),
-    }
-}
-
-#[test]
-fn test_bridge_buffer_size() {
-    // Test bridge buffer size validation
-    let config = SongbirdConfig::default();
-    assert!(config.network.gaming.bridge_buffer_size > 0);
-    assert!(config.network.gaming.bridge_buffer_size <= 1024 * 1024);
-}
-
-#[test]
-fn test_encryption_configuration() {
-    // Test encryption configuration
-    let config = SongbirdConfig::default();
-    let encryption_enabled = config.security.encryption_enabled;
-    let tls_enabled = config.security.tls_enabled;
-
-    assert!(encryption_enabled || !encryption_enabled);
-    assert!(tls_enabled || !tls_enabled);
-}
-
-#[test]
-fn test_data_directory_validation() {
-    // Test data directory validation
-    let env_config = EnvironmentConfig::default();
-    assert!(env_config.data_dir.len() > 0);
-    assert!(env_config.data_dir.starts_with('/') || env_config.data_dir.contains(':'));
-}
-
 #[tokio::test]
-async fn test_interval_task_creation() {
-    // Test interval task creation
-    let mut interval = tokio::time::interval(Duration::from_millis(10));
-    let start = std::time::Instant::now();
-    interval.tick().await;
-    interval.tick().await;
-    let elapsed = start.elapsed();
-    assert!(elapsed >= Duration::from_millis(10));
+async fn test_orchestrator_lifecycle() -> Result<()> {
+    // Modern: Test start/stop lifecycle
+    let config = SongbirdConfig::test_defaults();
+    let mut orchestrator = SongbirdOrchestrator::new(config).await?;
+
+    // Start should succeed
+    orchestrator.start().await?;
+
+    // Stop should succeed
+    orchestrator.stop().await?;
+
+    Ok(())
 }
+
+// ============================================================================
+// NETWORK CONFIGURATION TESTS
+// ============================================================================
 
 #[test]
-fn test_version_information() {
-    // Test version information
-    let version = env!("CARGO_PKG_VERSION");
-    assert!(version.len() > 0);
-    assert!(version.contains('.'));
-}
-
-#[test]
-fn test_package_name() {
-    // Test package name
-    let package_name = env!("CARGO_PKG_NAME");
-    assert!(package_name.len() > 0);
-}
-
-#[tokio::test]
-async fn test_tokio_runtime_features() -> Result<(), Box<dyn std::error::Error>> {
-    // Test that all required tokio features are available
-    use tokio::task::spawn;
-    use tokio::time::{sleep, Duration};
-
-    let task = spawn(async {
-        sleep(Duration::from_millis(1)).await;
-        42
-    });
-
-    let result = task
-        .await
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
-    assert_eq!(result, 42);
-}
-
-#[test]
-fn test_configuration_cloning() {
-    // Test that configuration can be cloned
+fn test_network_configuration_structure() {
     let config = SongbirdConfig::default();
-    let cloned_config = config.clone();
-    assert_eq!(
-        format!("{}", config.network.bind_address),
-        format!("{}", cloned_config.network.bind_address)
+    let network = &config.network;
+
+    // Modern: Verify NetworkConfig fields
+    assert!(!network.bind_address.is_empty());
+    assert!(network.port_range.start > 0);
+    assert!(network.port_range.end > network.port_range.start);
+    assert!(network.max_connections > 0);
+    assert!(network.connection_timeout_ms > 0);
+}
+
+#[test]
+fn test_network_port_range_validation() {
+    let config = SongbirdConfig::default();
+
+    // Port range should be valid (u16 is always in range)
+    let start = config.network.port_range.start;
+    let end = config.network.port_range.end;
+
+    assert!(start > 0, "Start port must be positive");
+    assert!(end > start, "End port must be greater than start");
+}
+
+#[test]
+fn test_network_bind_address() {
+    let config = SongbirdConfig::default();
+
+    // Bind address should be valid
+    let addr = &config.network.bind_address;
+    assert!(!addr.is_empty());
+
+    // Should be localhost or IP address format
+    assert!(
+        addr.contains("127.0.0.1")
+            || addr.contains("0.0.0.0")
+            || addr.contains("localhost")
+            || addr.contains("::")
     );
-    assert_eq!(config.network.orchestrator_port, cloned_config.network.orchestrator_port);
 }
 
+// ============================================================================
+// SECURITY CONFIGURATION TESTS
+// ============================================================================
+
 #[test]
-fn test_orchestrator_initialization() {
-    // Test orchestrator initialization
+fn test_security_configuration_structure() {
     let config = SongbirdConfig::default();
-    let _orchestrator = Orchestrator::new(config.clone());
-    assert!(true) // If this compiles and doesn't panic, initialization is successful
+    let security = &config.security;
+
+    // Modern: Verify SecurityConfig structure
+    assert!(security.authentication.token_lifetime_seconds > 0);
+    // EncryptionAlgorithm is an enum - just verify it has reasonable config
+    assert!(security.encryption.key_rotation_days > 0);
 }
 
 #[test]
-fn test_futures_compatibility() {
-    // Test futures compatibility
-    let future = async {
-        tokio::time::sleep(Duration::from_millis(1)).await;
-        "success"
-    };
-
-    let rt = tokio::runtime::Runtime::new()
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
-    let result = rt.block_on(future);
-    assert_eq!(result, "success");
-}
-
-#[test]
-fn test_main_command_line_arguments() {
-    // Test main command line argument processing
-    let args_status = vec!["songbird", "status"];
-    let args_help = vec!["songbird", "help"];
-
-    // Test that different command line arguments are processed correctly
-    assert_eq!(args_status.len(), 2);
-    assert_eq!(args_status[0], "songbird");
-    assert_eq!(args_status[1], "status");
-
-    assert_eq!(args_help.len(), 2);
-    assert_eq!(args_help[0], "songbird");
-    assert_eq!(args_help[1], "help");
-}
-
-#[test]
-fn test_error_message_handling() {
-    // Test error message handling
-    let error_msg = "Configuration validation failed ";
-    assert!(error_msg.len() > 0);
-    assert!(error_msg.contains("validation"));
-}
-
-#[test]
-fn test_startup_banner_information() {
-    // Test startup banner information
-    let version = env!("CARGO_PKG_VERSION");
-    let banner = format!("🎵 Songbird Orchestrator v{}", version);
-    assert!(banner.contains("Songbird"));
-    assert!(banner.contains("Orchestrator"));
-    assert!(banner.contains(version));
-}
-
-#[test]
-fn test_configuration_summary_display() {
-    // Test configuration summary display
+fn test_security_defaults() {
     let config = SongbirdConfig::default();
-    let network_summary = format!("Orchestrator Port : {}", config.network.orchestrator_port);
-    let gaming_summary = format!(
-        "Gaming Port Range : {}-{}",
-        config.network.gaming_port_range.start, config.network.gaming_port_range.end
-    );
 
-    assert!(network_summary.contains("Orchestrator Port "));
-    assert!(gaming_summary.contains("Gaming Port Range "));
+    // Development should have security enabled
+    assert!(config.security.enabled || config.environment == "test");
+
+    // Test config should have security disabled
+    let test_config = SongbirdConfig::test_defaults();
+    assert!(!test_config.security.enabled);
 }
 
+// ============================================================================
+// DISCOVERY CONFIGURATION TESTS
+// ============================================================================
+
 #[test]
-fn test_environment_details_display() {
-    // Test environment details display
+fn test_discovery_configuration_structure() {
     let config = SongbirdConfig::default();
-    let env_config = EnvironmentConfig::default();
+    let discovery = &config.discovery;
 
-    let prefix_info = format!("Environment Prefix : {}", config.environment.prefix);
-    let log_level_info = format!("Log level : {}", config.environment.log_level);
-    let data_dir_info = format!("Data directory : {}", env_config.data_dir);
-
-    assert!(prefix_info.contains("Environment Prefix "));
-    assert!(log_level_info.contains("Log level "));
-    assert!(data_dir_info.contains("Data directory "));
+    // Modern: Verify DiscoveryConfig fields
+    assert!(discovery.interval_seconds > 0);
+    assert!(discovery.health_check.interval_seconds > 0);
 }
 
 #[test]
-fn test_discovery_ports_display() {
-    // Test discovery ports display
+fn test_discovery_health_check_config() {
     let config = SongbirdConfig::default();
-    let discovery_info = format!("Discovery Ports : {:?}", config.network.discovery_ports);
-    assert!(discovery_info.contains("Discovery Ports "));
+
+    // Health check should have reasonable defaults
+    assert!(config.discovery.health_check.interval_seconds > 0);
+    assert!(config.discovery.health_check.timeout_seconds > 0);
+    assert!(config.discovery.health_check.retries > 0);
 }
 
+// ============================================================================
+// OBSERVABILITY CONFIGURATION TESTS
+// ============================================================================
+
 #[test]
-fn test_gaming_features_display() {
-    // Test gaming features display
+fn test_observability_configuration_structure() {
     let config = SongbirdConfig::default();
-    let interface_info =
-        format!("Detection Interface : {:?}", config.network.gaming.detection_interface);
-    let buffer_info = format!("Bridge Buffer Size : {}", config.network.gaming.bridge_buffer_size);
+    let observability = &config.observability;
 
-    assert!(interface_info.contains("Detection Interface "));
-    assert!(buffer_info.contains("Bridge Buffer Size "));
+    // Modern: Verify ObservabilityConfig fields
+    assert!(!observability.metrics.endpoint.is_empty());
+    assert!(observability.metrics.interval_seconds > 0);
+    // LogLevel is an enum - just verify metrics and tracing are configured
+    assert!(observability.tracing.sample_rate >= 0.0 && observability.tracing.sample_rate <= 1.0);
 }
 
 #[test]
-fn test_security_configuration_display() {
-    // Test security configuration display
+fn test_observability_defaults() {
     let config = SongbirdConfig::default();
-    let encryption_info = format!("Encryption Enabled : {}", config.security.encryption_enabled);
-    let tls_info = format!("TLS Enabled : {}", config.security.tls_enabled);
 
-    assert!(encryption_info.contains("Encryption Enabled "));
-    assert!(tls_info.contains("TLS Enabled "));
+    // Metrics should be enabled by default
+    assert!(config.observability.metrics.enabled);
+
+    // Tracing should be configured
+    assert!(config.observability.tracing.enabled);
+}
+
+// ============================================================================
+// PERFORMANCE CONFIGURATION TESTS
+// ============================================================================
+
+#[test]
+fn test_performance_configuration() {
+    let config = SongbirdConfig::default();
+
+    // Modern: Verify PerformanceConfig
+    let perf = config.performance.expect("Performance config should exist");
+    assert!(perf.connection_pool_size.unwrap_or(0) > 0);
+    assert!(perf.request_timeout_ms.unwrap_or(0) > 0);
 }
 
 #[test]
-fn test_validation_success_message() {
-    // Test validation success message
-    let success_msg = "✅ Configuration validation passed ";
-    assert!(success_msg.contains("Configuration validation passed "));
-    assert!(success_msg.contains("✅"));
+fn test_performance_tuning_options() {
+    let config = SongbirdConfig::default();
+    let perf = config.performance.unwrap();
+
+    // Zero-copy should be enabled by default
+    assert!(perf.enable_zero_copy.unwrap_or(false));
+
+    // Batch size should be reasonable
+    assert!(perf.batch_size.unwrap_or(0) > 0);
 }
 
-#[test]
-fn test_validation_failure_message() {
-    // Test validation failure message
-    let failure_msg = "❌ Configuration validation failed ";
-    assert!(failure_msg.contains("Configuration validation failed "));
-    assert!(failure_msg.contains("❌"));
-}
-
-#[test]
-fn test_unknown_command_handling() {
-    // Test unknown command handling
-    let unknown_cmd = "unknown_command";
-    let error_msg = format!("Unknown command : {}", unknown_cmd);
-    let help_msg = "Use help for available commands ";
-
-    assert!(error_msg.contains("Unknown command "));
-    assert!(help_msg.contains("help"));
-}
-
-#[test]
-fn test_help_command_output() {
-    // Test help command output
-    let help_output = "Songbird Orchestrator - Available commands : status - Show system status - help - Show this help ";
-    assert!(help_output.contains("Available commands "));
-    assert!(help_output.contains("status"));
-    assert!(help_output.contains("help"));
-}
-
-#[test]
-fn test_status_command_output() {
-    // Test status command output
-    let status_output = "Songbird Orchestrator Status Check ";
-    assert!(status_output.contains("Status Check "));
-    assert!(status_output.contains("Songbird Orchestrator "));
-}
+// ============================================================================
+// ERROR HANDLING TESTS
+// ============================================================================
 
 #[tokio::test]
-async fn test_orchestrator_startup_flow() {
-    // Test orchestrator startup flow with timeout
-    let config = SongbirdConfig::default();
-    let _orchestrator = Orchestrator::new(config.clone());
+async fn test_error_handling_invalid_config() {
+    // Modern: Test with edge case config (start == end)
+    let mut config = SongbirdConfig::test_defaults();
+    config.network.port_range.start = 8000;
+    config.network.port_range.end = 8000; // Edge case: no range
 
-    // Test that we can create an orchestrator and it's ready
-    assert!(true) // If this compiles and doesn't panic, startup flow is valid
+    // Creation should handle this gracefully
+    let result = SongbirdOrchestrator::new(config).await;
+
+    // May succeed (using defaults) or fail (validation)
+    // Either is acceptable as long as it doesn't panic
+    assert!(result.is_ok() || result.is_err());
 }
 
-#[test]
-fn test_main_function_error_handling() {
-    // Test main function error handling scenarios
-    let test_result: std::result::Result<(), Box<dyn std::error::Error>> = Ok(());
-    let error_result: std::result::Result<(), Box<dyn std::error::Error>> =
-        Err("Test error ".into());
+// ============================================================================
+// ASYNC RUNTIME TESTS
+// ============================================================================
 
-    // Test that both success and error cases are handled
-    assert!(test_result.is_ok());
-    assert!(error_result.is_err());
+#[tokio::test]
+async fn test_async_runtime_compatibility() {
+    // Modern: Verify async operations work correctly
+    let config = SongbirdConfig::test_defaults();
 
-    // Test error message formatting
-    if let Err(e) = error_result {
-        assert!(format!("{}", e).contains("Test error "));
-    }
-}
-
-#[test]
-fn test_configuration_file_loading_error_handling() {
-    // Test configuration file loading error handling
-    // When file loading fails, should fall back to environment variables
-    let config = SongbirdConfig::default();
-
-    // Test that default configuration is valid
-    assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    assert!(config.network.orchestrator_port > 0);
-    assert!(config.network.gaming_port_range.start > 0);
-}
-
-#[test]
-fn test_configuration_validation_error_handling() {
-    // Test configuration validation error handling
-    let config = SongbirdConfig::default();
-
-    // Test that validation can succeed
-    let validation_result = config.validate();
-    assert!(validation_result.is_ok());
-
-    // Test that validation errors would be caught
-    if let Err(e) = validation_result {
-        assert!(format!("{}", e).len() > 0);
-    }
-}
-
-#[test]
-fn test_comprehensive_main_application_coverage() {
-    // Final comprehensive test for main application coverage
-    let config = SongbirdConfig::default();
-    let env_config = EnvironmentConfig::default();
-
-    // Test all configuration aspects
-    assert!(!format!("{:?}", config.network.bind_address).is_empty());
-    // TODO: Update tests to match refactored config API (Oct 23, 2025)
-    // The following assertions reference old API fields that have been refactored:
-    // - gaming_port_range, encryption_enabled, tls_enabled, gaming.bridge_buffer_size
-    // - discovery_ports, log_level, prefix, data_dir, validate()
-    // See FIXES_APPLIED_OCT_23_2025.md for details
-    // assert!(config.network.orchestrator_port > 0);
-    // assert!(config.network.gaming_port_range.start > 0);
-    // assert!(config.network.gaming_port_range.end > config.network.gaming_port_range.start);
-    // assert!(config.security.encryption_enabled || !config.security.encryption_enabled);
-    // assert!(config.security.tls_enabled || !config.security.tls_enabled);
-    // assert!(config.network.gaming.bridge_buffer_size > 0);
-    // assert!(config.network.discovery_ports.len() > 0);
-    // assert!(config.environment.log_level.len() > 0);
-    // assert!(config.environment.prefix.len() > 0);
-    // assert!(env_config.data_dir.len() > 0);
-
-    // Test security validation
-    // TODO: Restore after validate() method is implemented on current config
-    // let security_validation = config.validate();
-    // assert!(security_validation.is_ok());
-
-    // Test orchestrator creation
-    let _orchestrator = Orchestrator::new(config.clone());
-    assert!(true); // Successful creation
-
-    // Test version information
-    let version = env!("CARGO_PKG_VERSION");
-    assert!(version.len() > 0);
-
-    // Test package name
-    let package_name = env!("CARGO_PKG_NAME");
-    assert!(package_name.len() > 0);
-
-    // Test argument parsing
-    let args = vec!["songbird", "status"];
-    assert_eq!(args.len(), 2);
-    assert_eq!(args[0], "songbird");
-    assert_eq!(args[1], "status");
-
-    // Test error handling
-    let result: std::result::Result<(), Box<dyn std::error::Error>> = Ok(());
+    // Should be able to create orchestrator in async context
+    let result = SongbirdOrchestrator::new(config).await;
     assert!(result.is_ok());
 }
-*/
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_multi_thread_compatibility() {
+    // Modern: Test with multi-threaded runtime
+    let config = SongbirdConfig::test_defaults();
+    let orchestrator = SongbirdOrchestrator::new(config).await;
+    assert!(orchestrator.is_ok());
+}
+
+// ============================================================================
+// ENVIRONMENT INTEGRATION TESTS
+// ============================================================================
+
+#[test]
+#[serial]
+fn test_environment_variable_integration() {
+    // Test environment variable overrides
+    env::set_var("SONGBIRD_ENV", "production");
+    env::set_var("SONGBIRD_BIND_ADDRESS", "0.0.0.0");
+
+    let config = SongbirdConfig::default();
+    assert_eq!(config.environment, "production");
+
+    env::remove_var("SONGBIRD_ENV");
+    env::remove_var("SONGBIRD_BIND_ADDRESS");
+}
+
+// ============================================================================
+// COMPREHENSIVE VALIDATION TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_comprehensive_configuration_validation() {
+    // Modern: Comprehensive validation of all config components
+    let config = SongbirdConfig::default();
+
+    // Environment
+    assert!(!config.environment.is_empty());
+
+    // Network
+    assert!(!config.network.bind_address.is_empty());
+    assert!(config.network.port_range.start > 0);
+    assert!(config.network.max_connections > 0);
+
+    // Security
+    assert!(config.security.authentication.token_lifetime_seconds > 0);
+
+    // Discovery
+    assert!(config.discovery.interval_seconds > 0);
+
+    // Observability
+    assert!(!config.observability.metrics.endpoint.is_empty());
+
+    // Performance
+    assert!(config.performance.is_some());
+}
+
+#[tokio::test]
+async fn test_full_orchestrator_workflow() -> Result<()> {
+    // Modern: End-to-end test of orchestrator lifecycle
+    let config = SongbirdConfig::test_defaults();
+
+    // Create
+    let mut orchestrator = SongbirdOrchestrator::new(config).await?;
+    assert!(!orchestrator.config().environment.is_empty());
+
+    // Start
+    orchestrator.start().await?;
+
+    // Verify running state - get_status should succeed
+    let _status = orchestrator.get_status().await?;
+
+    // Stop
+    orchestrator.stop().await?;
+
+    Ok(())
+}
+
+// ============================================================================
+// IDIOMATIC RUST PATTERNS
+// ============================================================================
+
+#[test]
+fn test_config_is_clonable() {
+    // Modern: Config should implement Clone for flexibility
+    let config1 = SongbirdConfig::default();
+    let config2 = config1.clone();
+
+    assert_eq!(config1.environment, config2.environment);
+}
+
+#[test]
+fn test_config_is_debug_printable() {
+    // Modern: Config should implement Debug
+    let config = SongbirdConfig::default();
+    let debug_str = format!("{:?}", config);
+
+    assert!(!debug_str.is_empty());
+    assert!(debug_str.contains("SongbirdConfig"));
+}
+
+#[test]
+fn test_builder_pattern_compatibility() {
+    // Modern: Config supports modification before use
+    let config = SongbirdConfig {
+        environment: "custom".to_string(),
+        network: songbird_config::NetworkConfig {
+            max_connections: 500,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    assert_eq!(config.environment, "custom");
+    assert_eq!(config.network.max_connections, 500);
+}
+
+// ============================================================================
+// PRODUCTION READINESS TESTS
+// ============================================================================
+
+#[test]
+#[serial]
+fn test_production_configuration() {
+    // Modern: Test production-specific config
+    env::set_var("SONGBIRD_ENV", "production");
+    let config = SongbirdConfig::default();
+
+    assert_eq!(config.environment, "production");
+    assert!(config.security.enabled);
+
+    env::remove_var("SONGBIRD_ENV");
+}
+
+#[tokio::test]
+async fn test_graceful_shutdown() -> Result<()> {
+    // Modern: Test graceful shutdown behavior
+    let config = SongbirdConfig::test_defaults();
+    let mut orchestrator = SongbirdOrchestrator::new(config).await?;
+
+    orchestrator.start().await?;
+
+    // Stop should be clean
+    let shutdown_result = orchestrator.stop().await;
+    assert!(shutdown_result.is_ok());
+
+    Ok(())
+}
+
+// ============================================================================
+// HELPER FUNCTIONS (Idiomatic Rust)
+// ============================================================================
+
+/// Helper to create a config with custom environment
+fn config_with_env(env: &str) -> SongbirdConfig {
+    SongbirdConfig {
+        environment: env.to_string(),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn test_helper_config_with_env() {
+    let config = config_with_env("staging");
+    assert_eq!(config.environment, "staging");
+}

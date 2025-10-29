@@ -336,7 +336,7 @@ pub enum ProviderType {
 }
 
 /// Primal type enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PrimalType {
     Security,
     Storage,
@@ -347,7 +347,7 @@ pub enum PrimalType {
 }
 
 /// Service type enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ServiceType {
     WebService,
     Database,
@@ -378,7 +378,7 @@ pub struct ProviderMetadata {
 }
 
 /// Health status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HealthStatus {
     Healthy,
     Degraded,

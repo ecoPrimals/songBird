@@ -97,7 +97,9 @@ impl PerformanceTestFramework {
         }
 
         let total_duration: Duration = durations.iter().sum();
-        let avg_duration = total_duration / durations.len() as u32;
+        #[allow(clippy::cast_possible_truncation)]
+        let len = durations.len() as u32;
+        let avg_duration = total_duration / len;
         let min_duration = *durations.iter().min().ok_or_else(|| SongbirdError::Configuration {
             message: "No durations recorded for performance test".to_string(),
             field: Some("performance_test".to_string()),
@@ -108,7 +110,9 @@ impl PerformanceTestFramework {
             field: Some("performance_test".to_string()),
             suggestion: Some("Ensure iterations > 0".to_string()),
         })?;
+        #[allow(clippy::cast_precision_loss)]
         let throughput = self.config.iterations as f64 / total_duration.as_secs_f64();
+        #[allow(clippy::cast_precision_loss)]
         let success_rate = f64::from(successes) / self.config.iterations as f64;
 
         let result = BenchmarkResult {
@@ -140,6 +144,11 @@ impl PerformanceTestFramework {
     }
 
     /// Get benchmark results (only clone when explicitly needed)
+    ///
+    /// # Errors
+    ///
+    /// This function currently always succeeds but returns `Result` for API consistency.
+    #[allow(clippy::unnecessary_wraps)]
     pub async fn get_results_cloned(&self) -> SongbirdResult<HashMap<String, BenchmarkResult>> {
         let results = self.results.read().await;
         Ok(results.clone())

@@ -163,7 +163,7 @@ impl CanonicalNetworkConfig {
     /// # Errors
     ///
     /// Returns an error if the bind address environment variable is invalid
-    pub async fn from_env() -> SongbirdResult<Self> {
+    pub fn from_env() -> SongbirdResult<Self> {
         let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
             .unwrap_or_else(|_| "0.0.0.0".to_string())
             .parse()
@@ -219,7 +219,7 @@ impl CanonicalNetworkConfig {
     /// # Errors
     ///
     /// Returns an error if the bind address is set to localhost in production
-    pub async fn validate_production_readiness(&self) -> SongbirdResult<()> {
+    pub fn validate_production_readiness(&self) -> SongbirdResult<()> {
         let localhost_v4 = std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
         if self.bind_address == localhost_v4 {
             return Err(SongbirdError::Configuration {
@@ -236,7 +236,7 @@ impl CanonicalNetworkConfig {
     /// # Errors
     ///
     /// Returns an error if the socket address cannot be parsed
-    pub async fn local_bind_address(&self) -> SongbirdResult<SocketAddr> {
+    pub fn local_bind_address(&self) -> SongbirdResult<SocketAddr> {
         let addr = format!("{}:{}", self.bind_address, self.orchestrator_port);
         let socket_addr = addr.parse::<SocketAddr>().map_err(|e| SongbirdError::Configuration {
             message: format!("Invalid address: {e}"),
@@ -251,7 +251,7 @@ impl CanonicalNetworkConfig {
     /// # Errors
     ///
     /// Returns an error if the protocol is not supported (must be 'starcraft', 'ipx', 'aoe2', or 'udp')
-    pub async fn gaming_port(&self, protocol: &str) -> SongbirdResult<u16> {
+    pub fn gaming_port(&self, protocol: &str) -> SongbirdResult<u16> {
         let port = match protocol {
             "starcraft" | "ipx" => self.gaming.starcraft_port,
             "aoe2" | "udp" => self.gaming.aoe2_port,

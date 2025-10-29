@@ -2,8 +2,8 @@
 //!
 //! **MODERN GAMING FEDERATION & MATCHMAKING** ✅
 
+use crate::errors::CliResult;
 use clap::Subcommand;
-use crate::errors::{CliError, CliResult};
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum FederationCommand {
@@ -17,7 +17,7 @@ pub enum FederationCommand {
         /// Federation node name
         #[arg(long)]
         name: Option<String>,
-        
+
         /// Gaming region
         #[arg(long)]
         region: Option<String>,
@@ -72,29 +72,29 @@ pub enum LobbyAction {
     Create {
         /// Lobby name
         name: String,
-        
+
         /// Maximum players
         #[arg(long, default_value = "16")]
         max_players: u32,
-        
+
         /// Enable gaming mode
         #[arg(long)]
         gaming: bool,
     },
-    
+
     /// List available lobbies
     List {
         /// Filter by game type
         #[arg(long)]
         game_type: Option<String>,
     },
-    
+
     /// Join lobby
     Join {
         /// Lobby ID
         lobby_id: String,
     },
-    
+
     /// Leave current lobby
     Leave,
 }
@@ -106,15 +106,15 @@ pub enum MatchmakingAction {
         /// Skill level
         #[arg(long)]
         skill_level: Option<String>,
-        
+
         /// Preferred region
         #[arg(long)]
         region: Option<String>,
     },
-    
+
     /// Cancel matchmaking
     Cancel,
-    
+
     /// Check matchmaking status
     Status,
 }
@@ -122,83 +122,104 @@ pub enum MatchmakingAction {
 /// Handle federation commands
 pub async fn handle_federation_command(command: FederationCommand) -> CliResult<()> {
     match command {
-        FederationCommand::Init { gaming, name, region } => {
-            init_federation(gaming, name, region).await
-        }
-        FederationCommand::Join { gaming_endpoint, token, auto_discover } => {
-            join_federation(gaming_endpoint, token, auto_discover).await
-        }
-        FederationCommand::Lobby { action } => {
-            handle_lobby_action(action).await
-        }
-        FederationCommand::Matchmaking { action } => {
-            handle_matchmaking_action(action).await
-        }
-        FederationCommand::Status { detailed, gaming_metrics } => {
-            show_federation_status(detailed, gaming_metrics).await
-        }
+        FederationCommand::Init {
+            gaming,
+            name,
+            region,
+        } => init_federation(gaming, name, region).await,
+        FederationCommand::Join {
+            gaming_endpoint,
+            token,
+            auto_discover,
+        } => join_federation(gaming_endpoint, token, auto_discover).await,
+        FederationCommand::Lobby {
+            action,
+        } => handle_lobby_action(action).await,
+        FederationCommand::Matchmaking {
+            action,
+        } => handle_matchmaking_action(action).await,
+        FederationCommand::Status {
+            detailed,
+            gaming_metrics,
+        } => show_federation_status(detailed, gaming_metrics).await,
     }
 }
 
-async fn init_federation(gaming: bool, name: Option<String>, region: Option<String>) -> CliResult<()> {
+async fn init_federation(
+    gaming: bool,
+    name: Option<String>,
+    region: Option<String>,
+) -> CliResult<()> {
     println!("🚀 Initializing gaming federation...");
-    
+
     if gaming {
         println!("🎮 Gaming-specific federation enabled");
     }
-    
+
     if let Some(name) = name {
-        println!("📛 Federation node name: {}", name);
+        println!("📛 Federation node name: {name}");
     }
-    
+
     if let Some(region) = region {
-        println!("🌍 Gaming region: {}", region);
+        println!("🌍 Gaming region: {region}");
     }
-    
+
     println!("✅ Federation initialization complete");
     Ok(())
 }
 
-async fn join_federation(gaming_endpoint: Option<String>, token: Option<String>, auto_discover: bool) -> CliResult<()> {
+async fn join_federation(
+    gaming_endpoint: Option<String>,
+    token: Option<String>,
+    auto_discover: bool,
+) -> CliResult<()> {
     println!("🤝 Joining gaming federation...");
-    
+
     if let Some(endpoint) = gaming_endpoint {
-        println!("🌐 Gaming endpoint: {}", endpoint);
+        println!("🌐 Gaming endpoint: {endpoint}");
     }
-    
+
     if token.is_some() {
         println!("🔐 Authentication token provided");
     }
-    
+
     if auto_discover {
         println!("🔍 Auto-discovering federation nodes...");
     }
-    
+
     println!("✅ Successfully joined federation");
     Ok(())
 }
 
 async fn handle_lobby_action(action: LobbyAction) -> CliResult<()> {
     match action {
-        LobbyAction::Create { name, max_players, gaming } => {
-            println!("🎮 Creating gaming lobby: {}", name);
-            println!("👥 Max players: {}", max_players);
+        LobbyAction::Create {
+            name,
+            max_players,
+            gaming,
+        } => {
+            println!("🎮 Creating gaming lobby: {name}");
+            println!("👥 Max players: {max_players}");
             if gaming {
                 println!("⚡ Gaming mode enabled");
             }
             println!("✅ Lobby created successfully");
         }
-        LobbyAction::List { game_type } => {
+        LobbyAction::List {
+            game_type,
+        } => {
             println!("📋 Available gaming lobbies:");
             if let Some(game_type) = game_type {
-                println!("🎯 Filtered by: {}", game_type);
+                println!("🎯 Filtered by: {game_type}");
             }
             println!("  1. Gaming Lobby Alpha (8/16 players,");
             println!("  2. Pro Gaming Arena (12/32 players,");
             println!("  3. Casual Gaming Room (4/8 players,");
         }
-        LobbyAction::Join { lobby_id } => {
-            println!("🚪 Joining lobby: {}", lobby_id);
+        LobbyAction::Join {
+            lobby_id,
+        } => {
+            println!("🚪 Joining lobby: {lobby_id}");
             println!("✅ Successfully joined gaming lobby");
         }
         LobbyAction::Leave => {
@@ -211,13 +232,16 @@ async fn handle_lobby_action(action: LobbyAction) -> CliResult<()> {
 
 async fn handle_matchmaking_action(action: MatchmakingAction) -> CliResult<()> {
     match action {
-        MatchmakingAction::Start { skill_level, region } => {
+        MatchmakingAction::Start {
+            skill_level,
+            region,
+        } => {
             println!("🎯 Starting gaming matchmaking...");
             if let Some(skill) = skill_level {
-                println!("🎓 Skill level: {}", skill);
+                println!("🎓 Skill level: {skill}");
             }
             if let Some(region) = region {
-                println!("🌍 Preferred region: {}", region);
+                println!("🌍 Preferred region: {region}");
             }
             println!("🔍 Searching for suitable gaming matches...");
             println!("✅ Matchmaking started");
@@ -243,21 +267,21 @@ async fn show_federation_status(detailed: bool, gaming_metrics: bool) -> CliResu
     println!("  Active nodes: 24");
     println!("  Gaming sessions: 156");
     println!("  Total players: 3,842");
-    
+
     if detailed {
         println!("\n📈 Detailed Information:");
         println!("  Uptime: 48h 32m");
         println!("  Network latency: 24ms avg");
         println!("  Bandwidth usage: 125 Mbps");
     }
-    
+
     if gaming_metrics {
         println!("\n🎮 Gaming Metrics:");
         println!("  Active lobbies: 67");
         println!("  Matchmaking queue: 89 players");
         println!("  Average match time: 3.2 minutes");
     }
-    
+
     println!("✅ Federation healthy");
     Ok(())
 }

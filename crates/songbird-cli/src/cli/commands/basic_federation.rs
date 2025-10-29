@@ -16,12 +16,15 @@ use songbird_types::SongbirdResult;
 
 pub async fn handle_basic_federation_command(
     command: BasicFederationCommands,
-) -> SongbirdResult<()>  {match command  {BasicFederationCommands::Connect {
+) -> SongbirdResult<()> {
+    match command {
+        BasicFederationCommands::Connect {
             address,
             name,
             trust,
         } => connect_friend(&address, &name, &trust).await,
-        BasicFederationCommands::Share  {folder,
+        BasicFederationCommands::Share {
+            folder,
             friends,
             permission,
         } => share_folder(&folder, &friends, &permission).await,

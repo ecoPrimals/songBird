@@ -37,26 +37,28 @@ pub struct CapabilityOrchestrator  {/// Capability registry (what capabilities a
     config: Arc<CapabilityOrchestratorConfig>,
 }
 
-impl CapabilityOrchestrator  {/// Create new capability orchestrator
-    pub async fn new() -> SongbirdResult<Self>  {let capability_registry = Arc::new(RwLock::new(CapabilityRegistry::new());
-        let provider_registry = Arc::new(RwLock::new(ProviderRegistry::new());
+impl CapabilityOrchestrator {
+    /// Create new capability orchestrator
+    pub async fn new() -> SongbirdResult<Self> {
+        let capability_registry = Arc::new(RwLock::new(CapabilityRegistry::new()));
+        let provider_registry = Arc::new(RwLock::new(ProviderRegistry::new()));
         let discovery_response = AdaptivePrimalDiscovery::new()?;
         let discovery = discovery_response;
         let orchestration_engine = OrchestrationEngine::new();
         let config = CapabilityOrchestratorConfig::default();
 
         let orchestrator = Self {
-            capability_registry)
-            provider_registry)
+            capability_registry,
+            provider_registry,
             discovery: discovery.data,
-            orchestration_engine)
+            orchestration_engine,
             config: Arc::new(config),  // ✅ Wrap in Arc for zero-copy sharing
         };
 
         // Initial discovery
         orchestrator.refresh_capabilities().await?;
 
-        info!("Capability orchestrator initialized")"
+        info!("Capability orchestrator initialized");
         Ok(orchestrator)
     }
 
@@ -67,7 +69,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
     /// - `orchestrator.request_capability("compute", "process", large_dataset).await?`"
     /// - `orchestrator.request_capability("community", "moderate", post_content).await?`"
     pub async fn request_capability<T, R>(
-        &self)
+        &self,
         capability: &str,
         operation: &str,
         payload: T,
@@ -77,20 +79,20 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         T: Serialize + Send + Sync,
         R: for<'de> Deserialize<'de> + Send + Sync,
     {
-        debug!("Capability request: {} -> {}", capability, operation)"
+        debug!("Capability request: {} -> {}", capability, operation);
 
         // Find providers for this capability
         let providers_response = self.get_capability_providers(capability).await?;
 
         if providers_response.data.is_empty() {
             return Err(SongbirdError::operation_error(format!(
-                "No providers found for capability: {capability}""
-            ));
+                "No providers found for capability: {capability}"
+            )));
         }
 
         // Select best provider
         let selected_provider_response = self
-            .select_best_provider(&providers_response.data, &preferences.unwrap_or_default()
+            .select_best_provider(&providers_response.data, &preferences.unwrap_or_default())
             .await?;
 
         // Execute capability request
@@ -100,11 +102,11 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
 
     /// **🌟 COMPOSE CAPABILITIES**: Combine multiple capabilities into a workflow
     ///
-    /// Example: "Take this image (ui -> capture), analyze it (ai -> analyze),"
-    /// store results (storage -> save), and notify user (communication -> notify)""
-    pub async fn compose_capabilities(&self) -> Result<WorkflowResult, SongbirdError> {
+    /// Example: "Take this image (ui -> capture), analyze it (ai -> analyze),
+    /// store results (storage -> save), and notify user (communication -> notify)"
+    pub async fn compose_capabilities(&self, workflow: Workflow) -> Result<WorkflowResult, SongbirdError> {
         info!(
-            "Executing capability workflow with {} steps","
+            "Executing capability workflow with {} steps",
             workflow.steps.len()
         );
 
@@ -116,12 +118,14 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
     }
 
     /// **🔍 DISCOVER CAPABILITIES**: Find all available capabilities
-    pub async fn discover_capabilities(&self) -> SongbirdResult<()> {let registry = self.capability_registry.read().await;
-        Ok(registry.list_all_capabilities()
+    pub async fn discover_capabilities(&self) -> SongbirdResult<Vec<String>> {
+        let registry = self.capability_registry.read().await;
+        Ok(registry.list_all_capabilities())
     }
 
     /// **📊 GET CAPABILITY HEALTH**: Check health of capability providers
-    pub async fn get_capability_health(&self) -> SongbirdResult<CapabilityHealth>  {let providers_response = self.get_capability_providers(capability).await?;
+    pub async fn get_capability_health(&self, capability: &str) -> SongbirdResult<CapabilityHealth> {
+        let providers_response = self.get_capability_providers(capability).await?;
 
         let mut healthy_providers = 0;
         let total_providers = providers_response.data.len();
@@ -131,28 +135,29 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
             match self.check_provider_health(&provider.endpoint).await {
                 Ok(true) => healthy_providers += 1,
                 Ok(false) | Err(_) => {
-                    tracing::warn!("Provider {} failed health check", provider.endpoint)"
+                    tracing::warn!("Provider {} failed health check", provider.endpoint);
                 }
             }
         }
 
-        Ok(songbird_errors::success(CapabilityHealth  {capability: capability.to_string()),
-            healthy_providers)
-            total_providers)
+        Ok(songbird_errors::success(CapabilityHealth {
+            capability: capability.to_string(),
+            healthy_providers,
+            total_providers,
             average_latency_ms: self
                 .calculate_average_latency(&providers_response.data)
-                .await as u32)
+                .await as u32,
             availability_percentage: if total_providers > 0 {
                 (healthy_providers as f64 / total_providers as f64) * 100.0
             } else {
                 0.0
-            })
-        })
+            },
+        }))
     }
 
     /// **🔄 REFRESH CAPABILITIES**: Rediscover all capabilities and providers
     pub async fn refresh_capabilities(&self) -> SongbirdResult<()> {
-        info!("Refreshing capability discovery")"
+        info!("Refreshing capability discovery");
 
         // Discover all providers
         let discovered_providers = self.discovery.discover_all_primals().await?;
@@ -160,67 +165,70 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         // Update registries
         self.update_registries(discovered_providers.data).await?;
 
-        info!("Capability refresh completed")"
-        Ok(()),
+        info!("Capability refresh completed");
+        Ok(())
     }
 
     /// Get providers for a specific capability
-    pub async fn get_capability_providers(&self) -> SongbirdResult<()>  {let registry = self.capability_registry.read().await;
-        Ok(songbird_errors::success(
-            registry.get_providers_for_capability(capability)
-        )
+    pub async fn get_capability_providers(&self, capability: &str) -> SongbirdResult<Vec<CapabilityProvider>> {
+        let registry = self.capability_registry.read().await;
+        Ok(registry.get_providers_for_capability(capability).cloned().collect())
     }
 
     /// Select the best provider based on preferences, load, health, etc.
-    async fn select_best_provider(&self) -> Result<CapabilityProvider, SongbirdError>  {if providers.is_empty() {
-            return Err(SongbirdError::operation_error(
-                "No providers available".to_string()),
-            );
+    async fn select_best_provider(&self, providers: &[CapabilityProvider], preferences: &SelectionPreferences) -> Result<CapabilityProvider, SongbirdError> {
+        if providers.is_empty() {
+            return Err(SongbirdError::Configuration {
+                message: "No providers available".to_string(),
+                field: None,
+                suggestion: Some("Register capability providers first".to_string()),
+            });
         }
 
         // Implement sophisticated selection based on preferences, load, health, etc.
-        let mut scored_providers = Vec::with_capacity(providers.len();
+        let mut scored_providers = Vec::with_capacity(providers.len());
 
         for provider in providers {
             let score = self.calculate_provider_score(provider, preferences).await;
-            scored_providers.push((provider.clone(), score);
+            scored_providers.push((provider.clone(), score));
         }
 
         // Sort by score (highest first)
-        scored_providers.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal);
+        scored_providers.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let selected = scored_providers
             .first()
             .map(|(provider, score)| {
                 debug!(
-                    "Selected provider '{}' with score {:.2}","
+                    "Selected provider '{}' with score {:.2}",
                     provider.name, score
-                )
+                );
                 provider.clone()
             })
-            .ok_or_else(|| SongbirdError::Network  {message: "No providers available after scoring".to_string()),
-                operation: None,
-                suggestion: None,
+            .ok_or_else(|| SongbirdError::Network {
+                message: "No providers available after scoring".to_string(),
+                interface: None,
+                suggestion: Some("Check provider health and availability".to_string()),
             })?;
 
         Ok(selected)
     }
 
     /// Calculate a score for a provider based on various factors
-    async fn calculate_provider_score(&self) -> f64 {
+    async fn calculate_provider_score(&self, provider: &CapabilityProvider, preferences: &SelectionPreferences) -> f64 {
         let mut score = 0.0;
 
         // Health score (0.0 - 40.0 points)
         score += provider.health_score as f64 * 40.0;
 
         // Load factor (0.0 - 30.0 points, inverse of load)
-        let load_score = (1.0 - provider.current_load.min(1.0) * 30.0;
+        let load_score = (1.0 - provider.current_load.min(1.0)) * 30.0;
         score += load_score;
 
         // Response time factor (0.0 - 20.0 points)
         let response_time_score = if provider.average_latency_ms > 0 {
             // Better response time = higher score
-            (1000.0 / (provider.average_latency_ms as f64).max(1.0).min(20.0)
+            (1000.0 / (provider.average_latency_ms as f64).max(1.0)).min(20.0)
         } else {
             10.0 // Default moderate score for unknown response time
         };
@@ -238,11 +246,11 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         score += capability_score;
 
         debug!(
-            "Provider '{}' scored {:.2} (health: {:.1}, load: {:.1}, response: {:.1})","
+            "Provider '{}' scored {:.2} (health: {:.1}, load: {:.1}, response: {:.1})",
             provider.name,
-            score)
-            provider.health_score as f64 * 40.0)
-            load_score)
+            score,
+            provider.health_score as f64 * 40.0,
+            load_score,
             response_time_score
         );
 
@@ -251,7 +259,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
 
     /// Calculate how well a provider matches the required capabilities
     fn calculate_capability_match_score(
-        &self)
+        &self,
         provider: &CapabilityProvider,
         preferences: &CapabilityPreferences,
     ) -> f64 {
@@ -264,7 +272,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
                 let weight = 3.0; // High weight for required capabilities
                 total_weight += weight;
 
-                if provider.capabilities.iter().any(|cap| cap.contains(required_cap) {
+                if provider.capabilities.iter().any(|cap| cap.contains(required_cap)) {
                     score += weight; // Full points for matching required capability
                 }
                 // No points if required capability is missing
@@ -277,7 +285,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
                 let weight = 2.0; // Medium weight for preferred capabilities
                 total_weight += weight;
 
-                if provider.capabilities.iter().any(|cap| cap.contains(preferred_cap) {
+                if provider.capabilities.iter().any(|cap| cap.contains(preferred_cap)) {
                     score += weight; // Full points for matching preferred capability
                 }
                 // No penalty if preferred capability is missing
@@ -314,19 +322,20 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         R: for<'de> Deserialize<'de> + Send + Sync,
     {
         debug!(
-            "Executing {} -> {} on provider '{}'","
+            "Executing {} -> {} on provider {}",
             capability, operation, provider.id
-        )
+        );
 
         // Build request URL
-        let request_url = format!("{}/api/v1/{}/{}", provider.endpoint, capability, operation)
+        let request_url = format!("{}/api/v1/{}/{}", provider.endpoint, capability, operation);
 
         // Create HTTP client
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(self.config.request_timeout_secs)
+            .timeout(Duration::from_secs(self.config.request_timeout_secs))
             .build()
-            .map_err(|e| SongbirdError::Network  {message: e.to_string()),
-                operation: None,
+            .map_err(|e| SongbirdError::Network {
+                message: e.to_string(),
+                interface: None,
                 suggestion: None,
             })?;
 
@@ -336,19 +345,19 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
             .json(&payload)
             .send()
             .await
-            .map_err(|e| SongbirdError::Network  {message: e.to_string()),
-                operation: None,
+            .map_err(|e| SongbirdError::Network  {message: e.to_string(),
+                interface: None,
                 suggestion: None,
             })?;
 
         if !response.status().is_success() {
             return Err(SongbirdError::Network {
                 message: format!(
-                    "Provider '{}' request failed with status: {}","
-                    provider.id)
+                    "Provider {} request failed with status: {}",
+                    provider.id,
                     response.status()
-                )
-                operation: None,
+                ),
+                interface: None,
                 suggestion: None,
             });
         }
@@ -376,9 +385,10 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         provider_registry.clear();
 
         // Process discovered providers
-        for discovered_provider in discovered  {// Create capability provider
+        for discovered_provider in discovered {
+            // Create capability provider
             let provider = CapabilityProvider {
-                id: discovered_provider.id.clone(,
+                id: discovered_provider.id.clone(),
                 provider_type: discovered_provider.primal_type,
                 name: discovered_provider.name,
                 description: discovered_provider.description,
@@ -400,26 +410,31 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         }
 
         info!(
-            "Updated registries: {} providers, {} capabilities","
-            provider_registry.provider_count()
+            "Updated registries: {} providers, {} capabilities",
+            provider_registry.provider_count(),
             capability_registry.capability_count()
         );
-        Ok(()),
+        Ok(())
     }
 
     /// Check health of a specific provider endpoint
-    pub async fn check_provider_health(&self) -> SongbirdResult<()> {// Try common health check endpoints
+    pub async fn check_provider_health(&self, endpoint: &str) -> SongbirdResult<bool> {
+        // Try common health check endpoints
         let health_endpoints = vec![
-            format!("{}/health", endpoint),"
-            format!("{}/api/health", endpoint),"
-            format!("{}/api/v1/health", endpoint),"
+            format!("{}/health", endpoint),
+            format!("{}/api/health", endpoint),
+            format!("{}/api/v1/health", endpoint),
         ];
 
         // Create HTTP client for health checks
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(5)
+            .timeout(Duration::from_secs(5))
             .build()
-            .map_err(|_| "Failed to create HTTP client")?;"
+            .map_err(|e| SongbirdError::Network {
+                message: format!("Failed to create HTTP client: {}", e),
+                interface: None,
+                suggestion: None,
+            })?;
 
         for health_url in health_endpoints {
             if let Ok(_response) = client.get(&health_url).send().await {
@@ -431,7 +446,7 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
         if let Ok(url) = endpoint.parse::<url::Url>() {
             if let Some(host) = url.host_str() {
                 let port = url.port().unwrap_or(80);
-                if let Ok(_stream) = tokio::net::TcpStream::connect((host, port).await {
+                if let Ok(_stream) = tokio::net::TcpStream::connect((host, port)).await {
                     return Ok(true);
                 }
             }
@@ -464,8 +479,9 @@ impl CapabilityOrchestrator  {/// Create new capability orchestrator
 
 /// **🎯 CAPABILITY REGISTRY**: Tracks what capabilities are available
 #[derive(Debug)]
-pub struct CapabilityRegistry  {/// Maps capability name to providers that offer it
-    capability_providers: HashMap<String, Vec<CapabilityProvider>>)
+pub struct CapabilityRegistry {
+    /// Maps capability name to providers that offer it
+    capability_providers: HashMap<String, Vec<CapabilityProvider>>,
     /// Set of all known capabilities
     all_capabilities: HashSet<String>,
 }
@@ -476,18 +492,20 @@ impl Default for CapabilityRegistry {
     }
 }
 
-impl CapabilityRegistry  {pub fn new() -> Self  {Self {
-            capability_providers: HashMap::new()),
-            all_capabilities: HashSet::new(,
+impl CapabilityRegistry {
+    pub fn new() -> Self {
+        Self {
+            capability_providers: HashMap::new(),
+            all_capabilities: HashSet::new(),
         }
     }
 
     pub fn register_capability(&mut self, capability: String, provider: CapabilityProvider) {
-        self.all_capabilities.insert(capability.clone());  // Need clone for HashSet
+        self.all_capabilities.insert(capability.clone());
         self.capability_providers
             .entry(capability)
             .or_default()
-            .push(provider));
+            .push(provider);
     }
 
     pub fn get_providers_for_capability(&self, capability: &str) -> Vec<CapabilityProvider> {
@@ -502,13 +520,13 @@ impl CapabilityRegistry  {pub fn new() -> Self  {Self {
             .map(|cap|  {let provider_count = self
                     .capability_providers
                     .get(cap)
-                    .map(|providers| providers.len()
+                    .map(|providers| providers.len())
                     .unwrap_or(0);
 
                 AvailableCapability {
-                    name: cap.clone(,
-                    provider_count)
-                    description: format!("Capability: {}", cap),"
+                    name: cap.clone(),
+                    provider_count,
+                    description: format!("Capability: {}", cap),
                 }
             })
             .collect()
@@ -526,7 +544,7 @@ impl CapabilityRegistry  {pub fn new() -> Self  {Self {
 
 /// **🏭 PROVIDER REGISTRY**: Tracks all capability providers
 #[derive(Debug)]
-pub struct ProviderRegistry  {providers: HashMap<String, CapabilityProvider>)
+pub struct ProviderRegistry  {providers: HashMap<String, CapabilityProvider>,
 }
 
 impl Default for ProviderRegistry {
@@ -535,9 +553,9 @@ impl Default for ProviderRegistry {
     }
 }
 
-impl ProviderRegistry  {pub fn new() -> Self {
+impl ProviderRegistry  {    pub fn new() -> Self {
         Self {
-            providers: HashMap::new()),
+            providers: HashMap::new(),
         }
     }
 
@@ -564,7 +582,7 @@ impl ProviderRegistry  {pub fn new() -> Self {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapabilityProvider  {/// Unique provider identifier
     pub id: String,
-    /// Provider type (could be anything: "microservice", "ui-component", "ai-model", "quantum-computer")"
+    /// Provider type (could be anything: microservice, ui-component, ai-model, quantum-computer)
     pub provider_type: String,
     /// Human-readable name
     pub name: String,
@@ -579,13 +597,13 @@ pub struct CapabilityProvider  {/// Unique provider identifier
     /// Current load (0.0-1.0)
     pub current_load: f64,
     /// Custom metadata
-    pub metadata: HashMap<String, serde_json::Value>)
+    pub metadata: HashMap<String, serde_json::Value>,
     /// Last seen timestamp
     pub last_seen: SystemTime,
 }
 
 /// **🌟 ORCHESTRATION ENGINE**: Handles complex capability workflows
-pub struct OrchestrationEngine  {active_workflows: Arc<RwLock<HashMap<String, ActiveWorkflow>>>)
+pub struct OrchestrationEngine  {active_workflows: Arc<RwLock<HashMap<String, ActiveWorkflow>>>,
 }
 
 impl Default for OrchestrationEngine {
@@ -594,28 +612,29 @@ impl Default for OrchestrationEngine {
     }
 }
 
-impl OrchestrationEngine  {pub fn new() -> Self {
+impl OrchestrationEngine  {
+    pub fn new() -> Self {
         Self {
-            active_workflows: Arc::new(RwLock::new(HashMap::new()),
+            active_workflows: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
     /// Execute a capability workflow
     pub async fn execute_workflow(&self) -> Result<WorkflowResult, SongbirdError> {
-        let workflow_id = Uuid::new_v4().to_string());
+        let workflow_id = Uuid::new_v4().to_string();
         info!(
-            "Starting workflow '{}' with {} steps","
-            workflow_id)
+            "Starting workflow {} with {} steps ",
+            workflow_id,
             workflow.steps.len()
         );
 
         // Create active workflow
-        let active_workflow = ActiveWorkflow  {id: workflow_id.clone()
-            definition: workflow.clone(,
+        let active_workflow = ActiveWorkflow  {id: workflow_id.clone(),
+            definition: workflow.clone(),
             current_step: 0,
-            results: HashMap::new()),
+            results: HashMap::new(),
             status: WorkflowStatus::Running,
-            start_time: SystemTime::now(,
+            start_time: SystemTime::now(),
         };
 
         // Register workflow
@@ -649,20 +668,20 @@ impl OrchestrationEngine  {pub fn new() -> Self {
 
         for (step_index, step) in workflow.steps.iter().enumerate() {
             info!(
-                "Executing workflow step {}: {} -> {}","
+                "Executing workflow step {}: {} -> {}",
                 step_index, step.capability, step.operation
-            )
+            );
 
             // Prepare step payload (might use previous result)
             let step_payload = if step_index == 0 {
                 step.payload.clone()
             } else {// Chain payload from previous step result
-                let mut chained_payload = step.payload.clone());
+                let mut chained_payload = step.payload.clone();
                 if let Some(_previous_result_value) = &previous_result  {// Merge previous result into current step payload
-                    if let (Ok(mut current_map), Some(previous_map) = (
+                    if let (Ok(mut current_map), Some(previous_map)) = (
                         serde_json::from_value::<serde_json::Map<String, serde_json::Value>>(
                             chained_payload.clone()
-                        )
+                        ),
                         previous_result.as_ref().and_then(|v| {
                             serde_json::from_value::<serde_json::Map<String, serde_json::Value>>(
                                 v.clone()
@@ -671,7 +690,7 @@ impl OrchestrationEngine  {pub fn new() -> Self {
                         })
                     ) {
                         if let Some(prev_val) = previous_result.clone() {
-                            current_map.insert("previous_result".to_string(), prev_val);"
+                            current_map.insert("previous_result".to_string(), prev_val);
                         }
                         // Merge any matching keys from previous result
                         for (key, value) in previous_map {
@@ -688,9 +707,9 @@ impl OrchestrationEngine  {pub fn new() -> Self {
             // Execute step
             let step_result_response = orchestrator
                 .request_capability::<_, serde_json::Value>(
-                    &step.capability)
-                    &step.operation)
-                    step_payload)
+                    &step.capability,
+                    &step.operation,
+                    step_payload,
                     step.preferences.clone()
                 )
                 .await?;
@@ -711,16 +730,16 @@ impl OrchestrationEngine  {pub fn new() -> Self {
                     // Convert step_results to HashMap format expected by active_workflow
                     let mut results_map = std::collections::HashMap::new();
                     for (i, result) in step_results.iter().enumerate() {
-                        results_map.insert(format!("step_{}", i), result.clone();"
+                        results_map.insert(format!("step_{}", i), result.clone());
                     }
                     active_workflow.results = results_map;
                 }
             }
         }
 
-        Ok(WorkflowResult  {workflow_id: workflow_id.to_string()),
-            step_results)
-            final_result: previous_result.unwrap_or(serde_json::Value::Null,
+        Ok(WorkflowResult  {workflow_id: workflow_id.to_string(),
+            step_results,
+            final_result: previous_result.unwrap_or(serde_json::Value::Null),
             execution_time_ms: execution_start.elapsed().as_millis() as u64,
         })
     }
@@ -755,13 +774,13 @@ pub struct WorkflowResult  {pub workflow_id: String,
 pub struct ActiveWorkflow  {pub id: String,
     pub definition: CapabilityWorkflow,
     pub current_step: usize,
-    pub results: HashMap<String, serde_json::Value>)
+    pub results: HashMap<String, serde_json::Value>,
     pub status: WorkflowStatus,
     pub start_time: SystemTime,
 }
 
 #[derive(Debug, Clone)]
-pub enum WorkflowStatus  {Running)
+pub enum WorkflowStatus  {Running,
     Completed,
     Failed,
     Paused,
@@ -792,7 +811,7 @@ pub struct CapabilityPreferences  {pub preferred_provider_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub enum LoadBalancingStrategy  {RoundRobin)
+pub enum LoadBalancingStrategy  {RoundRobin,
     LeastLoaded,
     #[default]
     HealthBased,

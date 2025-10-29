@@ -1,0 +1,539 @@
+//! Comprehensive Service Module Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
+//!
+//! Tests for `songbird_types::service` module to achieve full coverage.
+
+use songbird_types::service::*;
+
+// ============================================================================
+// SERVICE INFO TESTS
+// ============================================================================
+
+#[test]
+fn test_service_info_default() {
+    let info = CanonicalServiceInfo::default();
+    assert_eq!(info.name, "unknown-service");
+    assert_eq!(info.version, "0.1.0");
+    assert!(info.description.is_none());
+    assert!(info.endpoints.is_empty());
+    assert!(info.metadata.is_empty());
+    assert_eq!(info.health_check_endpoint, Some("/health".to_string()));
+    assert!(info.dependencies.is_empty());
+    assert!(info.capabilities.is_empty());
+    assert!(info.metrics.is_none());
+}
+
+#[test]
+fn test_service_info_new() {
+    let info = CanonicalServiceInfo::new("my-service", "1.0.0");
+    assert_eq!(info.name, "my-service");
+    assert_eq!(info.version, "1.0.0");
+    assert_eq!(info.health_check_endpoint, Some("/health".to_string()));
+}
+
+#[test]
+fn test_service_info_with_endpoint() {
+    let mut info = CanonicalServiceInfo::new("api", "1.0");
+    info.with_endpoint("http", "http://localhost:8080");
+
+    assert_eq!(info.endpoints.get("http"), Some(&"http://localhost:8080".to_string()));
+}
+
+#[test]
+fn test_service_info_with_multiple_endpoints() {
+    let mut info = CanonicalServiceInfo::new("api", "1.0");
+    info.with_endpoint("http", "http://localhost:8080")
+        .with_endpoint("grpc", "grpc://localhost:9090");
+
+    assert_eq!(info.endpoints.len(), 2);
+    assert!(info.endpoints.contains_key("http"));
+    assert!(info.endpoints.contains_key("grpc"));
+}
+
+#[test]
+fn test_service_info_with_metadata() {
+    let mut info = CanonicalServiceInfo::new("service", "1.0");
+    info.with_metadata("region", "us-west");
+
+    assert_eq!(info.metadata.get("region"), Some(&"us-west".to_string()));
+}
+
+#[test]
+fn test_service_info_with_multiple_metadata() {
+    let mut info = CanonicalServiceInfo::new("service", "1.0");
+    info.with_metadata("region", "us-west")
+        .with_metadata("environment", "production")
+        .with_metadata("tier", "critical");
+
+    assert_eq!(info.metadata.len(), 3);
+}
+
+#[test]
+fn test_service_info_with_capability() {
+    let mut info = CanonicalServiceInfo::new("service", "1.0");
+    info.with_capability("storage");
+
+    assert_eq!(info.capabilities.len(), 1);
+    assert_eq!(info.capabilities[0], "storage");
+}
+
+#[test]
+fn test_service_info_with_multiple_capabilities() {
+    let mut info = CanonicalServiceInfo::new("service", "1.0");
+    info.with_capability("storage").with_capability("compute").with_capability("ai");
+
+    assert_eq!(info.capabilities.len(), 3);
+}
+
+#[test]
+fn test_service_info_with_dependency() {
+    let mut info = CanonicalServiceInfo::new("service", "1.0");
+    info.with_dependency("database");
+
+    assert_eq!(info.dependencies.len(), 1);
+    assert_eq!(info.dependencies[0], "database");
+}
+
+#[test]
+fn test_service_info_with_multiple_dependencies() {
+    let mut info = CanonicalServiceInfo::new("service", "1.0");
+    info.with_dependency("database").with_dependency("cache").with_dependency("message-queue");
+
+    assert_eq!(info.dependencies.len(), 3);
+}
+
+#[test]
+fn test_service_info_with_description() {
+    let mut info = CanonicalServiceInfo::new("service", "1.0");
+    info.with_description("A comprehensive service");
+
+    assert_eq!(info.description, Some("A comprehensive service".to_string()));
+}
+
+#[test]
+fn test_service_info_builder_chain() {
+    let mut info = CanonicalServiceInfo::new("full-service", "2.0.0");
+    info.with_endpoint("api", "http://api.example.com")
+        .with_metadata("region", "eu-central")
+        .with_capability("storage")
+        .with_capability("compute")
+        .with_dependency("auth-service")
+        .with_description("Full-featured service");
+
+    assert_eq!(info.name, "full-service");
+    assert_eq!(info.version, "2.0.0");
+    assert_eq!(info.endpoints.len(), 1);
+    assert_eq!(info.metadata.len(), 1);
+    assert_eq!(info.capabilities.len(), 2);
+    assert_eq!(info.dependencies.len(), 1);
+    assert!(info.description.is_some());
+}
+
+#[test]
+fn test_service_info_clone() {
+    let info1 = CanonicalServiceInfo::new("service", "1.0");
+    let info2 = info1.clone();
+    assert_eq!(info1.name, info2.name);
+    assert_eq!(info1.version, info2.version);
+}
+
+#[test]
+fn test_service_info_debug() {
+    let info = CanonicalServiceInfo::new("service", "1.0");
+    let debug_str = format!("{info:?}");
+    assert!(debug_str.contains("CanonicalServiceInfo"));
+}
+
+// ============================================================================
+// SERVICE METRICS TESTS
+// ============================================================================
+
+#[test]
+fn test_service_metrics_default() {
+    let metrics = ServiceMetrics::default();
+    assert_eq!(metrics.request_count, 0);
+    assert_eq!(metrics.error_count, 0);
+    assert!((metrics.avg_response_time_ms - 0.0).abs() < f64::EPSILON);
+    assert_eq!(metrics.uptime_seconds, 0);
+}
+
+#[test]
+fn test_service_metrics_creation() {
+    let metrics = ServiceMetrics {
+        request_count: 1000,
+        error_count: 10,
+        avg_response_time_ms: 45.5,
+        uptime_seconds: 3600,
+    };
+
+    assert_eq!(metrics.request_count, 1000);
+    assert_eq!(metrics.error_count, 10);
+    assert!((metrics.avg_response_time_ms - 45.5).abs() < f64::EPSILON);
+    assert_eq!(metrics.uptime_seconds, 3600);
+}
+
+#[test]
+fn test_service_metrics_clone() {
+    let metrics1 = ServiceMetrics::default();
+    let metrics2 = metrics1.clone();
+    assert_eq!(metrics1.request_count, metrics2.request_count);
+}
+
+#[test]
+fn test_service_metrics_debug() {
+    let metrics = ServiceMetrics::default();
+    let debug_str = format!("{metrics:?}");
+    assert!(debug_str.contains("ServiceMetrics"));
+}
+
+#[test]
+fn test_service_info_with_metrics() {
+    let mut info = CanonicalServiceInfo::new("service", "1.0");
+    info.metrics = Some(ServiceMetrics {
+        request_count: 500,
+        error_count: 5,
+        avg_response_time_ms: 25.0,
+        uptime_seconds: 7200,
+    });
+
+    assert!(info.metrics.is_some());
+    let metrics = info.metrics.as_ref().unwrap();
+    assert_eq!(metrics.request_count, 500);
+}
+
+// ============================================================================
+// SERVICE TYPE TESTS
+// ============================================================================
+
+#[test]
+fn test_service_type_default() {
+    let service_type = CanonicalServiceType::default();
+    assert!(matches!(service_type, CanonicalServiceType::Custom(_)));
+}
+
+#[test]
+fn test_service_type_all_variants() {
+    let web = CanonicalServiceType::Web;
+    let grpc = CanonicalServiceType::Grpc;
+    let database = CanonicalServiceType::Database;
+    let mq = CanonicalServiceType::MessageQueue;
+    let cache = CanonicalServiceType::Cache;
+    let auth = CanonicalServiceType::Auth;
+    let storage = CanonicalServiceType::Storage;
+    let compute = CanonicalServiceType::Compute;
+    let ai = CanonicalServiceType::AI;
+    let monitoring = CanonicalServiceType::Monitoring;
+    let custom = CanonicalServiceType::Custom("MyService".to_string());
+
+    assert_eq!(web, CanonicalServiceType::Web);
+    assert_eq!(grpc, CanonicalServiceType::Grpc);
+    assert_eq!(database, CanonicalServiceType::Database);
+    assert_eq!(mq, CanonicalServiceType::MessageQueue);
+    assert_eq!(cache, CanonicalServiceType::Cache);
+    assert_eq!(auth, CanonicalServiceType::Auth);
+    assert_eq!(storage, CanonicalServiceType::Storage);
+    assert_eq!(compute, CanonicalServiceType::Compute);
+    assert_eq!(ai, CanonicalServiceType::AI);
+    assert_eq!(monitoring, CanonicalServiceType::Monitoring);
+    assert!(matches!(custom, CanonicalServiceType::Custom(_)));
+}
+
+#[test]
+fn test_service_type_as_str() {
+    assert_eq!(CanonicalServiceType::Web.as_str(), "web");
+    assert_eq!(CanonicalServiceType::Grpc.as_str(), "grpc");
+    assert_eq!(CanonicalServiceType::Database.as_str(), "database");
+    assert_eq!(CanonicalServiceType::MessageQueue.as_str(), "message_queue");
+    assert_eq!(CanonicalServiceType::Cache.as_str(), "cache");
+    assert_eq!(CanonicalServiceType::Auth.as_str(), "auth");
+    assert_eq!(CanonicalServiceType::Storage.as_str(), "storage");
+    assert_eq!(CanonicalServiceType::Compute.as_str(), "compute");
+    assert_eq!(CanonicalServiceType::AI.as_str(), "ai");
+    assert_eq!(CanonicalServiceType::Monitoring.as_str(), "monitoring");
+    assert_eq!(CanonicalServiceType::Custom("test".to_string()).as_str(), "test");
+}
+
+#[test]
+fn test_service_type_equality() {
+    assert_eq!(CanonicalServiceType::Web, CanonicalServiceType::Web);
+    assert_ne!(CanonicalServiceType::Web, CanonicalServiceType::Grpc);
+}
+
+#[test]
+fn test_service_type_clone() {
+    let type1 = CanonicalServiceType::Storage;
+    let type2 = type1.clone();
+    assert_eq!(type1, type2);
+}
+
+#[test]
+fn test_service_type_debug() {
+    let service_type = CanonicalServiceType::Web;
+    let debug_str = format!("{service_type:?}");
+    assert!(debug_str.contains("Web"));
+}
+
+#[test]
+fn test_service_type_hash() {
+    use std::collections::HashSet;
+
+    let mut set = HashSet::new();
+    set.insert(CanonicalServiceType::Web);
+    set.insert(CanonicalServiceType::Grpc);
+    set.insert(CanonicalServiceType::Web); // Duplicate
+
+    assert_eq!(set.len(), 2); // Should only have 2 unique types
+}
+
+// ============================================================================
+// SERIALIZATION TESTS
+// ============================================================================
+
+#[test]
+fn test_service_info_serialization() {
+    let info = CanonicalServiceInfo::new("test-service", "1.0.0");
+    let json = serde_json::to_string(&info).expect("Failed to serialize");
+    let deserialized: CanonicalServiceInfo =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+
+    assert_eq!(deserialized.name, info.name);
+    assert_eq!(deserialized.version, info.version);
+}
+
+#[test]
+fn test_service_metrics_serialization() {
+    let metrics = ServiceMetrics::default();
+    let json = serde_json::to_string(&metrics).expect("Failed to serialize");
+    let deserialized: ServiceMetrics = serde_json::from_str(&json).expect("Failed to deserialize");
+
+    assert_eq!(deserialized.request_count, metrics.request_count);
+}
+
+#[test]
+fn test_service_type_serialization() {
+    let service_type = CanonicalServiceType::Web;
+    let json = serde_json::to_string(&service_type).expect("Failed to serialize");
+    let deserialized: CanonicalServiceType =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+
+    assert_eq!(deserialized, service_type);
+}
+
+#[test]
+fn test_service_type_custom_serialization() {
+    let service_type = CanonicalServiceType::Custom("MyCustomService".to_string());
+    let json = serde_json::to_string(&service_type).expect("Failed to serialize");
+    let deserialized: CanonicalServiceType =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+
+    if let CanonicalServiceType::Custom(name) = deserialized {
+        assert_eq!(name, "MyCustomService");
+    } else {
+        panic!("Expected Custom variant");
+    }
+}
+
+// ============================================================================
+// SERVICE STATUS TESTS
+// ============================================================================
+
+#[test]
+fn test_service_status_default() {
+    let status = CanonicalServiceStatus::default();
+    assert_eq!(status, CanonicalServiceStatus::Unknown);
+}
+
+#[test]
+fn test_service_status_all_variants() {
+    let running = CanonicalServiceStatus::Running;
+    let starting = CanonicalServiceStatus::Starting;
+    let stopping = CanonicalServiceStatus::Stopping;
+    let stopped = CanonicalServiceStatus::Stopped;
+    let error = CanonicalServiceStatus::Error;
+    let unknown = CanonicalServiceStatus::Unknown;
+
+    assert_eq!(running, CanonicalServiceStatus::Running);
+    assert_eq!(starting, CanonicalServiceStatus::Starting);
+    assert_eq!(stopping, CanonicalServiceStatus::Stopping);
+    assert_eq!(stopped, CanonicalServiceStatus::Stopped);
+    assert_eq!(error, CanonicalServiceStatus::Error);
+    assert_eq!(unknown, CanonicalServiceStatus::Unknown);
+}
+
+#[test]
+fn test_service_status_equality() {
+    assert_eq!(CanonicalServiceStatus::Running, CanonicalServiceStatus::Running);
+    assert_ne!(CanonicalServiceStatus::Running, CanonicalServiceStatus::Stopped);
+}
+
+#[test]
+fn test_service_status_debug() {
+    let status = CanonicalServiceStatus::Running;
+    let debug_str = format!("{status:?}");
+    assert!(debug_str.contains("Running"));
+}
+
+#[test]
+fn test_service_status_clone() {
+    let status1 = CanonicalServiceStatus::Running;
+    let status2 = status1;
+    assert_eq!(status1, status2);
+}
+
+// ============================================================================
+// ALLOWED VALUES TESTS
+// ============================================================================
+
+#[test]
+fn test_allowed_values_default() {
+    let allowed = AllowedValues::default();
+    assert!(matches!(allowed, AllowedValues::Any));
+}
+
+#[test]
+fn test_allowed_values_any() {
+    let allowed = AllowedValues::Any;
+    assert!(matches!(allowed, AllowedValues::Any));
+}
+
+#[test]
+fn test_allowed_values_specific() {
+    let allowed = AllowedValues::Specific(vec!["value1".to_string(), "value2".to_string()]);
+    if let AllowedValues::Specific(values) = allowed {
+        assert_eq!(values.len(), 2);
+    } else {
+        panic!("Expected Specific variant");
+    }
+}
+
+#[test]
+fn test_allowed_values_range() {
+    let allowed = AllowedValues::Range {
+        min: 0.0,
+        max: 100.0,
+    };
+    if let AllowedValues::Range {
+        min,
+        max,
+    } = allowed
+    {
+        assert!((min - 0.0).abs() < f64::EPSILON);
+        assert!((max - 100.0).abs() < f64::EPSILON);
+    } else {
+        panic!("Expected Range variant");
+    }
+}
+
+#[test]
+fn test_allowed_values_pattern() {
+    let allowed = AllowedValues::Pattern("[0-9]+".to_string());
+    if let AllowedValues::Pattern(pattern) = allowed {
+        assert_eq!(pattern, "[0-9]+");
+    } else {
+        panic!("Expected Pattern variant");
+    }
+}
+
+#[test]
+fn test_allowed_values_clone() {
+    let allowed1 = AllowedValues::Any;
+    let allowed2 = allowed1;
+    assert!(matches!(allowed2, AllowedValues::Any));
+}
+
+#[test]
+fn test_allowed_values_debug() {
+    let allowed = AllowedValues::Any;
+    let debug_str = format!("{allowed:?}");
+    assert!(debug_str.contains("Any"));
+}
+
+// ============================================================================
+// INTEGRATION TESTS
+// ============================================================================
+
+#[test]
+fn test_complete_service_registration() {
+    let mut info = CanonicalServiceInfo::new("payment-service", "3.2.1");
+    info.with_endpoint("api", "https://payment.example.com/api")
+        .with_endpoint("admin", "https://payment.example.com/admin")
+        .with_metadata("region", "us-east-1")
+        .with_metadata("cluster", "prod-cluster-1")
+        .with_capability("payment-processing")
+        .with_capability("refunds")
+        .with_capability("subscriptions")
+        .with_dependency("auth-service")
+        .with_dependency("notification-service")
+        .with_description("Handles all payment operations");
+
+    info.metrics = Some(ServiceMetrics {
+        request_count: 10000,
+        error_count: 50,
+        avg_response_time_ms: 120.5,
+        uptime_seconds: 86400,
+    });
+
+    // Verify complete setup
+    assert_eq!(info.name, "payment-service");
+    assert_eq!(info.version, "3.2.1");
+    assert_eq!(info.endpoints.len(), 2);
+    assert_eq!(info.metadata.len(), 2);
+    assert_eq!(info.capabilities.len(), 3);
+    assert_eq!(info.dependencies.len(), 2);
+    assert!(info.description.is_some());
+    assert!(info.metrics.is_some());
+}
+
+#[test]
+fn test_service_lifecycle_status_transitions() {
+    let mut status = CanonicalServiceStatus::default();
+    assert_eq!(status, CanonicalServiceStatus::Unknown);
+
+    status = CanonicalServiceStatus::Starting;
+    assert_eq!(status, CanonicalServiceStatus::Starting);
+
+    status = CanonicalServiceStatus::Running;
+    assert_eq!(status, CanonicalServiceStatus::Running);
+
+    status = CanonicalServiceStatus::Stopping;
+    assert_eq!(status, CanonicalServiceStatus::Stopping);
+
+    status = CanonicalServiceStatus::Stopped;
+    assert_eq!(status, CanonicalServiceStatus::Stopped);
+}
+
+#[test]
+fn test_service_types_in_registry() {
+    let services = [
+        (CanonicalServiceType::Web, "web-api"),
+        (CanonicalServiceType::Database, "postgres"),
+        (CanonicalServiceType::Cache, "redis"),
+        (CanonicalServiceType::Storage, "s3"),
+        (CanonicalServiceType::AI, "ml-service"),
+    ];
+
+    assert_eq!(services.len(), 5);
+    assert!(services.iter().any(|(t, _)| t == &CanonicalServiceType::Web));
+    assert!(services.iter().any(|(t, _)| t == &CanonicalServiceType::AI));
+}

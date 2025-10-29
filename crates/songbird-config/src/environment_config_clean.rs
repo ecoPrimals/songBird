@@ -19,9 +19,9 @@ impl EnvironmentConfig {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
             let port = std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
                 .ok()
-                .and_then(|p| p.parse().ok()
+                .and_then(|p| p.parse().ok())
                 .unwrap_or(8080);
-            format!("http://{}:{}", bind_addr, port,
+            format!("http://{}:{}", bind_addr, port)
         })
     }
 
@@ -29,8 +29,10 @@ impl EnvironmentConfig {
     #[must_use]
     pub fn service_endpoint_by_capability(capability_type: &str, default_port: u16) -> String {
         std::env::var("SONGBIRD_ENDPOINT")
-            .or_else(|_| env::var(format!("{}_ENDPOINT", capability_type))
-            .unwrap_or_else(|_| format!("http://{}:{}", crate::constants::network::DEFAULT_HOST, default_port)
+            .or_else(|_| env::var(format!("{}_ENDPOINT", capability_type)))
+            .unwrap_or_else(|_| {
+                format!("http://{}:{}", crate::constants::network::DEFAULT_HOST, default_port)
+            })
     }
 
     /// Get the ToadStool compute endpoint from environment or calculate from config
@@ -38,11 +40,9 @@ impl EnvironmentConfig {
     pub fn toadstool_endpoint() -> String {
         std::env::var("TOADSTOOL_ENDPOINT").unwrap_or_else(|_| {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
-            let port = std::env::var("TOADSTOOL_PORT")
-                .ok()
-                .and_then(|p| p.parse().ok()
-                .unwrap_or(8081);
-            format!("http://{}:{}", bind_addr, port,
+            let port =
+                std::env::var("TOADSTOOL_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8081);
+            format!("http://{}:{}", bind_addr, port)
         })
     }
 
@@ -51,11 +51,9 @@ impl EnvironmentConfig {
     pub fn nestgate_endpoint() -> String {
         std::env::var("NESTGATE_ENDPOINT").unwrap_or_else(|_| {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
-            let port = std::env::var("NESTGATE_PORT")
-                .ok()
-                .and_then(|p| p.parse().ok()
-                .unwrap_or(8082);
-            format!("http://{}:{}", bind_addr, port,
+            let port =
+                std::env::var("NESTGATE_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8082);
+            format!("http://{}:{}", bind_addr, port)
         })
     }
 
@@ -64,36 +62,28 @@ impl EnvironmentConfig {
     pub fn squirrel_endpoint() -> String {
         std::env::var("SQUIRREL_ENDPOINT").unwrap_or_else(|_| {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
-            let port = std::env::var("SQUIRREL_PORT")
-                .ok()
-                .and_then(|p| p.parse().ok()
-                .unwrap_or(8083);
-            format!("http://{}:{}", bind_addr, port,
+            let port =
+                std::env::var("SQUIRREL_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8083);
+            format!("http://{}:{}", bind_addr, port)
         })
     }
 
     /// Get configuration value from environment with fallback
     #[must_use]
     pub fn get_env_or_default(key: &str, default: &str) -> String {
-        std::env::var(key).unwrap_or_else(|_| default.to_string()),
+        std::env::var(key).unwrap_or_else(|_| default.to_string())
     }
 
     /// Get configuration value from environment as integer with fallback
     #[must_use]
     pub fn get_env_int_or_default(key: &str, default: u16) -> u16 {
-        std::env::var(key)
-            .ok()
-            .and_then(|v| v.parse().ok()
-            .unwrap_or(default)
+        std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
     }
 
     /// Get configuration value from environment as boolean with fallback
     #[must_use]
     pub fn get_env_bool_or_default(key: &str, default: bool) -> bool {
-        std::env::var(key)
-            .ok()
-            .and_then(|v| v.parse().ok()
-            .unwrap_or(default)
+        std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
     }
 
     /// Check if running in development mode
@@ -156,27 +146,26 @@ impl EnvironmentConfig {
 /// **PEDANTIC**: Get environment variable or panic with helpful message
 #[must_use]
 pub fn get_required_env(key: &str) -> String {
-    std::env::var(key).unwrap_or_else(|_| {
-        panic!("Required environment variable '{}' is not set", key)
-    })
+    std::env::var(key)
+        .unwrap_or_else(|_| panic!("Required environment variable '{}' is not set", key))
 }
 
 /// **PEDANTIC**: Get environment variable as integer or panic with helpful message
 #[must_use]
 pub fn get_required_env_int(key: &str) -> u16 {
     std::env::var(key)
-        .unwrap_or_else(|_| panic!("Required environment variable '{}' is not set", key)
+        .unwrap_or_else(|_| panic!("Required environment variable '{}' is not set", key))
         .parse()
-        .unwrap_or_else(|_| panic!("Environment variable '{}' is not a valid integer", key)
+        .unwrap_or_else(|_| panic!("Environment variable '{}' is not a valid integer", key))
 }
 
 /// **PEDANTIC**: Get environment variable as boolean or panic with helpful message
 #[must_use]
 pub fn get_required_env_bool(key: &str) -> bool {
     std::env::var(key)
-        .unwrap_or_else(|_| panic!("Required environment variable '{}' is not set", key)
+        .unwrap_or_else(|_| panic!("Required environment variable '{}' is not set", key))
         .parse()
-        .unwrap_or_else(|_| panic!("Environment variable '{}' is not a valid boolean", key)
+        .unwrap_or_else(|_| panic!("Environment variable '{}' is not a valid boolean", key))
 }
 
 // ============================================================================
@@ -194,7 +183,14 @@ mod tests {
         std::env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
 
         let endpoint = EnvironmentConfig::songbird_endpoint();
-        assert_eq!(endpoint, &format!("http://{}:{}", crate::constants::network::DEFAULT_HOST, crate::constants::network::DEFAULT_ORCHESTRATOR_PORT)
+        assert_eq!(
+            endpoint,
+            format!(
+                "http://{}:{}",
+                crate::constants::network::DEFAULT_HOST,
+                crate::constants::network::DEFAULT_ORCHESTRATOR_PORT
+            )
+        );
     }
 
     #[test]
@@ -202,7 +198,7 @@ mod tests {
         std::env::set_var("SONGBIRD_ENDPOINT", "http://custom:9000");
 
         let endpoint = EnvironmentConfig::songbird_endpoint();
-        assert_eq!(endpoint, "http://custom:9000")
+        assert_eq!(endpoint, "http://custom:9000");
 
         std::env::remove_var("SONGBIRD_ENDPOINT");
     }
@@ -210,7 +206,7 @@ mod tests {
     #[test]
     fn test_service_endpoint_by_capability() {
         let endpoint = EnvironmentConfig::service_endpoint_by_capability("COMPUTE", 8081);
-        assert_eq!(endpoint, format!("http://{}:8081", crate::constants::network::DEFAULT_HOST))
+        assert_eq!(endpoint, format!("http://{}:8081", crate::constants::network::DEFAULT_HOST));
     }
 
     #[test]
@@ -239,13 +235,29 @@ mod tests {
 
     #[test]
     fn test_is_development() {
-        std::env::remove_var("ENVIRONMENT");
-        assert!(EnvironmentConfig::is_development());
+        // Save current environment
+        let original = std::env::var("ENVIRONMENT").ok();
 
+        // Test default (development)
+        std::env::remove_var("ENVIRONMENT");
+        assert!(
+            EnvironmentConfig::is_development(),
+            "Should be development when ENVIRONMENT is not set"
+        );
+
+        // Test explicit production
         std::env::set_var("ENVIRONMENT", "production");
-        assert!(!EnvironmentConfig::is_development());
+        assert!(
+            !EnvironmentConfig::is_development(),
+            "Should not be development when ENVIRONMENT=production"
+        );
 
-        std::env::remove_var("ENVIRONMENT");
+        // Restore original environment
+        if let Some(val) = original {
+            std::env::set_var("ENVIRONMENT", val);
+        } else {
+            std::env::remove_var("ENVIRONMENT");
+        }
     }
 
     #[test]
@@ -263,7 +275,7 @@ mod tests {
     fn test_bind_address() {
         std::env::remove_var("ENVIRONMENT");
         std::env::remove_var("BIND_ADDRESS");
-        assert_eq!(EnvironmentConfig::bind_address(), &crate::constants::network::DEFAULT_HOST);
+        assert_eq!(EnvironmentConfig::bind_address(), crate::constants::network::DEFAULT_HOST);
 
         std::env::set_var("ENVIRONMENT", "production");
         assert_eq!(EnvironmentConfig::bind_address(), "0.0.0.0");

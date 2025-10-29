@@ -1,4 +1,26 @@
 // Integration Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
 //
 // Tests for integration testing helpers and utilities
 
@@ -18,8 +40,7 @@ async fn test_async_test_helpers() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(result.is_ok());
     assert_eq!(
-        result
-            .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?,
+        result.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?,
         "async_result"
     );
     Ok(())

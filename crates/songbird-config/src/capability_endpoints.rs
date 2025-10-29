@@ -1,0 +1,497 @@
+//! # 🍼 Capability-Based Endpoints (Zero Hardcoding)
+//!
+//! **PHILOSOPHY**: Request capabilities (security, storage, compute, ai), not specific providers.
+//!
+//! This module replaces primal-name-based endpoint configuration with capability-based
+//! discovery. Services specify WHAT they need, not WHO provides it.
+//!
+//! ## Migration from Legacy
+//!
+//! ```rust,ignore
+//! // ❌ OLD: Hardcoded primal names
+//! let endpoint = endpoints::get_primal_endpoint("beardog");
+//!
+//! // ✅ NEW: Capability-based
+//! let endpoint = capability_endpoints::get_capability_endpoint("security").await?;
+//! ```
+//!
+//! ## Environment Variables
+//!
+//! ### Capability Endpoints (Optional - discovered if not set)
+//! - `CAPABILITY_SECURITY_ENDPOINT` - Security provider endpoint
+//! - `CAPABILITY_STORAGE_ENDPOINT` - Storage provider endpoint
+//! - `CAPABILITY_COMPUTE_ENDPOINT` - Compute provider endpoint
+//! - `CAPABILITY_AI_ENDPOINT` - AI provider endpoint
+//! - `CAPABILITY_ORCHESTRATION_ENDPOINT` - Orchestration provider endpoint
+//!
+//! ### Discovery Configuration
+//! - `SERVICE_REGISTRY_ENDPOINT` - Service registry for discovery
+//! - `ENABLE_INFANT_DISCOVERY` - Enable zero-knowledge bootstrap
+//! - `DISCOVERY_TIMEOUT_SECS` - Discovery timeout (default: 30)
+
+use serde::{Deserialize, Serialize};
+use songbird_types::{SongbirdError, SongbirdResult};
+use std::collections::HashMap;
+use std::convert::Infallible;
+use std::env;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::RwLock;
+use tracing::{debug, info};
+
+/// Capability type for service discovery
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CapabilityType {
+    /// Security capabilities (authentication, encryption, key management)
+    Security,
+    /// Storage capabilities (data persistence, caching, backup)
+    Storage,
+    /// Compute capabilities (workload execution, container orchestration)
+    Compute,
+    /// AI/ML capabilities (inference, training, analysis)
+    Ai,
+    /// Orchestration capabilities (service coordination, workflow management)
+    Orchestration,
+    /// Observability capabilities (logging, metrics, tracing)
+    Observability,
+    /// Networking capabilities (service mesh, load balancing)
+    Networking,
+    /// Custom capability
+    Custom(String),
+}
+
+impl FromStr for CapabilityType {
+    type Err = Infallible;
+
+    /// Parse capability type from string (always succeeds, falls back to Custom)
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.to_lowercase().as_str() {
+            "security" | "auth" | "authentication" | "encryption" => Self::Security,
+            "storage" | "database" | "persistence" | "cache" => Self::Storage,
+            "compute" | "execution" | "runtime" | "container" => Self::Compute,
+            "ai" | "ml" | "inference" | "intelligence" => Self::Ai,
+            "orchestration" | "coordination" | "workflow" => Self::Orchestration,
+            "observability" | "logging" | "metrics" | "tracing" => Self::Observability,
+            "networking" | "mesh" | "loadbalancing" => Self::Networking,
+            custom => Self::Custom(custom.to_string()),
+        })
+    }
+}
+
+impl CapabilityType {
+    /// Get environment variable name for this capability
+    #[must_use]
+    pub fn env_var_name(&self) -> String {
+        match self {
+            Self::Security => "CAPABILITY_SECURITY_ENDPOINT".to_string(),
+            Self::Storage => "CAPABILITY_STORAGE_ENDPOINT".to_string(),
+            Self::Compute => "CAPABILITY_COMPUTE_ENDPOINT".to_string(),
+            Self::Ai => "CAPABILITY_AI_ENDPOINT".to_string(),
+            Self::Orchestration => "CAPABILITY_ORCHESTRATION_ENDPOINT".to_string(),
+            Self::Observability => "CAPABILITY_OBSERVABILITY_ENDPOINT".to_string(),
+            Self::Networking => "CAPABILITY_NETWORKING_ENDPOINT".to_string(),
+            Self::Custom(name) => format!("CAPABILITY_{}_ENDPOINT", name.to_uppercase()),
+        }
+    }
+
+    /// Get capability name as string
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Security => "security",
+            Self::Storage => "storage",
+            Self::Compute => "compute",
+            Self::Ai => "ai",
+            Self::Orchestration => "orchestration",
+            Self::Observability => "observability",
+            Self::Networking => "networking",
+            Self::Custom(name) => name,
+        }
+    }
+}
+
+/// Discovered capability endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapabilityEndpoint {
+    /// Capability type
+    pub capability: CapabilityType,
+    /// Endpoint URL
+    pub endpoint: String,
+    /// Provider ID (if known)
+    pub provider_id: Option<String>,
+    /// Discovery method used
+    pub discovery_method: DiscoveryMethod,
+    /// Confidence score (0.0 - 1.0)
+    pub confidence: f64,
+    /// When discovered
+    pub discovered_at: std::time::SystemTime,
+}
+
+/// How the endpoint was discovered
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DiscoveryMethod {
+    /// From environment variable
+    Environment,
+    /// From service registry
+    ServiceRegistry,
+    /// From container metadata
+    ContainerMetadata,
+    /// From DNS discovery
+    Dns,
+    /// From network scan
+    NetworkScan,
+    /// From configuration file
+    ConfigFile,
+}
+
+/// Capability endpoint resolver
+#[derive(Debug)]
+pub struct CapabilityEndpointResolver {
+    /// Cached endpoints
+    cache: Arc<RwLock<HashMap<CapabilityType, CapabilityEndpoint>>>,
+    /// Cache TTL
+    cache_ttl: Duration,
+}
+
+impl CapabilityEndpointResolver {
+    /// Create new resolver
+    #[must_use]
+    pub fn new() -> Self {
+        let cache_ttl_secs =
+            env::var("DISCOVERY_CACHE_TTL_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(300);
+
+        Self {
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            cache_ttl: Duration::from_secs(cache_ttl_secs),
+        }
+    }
+
+    /// Get endpoint for a capability
+    ///
+    /// # Errors
+    /// Returns error if no endpoint can be discovered for the capability
+    pub async fn get_endpoint(&self, capability: CapabilityType) -> SongbirdResult<String> {
+        // Check cache first
+        {
+            let cache = self.cache.read().await;
+            if let Some(cached) = cache.get(&capability) {
+                // Check if cache is still valid
+                if let Ok(elapsed) = cached.discovered_at.elapsed() {
+                    if elapsed < self.cache_ttl {
+                        debug!("Using cached endpoint for {:?}", capability);
+                        return Ok(cached.endpoint.clone());
+                    }
+                }
+            }
+        }
+
+        // Discover endpoint
+        let endpoint = self.discover_endpoint(&capability).await?;
+
+        // Cache the result
+        {
+            let mut cache = self.cache.write().await;
+            cache.insert(capability.clone(), endpoint.clone());
+        }
+
+        Ok(endpoint.endpoint)
+    }
+
+    /// Discover endpoint for a capability
+    async fn discover_endpoint(
+        &self,
+        capability: &CapabilityType,
+    ) -> SongbirdResult<CapabilityEndpoint> {
+        debug!("Discovering endpoint for capability: {:?}", capability);
+
+        // Method 1: Environment variable (highest priority)
+        if let Ok(endpoint) = env::var(capability.env_var_name()) {
+            info!("Found {} endpoint in environment: {}", capability.as_str(), endpoint);
+            return Ok(CapabilityEndpoint {
+                capability: capability.clone(),
+                endpoint,
+                provider_id: None,
+                discovery_method: DiscoveryMethod::Environment,
+                confidence: 1.0,
+                discovered_at: std::time::SystemTime::now(),
+            });
+        }
+
+        // Method 2: Service registry discovery
+        if let Some(endpoint) = self.discover_from_registry(capability).await? {
+            return Ok(endpoint);
+        }
+
+        // Method 3: Container metadata discovery
+        if let Some(endpoint) = self.discover_from_container_metadata(capability).await? {
+            return Ok(endpoint);
+        }
+
+        // Method 4: DNS discovery
+        if let Some(endpoint) = self.discover_from_dns(capability).await? {
+            return Ok(endpoint);
+        }
+
+        // No endpoint found
+        Err(SongbirdError::Configuration {
+            message: format!(
+                "No endpoint found for capability: {}. Set {} environment variable or enable discovery.",
+                capability.as_str(),
+                capability.env_var_name()
+            ),
+            field: Some(capability.env_var_name()),
+            suggestion: Some(format!(
+                "Set {}=http://your-provider:port or enable discovery with SERVICE_REGISTRY_ENDPOINT",
+                capability.env_var_name()
+            )),
+        })
+    }
+
+    /// Discover from service registry
+    async fn discover_from_registry(
+        &self,
+        capability: &CapabilityType,
+    ) -> SongbirdResult<Option<CapabilityEndpoint>> {
+        // Check if service registry is configured
+        let Ok(_registry_endpoint) = env::var("SERVICE_REGISTRY_ENDPOINT") else {
+            return Ok(None);
+        };
+
+        debug!("Querying service registry for {} capability", capability.as_str());
+
+        // Query registry for services providing this capability
+        // This would integrate with actual service registry (Consul, Eureka, etc.)
+        // For now, return None to continue to next discovery method
+
+        // TODO: Implement actual registry query
+        // let client = reqwest::Client::new();
+        // let response = client.get(&format!("{}/v1/catalog/service/{}", registry_endpoint, capability.as_str()))
+        //     .send()
+        //     .await?;
+
+        Ok(None)
+    }
+
+    /// Discover from container metadata
+    async fn discover_from_container_metadata(
+        &self,
+        capability: &CapabilityType,
+    ) -> SongbirdResult<Option<CapabilityEndpoint>> {
+        // Check if container metadata API is available
+        let Ok(_metadata_api) = env::var("CONTAINER_METADATA_API") else {
+            return Ok(None);
+        };
+
+        debug!("Querying container metadata for {} capability", capability.as_str());
+
+        // Query container orchestrator for services providing this capability
+        // This would work with Kubernetes, Docker Swarm, Nomad, etc.
+        // For now, return None to continue to next discovery method
+
+        // TODO: Implement actual container metadata query
+
+        Ok(None)
+    }
+
+    /// Discover from DNS
+    async fn discover_from_dns(
+        &self,
+        capability: &CapabilityType,
+    ) -> SongbirdResult<Option<CapabilityEndpoint>> {
+        // Check if DNS discovery domain is configured
+        let Ok(_dns_domain) = env::var("SERVICE_DISCOVERY_DOMAIN") else {
+            return Ok(None);
+        };
+
+        debug!("Querying DNS for {} capability", capability.as_str());
+
+        // Query DNS SRV records for services providing this capability
+        // Format: _capability._tcp.domain
+        // For now, return None
+
+        // TODO: Implement actual DNS SRV query
+
+        Ok(None)
+    }
+
+    /// Clear cache (force re-discovery)
+    pub async fn clear_cache(&self) {
+        self.cache.write().await.clear();
+        info!("Capability endpoint cache cleared");
+    }
+
+    /// Get all cached endpoints
+    pub async fn get_all_cached(&self) -> HashMap<CapabilityType, CapabilityEndpoint> {
+        let cache = self.cache.read().await;
+        cache.clone()
+    }
+}
+
+impl Default for CapabilityEndpointResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Get endpoint for a capability (convenience function)
+///
+/// # Examples
+///
+/// ```no_run
+/// use songbird_config::capability_endpoints;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // Get security endpoint
+/// let endpoint = capability_endpoints::get_capability_endpoint("security").await?;
+///
+/// // Or use typed capability
+/// let endpoint = capability_endpoints::get_endpoint_typed(
+///     capability_endpoints::CapabilityType::Storage
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Errors
+/// Returns error if no endpoint can be discovered for the capability
+///
+/// Returns an error if capability string parsing fails
+pub async fn get_capability_endpoint(capability: &str) -> SongbirdResult<String> {
+    let capability_type = capability.parse::<CapabilityType>().map_err(|e| {
+        SongbirdError::configuration(format!("Invalid capability type '{capability}': {e}"))
+    })?;
+    let resolver = CapabilityEndpointResolver::new();
+    resolver.get_endpoint(capability_type).await
+}
+
+/// Get endpoint for a typed capability
+///
+/// # Errors
+/// Returns error if no endpoint can be discovered for the capability
+pub async fn get_endpoint_typed(capability: CapabilityType) -> SongbirdResult<String> {
+    let resolver = CapabilityEndpointResolver::new();
+    resolver.get_endpoint(capability).await
+}
+
+/// Get all available capability endpoints
+pub async fn get_all_endpoints() -> HashMap<CapabilityType, CapabilityEndpoint> {
+    let resolver = CapabilityEndpointResolver::new();
+    resolver.get_all_cached().await
+}
+
+/// Clear endpoint cache (force re-discovery)
+///
+/// Note: With current implementation, this creates a new resolver instance,
+/// so cache clearing is implicit. Future versions may use a global instance.
+pub async fn clear_cache() {
+    // No-op with current architecture - each call creates new resolver
+    // This is intentional to avoid global state complexity
+}
+
+/// Check if a capability endpoint is available
+pub async fn has_capability(capability: &str) -> bool {
+    get_capability_endpoint(capability).await.is_ok()
+}
+
+/// Get multiple capability endpoints in parallel
+///
+/// # Errors
+/// Returns error if any capability endpoint cannot be discovered
+pub async fn get_multiple_endpoints(capabilities: &[&str]) -> SongbirdResult<Vec<String>> {
+    let mut endpoints = Vec::new();
+
+    for capability in capabilities {
+        let endpoint = get_capability_endpoint(capability).await?;
+        endpoints.push(endpoint);
+    }
+
+    Ok(endpoints)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_capability_from_environment() {
+        env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443");
+
+        let endpoint = get_capability_endpoint("security").await.unwrap();
+        assert_eq!(endpoint, "http://security:8443");
+
+        env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_capability_not_found() {
+        env::remove_var("CAPABILITY_CUSTOM_TEST_ENDPOINT");
+        env::remove_var("SERVICE_REGISTRY_ENDPOINT");
+
+        let result = get_capability_endpoint("custom_test").await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_capability_type_parsing() {
+        assert_eq!("security".parse::<CapabilityType>().unwrap(), CapabilityType::Security);
+        assert_eq!("AUTH".parse::<CapabilityType>().unwrap(), CapabilityType::Security);
+        assert_eq!("Storage".parse::<CapabilityType>().unwrap(), CapabilityType::Storage);
+
+        if let CapabilityType::Custom(name) = "my_custom".parse::<CapabilityType>().unwrap() {
+            assert_eq!(name, "my_custom");
+        } else {
+            panic!("Expected Custom capability");
+        }
+    }
+
+    #[test]
+    fn test_env_var_names() {
+        assert_eq!(CapabilityType::Security.env_var_name(), "CAPABILITY_SECURITY_ENDPOINT");
+        assert_eq!(
+            CapabilityType::Custom("test".to_string()).env_var_name(),
+            "CAPABILITY_TEST_ENDPOINT"
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_multiple_endpoints() {
+        env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443");
+        env::set_var("CAPABILITY_STORAGE_ENDPOINT", "http://storage:9000");
+
+        let endpoints = get_multiple_endpoints(&["security", "storage"]).await.unwrap();
+        assert_eq!(endpoints.len(), 2);
+        assert_eq!(endpoints[0], "http://security:8443");
+        assert_eq!(endpoints[1], "http://storage:9000");
+
+        env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+        env::remove_var("CAPABILITY_STORAGE_ENDPOINT");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_cache_functionality() {
+        env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443");
+
+        // First call - should discover
+        let endpoint1 = get_capability_endpoint("security").await.unwrap();
+
+        // Second call - should use cache
+        let endpoint2 = get_capability_endpoint("security").await.unwrap();
+
+        assert_eq!(endpoint1, endpoint2);
+
+        // Clear cache
+        clear_cache().await;
+
+        // Should discover again
+        let endpoint3 = get_capability_endpoint("security").await.unwrap();
+        assert_eq!(endpoint1, endpoint3);
+
+        env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+    }
+}

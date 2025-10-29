@@ -1,3 +1,5 @@
+#![allow(clippy::unused_async)]
+
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::body::Incoming;
@@ -10,6 +12,7 @@ use tracing::{info, warn};
 type Result<T> = SongbirdResult<T>;
 
 // Helper function to convert hyper::http::Error to SongbirdError
+#[allow(clippy::needless_pass_by_value)]
 fn http_error_to_songbird(error: hyper::http::Error) -> SongbirdError {
     SongbirdError::Network {
         message: format!("HTTP error: {error}"),

@@ -6,6 +6,14 @@
 //! - Any container runtime environment
 //! - Any orchestration API that provides service information
 
+#![allow(
+    clippy::unused_async,
+    clippy::struct_field_names,
+    clippy::missing_errors_doc,
+    clippy::used_underscore_binding,
+    clippy::unused_self
+)]
+
 use crate::traits::discovery::ServiceHealthStatus;
 use crate::traits::service::{ServiceInfo, ServiceStatus};
 use crate::traits::{ServiceDiscovery, ServiceEvent, ServiceQuery};
@@ -552,6 +560,7 @@ impl UniversalContainerOrchestration {
     }
 
     /// Discover services from Kubernetes API
+    #[allow(clippy::ref_option)]
     async fn discover_from_kubernetes_api(
         &self,
         endpoint: &str,

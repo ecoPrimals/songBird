@@ -82,11 +82,11 @@ fn detect_available_memory() -> f64 {
 }
 
 /// Safe disk space query using sysinfo crate
-/// 
+///
 /// ## Safety Evolution
-/// This has been refactored from raw FFI (libc::statvfs/GetDiskFreeSpaceExW) to use
+/// This has been refactored from raw FFI (`libc::statvfs/GetDiskFreeSpaceExW`) to use
 /// the `sysinfo` crate which handles all platform differences and FFI safely.
-/// 
+///
 /// Benefits:
 /// - 100% safe code - no unsafe blocks
 /// - Cross-platform - works on Unix, Windows, macOS, FreeBSD, etc.
@@ -96,24 +96,25 @@ fn get_available_disk_space_safe() -> Option<f64> {
     // SAFE: sysinfo uses safe abstractions over platform-specific APIs
     // It handles all the FFI complexity internally with proper safety checks
     use sysinfo::Disks;
-    
+
     let disks = Disks::new_with_refreshed_list();
-    
+
     // Find the disk containing current directory
     let current_dir = std::env::current_dir().ok()?;
-    
+
     // Find the disk that contains our current directory
     // (or use the first disk as fallback)
     let disk = disks
         .iter()
         .find(|d| current_dir.starts_with(d.mount_point()))
         .or_else(|| disks.first())?;
-    
+
     // Convert from bytes to GB
     Some(disk.available_space() as f64 / (1024.0 * 1024.0 * 1024.0))
 }
 
 /// Get available storage space in GB
+#[must_use]
 pub fn get_available_storage() -> Option<f64> {
     get_available_disk_space_safe()
 }
@@ -123,7 +124,7 @@ fn detect_gpu_availability() -> bool {
     if std::process::Command::new("nvidia-smi")
         .output()
         .map(|output| output.status.success())
-        .unwrap_or(false,
+        .unwrap_or(false)
     {
         return true;
     }
@@ -132,7 +133,7 @@ fn detect_gpu_availability() -> bool {
     if std::process::Command::new("rocm-smi")
         .output()
         .map(|output| output.status.success())
-        .unwrap_or(false,
+        .unwrap_or(false)
     {
         return true;
     }
@@ -142,7 +143,7 @@ fn detect_gpu_availability() -> bool {
         .arg("--help")
         .output()
         .map(|output| output.status.success())
-        .unwrap_or(false,
+        .unwrap_or(false)
     {
         return true;
     }
@@ -151,7 +152,7 @@ fn detect_gpu_availability() -> bool {
 }
 
 async fn detect_network_speed() -> NetworkSpeed {
-    if let Ok(speed_str, = std::env::var("SONGBIRD_NETWORK_SPEED") {
+    if let Ok(speed_str) = std::env::var("SONGBIRD_NETWORK_SPEED") {
         match speed_str.to_lowercase().as_str() {
             "fast" => return NetworkSpeed::Fast,
             "slow" => return NetworkSpeed::Slow,

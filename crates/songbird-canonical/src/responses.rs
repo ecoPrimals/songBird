@@ -5,6 +5,10 @@ use crate::{ConfidenceScore, RequestId, SuggestedAction};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
+#[cfg(test)]
+#[path = "responses_tests.rs"]
+mod responses_tests;
+
 /// The canonical response wrapper for ALL Songbird operations
 ///
 /// This type unifies all response patterns across the ecosystem and provides

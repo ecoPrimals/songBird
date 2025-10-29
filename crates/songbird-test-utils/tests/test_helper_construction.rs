@@ -1,4 +1,26 @@
 // Test Helper Construction Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
 //
 // Tests for test helper construction utilities
 
@@ -50,7 +72,7 @@ fn test_assertion_helpers() {
 
 // Helper functions
 fn generate_mock_service_names(count: usize) -> Vec<String> {
-    (0..count).map(|i| format!("mock-service-{}", i)).collect()
+    (0..count).map(|i| format!("mock-service-{i}")).collect()
 }
 
 struct TestDataBuilder {
@@ -86,7 +108,7 @@ impl TestDataBuilder {
     fn build(self) -> TestData {
         let services = (0..self.service_count)
             .map(|i| TestService {
-                name: format!("service-{}", i),
+                name: format!("service-{i}"),
                 endpoint: self.endpoint_base.clone(),
                 port: self.port_range.0 + (i as u16 % (self.port_range.1 - self.port_range.0)),
             })

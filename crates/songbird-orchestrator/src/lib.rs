@@ -29,8 +29,9 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let config = SongbirdConfig::from_env()?;
-//!     let orchestrator = SongbirdOrchestrator::new(config).await?;
+//!     // Config reads from environment variables via Default
+//!     let config = SongbirdConfig::default();
+//!     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 //!
 //!     // Start the orchestrator
 //!     orchestrator.start().await?;
@@ -59,7 +60,17 @@
 //! - Health check endpoints
 //! - Metrics endpoints
 
-#![allow(dead_code)]
+#![allow(
+    dead_code,
+    unused_variables,
+    clippy::missing_errors_doc,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::too_many_lines,
+    clippy::cast_sign_loss,
+    clippy::no_effect_underscore_binding,
+    clippy::unused_async
+)]
 
 pub mod app;
 pub mod cli;

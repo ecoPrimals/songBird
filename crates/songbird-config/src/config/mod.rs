@@ -71,6 +71,54 @@ impl Default for SongbirdConfig {
 }
 
 impl SongbirdConfig {
+    /// Create a test configuration with sensible defaults for testing
+    ///
+    /// This configuration uses isolated ports and directories to avoid
+    /// conflicts with other tests or production instances.
+    #[must_use]
+    pub fn test_defaults() -> Self {
+        // Create a config with test-specific overrides using struct initialization
+        Self {
+            environment: "test".to_string(),
+            performance: Some(PerformanceConfig {
+                connection_pool_size: Some(10),
+                worker_threads: Some(2),
+                request_timeout_ms: Some(5000),
+                ..Default::default()
+            }),
+            network: NetworkConfig {
+                port_range: PortRange {
+                    start: 19000,
+                    end: 19999,
+                },
+                bind_address: "127.0.0.1".to_string(),
+                max_connections: 100,
+                enable_ipv6: false,
+                ..Default::default()
+            },
+            security: SecurityConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            discovery: DiscoveryConfig {
+                interval_seconds: 5,
+                ..Default::default()
+            },
+            observability: ObservabilityConfig {
+                tracing: TracingConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                logging: LoggingConfig {
+                    level: LogLevel::Info,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
     /// Enable a primal in the universal registry
     pub fn enable_primal(&mut self, primal_name: &str, endpoint: &str) {
         if self.primal_registry.is_none() {

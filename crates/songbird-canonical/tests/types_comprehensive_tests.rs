@@ -1,4 +1,17 @@
 //! Comprehensive Type Tests for Canonical Crate
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Tests for all core canonical types.
 
@@ -44,7 +57,7 @@ fn test_service_id_clone() {
 fn test_service_id_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let id = ServiceId::new("serialize-me");
     let json = serde_json::to_string(&id)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(json.contains("serialize-me"));
     Ok(())
 }
@@ -53,7 +66,7 @@ fn test_service_id_serialization() -> Result<(), Box<dyn std::error::Error>> {
 fn test_service_id_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let json = r#""deserialized-service""#;
     let id: ServiceId = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
     assert_eq!(id.as_str(), "deserialized-service");
     Ok(())
 }
@@ -115,7 +128,7 @@ fn test_endpoint_clone() {
 fn test_endpoint_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = Endpoint::new("wss", "ws.example.com", 8443);
     let json = serde_json::to_string(&endpoint)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(json.contains("wss"));
     assert!(json.contains("ws.example.com"));
     assert!(json.contains("8443"));
@@ -126,7 +139,7 @@ fn test_endpoint_serialization() -> Result<(), Box<dyn std::error::Error>> {
 fn test_endpoint_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let json = r#"{"protocol":"https","host":"test.com","port":443,"path":null}"#;
     let endpoint: Endpoint = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
     assert_eq!(endpoint.protocol, "https");
     assert_eq!(endpoint.host, "test.com");
     assert_eq!(endpoint.port, 443);
@@ -173,7 +186,7 @@ fn test_request_id_default() {
 fn test_request_id_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let id = RequestId::new();
     let json = serde_json::to_string(&id)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(!json.is_empty());
     Ok(())
 }
@@ -243,7 +256,7 @@ fn test_confidence_score_boundaries() {
 fn test_confidence_score_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let score = ConfidenceScore::new(0.85);
     let json = serde_json::to_string(&score)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(json.contains("0.85"));
     Ok(())
 }
@@ -309,7 +322,7 @@ fn test_suggested_action_serialization() -> Result<(), Box<dyn std::error::Error
         SuggestedAction::new("test", "Test action").with_parameter("param", json!("value"));
 
     let json = serde_json::to_string(&action)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(json.contains("test"));
     assert!(json.contains("Test action"));
     Ok(())

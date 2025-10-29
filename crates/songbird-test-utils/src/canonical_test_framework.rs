@@ -48,6 +48,7 @@ impl TestContext {
     }
 
     /// Add metadata to the test context
+    #[must_use]
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
@@ -71,6 +72,10 @@ pub struct CanonicalAssertions;
 
 impl CanonicalAssertions {
     /// Assert that a result is successful
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the result is not `Ok`.
     pub fn assert_success<T>(result: &SongbirdResult<T>) -> TestResult<()> {
         match result {
             Ok(_) => Ok(()),
@@ -82,6 +87,10 @@ impl CanonicalAssertions {
     }
 
     /// Assert that a result is an error
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the result is `Ok` instead of `Err`.
     pub fn assert_error<T>(result: &SongbirdResult<T>) -> TestResult<()> {
         match result {
             Ok(_) => Err(SongbirdError::service("test-utils", "Expected error but got success")),
@@ -90,6 +99,10 @@ impl CanonicalAssertions {
     }
 
     /// Assert that a result is an error with specific message
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the result is `Ok` or if the error message does not contain the expected text.
     pub fn assert_error_contains<T>(
         result: &SongbirdResult<T>,
         expected_msg: &str,
@@ -111,6 +124,11 @@ impl CanonicalAssertions {
     }
 
     /// Assert that a `SongbirdResponse` is successful
+    ///
+    /// # Errors
+    ///
+    /// This function currently always succeeds but returns `Result` for API consistency.
+    #[allow(clippy::unnecessary_wraps)]
     pub fn assert_response_success<T>(_response: &SongbirdResult<T>) -> TestResult<()> {
         // SongbirdResponse doesn't have a success field - it's always successful if Ok
         // The presence of data indicates success
@@ -118,6 +136,10 @@ impl CanonicalAssertions {
     }
 
     /// Assert that an operation completes within timeout
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the operation does not complete within the timeout duration.
     pub async fn assert_timeout<F, Fut, T>(
         operation: F,
         timeout_duration: Duration,
@@ -133,10 +155,14 @@ impl CanonicalAssertions {
     }
 
     /// Assert that a value is within a range
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is outside the specified range.
     pub fn assert_range<T: PartialOrd + std::fmt::Debug>(
-        value: T,
-        min: T,
-        max: T,
+        value: &T,
+        min: &T,
+        max: &T,
     ) -> TestResult<()> {
         if value >= min && value <= max {
             Ok(())
@@ -149,6 +175,10 @@ impl CanonicalAssertions {
     }
 
     /// Assert that two floating point values are approximately equal
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the actual and expected values differ by more than the tolerance.
     pub fn assert_approx_equal(actual: f64, expected: f64, tolerance: f64) -> TestResult<()> {
         let diff = (actual - expected).abs();
         if diff <= tolerance {
@@ -164,6 +194,10 @@ impl CanonicalAssertions {
     }
 
     /// Assert that two durations are approximately equal
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the durations differ by more than the tolerance.
     pub fn assert_duration_approx_equal(
         actual: Duration,
         expected: Duration,
@@ -230,6 +264,10 @@ impl PerformanceTestUtils {
     }
 
     /// Assert that an operation meets performance requirements
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the average duration exceeds the maximum allowed duration.
     pub async fn assert_performance<F, Fut, T>(
         operation: F,
         max_duration: Duration,
@@ -277,8 +315,11 @@ impl PerformanceResults {
             return Duration::ZERO;
         }
 
+        #[allow(clippy::cast_possible_truncation)]
         let total_nanos: u64 = self.durations.iter().map(|d| d.as_nanos() as u64).sum();
-        Duration::from_nanos(total_nanos / self.durations.len() as u64)
+        #[allow(clippy::cast_possible_truncation)]
+        let len = self.durations.len() as u64;
+        Duration::from_nanos(total_nanos / len)
     }
 
     /// Get the minimum duration
@@ -306,7 +347,9 @@ impl PerformanceResults {
         let mid = sorted.len() / 2;
         if sorted.len() % 2 == 0 {
             let sum_nanos = sorted[mid - 1].as_nanos() + sorted[mid].as_nanos();
-            Duration::from_nanos((sum_nanos / 2) as u64)
+            #[allow(clippy::cast_possible_truncation)]
+            let result_nanos = (sum_nanos / 2) as u64;
+            Duration::from_nanos(result_nanos)
         } else {
             sorted[mid]
         }
@@ -320,18 +363,22 @@ impl PerformanceResults {
         }
 
         let avg = self.average();
+        #[allow(clippy::cast_precision_loss)]
         let avg_nanos = avg.as_nanos() as f64;
 
+        #[allow(clippy::cast_precision_loss)]
         let variance: f64 = self
             .durations
             .iter()
             .map(|d| {
+                #[allow(clippy::cast_precision_loss)]
                 let diff = d.as_nanos() as f64 - avg_nanos;
                 diff * diff
             })
             .sum::<f64>()
             / (self.durations.len() - 1) as f64;
 
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         Duration::from_nanos(variance.sqrt() as u64)
     }
 }
@@ -375,11 +422,13 @@ impl MockService {
 
     /// Get the number of times this service has been called
     #[must_use]
+    #[allow(clippy::unused_self)]
     pub fn call_count(&self) -> usize {
         0 // Simplified mock - no call count tracking
     }
 
     /// Reset the call counter
+    #[allow(clippy::unused_self)]
     pub fn reset_call_count(&self) {
         // No-op for this simplified mock
     }
@@ -411,6 +460,7 @@ impl TestEnvironment {
     ///
     /// # Errors
     /// Returns an error if setup fails.
+    #[allow(clippy::unnecessary_wraps)]
     pub fn setup() -> TestResult<()> {
         // Initialize logging for tests if not already done
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();

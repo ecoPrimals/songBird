@@ -55,6 +55,12 @@ pub mod capability_security;
 pub mod capability_compute;
 /// AI capability provider (replaces squirrel hardcoding)
 pub mod capability_ai;
+/// AI capability client (replaces SquirrelPrimal - zero hardcoding)
+pub mod ai_capability;
+/// Compute capability client (replaces ToadstoolPrimal - zero hardcoding)
+pub mod compute_capability;
+/// Security capability client (replaces BeardogPrimal - zero hardcoding)
+pub mod security_capability_client;
 
 // Other capability modules
 pub mod capability_orchestrator;
@@ -90,10 +96,8 @@ pub mod providers;
 pub mod registry;
 pub mod security_provider;
 pub mod simple_primal_registry;
-pub mod squirrel;
 pub mod startup;
 pub mod storage;
-pub mod toadstool;
 pub mod traits;
 pub mod types;
 pub mod universal_adapter;

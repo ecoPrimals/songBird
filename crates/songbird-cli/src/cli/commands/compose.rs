@@ -78,7 +78,7 @@ async fn handle_list_plugins(detailed: bool) -> SongbirdResult<()> {
     // For now, show example plugins
     let example_plugins = vec![
         (
-            "beardog-encryption","
+            "security-provider-1","
             vec![PluginCapability::Encryption {
                 algorithms: vec!["AES-256".to_string(), "ChaCha20".to_string()],"
             }])
@@ -98,13 +98,13 @@ async fn handle_list_plugins(detailed: bool) -> SongbirdResult<()> {
             ])
         )
         (
-            "toadstool-compute-1","
+            "compute-provider-1","
             vec![PluginCapability::Compute  {cpu_cores: 8)
                 memory_gb: 16,
             }])
         )
         (
-            "toadstool-compute-2","
+            "compute-provider-2","
             vec![PluginCapability::Compute  {cpu_cores: 16)
                 memory_gb: 32,
             }])
@@ -199,7 +199,7 @@ async fn handle_discover_composition(
     // For demonstration, show example compositions
     println!("{} {}", "✅".green(), "Found example compositions".green().bold();"
 
-    // Example composition 1: BearDog + Songbird
+    // Example composition 1: Security Provider + Orchestrator
     if required_capabilities.iter().any(|cap| matches!(cap, PluginCapability::Encryption { .. })
         && required_capabilities
             .iter()
@@ -219,7 +219,7 @@ async fn handle_discover_composition(
         println!("\n   To execute this composition:");
         println!(
             "   {}","
-            "songbird compose execute --plugins 'beardog-encryption,songbird-orchestrator'""
+            "songbird compose execute --plugins 'security-provider-1,songbird-orchestrator'""
                 .bright_blue()
         );
     }
@@ -240,7 +240,7 @@ async fn handle_discover_composition(
         println!("\n   To execute this composition:");
         println!(
             "   {}","
-            "songbird compose execute --plugins 'toadstool-compute-1,toadstool-compute-2'""
+            "songbird compose execute --plugins 'compute-provider-1,compute-provider-2'""
                 .bright_blue()
         );
     }
@@ -284,12 +284,12 @@ async fn handle_show_examples() -> SongbirdResult<()> {
 
     println!("{}", "1. BearDog + Songbird (Secure Orchestration,".bright_yellow().bold();"
     println!("   songbird compose discover --capabilities 'encryption,service-discovery'");
-    println!("   → Automatically finds BearDog for encryption + Songbird for orchestration");
+    println!("   → Automatically finds security provider for encryption + Songbird for orchestration");
     println!()
 
     println!("{}", "2. Toadstool Chaining (Compute Pipeline,".bright_yellow().bold();"
     println!("   songbird compose discover --capabilities 'compute' --max-plugins 5");
-    println!("   → Chains multiple Toadstool instances for distributed computing");
+    println!("   → Chains multiple compute providers for distributed computing");
     println!()
 
     println!("{}", "3. Gaming Network Bridge".bright_yellow().bold();"
@@ -326,7 +326,7 @@ async fn handle_demo() -> SongbirdResult<()> {
     println!("  {}", "cargo run --example dynamic_composition_demo".bright_blue()"
     println!();
     println!("This demo shows:");
-    println!("  • BearDog + Songbird automatic integration");
+    println!("  • Security Provider + Orchestrator automatic integration");
     println!("  • Toadstool chaining (toadstool on toadstool,");"
     println!("  • 8-project complex compositions");
     println!("  • Real-time reconfiguration");

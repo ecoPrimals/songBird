@@ -19,7 +19,7 @@ fn benchmark_comprehensive_operations(c: &mut Criterion) {
         b.iter(|| {
             let errors = vec!["Network error", "Config error", "Service error"];
             black_box(errors)
-        })
+        });
     });
 
     // Benchmark configuration operations
@@ -28,7 +28,7 @@ fn benchmark_comprehensive_operations(c: &mut Criterion) {
             let config: std::collections::HashMap<String, String> =
                 std::collections::HashMap::new();
             black_box(config)
-        })
+        });
     });
 
     group.finish();

@@ -7,16 +7,52 @@
 use super::common::*;
 
 #[tokio::test]
-#[ignore]
+async fn chaos_test_timestamp_consistency() -> Result<(), Box<dyn std::error::Error>> {
+    // Test that timestamps remain consistent under load
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use tokio::time::sleep;
+    use std::time::Duration;
+    
+    // 1. Generate timestamps in rapid succession
+    let mut timestamps = vec![];
+    for _ in 0..100 {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)?
+            .as_millis();
+        timestamps.push(now);
+        sleep(Duration::from_micros(100)).await; // Small delay
+    }
+    
+    // 2. Verify timestamps are monotonic (never go backwards)
+    for i in 1..timestamps.len() {
+        assert!(
+            timestamps[i] >= timestamps[i-1],
+            "Timestamps should be monotonic: {} >= {}",
+            timestamps[i],
+            timestamps[i-1]
+        );
+    }
+    
+    // 3. Verify timestamps are reasonable (within 1 second)
+    let first = timestamps[0];
+    let last = timestamps[timestamps.len() - 1];
+    let diff = last - first;
+    assert!(diff < 1000, "All timestamps should be within 1 second");
+    
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore] // Requires multi-node setup
 async fn chaos_test_clock_skew() {
     // Test behavior when system clocks diverge
+    // This test is marked #[ignore] because it requires multi-node infrastructure
+    // When implementing:
+    // 1. Start multi-node system with simulated clock skew
+    // 2. Verify logical clocks (Lamport or vector clocks) work correctly
+    // 3. Verify ordering of events remains consistent
+    // 4. Verify system can detect and handle clock drift
     let _config = ChaosConfig::default();
-    
-    // TODO: Implement when chaos infrastructure is ready
-    // 1. Start multi-node system
-    // 2. Introduce clock skew between nodes
-    // 3. Verify timestamps are handled correctly
-    // 4. Verify consensus still works
 }
 
 #[tokio::test]

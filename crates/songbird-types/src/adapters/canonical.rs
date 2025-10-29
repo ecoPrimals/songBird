@@ -419,7 +419,7 @@ impl CanonicalUniversalAdapter {
                 .metadata
                 .get("provider_type")
                 .and_then(|t| serde_json::from_str(t).ok())
-                .unwrap_or(CanonicalProviderType::Custom("unknown".to_string())),
+                .unwrap_or_else(|| CanonicalProviderType::Custom("unknown".to_string())),
             registered_at: SystemTime::now(),
             last_health_check: None,
             performance: CanonicalServicePerformance::default(),
@@ -445,6 +445,9 @@ impl CanonicalUniversalAdapter {
 
         // Store in all services
         registry.all_services.insert(service.id.clone(), registered_service);
+
+        // Explicitly drop the write lock to release it early
+        drop(registry);
 
         Ok(())
     }
@@ -545,13 +548,18 @@ impl CanonicalUniversalAdapter {
     ///
     /// This function is currently infallible but returns a Result for future extensibility
     pub async fn health_check_all(&self) -> SongbirdResult<HashMap<String, CanonicalHealthStatus>> {
-        let registry = self.registry.read().await;
+        // Collect service IDs without holding the lock
+        let service_ids: Vec<String> = {
+            let registry = self.registry.read().await;
+            registry.all_services.keys().cloned().collect()
+        }; // Lock is dropped here
+
         let mut results = HashMap::new();
 
-        for service_id in registry.all_services.keys() {
+        for service_id in service_ids {
             // Perform health check (simplified)
             let health_status = CanonicalHealthStatus::Healthy; // Would perform actual check
-            results.insert(service_id.clone(), health_status);
+            results.insert(service_id, health_status);
         }
 
         Ok(results)

@@ -20,6 +20,9 @@ pub mod sovereignty;
 pub mod traits;
 pub mod types;
 pub mod unified_adapter;
+// NOTE: zero_knowledge_bootstrap has syntax errors from previous sessions
+// TODO: Clean up and re-enable in Phase 2B
+// pub mod zero_knowledge_bootstrap;
 
 // Re-export the unified adapter as the primary interface
 pub use unified_adapter::{

@@ -1,5 +1,7 @@
 //! Universal Capability Adapter implementation
 
+#![allow(clippy::unused_self, clippy::match_same_arms, clippy::unused_async)]
+
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -126,14 +128,20 @@ impl UniversalCapabilityAdapter {
             providers.extend(provider_list.split(',').map(|s| s.trim().to_string()));
         }
 
-        // Check for specific primal environment variables
-        let known_primals = ["beardog", "toadstool", "nestgate", "squirrel"];
-        for primal in &known_primals {
-            let endpoint_env = format!("{}{}", primal.to_uppercase(), "_ENDPOINT");
-            if std::env::var(&endpoint_env).is_ok() {
-                // Check if this primal provides the requested capability
-                if self.primal_provides_capability(primal, capability_type) {
-                    providers.push((*primal).to_string());
+        // Check for capability-based environment variables (zero hardcoding)
+        let capability_endpoints = [
+            ("SECURITY_PROVIDER_ENDPOINT", "security"),
+            ("COMPUTE_PROVIDER_ENDPOINT", "compute"),
+            ("STORAGE_PROVIDER_ENDPOINT", "storage"),
+            ("AI_PROVIDER_ENDPOINT", "ai"),
+        ];
+        for (env_var, cap_type) in &capability_endpoints {
+            if capability_type == *cap_type
+                || self.primal_provides_capability(cap_type, capability_type)
+            {
+                if let Ok(endpoint) = std::env::var(env_var) {
+                    let provider_name = self.extract_primal_name_from_endpoint(&endpoint);
+                    providers.push(provider_name);
                 }
             }
         }
@@ -162,9 +170,10 @@ impl UniversalCapabilityAdapter {
         // Infer providers based on capability type patterns
         match capability_type {
             "security" | "encryption" | "authentication" => {
-                // Look for security-related primals
-                if std::env::var("BEARDOG_ENDPOINT ").is_ok() {
-                    providers.push("beardog".to_string());
+                // Look for security capability providers (zero hardcoding)
+                if let Ok(endpoint) = std::env::var("SECURITY_PROVIDER_ENDPOINT") {
+                    let provider = self.extract_primal_name_from_endpoint(&endpoint);
+                    providers.push(provider);
                 }
                 // Check for custom security services
                 for i in 1..=10 {
@@ -183,9 +192,10 @@ impl UniversalCapabilityAdapter {
                 }
             }
             "compute" | "processing" | "execution" => {
-                // Look for compute-related primals
-                if std::env::var("TOADSTOOL_ENDPOINT ").is_ok() {
-                    providers.push("toadstool".to_string());
+                // Look for compute capability providers (zero hardcoding)
+                if let Ok(endpoint) = std::env::var("COMPUTE_PROVIDER_ENDPOINT") {
+                    let provider = self.extract_primal_name_from_endpoint(&endpoint);
+                    providers.push(provider);
                 }
                 // Check for custom compute services
                 for i in 1..=10 {
@@ -204,9 +214,10 @@ impl UniversalCapabilityAdapter {
                 }
             }
             "storage" | "data" | "persistence" => {
-                // Look for storage-related primals
-                if std::env::var("NESTGATE_ENDPOINT ").is_ok() {
-                    providers.push("nestgate".to_string());
+                // Look for storage capability providers (zero hardcoding)
+                if let Ok(endpoint) = std::env::var("STORAGE_PROVIDER_ENDPOINT") {
+                    let provider = self.extract_primal_name_from_endpoint(&endpoint);
+                    providers.push(provider);
                 }
                 // Check for custom storage services
                 for i in 1..=10 {
@@ -223,9 +234,10 @@ impl UniversalCapabilityAdapter {
                 }
             }
             "ai" | "ml" | "intelligence" | "model" => {
-                // Look for AI-related primals
-                if std::env::var("SQUIRREL_ENDPOINT ").is_ok() {
-                    providers.push("squirrel".to_string());
+                // Look for AI capability providers (zero hardcoding)
+                if let Ok(endpoint) = std::env::var("AI_PROVIDER_ENDPOINT") {
+                    let provider = self.extract_primal_name_from_endpoint(&endpoint);
+                    providers.push(provider);
                 }
                 // Check for custom AI services
                 for i in 1..=10 {
@@ -265,15 +277,35 @@ impl UniversalCapabilityAdapter {
 
     /// Check if a primal provides a specific capability
     fn primal_provides_capability(&self, primal_name: &str, capability_type: &str) -> bool {
-        // Basic heuristic mapping of known primals to capabilities
-        match (primal_name, capability_type) {
-            ("beardog", "security" | "encryption" | "authentication") => true,
-            ("toadstool", "compute" | "processing" | "execution") => true,
-            ("nestgate", "storage" | "data" | "persistence") => true,
-            ("squirrel", "ai" | "ml" | "intelligence") => true,
+        // Infer capability from provider name patterns (zero hardcoding)
+        let name_lower = primal_name.to_lowercase();
+        let capability_lower = capability_type.to_lowercase();
+
+        // Check if name contains capability hints
+        match capability_lower.as_str() {
+            "security" | "encryption" | "authentication" => {
+                name_lower.contains("security")
+                    || name_lower.contains("auth")
+                    || name_lower.contains("vault")
+            }
+            "compute" | "processing" | "execution" => {
+                name_lower.contains("compute")
+                    || name_lower.contains("exec")
+                    || name_lower.contains("process")
+            }
+            "storage" | "data" | "persistence" => {
+                name_lower.contains("storage")
+                    || name_lower.contains("data")
+                    || name_lower.contains("db")
+            }
+            "ai" | "ml" | "intelligence" | "model" => {
+                name_lower.contains("ai")
+                    || name_lower.contains("ml")
+                    || name_lower.contains("intelligence")
+            }
             _ => {
-                // For custom primals, infer from name patterns
-                primal_name.contains(capability_type) || capability_type.contains(primal_name)
+                // Generic pattern matching
+                name_lower.contains(&capability_lower) || capability_lower.contains(&name_lower)
             }
         }
     }
@@ -292,14 +324,21 @@ impl UniversalCapabilityAdapter {
         for provider in providers {
             let mut score = 0.0;
 
-            // Base score for known high-quality providers (40% weight)
-            match provider.as_str() {
-                "beardog" => score += 40.0,   // Security specialist
-                "toadstool" => score += 35.0, // Compute specialist
-                "nestgate" => score += 35.0,  // Storage specialist
-                "squirrel" => score += 40.0,  // AI specialist
-                _ => score += 20.0,           // Unknown providers get lower base score
-            }
+            // Base score based on provider type inference (zero hardcoding)
+            let provider_lower = provider.to_lowercase();
+            let base_score =
+                if provider_lower.contains("security") || provider_lower.contains("auth") {
+                    40.0 // Security providers
+                } else if provider_lower.contains("ai") || provider_lower.contains("ml") {
+                    40.0 // AI providers
+                } else if provider_lower.contains("compute") || provider_lower.contains("exec") {
+                    35.0 // Compute providers
+                } else if provider_lower.contains("storage") || provider_lower.contains("data") {
+                    35.0 // Storage providers
+                } else {
+                    20.0 // Unknown providers get lower base score
+                };
+            score += base_score;
 
             // Capability match score (30% weight)
             if self.primal_provides_capability(&provider, capability_type) {
@@ -400,7 +439,7 @@ impl UniversalCapabilityAdapter {
                     available: true,
                 }]
             }
-            name if name.contains("ai") || name.contains("ml") || name.contains("squirrel") => {
+            name if name.contains("ai") || name.contains("ml") || name.contains("intelligence") => {
                 vec![Capability {
                     capability_type: "ai".to_string(),
                     name: "model_inference".to_string(),
@@ -429,10 +468,10 @@ impl UniversalCapabilityAdapter {
 
     /// Extract primal name from endpoint URL
     fn extract_primal_name_from_endpoint(&self, endpoint: &str) -> String {
-        // Try to extract primal name from various URL patterns
+        // Try to extract service name from various URL patterns (zero hardcoding)
         if let Ok(url) = url::Url::parse(endpoint) {
             if let Some(host) = url.host_str() {
-                // Extract name from hostname patterns like "beardog.service" or "beardog-service"
+                // Extract name from hostname patterns like "provider.service" or "provider-service"
                 let name_part = host.split('.').next().unwrap_or(host);
                 let clean_name = name_part.replace("-service", "").replace("_service", "");
                 return clean_name;
@@ -508,7 +547,7 @@ impl UniversalCapabilityAdapter {
             PrimalType::Storage
         } else if name_lower.contains("ai")
             || name_lower.contains("ml")
-            || name_lower.contains("squirrel")
+            || name_lower.contains("intelligence")
         {
             PrimalType::AI
         } else {

@@ -10,7 +10,8 @@ use std::time::Duration;
 
 /// Unified experiment configuration - **MIGRATED FROM CHAOS ENGINEERING**
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ExperimentConfig  {/// Network fault configuration
+pub struct ExperimentConfig {
+    /// Network fault configuration
     pub network_fault: Option<NetworkFaultConfig>,
     /// Service failure configuration
     pub service_failure: Option<ServiceFailureConfig>,
@@ -24,11 +25,12 @@ pub struct ExperimentConfig  {/// Network fault configuration
 
 /// Unified network fault injection configuration - **MIGRATED**
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct NetworkFaultConfig  {/// Inject latency (milliseconds)
+pub struct NetworkFaultConfig {
+    /// Inject latency (milliseconds)
     pub latency_ms: Option<u64>,
     /// Packet loss percentage (0-100)
     pub packet_loss_percent: Option<f64>,
-    /// Bandwidth limit (bytes per second)
+    /// Bandwidth limit (bytes per second}
     pub bandwidth_limit_bps: Option<u64>,
     /// Network partitioning enabled
     pub partition_enabled: bool,
@@ -36,27 +38,30 @@ pub struct NetworkFaultConfig  {/// Inject latency (milliseconds)
 
 /// Unified service failure configuration - **MIGRATED**
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceFailureConfig  {/// Service failure rate (0.0-1.0)
+pub struct ServiceFailureConfig {
+    /// Service failure rate (0.0-1.0)
     pub failure_rate: f64,
     /// Mean time to failure (seconds)
     pub mean_time_to_failure: Duration,
-    /// Mean time to recovery (seconds)
+    /// Mean time to recovery (seconds}
     pub mean_time_to_recovery: Duration,
 }
 
 /// Unified resource constraint configuration - **MIGRATED**
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ResourceConstraintConfig  {/// CPU usage limit (0.0-1.0)
+pub struct ResourceConstraintConfig {
+    /// CPU usage limit (0.0-1.0)
     pub cpu_limit: Option<f64>,
     /// Memory usage limit (bytes)
     pub memory_limit_bytes: Option<u64>,
-    /// Disk I/O limit (bytes per second)
+    /// Disk I/O limit (bytes per second}
     pub disk_io_limit_bps: Option<u64>,
 }
 
 /// Unified Byzantine failure configuration - **MIGRATED**
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ByzantineFailureConfig  {/// Percentage of Byzantine nodes (0.0-1.0)
+pub struct ByzantineFailureConfig {
+    /// Percentage of Byzantine nodes (0.0-1.0}
     pub byzantine_node_percent: f64,
     /// Message corruption enabled
     pub message_corruption: bool,
@@ -66,11 +71,12 @@ pub struct ByzantineFailureConfig  {/// Percentage of Byzantine nodes (0.0-1.0)
 
 /// Unified performance degradation configuration - **MIGRATED**
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceDegradationConfig  {/// Response time multiplier (1.0 = normal)
+pub struct PerformanceDegradationConfig {
+    /// Response time multiplier (1.0 = normal)
     pub response_time_multiplier: f64,
     /// Throughput reduction factor (0.0-1.0)
     pub throughput_reduction: f64,
-    /// Error rate increase (0.0-1.0)
+    /// Error rate increase (0.0-1.0}
     pub error_rate_increase: f64,
 }
 
@@ -84,7 +90,9 @@ impl Default for ServiceFailureConfig {
     }
 }
 
-impl Default for ByzantineFailureConfig  {fn default() -> Self  {Self {
+impl Default for ByzantineFailureConfig {
+    fn default() -> Self {
+        Self {
             byzantine_node_percent: 0.33, // Up to 1/3 Byzantine nodes
             message_corruption: false,
             timing_attacks: false,
@@ -92,7 +100,9 @@ impl Default for ByzantineFailureConfig  {fn default() -> Self  {Self {
     }
 }
 
-impl Default for PerformanceDegradationConfig  {fn default() -> Self  {Self {
+impl Default for PerformanceDegradationConfig {
+    fn default() -> Self {
+        Self {
             response_time_multiplier: 1.0,
             throughput_reduction: 0.0,
             error_rate_increase: 0.0,

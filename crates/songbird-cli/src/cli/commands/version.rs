@@ -11,7 +11,7 @@
 
 use crate::cli::ui;
 use crate::errors::CliResult;
-use colored::*;
+use colored::Colorize;
 /// Execute the version command
 pub async fn execute_version_command(detailed: bool) -> CliResult<()> {
     if detailed {

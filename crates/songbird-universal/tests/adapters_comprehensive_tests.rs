@@ -1,12 +1,22 @@
 //! Comprehensive Integration Tests for All Adapters
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
-//! This test suite validates all four primal adapters (ToadStool, BearDog, NestGate, Squirrel)
+//! This test suite validates all four primal adapters (`ToadStool`, `BearDog`, `NestGate`, Squirrel)
 //! using mock HTTP servers to simulate real primal interactions.
 
-use mockito;
-use songbird_universal::adapters::{
-    BearDogSecurityAdapter, NestGateStorageAdapter, SquirrelAIAdapter, ToadStoolMetricsAdapter,
-};
+use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
 use std::time::Duration;
 
 // ============================================================================
@@ -35,7 +45,7 @@ async fn test_toadstool_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = ToadStoolMetricsAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = ComputeAdapter::new(server.url()).expect("Failed to create adapter");
     let metrics = adapter.collect_metrics().await.expect("Failed to collect metrics");
 
     assert_eq!(metrics.cpu_usage_percent, 45.5);
@@ -48,9 +58,8 @@ async fn test_toadstool_collect_metrics_success() {
 
 #[tokio::test]
 async fn test_toadstool_collect_metrics_network_error() {
-    let adapter =
-        ToadStoolMetricsAdapter::new("http://nonexistent-host-12345.invalid:8080".to_string())
-            .expect("Failed to create adapter");
+    let adapter = ComputeAdapter::new("http://nonexistent-host-12345.invalid:8080".to_string())
+        .expect("Failed to create adapter");
 
     let result = adapter.collect_metrics().await;
 
@@ -81,11 +90,11 @@ async fn test_toadstool_check_health() {
         .create_async()
         .await;
 
-    let adapter = ToadStoolMetricsAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = ComputeAdapter::new(server.url()).expect("Failed to create adapter");
     let health = adapter.check_health().await.expect("Failed to check health");
 
     // Should be healthy (CPU < 80%, Memory usage = 62.5%)
-    assert_eq!(health, songbird_universal::adapters::toadstool::HealthStatus::Healthy);
+    assert_eq!(health, songbird_universal::adapters::compute::HealthStatus::Healthy);
 }
 
 #[tokio::test]
@@ -110,7 +119,7 @@ async fn test_toadstool_adapter_with_custom_timeout() {
         .create_async()
         .await;
 
-    let adapter = ToadStoolMetricsAdapter::new(server.url())
+    let adapter = ComputeAdapter::new(server.url())
         .expect("Failed to create adapter")
         .with_timeout(Duration::from_secs(2));
 
@@ -142,7 +151,7 @@ async fn test_beardog_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = BearDogSecurityAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = SecurityAdapter::new(server.url()).expect("Failed to create adapter");
     let metrics = adapter.collect_metrics().await.expect("Failed to collect metrics");
 
     assert_eq!(metrics.active_sessions, 50);
@@ -163,10 +172,10 @@ async fn test_beardog_verify_auth_success() {
         .create_async()
         .await;
 
-    let adapter = BearDogSecurityAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = SecurityAdapter::new(server.url()).expect("Failed to create adapter");
     let result = adapter.verify_auth("valid_token").await.expect("Failed to verify auth");
 
-    assert_eq!(result, songbird_universal::adapters::beardog::AuthResult::Authorized);
+    assert_eq!(result, songbird_universal::adapters::security::AuthResult::Authorized);
 }
 
 #[tokio::test]
@@ -175,10 +184,10 @@ async fn test_beardog_verify_auth_unauthorized() {
 
     let _mock = server.mock("POST", "/auth/verify").with_status(401).create_async().await;
 
-    let adapter = BearDogSecurityAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = SecurityAdapter::new(server.url()).expect("Failed to create adapter");
     let result = adapter.verify_auth("invalid_token").await.expect("Failed to verify auth");
 
-    assert_eq!(result, songbird_universal::adapters::beardog::AuthResult::Unauthorized);
+    assert_eq!(result, songbird_universal::adapters::security::AuthResult::Unauthorized);
 }
 
 #[tokio::test]
@@ -201,10 +210,10 @@ async fn test_beardog_check_health() {
         .create_async()
         .await;
 
-    let adapter = BearDogSecurityAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = SecurityAdapter::new(server.url()).expect("Failed to create adapter");
     let health = adapter.check_health().await.expect("Failed to check health");
 
-    assert_eq!(health, songbird_universal::adapters::beardog::SecurityHealth::Healthy);
+    assert_eq!(health, songbird_universal::adapters::security::SecurityHealth::Healthy);
 }
 
 // ============================================================================
@@ -233,7 +242,7 @@ async fn test_nestgate_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = NestGateStorageAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = StorageAdapter::new(server.url()).expect("Failed to create adapter");
     let metrics = adapter.collect_metrics().await.expect("Failed to collect metrics");
 
     assert_eq!(metrics.total_capacity_bytes, 1_000_000_000_000);
@@ -265,11 +274,11 @@ async fn test_nestgate_check_health() {
         .create_async()
         .await;
 
-    let adapter = NestGateStorageAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = StorageAdapter::new(server.url()).expect("Failed to create adapter");
     let health = adapter.check_health().await.expect("Failed to check health");
 
     // 50% usage should be healthy
-    assert_eq!(health, songbird_universal::adapters::nestgate::StorageHealth::Healthy);
+    assert_eq!(health, songbird_universal::adapters::storage::StorageHealth::Healthy);
 }
 
 #[tokio::test]
@@ -294,11 +303,11 @@ async fn test_nestgate_high_latency_detection() {
         .create_async()
         .await;
 
-    let adapter = NestGateStorageAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = StorageAdapter::new(server.url()).expect("Failed to create adapter");
     let health = adapter.check_health().await.expect("Failed to check health");
 
     // 90% usage + high latency should be warning or critical
-    assert_ne!(health, songbird_universal::adapters::nestgate::StorageHealth::Healthy);
+    assert_ne!(health, songbird_universal::adapters::storage::StorageHealth::Healthy);
 }
 
 // ============================================================================
@@ -326,7 +335,7 @@ async fn test_squirrel_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = SquirrelAIAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = AIAdapter::new(server.url()).expect("Failed to create adapter");
     let metrics = adapter.collect_metrics().await.expect("Failed to collect metrics");
 
     assert_eq!(metrics.active_models, 3);
@@ -357,11 +366,11 @@ async fn test_squirrel_check_health() {
         .create_async()
         .await;
 
-    let adapter = SquirrelAIAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = AIAdapter::new(server.url()).expect("Failed to create adapter");
     let health = adapter.check_health().await.expect("Failed to check health");
 
     // 60% GPU, 500ms latency should be healthy
-    assert_eq!(health, songbird_universal::adapters::squirrel::AIHealth::Healthy);
+    assert_eq!(health, songbird_universal::adapters::ai::AIHealth::Healthy);
 }
 
 #[tokio::test]
@@ -385,11 +394,11 @@ async fn test_squirrel_high_gpu_load() {
         .create_async()
         .await;
 
-    let adapter = SquirrelAIAdapter::new(server.url()).expect("Failed to create adapter");
+    let adapter = AIAdapter::new(server.url()).expect("Failed to create adapter");
     let health = adapter.check_health().await.expect("Failed to check health");
 
     // 99% GPU + high latency should be overloaded
-    assert_eq!(health, songbird_universal::adapters::squirrel::AIHealth::Overloaded);
+    assert_eq!(health, songbird_universal::adapters::ai::AIHealth::Overloaded);
 }
 
 // ============================================================================
@@ -407,13 +416,10 @@ async fn test_all_adapters_handle_500_error() {
         .create_async()
         .await;
 
-    let toadstool =
-        ToadStoolMetricsAdapter::new(server.url()).expect("Failed to create ToadStool adapter");
-    let beardog =
-        BearDogSecurityAdapter::new(server.url()).expect("Failed to create BearDog adapter");
-    let nestgate =
-        NestGateStorageAdapter::new(server.url()).expect("Failed to create NestGate adapter");
-    let squirrel = SquirrelAIAdapter::new(server.url()).expect("Failed to create Squirrel adapter");
+    let toadstool = ComputeAdapter::new(server.url()).expect("Failed to create ToadStool adapter");
+    let beardog = SecurityAdapter::new(server.url()).expect("Failed to create BearDog adapter");
+    let nestgate = StorageAdapter::new(server.url()).expect("Failed to create NestGate adapter");
+    let squirrel = AIAdapter::new(server.url()).expect("Failed to create Squirrel adapter");
 
     // All should return errors
     assert!(toadstool.collect_metrics().await.is_err());
@@ -434,13 +440,10 @@ async fn test_all_adapters_handle_invalid_json() {
         .create_async()
         .await;
 
-    let toadstool =
-        ToadStoolMetricsAdapter::new(server.url()).expect("Failed to create ToadStool adapter");
-    let beardog =
-        BearDogSecurityAdapter::new(server.url()).expect("Failed to create BearDog adapter");
-    let nestgate =
-        NestGateStorageAdapter::new(server.url()).expect("Failed to create NestGate adapter");
-    let squirrel = SquirrelAIAdapter::new(server.url()).expect("Failed to create Squirrel adapter");
+    let toadstool = ComputeAdapter::new(server.url()).expect("Failed to create ToadStool adapter");
+    let beardog = SecurityAdapter::new(server.url()).expect("Failed to create BearDog adapter");
+    let nestgate = StorageAdapter::new(server.url()).expect("Failed to create NestGate adapter");
+    let squirrel = AIAdapter::new(server.url()).expect("Failed to create Squirrel adapter");
 
     // All should return parse errors
     assert!(toadstool.collect_metrics().await.is_err());
@@ -491,10 +494,8 @@ async fn test_concurrent_adapter_operations() {
         .create_async()
         .await;
 
-    let toadstool =
-        ToadStoolMetricsAdapter::new(server.url()).expect("Failed to create ToadStool adapter");
-    let beardog =
-        BearDogSecurityAdapter::new(server.url()).expect("Failed to create BearDog adapter");
+    let toadstool = ComputeAdapter::new(server.url()).expect("Failed to create ToadStool adapter");
+    let beardog = SecurityAdapter::new(server.url()).expect("Failed to create BearDog adapter");
 
     // Run both adapters concurrently
     let (compute_result, security_result) =

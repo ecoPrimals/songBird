@@ -1,4 +1,17 @@
 //! Configuration Tests
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::module_name_repetitions)]
+
 //!
 //! Testing configuration loading, validation, and defaults.
 
@@ -88,13 +101,13 @@ fn test_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
 
     // Serialize
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(json.contains("test"));
     assert!(json.contains("42"));
 
     // Deserialize
     let deserialized: TestConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
     assert_eq!(deserialized, config);
     Ok(())
 }

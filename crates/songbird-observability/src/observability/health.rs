@@ -1,3 +1,5 @@
+#![allow(clippy::unused_async)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
@@ -117,6 +119,7 @@ impl Default for HealthMonitor {
 
 /// Health statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)]
 pub struct HealthStats {
     pub total_services: usize,
     pub healthy_services: usize,
@@ -140,7 +143,7 @@ mod tests {
     async fn test_health_monitor_creation() {
         let monitor = HealthMonitor::new();
         let stats = monitor.get_health_stats().await;
-        assert_eq!(stats.total_services, 0)
+        assert_eq!(stats.total_services, 0);
     }
 
     #[tokio::test]

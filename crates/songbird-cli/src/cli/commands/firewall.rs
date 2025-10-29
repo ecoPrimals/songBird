@@ -55,14 +55,15 @@ pub struct FirewallWizard  {#[allow(dead_code)] // Configuration for future fire
     config: FirewallConfig,
 }
 
-impl FirewallWizard  {pub fn new(config: FirewallConfig, -> Self {
+impl FirewallWizard {
+    pub fn new(config: FirewallConfig) -> Self {
         Self {
             config,
         }
     }
 
     pub fn generate_songbird_rules(&self) -> Vec<String> {
-        vec!["Allow Songbird traffic".to_string()]"
+        vec!["Allow Songbird traffic".to_string()]
     }
 }
 

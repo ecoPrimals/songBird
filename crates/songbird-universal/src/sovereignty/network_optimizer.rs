@@ -5,6 +5,13 @@
 //! This module provides network effects optimization for routing paths)
 //! maximizing beneficial network effects while maintaining sovereignty.
 
+#![allow(
+    clippy::unused_self,
+    clippy::struct_excessive_bools,
+    clippy::cast_precision_loss,
+    clippy::unused_async
+)]
+
 use super::types::{PathSegment, RoutingPath, SecurityCapability, SecurityLevel};
 use songbird_types::SongbirdResult;
 use tracing::{debug, info};

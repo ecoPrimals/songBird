@@ -64,4 +64,5 @@ serde_json = "1.0"
 
 [dev-dependencies]
 songbird-test-utils = { path = "../songbird-test-utils" }
+serial_test = "3.0"
 

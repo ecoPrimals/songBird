@@ -2,6 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "validation_tests.rs"]
+mod validation_tests;
+
 /// Validation result type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationResult {

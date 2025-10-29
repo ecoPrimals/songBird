@@ -3,6 +3,8 @@
 //! This module provides the main sovereignty-aware adapter that orchestrates
 //! routing, federation, and network optimization while maintaining sovereignty.
 
+#![allow(clippy::unused_self, clippy::struct_excessive_bools, clippy::unused_async)]
+
 use super::network_optimizer::NetworkEffectsOptimizer;
 use super::router::SovereigntyRouter;
 use super::types::{RoutingPath, SovereigntyAdapterConfig, SovereigntyAwareRoutingDecision};
@@ -303,6 +305,9 @@ pub struct AdapterStats {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::float_cmp)]
+    #![allow(clippy::all)]
+
     use super::*;
 
     #[tokio::test]
@@ -376,12 +381,12 @@ mod tests {
     async fn test_get_stats() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = SovereigntyAwareAdapter::new()
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
         let stats = adapter.get_stats().await;
 
         assert!(stats.is_ok());
         let stats = stats.map_err(|e| {
-            SongbirdError::configuration(format!("Test: stats should be available: {}", e))
+            SongbirdError::configuration(format!("Test: stats should be available: {e}"))
         })?;
 
         assert!(stats.sovereignty_routing_enabled);
@@ -403,11 +408,11 @@ mod tests {
 
         let adapter = SovereigntyAwareAdapter::with_config(config)
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
         let stats = adapter
             .get_stats()
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Test: stats retrieval: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: stats retrieval: {e}")))?;
 
         assert!(!stats.sovereignty_routing_enabled);
         assert!(!stats.federation_routing_enabled);
@@ -418,7 +423,7 @@ mod tests {
     #[test]
     fn test_determine_compliance_level_fully_compliant() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let level = adapter.determine_compliance_level(0.95);
         assert!(matches!(level, super::super::types::SovereigntyComplianceLevel::FullyCompliant));
@@ -429,7 +434,7 @@ mod tests {
     fn test_determine_compliance_level_mostly_compliant() -> Result<(), Box<dyn std::error::Error>>
     {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let level = adapter.determine_compliance_level(0.75);
         assert!(matches!(level, super::super::types::SovereigntyComplianceLevel::MostlyCompliant));
@@ -440,7 +445,7 @@ mod tests {
     fn test_determine_compliance_level_partially_compliant(
     ) -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let level = adapter.determine_compliance_level(0.55);
         assert!(matches!(
@@ -453,7 +458,7 @@ mod tests {
     #[test]
     fn test_determine_compliance_level_non_compliant() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let level = adapter.determine_compliance_level(0.3);
         assert!(matches!(level, super::super::types::SovereigntyComplianceLevel::NonCompliant));
@@ -463,7 +468,7 @@ mod tests {
     #[test]
     fn test_determine_compliance_level_boundary_90() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let level = adapter.determine_compliance_level(0.9);
         assert!(matches!(level, super::super::types::SovereigntyComplianceLevel::FullyCompliant));
@@ -473,7 +478,7 @@ mod tests {
     #[test]
     fn test_determine_compliance_level_boundary_70() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let level = adapter.determine_compliance_level(0.7);
         assert!(matches!(level, super::super::types::SovereigntyComplianceLevel::MostlyCompliant));
@@ -483,7 +488,7 @@ mod tests {
     #[test]
     fn test_determine_compliance_level_boundary_50() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let level = adapter.determine_compliance_level(0.5);
         assert!(matches!(
@@ -497,14 +502,14 @@ mod tests {
     async fn test_generate_basic_paths_empty_services() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = SovereigntyAwareAdapter::new()
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
         let services = vec![];
 
         let result = adapter.generate_basic_paths(&services).await;
         assert!(result.is_ok());
 
         let paths = result
-            .map_err(|e| SongbirdError::configuration(format!("Test: paths generation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: paths generation: {e}")))?;
         assert!(paths.is_empty());
         Ok(())
     }
@@ -512,7 +517,7 @@ mod tests {
     #[test]
     fn test_select_best_path_empty_list() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let paths = vec![];
         let result = adapter.select_best_path(&paths);
@@ -524,7 +529,7 @@ mod tests {
     #[test]
     fn test_select_best_path_single_path() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let path = RoutingPath {
             segments: vec![],
@@ -539,7 +544,7 @@ mod tests {
 
         assert!(result.is_ok());
         let selected = result
-            .map_err(|e| SongbirdError::configuration(format!("Test: path selection: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: path selection: {e}")))?;
         assert_eq!(selected.combined_score, 0.75);
         Ok(())
     }
@@ -547,7 +552,7 @@ mod tests {
     #[test]
     fn test_select_best_path_multiple_paths() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 
         let path1 = RoutingPath {
             segments: vec![],
@@ -578,7 +583,7 @@ mod tests {
 
         assert!(result.is_ok());
         let selected = result
-            .map_err(|e| SongbirdError::configuration(format!("Test: path selection: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: path selection: {e}")))?;
         assert_eq!(selected.combined_score, 0.88); // Should select path2
         Ok(())
     }
@@ -618,10 +623,10 @@ mod tests {
 
         let adapter1 = SovereigntyAwareAdapter::with_config(config1)
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter1 creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter1 creation: {e}")))?;
         let adapter2 = SovereigntyAwareAdapter::with_config(config2)
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Test: adapter2 creation: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter2 creation: {e}")))?;
 
         // Verify they're independent
         assert!(adapter1.get_config().enable_sovereignty_routing);
