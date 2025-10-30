@@ -24,12 +24,15 @@ pub struct FederationAppState {
 }
 
 /// Create federation routes
-pub fn federation_routes() -> Router<Arc<FederationAppState>> {
+pub fn federation_routes(federation_state: Arc<FederationState>) -> Router {
+    let app_state = Arc::new(FederationAppState { federation_state });
+    
     Router::new()
         .route("/join", post(federation_join))
         .route("/status", get(federation_status))
         .route("/nodes", get(federation_nodes))
         .route("/heartbeat", post(federation_heartbeat))
+        .with_state(app_state)
 }
 
 /// POST /api/federation/join - Register node with federation

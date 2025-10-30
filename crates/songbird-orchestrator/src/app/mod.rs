@@ -13,6 +13,8 @@ use songbird_config::{
 //     canonical_federation::CanonicalFederation)
 // }; // Temporarily disabled - complex type mismatches need resolution
 // use songbird_network::gaming::GamingManager; // Temporarily disabled - gaming module not available
+use songbird_network_federation::{FederationConfig, FederationCoordinator};
+use songbird_network_federation::state::{FederationState, NodeRegistration};
 use songbird_observability::ObservabilityManager;
 // use songbird_security::UniversalSecurityIntegration; // Temporarily disabled for consolidation
 use std::collections::HashMap;
@@ -27,6 +29,9 @@ pub struct SongbirdOrchestrator {
     _service_registry: Arc<ServiceRegistry>,
     // gaming_manager: Arc<GamingManager>, // Temporarily disabled - gaming module not available
     // federation_manager: Arc<CanonicalFederation>, // Temporarily disabled
+    federation_coordinator: Option<Arc<FederationCoordinator>>,
+    federation_config: Option<FederationConfig>,
+    federation_state: Arc<FederationState>,
     observability_manager: Arc<ObservabilityManager>,
     // security_integration: Arc<UniversalSecurityIntegration>, // Temporarily disabled
     shutdown_signal: tokio::sync::broadcast::Receiver<()>,
@@ -65,6 +70,70 @@ impl SongbirdOrchestrator {
 
         // Initialize observability manager (no parameters)
         let observability_manager = Arc::new(ObservabilityManager::new());
+
+        // Initialize federation (if enabled)
+        let federation_state = Arc::new(FederationState::new());
+        let (federation_coordinator, federation_config) = if std::env::var("SONGBIRD_FEDERATION_ENABLED")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse::<bool>()
+            .unwrap_or(false)
+        {
+            info!("🌐 Federation mode enabled");
+            
+            // Build self registration
+            let self_registration = NodeRegistration {
+                node_id: std::env::var("SONGBIRD_NODE_ID")
+                    .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string()),
+                node_name: std::env::var("SONGBIRD_NODE_NAME")
+                    .unwrap_or_else(|_| hostname::get().ok().and_then(|h| h.into_string().ok()).unwrap_or_else(|| "unknown".to_string())),
+                node_address: format!(
+                    "{}:{}",
+                    std::env::var("SONGBIRD_BIND_ADDRESS")
+                        .unwrap_or_else(|_| "0.0.0.0".to_string()),
+                    std::env::var("SONGBIRD_PORT")
+                        .unwrap_or_else(|_| "8080".to_string())
+                ),
+                capabilities: vec!["orchestrator".to_string()],
+                cpu_cores: num_cpus::get(),
+                memory_gb: {
+                    #[cfg(target_os = "linux")]
+                    {
+                        (sysinfo::System::new_all().total_memory() / (1024 * 1024 * 1024)) as usize
+                    }
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        16 // Fallback
+                    }
+                },
+                gpu_model: None, // TODO: Detect GPU
+                storage_gb: None, // TODO: Detect storage
+                status: songbird_network_federation::state::NodeStatus::Active,
+                joined_at: chrono::Utc::now(),
+                last_heartbeat: chrono::Utc::now(),
+            };
+            
+            // Create federation config
+            let config = FederationConfig {
+                enabled: true,
+                bootstrap_address: std::env::var("SONGBIRD_BOOTSTRAP_ADDRESS").ok(),
+                self_registration: Some(self_registration),
+                heartbeat_interval_secs: 30,
+                node_timeout_secs: 60,
+            };
+            
+            // Register self if we have bootstrap
+            if let Some(ref bootstrap) = config.bootstrap_address {
+                info!("🔗 Will join federation via bootstrap: {}", bootstrap);
+            }
+            
+            // Create coordinator with state
+            let coordinator = Arc::new(FederationCoordinator::with_state(Arc::clone(&federation_state)));
+            
+            (Some(coordinator), Some(config))
+        } else {
+            info!("🏠 Running in standalone mode (federation disabled)");
+            (None, None)
+        };
 
         // Initialize universal security integration using primal registry
         let security_integration = if let Some(security_primal) =
@@ -131,11 +200,20 @@ impl SongbirdOrchestrator {
             _service_registry: service_registry,
             // gaming_manager, // Temporarily disabled
             // federation_manager, // Temporarily disabled
+            federation_coordinator,
+            federation_config,
+            federation_state,
             observability_manager,
             // security_integration, // Temporarily disabled
             shutdown_signal,
             shutdown_sender,
         })
+    }
+    
+    /// Get federation state reference
+    #[must_use]
+    pub fn federation_state(&self) -> &Arc<FederationState> {
+        &self.federation_state
     }
 
     /// Get configuration reference
@@ -160,6 +238,20 @@ impl SongbirdOrchestrator {
         // self.federation_manager.start(&federation_config).await?; // Temporarily disabled
         self.observability_manager.start().await?;
 
+        // Start federation coordinator (if enabled)
+        if let (Some(ref coordinator), Some(ref config)) = (&self.federation_coordinator, &self.federation_config) {
+            info!("🌐 Starting federation coordinator...");
+            let coordinator_clone = Arc::clone(coordinator);
+            let config_clone = config.clone();
+            tokio::spawn(async move {
+                if let Err(e) = coordinator_clone.coordinate(&config_clone).await {
+                    error!("❌ Federation coordination error: {}", e);
+                } else {
+                    info!("✅ Federation coordinator started successfully");
+                }
+            });
+        }
+
         // Initialize real BearDog security integration
         info!("🐕 Initializing BearDog security integration...");
         // Temporarily disabled security integration initialization
@@ -170,7 +262,54 @@ impl SongbirdOrchestrator {
         // Start health monitoring
         self.start_health_monitoring().await?;
 
+        // Start HTTP server with federation API
+        self.start_http_server().await?;
+
         info!("✅ Songbird Orchestrator started successfully");
+        Ok(())
+    }
+    
+    /// Start HTTP server with federation API
+    async fn start_http_server(&self) -> Result<()> {
+        use axum::Router;
+        use std::net::SocketAddr;
+        
+        let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
+            .unwrap_or_else(|_| "0.0.0.0".to_string());
+        let port = std::env::var("SONGBIRD_PORT")
+            .unwrap_or_else(|_| "8080".to_string())
+            .parse::<u16>()
+            .unwrap_or(8080);
+        
+        let addr: SocketAddr = format!("{}:{}", bind_address, port).parse()?;
+        
+        // Build the app with federation routes
+        let app = Router::new()
+            .nest(
+                "/api/federation",
+                crate::server::federation_api::federation_routes(Arc::clone(&self.federation_state)),
+            )
+            .route("/health", axum::routing::get(|| async { "OK" }));
+        
+        info!("🌐 Starting HTTP server on {}", addr);
+        
+        // Spawn server in background
+        tokio::spawn(async move {
+            let listener = match tokio::net::TcpListener::bind(addr).await {
+                Ok(l) => l,
+                Err(e) => {
+                    error!("❌ Failed to bind HTTP server: {}", e);
+                    return;
+                }
+            };
+            
+            info!("✅ HTTP server listening on {}", addr);
+            
+            if let Err(e) = axum::serve(listener, app).await {
+                error!("❌ HTTP server error: {}", e);
+            }
+        });
+        
         Ok(())
     }
 
