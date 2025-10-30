@@ -51,20 +51,23 @@ pub struct TestRunner {
 }
 
 impl TestRunner {
-    #[must_use]
-    pub fn new(config: TestConfig) -> Self {
+    /// Create a new test runner
+    ///
+    /// # Errors
+    /// Returns error if HTTP client cannot be created
+    pub fn new(config: TestConfig) -> Result<Self, String> {
         let client = Client::builder()
             .timeout(Duration::from_secs(config.timeout_seconds))
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-        Self {
+        Ok(Self {
             config,
             client,
             passed: Arc::new(AtomicUsize::new(0)),
             failed: Arc::new(AtomicUsize::new(0)),
             total: Arc::new(AtomicUsize::new(0)),
-        }
+        })
     }
 
     /// Print header with formatting
@@ -315,17 +318,20 @@ async fn main() -> SongbirdResult<()> {
         .get_matches();
 
     let config = TestConfig {
-        songbird_url: matches.get_one::<String>("url").expect("URL has default value").clone(),
+        songbird_url: matches
+            .get_one::<String>("url")
+            .ok_or("URL argument is required (should have default)")?
+            .clone(),
         timeout_seconds: matches
             .get_one::<String>("timeout")
-            .expect("Timeout has default value")
+            .ok_or("Timeout argument is required (should have default)")?
             .parse()
             .map_err(|e| SongbirdError::configuration(format!("Invalid timeout value: {e}")))?,
         verbose: matches.get_flag("verbose"),
         quiet: matches.get_flag("quiet"),
     };
 
-    let runner = TestRunner::new(config);
+    let runner = TestRunner::new(config)?;
 
     if let Some(("quick", _)) = matches.subcommand() {
         let results = runner.run_quick_validation().await;

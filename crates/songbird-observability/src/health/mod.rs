@@ -21,7 +21,7 @@ pub trait HealthMonitor: Send + Sync {
 }
 
 /// Health status enumeration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthStatus {
     Healthy,
     Degraded,
@@ -53,7 +53,7 @@ pub struct HealthStatusDetails {
 }
 
 /// Health state enumeration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthState {
     Healthy,
     Degraded,

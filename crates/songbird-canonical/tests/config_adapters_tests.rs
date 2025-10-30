@@ -66,9 +66,9 @@ fn test_universal_adapter_config_creation() {
     };
 
     let config = UniversalAdapterConfig {
-        security_adapters: security.clone(),
-        compute_adapters: compute.clone(),
-        storage_adapters: storage.clone(),
+        security_adapters: security,
+        compute_adapters: compute,
+        storage_adapters: storage,
         settings,
     };
 
@@ -351,7 +351,7 @@ fn test_health_check_config_integration() {
         enabled: true,
         discovery_mode: "capability".to_string(),
         endpoint: None,
-        health_check: health_check.clone(),
+        health_check,
         timeout_ms: 5000,
         retry_count: 3,
         security_provider_config: SecurityProviderConfigSecurityConfig::default(),

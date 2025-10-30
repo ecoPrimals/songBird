@@ -31,7 +31,7 @@ fn test_ai_response_metadata_default() {
 #[test]
 fn test_ai_response_metadata_with_automation_capability() {
     let capability = AutomationCapability::new("test-capability", "Test description", 0.8);
-    let metadata = AIResponseMetadata::default().with_automation_capability(capability.clone());
+    let metadata = AIResponseMetadata::default().with_automation_capability(capability);
 
     assert_eq!(metadata.automation_capabilities.len(), 1);
     assert_eq!(metadata.automation_capabilities[0].capability, "test-capability");

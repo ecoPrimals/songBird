@@ -108,7 +108,7 @@ pub(super) struct CapabilityResponse {
 }
 
 /// Primal type classification
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PrimalType {
     /// Security services (beardog, auth)
     Security,

@@ -22,7 +22,7 @@ pub struct PrimalConnection {
 }
 
 /// Health status of primal connection
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectionHealth {
     /// Connection is healthy and responsive
     Healthy,

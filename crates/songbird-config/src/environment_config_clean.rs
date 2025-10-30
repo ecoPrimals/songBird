@@ -21,7 +21,7 @@ impl EnvironmentConfig {
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(8080);
-            format!("http://{}:{}", bind_addr, port)
+            format!("http://{bind_addr}:{port}")
         })
     }
 
@@ -29,31 +29,31 @@ impl EnvironmentConfig {
     #[must_use]
     pub fn service_endpoint_by_capability(capability_type: &str, default_port: u16) -> String {
         std::env::var("SONGBIRD_ENDPOINT")
-            .or_else(|_| env::var(format!("{}_ENDPOINT", capability_type)))
+            .or_else(|_| env::var(format!("{capability_type}_ENDPOINT")))
             .unwrap_or_else(|_| {
                 format!("http://{}:{}", crate::constants::network::DEFAULT_HOST, default_port)
             })
     }
 
-    /// Get the ToadStool compute endpoint from environment or calculate from config
+    /// Get the `ToadStool` compute endpoint from environment or calculate from config
     #[must_use]
     pub fn toadstool_endpoint() -> String {
         std::env::var("TOADSTOOL_ENDPOINT").unwrap_or_else(|_| {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
             let port =
                 std::env::var("TOADSTOOL_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8081);
-            format!("http://{}:{}", bind_addr, port)
+            format!("http://{bind_addr}:{port}")
         })
     }
 
-    /// Get the NestGate storage endpoint from environment or calculate from config
+    /// Get the `NestGate` storage endpoint from environment or calculate from config
     #[must_use]
     pub fn nestgate_endpoint() -> String {
         std::env::var("NESTGATE_ENDPOINT").unwrap_or_else(|_| {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
             let port =
                 std::env::var("NESTGATE_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8082);
-            format!("http://{}:{}", bind_addr, port)
+            format!("http://{bind_addr}:{port}")
         })
     }
 
@@ -64,7 +64,7 @@ impl EnvironmentConfig {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
             let port =
                 std::env::var("SQUIRREL_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8083);
-            format!("http://{}:{}", bind_addr, port)
+            format!("http://{bind_addr}:{port}")
         })
     }
 
@@ -104,7 +104,7 @@ impl EnvironmentConfig {
         if Self::is_production() {
             Self::get_env_or_default("BIND_ADDRESS", "0.0.0.0")
         } else {
-            Self::get_env_or_default("BIND_ADDRESS", &crate::constants::network::DEFAULT_HOST)
+            Self::get_env_or_default("BIND_ADDRESS", crate::constants::network::DEFAULT_HOST)
         }
     }
 
@@ -144,28 +144,40 @@ impl EnvironmentConfig {
 // ============================================================================
 
 /// **PEDANTIC**: Get environment variable or panic with helpful message
+///
+/// # Panics
+///
+/// Panics if the environment variable is not set
 #[must_use]
 pub fn get_required_env(key: &str) -> String {
     std::env::var(key)
-        .unwrap_or_else(|_| panic!("Required environment variable '{}' is not set", key))
+        .unwrap_or_else(|_| panic!("Required environment variable '{key}' is not set"))
 }
 
 /// **PEDANTIC**: Get environment variable as integer or panic with helpful message
+///
+/// # Panics
+///
+/// Panics if the environment variable is not set or is not a valid integer
 #[must_use]
 pub fn get_required_env_int(key: &str) -> u16 {
     std::env::var(key)
-        .unwrap_or_else(|_| panic!("Required environment variable '{}' is not set", key))
+        .unwrap_or_else(|_| panic!("Required environment variable '{key}' is not set"))
         .parse()
-        .unwrap_or_else(|_| panic!("Environment variable '{}' is not a valid integer", key))
+        .unwrap_or_else(|_| panic!("Environment variable '{key}' is not a valid integer"))
 }
 
 /// **PEDANTIC**: Get environment variable as boolean or panic with helpful message
+///
+/// # Panics
+///
+/// Panics if the environment variable is not set or is not a valid boolean
 #[must_use]
 pub fn get_required_env_bool(key: &str) -> bool {
     std::env::var(key)
-        .unwrap_or_else(|_| panic!("Required environment variable '{}' is not set", key))
+        .unwrap_or_else(|_| panic!("Required environment variable '{key}' is not set"))
         .parse()
-        .unwrap_or_else(|_| panic!("Environment variable '{}' is not a valid boolean", key))
+        .unwrap_or_else(|_| panic!("Environment variable '{key}' is not a valid boolean"))
 }
 
 // ============================================================================

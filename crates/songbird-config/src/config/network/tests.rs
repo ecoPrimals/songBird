@@ -319,9 +319,13 @@ fn test_next_gaming_port_allocation() {
 
 #[test]
 fn test_federation_endpoints_validation() {
-    let mut config = NetworkConfig::default();
-    config.federation_endpoints =
-        vec!["http://node1:8080".to_string(), "http://node2:8080".to_string()];
+    let config = NetworkConfig {
+        federation_endpoints: vec![
+            "http://node1:8080".to_string(),
+            "http://node2:8080".to_string(),
+        ],
+        ..Default::default()
+    };
 
     assert_eq!(config.federation_endpoints.len(), 2, "Should have configured federation endpoints");
     assert!(
@@ -332,19 +336,23 @@ fn test_federation_endpoints_validation() {
 
 #[test]
 fn test_stun_servers_configuration() {
-    let mut config = NetworkConfig::default();
-    config.stun_servers = vec![
-        "stun:stun.l.google.com:19302".to_string(),
-        "stun:stun1.l.google.com:19302".to_string(),
-    ];
+    let config = NetworkConfig {
+        stun_servers: vec![
+            "stun:stun.l.google.com:19302".to_string(),
+            "stun:stun1.l.google.com:19302".to_string(),
+        ],
+        ..Default::default()
+    };
 
     assert_eq!(config.stun_servers.len(), 2, "Should have configured STUN servers");
 }
 
 #[test]
 fn test_allowed_networks_configuration() {
-    let mut config = NetworkConfig::default();
-    config.allowed_networks = vec!["192.168.1.0/24".to_string(), "10.0.0.0/8".to_string()];
+    let config = NetworkConfig {
+        allowed_networks: vec!["192.168.1.0/24".to_string(), "10.0.0.0/8".to_string()],
+        ..Default::default()
+    };
 
     assert_eq!(config.allowed_networks.len(), 2, "Should have configured allowed networks");
     assert!(

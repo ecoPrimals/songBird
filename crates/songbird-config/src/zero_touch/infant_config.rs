@@ -63,7 +63,7 @@ pub struct CapabilityRequirement {
     /// Type of capability needed (e.g., "security", "storage", "compute", "ai")
     pub capability_type: String,
 
-    /// Specific operations needed (e.g., ["encrypt", "decrypt"] for security)
+    /// Specific operations needed (e.g., `["encrypt", "decrypt"]` for security)
     pub required_operations: Vec<String>,
 
     /// Quality requirements
@@ -258,6 +258,10 @@ pub enum DiscoveryPhase {
 impl ZeroTouchConfig {
     /// Create zero-touch configuration from environment
     /// This is the ONLY entry point - no defaults with hardcoded values
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if required environment variables are not set or invalid
     pub fn from_environment() -> SongbirdResult<Self> {
         info!("🍼 Creating zero-touch configuration from environment (no hardcoded knowledge)");
 
@@ -291,12 +295,13 @@ impl ZeroTouchConfig {
             });
 
         // Discover what capabilities THIS service provides
-        let provides_capabilities = env::var("SERVICE_CAPABILITIES")
-            .map(|caps| caps.split(',').map(|s| s.trim().to_string()).collect())
-            .unwrap_or_else(|_| {
+        let provides_capabilities = env::var("SERVICE_CAPABILITIES").map_or_else(
+            |_| {
                 debug!("No SERVICE_CAPABILITIES defined, service provides no capabilities");
                 Vec::new()
-            });
+            },
+            |caps| caps.split(',').map(|s| s.trim().to_string()).collect(),
+        );
 
         // Collect metadata from environment
         let metadata = Self::collect_service_metadata();
@@ -324,9 +329,10 @@ impl ZeroTouchConfig {
 
                 // Get operations for this capability
                 let ops_var = format!("REQUIRED_OPERATIONS_{}", cap_type.to_uppercase());
-                let operations = env::var(&ops_var)
-                    .map(|ops| ops.split(',').map(|s| s.trim().to_string()).collect())
-                    .unwrap_or_else(|_| vec!["*".to_string()]);
+                let operations = env::var(&ops_var).map_or_else(
+                    |_| vec!["*".to_string()],
+                    |ops| ops.split(',').map(|s| s.trim().to_string()).collect(),
+                );
 
                 requirements.push(CapabilityRequirement {
                     capability_type: cap_type.to_string(),
@@ -568,15 +574,15 @@ impl ZeroTouchConfig {
         let prefix = format!("CAPABILITY_{}_", capability_type.to_uppercase());
 
         let max_response_time =
-            env::var(format!("{}MAX_RESPONSE_MS", prefix)).ok().and_then(|s| s.parse().ok());
+            env::var(format!("{prefix}MAX_RESPONSE_MS")).ok().and_then(|s| s.parse().ok());
 
         let min_availability =
-            env::var(format!("{}MIN_AVAILABILITY", prefix)).ok().and_then(|s| s.parse().ok());
+            env::var(format!("{prefix}MIN_AVAILABILITY")).ok().and_then(|s| s.parse().ok());
 
         let min_throughput =
-            env::var(format!("{}MIN_THROUGHPUT_RPS", prefix)).ok().and_then(|s| s.parse().ok());
+            env::var(format!("{prefix}MIN_THROUGHPUT_RPS")).ok().and_then(|s| s.parse().ok());
 
-        let security_level = env::var(format!("{}SECURITY_LEVEL", prefix))
+        let security_level = env::var(format!("{prefix}SECURITY_LEVEL"))
             .ok()
             .and_then(|s| match s.to_lowercase().as_str() {
                 "none" => Some(SecurityLevel::None),

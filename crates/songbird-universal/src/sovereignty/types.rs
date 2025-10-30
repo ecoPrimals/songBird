@@ -179,7 +179,7 @@ pub struct RoutingDecisionMetadata {
 }
 
 /// Security level classification
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SecurityLevel {
     /// Maximum security - all protections enabled
     Maximum,
@@ -223,7 +223,7 @@ impl SovereigntyLevel {
 }
 
 /// Security capability
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecurityCapability {
     /// Encryption capability
     Encryption,

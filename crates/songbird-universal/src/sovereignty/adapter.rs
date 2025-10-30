@@ -242,7 +242,7 @@ impl SovereigntyAwareAdapter {
         // In a full implementation, this would route through the specific path
         // For now, return a success response - will be implemented with proper routing
         Ok(UniversalResponse {
-            request_id: request.request_id.clone(),
+            request_id: request.request_id,
             status: crate::types::ResponseStatus::Success,
             data: Some(serde_json::json!({"sovereignty": "routed"})),
             metadata: std::collections::HashMap::new(),

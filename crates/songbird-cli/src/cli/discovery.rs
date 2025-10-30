@@ -52,7 +52,15 @@ impl NetworkScanner {
 
         // Real subnet scanning implementation
         let mut discovered_nodes = Vec::new();
-        let common_ports = [8080, 9090, 3000, 4000, 5000, 8000];
+        // Common service ports - should be discovered via capability endpoints
+        let common_ports = [
+            std::env::var("DISCOVERY_PORT_1").ok().and_then(|p| p.parse().ok()).unwrap_or(8080),
+            std::env::var("DISCOVERY_PORT_2").ok().and_then(|p| p.parse().ok()).unwrap_or(9090),
+            std::env::var("DISCOVERY_PORT_3").ok().and_then(|p| p.parse().ok()).unwrap_or(3000),
+            std::env::var("DISCOVERY_PORT_4").ok().and_then(|p| p.parse().ok()).unwrap_or(4000),
+            std::env::var("DISCOVERY_PORT_5").ok().and_then(|p| p.parse().ok()).unwrap_or(5000),
+            std::env::var("DISCOVERY_PORT_6").ok().and_then(|p| p.parse().ok()).unwrap_or(8000),
+        ];
 
         // Parse subnet (e.g., "192.168.1" -> scan 192.168.1.1-254)"
         let subnet_parts: Vec<&str> = subnet.split('.').collect();

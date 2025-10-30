@@ -287,7 +287,7 @@ impl Default for ProxyConfig {
 }
 
 /// Proxy types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ProxyType {
     Http,
     Socks5,
@@ -295,7 +295,7 @@ pub enum ProxyType {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum LoadBalancingStrategy {
     RoundRobin,
     LeastConnections,
@@ -331,7 +331,7 @@ impl Default for DiscoveryConfig {
 }
 
 /// Discovery methods
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DiscoveryMethod {
     Multicast,
     Broadcast,
@@ -389,7 +389,7 @@ pub struct NetworkHealth {
 }
 
 /// Network status levels
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NetworkStatus {
     Healthy,
     Degraded,
@@ -411,7 +411,7 @@ pub struct GamingHealth {
 }
 
 /// Network capabilities
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NetworkCapability {
     Gaming,
     Proxy,

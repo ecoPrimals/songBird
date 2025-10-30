@@ -176,7 +176,14 @@ async fn discover_via_subnet_scan() -> CliResult<Vec<DiscoveredNetwork>> {
     // Get local IP to determine subnet
     if let Some(local_ip) = get_local_ip().await {
         let subnet = get_subnet_base(&local_ip);
-        let songbird_ports = [8080, 9090, 3000, 4000, 5000];
+        // Common Songbird service ports - should be discovered dynamically
+        let songbird_ports = [
+            std::env::var("SONGBIRD_HTTP_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080),
+            std::env::var("SONGBIRD_METRICS_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(9090),
+            std::env::var("SONGBIRD_ALT_PORT_1").ok().and_then(|p| p.parse().ok()).unwrap_or(3000),
+            std::env::var("SONGBIRD_ALT_PORT_2").ok().and_then(|p| p.parse().ok()).unwrap_or(4000),
+            std::env::var("SONGBIRD_ALT_PORT_3").ok().and_then(|p| p.parse().ok()).unwrap_or(5000),
+        ];
 
         // Scan common Songbird ports across subnet
         let mut scan_tasks = Vec::new();

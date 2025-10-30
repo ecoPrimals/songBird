@@ -98,7 +98,7 @@ impl Default for NetworkConfig {
             multicast_address: "224.0.0.251".to_string(),
             federation_port: 8765,
             service_port: 8080, // Default discovery port since bind_port field doesn't exist
-            bind_address: env_config.bind_address.clone(),
+            bind_address: env_config.bind_address,
             announcement_interval_secs: 60,
             response_timeout_secs: 2,
             ping_timeout_secs: 5,

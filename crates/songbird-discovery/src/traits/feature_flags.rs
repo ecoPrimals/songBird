@@ -238,7 +238,7 @@ pub struct FeatureFlagProviderInfo {
 }
 
 /// Provider capabilities using enum-based approach instead of excessive booleans
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProviderCapability {
     Updates,
     History,

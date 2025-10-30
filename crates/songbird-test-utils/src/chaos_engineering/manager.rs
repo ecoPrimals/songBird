@@ -15,8 +15,8 @@ use std::time::{Duration, Instant, SystemTime};
 use tokio::time::sleep;
 
 /// Global chaos engineering manager
-static CHAOS_MANAGER: once_cell::sync::Lazy<ChaosEngineeringManager> =
-    once_cell::sync::Lazy::new(ChaosEngineeringManager::new);
+static CHAOS_MANAGER: std::sync::LazyLock<ChaosEngineeringManager> =
+    std::sync::LazyLock::new(ChaosEngineeringManager::new);
 
 /// Chaos engineering manager for coordinating fault injection experiments
 #[derive(Debug)]

@@ -5,7 +5,7 @@ use std::time::Duration;
 
 /// **CANONICAL**: Circuit breaker configuration
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig  {/// Number of consecutive failures before opening the circuit
+pub struct CircuitBreakerConfig {/// Number of consecutive failures before opening the circuit
     pub failure_threshold: u32,
     /// Time to wait before attempting to close the circuit
     pub timeout: Duration,
@@ -29,7 +29,7 @@ impl Default for CircuitBreakerConfig  {fn default() -> Self  {Self {
 
 /// **CANONICAL**: Retry configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RetryConfig  {/// Maximum number of retry attempts
+pub struct RetryConfig {/// Maximum number of retry attempts
     pub max_attempts: u32,
     /// Initial delay between retries
     pub initial_delay: Duration,
@@ -56,7 +56,7 @@ impl Default for RetryConfig  {fn default() -> Self  {Self {
 
 /// Circuit breaker state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CircuitBreakerState  {/// Circuit is closed, requests are allowed
+pub enum CircuitBreakerState {/// Circuit is closed, requests are allowed
     Closed,
     /// Circuit is open, requests are rejected
     Open,
@@ -72,7 +72,7 @@ impl Default for CircuitBreakerState {
 
 /// Retry strategy
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum RetryStrategy  {/// Fixed delay between retries
+pub enum RetryStrategy {/// Fixed delay between retries
     Fixed,
     /// Exponential backoff with optional jitter
     ExponentialBackoff { jitter: bool })
@@ -88,7 +88,7 @@ impl Default for RetryStrategy {
     }
 }
 
-impl CircuitBreakerConfig  {/// Create a new circuit breaker configuration with custom settings
+impl CircuitBreakerConfig {/// Create a new circuit breaker configuration with custom settings
     #[must_use]
     pub fn new(
         failure_threshold: u32,
@@ -122,7 +122,7 @@ impl CircuitBreakerConfig  {/// Create a new circuit breaker configuration with 
     }
 }
 
-impl RetryConfig  {/// Create a new retry configuration with custom settings
+impl RetryConfig {/// Create a new retry configuration with custom settings
     #[must_use]
     pub fn new(max_attempts: u32, initial_delay: Duration, backoff_multiplier: f64) -> Self  {Self {
             max_attempts)

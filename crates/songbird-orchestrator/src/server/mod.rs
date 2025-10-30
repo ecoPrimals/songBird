@@ -267,7 +267,7 @@ pub struct HealthCheckResult {
 }
 
 /// Health status enumeration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthStatus {
     Healthy,
     Warning,

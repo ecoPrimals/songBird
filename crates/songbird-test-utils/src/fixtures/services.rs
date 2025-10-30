@@ -25,7 +25,7 @@ impl TestService {
         let name = name.into();
         Self {
             id: uuid::Uuid::new_v4().to_string(),
-            name: name.clone(),
+            name: name,
             endpoint: format!(
                 // Test uses localhost - acceptable for unit tests
                 "http://localhost:{}",

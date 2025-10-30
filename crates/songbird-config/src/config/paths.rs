@@ -96,7 +96,7 @@ impl PathConfig {
             registry: config_dir.join("registry"),
         };
 
-        let paths = PathConfig {
+        let paths = Self {
             data_dir,
             config_dir,
             log_dir,
@@ -181,7 +181,7 @@ impl PathConfig {
     /// Returns an error if:
     /// - Unable to determine home directory
     /// - HOME environment variable is not set
-    pub fn get_default_paths() -> Result<PathConfig> {
+    pub fn get_default_paths() -> Result<Self> {
         debug!("Getting default paths for current platform");
 
         // Simple path implementation without substrate
@@ -197,7 +197,7 @@ impl PathConfig {
         let cache_dir = home_dir.join(".cache").join("songbird");
         let runtime_dir = std::env::temp_dir().join("songbird");
 
-        let paths = PathConfig {
+        let paths = Self {
             config_dir: config_dir.clone(),
             data_dir,
             log_dir,
@@ -226,17 +226,21 @@ impl PathConfig {
     /// - Suggestion: Set `XDG_DATA_HOME` environment variable
     pub fn get_fallback_data_dir() -> Result<PathBuf> {
         // Use XDG base directory specification or platform defaults
-        if let Some(data_dir) = std::env::var_os("XDG_DATA_HOME") {
-            Ok(PathBuf::from(data_dir).join("songbird"))
-        } else if let Some(home_dir) = dirs::home_dir() {
-            Ok(home_dir.join(".local").join("share").join("songbird"))
-        } else {
-            Err(SongbirdError::Configuration {
-                message: "Unable to determine data directory".to_string(),
-                field: Some("data_dir".to_string()),
-                suggestion: Some("Set XDG_DATA_HOME environment variable".to_string()),
-            })
-        }
+        std::env::var_os("XDG_DATA_HOME").map_or_else(
+            || {
+                dirs::home_dir().map_or_else(
+                    || {
+                        Err(SongbirdError::Configuration {
+                            message: "Unable to determine data directory".to_string(),
+                            field: Some("data_dir".to_string()),
+                            suggestion: Some("Set XDG_DATA_HOME environment variable".to_string()),
+                        })
+                    },
+                    |home_dir| Ok(home_dir.join(".local").join("share").join("songbird")),
+                )
+            },
+            |data_dir| Ok(PathBuf::from(data_dir).join("songbird")),
+        )
     }
 
     /// Get fallback config directory when substrate is unavailable
@@ -249,17 +253,23 @@ impl PathConfig {
     /// - Suggestion: Set `XDG_CONFIG_HOME` environment variable
     pub fn get_fallback_config_dir() -> Result<PathBuf> {
         // Use XDG base directory specification or platform defaults
-        if let Some(config_dir) = std::env::var_os("XDG_CONFIG_HOME") {
-            Ok(PathBuf::from(config_dir).join("songbird"))
-        } else if let Some(home_dir) = dirs::home_dir() {
-            Ok(home_dir.join(".config").join("songbird"))
-        } else {
-            Err(SongbirdError::Configuration {
-                message: "Unable to determine config directory".to_string(),
-                field: Some("config_dir".to_string()),
-                suggestion: Some("Set XDG_CONFIG_HOME environment variable".to_string()),
-            })
-        }
+        std::env::var_os("XDG_CONFIG_HOME").map_or_else(
+            || {
+                dirs::home_dir().map_or_else(
+                    || {
+                        Err(SongbirdError::Configuration {
+                            message: "Unable to determine config directory".to_string(),
+                            field: Some("config_dir".to_string()),
+                            suggestion: Some(
+                                "Set XDG_CONFIG_HOME environment variable".to_string(),
+                            ),
+                        })
+                    },
+                    |home_dir| Ok(home_dir.join(".config").join("songbird")),
+                )
+            },
+            |config_dir| Ok(PathBuf::from(config_dir).join("songbird")),
+        )
     }
 
     /// Get fallback log directory when substrate is unavailable

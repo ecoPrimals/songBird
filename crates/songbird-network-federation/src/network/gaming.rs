@@ -193,7 +193,7 @@ impl Default for SessionConfig {
 }
 
 /// Session status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SessionStatus {
     /// Session is active
     Active,

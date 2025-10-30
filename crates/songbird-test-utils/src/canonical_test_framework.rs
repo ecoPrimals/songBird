@@ -203,11 +203,7 @@ impl CanonicalAssertions {
         expected: Duration,
         tolerance: Duration,
     ) -> TestResult<()> {
-        let diff = if actual > expected {
-            actual - expected
-        } else {
-            expected - actual
-        };
+        let diff = actual.abs_diff(expected);
 
         if diff <= tolerance {
             Ok(())
@@ -345,7 +341,7 @@ impl PerformanceResults {
         sorted.sort();
 
         let mid = sorted.len() / 2;
-        if sorted.len() % 2 == 0 {
+        if sorted.len().is_multiple_of(2) {
             let sum_nanos = sorted[mid - 1].as_nanos() + sorted[mid].as_nanos();
             #[allow(clippy::cast_possible_truncation)]
             let result_nanos = (sum_nanos / 2) as u64;
