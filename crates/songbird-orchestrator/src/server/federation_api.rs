@@ -14,6 +14,9 @@ use serde::{Deserialize, Serialize};
 use songbird_network_federation::state::{
     FederationState, FederationStatus, NodeRegistration, NodeStatus,
 };
+use songbird_network_federation::service_registry::{
+    FederatedServiceRegistry, ServiceRegistration,
+};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
@@ -21,17 +24,31 @@ use tracing::{debug, info, warn};
 #[derive(Debug, Clone)]
 pub struct FederationAppState {
     pub federation_state: Arc<FederationState>,
+    pub service_registry: Arc<FederatedServiceRegistry>,
 }
 
 /// Create federation routes
-pub fn federation_routes(federation_state: Arc<FederationState>) -> Router {
-    let app_state = Arc::new(FederationAppState { federation_state });
+pub fn federation_routes(
+    federation_state: Arc<FederationState>,
+    service_registry: Arc<FederatedServiceRegistry>,
+) -> Router {
+    let app_state = Arc::new(FederationAppState {
+        federation_state,
+        service_registry,
+    });
     
     Router::new()
+        // Node management
         .route("/join", post(federation_join))
         .route("/status", get(federation_status))
         .route("/nodes", get(federation_nodes))
         .route("/heartbeat", post(federation_heartbeat))
+        // Service management
+        .route("/services", get(list_services))
+        .route("/services", post(register_service))
+        .route("/services/:service_id", get(get_service))
+        .route("/services/type/:service_type", get(find_services_by_type))
+        .route("/services/stats", get(service_stats))
         .with_state(app_state)
 }
 
@@ -173,6 +190,87 @@ async fn get_federation_status(state: &FederationAppState) -> FederationStatus {
     }
 }
 
+//
+// ═══════════════════════════════════════════════════════════════
+// SERVICE FEDERATION ENDPOINTS
+// ═══════════════════════════════════════════════════════════════
+//
+
+/// GET /api/federation/services - List all services
+async fn list_services(
+    State(state): State<Arc<FederationAppState>>,
+) -> impl IntoResponse {
+    debug!("📋 Service list requested");
+    
+    let services = state.service_registry.get_all_services().await;
+    (StatusCode::OK, Json(services))
+}
+
+/// POST /api/federation/services - Register a service
+async fn register_service(
+    State(state): State<Arc<FederationAppState>>,
+    Json(service): Json<ServiceRegistration>,
+) -> impl IntoResponse {
+    info!(
+        "📝 Service registration request: {} ({})",
+        service.service_name, service.service_type
+    );
+    
+    // Determine if this is a local or remote service
+    // (For now, treat all as remote since they come via API)
+    state.service_registry.register_remote(service).await;
+    
+    (StatusCode::CREATED, Json(serde_json::json!({
+        "status": "registered",
+        "message": "Service registered successfully"
+    })))
+}
+
+/// GET /api/federation/services/:service_id - Get specific service
+async fn get_service(
+    State(state): State<Arc<FederationAppState>>,
+    axum::extract::Path(service_id): axum::extract::Path<String>,
+) -> impl IntoResponse {
+    debug!("🔍 Service lookup: {}", service_id);
+    
+    match state.service_registry.find_by_id(&service_id).await {
+        Some(service) => (StatusCode::OK, Json(service)).into_response(),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Service not found",
+                "service_id": service_id
+            })),
+        )
+            .into_response(),
+    }
+}
+
+/// GET /api/federation/services/type/:service_type - Find services by type
+async fn find_services_by_type(
+    State(state): State<Arc<FederationAppState>>,
+    axum::extract::Path(service_type): axum::extract::Path<String>,
+) -> impl IntoResponse {
+    debug!("🔍 Services by type: {}", service_type);
+    
+    let services = state
+        .service_registry
+        .find_by_type(&service_type)
+        .await;
+    
+    (StatusCode::OK, Json(services))
+}
+
+/// GET /api/federation/services/stats - Get service registry statistics
+async fn service_stats(
+    State(state): State<Arc<FederationAppState>>,
+) -> impl IntoResponse {
+    debug!("📊 Service stats requested");
+    
+    let stats = state.service_registry.get_stats().await;
+    (StatusCode::OK, Json(stats))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -183,6 +281,7 @@ mod tests {
     fn create_test_state() -> Arc<FederationAppState> {
         Arc::new(FederationAppState {
             federation_state: Arc::new(FederationState::new()),
+            service_registry: Arc::new(FederatedServiceRegistry::new()),
         })
     }
     
