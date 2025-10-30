@@ -15,6 +15,7 @@ use songbird_config::{
 // use songbird_network::gaming::GamingManager; // Temporarily disabled - gaming module not available
 use songbird_network_federation::{FederationConfig, FederationCoordinator};
 use songbird_network_federation::state::{FederationState, NodeRegistration};
+use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_observability::ObservabilityManager;
 // use songbird_security::UniversalSecurityIntegration; // Temporarily disabled for consolidation
 use std::collections::HashMap;
@@ -32,6 +33,7 @@ pub struct SongbirdOrchestrator {
     federation_coordinator: Option<Arc<FederationCoordinator>>,
     federation_config: Option<FederationConfig>,
     federation_state: Arc<FederationState>,
+    federated_service_registry: Arc<FederatedServiceRegistry>,
     observability_manager: Arc<ObservabilityManager>,
     // security_integration: Arc<UniversalSecurityIntegration>, // Temporarily disabled
     shutdown_signal: tokio::sync::broadcast::Receiver<()>,
@@ -73,6 +75,7 @@ impl SongbirdOrchestrator {
 
         // Initialize federation (if enabled)
         let federation_state = Arc::new(FederationState::new());
+        let federated_service_registry = Arc::new(FederatedServiceRegistry::new());
         let (federation_coordinator, federation_config) = if std::env::var("SONGBIRD_FEDERATION_ENABLED")
             .unwrap_or_else(|_| "false".to_string())
             .parse::<bool>()
@@ -203,6 +206,7 @@ impl SongbirdOrchestrator {
             federation_coordinator,
             federation_config,
             federation_state,
+            federated_service_registry,
             observability_manager,
             // security_integration, // Temporarily disabled
             shutdown_signal,
@@ -214,6 +218,12 @@ impl SongbirdOrchestrator {
     #[must_use]
     pub fn federation_state(&self) -> &Arc<FederationState> {
         &self.federation_state
+    }
+    
+    /// Get federated service registry reference
+    #[must_use]
+    pub fn federated_service_registry(&self) -> &Arc<FederatedServiceRegistry> {
+        &self.federated_service_registry
     }
 
     /// Get configuration reference
@@ -287,7 +297,10 @@ impl SongbirdOrchestrator {
         let app = Router::new()
             .nest(
                 "/api/federation",
-                crate::server::federation_api::federation_routes(Arc::clone(&self.federation_state)),
+                crate::server::federation_api::federation_routes(
+                    Arc::clone(&self.federation_state),
+                    Arc::clone(&self.federated_service_registry),
+                ),
             )
             .route("/health", axum::routing::get(|| async { "OK" }));
         
