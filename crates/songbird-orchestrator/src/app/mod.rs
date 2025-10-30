@@ -41,6 +41,73 @@ pub struct SongbirdOrchestrator {
 }
 
 impl SongbirdOrchestrator {
+    /// Detect primary network interface IP address
+    fn detect_primary_ip() -> Option<String> {
+        use std::net::{IpAddr, UdpSocket};
+        
+        // Try to detect by creating a UDP socket to a public DNS server
+        // This doesn't actually send data, just determines which interface would be used
+        if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
+            if let Ok(()) = socket.connect("8.8.8.8:80") {
+                if let Ok(addr) = socket.local_addr() {
+                    let ip = addr.ip();
+                    // Only return if it's a real IP (not 0.0.0.0 or loopback)
+                    if !ip.is_loopback() && !ip.is_unspecified() {
+                        info!("🌐 Detected primary network IP: {}", ip);
+                        return Some(ip.to_string());
+                    }
+                }
+            }
+        }
+        
+        // Fallback: Try to get from network interfaces
+        #[cfg(target_os = "linux")]
+        {
+            use std::process::Command;
+            
+            // Try ip command first
+            if let Ok(output) = Command::new("ip")
+                .args(&["route", "get", "1.1.1.1"])
+                .output()
+            {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    // Parse output like: "1.1.1.1 via X.X.X.X dev eth0 src Y.Y.Y.Y"
+                    for line in stdout.lines() {
+                        if let Some(src_pos) = line.find(" src ") {
+                            let after_src = &line[src_pos + 5..];
+                            if let Some(ip_str) = after_src.split_whitespace().next() {
+                                if let Ok(ip) = ip_str.parse::<IpAddr>() {
+                                    if !ip.is_loopback() && !ip.is_unspecified() {
+                                        info!("🌐 Detected primary network IP: {}", ip);
+                                        return Some(ip.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Fallback to hostname -I
+            if let Ok(output) = Command::new("hostname").arg("-I").output() {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    // Get first non-loopback IP
+                    for ip_str in stdout.split_whitespace() {
+                        if let Ok(ip) = ip_str.parse::<IpAddr>() {
+                            if !ip.is_loopback() && !ip.is_unspecified() {
+                                info!("🌐 Detected primary network IP: {}", ip);
+                                return Some(ip.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        warn!("⚠️  Could not detect primary network IP, using fallback");
+        None
+    }
+    
     /// Create new orchestrator instance
     pub async fn new(config: SongbirdConfig) -> Result<Self> {
         let (shutdown_sender, shutdown_signal) = tokio::sync::broadcast::channel(1);
@@ -91,8 +158,8 @@ impl SongbirdOrchestrator {
                     .unwrap_or_else(|_| hostname::get().ok().and_then(|h| h.into_string().ok()).unwrap_or_else(|| "unknown".to_string())),
                 node_address: format!(
                     "{}:{}",
-                    std::env::var("SONGBIRD_BIND_ADDRESS")
-                        .unwrap_or_else(|_| "0.0.0.0".to_string()),
+                    std::env::var("SONGBIRD_NODE_ADDRESS")
+                        .unwrap_or_else(|_| Self::detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string())),
                     std::env::var("SONGBIRD_PORT")
                         .unwrap_or_else(|_| "8080".to_string())
                 ),
