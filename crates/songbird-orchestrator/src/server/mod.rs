@@ -11,6 +11,9 @@ use tracing::{error, info, warn};
 use crate::app::{OrchestratorStatus, SongbirdOrchestrator};
 use anyhow::Result;
 use tokio::time::interval;
+
+// Federation API module
+pub mod federation_api;
 /// Server management and monitoring functionality
 pub struct ServerManager {
     health_check_interval: Duration,
