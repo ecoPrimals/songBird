@@ -621,7 +621,7 @@ pub fn node_id() -> String {
     use std::hash::{Hash, Hasher};
 
     // Create a unique node ID based on hostname and process ID
-    let hostname = gethostname::gethostname().to_string_lossy().to_string();
+    let hostname = gethostname::gethostname();
     let pid = std::process::id();
 
     let mut hasher = DefaultHasher::new();

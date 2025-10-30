@@ -183,9 +183,16 @@ impl CanonicalNetworkConfig {
                     std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
                 }),
             orchestrator_port: std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
-                .unwrap_or_else(|_| "8080".to_string())
+                .unwrap_or_else(|_| {
+                    std::env::var("DEFAULT_HTTP_PORT").unwrap_or_else(|_| "8080".to_string())
+                })
                 .parse()
-                .unwrap_or(8080),
+                .unwrap_or_else(|_| {
+                    std::env::var("DEFAULT_HTTP_PORT")
+                        .ok()
+                        .and_then(|p| p.parse().ok())
+                        .unwrap_or(8080)
+                }),
             discovery_port: 8001,
             health_port: 8002,
             dashboard_port: 3000,

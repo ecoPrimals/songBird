@@ -251,7 +251,7 @@ impl DiscoverableEndpoint {
                 // Try probing each host pattern
                 for host in host_patterns {
                     for port in port_range.0..=port_range.1 {
-                        if let Ok(()) = probe_endpoint(host, port, health_path).await {
+                        if matches!(probe_endpoint(host, port, health_path).await, Ok(())) {
                             return Ok(EndpointSpec {
                                 host: host.clone(),
                                 port,

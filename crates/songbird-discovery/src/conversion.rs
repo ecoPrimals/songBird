@@ -26,7 +26,7 @@ impl From<DiscoveryServiceInfo> for UniversalServiceInfo {
         // Construct endpoint from host:port (endpoints are API paths, not network endpoints)
         let endpoint = format!("{}:{}", discovery.host, discovery.port);
 
-        UniversalServiceInfo {
+        Self {
             name: discovery.name,
             primal_type: songbird_universal::PrimalType::new("generic"), // Default, could be in metadata
             endpoint,

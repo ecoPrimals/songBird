@@ -1,7 +1,6 @@
 //! Network topology and peer type definitions
 
 use serde::{Deserialize, Serialize};
-use songbird_types::SongbirdError;
 
 /// **CANONICAL**: Peer type in network topology
 ///
@@ -10,7 +9,8 @@ use songbird_types::SongbirdError;
 /// - `songbird-config/src/unified/network.rs`
 /// - `songbird-network/src/network/discovery/types.rs`
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PeerType  {/// Client endpoint - initiates connections
+pub enum PeerType {
+    /// Client endpoint - initiates connections
     Client,
     /// Server endpoint - accepts connections
     Server,
@@ -33,12 +33,12 @@ impl Default for PeerType {
 impl std::fmt::Display for PeerType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PeerType::Client => write!(f, "client"),"
-            PeerType::Server => write!(f, "server"),"
-            PeerType::Peer => write!(f, "peer"),"
-            PeerType::Relay => write!(f, "relay"),"
-            PeerType::Gateway => write!(f, "gateway"),"
-            PeerType::Unknown => write!(f, "unknown"),"
+            Self::Client => write!(f, "client"),
+            Self::Server => write!(f, "server"),
+            Self::Peer => write!(f, "peer"),
+            Self::Relay => write!(f, "relay"),
+            Self::Gateway => write!(f, "gateway"),
+            Self::Unknown => write!(f, "unknown"),
         }
     }
 }
@@ -48,13 +48,13 @@ impl std::str::FromStr for PeerType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "client" => Ok(songbird_errors::evolved_success(PeerType::Client),"
-            "server" => Ok(songbird_errors::evolved_success(PeerType::Server),"
-            "peer" => Ok(songbird_errors::evolved_success(PeerType::Peer),"
-            "relay" => Ok(songbird_errors::evolved_success(PeerType::Relay),"
-            "gateway" => Ok(songbird_errors::evolved_success(PeerType::Gateway),"
-            "unknown" => Ok(songbird_errors::evolved_success(PeerType::Unknown),"
-            _ => Err(SongbirdError::internal_error(internal_error("Unknown peer type: {s}"),"
+            "client" => Ok(Self::Client),
+            "server" => Ok(Self::Server),
+            "peer" => Ok(Self::Peer),
+            "relay" => Ok(Self::Relay),
+            "gateway" => Ok(Self::Gateway),
+            "unknown" => Ok(Self::Unknown),
+            _ => Err(format!("Unknown peer type: {s}")),
         }
     }
 }
@@ -67,39 +67,25 @@ mod tests {
     fn test_peer_type_serialization() {
         let peer_type = PeerType::Gateway;
         let serialized = serde_json::to_string(&peer_type).expect(
-            "PeerType should serialize successfully - this indicates a serde implementation issue","
+            "PeerType should serialize successfully - this indicates a serde implementation issue",
         );
-        let deserialized: PeerType = serde_json::from_str(&serialized,
-            .map_err(|e| SongbirdError::configuration(format!("Serialized PeerType should deserialize successfully - this indicates a serde implementation issue: {}", e)))?;"
-        assert_eq!(peer_type, deserialized)
+        let deserialized: PeerType = serde_json::from_str(&serialized)
+            .expect("Serialized PeerType should deserialize successfully - this indicates a serde implementation issue");
+        assert_eq!(peer_type, deserialized);
     }
 
     #[test]
     fn test_peer_type_display() {
-        assert_eq!(PeerType::Client.to_string(), "client");"
-        assert_eq!(PeerType::Server.to_string(), "server");"
-        assert_eq!(PeerType::Gateway.to_string(), "gateway");"
+        assert_eq!(PeerType::Client.to_string(), "client");
+        assert_eq!(PeerType::Server.to_string(), "server");
+        assert_eq!(PeerType::Gateway.to_string(), "gateway");
     }
 
     #[test]
-    fn test_peer_type_from_str()  {assert_eq!(
-            "client""
-                .parse::<PeerType>()
-                .map_err(|e| SongbirdError::configuration(format!("'client' should parse to PeerType::Client - check FromStr implementation: {}", e)))?,"
-            PeerType::Client
-        );
-        assert_eq!(
-            "SERVER".parse::<PeerType>().expect("
-                "'SERVER' should parse to PeerType::Server - check case-insensitive parsing""
-            )
-            PeerType::Server
-        );
-        assert_eq!(
-            "Gateway".parse::<PeerType>().expect("
-                "'Gateway' should parse to PeerType::Gateway - check case-insensitive parsing""
-            )
-            PeerType::Gateway
-        );
+    fn test_peer_type_from_str() {
+        assert_eq!("client".parse::<PeerType>().unwrap(), PeerType::Client);
+        assert_eq!("SERVER".parse::<PeerType>().unwrap(), PeerType::Server);
+        assert_eq!("Gateway".parse::<PeerType>().unwrap(), PeerType::Gateway);
     }
 
     #[test]

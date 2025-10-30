@@ -90,9 +90,13 @@ impl Default for UnifiedAdapterConfig {
                 let host = std::env::var("ADAPTER_DISCOVERY_HOST").unwrap_or_else(|_| {
                     songbird_config::constants::network::DEFAULT_HOST.to_string()
                 });
+                let capabilities_port = std::env::var("ADAPTER_CAPABILITIES_PORT")
+                    .unwrap_or_else(|_| songbird_config::constants::network::DEFAULT_DEV_PORT.to_string());
+                let services_port = std::env::var("ADAPTER_SERVICES_PORT")
+                    .unwrap_or_else(|_| "8081".to_string());
                 vec![
-                    format!("http://{}:8080/capabilities", host),
-                    format!("http://{}:8081/services", host),
+                    format!("http://{}:{}/capabilities", host, capabilities_port),
+                    format!("http://{}:{}/services", host, services_port),
                 ]
             },
         }

@@ -9,8 +9,68 @@
 use crate::errors::{CliError, CliResult};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
-// TODO: Define a local OrchestratorConfig type until properly wired
-pub type OrchestratorConfig = serde_json::Value;
+use std::collections::HashMap;
+
+/// Orchestrator configuration for quick setup
+///
+/// This is a local type definition for the CLI quick setup flow.
+/// It provides type-safe configuration generation for biomeOS consumption.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrchestratorConfig {
+    /// Node identity
+    pub node_name: String,
+    /// Contribution capabilities
+    pub capabilities: Vec<String>,
+    /// Discovery endpoints
+    pub discovery_endpoints: Vec<String>,
+    /// Service ports configuration
+    pub ports: HashMap<String, u16>,
+    /// Security settings
+    pub security: SecurityConfig,
+    /// Resource limits
+    pub resource_limits: ResourceLimits,
+}
+
+/// Security configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityConfig {
+    pub require_tls: bool,
+    pub enable_audit_logging: bool,
+    pub allow_insecure_networks: bool,
+}
+
+/// Resource limits configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceLimits {
+    pub max_cpu_percent: u8,
+    pub max_memory_gb: f64,
+    pub max_storage_gb: Option<f64>,
+}
+
+impl Default for OrchestratorConfig {
+    fn default() -> Self {
+        let mut ports = HashMap::new();
+        ports.insert("api".to_string(), 8080);
+        ports.insert("metrics".to_string(), 9090);
+
+        Self {
+            node_name: "songbird-node".to_string(),
+            capabilities: vec!["compute".to_string()],
+            discovery_endpoints: vec!["http://localhost:8080".to_string()],
+            ports,
+            security: SecurityConfig {
+                require_tls: true,
+                enable_audit_logging: true,
+                allow_insecure_networks: false,
+            },
+            resource_limits: ResourceLimits {
+                max_cpu_percent: 80,
+                max_memory_gb: 8.0,
+                max_storage_gb: None,
+            },
+        }
+    }
+}
 
 // Import from submodules in the quick/ directory
 mod discovery;
@@ -149,24 +209,55 @@ pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> CliResult<Qu
         format!("{}-{}", whoami::username(), hostname::get().unwrap_or_default().to_string_lossy())
     });
 
-    // Simple config generation (avoiding complex field access for now,
-    let config = OrchestratorConfig::default();
-    // Basic configuration will be handled by the config system
+    // Generate type-safe configuration based on request and discovered resources
+    let capabilities = match request.contribute_type {
+        ContributeType::Compute => vec!["compute".to_string()],
+        ContributeType::Storage => vec!["storage".to_string()],
+        ContributeType::Data => vec!["data".to_string()],
+        ContributeType::All => vec!["compute".to_string(), "storage".to_string(), "data".to_string()],
+    };
+
+    let discovery_endpoints: Vec<String> = discovered_networks
+        .iter()
+        .map(|n| n.endpoint.clone())
+        .collect();
+
+    let mut ports = HashMap::new();
+    ports.insert("api".to_string(), 8080);
+    ports.insert("metrics".to_string(), 9090);
+
+    let security = request.security_preferences.as_ref().map_or_else(
+        || SecurityConfig {
+            require_tls: true,
+            enable_audit_logging: true,
+            allow_insecure_networks: false,
+        },
+        |prefs| SecurityConfig {
+            require_tls: prefs.require_tls,
+            enable_audit_logging: prefs.audit_logging,
+            allow_insecure_networks: prefs.allow_insecure_networks,
+        },
+    );
+
+    let config = OrchestratorConfig {
+        node_name: node_name.clone(),
+        capabilities,
+        discovery_endpoints,
+        ports,
+        security,
+        resource_limits: ResourceLimits {
+            max_cpu_percent: 80,
+            max_memory_gb: _resources.memory_gb,
+            max_storage_gb: _resources.storage_gb,
+        },
+    };
 
     let next_steps = generate_next_steps(&discovered_networks, &request.contribute_type);
 
     Ok(QuickSetupResponse {
         success: true,
         node_name,
-        system_resources: SystemResources {
-            cpu_cores: 4,
-            memory_gb: 8.0,
-            storage_gb: Some(100.0),
-            has_gpu: false,
-            network_speed: NetworkSpeed::Fast,
-            platform: std::env::consts::OS.to_string(),
-            architecture: std::env::consts::ARCH.to_string(),
-        },
+        system_resources: _resources,
         discovered_networks,
         recommended_config: config,
         setup_status: SetupStatus::SystemReady,

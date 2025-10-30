@@ -40,7 +40,7 @@ impl<'de> Deserialize<'de> for PluginId {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Ok(PluginId::new(s))
+        Ok(Self::new(s))
     }
 }
 

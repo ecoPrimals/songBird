@@ -127,7 +127,7 @@ pub struct DiscoveredCapability {
 pub type Capability = DiscoveredCapability;
 
 /// Health status enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum HealthStatus {
     /// Service is fully operational
     Healthy,
@@ -272,7 +272,7 @@ pub struct UniversalResponse {
 }
 
 /// Response status enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ResponseStatus {
     /// Request completed successfully
     #[default]

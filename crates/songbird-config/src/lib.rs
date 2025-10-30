@@ -17,6 +17,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub mod canonical;
 pub mod canonical_network;
 pub mod capability_endpoints; // 🍼 NEW: Zero-hardcoding capability-based endpoints
 pub mod config;

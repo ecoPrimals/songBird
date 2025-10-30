@@ -97,7 +97,7 @@ pub struct DiscoveredPrimal {
 }
 
 /// Methods used to discover primals
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DiscoveryMethod {
     /// Discovered via environment variables
     Environment,
@@ -114,7 +114,7 @@ pub enum DiscoveryMethod {
 }
 
 /// Health status of discovered primals
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PrimalHealth {
     /// Healthy and responding
     Healthy,
@@ -202,7 +202,7 @@ impl UniversalPrimalDiscovery {
 
         for primal_name in primal_names {
             let discovery_host = std::env::var("UNIVERSAL_DISCOVERY_HOST")
-                .unwrap_or_else(|_| "127.0.0.1".to_string());
+                .unwrap_or_else(|_| songbird_config::constants::network::DEFAULT_HOST.to_string());
             let discovery_port = std::env::var("UNIVERSAL_DISCOVERY_PORT")
                 .ok()
                 .and_then(|p| p.parse::<u16>().ok())
@@ -423,12 +423,12 @@ pub enum DiscoveryError {
 impl std::fmt::Display for DiscoveryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DiscoveryError::NetworkError(msg) => write!(f, "Network error: {msg}"),
-            DiscoveryError::UnreachableEndpoint(endpoint) => {
+            Self::NetworkError(msg) => write!(f, "Network error: {msg}"),
+            Self::UnreachableEndpoint(endpoint) => {
                 write!(f, "Unreachable endpoint: {endpoint}")
             }
-            DiscoveryError::ConfigurationError(msg) => write!(f, "Configuration error: {msg}"),
-            DiscoveryError::Timeout(msg) => write!(f, "Timeout: {msg}"),
+            Self::ConfigurationError(msg) => write!(f, "Configuration error: {msg}"),
+            Self::Timeout(msg) => write!(f, "Timeout: {msg}"),
         }
     }
 }

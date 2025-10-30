@@ -124,6 +124,7 @@ pub struct NetworkTimeouts {
 
 impl NetworkTimeouts {
     /// Create network timeouts from environment
+    #[must_use]
     pub fn from_environment() -> Self {
         Self {
             connection: Duration::from_secs(
@@ -194,6 +195,7 @@ pub struct ConnectionLimits {
 
 impl ConnectionLimits {
     /// Create connection limits from environment
+    #[must_use]
     pub fn from_environment() -> Self {
         Self {
             max_connections_per_host: env::var("MAX_CONNECTIONS_PER_HOST")
@@ -616,13 +618,13 @@ impl NetworkConfig {
     /// - `SERVICE_PORT` or `ORCHESTRATOR_PORT` - Main service port
     ///
     /// # Optional Environment Variables
-    /// - `DISCOVERY_PORT` - Discovery service port (defaults to SERVICE_PORT + 1)
-    /// - `HEALTH_PORT` - Health check port (defaults to SERVICE_PORT + 2)
-    /// - `METRICS_PORT` - Metrics port (defaults to SERVICE_PORT + 3)
+    /// - `DISCOVERY_PORT` - Discovery service port (defaults to `SERVICE_PORT` + 1)
+    /// - `HEALTH_PORT` - Health check port (defaults to `SERVICE_PORT` + 2)
+    /// - `METRICS_PORT` - Metrics port (defaults to `SERVICE_PORT` + 3)
     /// - `DASHBOARD_PORT` - Dashboard port (defaults to 3000)
     /// - `GAMING_PORT` - Gaming port (defaults to 6112)
-    /// - `FEDERATION_PORT` - Federation port (defaults to SERVICE_PORT + 5)
-    /// - `WEBSOCKET_PORT` - WebSocket port (defaults to SERVICE_PORT)
+    /// - `FEDERATION_PORT` - Federation port (defaults to `SERVICE_PORT` + 5)
+    /// - `WEBSOCKET_PORT` - WebSocket port (defaults to `SERVICE_PORT`)
     ///
     /// # Example
     /// ```bash
@@ -632,7 +634,7 @@ impl NetworkConfig {
     /// ```
     ///
     /// # Errors
-    /// Returns error if SERVICE_PORT is not set or invalid
+    /// Returns error if `SERVICE_PORT` is not set or invalid
     pub fn from_environment() -> SongbirdResult<Self> {
         info!("🌐 Creating network config from environment (zero hardcoding)");
 
@@ -702,9 +704,10 @@ impl NetworkConfig {
             request_timeout: Duration::from_secs(
                 env::var("REQUEST_TIMEOUT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60),
             ),
-            allowed_networks: env::var("ALLOWED_NETWORKS")
-                .map(|s| s.split(',').map(String::from).collect())
-                .unwrap_or_else(|_| vec!["127.0.0.0/8".to_string()]),
+            allowed_networks: env::var("ALLOWED_NETWORKS").map_or_else(
+                |_| vec!["127.0.0.0/8".to_string()],
+                |s| s.split(',').map(String::from).collect(),
+            ),
             max_connections: env::var("MAX_CONNECTIONS")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -812,21 +815,22 @@ impl Default for TimeoutConfig {
 
 impl CorsConfig {
     /// Create CORS config from environment
+    #[must_use]
     pub fn from_environment() -> Self {
         Self {
-            enabled: env::var("CORS_ENABLED").ok().map_or(false, |v| v.to_lowercase() == "true"),
-            origins: env::var("CORS_ORIGINS")
-                .ok()
-                .map(|s| s.split(',').map(String::from).collect())
-                .unwrap_or_else(|| vec!["http://localhost:3000".to_string()]),
-            allowed_methods: env::var("CORS_METHODS")
-                .ok()
-                .map(|s| s.split(',').map(String::from).collect())
-                .unwrap_or_else(|| vec!["GET".to_string(), "POST".to_string()]),
-            allowed_headers: env::var("CORS_HEADERS")
-                .ok()
-                .map(|s| s.split(',').map(String::from).collect())
-                .unwrap_or_else(|| vec!["Content-Type".to_string()]),
+            enabled: env::var("CORS_ENABLED").is_ok_and(|v| v.to_lowercase() == "true"),
+            origins: env::var("CORS_ORIGINS").map_or_else(
+                |_| vec!["http://localhost:3000".to_string()],
+                |s| s.split(',').map(String::from).collect(),
+            ),
+            allowed_methods: env::var("CORS_METHODS").map_or_else(
+                |_| vec!["GET".to_string(), "POST".to_string()],
+                |s| s.split(',').map(String::from).collect(),
+            ),
+            allowed_headers: env::var("CORS_HEADERS").map_or_else(
+                |_| vec!["Content-Type".to_string()],
+                |s| s.split(',').map(String::from).collect(),
+            ),
         }
     }
 }
@@ -844,6 +848,7 @@ impl Default for CorsConfig {
 
 impl GamingNetworkConfig {
     /// Create gaming network config from environment
+    #[must_use]
     pub fn from_environment() -> Self {
         Self {
             starcraft_port: env::var("STARCRAFT_PORT")

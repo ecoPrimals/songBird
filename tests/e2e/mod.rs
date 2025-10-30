@@ -1,61 +1,22 @@
-//! End-to-End Tests for Songbird Orchestrator
-//!
-//! These tests verify the complete system behavior including:
-//! - Full service discovery flow
-//! - Cross-service coordination
-//! - Network federation
-//! - Capability routing
-//! - Error recovery
+// E2E Test Module
+// Created: October 30, 2025
+// Purpose: End-to-end integration tests for Songbird
 
-#![cfg(test)]
+// Test infrastructure
+pub mod test_environment;
 
-pub mod orchestration;
-pub mod service_discovery;
-pub mod capability_routing;
-pub mod fault_tolerance;
+// Scenarios (Priority P0 - Week 1-2)
+pub mod scenario_01_service_discovery;
 
-/// Common test utilities and fixtures for E2E tests
-pub mod common {
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
+// Future scenarios (uncomment as implemented)
+// pub mod scenario_02_multi_service_coordination;
+// pub mod scenario_03_failure_recovery;
+// pub mod scenario_04_load_balancing;
+// pub mod scenario_05_zero_knowledge_bootstrap;
 
-    /// Test environment setup
-    pub struct TestEnvironment {
-        pub config: songbird_config::SongbirdConfig,
-        pub orchestrator: Option<Arc<RwLock<songbird_orchestrator::Orchestrator>>>,
-    }
-
-    impl TestEnvironment {
-        /// Create a new test environment with default configuration
-        pub async fn new() -> Self {
-            let config = songbird_config::SongbirdConfig::test_defaults();
-            Self {
-                config,
-                orchestrator: None,
-            }
-        }
-
-        /// Initialize the orchestrator
-        pub async fn init_orchestrator(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-            // This will be implemented when orchestrator is ready
-            Ok(())
-        }
-
-        /// Tear down the test environment
-        pub async fn teardown(self) {
-            // Clean up resources
-        }
-    }
-
-    /// Create a test service endpoint
-    pub fn create_test_endpoint(name: &str, port: u16) -> songbird_types::ServiceEndpoint {
-        songbird_types::ServiceEndpoint {
-            name: name.to_string(),
-            host: "localhost".to_string(),
-            port,
-            protocol: "http".to_string(),
-            path: Some("/".to_string()),
-        }
-    }
-}
-
+// Additional scenarios (Week 3+)
+// pub mod scenario_06_health_monitoring;
+// pub mod scenario_07_dynamic_scaling;
+// pub mod scenario_08_capability_routing;
+// pub mod scenario_09_federation;
+// pub mod scenario_10_versioning;

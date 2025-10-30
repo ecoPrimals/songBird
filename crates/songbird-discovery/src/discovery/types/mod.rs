@@ -78,7 +78,7 @@ pub struct NodeInfo {
 }
 
 /// Type of node in the federation
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NodeType {
     /// Compute-focused node (CPUs, GPUs,
     Compute,

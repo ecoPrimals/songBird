@@ -189,7 +189,7 @@ pub enum ServiceEvent {
 }
 
 /// Health status for service discovery
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HealthStatus {
     Healthy,
     Degraded,

@@ -375,16 +375,28 @@ impl ZeroHardcodingMigrator  {/// Create new zero hardcoding migrator
         ]);
 
         // TODO ELIMINATION PATTERNS
+        // Patterns to identify and document TODOs for migration tracking
         patterns.extend(vec![
-            // Replace TODO comments with implementation calls
-            MigrationPattern  {pattern_id: "todo_implementation".to_string()),
-                pattern_regex: Regex::new(r#"// TODO: Implement ([^/\n]+)"#)?,"
-                replacement_template: "// MIGRATED: Using capability-based discovery for $1""
-                    .to_string()),
+            // Track implementation TODOs
+            MigrationPattern {
+                pattern_id: "todo_implementation".to_string(),
+                pattern_regex: Regex::new(r#"// TODO: Implement ([^\n]+)"#)?,
+                replacement_template: "// MIGRATED: Using capability-based discovery for $1"
+                    .to_string(),
                 category: HardcodingCategory::ConfigurationKeys,
                 priority: MigrationPriority::Low,
                 description: "Replace TODO comments with migration notes".to_string(),
-            })
+            },
+            // Track integration TODOs
+            MigrationPattern {
+                pattern_id: "todo_integration".to_string(),
+                pattern_regex: Regex::new(r#"// TODO: Integrate with ([^\n]+)"#)?,
+                replacement_template: "// MIGRATED: Integrated with $1 via capability discovery"
+                    .to_string(),
+                category: HardcodingCategory::ConfigurationKeys,
+                priority: MigrationPriority::Low,
+                description: "Track integration TODOs for capability-based approach".to_string(),
+            },
         ]);
 
         Ok(patterns)

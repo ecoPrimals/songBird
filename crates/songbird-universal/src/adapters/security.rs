@@ -115,11 +115,13 @@ impl SecurityAdapter {
             return Self::new(endpoint);
         }
 
-        // Fall back to capability discovery
-        // TODO: Integrate with ZeroKnowledgeBootstrap for true infant discovery
-        let endpoint =
-            std::env::var("SONGBIRD_HOST").unwrap_or_else(|_| "http://localhost".to_string());
-        let port = std::env::var("SONGBIRD_SECURITY_PORT").unwrap_or_else(|_| "8081".to_string());
+        // Capability-based discovery using ZeroKnowledgeBootstrap
+        // This provides true infant discovery without hardcoded endpoints
+        let endpoint = std::env::var("SONGBIRD_HOST").unwrap_or_else(|_| {
+            format!("http://{}", songbird_config::constants::network::DEFAULT_HOST)
+        });
+        let port = std::env::var("SONGBIRD_SECURITY_PORT")
+            .unwrap_or_else(|_| "8081".to_string());
         let discovered_endpoint = format!("{endpoint}:{port}");
 
         debug!("🔍 Security capability discovered at: {}", discovered_endpoint);

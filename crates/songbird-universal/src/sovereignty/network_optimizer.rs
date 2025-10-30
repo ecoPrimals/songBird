@@ -244,7 +244,7 @@ impl NetworkEffectsOptimizer {
     fn calculate_combined_path_score(&self, path: &RoutingPath) -> f64 {
         // Simple weighted combination of sovereignty and efficiency
         // In a real implementation, this would consider network effects
-        (path.sovereignty_score * 0.6) + (path.efficiency_score * 0.4)
+        path.sovereignty_score.mul_add(0.6, path.efficiency_score * 0.4)
     }
 
     /// Get optimization statistics
@@ -288,4 +288,283 @@ pub struct OptimizationStats {
     pub strategies_enabled: usize,
     /// Current optimization configuration
     pub optimization_config: OptimizationConfig,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sovereignty::types::{
+        PathSegment, RoutingPath, SecurityCapability, SecurityLevel, SovereigntyLevel,
+    };
+    use crate::types::{HealthStatus, PrimalType, ServiceInfo};
+    use std::collections::HashMap;
+
+    fn create_test_service() -> ServiceInfo {
+        ServiceInfo {
+            name: "test-service".to_string(),
+            primal_type: PrimalType::new("generic"),
+            endpoint: "http://test:8080".to_string(),
+            capabilities: vec![],
+            health: HealthStatus::Healthy,
+            metadata: HashMap::new(),
+        }
+    }
+
+    fn create_test_segment() -> PathSegment {
+        PathSegment {
+            service: create_test_service(),
+            sovereignty_level: SovereigntyLevel::FullySovereign,
+            security_capabilities: vec![SecurityCapability::Encryption],
+            efficiency_score: 0.8,
+            metadata: HashMap::new(),
+        }
+    }
+
+    fn create_test_path() -> RoutingPath {
+        RoutingPath {
+            segments: vec![create_test_segment()],
+            sovereignty_score: 0.9,
+            efficiency_score: 0.8,
+            combined_score: 0.85,
+            security_level: SecurityLevel::High,
+        }
+    }
+
+    #[test]
+    fn test_optimization_config_default() {
+        let config = OptimizationConfig::default();
+        assert!(config.enable_latency_optimization);
+        assert!(config.enable_throughput_optimization);
+        assert!(config.enable_security_enhancement);
+        assert!(!config.enable_cost_optimization);
+    }
+
+    #[test]
+    fn test_network_effects_optimizer_new() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        assert!(optimizer.optimization_config.enable_latency_optimization);
+    }
+
+    #[test]
+    fn test_network_effects_optimizer_with_config() {
+        let config = OptimizationConfig {
+            enable_latency_optimization: false,
+            enable_throughput_optimization: true,
+            enable_security_enhancement: false,
+            enable_cost_optimization: true,
+        };
+        let optimizer = NetworkEffectsOptimizer::with_config(config.clone());
+        assert!(!optimizer.optimization_config.enable_latency_optimization);
+        assert!(optimizer.optimization_config.enable_throughput_optimization);
+        assert!(!optimizer.optimization_config.enable_security_enhancement);
+        assert!(optimizer.optimization_config.enable_cost_optimization);
+    }
+
+    #[test]
+    fn test_count_enabled_strategies_all() {
+        let config = OptimizationConfig {
+            enable_latency_optimization: true,
+            enable_throughput_optimization: true,
+            enable_security_enhancement: true,
+            enable_cost_optimization: true,
+        };
+        let optimizer = NetworkEffectsOptimizer::with_config(config);
+        assert_eq!(optimizer.count_enabled_strategies(), 4);
+    }
+
+    #[test]
+    fn test_count_enabled_strategies_none() {
+        let config = OptimizationConfig {
+            enable_latency_optimization: false,
+            enable_throughput_optimization: false,
+            enable_security_enhancement: false,
+            enable_cost_optimization: false,
+        };
+        let optimizer = NetworkEffectsOptimizer::with_config(config);
+        assert_eq!(optimizer.count_enabled_strategies(), 0);
+    }
+
+    #[test]
+    fn test_count_enabled_strategies_partial() {
+        let config = OptimizationConfig {
+            enable_latency_optimization: true,
+            enable_throughput_optimization: false,
+            enable_security_enhancement: true,
+            enable_cost_optimization: false,
+        };
+        let optimizer = NetworkEffectsOptimizer::with_config(config);
+        assert_eq!(optimizer.count_enabled_strategies(), 2);
+    }
+
+    #[test]
+    fn test_get_optimization_stats() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let stats = optimizer.get_optimization_stats();
+        assert_eq!(stats.strategies_enabled, 3); // Default has 3 enabled
+        assert!(stats.optimization_config.enable_latency_optimization);
+    }
+
+    #[test]
+    fn test_calculate_combined_path_score() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let path = RoutingPath {
+            segments: vec![],
+            sovereignty_score: 1.0,
+            efficiency_score: 0.5,
+            combined_score: 0.0,
+            security_level: SecurityLevel::Maximum,
+        };
+        let score = optimizer.calculate_combined_path_score(&path);
+        assert_eq!(score, 0.8); // (1.0 * 0.6) + (0.5 * 0.4) = 0.6 + 0.2 = 0.8
+    }
+
+    #[test]
+    fn test_calculate_combined_path_score_equal_weights() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let path = RoutingPath {
+            segments: vec![],
+            sovereignty_score: 0.5,
+            efficiency_score: 0.5,
+            combined_score: 0.0,
+            security_level: SecurityLevel::Medium,
+        };
+        let score = optimizer.calculate_combined_path_score(&path);
+        assert_eq!(score, 0.5); // (0.5 * 0.6) + (0.5 * 0.4) = 0.3 + 0.2 = 0.5
+    }
+
+    #[tokio::test]
+    async fn test_optimize_for_network_effects_empty() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let paths: Vec<RoutingPath> = vec![];
+        let result = optimizer.optimize_for_network_effects(&paths).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_optimize_for_network_effects_single_path() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let paths = vec![create_test_path()];
+        let result = optimizer.optimize_for_network_effects(&paths).await;
+        assert!(result.is_ok());
+        let optimized = result.unwrap();
+        assert_eq!(optimized.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_optimize_segment_for_network_effects() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let segment = create_test_segment();
+        let result = optimizer.optimize_segment_for_network_effects(&segment).await;
+        assert!(result.is_ok());
+        let optimized = result.unwrap();
+        assert!(optimized.security_capabilities.contains(&SecurityCapability::NetworkOptimized));
+        assert_eq!(optimized.metadata.get("network_optimized"), Some(&"true".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_optimize_for_latency() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let segment = create_test_segment();
+        let original_score = segment.efficiency_score;
+        let result = optimizer.optimize_for_latency(&segment).await;
+        assert!(result.is_ok());
+        let optimized = result.unwrap();
+        assert_eq!(optimized.metadata.get("latency_optimized"), Some(&"true".to_string()));
+        assert!(optimized.efficiency_score >= original_score);
+    }
+
+    #[tokio::test]
+    async fn test_optimize_for_throughput() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let segment = create_test_segment();
+        let original_score = segment.efficiency_score;
+        let result = optimizer.optimize_for_throughput(&segment).await;
+        assert!(result.is_ok());
+        let optimized = result.unwrap();
+        assert_eq!(optimized.metadata.get("throughput_optimized"), Some(&"true".to_string()));
+        assert!(optimized.efficiency_score >= original_score);
+    }
+
+    #[tokio::test]
+    async fn test_enhance_security() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let segment = create_test_segment();
+        let result = optimizer.enhance_security(&segment).await;
+        assert!(result.is_ok());
+        let optimized = result.unwrap();
+        assert!(optimized
+            .security_capabilities
+            .contains(&SecurityCapability::SovereigntyCompliant));
+        assert_eq!(optimized.metadata.get("security_enhanced"), Some(&"true".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_optimize_for_cost() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let segment = create_test_segment();
+        let original_score = segment.efficiency_score;
+        let result = optimizer.optimize_for_cost(&segment).await;
+        assert!(result.is_ok());
+        let optimized = result.unwrap();
+        assert_eq!(optimized.metadata.get("cost_optimized"), Some(&"true".to_string()));
+        assert!(optimized.efficiency_score <= original_score);
+    }
+
+    #[tokio::test]
+    async fn test_assess_path_security_level_minimal() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let services: Vec<&ServiceInfo> = vec![];
+        let result = optimizer.assess_path_security_level(&services).await;
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), SecurityLevel::Minimal));
+    }
+
+    #[tokio::test]
+    async fn test_assess_path_security_level_medium() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let service = create_test_service();
+        let services = vec![&service];
+        let result = optimizer.assess_path_security_level(&services).await;
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), SecurityLevel::Medium));
+    }
+
+    #[tokio::test]
+    async fn test_assess_path_security_level_high() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let service1 = create_test_service();
+        let service2 = create_test_service();
+        let services = vec![&service1, &service2];
+        let result = optimizer.assess_path_security_level(&services).await;
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), SecurityLevel::High));
+    }
+
+    #[tokio::test]
+    async fn test_assess_path_security_level_maximum() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let service1 = create_test_service();
+        let service2 = create_test_service();
+        let service3 = create_test_service();
+        let service4 = create_test_service();
+        let services = vec![&service1, &service2, &service3, &service4];
+        let result = optimizer.assess_path_security_level(&services).await;
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), SecurityLevel::Maximum));
+    }
+
+    #[test]
+    fn test_optimization_stats_strategies_count() {
+        let optimizer = NetworkEffectsOptimizer::new();
+        let stats = optimizer.get_optimization_stats();
+        assert!(stats.strategies_enabled > 0);
+        assert!(stats.strategies_enabled <= 4);
+    }
+
+    #[test]
+    fn test_default_trait() {
+        let optimizer = NetworkEffectsOptimizer::default();
+        assert!(optimizer.optimization_config.enable_latency_optimization);
+    }
 }

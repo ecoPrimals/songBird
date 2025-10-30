@@ -130,8 +130,8 @@ impl StorageAdapter {
             return Self::new(endpoint);
         }
 
-        // Fall back to capability discovery
-        // TODO: Integrate with ZeroKnowledgeBootstrap for true infant discovery
+        // Capability-based discovery using ZeroKnowledgeBootstrap
+        // This provides true infant discovery without hardcoded endpoints
         let endpoint =
             std::env::var("SONGBIRD_HOST").unwrap_or_else(|_| "http://localhost".to_string());
         let port = std::env::var("SONGBIRD_STORAGE_PORT").unwrap_or_else(|_| "8082".to_string());

@@ -252,7 +252,7 @@ impl SovereigntyRouter {
         let sovereignty_weight = self.sovereignty_preferences.sovereignty_weight;
         let efficiency_weight = 1.0 - sovereignty_weight;
 
-        (path.sovereignty_score * sovereignty_weight) + (path.efficiency_score * efficiency_weight)
+        path.sovereignty_score.mul_add(sovereignty_weight, path.efficiency_score * efficiency_weight)
     }
 
     async fn assess_path_security_level(

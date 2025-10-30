@@ -57,7 +57,7 @@ pub enum CapabilityType {
 }
 
 /// A capability that a plugin provides
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(clippy::struct_field_names)]
 pub struct Capability {
     /// The type and details of this capability
@@ -102,7 +102,7 @@ impl Capability {
 
     /// Check if this capability is compatible with another
     #[must_use]
-    pub fn compatible_with(&self, other: &Capability) -> bool {
+    pub fn compatible_with(&self, other: &Self) -> bool {
         // For now, just check if types match
         // Could be extended with version compatibility checking
         std::mem::discriminant(&self.capability_type)

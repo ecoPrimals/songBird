@@ -90,7 +90,7 @@ fn test_error_context_empty_strings() {
 fn test_error_context_very_long_message() {
     // Test with very long error message
     let long_message = "x".repeat(1000);
-    let context = ErrorContext::new(long_message.clone(), "Context");
+    let context = ErrorContext::new(long_message, "Context");
 
     assert_eq!(context.message().len(), 1000);
 }

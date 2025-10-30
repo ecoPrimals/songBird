@@ -384,7 +384,7 @@ pub async fn get_all_endpoints() -> HashMap<CapabilityType, CapabilityEndpoint> 
 ///
 /// Note: With current implementation, this creates a new resolver instance,
 /// so cache clearing is implicit. Future versions may use a global instance.
-pub async fn clear_cache() {
+pub fn clear_cache() {
     // No-op with current architecture - each call creates new resolver
     // This is intentional to avoid global state complexity
 }
@@ -486,7 +486,7 @@ mod tests {
         assert_eq!(endpoint1, endpoint2);
 
         // Clear cache
-        clear_cache().await;
+        clear_cache();
 
         // Should discover again
         let endpoint3 = get_capability_endpoint("security").await.unwrap();
