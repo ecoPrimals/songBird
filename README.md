@@ -1,21 +1,49 @@
 # 🎵 Songbird - Universal Service Orchestration
 
 **Version**: 0.1.0  
-**Status**: ✅ Production-Ready Staging  
+**Status**: ✅ Federation-Ready (Track 1: 90% Complete)  
 **Grade**: B+ (87/100)  
-**Last Updated**: October 30, 2025
+**Last Updated**: October 30, 2025  
+**Federation Status**: 🚧 Implementation Complete - Testing Phase
 
 ---
 
 ## 🎯 What is Songbird?
 
-Songbird is a **universal service orchestration framework** with:
+Songbird is a **universal service orchestration framework** with **federated multi-tower coordination**:
 
 - 🏆 **World-Class Memory Safety** (TOP 0.1% - Zero unsafe code)
 - 🏆 **Reference Sovereignty Implementation** (100/100)
+- ✅ **Federated Architecture** (Multi-tower mesh networking)
 - ✅ **Capability-Based Discovery** (Zero hardcoding architecture)
 - ✅ **Protocol-Agnostic** (HTTP, gRPC, WebSocket support)
 - ✅ **Modular Design** (12 well-organized crates)
+
+### 🌐 NEW: Federation System
+
+Songbird now supports **tower-to-tower federation**:
+- ✅ Automatic node discovery and registration
+- ✅ Service discovery across towers
+- ✅ Heartbeat monitoring and health checks
+- ✅ Capability-based routing across the mesh
+- ⏭️ mDNS zero-config discovery (coming soon)
+- ⏭️ Fractal hierarchical federation (planned)
+
+**Quick Start Federation**:
+```bash
+# Bootstrap node
+export SONGBIRD_FEDERATION_ENABLED=true
+export SONGBIRD_NODE_NAME=Eastgate
+cargo run --release --bin songbird-orchestrator
+
+# Joining node  
+export SONGBIRD_FEDERATION_ENABLED=true
+export SONGBIRD_NODE_NAME=Strandgate
+export SONGBIRD_BOOTSTRAP_ADDRESS=eastgate-ip:8080
+cargo run --release --bin songbird-orchestrator
+```
+
+See `FEDERATION_STATUS.md` for complete details.
 
 ---
 
