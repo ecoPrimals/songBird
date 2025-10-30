@@ -16,6 +16,7 @@
 pub mod adapters;
 pub mod capabilities;
 pub mod discovery;
+pub mod federated_capability_adapter;
 pub mod sovereignty;
 pub mod traits;
 pub mod types;
