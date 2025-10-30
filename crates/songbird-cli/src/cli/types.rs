@@ -128,10 +128,17 @@ impl Cli {
     /// Execute the CLI command
     pub async fn execute(&self) -> crate::errors::CliResult<()> {
         if let Some(cmd) = &self.command {
-            println!("🎼 Executing command: {cmd:?}");
-            // For now, just print success - actual command execution will be implemented
-            println!("✅ Command completed successfully");
-            Ok(())
+            match cmd {
+                crate::cli::commands::Commands::Tower { command } => {
+                    command.execute().await
+                }
+                _ => {
+                    println!("🎼 Executing command: {cmd:?}");
+                    // For now, just print success - actual command execution will be implemented
+                    println!("✅ Command completed successfully");
+                    Ok(())
+                }
+            }
         } else {
             println!("🎼 Songbird Universal Orchestrator CLI");
             println!("Use --help for available commands");

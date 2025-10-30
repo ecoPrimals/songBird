@@ -1,8 +1,24 @@
 # 🌐 Eastgate ↔ Strandgate Federation Setup Guide
 
+> **⚠️ IMPORTANT**: This guide contains errors. See **[FEDERATION_SETUP_CORRECTED.md](FEDERATION_SETUP_CORRECTED.md)** for the working version.
+
 **Objective**: Get your two Linux towers talking via Songbird federation  
 **Date**: October 30, 2025  
-**Estimated Time**: 10 minutes
+**Status**: ⚠️ SUPERSEDED - Contains aspirational features not yet implemented  
+
+---
+
+## 🚨 Critical Issues Found
+
+1. **CLI Arguments Don't Exist**: `--mode`, `--node-name`, `--listen`, `--bootstrap` are not implemented
+2. **Build Failures**: Some systems experience `module core not found` errors
+3. **Federation Not Ready**: Auto-discovery and mesh formation are still in development
+
+**Use the corrected guide instead**: [FEDERATION_SETUP_CORRECTED.md](FEDERATION_SETUP_CORRECTED.md)
+
+---
+
+# Original Guide (FOR REFERENCE ONLY)
 
 ---
 
