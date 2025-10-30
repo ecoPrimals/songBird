@@ -13,6 +13,7 @@ pub mod federation;
 pub mod gaming;
 pub mod network;
 pub mod status;
+pub mod tower;  // NEW: Tower management
 pub mod version;
 
 // Legacy compatibility modules (simplified)
@@ -22,6 +23,13 @@ pub mod quick;
 /// **MODERN**: Gaming-focused command structure
 #[derive(Debug, Clone, Subcommand)]
 pub enum Commands {
+    /// 🏰 Tower management (start orchestrator)
+    #[command(about = "🏰 Start and manage Songbird towers")]
+    Tower {
+        #[command(subcommand)]
+        command: tower::TowerCommand,
+    },
+
     /// 🎮 Gaming session management
     #[command(about = "🎮 Create, join, and manage gaming sessions")]
     Gaming {
