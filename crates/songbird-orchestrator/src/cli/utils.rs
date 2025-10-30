@@ -2,14 +2,14 @@
 //!
 //! This module provides utility functions for CLI output formatting and common operations.
 
-use colored::*;
+use colored::Colorize;
 
 /// Print informational message
 pub fn print_info(msg: &str) {
     println!("{}", msg.blue());
 }
 
-/// Print success message  
+/// Print success message
 pub fn print_success(msg: &str) {
     println!("{}", msg.green());
 }

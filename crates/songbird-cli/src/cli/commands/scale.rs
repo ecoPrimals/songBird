@@ -5,11 +5,10 @@
 use clap::Args;
 use colored::*;
 use songbird_core::orchestrator::scaling::{GamingScale, GamingScalingConfig};
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
 
-#[derive(Debug, Args)]
-pub struct ScaleArgs {
-    /// Gaming scale to set (home-gaming, lan-party, auto)
+#[derive(Debug, Clone, Args)]
+pub struct ScaleArgs  {/// Gaming scale to set (home-gaming, lan-party, auto,
     #[arg(long)]
     scale: Option<String>,
 
@@ -26,7 +25,7 @@ pub struct ScaleArgs {
     recommendations: bool,
 }
 
-pub async fn handle_scale_command(args: ScaleArgs) -> Result<()> {
+pub async fn handle_scale_command(args: ScaleArgs) -> SongbirdResult<()> {
     if args.status {
         return show_current_scale().await;
     }
@@ -36,7 +35,7 @@ pub async fn handle_scale_command(args: ScaleArgs) -> Result<()> {
     }
 
     if let Some(scale_str) = args.scale {
-        let scale = parse_gaming_scale(&scale_str)?;
+        let scale = parse_gaming_scale(&scale_str,?;
         return handle_set_scale(scale, args.force).await;
     }
 
@@ -44,79 +43,69 @@ pub async fn handle_scale_command(args: ScaleArgs) -> Result<()> {
     show_current_scale().await
 }
 
-fn parse_gaming_scale(s: &str) -> Result<GamingScale> {
+fn parse_gaming_scale(s: &str) -> SongbirdResult<GamingScale> {
     match s.to_lowercase().as_str() {
-        "home-gaming" | "home" => Ok(GamingScale::HomeGaming),
-        "lan-party" | "lan" => Ok(GamingScale::LanParty),
-        "auto" => Ok(GamingScale::Auto),
-        _ => Err(songbird_errors::SongbirdError::Config {
-            message: format!(
-                "Invalid gaming scale '{s}'. Valid options: home-gaming, lan-party, auto"
-            ),
-            field: Some("gaming_scale".to_string()),
-            context: Some("Gaming scale validation".to_string()),
-            suggestion: Some(
-                "Use 'home-gaming', 'lan-party', or 'auto' for gaming scale".to_string(),
-            ),
-        }),
+        "home-gaming" | "home" => Ok(GamingScale::HomeGaming,"
+        "lan-party" | "lan" => Ok(GamingScale::LanParty,"
+        "auto" => Ok(GamingScale::Auto,"
+        _ => Err(SongbirdError::configuration(&format!(
+            "Invalid gaming scale '{s}'. Valid options: home-gaming, lan-party, auto. Use 'home-gaming', 'lan-party', or 'auto' for gaming scale""
+        ))
     }
 }
 
-async fn show_current_scale() -> Result<()> {
-    println!("{}", "🎮 SongBird Gaming Scale Status".bright_cyan().bold());
-    println!("{}", "===============================".bright_cyan());
-    println!();
+async fn show_current_scale() -> SongbirdResult<()> {
+    println!("{}", "🎮 SongBird Gaming Scale Status".bright_cyan().bold();"
+    println!("{}", "===============================".bright_cyan()"
+    println!()
 
     // Get current gaming configuration
     let current_config = GamingScalingConfig::default();
     let current_scale = &current_config.scale;
 
-    println!(
-        "Current Gaming Scale: {}",
-        format!("{current_scale:?}").bright_green()
-    );
-    println!("Description: {}", current_scale.description());
+    println!("Current Gaming Scale: {}", format!("{}", current_scale:?).bright_green();"
+    println!("Description: {}", current_scale.description()"
 
     let limits = current_scale.resource_limits();
     println!();
     println!("Gaming Resource Limits:");
-    println!("   Max Gaming Sessions: {}", limits.max_gaming_sessions);
-    println!("   Max Players: {}", limits.max_players);
-    println!("   Max Connections: {}", limits.max_connections);
-    println!("   Max Memory: {}MB", limits.max_memory_mb);
+    println!("   Max Gaming Sessions: {}", limits.max_gaming_sessions,"
+    println!("   Max Players: {}", limits.max_players,"
+    println!("   Max Connections: {}", limits.max_connections,"
+    println!("   Max Memory: {}MB", limits.max_memory_mb,"
 
-    Ok(())
+    Ok(()),
 }
 
-async fn handle_set_scale(scale: GamingScale, _force: bool) -> Result<()> {
+async fn handle_set_scale(scale: GamingScale, _force: bool) -> SongbirdResult<()> {
     println!("🎮 Setting gaming scale to: {scale:?}");
-    println!("Description: {}", scale.description());
+    println!("Description: {}", scale.description()"
 
     // Show what this scale supports
     print_gaming_scale_info(&scale);
 
     println!("✅ Gaming scale configuration updated!");
-    Ok(())
+    Ok(()),
 }
 
-async fn show_gaming_recommendations() -> Result<()> {
-    println!("{}", "🎯 Gaming Scale Recommendations".bright_cyan().bold());
-    println!("{}", "===============================".bright_cyan());
-    println!();
+async fn show_gaming_recommendations() -> SongbirdResult<()> {
+    println!("{}", "🎯 Gaming Scale Recommendations".bright_cyan().bold();"
+    println!("{}", "===============================".bright_cyan()"
+    println!()
 
-    println!("🏠 Home Gaming (2-8 players):");
+    println!("🏠 Home Gaming (2-8 players,:");"
     println!("   • Perfect for family gaming");
     println!("   • Small friend groups");
     println!("   • Retro gaming sessions");
     println!("   • Low resource usage");
-    println!();
+    println!()
 
-    println!("🎪 LAN Party (8-50 players):");
+    println!("🎪 LAN Party (8-50 players,:");"
     println!("   • Gaming tournaments");
     println!("   • LAN parties and events");
     println!("   • Gaming cafes");
     println!("   • Higher performance requirements");
-    println!();
+    println!()
 
     println!("🤖 Auto Scale:");
     println!("   • Automatically detects player count");
@@ -124,7 +113,7 @@ async fn show_gaming_recommendations() -> Result<()> {
     println!("   • Recommended for most users");
     println!("   • Smart resource management");
 
-    Ok(())
+    Ok(()),
 }
 
 fn print_gaming_scale_info(scale: &GamingScale) {
@@ -132,19 +121,19 @@ fn print_gaming_scale_info(scale: &GamingScale) {
 
     println!();
     println!("Gaming Scale Details:");
-    println!("   Max Gaming Sessions: {}", limits.max_gaming_sessions);
-    println!("   Max Players: {}", limits.max_players);
-    println!("   Max Connections: {}", limits.max_connections);
-    println!("   Max Memory: {}MB", limits.max_memory_mb);
-    println!();
+    println!("   Max Gaming Sessions: {}", limits.max_gaming_sessions,"
+    println!("   Max Players: {}", limits.max_players,"
+    println!("   Max Connections: {}", limits.max_connections,"
+    println!("   Max Memory: {}MB", limits.max_memory_mb,"
+    println!()
 }
 
 /// Convert scale enum to string representation
 #[allow(dead_code)]
 fn scale_to_string(scale: &GamingScale) -> &'static str {
     match scale {
-        GamingScale::HomeGaming => "home-gaming",
-        GamingScale::LanParty => "lan-party",
-        GamingScale::Auto => "auto",
+        GamingScale::HomeGaming => "home-gaming","
+        GamingScale::LanParty => "lan-party","
+        GamingScale::Auto => "auto","
     }
 }

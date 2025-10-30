@@ -1,0 +1,89 @@
+# Songbird Demo Configuration - Pure Orchestration Mode
+# This file eliminates all hardcoded values from examples and demos
+# 
+# ✅ ROLE COMPLIANCE: Songbird operates as pure orchestrator
+# - Security operations → Delegated to BearDog SecurityCapability
+# - Storage operations → Delegated to NestGate StorageCapability  
+# - Compute monitoring → Delegated to ToadStool ComputeCapability
+# - AI processing → Delegated to Squirrel AICapability
+
+[global]
+service_name = "songbird-demo"
+environment = "development"
+log_level = "info"
+node_id = "demo-node-001"
+
+[network]
+bind_address = "127.0.0.1"
+port = 8080
+max_connections = 1000
+
+# Self-awareness configuration - Songbird only knows itself
+[network.self_config]
+self_id = "songbird"
+self_capabilities = ["orchestration", "service_discovery", "load_balancing", "gaming_protocols"]
+
+[network.self_config.self_endpoint]
+host = "127.0.0.1"
+port = 8080
+scheme = "http"
+
+# Universal discovery configuration for capability-based routing
+[network.universal_discovery]
+enabled = true
+discovery_methods = ["network_scan", "service_registry", "mdns", "environment"]
+
+# Service Discovery Endpoints
+[[network.external_services.service_discovery.consul]]
+host = "127.0.0.1"
+port = 8500
+scheme = "http"
+
+[[network.external_services.service_discovery.etcd]]
+host = "127.0.0.1" 
+port = 2379
+scheme = "http"
+
+[[network.external_services.service_discovery.etcd]]
+host = "127.0.0.1"
+port = 2380
+scheme = "http"
+
+[[network.external_services.service_discovery.kubernetes]]
+host = "127.0.0.1"
+port = 8080
+scheme = "https"
+
+[[network.external_services.service_discovery.docker]]
+host = "localhost"
+port = 2375
+scheme = "http"
+
+[[network.external_services.service_discovery.docker]]
+host = "localhost"
+port = 2376
+scheme = "https"
+
+[network.gaming]
+enable_gaming_protocols = true
+directplay_port = 47624
+port_range = [8000, 8100]
+
+[security]
+enabled = true
+
+[federation]
+enabled = false
+discovery_port = 7000
+
+[discovery]
+auto_discovery = true
+discovery_interval_secs = 30
+
+[performance]
+enable_optimizations = true
+benchmark_mode = false
+
+[observability]
+metrics_enabled = true
+tracing_enabled = true 

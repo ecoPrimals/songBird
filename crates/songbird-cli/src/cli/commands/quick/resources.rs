@@ -3,7 +3,7 @@
 //! Headless API for detecting system resources that biomeOS can consume
 
 use super::{NetworkSpeed, SystemResources};
-use crate::cli::CliResult;
+use crate::errors::CliResult;
 use serde::{Deserialize, Serialize};
 
 /// Detect system resources via API
@@ -18,7 +18,7 @@ pub async fn detect_system_resources_api() -> CliResult<SystemResources> {
     detect_resources_with_params(request).await
 }
 
-/// Detect system resources with selective detection for performance (used for light resource checks)
+/// Detect system resources with selective detection for performance (used for light resource checks,
 #[allow(dead_code)]
 pub async fn detect_system_resources_fast() -> CliResult<SystemResources> {
     // Fast detection - skip expensive tests
@@ -46,7 +46,7 @@ pub async fn detect_resources_with_params(
     let cpu_cores = num_cpus::get();
     let memory_gb = detect_available_memory();
     let storage_gb = if request.detect_storage {
-        detect_available_storage()
+        get_available_storage()
     } else {
         None
     };
@@ -81,59 +81,42 @@ fn detect_available_memory() -> f64 {
     sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0) // Convert bytes to GB
 }
 
-fn detect_available_storage() -> Option<f64> {
-    let path = std::env::current_dir().ok()?;
+/// Safe disk space query using sysinfo crate
+///
+/// ## Safety Evolution
+/// This has been refactored from raw FFI (`libc::statvfs/GetDiskFreeSpaceExW`) to use
+/// the `sysinfo` crate which handles all platform differences and FFI safely.
+///
+/// Benefits:
+/// - 100% safe code - no unsafe blocks
+/// - Cross-platform - works on Unix, Windows, macOS, FreeBSD, etc.
+/// - Well-tested - sysinfo is widely used and maintained
+/// - More features - easy to add more disk metrics if needed
+fn get_available_disk_space_safe() -> Option<f64> {
+    // SAFE: sysinfo uses safe abstractions over platform-specific APIs
+    // It handles all the FFI complexity internally with proper safety checks
+    use sysinfo::Disks;
 
-    #[cfg(unix)]
-    {
-        use std::ffi::CString;
-        use std::mem::MaybeUninit;
+    let disks = Disks::new_with_refreshed_list();
 
-        let path_cstr = CString::new(path.to_string_lossy().as_bytes()).ok()?;
-        let mut statfs = MaybeUninit::<libc::statvfs>::uninit();
+    // Find the disk containing current directory
+    let current_dir = std::env::current_dir().ok()?;
 
-        // SAFETY: statvfs is a standard POSIX system call that fills the provided buffer
-        // with filesystem statistics. The buffer is properly initialized as MaybeUninit
-        // and we check the return value before using the data.
-        let result = unsafe { libc::statvfs(path_cstr.as_ptr(), statfs.as_mut_ptr()) };
-        if result == 0 {
-            // SAFETY: statvfs succeeded (result == 0), so the buffer is now properly initialized
-            let statfs = unsafe { statfs.assume_init() };
-            let available_bytes = statfs.f_bavail.saturating_mul(statfs.f_frsize);
-            return Some(available_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
-        }
-    }
+    // Find the disk that contains our current directory
+    // (or use the first disk as fallback)
+    let disk = disks
+        .iter()
+        .find(|d| current_dir.starts_with(d.mount_point()))
+        .or_else(|| disks.first())?;
 
-    #[cfg(windows)]
-    {
-        use std::ffi::OsStr;
-        use std::os::windows::ffi::OsStrExt;
-        let current_dir = std::env::current_dir().ok()?;
-        let drive_letter = current_dir.to_string_lossy().chars().next()?;
-        let drive_path = format!("{}:\\", drive_letter);
-        let wide_path: Vec<u16> = OsStr::new(&drive_path)
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect();
+    // Convert from bytes to GB
+    Some(disk.available_space() as f64 / (1024.0 * 1024.0 * 1024.0))
+}
 
-        let mut free_bytes: u64 = 0;
-        let mut total_bytes: u64 = 0;
-        // SAFETY: GetDiskFreeSpaceExW is a standard Windows API call that writes to the provided
-        // out-parameters. We provide valid pointers and the wide_path is null-terminated.
-        unsafe {
-            let result = winapi::um::fileapi::GetDiskFreeSpaceExW(
-                wide_path.as_ptr(),
-                &mut free_bytes,
-                &mut total_bytes,
-                std::ptr::null_mut(),
-            );
-            if result != 0 {
-                return Some(free_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
-            }
-        }
-    }
-
-    None
+/// Get available storage space in GB
+#[must_use]
+pub fn get_available_storage() -> Option<f64> {
+    get_available_disk_space_safe()
 }
 
 fn detect_gpu_availability() -> bool {

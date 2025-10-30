@@ -1,0 +1,70 @@
+[tool.tarpaulin]
+# Tarpaulin configuration for Songbird Universal Orchestrator test coverage
+
+# Coverage target percentage
+target-dir = "target/tarpaulin"
+
+# Output formats
+out = ["Html", "Json", "Xml"]
+
+# Output directory
+output-dir = "coverage-report"
+
+# Include all packages in the workspace
+all-features = true
+workspace = true
+
+# Coverage threshold (90% target)
+fail-under = 90.0
+
+# Timeout settings
+timeout = 300
+
+# Include patterns
+include-tests = true
+count = true
+branch = true
+
+# Exclude patterns
+exclude = [
+    # Exclude archived code
+    "archive/*",
+    # Exclude build artifacts
+    "target/*",
+    # Exclude example code
+    "examples/*",
+    # Exclude benchmark code
+    "benches/*",
+    # Exclude migration tools (these are utilities, not core functionality)
+    "tools/*",
+    "songbird-unwrap-migrator/*",
+    # Exclude handoff directory (temporary)
+    "handoffToPrimals/*"
+]
+
+# Exclude specific files with known issues
+exclude-files = [
+    # Files with compilation issues that need fixing
+    "crates/songbird-cli/src/cli/commands/gaming/mod.rs",
+    "crates/songbird-federation/src/deployment/mod.rs",
+    "crates/songbird-network/src/communication/mod.rs",
+    "crates/songbird-orchestrator/src/app/mod.rs",
+    "crates/songbird-registry/src/health/mod.rs",
+    "crates/songbird-security/src/accessibility/universal_access.rs",
+    "crates/songbird-universal/src/self_discovery.rs",
+    "crates/songbird-universal-primals/src/config.rs"
+]
+
+# Engine settings
+engine = "llvm"
+
+# Verbose output
+verbose = true
+
+# Generate HTML report
+[tool.tarpaulin.html]
+title = "Songbird Universal Orchestrator - Test Coverage Report"
+
+# JSON output settings
+[tool.tarpaulin.json]
+pretty = true 

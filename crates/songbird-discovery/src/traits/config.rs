@@ -1,12 +1,13 @@
 // Module imports
 //! Configuration Provider Trait
 //!
-//! Defines the interface for pluggable configuration backends,
+//! Defines the interface for pluggable configuration backends)
 //! supporting file-based, environment, Consul, and other configuration sources.
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 // Import all concrete config types from the discovery config module
 pub use crate::discovery::config::*;
 

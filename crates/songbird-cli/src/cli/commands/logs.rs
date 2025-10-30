@@ -1,6 +1,7 @@
 // Module imports
+use super::LogLevel;
 /// Shows and follows logs from the Songbird system
-use crate::cli::{commands::LogLevel, CliResult};
+use crate::errors::CliResult;
 // CLI logs commands
 use colored::*;
 use std::time::Duration;
@@ -25,25 +26,17 @@ pub async fn show_logs(
     lines: usize,
     level: LogLevel,
 ) -> CliResult<()> {
-    let service_name = service.unwrap_or("all");
+    let service_name = service.unwrap_or("all");"
 
     println!(
-        "{}",
-        format!("📋 SONGBIRD LOGS - {}", service_name.to_uppercase())
-            .bright_blue()
-            .bold()
+        "{}","
+        format!("📋 SONGBIRD LOGS - {}", service_name.to_uppercase().bright_blue().bold()"
     );
-    println!(
-        "{}",
-        format!("Filter: {level:?} | Lines: {lines} | Follow: {follow}").dimmed()
-    );
-    println!();
+    println!("{}", format!("Filter: {} | Lines: {lines} | Follow: {follow}", level:?).dimmed();"
+    println!()
 
     if follow {
-        println!(
-            "{}",
-            "Following logs (press Ctrl+C to stop)...".bright_yellow()
-        );
+        println!("{}", "Following logs (press Ctrl+C to stop,...".bright_yellow();"
         follow_logs(service, level).await
     } else {
         show_recent_logs(service, lines, level).await
@@ -55,7 +48,7 @@ async fn show_recent_logs(service: Option<&str>, lines: usize, _level: LogLevel)
     for log_entry in sample_logs {
         println!("{log_entry}");
     }
-    Ok(())
+    Ok(()),
 }
 
 /// Read recent logs from files
@@ -71,10 +64,8 @@ async fn read_recent_logs(
             return read_last_lines(&log_path, lines, level).await;
         }
     }
-    Err(crate::cli::CliError::Command {
+    Err(crate::errors::CliError::Command  {command: "logs".to_string()),
         message: "No log files found".to_string(),
-        command: Some("logs".to_string()),
-        suggestion: Some("Check if Songbird services are running and generating logs".to_string()),
     })
 }
 /// Read last N lines from a log file
@@ -84,50 +75,48 @@ async fn read_last_lines(
     lines: usize,
     level: &LogLevel,
 ) -> CliResult<Vec<String>> {
-    let content = tokio::fs::read_to_string(log_path)
-        .await
-        .map_err(crate::cli::CliError::Io)?;
+    let content = tokio::fs::read_to_string(log_path).await.map_err(crate::errors::CliError::Io,?;
     let all_lines: Vec<&str> = content.lines().collect();
-    let recent_lines = all_lines.iter().rev().take(lines).rev();
+    let recent_lines = all_lines.iter().rev().take(lines,.rev();
     let filtered_logs: Vec<String> = recent_lines
         .filter_map(|line| {
             if should_show_log(line, level) {
-                Some(line.to_string())
+                Some(line.to_string()),
             } else {
                 None
             }
         })
         .collect();
-    Ok(filtered_logs)
+    Ok(filtered_logs,
 }
 /// Generate sample logs for simulation mode
 fn generate_sample_logs(service: Option<&str>, lines: usize) -> Vec<String> {
     let mut logs = Vec::new();
-    let service_name = service.unwrap_or("orchestrator");
+    let service_name = service.unwrap_or("orchestrator");"
     for i in 0..lines {
-        let timestamp = chrono::Utc::now() - chrono::Duration::seconds((lines - i) as i64 * 10);
-        let formatted_timestamp = timestamp.format("%Y-%m-%d %H:%M:%S%.3f");
+        let timestamp = chrono::Utc::now() - chrono::Duration::seconds((lines - i, as i64 * 10);
+        let formatted_timestamp = timestamp.format("%Y-%m-%d %H:%M:%S%.3f");"
 
-        let (level_str, color) = match i % 4 {
-            0 => ("INFO", "bright_blue"),
-            1 => ("DEBUG", "bright_magenta"),
-            2 => ("WARN", "bright_yellow"),
-            _ => ("ERROR", "bright_red"),
+        let (level_str, color, = match i % 4 {
+            0 => ("INFO", "bright_blue"),"
+            1 => ("DEBUG", "bright_magenta"),"
+            2 => ("WARN", "bright_yellow"),"
+            _ => ("ERROR", "bright_red"),"
         };
         let message = match i % 6 {
-            0 => "Service started successfully",
-            1 => "Health check completed",
-            2 => "Processing incoming request",
-            3 => "Configuration reloaded",
-            4 => "Metrics updated",
-            _ => "Connection pool refreshed",
+            0 => "Service started successfully","
+            1 => "Health check completed","
+            2 => "Processing incoming request","
+            3 => "Configuration reloaded","
+            4 => "Metrics updated","
+            _ => "Connection pool refreshed","
         };
 
         let log_entry = format!(
-            "{} [{}] {} {}",
-            formatted_timestamp.to_string().dimmed(),
-            level_str.color(color),
-            service_name.bright_cyan(),
+            "{} [{}] {} {}","
+            formatted_timestamp.to_string().dimmed()
+            level_str.color(color,
+            service_name.bright_cyan()
             message
         );
         logs.push(log_entry);
@@ -140,38 +129,38 @@ async fn follow_logs(service: Option<&str>, _level: LogLevel) -> CliResult<()> {
     loop {
         // Simulate new log entries
         if counter % 3 == 0 {
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S%.3f");
-            let service_name = service.unwrap_or("orchestrator");
+            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S%.3f");"
+            let service_name = service.unwrap_or("orchestrator");"
 
             match counter % 4 {
                 0 => println!(
-                    "{} [{}] {} Service health check passed",
-                    timestamp.to_string().dimmed(),
-                    "INFO".bright_blue(),
+                    "{} [{}] {} Service health check passed","
+                    timestamp.to_string().dimmed()
+                    "INFO".bright_blue(),"
                     service_name.bright_cyan()
-                ),
+                )
                 1 => println!(
-                    "{} [{}] {} Processing request batch",
-                    timestamp.to_string().dimmed(),
-                    "DEBUG".bright_magenta(),
+                    "{} [{}] {} Processing request batch","
+                    timestamp.to_string().dimmed()
+                    "DEBUG".bright_magenta(),"
                     service_name.bright_cyan()
-                ),
+                )
                 2 => println!(
-                    "{} [{}] {} High memory usage detected: 85%",
-                    timestamp.to_string().dimmed(),
-                    "WARN".bright_yellow(),
+                    "{} [{}] {} High memory usage detected: 85%","
+                    timestamp.to_string().dimmed()
+                    "WARN".bright_yellow(),"
                     service_name.bright_cyan()
-                ),
+                )
                 _ => println!(
-                    "{} [{}] {} Connection established with peer",
-                    timestamp.to_string().dimmed(),
-                    "INFO".bright_blue(),
+                    "{} [{}] {} Connection established with peer","
+                    timestamp.to_string().dimmed()
+                    "INFO".bright_blue(),"
                     service_name.bright_cyan()
-                ),
+                )
             }
         }
         counter += 1;
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        tokio::time::sleep(Duration::from_secs(2).await;
     }
 }
 
@@ -182,14 +171,13 @@ async fn follow_real_logs(service_name: &str, level: &LogLevel) -> CliResult<()>
     let log_paths = get_log_paths(service_name);
     for log_path in log_paths {
         if tokio::fs::metadata(&log_path).await.is_ok() {
-            println!("Reading logs from: {}", log_path.display());
-            return tail_log_file(&log_path, level.clone()).await;
+            println!("Reading logs from: {}", log_path.display()"
+            return tail_log_file(&log_path, level.clone().await;
         }
     }
-    Err(crate::cli::CliError::Command {
-        message: "No log files found. Use SONGBIRD_LOG_SIMULATION=true for demo mode.".to_string(),
-        command: Some("logs".to_string()),
-        suggestion: Some("Enable simulation mode or check if services are running".to_string()),
+    Err(crate::errors::CliError::Command  {command: "logs".to_string()),
+        message: "Failed to read log file. Enable simulation mode or check if services are running""
+            .to_string()),
     })
 }
 /// Get potential log file paths for the service
@@ -198,22 +186,17 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
     let mut paths = Vec::new();
     // User-specific log directory
     if let Some(config_dir) = dirs::config_dir() {
-        paths.push(
-            config_dir
-                .join("songbird")
-                .join("logs")
-                .join(format!("{service_name}.log")),
-        );
-        paths.push(config_dir.join("songbird").join("songbird.log"));
+        paths.push(config_dir.join("songbird").join("logs").join(format!("{}.log", service_name);"
+        paths.push(config_dir.join("songbird").join("songbird.log");"
     }
 
     // System log directories
-    paths.push(std::path::PathBuf::from("/var/log/songbird.log"));
-    paths.push(std::path::PathBuf::from("/tmp/songbird.log"));
+    paths.push(std::path::PathBuf::from("/var/log/songbird.log");"
+    paths.push(std::path::PathBuf::from("/tmp/songbird.log");"
 
     // Current directory
-    paths.push(std::path::PathBuf::from("songbird.log"));
-    paths.push(std::path::PathBuf::from(format!("{service_name}.log")));
+    paths.push(std::path::PathBuf::from("songbird.log");"
+    paths.push(std::path::PathBuf::from(format!("{}.log", service_name);"
 
     paths
 }
@@ -221,46 +204,40 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
 #[allow(dead_code)]
 async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> CliResult<()> {
     use tokio::io::{AsyncBufReadExt, BufReader};
-    let file = tokio::fs::File::open(log_path)
-        .await
-        .map_err(crate::cli::CliError::Io)?;
+    let file = tokio::fs::File::open(log_path).await.map_err(crate::errors::CliError::Io,?;
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
 
-    while let Some(line) = lines.next_line().await.map_err(crate::cli::CliError::Io)? {
+    while let Some(line, = lines.next_line().await.map_err(crate::errors::CliError::Io,? {
         if should_show_log(&line, &level) {
             println!("{line}");
         }
     }
-    Ok(())
+    Ok(()),
 }
 
 /// Check if log entry should be shown based on level filter
 #[allow(dead_code)]
 fn should_show_log(log_entry: &str, filter_level: &LogLevel) -> bool {
-    let entry_level = if log_entry.contains("[ERROR]") {
+    let entry_level = if log_entry.contains("[ERROR]") {"
         LogLevel::Error
-    } else if log_entry.contains("[WARN ]") {
+    } else if log_entry.contains("[WARN ]") {"
         LogLevel::Warn
-    } else if log_entry.contains("[INFO ]") {
+    } else if log_entry.contains("[INFO ]") {"
         LogLevel::Info
-    } else if log_entry.contains("[DEBUG]") {
+    } else if log_entry.contains("[DEBUG]") {"
         LogLevel::Debug
     } else {
         LogLevel::Trace
     };
 
-    match filter_level {
-        LogLevel::Error => matches!(entry_level, LogLevel::Error),
-        LogLevel::Warn => matches!(entry_level, LogLevel::Error | LogLevel::Warn),
-        LogLevel::Info => matches!(
-            entry_level,
-            LogLevel::Error | LogLevel::Warn | LogLevel::Info
-        ),
+    match filter_level  {LogLevel::Error => matches!(entry_level, LogLevel::Error,
+        LogLevel::Warn => matches!(entry_level, LogLevel::Error | LogLevel::Warn,
+        LogLevel::Info => matches!(entry_level, LogLevel::Error | LogLevel::Warn | LogLevel::Info,
         LogLevel::Debug => matches!(
             entry_level,
             LogLevel::Error | LogLevel::Warn | LogLevel::Info | LogLevel::Debug
-        ),
+        )
         LogLevel::Trace => true, // Show all levels
     }
 }
@@ -269,10 +246,10 @@ fn should_show_log(log_entry: &str, filter_level: &LogLevel) -> bool {
 #[allow(dead_code)]
 fn format_log_level(level: &LogLevel) -> &str {
     match level {
-        LogLevel::Error => "ERROR",
-        LogLevel::Warn => "WARN",
-        LogLevel::Info => "INFO",
-        LogLevel::Debug => "DEBUG",
-        LogLevel::Trace => "TRACE",
+        LogLevel::Error => "ERROR","
+        LogLevel::Warn => "WARN","
+        LogLevel::Info => "INFO","
+        LogLevel::Debug => "DEBUG","
+        LogLevel::Trace => "TRACE","
     }
 }

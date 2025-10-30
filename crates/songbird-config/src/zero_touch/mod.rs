@@ -1,10 +1,16 @@
-//! Zero Touch Module
+//! # 🍼 Zero Touch Module
 //!
-//! Basic zero-touch deployment
+//! **MISSION**: Zero-knowledge bootstrap and infant discovery
+//!
+//! This module provides infrastructure for services to start with ZERO hardcoded
+//! knowledge and discover everything dynamically at runtime.
 
 use crate::config::SongbirdConfig;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+
+// Export the comprehensive zero-touch infant configuration
+pub mod infant_config;
+pub use infant_config::ZeroTouchConfig as InfantZeroTouchConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZeroTouchConfig {
@@ -30,17 +36,14 @@ pub struct ZeroTouchDeployment {
 impl ZeroTouchDeployment {
     #[must_use]
     pub const fn new(config: ZeroTouchConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+        }
     }
 
     /// Deploy zero-touch configuration
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if deployment fails due to system constraints or configuration issues
-    pub const fn deploy(&self) -> Result<()> {
+    pub const fn deploy() {
         // Minimal implementation
-        Ok(())
     }
 }
 
@@ -65,16 +68,13 @@ impl ZeroTouchOrchestrator {
     }
 
     /// Deploy the orchestrator
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if deployment configuration fails
-    pub fn deploy(&mut self) -> Result<DeploymentResult> {
+    #[must_use]
+    pub fn deploy() -> DeploymentResult {
         // Basic deployment logic
         let config = SongbirdConfig::default();
 
-        Ok(DeploymentResult {
+        DeploymentResult {
             config: Some(config),
-        })
+        }
     }
 }

@@ -1,5 +1,5 @@
 /// Gaming CLI Command Definitions
-/// 
+///
 /// This module contains only the command structure definitions,
 /// keeping them separate from the implementation logic.
 
@@ -7,16 +7,13 @@ use clap::{Parser, Subcommand};
 use songbird_network::network::gaming::GameProtocolClass;
 
 #[derive(Parser, Debug)]
-pub struct GamingArgs {
-    #[command(subcommand)]
+pub struct GamingArgs  {#[command(subcommand)]
     pub command: GamingCommand,
 }
 
 #[derive(Subcommand, Debug)]
-pub enum GamingCommand {
-    /// Scan for gaming traffic
-    Scan {
-        #[arg(long)]
+pub enum GamingCommand  {/// Scan for gaming traffic
+    Scan  {#[arg(long)]
         interface: Option<String>,
         #[arg(long)]
         duration: Option<u64>,
@@ -24,10 +21,9 @@ pub enum GamingCommand {
         continuous: bool,
         #[arg(long)]
         filter: Option<String>,
-    },
+    })
     /// Host a gaming session
-    Host {
-        #[arg(long)]
+    Host  {#[arg(long)]
         auto: bool,
         #[arg(long)]
         name: Option<String>,
@@ -35,11 +31,11 @@ pub enum GamingCommand {
         encrypt: bool,
         #[arg(long)]
         private: bool,
-    },
+    })
     /// Join a gaming session
-    Join { 
-        code: String 
-    },
+    Join {
+        code: String
+    })
     /// Show gaming status
     Status,
     /// Browse available sessions
@@ -49,29 +45,26 @@ pub enum GamingCommand {
     /// Configure gaming settings
     Configure,
     /// One-touch setup for families
-    OneTouch {
-        name: String,
+    OneTouch  {name: String,
         #[arg(long)]
         family_safe: bool,
         #[arg(long)]
         parental_controls: bool,
         #[arg(long)]
         guests: bool,
-    },
+    })
     /// Zero-touch setup with BearDog security
-    ZeroTouch {
-        #[arg(long)]
+    ZeroTouch  {#[arg(long)]
         endpoint: Option<String>,
         #[arg(long)]
         token: Option<String>,
-    },
+    })
     /// Family-safe gaming setup
-    FamilySafe { 
-        family_name: String 
-    },
+    FamilySafe {
+        family_name: String
+    })
     /// Quick one-click gaming setup
-    QuickStart {
-        #[arg(long)]
+    QuickStart  {#[arg(long)]
         auto_detect: bool,
         #[arg(long)]
         game: Option<String>,
@@ -79,16 +72,15 @@ pub enum GamingCommand {
         family_safe: bool,
         #[arg(long)]
         name: Option<String>,
-    },
+    })
 }
 
 /// Discovery message structure for network gaming
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DiscoveryMessage {
-    pub session_code: String,
+pub struct DiscoveryMessage  {pub session_code: String,
     pub host_address: std::net::SocketAddr,
     pub game_name: String,
     pub protocol_class: GameProtocolClass,
     pub max_players: u8,
     pub current_players: u8,
-} 
+}

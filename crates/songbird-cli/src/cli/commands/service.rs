@@ -1,7 +1,7 @@
 // Module imports
 /// Service Management Commands
 // CLI service commands
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
 // Service command UI helpers
 use colored::*;
 use tracing::info;
@@ -14,13 +14,10 @@ pub async fn deploy(
     gpu_required: bool,
     memory: Option<String>,
     cpu: Option<f64>,
-) -> Result<()> {
-    info!(
-        "Deploying service config={:?} name={:?} image={:?}",
-        config_file, name, image
-    );
+) -> SongbirdResult<()> {
+    info!("Deploying service config={:?} name={:?} image={:?}", config_file, name, image,"
 
-    println!("{}", "🚀 Deploying service...".bright_green().bold());
+    println!("{}", "🚀 Deploying service...".bright_green().bold();"
     if let Some(config) = config_file {
         println!("📋 Using config file: {config}");
     } else {
@@ -49,8 +46,8 @@ pub async fn deploy(
     }
 
     // Deploy logic would go here
-    println!("{}", "✅ Service deployed successfully".bright_green());
-    Ok(())
+    println!("{}", "✅ Service deployed successfully".bright_green()"
+    Ok(()),
 }
 /// Scale a service
 pub async fn scale(
@@ -59,18 +56,10 @@ pub async fn scale(
     auto: bool,
     cpu_threshold: Option<f64>,
     memory_threshold: Option<f64>,
-) -> Result<()> {
-    info!(
-        "Scaling service {} replicas={:?} auto={}",
-        service, replicas, auto
-    );
+) -> SongbirdResult<()> {
+    info!("Scaling service {} replicas={:?} auto={}", service, replicas, auto,"
 
-    println!(
-        "{}",
-        format!("📈 Scaling service '{service}'...")
-            .bright_blue()
-            .bold()
-    );
+    println!("{}", format!("📈 Scaling service '{}'...", service,.bright_blue().bold();"
 
     if let Some(replicas) = replicas {
         println!("🔢 Target replicas: {replicas}");
@@ -89,6 +78,6 @@ pub async fn scale(
     }
 
     // Scale logic would go here
-    println!("{}", "✅ Service scaled successfully".bright_green());
-    Ok(())
+    println!("{}", "✅ Service scaled successfully".bright_green()"
+    Ok(()),
 }

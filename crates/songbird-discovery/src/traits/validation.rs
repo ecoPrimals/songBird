@@ -5,22 +5,22 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 
 /// Universal configuration validator trait
 #[async_trait]
-pub trait ConfigValidator: Send + Sync {
-    /// Validate a configuration value
+pub trait ConfigValidator: Send + Sync  {/// Validate a configuration value
     async fn validate(
-        &self,
+        &self)
         value: &serde_json::Value,
         context: &ValidationContext,
     ) -> Result<ValidationResult>;
 
     /// Validate a complete configuration object
     async fn validate_config(
-        &self,
+        &self)
         config: &serde_json::Value,
         schema: &ValidationSchema,
     ) -> Result<ConfigValidationResult>;
@@ -34,8 +34,7 @@ pub trait ConfigValidator: Send + Sync {
 
 /// Validation context for runtime validation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationContext {
-    /// Configuration section being validated
+pub struct ValidationContext  {/// Configuration section being validated
     pub section: String,
     /// Field path (dot-separated)
     pub field_path: String,
@@ -51,8 +50,7 @@ pub struct ValidationContext {
 
 /// Validation result for a single value
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationResult {
-    /// Whether validation passed
+pub struct ValidationResult  {/// Whether validation passed
     pub valid: bool,
     /// Validation errors
     pub errors: Vec<ValidationError>,
@@ -66,8 +64,7 @@ pub struct ValidationResult {
 
 /// Validation error information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationError {
-    /// Error code
+pub struct ValidationError  {/// Error code
     pub code: String,
     /// Human-readable error message
     pub message: String,
@@ -85,8 +82,7 @@ pub struct ValidationError {
 
 /// Validation warning information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationWarning {
-    /// Warning code
+pub struct ValidationWarning  {/// Warning code
     pub code: String,
     /// Human-readable warning message
     pub message: String,
@@ -100,8 +96,7 @@ pub struct ValidationWarning {
 
 /// Error severity levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ErrorSeverity {
-    Critical,
+pub enum ErrorSeverity  {Critical)
     High,
     Medium,
     Low,
@@ -110,8 +105,7 @@ pub enum ErrorSeverity {
 
 /// Warning severity levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum WarningSeverity {
-    High,
+pub enum WarningSeverity  {High)
     Medium,
     Low,
     Info,
@@ -119,8 +113,7 @@ pub enum WarningSeverity {
 
 /// Configuration validation result
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigValidationResult {
-    /// Overall validation status
+pub struct ConfigValidationResult  {/// Overall validation status
     pub valid: bool,
     /// Total number of errors
     pub error_count: u32,
@@ -140,8 +133,7 @@ pub struct ConfigValidationResult {
 
 /// Validation summary information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationSummary {
-    /// Total fields validated
+pub struct ValidationSummary  {/// Total fields validated
     pub fields_validated: u32,
     /// Fields with errors
     pub fields_with_errors: u32,
@@ -155,8 +147,7 @@ pub struct ValidationSummary {
 
 /// Validation schema definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationSchema {
-    /// Schema identifier
+pub struct ValidationSchema  {/// Schema identifier
     pub id: String,
     /// Schema version
     pub version: String,
@@ -172,8 +163,7 @@ pub struct ValidationSchema {
 
 /// Field schema definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FieldSchema {
-    /// Field type
+pub struct FieldSchema  {/// Field type
     pub field_type: FieldType,
     /// Whether field is required
     pub required: bool,
@@ -191,22 +181,25 @@ pub struct FieldSchema {
 
 /// Field type enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum FieldType {
-    String,
+pub enum FieldType  {String)
     Number,
     Integer,
     Boolean,
-    Array { item_type: Box<FieldType> },
-    Object { schema: ValidationSchema },
-    Enum { values: Vec<serde_json::Value> },
-    Union { types: Vec<FieldType> },
+    Array {
+        item_type: Box<FieldType>,
+    })
+    Object  {schema: ValidationSchema,
+    })
+    Enum  {values: Vec<serde_json::Value>)
+    })
+    Union  {types: Vec<FieldType>)
+    })
     Any,
 }
 
 /// Validation rule definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationRule {
-    /// Rule type
+pub struct ValidationRule  {/// Rule type
     pub rule_type: RuleType,
     /// Rule parameters
     pub parameters: HashMap<String, serde_json::Value>,
@@ -220,8 +213,7 @@ pub struct ValidationRule {
 
 /// Validation rule types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum RuleType {
-    // String rules
+pub enum RuleType  {// String rules
     MinLength,
     MaxLength,
     Pattern,
@@ -243,13 +235,14 @@ pub enum RuleType {
     MutuallyExclusive,
     ConditionalRequired,
     // Custom rules
-    Custom { name: String },
+    Custom {
+        name: String,
+    })
 }
 
 /// Field constraint definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FieldConstraint {
-    /// Constraint type
+pub struct FieldConstraint  {/// Constraint type
     pub constraint_type: ConstraintType,
     /// Constraint value
     pub value: serde_json::Value,
@@ -261,35 +254,27 @@ pub struct FieldConstraint {
 
 /// Field constraint types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ConstraintType {
-    Range {
-        min: f64,
+pub enum ConstraintType  {Range  {min: f64)
         max: f64,
-    },
-    Length {
-        min: usize,
+    })
+    Length  {min: usize)
         max: usize,
-    },
-    Options {
+    })
+    Options  {values: Vec<serde_json::Value>)
+    })
+    Format  {pattern: String,
+    })
+    Dependency  {message: String,
         values: Vec<serde_json::Value>,
-    },
-    Format {
-        pattern: String,
-    },
-    Dependency {
-        message: String,
-        values: Vec<serde_json::Value>,
-    },
-    Custom {
-        name: String,
+    })
+    Custom  {name: String,
         parameters: HashMap<String, serde_json::Value>,
-    },
+    })
 }
 
 /// Cross-field validation rule
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CrossFieldRule {
-    /// Rule identifier
+pub struct CrossFieldRule  {/// Rule identifier
     pub id: String,
     /// Rule description
     pub description: String,
@@ -303,26 +288,21 @@ pub struct CrossFieldRule {
 
 /// Cross-field condition types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CrossFieldCondition {
-    AllPresent,
+pub enum CrossFieldCondition  {AllPresent)
     AtLeastOne,
-    ConditionalRequired {
-        if_message: String,
+    ConditionalRequired  {if_message: String,
         if_value: serde_json::Value,
-    },
-    Sum {
-        operator: ComparisonOperator,
+    })
+    Sum  {operator: ComparisonOperator,
         value: f64,
-    },
-    Custom {
-        expression: String,
-    },
+    })
+    Custom  {expression: String,
+    })
 }
 
 /// Comparison operators for validation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ComparisonOperator {
-    Equal,
+pub enum ComparisonOperator  {Equal)
     NotEqual,
     GreaterThan,
     GreaterThanOrEqual,
@@ -332,8 +312,7 @@ pub enum ComparisonOperator {
 
 /// Validation type enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ValidationType {
-    Schema,
+pub enum ValidationType  {Schema)
     Business,
     Security,
     Performance,
@@ -342,8 +321,7 @@ pub enum ValidationType {
 
 /// Validator information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidatorInfo {
-    pub name: String,
+pub struct ValidatorInfo  {pub name: String,
     pub version: String,
     pub description: String,
     pub supported_formats: Vec<String>,
@@ -352,32 +330,30 @@ pub struct ValidatorInfo {
 
 /// Performance impact of validation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PerformanceImpact {
-    Low,
+pub enum PerformanceImpact  {Low)
     Medium,
     High,
 }
 
 /// Configuration validation manager trait
 #[async_trait]
-pub trait ValidationManager: Send + Sync {
-    /// Register a validator
+pub trait ValidationManager: Send + Sync  {/// Register a validator
     async fn register_validator(
-        &mut self,
+        &mut self)
         name: &str,
         validator: Box<dyn ConfigValidator>,
     ) -> Result<()>;
 
     /// Validate configuration with schema
     async fn validate_with_schema(
-        &self,
+        &self)
         config: &serde_json::Value,
         schema: &ValidationSchema,
     ) -> Result<ConfigValidationResult>;
 
     /// Validate configuration against multiple schemas
     async fn validate_multi_schema(
-        &self,
+        &self)
         config: &serde_json::Value,
         schemas: &[&ValidationSchema],
     ) -> Result<Vec<ConfigValidationResult>>;
@@ -397,8 +373,7 @@ pub trait ValidationManager: Send + Sync {
 
 /// Validation statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationStats {
-    pub total_validations: u64,
+pub struct ValidationStats  {pub total_validations: u64,
     pub successful_validations: u64,
     pub failed_validations: u64,
     pub average_validation_time_ms: f64,
@@ -408,8 +383,7 @@ pub struct ValidationStats {
 
 /// Validation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationConfig {
-    /// Whether validation is enabled
+pub struct ValidationConfig  {/// Whether validation is enabled
     pub enabled: bool,
     /// Validation timeout in milliseconds
     pub timeout_ms: u64,
@@ -427,30 +401,25 @@ pub struct ValidationConfig {
 
 /// Cache configuration for validation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationCacheConfig {
-    pub enabled: bool,
+pub struct ValidationCacheConfig  {pub enabled: bool,
     pub ttl_seconds: u64,
     pub max_entries: u32,
 }
 
 /// Error handling configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ErrorHandlingConfig {
-    pub logging_options: LoggingOptions,
+pub struct ErrorHandlingConfig  {pub logging_options: LoggingOptions,
     pub throw_on_critical: bool,
     pub aggregate_errors: bool,
 }
 
 /// Logging options to replace excessive booleans
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoggingOptions {
-    pub log_errors: bool,
+pub struct LoggingOptions  {pub log_errors: bool,
     pub log_warnings: bool,
 }
 
-impl Default for ValidationConfig {
-    fn default() -> Self {
-        Self {
+impl Default for ValidationConfig  {fn default() -> Self  {Self {
             enabled: true,
             timeout_ms: 5000,
             fail_fast: false,
@@ -460,28 +429,24 @@ impl Default for ValidationConfig {
                 enabled: true,
                 ttl_seconds: 300,
                 max_entries: 1000,
-            },
-            error_handling: ErrorHandlingConfig {
-                logging_options: LoggingOptions {
-                    log_errors: true,
+            })
+            error_handling: ErrorHandlingConfig  {logging_options: LoggingOptions  {log_errors: true,
                     log_warnings: true,
-                },
+                })
                 throw_on_critical: true,
                 aggregate_errors: true,
-            },
+            })
         }
     }
 }
 
-impl Default for ValidationContext {
-    fn default() -> Self {
-        Self {
+impl Default for ValidationContext  {fn default() -> Self  {Self {
             section: "default".to_string(),
-            field_path: String::new(),
+            field_path: String::new(,
             environment: None,
             service_id: None,
             custom_context: HashMap::new(),
-            timestamp: Utc::now(),
+            timestamp: Utc::now(,
         }
     }
 }

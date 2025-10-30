@@ -1,0 +1,144 @@
+# EcoPrimals Ecosystem Integration Configuration
+# Songbird Universal Orchestrator - Production Ready
+
+[ecosystem]
+name = "ecoPrimals"
+version = "1.0.0"
+coordinator = "songbird"
+
+# Universal Primal Discovery Configuration
+[discovery]
+enabled = true
+discovery_interval = 30
+health_check_interval = 15
+timeout = 10
+max_retries = 3
+
+# Capability-based primal routing (no vendor hardcoding)
+[discovery.capabilities]
+security = ["security_provider", "universal-security"]
+storage = ["compute_provider", "universal-storage"] 
+networking = ["storage_provider", "universal-network"]
+gaming = ["universal-gaming"]
+ai = ["universal-ai"]
+
+# security_provider Security Integration
+[security.security_provider]
+enabled = true
+discovery_method = "capability"  # Use capability discovery, not hardcoding
+primary_capability = "enterprise-security"
+fallback_capabilities = ["basic-security", "local-security"]
+tunnel_protocol = "bstp"  # security_provider Secure Tunnel Protocol
+auto_spawn = true
+genetic_auth = true
+
+[security.security_provider.endpoints]
+# These will be discovered dynamically via capability system
+# Fallback endpoints if discovery fails
+fallback_primary = "http://security_provider:8443"
+fallback_secondary = "http://security_provider-backup:8443"
+
+[security.security_provider.features]
+encryption = true
+key_management = true
+audit_logging = true
+threat_detection = true
+family_protection = true
+scammer_detection = true
+
+# compute_provider Storage Integration  
+[storage.compute_provider]
+enabled = true
+discovery_method = "capability"
+primary_capability = "distributed-storage"
+fallback_capabilities = ["local-storage", "file-storage"]
+replication_factor = 3
+consistency_level = "eventual"
+
+[storage.compute_provider.endpoints]
+fallback_primary = "http://compute_provider:9000"
+fallback_secondary = "http://compute_provider-replica:9000"
+
+[storage.compute_provider.features]
+federation_state = true
+configuration_sync = true
+metrics_storage = true
+backup_automation = true
+encryption_at_rest = true
+
+# storage_provider Network Integration
+[network.storage_provider]
+enabled = true
+discovery_method = "capability"
+primary_capability = "network-coordination"
+fallback_capabilities = ["basic-networking", "direct-connection"]
+mesh_networking = true
+p2p_discovery = true
+
+[network.storage_provider.endpoints]
+fallback_primary = "http://storage_provider:7000"
+fallback_secondary = "http://storage_provider-backup:7000"
+
+[network.storage_provider.features]
+mesh_coordination = true
+peer_discovery = true
+load_balancing = true
+failover = true
+bandwidth_optimization = true
+
+# Universal Gaming Support
+[gaming]
+enabled = true
+real_time_optimization = true
+low_latency_mode = true
+anti_cheat = true
+family_safe = true
+
+[gaming.features]
+wireguard_tunnels = true
+privilege_management = true
+performance_monitoring = true
+social_coordination = true
+
+# Monitoring and Observability
+[monitoring]
+enabled = true
+metrics_collection = true
+distributed_tracing = true
+log_aggregation = true
+alerting = true
+
+[monitoring.endpoints]
+prometheus = "http://prometheus:9090"
+jaeger = "http://jaeger:14268"
+grafana = "http://grafana:3000"
+
+# Federation Configuration
+[federation]
+enabled = true
+tier = "regional"  # edge, regional, global, sovereign
+auto_discovery = true
+mesh_networking = true
+consensus_algorithm = "raft"
+
+[federation.security]
+mutual_tls = true
+certificate_rotation = true
+zero_trust = true
+
+# Environment-specific overrides
+[environments.development]
+security.security_provider_endpoint.auto_spawn = false
+storage.compute_provider_endpoint.replication_factor = 1
+network.storage_provider_endpoint.mesh_networking = false
+
+[environments.staging]
+security.security_provider_endpoint.auto_spawn = true
+storage.compute_provider_endpoint.replication_factor = 2
+federation.tier = "edge"
+
+[environments.production]
+security.security_provider_endpoint.auto_spawn = true
+storage.compute_provider_endpoint.replication_factor = 3
+federation.tier = "regional"
+monitoring.alerting = true 

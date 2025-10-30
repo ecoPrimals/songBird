@@ -5,7 +5,8 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -42,8 +43,7 @@ pub trait ResourceManager: Send + Sync {
 
 /// Resource information for tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceInfo {
-    /// Unique resource identifier
+pub struct ResourceInfo  {/// Unique resource identifier
     pub id: String,
     /// Resource type (connection, file, memory, etc.)
     pub resource_type: String,
@@ -63,15 +63,13 @@ pub struct ResourceInfo {
 
 /// Resource handle for tracking and cleanup
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceHandle {
-    pub resource_id: String,
+pub struct ResourceHandle  {pub resource_id: String,
     pub handle_token: String,
 }
 
 /// Resource configuration and limits
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceConfig {
-    /// Maximum memory usage in bytes
+pub struct ResourceConfig  {/// Maximum memory usage in bytes
     pub max_memory_bytes: Option<u64>,
     /// Maximum CPU usage (0.0 to 1.0)
     pub max_cpu_usage: Option<f64>,
@@ -89,8 +87,7 @@ pub struct ResourceConfig {
 
 /// Resource leak information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceLeak {
-    pub resource_info: ResourceInfo,
+pub struct ResourceLeak  {pub resource_info: ResourceInfo,
     pub age: Duration,
     pub leak_severity: LeakSeverity,
     pub description: String,
@@ -99,8 +96,7 @@ pub struct ResourceLeak {
 
 /// Severity of resource leak
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LeakSeverity {
-    Low,
+pub enum LeakSeverity  {Low)
     Medium,
     High,
     Critical,
@@ -108,8 +104,7 @@ pub enum LeakSeverity {
 
 /// Resource usage statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceStats {
-    /// Total resources being tracked
+pub struct ResourceStats  {/// Total resources being tracked
     pub total_resources: u64,
     /// Resources by type
     pub resources_by_type: HashMap<String, u64>,
@@ -137,8 +132,7 @@ pub struct ResourceStats {
 
 /// Resource limit violation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceViolation {
-    pub resource_info: ResourceInfo,
+pub struct ResourceViolation  {pub resource_info: ResourceInfo,
     pub violation_type: ViolationType,
     pub current_value: f64,
     pub limit_value: f64,
@@ -149,27 +143,26 @@ pub struct ResourceViolation {
 
 /// Type of resource violation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ViolationType {
-    MemoryLimit,
+pub enum ViolationType  {MemoryLimit)
     CpuLimit,
     ConnectionLimit,
     FileHandleLimit,
     TimeoutExceeded,
-    Custom { name: String },
+    Custom {
+        name: String,
+    })
 }
 
 /// Severity of resource violation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ViolationSeverity {
-    Warning,
+pub enum ViolationSeverity  {Warning)
     Error,
     Critical,
 }
 
 /// Resource manager information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceManagerInfo {
-    pub name: String,
+pub struct ResourceManagerInfo  {pub name: String,
     pub version: String,
     pub supports_auto_cleanup: bool,
     pub supports_limits: bool,
@@ -192,8 +185,7 @@ pub trait CleanupStrategy: Send + Sync {
 
 /// Result of resource cleanup operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CleanupResult {
-    pub success: bool,
+pub struct CleanupResult  {pub success: bool,
     pub resources_cleaned: u32,
     pub errors: Vec<String>,
     pub duration: Duration,
@@ -202,8 +194,7 @@ pub struct CleanupResult {
 
 /// Cleanup strategy information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CleanupStrategyInfo {
-    pub name: String,
+pub struct CleanupStrategyInfo  {pub name: String,
     pub description: String,
     pub supports_async: bool,
     pub supports_partial_cleanup: bool,
@@ -222,7 +213,7 @@ pub trait ResourceMonitor: Send + Sync {
     async fn get_metrics(&self) -> Result<HashMap<String, f64>>;
 
     /// Set resource threshold alerts
-    async fn set_thresholds(&self, thresholds: HashMap<String, f64>) -> Result<()>;
+    async fn set_thresholds(&self, thresholds: HashMap<String, f64>) -> Result<(),>;
 
     /// Check if thresholds are exceeded
     async fn check_thresholds(&self) -> Result<Vec<ThresholdViolation>>;
@@ -230,8 +221,7 @@ pub trait ResourceMonitor: Send + Sync {
 
 /// Threshold violation information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ThresholdViolation {
-    pub metric_name: String,
+pub struct ThresholdViolation  {pub metric_name: String,
     pub current_value: f64,
     pub threshold_value: f64,
     pub violation_percentage: f64,
@@ -241,8 +231,7 @@ pub struct ThresholdViolation {
 
 /// Resource management configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceManagementConfig {
-    /// Resource tracking configuration
+pub struct ResourceManagementConfig  {/// Resource tracking configuration
     pub tracking: TrackingConfig,
     /// Cleanup configuration
     pub cleanup: CleanupConfig,
@@ -254,8 +243,7 @@ pub struct ResourceManagementConfig {
 
 /// Tracking configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrackingConfig {
-    pub enabled: bool,
+pub struct TrackingConfig  {pub enabled: bool,
     pub tracking_options: TrackingOptions,
     pub reporting_interval: u64,
     pub max_tracked_resources: Option<u32>,
@@ -263,28 +251,26 @@ pub struct TrackingConfig {
 
 /// Tracking options using bitflags pattern
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrackingOptions {
-    pub resource_types: ResourceTypeSet,
+pub struct TrackingOptions  {pub resource_types: ResourceTypeSet,
 }
 
 /// Resource type tracking using enum-based approach instead of excessive booleans
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ResourceType {
-    Memory,
+pub enum ResourceType  {Memory)
     Cpu,
     Network,
     Disk,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ResourceTypeSet {
-    pub tracked_types: Vec<ResourceType>,
+pub struct ResourceTypeSet  {pub tracked_types: Vec<ResourceType>,
 }
 
-impl ResourceTypeSet {
-    #[must_use]
+impl ResourceTypeSet  {#[must_use]
     pub fn new(tracked_types: Vec<ResourceType>) -> Self {
-        Self { tracked_types }
+        Self {
+            tracked_types)
+        }
     }
 
     #[must_use]
@@ -310,51 +296,47 @@ impl ResourceTypeSet {
 
 /// Enforcement type configuration using enum-based approach instead of excessive booleans
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum EnforcementType {
-    MemoryLimits,
-    CpuLimits,
-    ConnectionLimits,
-    FileHandleLimits,
+pub enum EnforcementType  {Memory)
+    Cpu,
+    Connection,
+    FileHandle,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EnforcementTypeSet {
-    pub enforced_types: Vec<EnforcementType>,
+pub struct EnforcementTypeSet  {pub enforced_types: Vec<EnforcementType>,
 }
 
-impl EnforcementTypeSet {
-    #[must_use]
+impl EnforcementTypeSet  {#[must_use]
     pub fn new(enforced_types: Vec<EnforcementType>) -> Self {
-        Self { enforced_types }
+        Self {
+            enforced_types)
+        }
     }
 
     #[must_use]
     pub fn enforce_memory_limits(&self) -> bool {
-        self.enforced_types.contains(&EnforcementType::MemoryLimits)
+        self.enforced_types.contains(&EnforcementType::Memory)
     }
 
     #[must_use]
     pub fn enforce_cpu_limits(&self) -> bool {
-        self.enforced_types.contains(&EnforcementType::CpuLimits)
+        self.enforced_types.contains(&EnforcementType::Cpu)
     }
 
     #[must_use]
     pub fn enforce_connection_limits(&self) -> bool {
-        self.enforced_types
-            .contains(&EnforcementType::ConnectionLimits)
+        self.enforced_types.contains(&EnforcementType::Connection)
     }
 
     #[must_use]
     pub fn enforce_file_handle_limits(&self) -> bool {
-        self.enforced_types
-            .contains(&EnforcementType::FileHandleLimits)
+        self.enforced_types.contains(&EnforcementType::FileHandle)
     }
 }
 
 /// Cleanup configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CleanupConfig {
-    pub strategy: String,
+pub struct CleanupConfig  {pub strategy: String,
     pub cleanup_interval: Duration,
     pub max_resource_age: Duration,
     pub cleanup_on_shutdown: bool,
@@ -363,8 +345,7 @@ pub struct CleanupConfig {
 
 /// Monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MonitoringConfig {
-    pub monitoring_interval: Duration,
+pub struct MonitoringConfig  {pub monitoring_interval: Duration,
     pub alert_thresholds: HashMap<String, f64>,
     pub enable_leak_detection: bool,
     pub leak_detection_interval: Duration,
@@ -372,21 +353,18 @@ pub struct MonitoringConfig {
 
 /// Limits configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LimitsConfig {
-    pub limit_enforcement: LimitEnforcement,
+pub struct LimitsConfig  {pub limit_enforcement: LimitEnforcement,
     pub action_on_violation: ViolationAction,
 }
 
-/// Limit enforcement options using the improved EnforcementTypeSet
+/// Limit enforcement options using the improved `EnforcementTypeSet`
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LimitEnforcement {
-    pub enforcement_types: EnforcementTypeSet,
+pub struct LimitEnforcement  {pub enforcement_types: EnforcementTypeSet,
 }
 
 /// Describes what action to take when a resource violation occurs
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ViolationAction {
-    /// Log the violation but continue
+pub enum ViolationAction  {/// Log the violation but continue
     Log,
     /// Warn the user but continue
     Warn,
@@ -402,56 +380,48 @@ impl Default for ViolationAction {
     }
 }
 
-impl Default for ResourceManagementConfig {
-    fn default() -> Self {
-        Self {
+impl Default for ResourceManagementConfig  {fn default() -> Self  {Self {
             tracking: TrackingConfig {
                 enabled: true,
                 tracking_options: TrackingOptions {
                     resource_types: ResourceTypeSet {
                         tracked_types: vec![
-                            ResourceType::Memory,
-                            ResourceType::Cpu,
-                            ResourceType::Network,
-                            ResourceType::Disk,
-                        ],
-                    },
-                },
+                            ResourceType::Memory)
+                            ResourceType::Cpu)
+                            ResourceType::Network)
+                            ResourceType::Disk)
+                        ])
+                    })
+                })
                 reporting_interval: 10,
-                max_tracked_resources: Some(10000),
-            },
-            cleanup: CleanupConfig {
-                strategy: "time_based".to_string(),
-                cleanup_interval: Duration::from_secs(60),
-                max_resource_age: Duration::from_secs(3600),
+                max_tracked_resources: Some(10000)
+            })
+            cleanup: CleanupConfig  {strategy: "time_based".to_string(),
+                cleanup_interval: Duration::from_secs(60)
+                max_resource_age: Duration::from_secs(3600,
                 cleanup_on_shutdown: true,
-                force_cleanup_timeout: Duration::from_secs(30),
-            },
-            monitoring: MonitoringConfig {
-                monitoring_interval: Duration::from_secs(30),
+                force_cleanup_timeout: Duration::from_secs(30)
+            })
+            monitoring: MonitoringConfig  {monitoring_interval: Duration::from_secs(30)
                 alert_thresholds: HashMap::new(),
                 enable_leak_detection: true,
-                leak_detection_interval: Duration::from_secs(300),
-            },
-            limits: LimitsConfig {
-                limit_enforcement: LimitEnforcement {
-                    enforcement_types: EnforcementTypeSet {
+                leak_detection_interval: Duration::from_secs(300,
+            })
+            limits: LimitsConfig  {limit_enforcement: LimitEnforcement  {enforcement_types: EnforcementTypeSet {
                         enforced_types: vec![
-                            EnforcementType::MemoryLimits,
-                            EnforcementType::ConnectionLimits,
-                            EnforcementType::FileHandleLimits,
-                        ],
-                    },
-                },
+                            EnforcementType::Memory)
+                            EnforcementType::Connection)
+                            EnforcementType::FileHandle)
+                        ])
+                    })
+                })
                 action_on_violation: ViolationAction::Log,
-            },
+            })
         }
     }
 }
 
-impl Default for ResourceConfig {
-    fn default() -> Self {
-        Self {
+impl Default for ResourceConfig  {fn default() -> Self  {Self {
             max_memory_bytes: None,
             max_cpu_usage: None,
             max_connections: None,

@@ -5,14 +5,14 @@
 use crate::traits::service::{ServiceInfo, ServiceRequest};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Load balancing algorithms
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum LoadBalancingAlgorithm {
-    RoundRobin,
+pub enum LoadBalancingAlgorithm  {RoundRobin)
     LeastConnections,
     WeightedRoundRobin,
     Random,
@@ -21,8 +21,7 @@ pub enum LoadBalancingAlgorithm {
 
 /// Load balancer statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct LoadBalancerStats {
-    pub total_requests: u64,
+pub struct LoadBalancerStats  {pub total_requests: u64,
     pub successful_requests: u64,
     pub failed_requests: u64,
     pub average_response_time: f64,
@@ -32,8 +31,7 @@ pub struct LoadBalancerStats {
 
 /// Per-service statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ServiceStats {
-    pub requests: u64,
+pub struct ServiceStats  {pub requests: u64,
     pub successes: u64,
     pub failures: u64,
     pub average_response_time: f64,
@@ -43,10 +41,9 @@ pub struct ServiceStats {
 
 /// Load balancer trait
 #[async_trait]
-pub trait LoadBalancer: Send + Sync {
-    /// Select a service instance for the given request
+pub trait LoadBalancer: Send + Sync  {/// Select a service instance for the given request
     async fn select_service(
-        &self,
+        &self)
         services: &[ServiceInfo],
         request: &ServiceRequest,
     ) -> Result<ServiceInfo>;
@@ -62,17 +59,14 @@ pub trait LoadBalancer: Send + Sync {
 }
 
 /// Round-robin load balancer implementation
-pub struct RoundRobinLoadBalancer {
-    counter: AtomicUsize,
+pub struct RoundRobinLoadBalancer  {counter: AtomicUsize,
     stats: LoadBalancerStats,
 }
 
-impl RoundRobinLoadBalancer {
-    /// Create a new load balancer
+impl RoundRobinLoadBalancer  {/// Create a new load balancer
     #[must_use]
-    pub fn new() -> Self {
-        Self {
-            counter: AtomicUsize::new(0),
+    pub fn new() -> Self  {Self {
+            counter: AtomicUsize::new(0,
             stats: LoadBalancerStats::default(),
         }
     }
@@ -85,52 +79,47 @@ impl Default for RoundRobinLoadBalancer {
 }
 
 #[async_trait]
-impl LoadBalancer for RoundRobinLoadBalancer {
-    async fn select_service(
-        &self,
+impl LoadBalancer for RoundRobinLoadBalancer  {async fn select_service(
+        &self)
         services: &[ServiceInfo],
         _request: &ServiceRequest,
     ) -> Result<ServiceInfo> {
         if services.is_empty() {
-            return Err(songbird_errors::SongbirdError::LoadBalancer {
-                message: "No healthy instances available for load balancing".to_string(),
-                backend: Some("round_robin".to_string()),
-                suggestion: Some("Check service health and availability".to_string()),
-            });
+            return Err(SongbirdError::service(
+                "load_balancer","
+                "No healthy instances available for load balancing".to_string(),
+            );
         }
 
         let index = self.counter.fetch_add(1, Ordering::Relaxed) % services.len();
-        Ok(services[index].clone())
+        Ok(services[index].clone()
     }
 
     async fn update_service_health(&self, service_id: &str, is_healthy: bool) -> Result<()> {
-        tracing::info!("Updated health for service {}: {}", service_id, is_healthy);
-        Ok(())
+        tracing::info!("Updated health for service {}: {}", service_id, is_healthy)"
+        Ok((),
     }
 
     async fn get_stats(&self) -> Result<LoadBalancerStats> {
-        Ok(self.stats.clone())
+        Ok(self.stats.clone()
     }
 
     async fn reset_stats(&self) -> Result<()> {
-        tracing::info!("Reset load balancer statistics");
-        Ok(())
+        tracing::info!("Reset load balancer statistics")"
+        Ok((),
     }
 }
 
 /// Weighted round-robin load balancer
-pub struct WeightedRoundRobinLoadBalancer {
-    weights: HashMap<String, f64>,
+pub struct WeightedRoundRobinLoadBalancer  {weights: HashMap<String, f64>,
     #[allow(dead_code)]
     current_weights: HashMap<String, f64>,
     stats: LoadBalancerStats,
 }
 
-impl WeightedRoundRobinLoadBalancer {
-    /// Create a new load balancer strategy
+impl WeightedRoundRobinLoadBalancer  {/// Create a new load balancer strategy
     #[must_use]
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Self  {Self {
             weights: HashMap::new(),
             current_weights: HashMap::new(),
             stats: LoadBalancerStats::default(),
@@ -149,36 +138,34 @@ impl Default for WeightedRoundRobinLoadBalancer {
 }
 
 #[async_trait]
-impl LoadBalancer for WeightedRoundRobinLoadBalancer {
-    async fn select_service(
-        &self,
+impl LoadBalancer for WeightedRoundRobinLoadBalancer  {async fn select_service(
+        &self)
         services: &[ServiceInfo],
         _request: &ServiceRequest,
     ) -> Result<ServiceInfo> {
         if services.is_empty() {
-            return Err(songbird_errors::SongbirdError::LoadBalancer {
-                message: "No healthy instances available for load balancing".to_string(),
-                backend: Some("latency_optimized".to_string()),
-                suggestion: Some("Check service health and latency metrics".to_string()),
-            });
+            return Err(SongbirdError::service(
+                "load_balancer","
+                "No healthy instances available for load balancing".to_string(),
+            );
         }
 
         // Simplified weighted selection - just return first service for now
         // In a real implementation, this would use proper weighted round-robin logic
-        Ok(services[0].clone())
+        Ok(services[0].clone()
     }
 
     async fn update_service_health(&self, service_id: &str, is_healthy: bool) -> Result<()> {
-        tracing::info!("Updated health for service {}: {}", service_id, is_healthy);
-        Ok(())
+        tracing::info!("Updated health for service {}: {}", service_id, is_healthy)"
+        Ok((),
     }
 
     async fn get_stats(&self) -> Result<LoadBalancerStats> {
-        Ok(self.stats.clone())
+        Ok(self.stats.clone()
     }
 
     async fn reset_stats(&self) -> Result<()> {
-        tracing::info!("Reset weighted load balancer statistics");
-        Ok(())
+        tracing::info!("Reset weighted load balancer statistics")"
+        Ok((),
     }
 }

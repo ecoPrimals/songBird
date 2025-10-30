@@ -10,8 +10,12 @@ readme = "../../README.md"
 keywords = ["configuration", "gaming", "orchestration", "networking", "distributed"]
 categories = ["config", "network-programming", "game-engines"]
 
+
+[lints]
+workspace = true
+
 [dependencies]
-songbird-errors = { path = "../songbird-errors" }
+songbird-types = { path = "../songbird-types" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
@@ -23,7 +27,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"
 futures-util = "0.3"
-rand = "0.8"
+rand = { workspace = true }
 dirs = "5.0"
 num_cpus = "1.16"
 chrono = { version = "0.4", features = ["serde"] }
@@ -32,3 +36,7 @@ gethostname = "0.4"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[dev-dependencies]
+serial_test = "3.0"
+

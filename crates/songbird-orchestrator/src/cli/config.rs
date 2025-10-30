@@ -2,6 +2,10 @@
 //!
 //! This module handles CLI-specific configuration options and management.
 
+#[cfg(test)]
+#[path = "config_tests.rs"]
+mod config_tests;
+
 /// CLI configuration structure
 #[derive(Clone, Debug)]
 pub struct CliConfig {
@@ -17,6 +21,7 @@ impl Default for CliConfig {
 }
 
 impl CliConfig {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             verbose: false,
@@ -29,6 +34,7 @@ impl CliConfig {
         self.verbose = verbose;
     }
 
+    #[must_use]
     pub fn is_verbose(&self) -> bool {
         self.verbose
     }
@@ -37,6 +43,7 @@ impl CliConfig {
         self.colored_output = colored;
     }
 
+    #[must_use]
     pub fn is_colored_output_enabled(&self) -> bool {
         self.colored_output
     }
@@ -45,6 +52,7 @@ impl CliConfig {
         self.config_path = Some(path);
     }
 
+    #[must_use]
     pub fn get_config_path(&self) -> Option<String> {
         self.config_path.clone()
     }

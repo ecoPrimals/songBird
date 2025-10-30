@@ -6,18 +6,20 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-use crate::discovery::config::*;
+use crate::discovery::config::SongbirdDiscoveryConfig;
 use crate::discovery::monitoring::ResourceMonitor;
 use crate::discovery::network::NetworkManager;
 use crate::discovery::resources::ResourceDetector;
-use crate::discovery::types::*;
-use crate::traits::discovery::*;
+use crate::discovery::types::{FederationStats, LocalNode, NodeId, NodeInfo, NodeType, ResourceQuery,
+};
+use crate::traits::discovery::{ServiceDiscovery, ServiceEvent, ServiceHealthStatus, ServiceQuery};
 use crate::traits::service::ServiceInfo;
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Main Songbird Discovery Service
 pub struct SongbirdDiscovery {
-    config: SongbirdDiscoveryConfig,
+    config: Arc<SongbirdDiscoveryConfig>,  // ✅ Shared via Arc for zero-copy
     local_node: LocalNode,
     known_nodes: Arc<RwLock<HashMap<NodeId, NodeInfo>>>,
     registered_services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
@@ -34,10 +36,7 @@ impl SongbirdDiscovery {
         let network_location = NetworkManager::create_network_location();
 
         let local_node = LocalNode {
-            id: config
-                .node_id
-                .clone()
-                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+            id: config.node_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
             node_type: config.node_type.clone(),
             institution: config.institution.clone(),
             resources: local_resources,
@@ -48,7 +47,7 @@ impl SongbirdDiscovery {
         let (event_sender, _) = broadcast::channel(1000);
 
         Self {
-            config,
+            config: Arc::new(config),  // ✅ Wrap in Arc
             local_node,
             known_nodes: Arc::new(RwLock::new(HashMap::new())),
             registered_services: Arc::new(RwLock::new(HashMap::new())),
@@ -65,7 +64,7 @@ impl SongbirdDiscovery {
 
     /// Register a new node in the discovery system
     pub fn register_node(&self, node: NodeInfo) -> Result<()> {
-        let node_id = node.id.clone();
+        let node_id = node.id.clone();  // Need clone for logging
 
         tracing::info!(
             node_id = %node_id,
@@ -73,7 +72,7 @@ impl SongbirdDiscovery {
             "Registering node in Songbird Discovery"
         );
 
-        self.known_nodes.write().insert(node_id.clone(), node);
+        self.known_nodes.write().insert(node_id, node);  // ✅ Move node_id instead of clone
 
         // Node registered successfully - event broadcasting handled by federation layer
         tracing::debug!("Node registered: {}", node_id);
@@ -149,11 +148,7 @@ impl SongbirdDiscovery {
 
         // Check required datasets
         for required_dataset in &query.required_datasets {
-            if !node
-                .available_datasets
-                .iter()
-                .any(|d| &d.id == required_dataset)
-            {
+            if !node.available_datasets.iter().any(|d| &d.id == required_dataset) {
                 return false;
             }
         }
@@ -180,7 +175,7 @@ impl SongbirdDiscovery {
     /// Start resource monitoring
     fn start_resource_monitoring(&self) -> Result<()> {
         let node_id = self.local_node.id.clone();
-        let config = self.config.monitoring.clone();
+        let config = Arc::clone(&self.config);  // ✅ Cheap Arc clone instead of data clone
         let (_shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
 
         tokio::spawn(async move {
@@ -203,11 +198,7 @@ impl SongbirdDiscovery {
         let (_shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
 
         tokio::spawn(async move {
-            let _ = crate::discovery::network::NetworkManager::start_network_monitoring(
-                node_id,
-                target_nodes,
-                shutdown_rx,
-            );
+            let _ = NetworkManager::start_network_monitoring(node_id, target_nodes, shutdown_rx);
         });
 
         Ok(())
@@ -315,9 +306,7 @@ impl ServiceDiscovery for SongbirdDiscovery {
 
     async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()> {
         if let Some(service) = self.registered_services.write().get_mut(service_id) {
-            service
-                .metadata
-                .insert("health_status".to_string(), format!("{health:?}").into());
+            service.metadata.insert("health_status".to_string(), format!("{:?}", health).into());
         }
 
         // Send health update event
@@ -378,11 +367,7 @@ impl SongbirdDiscovery {
 
         // Check name filter
         if let Some(ref name_filter) = query.name {
-            if !service
-                .name
-                .to_lowercase()
-                .contains(&name_filter.to_lowercase())
-            {
+            if !service.name.to_lowercase().contains(&name_filter.to_lowercase()) {
                 return false;
             }
         }
@@ -451,9 +436,7 @@ impl SongbirdDiscovery {
             "Registering service with Songbird Discovery"
         );
 
-        self.registered_services
-            .write()
-            .insert(service_id.clone(), service.clone());
+        self.registered_services.write().insert(service_id.clone(), service.clone());
 
         // Service registered successfully - event broadcasting handled by federation layer
         tracing::debug!("Service registered: {}", service_id);

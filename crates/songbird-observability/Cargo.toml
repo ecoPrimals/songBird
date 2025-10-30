@@ -10,8 +10,12 @@ readme = "../../README.md"
 keywords = ["observability", "monitoring", "metrics", "tracing", "gaming"]
 categories = ["development-tools", "network-programming", "game-engines"]
 
+
+[lints]
+workspace = true
+
 [dependencies]
-songbird-errors = { path = "../songbird-errors" }
+songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -24,3 +28,4 @@ hyper = { version = "1.0", features = ["full"] }
 http-body-util = "0.1"
 serde_json = { workspace = true }
 async-trait = { workspace = true }
+

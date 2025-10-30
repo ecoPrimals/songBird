@@ -10,16 +10,31 @@
 //! - **Performance Tuning**: Configurable performance parameters
 //! - **Universal Configuration**: Support for any deployment scenario
 
+#![forbid(unsafe_code)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub mod canonical;
+pub mod canonical_network;
+pub mod capability_endpoints; // 🍼 NEW: Zero-hardcoding capability-based endpoints
 pub mod config;
+pub mod defaults;
+pub mod discoverable_endpoint;
+// ✅ DELETED: pub mod endpoints - was deprecated legacy primal-name endpoints (use capability_endpoints instead)
+pub mod environment_config_clean; // ✅ FIXED & ENABLED - PRODUCTION READY (13 errors fixed)
+                                  // TODO: pub mod unified; // ⚙️ 90% FIXED: 80+ errors fixed, cascading delimiter issues in security.rs remaining
 pub mod zero_touch;
 
 pub use config::*;
 
 // Re-export environment configuration from config module
 pub use config::environment::EnvironmentConfig;
+
+// Re-export environment configuration helper - ✅ NOW ENABLED
+pub use environment_config_clean::EnvironmentConfig as EnvironmentConfigClean;
 
 /// Performance configuration for fine-tuning system behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,3 +78,7 @@ impl Default for PerformanceConfig {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod lib_tests;

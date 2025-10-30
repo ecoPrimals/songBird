@@ -6,7 +6,8 @@ use crate::traits::service::ServiceInfo;
 use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 use std::pin::Pin;
 
@@ -188,7 +189,7 @@ pub enum ServiceEvent {
 }
 
 /// Health status for service discovery
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HealthStatus {
     Healthy,
     Degraded,

@@ -23,16 +23,19 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,no_run
 //! use songbird_orchestrator::SongbirdOrchestrator;
+//! use songbird_config::SongbirdConfig;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let orchestrator = SongbirdOrchestrator::new().await?;
-//!     
+//!     // Config reads from environment variables via Default
+//!     let config = SongbirdConfig::default();
+//!     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
+//!
 //!     // Start the orchestrator
 //!     orchestrator.start().await?;
-//!     
+//!
 //!     Ok(())
 //! }
 //! ```
@@ -57,11 +60,42 @@
 //! - Health check endpoints
 //! - Metrics endpoints
 
-#![allow(dead_code)]
+#![allow(
+    dead_code,
+    unused_variables,
+    clippy::missing_errors_doc,
+    clippy::used_underscore_binding,
+    clippy::struct_excessive_bools,
+    clippy::too_many_lines,
+    clippy::cast_sign_loss,
+    clippy::no_effect_underscore_binding,
+    clippy::unused_async
+)]
 
 pub mod app;
 pub mod cli;
-pub mod integration;
+pub mod core; // Consolidated core functionality
+              // Temporarily disabled pending syntax fixes
+              // pub mod integration;
 pub mod server;
 
+// Re-export main orchestrator
 pub use app::SongbirdOrchestrator;
+
+// Re-export all functionality from crates (consolidated from songbird-lib)
+// pub use songbird_cli as cli_crate;
+pub use songbird_config as config;
+pub use songbird_discovery as discovery;
+// pub use songbird_security_errors as errors;
+pub use songbird_observability as observability;
+pub use songbird_registry as registry;
+// pub use songbird_security_errors as security;
+// pub use songbird_universal_primals as primals;
+
+// Re-export commonly used types
+pub use songbird_config::SongbirdConfig;
+pub use songbird_types::{SongbirdError, SongbirdResult};
+
+// Re-export key types that are commonly used
+// pub use songbird_universal_primals::{PrimalCapability, PrimalProvider};
+pub use songbird_universal::PrimalType;

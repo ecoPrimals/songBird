@@ -5,67 +5,107 @@ pub struct ConfigTemplate;
 
 impl ConfigTemplate {
     /// Generate a basic service template
+    #[must_use]
     pub fn service_template() -> String {
         let env_config = songbird_config::config::environment::EnvironmentConfig::default();
-        format!(
-            "[orchestrator]\nbind_address = \"{}\"\nport = {}\nlog_level = \"info\"\n\n\
-            [network]\nenable_tls = false\nenable_http2 = true\n\n\
-            [security]\nenable_auth = false\nenable_audit = false\n\n\
-            [observability]\nenable_dashboard = true\nmetrics_interval_secs = 30\n",
-            env_config.bind_address, env_config.bind_port
-        )
+        let mut config = String::new();
+        config.push_str("[orchestrator]\n");
+        config.push_str(&format!("bind_address = \"{}\"\n", env_config.bind_address));
+        config.push_str(&format!("port = {}\n", env_config.bind_port));
+        config.push_str("log_level = \"info\"\n\n");
+        config.push_str("[network]\n");
+        config.push_str("enable_tls = false\n");
+        config.push_str("enable_http2 = true\n\n");
+        config.push_str("[security]\n");
+        config.push_str("enable_auth = false\n");
+        config.push_str("enable_audit = false\n\n");
+        config.push_str("[observability]\n");
+        config.push_str("enable_dashboard = true\n");
+        config.push_str("metrics_interval_secs = 30\n");
+        config
     }
 
     /// Generate a development configuration
+    #[must_use]
     pub fn development_config_template() -> String {
         let env_config = songbird_config::config::environment::EnvironmentConfig::default();
-        format!(
-            "[orchestrator]\nbind_address = \"{}\"\nport = {}\nlog_level = \"debug\"\nenable_metrics = true\n\n\
-            [network]\nenable_tls = false\nenable_http2 = true\n\n\
-            [security]\nenable_auth = false\nenable_audit = false\n\n\
-            [observability]\nenable_dashboard = true\nmetrics_interval_secs = 10\n",
-            env_config.bind_address, env_config.bind_port
-        )
+        let mut config = String::new();
+        config.push_str("[orchestrator]\n");
+        config.push_str(&format!("bind_address = \"{}\"\n", env_config.bind_address));
+        config.push_str(&format!("port = {}\n", env_config.bind_port));
+        config.push_str("log_level = \"debug\"\n");
+        config.push_str("enable_metrics = true\n\n");
+        config.push_str("[network]\n");
+        config.push_str("enable_tls = false\n");
+        config.push_str("enable_http2 = true\n\n");
+        config.push_str("[security]\n");
+        config.push_str("enable_auth = false\n");
+        config.push_str("enable_audit = false\n\n");
+        config.push_str("[observability]\n");
+        config.push_str("enable_dashboard = true\n");
+        config.push_str("metrics_interval_secs = 10\n");
+        config
     }
 
     /// Generate a production configuration
+    #[must_use]
     pub fn production_config_template() -> String {
         let env_config = songbird_config::config::environment::EnvironmentConfig::default();
-        format!(
-            "[orchestrator]\nbind_address = \"{}\"\nport = {}\nlog_level = \"warn\"\nenable_metrics = true\n\n\
-            [network]\nenable_tls = true\nenable_http2 = true\n\n\
-            [security]\nenable_auth = true\nenable_audit = true\n\n\
-            [observability]\nenable_dashboard = false\nmetrics_interval_secs = 60\n",
-            env_config.bind_address, env_config.bind_port
-        )
+        let mut config = String::new();
+        config.push_str("[orchestrator]\n");
+        config.push_str(&format!("bind_address = \"{}\"\n", env_config.bind_address));
+        config.push_str(&format!("port = {}\n", env_config.bind_port));
+        config.push_str("log_level = \"warn\"\n");
+        config.push_str("enable_metrics = true\n\n");
+        config.push_str("[network]\n");
+        config.push_str("enable_tls = true\n");
+        config.push_str("enable_http2 = true\n\n");
+        config.push_str("[security]\n");
+        config.push_str("enable_auth = true\n");
+        config.push_str("enable_audit = true\n\n");
+        config.push_str("[observability]\n");
+        config.push_str("enable_dashboard = false\n");
+        config.push_str("metrics_interval_secs = 60\n");
+        config
     }
 
     /// Generate a home network configuration
+    #[must_use]
     pub fn home_network_config_template() -> String {
         let env_config = songbird_config::config::environment::EnvironmentConfig::default();
-        format!(
-            "[orchestrator]\nbind_address = \"{}\"\nport = {}\nlog_level = \"info\"\n\n\
-            [network]\nenable_discovery = true\nenable_tls = false\n\n\
-            [security]\nenable_basic_security = true\n\n\
-            [discovery]\nenable_multicast = true\ndiscovery_interval_secs = 30\n",
-            env_config.bind_address, env_config.bind_port
-        )
+        let mut config = String::new();
+        config.push_str("[orchestrator]\n");
+        config.push_str(&format!("bind_address = \"{}\"\n", env_config.bind_address));
+        config.push_str(&format!("port = {}\n", env_config.bind_port));
+        config.push_str("log_level = \"info\"\n\n");
+        config.push_str("[network]\n");
+        config.push_str("enable_discovery = true\n");
+        config.push_str("enable_tls = false\n\n");
+        config.push_str("[security]\n");
+        config.push_str("enable_basic_security = true\n\n");
+        config.push_str("[discovery]\n");
+        config.push_str("enable_multicast = true\n");
+        config.push_str("discovery_interval_secs = 30\n");
+        config
     }
 
     /// Generate a simple Dockerfile template
+    #[must_use]
     pub fn dockerfile_template() -> String {
         let env_config = songbird_config::config::environment::EnvironmentConfig::default();
-        format!(
-            "FROM rust:1.75-slim as builder\n\n\
-            RUN apt-get update && apt-get install -y pkg-config libssl-dev\n\n\
-            WORKDIR /app\n\n\
-            COPY . .\nRUN cargo build --release\n\n\
-            FROM debian:bookworm-slim\n\n\
-            RUN apt-get update && apt-get install -y ca-certificates curl\n\n\
-            COPY --from=builder /app/target/release/songbird /usr/local/bin/songbird\n\n\
-            EXPOSE {}\n\n\
-            CMD [\"songbird\", \"start\"]\n",
-            env_config.bind_port
-        )
+        let mut dockerfile = String::new();
+        dockerfile.push_str("FROM rust:1.75-slim as builder\n\n");
+        dockerfile.push_str("RUN apt-get update && apt-get install -y pkg-config libssl-dev\n\n");
+        dockerfile.push_str("WORKDIR /app\n\n");
+        dockerfile.push_str("COPY . .\n");
+        dockerfile.push_str("RUN cargo build --release\n\n");
+        dockerfile.push_str("FROM debian:bookworm-slim\n\n");
+        dockerfile.push_str("RUN apt-get update && apt-get install -y ca-certificates curl\n\n");
+        dockerfile.push_str(
+            "COPY --from=builder /app/target/release/songbird /usr/local/bin/songbird\n\n",
+        );
+        dockerfile.push_str(&format!("EXPOSE {}\n\n", env_config.bind_port));
+        dockerfile.push_str("CMD [\"songbird\", \"start\"]\n");
+        dockerfile
     }
 }

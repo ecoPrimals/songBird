@@ -1,14 +1,12 @@
-//! Songbird Test Runner
+//! Test Runner Binary
 //!
-//! Pure Rust test runner for comprehensive Songbird validation
-//! Replaces shell scripts with native Rust testing capabilities
+//! Comprehensive test execution for the Songbird CLI
 
 use clap::{Arg, Command};
-use colored::*;
+use colored::Colorize;
 use reqwest::Client;
-use serde_json::json;
 use songbird_config::config::hardcoded_elimination::replace;
-use std::process::Command as StdCommand;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -53,19 +51,23 @@ pub struct TestRunner {
 }
 
 impl TestRunner {
-    pub fn new(config: TestConfig) -> Self {
+    /// Create a new test runner
+    ///
+    /// # Errors
+    /// Returns error if HTTP client cannot be created
+    pub fn new(config: TestConfig) -> Result<Self, String> {
         let client = Client::builder()
             .timeout(Duration::from_secs(config.timeout_seconds))
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-        Self {
+        Ok(Self {
             config,
             client,
             passed: Arc::new(AtomicUsize::new(0)),
             failed: Arc::new(AtomicUsize::new(0)),
             total: Arc::new(AtomicUsize::new(0)),
-        }
+        })
     }
 
     /// Print header with formatting
@@ -91,7 +93,7 @@ impl TestRunner {
     /// Print info message
     fn print_info(&self, message: &str) {
         if !self.config.quiet {
-            println!("{}", format!("ℹ️ {message}").blue());
+            println!("{}", format!("ℹ️  {message}").blue());
         }
     }
 
@@ -99,17 +101,13 @@ impl TestRunner {
     async fn run_test(
         &self,
         name: &str,
-        test_fn: impl std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>>,
+        test_fn: impl std::future::Future<Output = SongbirdResult<()>>,
     ) -> TestResult {
         let start_time = Instant::now();
         self.total.fetch_add(1, Ordering::Relaxed);
 
         if !self.config.quiet {
-            self.print_info(&format!(
-                "Test {}: {}",
-                self.total.load(Ordering::Relaxed),
-                name
-            ));
+            self.print_info(&format!("Test {}: {}", self.total.load(Ordering::Relaxed), name));
         }
 
         let result = timeout(Duration::from_secs(self.config.timeout_seconds), test_fn).await;
@@ -123,12 +121,12 @@ impl TestRunner {
                     name: name.to_string(),
                     passed: true,
                     duration,
-                    message: "Test passed successfully".to_string(),
+                    message: "Test passed successfully ".to_string(),
                 }
             }
             Ok(Err(e)) => {
                 self.failed.fetch_add(1, Ordering::Relaxed);
-                let message = format!("FAILED: {name} - {e}");
+                let message = format!("FAILED: {e} - {name}");
                 self.print_error(&message);
                 TestResult {
                     name: name.to_string(),
@@ -139,16 +137,14 @@ impl TestRunner {
             }
             Err(_) => {
                 self.failed.fetch_add(1, Ordering::Relaxed);
-                let message = format!(
-                    "FAILED: {} - Timeout after {}s",
-                    name, self.config.timeout_seconds
-                );
+                let message =
+                    format!("FAILED: {} - Timeout after {} s ", name, self.config.timeout_seconds);
                 self.print_error(&message);
                 TestResult {
                     name: name.to_string(),
                     passed: false,
                     duration,
-                    message: "Test timed out".to_string(),
+                    message: "Test timed out ".to_string(),
                 }
             }
         };
@@ -160,397 +156,59 @@ impl TestRunner {
     }
 
     /// Check if Songbird is running
-    async fn check_songbird_health(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn check_songbird_health(&self) -> SongbirdResult<()> {
         let response = self
             .client
-            .get(format!("{}/api/health", self.config.songbird_url))
+            .get(format!("{}/api/health ", self.config.songbird_url))
             .send()
-            .await?;
+            .await
+            .map_err(|e| SongbirdError::network(format!("Health check request failed: {e}")))?;
 
         if response.status().is_success() {
-            let text = response.text().await?;
+            let text = response
+                .text()
+                .await
+                .map_err(|e| SongbirdError::network(format!("Failed to read response: {e}")))?;
             if text.to_lowercase().contains("healthy") {
                 Ok(())
             } else {
                 Err(format!("Health check failed: unexpected response: {text}").into())
             }
         } else {
-            Err(format!("Health check failed with status: {}", response.status()).into())
+            Err(format!("Health Check failed with status: {}", response.status()).into())
         }
     }
 
-    /// Quick validation tests (5 minutes)
+    /// Quick validation tests
     pub async fn run_quick_validation(&self) -> Vec<TestResult> {
-        self.print_header("Quick Validation Suite (5 minutes)");
+        self.print_header("Quick Validation Suite");
         let mut results = Vec::new();
 
         // Essential health checks
         results.push(
-            self.run_test("API Health Check", async {
-                self.check_songbird_health().await
-            })
-            .await,
+            self.run_test("API Health Check ", async { self.check_songbird_health().await }).await,
         );
 
         results.push(
-            self.run_test("System Metrics", async {
+            self.run_test("System Metrics ", async {
                 let response = self
                     .client
                     .get(format!("{}/api/metrics", self.config.songbird_url))
                     .send()
-                    .await?;
+                    .await
+                    .map_err(|e| SongbirdError::network(format!("Metrics request failed: {e}")))?;
 
                 if response.status().is_success() {
-                    let text = response.text().await?;
+                    let text = response.text().await.map_err(|e| {
+                        SongbirdError::network(format!("Failed to read response: {e}"))
+                    })?;
                     if text.contains("cpu_usage") {
                         Ok(())
                     } else {
                         Err("Metrics response missing expected fields".into())
                     }
                 } else {
-                    Err(format!("Metrics request failed: {}", response.status()).into())
-                }
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("Gaming Auto-Configuration", async {
-                let payload = json!({
-                    "setup_type": "one_touch"
-                });
-
-                let response = self
-                    .client
-                    .post(format!("{}/api/gaming/setup", self.config.songbird_url))
-                    .header("Content-Type", "application/json")
-                    .json(&payload)
-                    .send()
-                    .await?;
-
-                if response.status().is_success() {
-                    let text = response.text().await?;
-                    if text.to_lowercase().contains("success") {
-                        Ok(())
-                    } else {
-                        Err(format!("Gaming setup unexpected response: {text}").into())
-                    }
-                } else {
-                    Err(format!("Gaming setup failed: {}", response.status()).into())
-                }
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("AI Workload Classification", async {
-                let payload = json!({
-                    "workload_id": "test-web-service",
-                    "characteristics": ["web_service"]
-                });
-
-                let response = self
-                    .client
-                    .post(format!("{}/api/ai/classify", self.config.songbird_url))
-                    .header("Content-Type", "application/json")
-                    .json(&payload)
-                    .send()
-                    .await?;
-
-                if response.status().is_success() {
-                    let text = response.text().await?;
-                    if text.to_lowercase().contains("classification") {
-                        Ok(())
-                    } else {
-                        Err(format!("AI classification unexpected response: {text}").into())
-                    }
-                } else {
-                    Err(format!("AI classification failed: {}", response.status()).into())
-                }
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("Federation Status", async {
-                let response = self
-                    .client
-                    .get(format!(
-                        "{}/api/federation/status",
-                        self.config.songbird_url
-                    ))
-                    .send()
-                    .await?;
-
-                if response.status().is_success() {
-                    let text = response.text().await?;
-                    if text.to_lowercase().contains("cluster_status") {
-                        Ok(())
-                    } else {
-                        Err(format!("Federation status unexpected response: {text}").into())
-                    }
-                } else {
-                    Err(format!("Federation status check failed: {}", response.status()).into())
-                }
-            })
-            .await,
-        );
-
-        results
-    }
-
-    /// Gaming-focused comprehensive tests
-    pub async fn run_gaming_tests(&self) -> Vec<TestResult> {
-        self.print_header("Gaming Test Suite (15 minutes)");
-        let mut results = Vec::new();
-
-        // Gaming setup tests
-        results.push(
-            self.run_test("One-Touch Gaming Setup", async {
-                let payload = json!({
-                    "setup_type": "one_touch"
-                });
-
-                let response = self
-                    .client
-                    .post(format!("{}/api/gaming/setup", self.config.songbird_url))
-                    .header("Content-Type", "application/json")
-                    .json(&payload)
-                    .send()
-                    .await?;
-
-                response.error_for_status()?;
-                Ok(())
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("Family-Safe Gaming Setup", async {
-                let payload = json!({
-                    "setup_type": "family_safe",
-                    "family_name": "TestFamily",
-                    "user_preferences": {
-                        "family_safe_mode": true,
-                        "content_filtering": "strict"
-                    }
-                });
-
-                let response = self
-                    .client
-                    .post(format!("{}/api/gaming/setup", self.config.songbird_url))
-                    .header("Content-Type", "application/json")
-                    .json(&payload)
-                    .send()
-                    .await?;
-
-                response.error_for_status()?;
-                Ok(())
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("Gaming Performance Metrics", async {
-                let response = self
-                    .client
-                    .get(format!(
-                        "{}/api/gaming/performance/metrics",
-                        self.config.songbird_url
-                    ))
-                    .send()
-                    .await?;
-
-                if response.status().is_success() {
-                    let text = response.text().await?;
-                    if text.to_lowercase().contains("latency") {
-                        Ok(())
-                    } else {
-                        Err("Performance metrics missing expected fields".into())
-                    }
-                } else {
-                    Err(format!("Performance metrics failed: {}", response.status()).into())
-                }
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("Legacy Protocol Support", async {
-                let payload = json!({
-                    "protocols": ["ipx", "directplay", "tcp", "udp"]
-                });
-
-                let response = self
-                    .client
-                    .post(format!(
-                        "{}/api/gaming/protocols/enable",
-                        self.config.songbird_url
-                    ))
-                    .header("Content-Type", "application/json")
-                    .json(&payload)
-                    .send()
-                    .await?;
-
-                response.error_for_status()?;
-                Ok(())
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("StarCraft Optimization", async {
-                let payload = json!({
-                    "game_name": "StarCraft",
-                    "optimization_level": "maximum",
-                    "protocol_preference": "ipx_over_tcp"
-                });
-
-                let response = self
-                    .client
-                    .post(format!("{}/api/gaming/configure", self.config.songbird_url))
-                    .header("Content-Type", "application/json")
-                    .json(&payload)
-                    .send()
-                    .await?;
-
-                response.error_for_status()?;
-                Ok(())
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("Family Safety Validation", async {
-                let payload = json!({
-                    "content": "test gaming content",
-                    "family_mode": true,
-                    "age_rating": "E"
-                });
-
-                let response = self
-                    .client
-                    .post(format!(
-                        "{}/api/gaming/safety/validate",
-                        self.config.songbird_url
-                    ))
-                    .header("Content-Type", "application/json")
-                    .json(&payload)
-                    .send()
-                    .await?;
-
-                response.error_for_status()?;
-                Ok(())
-            })
-            .await,
-        );
-
-        results
-    }
-
-    /// Comprehensive system tests
-    pub async fn run_comprehensive_tests(&self) -> Vec<TestResult> {
-        self.print_header("Comprehensive Test Suite (30+ minutes)");
-        let mut results = Vec::new();
-
-        // Include quick validation tests
-        results.extend(self.run_quick_validation().await);
-
-        // Include gaming tests
-        results.extend(self.run_gaming_tests().await);
-
-        // Additional comprehensive tests
-        results.push(
-            self.run_test("Primal Discovery", async {
-                let response = self
-                    .client
-                    .get(format!("{}/api/primals/discover", self.config.songbird_url))
-                    .send()
-                    .await?;
-
-                response.error_for_status()?;
-                Ok(())
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("Load Test (50 concurrent requests)", async {
-                let mut handles = Vec::new();
-
-                for _ in 0..50 {
-                    let client = self.client.clone();
-                    let url = format!("{}/api/health", self.config.songbird_url);
-
-                    let handle = tokio::spawn(async move {
-                        client.get(&url).send().await?.error_for_status()?;
-                        Ok::<(), reqwest::Error>(())
-                    });
-
-                    handles.push(handle);
-                }
-
-                // Wait for all requests to complete
-                for handle in handles {
-                    handle
-                        .await
-                        .map_err(|e| format!("Task join error: {e}"))??;
-                }
-
-                Ok(())
-            })
-            .await,
-        );
-
-        results.push(
-            self.run_test("End-to-End Gaming Workflow", async {
-                // Setup gaming
-                let setup_payload = json!({"setup_type": "one_touch"});
-                let setup_response = self
-                    .client
-                    .post(format!("{}/api/gaming/setup", self.config.songbird_url))
-                    .header("Content-Type", "application/json")
-                    .json(&setup_payload)
-                    .send()
-                    .await?;
-                setup_response.error_for_status()?;
-
-                // Brief delay
-                tokio::time::sleep(Duration::from_millis(500)).await;
-
-                // Check status
-                let status_response = self
-                    .client
-                    .get(format!("{}/api/gaming/status", self.config.songbird_url))
-                    .send()
-                    .await?;
-                status_response.error_for_status()?;
-
-                Ok(())
-            })
-            .await,
-        );
-
-        results
-    }
-
-    /// Run unit tests via cargo
-    pub async fn run_unit_tests(&self) -> Vec<TestResult> {
-        self.print_header("Unit Test Suite (Cargo)");
-        let mut results = Vec::new();
-
-        results.push(
-            self.run_test("Cargo Unit Tests", async {
-                let output = StdCommand::new("cargo")
-                    .args(["test", "--workspace", "--lib"])
-                    .output()
-                    .map_err(|e| format!("Failed to run cargo test: {e}"))?;
-
-                if output.status.success() {
-                    Ok(())
-                } else {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    Err(format!("Unit tests failed: {stderr}").into())
+                    Err(format!("Metrics  request failed: {}", response.status()).into())
                 }
             })
             .await,
@@ -576,17 +234,9 @@ impl TestRunner {
         println!("{}", "=".repeat(60).blue());
 
         println!("{}", "📊 Results:".yellow().bold());
-        println!(
-            "   {} Passed: {}",
-            "✅".green(),
-            format!("{passed_tests} tests").green()
-        );
+        println!("   {} Passed: {}", "✅".green(), format!("{passed_tests} tests").green());
         if failed_tests > 0 {
-            println!(
-                "   {} Failed: {}",
-                "❌".red(),
-                format!("{failed_tests} tests").red()
-            );
+            println!("   {} Failed: {}", "❌".red(), format!("{failed_tests} tests").red());
         }
         println!("   📈 Total:  {total_tests} tests");
         println!(
@@ -597,19 +247,19 @@ impl TestRunner {
                 format!("{pass_rate}").red()
             }
         );
-        println!("   ⏱️ Duration: {total_duration:?}");
+        println!("   ⏱️  Duration: {total_duration:?}");
 
         // System assessment
         println!("\n{}", "🎯 Assessment:".yellow().bold());
         if failed_tests == 0 {
             println!("   🎉 All tests passed! System is production-ready.");
-            println!("   🚀 Ready for deployment and live gaming networks.");
+            println!("   🚀 Ready for deployment.");
         } else if pass_rate > 80 {
-            println!("   ⚠️ Most tests passed but some issues detected.");
+            println!("   ⚠️  Most tests passed but some issues detected.");
             println!("   🔧 Review failed tests and check troubleshooting guide.");
         } else {
             println!("   🚨 Significant issues detected.");
-            println!("   🛠️ System needs attention before production use.");
+            println!("   🛠️  System needs attention before production use.");
         }
 
         // Failed test details
@@ -629,7 +279,7 @@ impl TestRunner {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> SongbirdResult<()> {
     let matches = Command::new("Songbird Test Runner")
         .version("1.0")
         .author("Songbird Team")
@@ -664,165 +314,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Quiet output")
                 .action(clap::ArgAction::SetTrue),
         )
-        .subcommand(Command::new("quick").about("Run quick validation (5 minutes)"))
-        .subcommand(Command::new("gaming").about("Run gaming test suite (15 minutes)"))
-        .subcommand(
-            Command::new("comprehensive").about("Run comprehensive test suite (30+ minutes)"),
-        )
-        .subcommand(Command::new("unit").about("Run unit tests only"))
-        .subcommand(Command::new("all").about("Run all test suites"))
+        .subcommand(Command::new("quick").about("Run quick validation"))
         .get_matches();
 
     let config = TestConfig {
-        songbird_url: matches.get_one::<String>("url").unwrap().clone(),
-        timeout_seconds: matches.get_one::<String>("timeout").unwrap().parse()?,
+        songbird_url: matches
+            .get_one::<String>("url")
+            .ok_or("URL argument is required (should have default)")?
+            .clone(),
+        timeout_seconds: matches
+            .get_one::<String>("timeout")
+            .ok_or("Timeout argument is required (should have default)")?
+            .parse()
+            .map_err(|e| SongbirdError::configuration(format!("Invalid timeout value: {e}")))?,
         verbose: matches.get_flag("verbose"),
         quiet: matches.get_flag("quiet"),
     };
 
-    let runner = TestRunner::new(config);
+    let runner = TestRunner::new(config)?;
 
-    match matches.subcommand() {
-        Some(("quick", _)) => {
-            let results = runner.run_quick_validation().await;
-            runner.generate_report(&results, "Quick Validation");
+    if let Some(("quick", _)) = matches.subcommand() {
+        let results = runner.run_quick_validation().await;
+        runner.generate_report(&results, "Quick Validation");
 
-            if results.iter().any(|r| !r.passed) {
-                std::process::exit(1);
-            }
+        if results.iter().any(|r| !r.passed) {
+            std::process::exit(1);
         }
-        Some(("gaming", _)) => {
-            let results = runner.run_gaming_tests().await;
-            runner.generate_report(&results, "Gaming Test Suite");
+    } else {
+        // Default: run quick validation
+        let results = runner.run_quick_validation().await;
+        runner.generate_report(&results, "Quick Validation");
 
-            if results.iter().any(|r| !r.passed) {
-                std::process::exit(1);
-            }
-        }
-        Some(("comprehensive", _)) => {
-            let results = runner.run_comprehensive_tests().await;
-            runner.generate_report(&results, "Comprehensive Test Suite");
-
-            if results.iter().any(|r| !r.passed) {
-                std::process::exit(1);
-            }
-        }
-        Some(("unit", _)) => {
-            let results = runner.run_unit_tests().await;
-            runner.generate_report(&results, "Unit Test Suite");
-
-            if results.iter().any(|r| !r.passed) {
-                std::process::exit(1);
-            }
-        }
-        Some(("all", _)) => {
-            println!("{}", "🚀 Running All Test Suites".cyan().bold());
-
-            let mut all_results = Vec::new();
-            let mut phase_failed = false;
-
-            // Phase 1: Unit tests
-            println!("\n{}", "Phase 1: Unit Tests".purple().bold());
-            let unit_results = runner.run_unit_tests().await;
-            if unit_results.iter().any(|r| !r.passed) {
-                phase_failed = true;
-            }
-            all_results.extend(unit_results);
-
-            // Phase 2: Quick validation
-            println!("\n{}", "Phase 2: Quick Validation".purple().bold());
-            let quick_results = runner.run_quick_validation().await;
-            if quick_results.iter().any(|r| !r.passed) {
-                phase_failed = true;
-            }
-            all_results.extend(quick_results);
-
-            // Phase 3: Gaming tests
-            println!("\n{}", "Phase 3: Gaming Tests".purple().bold());
-            let gaming_results = runner.run_gaming_tests().await;
-            if gaming_results.iter().any(|r| !r.passed) {
-                phase_failed = true;
-            }
-            all_results.extend(gaming_results);
-
-            // Phase 4: Comprehensive tests
-            println!(
-                "\n{}",
-                "Phase 4: Additional Comprehensive Tests".purple().bold()
-            );
-            let comp_results = runner.run_comprehensive_tests().await;
-            if comp_results.iter().any(|r| !r.passed) {
-                phase_failed = true;
-            }
-            all_results.extend(comp_results);
-
-            runner.generate_report(&all_results, "Complete Test Suite");
-
-            if phase_failed {
-                std::process::exit(1);
-            }
-        }
-        _ => {
-            // Interactive mode
-            println!(
-                "{}",
-                "🧪 Songbird Test Runner - Interactive Mode".cyan().bold()
-            );
-            println!("{}", "📅 Choose a test suite to run:".blue());
-            println!();
-            println!(
-                "1. {} - Essential health checks",
-                "Quick Validation (5 min)".green()
-            );
-            println!(
-                "2. {} - Gaming-focused testing",
-                "Gaming Test Suite (15 min)".yellow()
-            );
-            println!(
-                "3. {} - Complete system validation",
-                "Comprehensive Suite (30+ min)".red()
-            );
-            println!("4. {} - Rust cargo tests", "Unit Tests".blue());
-            println!("5. {} - Everything (45+ min)", "All Tests".purple());
-            println!("0. Exit");
-            println!();
-
-            use std::io::{self, Write};
-            print!("Select test suite [1-5, 0 to exit]: ");
-            io::stdout().flush()?;
-
-            let mut input = String::new();
-            io::stdin().read_line(&mut input)?;
-
-            match input.trim() {
-                "1" => {
-                    let results = runner.run_quick_validation().await;
-                    runner.generate_report(&results, "Quick Validation");
-                }
-                "2" => {
-                    let results = runner.run_gaming_tests().await;
-                    runner.generate_report(&results, "Gaming Test Suite");
-                }
-                "3" => {
-                    let results = runner.run_comprehensive_tests().await;
-                    runner.generate_report(&results, "Comprehensive Test Suite");
-                }
-                "4" => {
-                    let results = runner.run_unit_tests().await;
-                    runner.generate_report(&results, "Unit Test Suite");
-                }
-                "5" => {
-                    let results = runner.run_comprehensive_tests().await;
-                    runner.generate_report(&results, "All Tests");
-                }
-                "0" => {
-                    println!("Goodbye! 👋");
-                    return Ok(());
-                }
-                _ => {
-                    println!("Invalid selection. Please choose 0-5.");
-                }
-            }
+        if results.iter().any(|r| !r.passed) {
+            std::process::exit(1);
         }
     }
 

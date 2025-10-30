@@ -1,0 +1,96 @@
+# 🎼 Songbird Production Docker Compose
+# Complete production deployment with monitoring, logging, and service mesh
+
+version: '3.8'
+
+services:
+  songbird-core:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.production
+    environment:
+      - RUST_ENV=production
+      - SONGBIRD_ENVIRONMENT=production
+      - SONGBIRD_BIND_ADDRESS=0.0.0.0
+      - SONGBIRD_PORT=8080
+      - SONGBIRD_LOG_LEVEL=info
+      - SONGBIRD_METRICS_ENABLED=true
+      - SONGBIRD_SECURITY_ENABLED=true
+    ports:
+      - "8080:8080"
+      - "9090:9090"  # Metrics port
+    volumes:
+      - songbird_data:/app/data
+      - songbird_logs:/app/logs
+      - songbird_config:/app/config
+    networks:
+      - songbird_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  songbird-observability:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.production
+      target: observability
+    environment:
+      - RUST_ENV=production
+      - SONGBIRD_ENVIRONMENT=production
+      - SONGBIRD_METRICS_PORT=9091
+      - SONGBIRD_HEALTH_CHECK_INTERVAL=30
+    ports:
+      - "9091:9091"
+    volumes:
+      - songbird_metrics:/app/metrics
+    networks:
+      - songbird_network
+    restart: unless-stopped
+    depends_on:
+      - songbird-core
+
+  songbird-discovery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.production
+      target: discovery
+    environment:
+      - RUST_ENV=production
+      - SONGBIRD_ENVIRONMENT=production
+      - SONGBIRD_DISCOVERY_PORT=8081
+    ports:
+      - "8081:8081"
+    networks:
+      - songbird_network
+    restart: unless-stopped
+    depends_on:
+      - songbird-core
+
+volumes:
+  songbird_data:
+    driver: local
+  songbird_logs:
+    driver: local
+  songbird_config:
+    driver: local
+  songbird_metrics:
+    driver: local
+
+networks:
+  songbird_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

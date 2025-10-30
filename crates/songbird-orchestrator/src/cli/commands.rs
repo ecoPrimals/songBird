@@ -3,6 +3,7 @@
 //! This module contains all the command and subcommand enums used by the CLI.
 
 use clap::Subcommand;
+// use songbird_types::unified_constants::*; // Module not available yet
 
 /// Available CLI commands
 #[derive(Subcommand, Debug)]
@@ -31,9 +32,9 @@ pub enum Commands {
         /// Federation command
         federation_command: String,
     },
-    /// IoT device management
+    /// `IoT` device management
     Iot {
-        /// IoT command
+        /// `IoT` command
         iot_command: String,
     },
     /// Plugin composition and management
@@ -116,7 +117,7 @@ pub enum Commands {
     /// Web dashboard
     Dashboard {
         /// Port to run dashboard on
-        #[arg(short, long, default_value_t = songbird_config::config::constants::network::DEFAULT_DASHBOARD_PORT)]
+        #[arg(short, long, default_value_t = 8080)]
         port: u16,
         /// Bind address
         #[arg(short, long, default_value = songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS)]
@@ -143,13 +144,21 @@ pub enum ServiceCommands {
     /// List all services
     List,
     /// Show service details
-    Show { service_name: String },
+    Show {
+        service_name: String,
+    },
     /// Start a service
-    Start { service_name: String },
+    Start {
+        service_name: String,
+    },
     /// Stop a service
-    Stop { service_name: String },
+    Stop {
+        service_name: String,
+    },
     /// Restart a service
-    Restart { service_name: String },
+    Restart {
+        service_name: String,
+    },
 }
 
 /// Discovery subcommands

@@ -3,14 +3,14 @@
 //! This module provides path configuration with environment-based defaults.
 //! All paths are configurable via environment variables.
 
-use songbird_errors::{Result, SongbirdError};
+use songbird_types::{SongbirdError, SongbirdResult};
+type Result<T> = SongbirdResult<T>;
 // use crate::substrate::{PathRequest, PathRequirements, PathType};
+use crate::config::constants::{get_cache_dir, get_config_dir, get_data_dir, get_log_dir};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
-
-use crate::config::constants::{get_cache_dir, get_config_dir, get_data_dir, get_log_dir};
 
 /// Platform-agnostic path configuration using OS substrate
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,15 +64,20 @@ impl Default for PathConfig {
 }
 
 impl PathConfig {
-    /// Create a new PathConfig instance
-    pub async fn new() -> Result<Self> {
+    /// Create a new `PathConfig` instance
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Unable to determine home directory
+    /// - HOME environment variable is not set
+    pub fn new() -> Result<Self> {
         debug!("Creating new PathConfig instance");
 
         // Use simple path implementation
-        let home_dir = dirs::home_dir().ok_or_else(|| SongbirdError::Config {
+        let home_dir = dirs::home_dir().ok_or_else(|| SongbirdError::Configuration {
             message: "Unable to determine home directory".to_string(),
             field: Some("home_dir".to_string()),
-            context: None,
             suggestion: Some("Check if HOME environment variable is set".to_string()),
         })?;
 
@@ -91,9 +96,9 @@ impl PathConfig {
             registry: config_dir.join("registry"),
         };
 
-        let paths = PathConfig {
-            config_dir,
+        let paths = Self {
             data_dir,
+            config_dir,
             log_dir,
             cache_dir,
             runtime_dir,
@@ -137,6 +142,7 @@ impl PathConfig {
     }
 
     /// Create development configuration (uses local directories)
+    #[must_use]
     pub fn development() -> Self {
         let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         let dev_dir = current_dir.join(".songbird");
@@ -158,19 +164,30 @@ impl PathConfig {
     }
 
     /// Create production configuration using substrate
-    pub async fn production() -> Result<Self> {
-        Self::new().await
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Unable to determine home directory
+    /// - System paths are not accessible
+    pub fn production() -> Result<Self> {
+        Self::new()
     }
 
     /// Get default configuration paths for the current platform
-    pub async fn get_default_paths() -> Result<PathConfig> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Unable to determine home directory
+    /// - HOME environment variable is not set
+    pub fn get_default_paths() -> Result<Self> {
         debug!("Getting default paths for current platform");
 
         // Simple path implementation without substrate
-        let home_dir = dirs::home_dir().ok_or_else(|| SongbirdError::Config {
+        let home_dir = dirs::home_dir().ok_or_else(|| SongbirdError::Configuration {
             message: "Unable to determine home directory".to_string(),
             field: Some("home_dir".to_string()),
-            context: None,
             suggestion: Some("Check if HOME environment variable is set".to_string()),
         })?;
 
@@ -180,7 +197,7 @@ impl PathConfig {
         let cache_dir = home_dir.join(".cache").join("songbird");
         let runtime_dir = std::env::temp_dir().join("songbird");
 
-        let paths = PathConfig {
+        let paths = Self {
             config_dir: config_dir.clone(),
             data_dir,
             log_dir,
@@ -200,37 +217,59 @@ impl PathConfig {
     }
 
     /// Get fallback data directory when substrate is unavailable
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `XDG_DATA_HOME` is not set
+    /// - Unable to determine home directory
+    /// - Suggestion: Set `XDG_DATA_HOME` environment variable
     pub fn get_fallback_data_dir() -> Result<PathBuf> {
         // Use XDG base directory specification or platform defaults
-        if let Some(data_dir) = std::env::var_os("XDG_DATA_HOME") {
-            Ok(PathBuf::from(data_dir).join("songbird"))
-        } else if let Some(home_dir) = dirs::home_dir() {
-            Ok(home_dir.join(".local").join("share").join("songbird"))
-        } else {
-            Err(SongbirdError::Config {
-                message: "Unable to determine data directory".to_string(),
-                field: Some("data_dir".to_string()),
-                context: None,
-                suggestion: Some("Set XDG_DATA_HOME environment variable".to_string()),
-            })
-        }
+        std::env::var_os("XDG_DATA_HOME").map_or_else(
+            || {
+                dirs::home_dir().map_or_else(
+                    || {
+                        Err(SongbirdError::Configuration {
+                            message: "Unable to determine data directory".to_string(),
+                            field: Some("data_dir".to_string()),
+                            suggestion: Some("Set XDG_DATA_HOME environment variable".to_string()),
+                        })
+                    },
+                    |home_dir| Ok(home_dir.join(".local").join("share").join("songbird")),
+                )
+            },
+            |data_dir| Ok(PathBuf::from(data_dir).join("songbird")),
+        )
     }
 
     /// Get fallback config directory when substrate is unavailable
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `XDG_CONFIG_HOME` is not set
+    /// - Unable to determine home directory
+    /// - Suggestion: Set `XDG_CONFIG_HOME` environment variable
     pub fn get_fallback_config_dir() -> Result<PathBuf> {
         // Use XDG base directory specification or platform defaults
-        if let Some(config_dir) = std::env::var_os("XDG_CONFIG_HOME") {
-            Ok(PathBuf::from(config_dir).join("songbird"))
-        } else if let Some(home_dir) = dirs::home_dir() {
-            Ok(home_dir.join(".config").join("songbird"))
-        } else {
-            Err(SongbirdError::Config {
-                message: "Unable to determine config directory".to_string(),
-                field: Some("config_dir".to_string()),
-                context: None,
-                suggestion: Some("Set XDG_CONFIG_HOME environment variable".to_string()),
-            })
-        }
+        std::env::var_os("XDG_CONFIG_HOME").map_or_else(
+            || {
+                dirs::home_dir().map_or_else(
+                    || {
+                        Err(SongbirdError::Configuration {
+                            message: "Unable to determine config directory".to_string(),
+                            field: Some("config_dir".to_string()),
+                            suggestion: Some(
+                                "Set XDG_CONFIG_HOME environment variable".to_string(),
+                            ),
+                        })
+                    },
+                    |home_dir| Ok(home_dir.join(".config").join("songbird")),
+                )
+            },
+            |config_dir| Ok(PathBuf::from(config_dir).join("songbird")),
+        )
     }
 
     /// Get fallback log directory when substrate is unavailable
@@ -261,7 +300,14 @@ impl PathConfig {
     }
 
     /// Create all necessary directories
-    pub async fn create_directories(&self) -> Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Failed to create any required directory
+    /// - Insufficient write permissions for directory creation
+    /// - Suggestion: Check directory permissions and available disk space
+    pub fn create_directories(&self) -> Result<()> {
         // Create directories directly without substrate
         let directories = vec![
             &self.data_dir,
@@ -279,14 +325,13 @@ impl PathConfig {
         for directory in directories {
             if !directory.exists() {
                 if let Err(e) = std::fs::create_dir_all(directory) {
-                    return Err(SongbirdError::Config {
+                    return Err(SongbirdError::Configuration {
                         message: format!(
                             "Failed to create directory {}: {}",
                             directory.display(),
                             e
                         ),
                         field: Some("directory_path".to_string()),
-                        context: None,
                         suggestion: Some(
                             "Check if you have write permissions for this directory".to_string(),
                         ),
@@ -299,7 +344,14 @@ impl PathConfig {
     }
 
     /// Get a service-specific path through substrate
-    pub async fn get_service_path(&self, service_name: &str, path_type: &str) -> Result<PathBuf> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Unknown path type provided (valid: config, data, log, cache, runtime)
+    /// - Failed to create service directory
+    /// - Insufficient write permissions
+    pub fn get_service_path(&self, service_name: &str, path_type: &str) -> Result<PathBuf> {
         let service_dir = match path_type {
             "config" => self.config_dir.join(service_name),
             "data" => self.data_dir.join(service_name),
@@ -307,10 +359,9 @@ impl PathConfig {
             "cache" => self.cache_dir.join(service_name),
             "runtime" => self.runtime_dir.join(service_name),
             _ => {
-                return Err(SongbirdError::Config {
+                return Err(SongbirdError::Configuration {
                     message: format!("Unknown path type: {path_type}"),
                     field: Some("path_type".to_string()),
-                    context: None,
                     suggestion: Some("Check if the path type is valid".to_string()),
                 })
             }
@@ -318,10 +369,9 @@ impl PathConfig {
 
         // Ensure directory exists
         if !service_dir.exists() {
-            fs::create_dir_all(&service_dir).map_err(|e| SongbirdError::Config {
+            fs::create_dir_all(&service_dir).map_err(|e| SongbirdError::Configuration {
                 message: format!("Failed to create service directory: {e}"),
                 field: Some("service_dir".to_string()),
-                context: None,
                 suggestion: Some(
                     "Check if you have write permissions for this directory".to_string(),
                 ),
@@ -332,7 +382,14 @@ impl PathConfig {
     }
 
     /// Validate that all paths are accessible
-    pub async fn validate_paths(&self) -> Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Any configured path does not exist
+    /// - Path is not accessible due to permissions
+    /// - Suggestion: Ensure all paths exist and are accessible
+    pub fn validate_paths(&self) -> Result<()> {
         let paths = vec![
             &self.data_dir,
             &self.config_dir,
@@ -343,10 +400,9 @@ impl PathConfig {
 
         for path in paths {
             if !path.exists() {
-                return Err(SongbirdError::Config {
+                return Err(SongbirdError::Configuration {
                     message: format!("Path does not exist: {}", path.display()),
                     field: Some("path_validation".to_string()),
-                    context: None,
                     suggestion: Some("Check if the path exists and is accessible".to_string()),
                 });
             }
@@ -356,15 +412,20 @@ impl PathConfig {
     }
 
     /// Get a temporary path for specific operations
-    pub async fn get_temp_path(&self, operation: &str) -> Result<PathBuf> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Failed to create temporary directory
+    /// - Insufficient write permissions for temp directory
+    pub fn get_temp_path(operation: &str) -> Result<PathBuf> {
         let temp_dir = std::env::temp_dir().join("songbird").join(operation);
 
         // Ensure directory exists
         if !temp_dir.exists() {
-            fs::create_dir_all(&temp_dir).map_err(|e| SongbirdError::Config {
+            fs::create_dir_all(&temp_dir).map_err(|e| SongbirdError::Configuration {
                 message: format!("Failed to create temp directory: {e}"),
                 field: Some("temp_dir".to_string()),
-                context: None,
                 suggestion: Some(
                     "Check if you have write permissions for this directory".to_string(),
                 ),
@@ -375,15 +436,21 @@ impl PathConfig {
     }
 
     /// Get secure path for sensitive operations
-    pub async fn get_secure_path(&self, operation: &str) -> Result<PathBuf> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Failed to create secure directory
+    /// - Insufficient write permissions for secure directory
+    /// - Unable to set restricted permissions
+    pub fn get_secure_path(&self, operation: &str) -> Result<PathBuf> {
         let secure_dir = self.data_dir.join("secure").join(operation);
 
         // Ensure directory exists with restricted permissions
         if !secure_dir.exists() {
-            fs::create_dir_all(&secure_dir).map_err(|e| SongbirdError::Config {
+            fs::create_dir_all(&secure_dir).map_err(|e| SongbirdError::Configuration {
                 message: format!("Failed to create secure directory: {e}"),
                 field: Some("secure_dir".to_string()),
-                context: None,
                 suggestion: Some(
                     "Check if you have write permissions for this directory".to_string(),
                 ),
@@ -394,7 +461,13 @@ impl PathConfig {
     }
 
     /// Initialize paths for a service
-    pub async fn initialize_service_paths(&self, base_dir: &Path) -> Result<ServiceDataDirs> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Failed to create service directory
+    /// - Insufficient write permissions
+    pub fn initialize_service_paths(base_dir: &Path) -> Result<ServiceDataDirs> {
         let service_dirs = ServiceDataDirs {
             orchestrator: base_dir.join("orchestrator"),
             federation: base_dir.join("federation"),
@@ -414,10 +487,9 @@ impl PathConfig {
 
         for dir in directories {
             if !dir.exists() {
-                std::fs::create_dir_all(dir).map_err(|e| SongbirdError::Config {
+                std::fs::create_dir_all(dir).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to create service directory: {e}"),
                     field: Some("service_directory".to_string()),
-                    context: None,
                     suggestion: Some("Check if you have write permissions".to_string()),
                 })?;
             }
@@ -428,25 +500,32 @@ impl PathConfig {
 }
 
 /// Get the best available path configuration
-pub async fn get_path_config() -> Result<PathConfig> {
+///
+/// This function attempts to use substrate-based paths first, then falls back
+/// to a simpler implementation. Always succeeds as fallback is always available.
+#[must_use]
+pub fn get_path_config() -> PathConfig {
     // Try to use substrate first
-    match PathConfig::new().await {
+    match PathConfig::new() {
         Ok(config) => {
             debug!("✅ Using substrate-based path configuration");
-            Ok(config)
+            config
         }
         Err(e) => {
-            warn!(
-                "⚠️ Substrate path configuration failed: {}, using fallback",
-                e
-            );
-            Ok(PathConfig::new_fallback())
+            warn!("⚠️ Substrate path configuration failed: {}, using fallback", e);
+            PathConfig::new_fallback()
         }
     }
 }
 
 /// Initialize paths for a service
-pub async fn initialize_service_paths(service_name: &str) -> Result<ServiceDataDirs> {
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to create service directory
+/// - Insufficient write permissions for /`tmp/songbird/{service_name`}
+pub fn initialize_service_paths(service_name: &str) -> Result<ServiceDataDirs> {
     let base_dir = PathBuf::from(format!("/tmp/songbird/{service_name}"));
 
     let service_dirs = ServiceDataDirs {
@@ -468,10 +547,9 @@ pub async fn initialize_service_paths(service_name: &str) -> Result<ServiceDataD
 
     for dir in directories {
         if !dir.exists() {
-            std::fs::create_dir_all(dir).map_err(|e| SongbirdError::Config {
+            std::fs::create_dir_all(dir).map_err(|e| SongbirdError::Configuration {
                 message: format!("Failed to create service directory: {e}"),
                 field: Some("service_directory".to_string()),
-                context: None,
                 suggestion: Some("Check if you have write permissions".to_string()),
             })?;
         }
@@ -481,6 +559,7 @@ pub async fn initialize_service_paths(service_name: &str) -> Result<ServiceDataD
 }
 
 /// Create a path configuration for testing
+#[must_use]
 pub fn testing_config() -> PathConfig {
     let test_dir = std::env::temp_dir().join("songbird_test");
 

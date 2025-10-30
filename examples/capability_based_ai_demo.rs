@@ -1,3 +1,4 @@
+use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! Capability-Based AI Delegation Demo
 //!
 //! This example demonstrates how Songbird uses capability-based discovery
@@ -11,7 +12,7 @@ use std::collections::HashMap;
 use tracing::{info, Level};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_max_level(Level::INFO)

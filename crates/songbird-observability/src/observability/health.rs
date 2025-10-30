@@ -1,12 +1,15 @@
+#![allow(clippy::unused_async)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use songbird_types::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::debug;
 
 use super::{HealthStatus, NodeHealth, ServiceHealth};
-use songbird_errors::Result;
+type Result<T> = SongbirdResult<T>;
 
 /// Health monitor for services and nodes
 #[derive(Debug)]
@@ -18,6 +21,7 @@ pub struct HealthMonitor {
 
 impl HealthMonitor {
     /// Create new health monitor
+    #[must_use]
     pub fn new() -> Self {
         Self {
             services: Arc::new(RwLock::new(HashMap::new())),
@@ -26,6 +30,10 @@ impl HealthMonitor {
     }
 
     /// Register a service for monitoring
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn register_service(&self, service_id: String) -> Result<()> {
         let health = ServiceHealth {
             service_id: service_id.clone(),
@@ -41,6 +49,10 @@ impl HealthMonitor {
     }
 
     /// Update service health status
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn update_service_health(
         &self,
         service_id: &str,
@@ -55,18 +67,30 @@ impl HealthMonitor {
     }
 
     /// Get service health status
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_service_health(&self, service_id: &str) -> Result<Option<ServiceHealth>> {
         let services = self.services.read().await;
         Ok(services.get(service_id).cloned())
     }
 
     /// Get all service health statuses
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_all_service_health(&self) -> Result<Vec<ServiceHealth>> {
         let services = self.services.read().await;
         Ok(services.values().cloned().collect())
     }
 
     /// Run health checks for all registered services
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn run_health_checks(&self) -> Result<()> {
         debug!("Running health checks");
         // In a real implementation, this would check actual service endpoints
@@ -76,10 +100,8 @@ impl HealthMonitor {
     /// Get health statistics
     pub async fn get_health_stats(&self) -> HealthStats {
         let services = self.services.read().await;
-        let healthy_count = services
-            .values()
-            .filter(|s| matches!(s.status, HealthStatus::Healthy))
-            .count();
+        let healthy_count =
+            services.values().filter(|s| matches!(s.status, HealthStatus::Healthy)).count();
 
         HealthStats {
             total_services: services.len(),
@@ -97,6 +119,7 @@ impl Default for HealthMonitor {
 
 /// Health statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)]
 pub struct HealthStats {
     pub total_services: usize,
     pub healthy_services: usize,
@@ -126,36 +149,24 @@ mod tests {
     #[tokio::test]
     async fn test_service_registration() {
         let monitor = HealthMonitor::new();
-        assert!(monitor
-            .register_service("test-service".to_string())
-            .await
-            .is_ok());
+        assert!(monitor.register_service("test-service".to_string()).await.is_ok());
 
         let stats = monitor.get_health_stats().await;
         assert_eq!(stats.total_services, 1);
     }
 
     #[tokio::test]
-    async fn test_health_status_update() {
+    async fn test_health_status_update() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let monitor = HealthMonitor::new();
-        monitor
-            .register_service("test-service".to_string())
-            .await
-            .expect("Failed to register service in test");
+        monitor.register_service("test-service".to_string()).await?;
 
-        assert!(monitor
-            .update_service_health("test-service", HealthStatus::Healthy)
-            .await
-            .is_ok());
+        assert!(monitor.update_service_health("test-service", HealthStatus::Healthy).await.is_ok());
 
-        let health = monitor
-            .get_service_health("test-service")
-            .await
-            .expect("Failed to get service health in test");
+        let health = monitor.get_service_health("test-service").await?;
         assert!(health.is_some());
-        assert!(matches!(
-            health.expect("Health should be Some in test").status,
-            HealthStatus::Healthy
-        ));
+        if let Some(h) = health {
+            assert!(matches!(h.status, HealthStatus::Healthy));
+        }
+        Ok(())
     }
 }

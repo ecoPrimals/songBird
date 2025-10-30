@@ -1,13 +1,25 @@
+#![allow(clippy::unused_async)]
+
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::body::Incoming;
 use hyper::{Method, Request, Response};
 use serde_json::json;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::{info, warn};
+type Result<T> = SongbirdResult<T>;
 
-use songbird_errors::Result;
+// Helper function to convert hyper::http::Error to SongbirdError
+#[allow(clippy::needless_pass_by_value)]
+fn http_error_to_songbird(error: hyper::http::Error) -> SongbirdError {
+    SongbirdError::Network {
+        message: format!("HTTP error: {error}"),
+        interface: None,
+        suggestion: Some("Check HTTP request/response construction".to_string()),
+    }
+}
 
 /// Simple web dashboard for observability
 #[derive(Debug)]
@@ -18,6 +30,7 @@ pub struct SimpleDashboard {
 
 impl SimpleDashboard {
     /// Create new dashboard
+    #[must_use]
     pub fn new(port: u16) -> Self {
         Self {
             port,
@@ -26,11 +39,16 @@ impl SimpleDashboard {
     }
 
     /// Create dashboard from network config
+    #[must_use]
     pub fn from_network_config(port: u16) -> Self {
         Self::new(port)
     }
 
     /// Start the dashboard server
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn start(&self) -> Result<()> {
         if self.running.load(Ordering::Relaxed) {
             warn!("Dashboard already running on port {}", self.port);
@@ -43,14 +61,15 @@ impl SimpleDashboard {
         // In a real implementation, this would start an HTTP server
         // For now, we'll just mark it as running
         let env_config = songbird_config::EnvironmentConfig::default();
-        info!(
-            "Dashboard started on http://{}:{}",
-            env_config.bind_address, self.port
-        );
+        info!("Dashboard started on http://{}:{}", env_config.bind_address, self.port);
         Ok(())
     }
 
     /// Stop the dashboard server
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn stop(&self) -> Result<()> {
         if !self.running.load(Ordering::Relaxed) {
             return Ok(());
@@ -62,11 +81,16 @@ impl SimpleDashboard {
     }
 
     /// Check if dashboard is running
+    #[must_use]
     pub fn is_running(&self) -> bool {
         self.running.load(Ordering::Relaxed)
     }
 
     /// Handle HTTP requests
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP response cannot be constructed
     pub async fn handle_request(&self, req: Request<Incoming>) -> Result<Response<Full<Bytes>>> {
         match (req.method(), req.uri().path()) {
             (&Method::GET, "/") => self.serve_dashboard().await,
@@ -114,27 +138,12 @@ impl SimpleDashboard {
 </html>
         "#;
 
-        let response = hyper::Response::builder()
+        let response = Response::builder()
             .header("content-type", "text/html")
-            .body(Full::new(Bytes::from(html)));
+            .body(Full::new(Bytes::from(html)))
+            .map_err(http_error_to_songbird)?;
 
-        match response {
-            Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build HTTP response for dashboard: {}", e);
-                // Create fallback response
-                Ok(hyper::Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "text/plain")
-                    .body(Full::new(Bytes::from("Dashboard temporarily unavailable")))
-                    .unwrap_or_else(|_| {
-                        let (parts, _) =
-                            hyper::Response::new(Full::new(Bytes::from("Server error")))
-                                .into_parts();
-                        hyper::Response::from_parts(parts, Full::new(Bytes::from("Critical error")))
-                    }))
-            }
-        }
+        Ok(response)
     }
 
     /// Serve metrics API
@@ -147,32 +156,12 @@ impl SimpleDashboard {
         });
 
         let json_response = metrics.to_string();
-        let response = hyper::Response::builder()
+        let response = Response::builder()
             .header("content-type", "application/json")
-            .body(Full::new(Bytes::from(json_response)));
+            .body(Full::new(Bytes::from(json_response)))
+            .map_err(http_error_to_songbird)?;
 
-        match response {
-            Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build HTTP response for metrics: {}", e);
-                Ok(hyper::Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "application/json")
-                    .body(Full::new(Bytes::from(
-                        r#"{"error": "Metrics unavailable"}"#,
-                    )))
-                    .unwrap_or_else(|_| {
-                        let (parts, _) = hyper::Response::new(Full::new(Bytes::from(
-                            r#"{"error": "Server error"}"#,
-                        )))
-                        .into_parts();
-                        hyper::Response::from_parts(
-                            parts,
-                            Full::new(Bytes::from(r#"{"error": "Critical error"}"#)),
-                        )
-                    }))
-            }
-        }
+        Ok(response)
     }
 
     /// Serve health API
@@ -184,32 +173,12 @@ impl SimpleDashboard {
         });
 
         let json_response = health.to_string();
-        let response = hyper::Response::builder()
+        let response = Response::builder()
             .header("content-type", "application/json")
-            .body(Full::new(Bytes::from(json_response)));
+            .body(Full::new(Bytes::from(json_response)))
+            .map_err(http_error_to_songbird)?;
 
-        match response {
-            Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build HTTP response for health: {}", e);
-                Ok(hyper::Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "application/json")
-                    .body(Full::new(Bytes::from(
-                        r#"{"error": "Health check unavailable"}"#,
-                    )))
-                    .unwrap_or_else(|_| {
-                        let (parts, _) = hyper::Response::new(Full::new(Bytes::from(
-                            r#"{"error": "Server error"}"#,
-                        )))
-                        .into_parts();
-                        hyper::Response::from_parts(
-                            parts,
-                            Full::new(Bytes::from(r#"{"error": "Critical error"}"#)),
-                        )
-                    }))
-            }
-        }
+        Ok(response)
     }
 
     /// Serve status API
@@ -221,56 +190,23 @@ impl SimpleDashboard {
         });
 
         let json_response = status.to_string();
-        let response = hyper::Response::builder()
+        let response = Response::builder()
             .header("content-type", "application/json")
-            .body(Full::new(Bytes::from(json_response)));
+            .body(Full::new(Bytes::from(json_response)))
+            .map_err(http_error_to_songbird)?;
 
-        match response {
-            Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build HTTP response for status: {}", e);
-                Ok(hyper::Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "application/json")
-                    .body(Full::new(Bytes::from(r#"{"error": "Status unavailable"}"#)))
-                    .unwrap_or_else(|_| {
-                        let (parts, _) = hyper::Response::new(Full::new(Bytes::from(
-                            r#"{"error": "Server error"}"#,
-                        )))
-                        .into_parts();
-                        hyper::Response::from_parts(
-                            parts,
-                            Full::new(Bytes::from(r#"{"error": "Critical error"}"#)),
-                        )
-                    }))
-            }
-        }
+        Ok(response)
     }
 
     /// Serve 404 response
     async fn serve_not_found(&self) -> Result<Response<Full<Bytes>>> {
-        // Return 404 for unknown paths
-        let response = hyper::Response::builder()
+        let response = Response::builder()
             .status(hyper::StatusCode::NOT_FOUND)
             .header("content-type", "text/plain")
-            .body(Full::new(Bytes::from("Not Found")));
+            .body(Full::new(Bytes::from("Not Found")))
+            .map_err(http_error_to_songbird)?;
 
-        match response {
-            Ok(resp) => Ok(resp),
-            Err(e) => {
-                tracing::error!("Failed to build 404 HTTP response: {}", e);
-                Ok(hyper::Response::builder()
-                    .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
-                    .header("content-type", "text/plain")
-                    .body(Full::new(Bytes::from("Server error")))
-                    .unwrap_or_else(|_| {
-                        let (parts, _) =
-                            hyper::Response::new(Full::new(Bytes::from("Critical failure")))
-                                .into_parts();
-                        hyper::Response::from_parts(parts, Full::new(Bytes::from("Server failure")))
-                    }))
-            }
-        }
+        Ok(response)
     }
 }
 

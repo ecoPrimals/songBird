@@ -22,12 +22,11 @@ pub mod handlers {
 }
 
 // Re-export important types for convenience
-pub use commands::{Commands, DiscoveryCommands, ServiceCommands, StatusCommands};
+pub use commands::Commands;
 pub use config::CliConfig;
-pub use utils::{print_error, print_info, print_success, print_warning};
 
 /// Global discovery configuration - initialized once for performance
-static DISCOVERY_CONFIG: OnceLock<SongbirdDiscoveryConfig> = OnceLock::new();
+pub static DISCOVERY_CONFIG: OnceLock<SongbirdDiscoveryConfig> = OnceLock::new();
 
 /// Main CLI structure
 #[derive(Parser, Debug)]
@@ -56,68 +55,96 @@ pub async fn handle_command(command: Commands, _config: &CliConfig) -> Result<()
             directory,
             non_interactive,
         } => handlers::init::handle_init_command(directory, non_interactive).await,
-        Commands::Quick { quick_command } => {
+        Commands::Quick {
+            quick_command,
+        } => {
             println!("🚀 Quick command: {quick_command:?}");
             Ok(())
         }
-        Commands::Discovery { discovery_command } => {
-            handlers::discovery::handle_discovery_command(discovery_command).await
-        }
-        Commands::Federation { federation_command } => {
+        Commands::Discovery {
+            discovery_command,
+        } => handlers::discovery::handle_discovery_command(discovery_command).await,
+        Commands::Federation {
+            federation_command,
+        } => {
             println!("🤝 Federation command: {federation_command:?}");
             Ok(())
         }
-        Commands::Iot { iot_command } => {
+        Commands::Iot {
+            iot_command,
+        } => {
             println!("🔌 IoT command: {iot_command:?}");
             Ok(())
         }
-        Commands::Compose { compose_command } => {
+        Commands::Compose {
+            compose_command,
+        } => {
             println!("🧩 Compose command: {compose_command:?}");
             Ok(())
         }
-        Commands::Node { node_command } => {
+        Commands::Node {
+            node_command,
+        } => {
             println!("🖥️ Node command: {node_command:?}");
             Ok(())
         }
-        Commands::Service { service_command } => {
-            handlers::service::handle_service_command(service_command).await
-        }
-        Commands::Status { status_command } => {
-            handlers::status::handle_status_command(status_command).await
-        }
-        Commands::Logs { logs_command } => {
+        Commands::Service {
+            service_command,
+        } => handlers::service::handle_service_command(service_command).await,
+        Commands::Status {
+            status_command,
+        } => handlers::status::handle_status_command(status_command).await,
+        Commands::Logs {
+            logs_command,
+        } => {
             println!("📋 Logs command: {logs_command:?}");
             Ok(())
         }
-        Commands::Scale { scale_command } => {
+        Commands::Scale {
+            scale_command,
+        } => {
             println!("🐦 Scale command: {scale_command:?}");
             Ok(())
         }
-        Commands::Security { security_command } => {
+        Commands::Security {
+            security_command,
+        } => {
             println!("🔐 Security command: {security_command:?}");
             Ok(())
         }
-        Commands::Firewall { firewall_command } => {
+        Commands::Firewall {
+            firewall_command,
+        } => {
             println!("🛡️ Firewall command: {firewall_command:?}");
             Ok(())
         }
-        Commands::Internet { internet_command } => {
+        Commands::Internet {
+            internet_command,
+        } => {
             println!("🌐 Internet command: {internet_command:?}");
             Ok(())
         }
-        Commands::Join { join_command } => {
+        Commands::Join {
+            join_command,
+        } => {
             println!("🤝 Join command: {join_command:?}");
             Ok(())
         }
-        Commands::Share { share_command } => {
+        Commands::Share {
+            share_command,
+        } => {
             println!("📤 Share command: {share_command:?}");
             Ok(())
         }
-        Commands::Universal { universal_command } => {
+        Commands::Universal {
+            universal_command,
+        } => {
             println!("🌟 Universal command: {universal_command:?}");
             Ok(())
         }
-        Commands::ZeroTouch { zero_touch_command } => {
+        Commands::ZeroTouch {
+            zero_touch_command,
+        } => {
             println!("🪄 Zero-touch command: {zero_touch_command:?}");
             Ok(())
         }
@@ -127,11 +154,16 @@ pub async fn handle_command(command: Commands, _config: &CliConfig) -> Result<()
             println!("🎼 Orchestrator command: {orchestrator_command:?}");
             Ok(())
         }
-        Commands::Version { detailed } => {
+        Commands::Version {
+            detailed,
+        } => {
             println!("📋 Version information (detailed: {detailed})");
             Ok(())
         }
-        Commands::Dashboard { port, bind_address } => {
+        Commands::Dashboard {
+            port,
+            bind_address,
+        } => {
             println!("🌐 Starting web dashboard on {bind_address}:{port}");
             // Dashboard implementation would go here
             Ok(())
@@ -238,10 +270,7 @@ mod tests {
         assert!(!config.is_colored_output_enabled());
 
         config.set_config_path("/test/config.toml".to_string());
-        assert_eq!(
-            config.get_config_path(),
-            Some("/test/config.toml".to_string())
-        );
+        assert_eq!(config.get_config_path(), Some("/test/config.toml".to_string()));
     }
 
     #[tokio::test]
@@ -249,6 +278,5 @@ mod tests {
         let config = SongbirdConfig::default();
         let _orchestrator = SongbirdOrchestrator::new(config);
         // If this compiles and doesn't panic, initialization is successful
-        assert!(true);
     }
 }

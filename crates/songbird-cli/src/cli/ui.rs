@@ -1,6 +1,6 @@
 //! CLI UI utilities for beautiful terminal output
 
-use crate::cli::CliError;
+use crate::errors::{CliError, CliResult};
 use colored::{ColoredString, Colorize};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -8,6 +8,7 @@ use std::fmt::Display;
 use std::time::Duration;
 
 /// Create a styled progress bar with enhanced formatting
+#[must_use]
 pub fn progress_bar(len: u64) -> ProgressBar {
     let pb = ProgressBar::new(len);
     pb.set_style(
@@ -15,95 +16,96 @@ pub fn progress_bar(len: u64) -> ProgressBar {
             .template(
                 "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg}",
             )
-            .unwrap_or_else(|_| ProgressStyle::default_bar())
-            .progress_chars("█▇▆▅▄▃▂▁  "),
+            .unwrap_or_else(|_| ProgressStyle::default_bar().progress_chars("█▇▆▅▄▃▂▁  ")),
     );
     pb
 }
 
 /// Create a modern spinner for indefinite progress
+#[must_use]
 pub fn spinner(message: &str) -> ProgressBar {
     let pb = ProgressBar::new_spinner();
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner())
-            .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner().tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")),
     );
     pb.set_message(message.to_string());
     pb
 }
 
 /// Show a confirmation prompt with enhanced styling
-pub fn confirm(message: &str, default: bool) -> Result<bool, CliError> {
+pub fn confirm(message: &str, default: bool) -> CliResult<bool> {
     let theme = ColorfulTheme::default();
     Confirm::with_theme(&theme)
         .with_prompt(message)
         .default(default)
         .interact()
-        .map_err(|_| CliError::UserCancelled)
+        .map_err(|_| CliError::UserCancelled.into())
 }
 
 /// Show a selection prompt with enhanced options
-pub fn select<T: Display>(
-    message: &str,
-    items: &[T],
-    default: Option<usize>,
-) -> Result<usize, CliError> {
+pub fn select<T: Display>(message: &str, items: &[T], default: Option<usize>) -> CliResult<usize> {
     let theme = ColorfulTheme::default();
     let mut select = Select::with_theme(&theme).with_prompt(message).items(items);
 
     if let Some(default_idx) = default {
         select = select.default(default_idx);
     }
-    select.interact().map_err(|_| CliError::UserCancelled)
+    select.interact().map_err(|_| CliError::UserCancelled.into())
 }
 
 /// Show a text input prompt with validation
-pub fn input_text(message: &str, default: Option<&str>) -> Result<String, CliError> {
+pub fn input_text(message: &str, default: Option<&str>) -> CliResult<String> {
     let theme = ColorfulTheme::default();
     let mut input = Input::with_theme(&theme).with_prompt(message);
     if let Some(default_value) = default {
         input = input.default(default_value.to_string());
     }
-    input.interact_text().map_err(|_| CliError::UserCancelled)
+    input.interact_text().map_err(|_| CliError::UserCancelled.into())
 }
 
 /// Show a password input prompt with security considerations
-pub fn input_password(message: &str) -> Result<String, CliError> {
+pub fn input_password(message: &str) -> CliResult<String> {
     let theme = ColorfulTheme::default();
     dialoguer::Password::with_theme(&theme)
         .with_prompt(message)
         .interact()
-        .map_err(|_| CliError::UserCancelled)
+        .map_err(|_| CliError::UserCancelled.into())
 }
 
 /// Print colored success message with icon
+#[must_use]
 pub fn success(message: &str) -> String {
     format!("✅ {}", message.green().bold())
 }
 
 /// Print colored info message with icon
+#[must_use]
 pub fn info(message: &str) -> String {
     format!("ℹ️  {}", message.blue())
 }
 
 /// Print colored warning message with icon
+#[must_use]
 pub fn warn(message: &str) -> String {
     format!("⚠️  {}", message.yellow().bold())
 }
 
 /// Print colored error message with icon
+#[must_use]
 pub fn error(message: &str) -> String {
     format!("❌ {}", message.red().bold())
 }
 
 /// Print debugging message with icon
+#[must_use]
 pub fn debug(message: &str) -> String {
     format!("🔍 {}", message.magenta().dimmed())
 }
 
 /// Print progress message with icon
+#[must_use]
 pub fn progress(message: &str) -> String {
     format!("⏳ {}", message.cyan())
 }
@@ -152,7 +154,7 @@ pub fn separator() {
 
 /// Print a prominent banner
 pub fn banner(title: &str, subtitle: Option<&str>) {
-    let width = title.len().max(subtitle.map_or(0, |s| s.len()));
+    let width = title.len().max(subtitle.map_or(0, str::len));
     let border = "═".repeat(width + 4);
 
     println!("\n{}", border.bright_blue().bold());
@@ -164,6 +166,7 @@ pub fn banner(title: &str, subtitle: Option<&str>) {
 }
 
 /// Format bytes in human-readable format
+#[must_use]
 pub fn format_bytes(bytes: u64) -> String {
     const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB", "PB"];
     let mut size = bytes as f64;
@@ -182,6 +185,7 @@ pub fn format_bytes(bytes: u64) -> String {
 }
 
 /// Format duration in human-readable format
+#[must_use]
 pub fn format_duration(duration: Duration) -> String {
     let total_seconds = duration.as_secs();
     let days = total_seconds / 86400;
@@ -201,6 +205,7 @@ pub fn format_duration(duration: Duration) -> String {
 }
 
 /// Format percentage with styling
+#[must_use]
 pub fn format_percentage(value: f64) -> String {
     let percentage = value * 100.0;
     let color = if percentage >= 90.0 {
@@ -214,6 +219,7 @@ pub fn format_percentage(value: f64) -> String {
 }
 
 /// Format health status with color coding
+#[must_use]
 pub fn format_health_status(status: &str) -> String {
     match status.to_lowercase().as_str() {
         "healthy" | "ok" | "running" => format!("🟢 {}", status.green().bold()),
@@ -224,18 +230,21 @@ pub fn format_health_status(status: &str) -> String {
 }
 
 /// CLI UI helper functions for beautiful output
+#[must_use]
 pub fn title(message: &str) -> ColoredString {
     message.bold().bright_blue()
 }
 
 /// Get terminal width safely
+#[must_use]
 pub fn terminal_width() -> usize {
-    term_size::dimensions().map(|(w, _)| w).unwrap_or(80)
+    term_size::dimensions().map_or(80, |(w, _)| w)
 }
 
 /// Get terminal height safely
+#[must_use]
 pub fn terminal_height() -> usize {
-    term_size::dimensions().map(|(_, h)| h).unwrap_or(24)
+    term_size::dimensions().map_or(24, |(_, h)| h)
 }
 
 /// Create a table-like output with enhanced formatting
@@ -247,6 +256,7 @@ pub struct Table {
 
 impl Table {
     /// Create a new table
+    #[must_use]
     pub fn new() -> Self {
         Self {
             headers: Vec::new(),
@@ -256,13 +266,15 @@ impl Table {
     }
 
     /// Add headers to the table
+    #[must_use]
     pub fn headers(mut self, headers: Vec<String>) -> Self {
-        self.widths = headers.iter().map(|h| h.len()).collect();
+        self.widths = headers.iter().map(std::string::String::len).collect();
         self.headers = headers;
         self
     }
 
     /// Add a row to the table
+    #[must_use]
     pub fn row(mut self, row: Vec<String>) -> Self {
         // Update column widths
         for (i, cell) in row.iter().enumerate() {
@@ -294,12 +306,8 @@ impl Table {
         println!("{}", header_line.bright_blue().bold());
 
         // Print separator
-        let separator_line = self
-            .widths
-            .iter()
-            .map(|&w| "─".repeat(w))
-            .collect::<Vec<_>>()
-            .join("─┼─");
+        let separator_line =
+            self.widths.iter().map(|&w| "─".repeat(w)).collect::<Vec<_>>().join("─┼─");
         println!("{}", separator_line.bright_blue());
 
         // Print rows
@@ -386,11 +394,7 @@ pub fn clear_screen() {
 
 /// Show a step in a process
 pub fn step(step_num: usize, total: usize, message: &str) {
-    println!(
-        "{} {}",
-        format!("[{step_num}/{total}]").bright_blue().bold(),
-        message
-    );
+    println!("{} {}", format!("[{step_num}/{total}]").bright_blue().bold(), message);
 }
 
 /// Show completion message with next steps

@@ -5,7 +5,8 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 
 /// Universal feature flag provider trait
@@ -86,7 +87,9 @@ pub enum FlagType {
     /// JSON object flag
     Json,
     /// Multi-variant flag
-    Variant { variants: Vec<String> },
+    Variant {
+        variants: Vec<String>,
+    },
     /// Percentage rollout flag
     Percentage,
 }
@@ -235,7 +238,7 @@ pub struct FeatureFlagProviderInfo {
 }
 
 /// Provider capabilities using enum-based approach instead of excessive booleans
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProviderCapability {
     Updates,
     History,
@@ -251,7 +254,9 @@ pub struct ProviderCapabilities {
 impl ProviderCapabilities {
     #[must_use]
     pub fn new(capabilities: Vec<ProviderCapability>) -> Self {
-        Self { capabilities }
+        Self {
+            capabilities,
+        }
     }
 
     #[must_use]
@@ -271,8 +276,7 @@ impl ProviderCapabilities {
 
     #[must_use]
     pub fn supports_percentage_rollout(&self) -> bool {
-        self.capabilities
-            .contains(&ProviderCapability::PercentageRollout)
+        self.capabilities.contains(&ProviderCapability::PercentageRollout)
     }
 }
 

@@ -1,0 +1,162 @@
+# Songbird Unified Configuration
+# This single file replaces all fragmented config files across the codebase
+# Environment variables take precedence over these values
+
+[global]
+environment = "development"  # Can be: development, staging, production
+service_name = "songbird-orchestrator"
+version = "0.1.0"
+# node_id = "auto-generated-if-not-specified"
+institution = "ecoPrimals Research Lab"
+
+[global.metadata]
+deployment_type = "local"
+region = "us-east-1"
+
+[network]
+bind_address = "127.0.0.1"
+port = 8080
+max_connections = 1000
+
+[network.gaming]
+enabled = true
+port_range_start = 7000
+port_range_end = 7100
+protocols = ["IPX", "TCP", "UDP"]
+nat_traversal_enabled = true
+wireguard_enabled = true
+
+[network.reverse_proxy]
+enabled = false
+port = 8081
+upstream_servers = []
+health_check_enabled = true
+
+[network.ssl]
+enabled = false
+# cert_path = "/path/to/cert.pem"
+# key_path = "/path/to/key.pem"
+auto_cert_enabled = false
+# default_domain = "songbird.example.com"
+
+[network.load_balancing]
+enabled = false
+strategy = "round_robin"  # Options: round_robin, least_connections, ip_hash
+health_check_interval_secs = 30
+
+[network.rate_limiting]
+enabled = false
+requests_per_second = 100
+burst_size = 200
+
+[federation]
+enabled = false
+mode = "standalone"  # Options: standalone, client, server, hybrid, clustered
+discovery_port = 8082
+# cluster_name = "songbird-cluster"
+max_nodes = 100
+heartbeat_interval_secs = 30
+trust_verification_enabled = true
+
+[discovery]
+backend = "static"  # Options: static, consul, kubernetes
+# consul_url = "http://localhost:8500"
+# kubernetes_namespace = "default"
+health_check_interval_secs = 60
+service_registration_enabled = true
+
+[security.beardog_integration]
+enabled = false
+# endpoint = "https://beardog.internal:8443"
+# api_key = "your-api-key-here"
+fallback_to_wireguard = true
+
+[security.encryption]
+algorithm = "ChaCha20Poly1305"
+key_rotation_enabled = true
+key_rotation_interval_hours = 24
+
+[security.access_control]
+authentication_required = false
+authorization_enabled = false
+session_timeout_minutes = 30
+
+[primals]
+auto_discovery_enabled = true
+
+[primals.beardog]
+enabled = false
+# endpoint = "https://beardog.internal:8443"
+fallback_endpoints = []
+health_check_enabled = true
+timeout_secs = 30
+
+[primals.nestgate]
+enabled = false
+# endpoint = "http://nestgate.internal:8080"
+fallback_endpoints = []
+health_check_enabled = true
+timeout_secs = 30
+
+[primals.toadstool]
+enabled = false
+# endpoint = "http://toadstool.internal:8080"
+fallback_endpoints = []
+health_check_enabled = true
+timeout_secs = 30
+
+[primals.squirrel]
+enabled = false
+# endpoint = "http://squirrel.internal:8080"
+fallback_endpoints = []
+health_check_enabled = true
+timeout_secs = 30
+
+[observability.logging]
+level = "info"  # Options: trace, debug, info, warn, error
+format = "json"  # Options: json, text
+output = "stdout"  # Options: stdout, file, syslog
+# file_path = "/var/log/songbird.log"
+max_file_size_mb = 100
+rotation_enabled = true
+
+[observability.metrics]
+enabled = true
+endpoint = "/metrics"
+port = 9090
+collection_interval_secs = 60
+
+[observability.tracing]
+enabled = false
+sampling_rate = 0.1
+# jaeger_endpoint = "http://localhost:14268/api/traces"
+
+[observability.health_checks]
+enabled = true
+endpoint = "/health"
+interval_secs = 30
+timeout_secs = 5
+
+[performance]
+# worker_threads = "auto-detected-from-cpu-cores"
+buffer_pool_size = 1024
+connection_pool_size = 100
+request_timeout_ms = 30000
+enable_zero_copy = true
+batch_size = 100
+# max_memory_mb = "auto-detected-from-system"
+
+# Environment Variable Overrides:
+# All values above can be overridden with environment variables using the pattern:
+# SONGBIRD_<SECTION>_<KEY> = value
+#
+# Examples:
+# export SONGBIRD_NETWORK_PORT=8080
+# export SONGBIRD_FEDERATION_ENABLED=true
+# export SONGBIRD_BEARDOG_ENDPOINT=https://beardog.prod:8443
+# export SONGBIRD_LOG_LEVEL=debug
+#
+# Loading Priority (highest to lowest):
+# 1. Environment Variables
+# 2. Config File (this file when SONGBIRD_CONFIG_FILE=path/to/this/file)
+# 3. Compiled-in Defaults 

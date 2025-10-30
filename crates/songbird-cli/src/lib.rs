@@ -1,100 +1,83 @@
-//! # Songbird CLI
+//! # 🎮 Songbird Gaming CLI
 //!
-//! Command-line interface for the Songbird orchestrator platform, providing comprehensive
-//! tools for service management, gaming optimization, and system administration.
+//! **MODERN GAMING-FOCUSED COMMAND-LINE INTERFACE** ✅
 //!
-//! ## Features
+//! Command-line interface for the Songbird gaming orchestrator platform, providing
+//! streamlined tools for gaming session management, network optimization, and gaming federation.
 //!
-//! - **Service Management**: Start, stop, and manage services
-//! - **Gaming Commands**: Gaming-specific network optimization and management
-//! - **Federation Control**: Multi-region federation setup and management
-//! - **Health Monitoring**: Real-time system health and performance monitoring
-//! - **Configuration Management**: Dynamic configuration updates and validation
-//! - **Biome Deployment**: BYOB (Bring Your Own Biome) deployment management
-//! - **Security Operations**: Security policy management and audit controls
-//! - **Network Diagnostics**: Network troubleshooting and performance analysis
+//! ## 🎯 **Gaming-First Features**
 //!
-//! ## Architecture
+//! - **🎮 Gaming Sessions**: Create, join, and manage gaming sessions
+//! - **🌐 Network Gaming**: Gaming-specific network optimization and protocol support
+//! - **🤝 Gaming Federation**: Multi-region gaming federation and matchmaking
+//! - **📊 Gaming Metrics**: Real-time gaming performance and latency monitoring
+//! - **🔧 Gaming Config**: Dynamic gaming configuration and protocol management
+//! - **🛡️ Gaming Security**: Gaming-specific security and anti-cheat integration
+//! - **🔍 Gaming Discovery**: Automatic gaming service discovery and scanning
 //!
-//! The CLI is organized into focused command modules:
+//! ## 🏗️ **Modern Architecture**
 //!
-//! - `commands`: Core command implementations and handlers
-//! - `config`: Configuration management and validation
-//! - `discovery`: Service discovery and network scanning
-//! - `gaming`: Gaming-specific commands and optimizations
-//! - `federation`: Multi-region federation management
-//! - `security`: Security and authentication commands
+//! The CLI is organized into focused gaming command modules:
 //!
-//! ## Usage
+//! - `gaming`: Core gaming session and protocol commands
+//! - `network`: Gaming network optimization and diagnostics
+//! - `federation`: Gaming federation and matchmaking
+//! - `security`: Gaming security and authentication
+//! - `config`: Gaming configuration management
 //!
-//! ### Basic Commands
+//! ## 🚀 **Usage Examples**
+//!
+//! ### Gaming Session Commands
 //! ```bash
-//! # Start orchestrator service
-//! songbird start
+//! # Quick start a gaming session
+//! songbird gaming host --name "My Game" --protocol udp"
 //!
-//! # Check system status
-//! songbird status
+//! # Join an existing gaming session
+//! songbird gaming join GAME-CODE-123
 //!
-//! # Deploy a biome
-//! songbird deploy --manifest biome.yaml
+//! # Scan for nearby gaming sessions
+//! songbird gaming scan --protocol all
 //! ```
 //!
-//! ### Gaming Commands
+//! ### Network Gaming Commands
 //! ```bash
 //! # Optimize network for gaming
-//! songbird gaming optimize
+//! songbird network optimize --game-mode
 //!
-//! # Scan for gaming services
-//! songbird gaming scan
+//! # Test gaming network latency
+//! songbird network test --gaming-protocols
 //!
-//! # Set up gaming host
-//! songbird gaming host --port 7777
+//! # Configure gaming port forwarding
+//! songbird network ports --gaming --auto-configure
 //! ```
 //!
-//! ### Federation Commands
+//! ### Gaming Federation Commands
 //! ```bash
-//! # Initialize federation
-//! songbird federation init
+//! # Initialize gaming federation
+//! songbird federation init --gaming
 //!
-//! # Join existing federation
-//! songbird federation join --endpoint https://federation.example.com
+//! # Join gaming federation
+//! songbird federation join --gaming-endpoint https://gaming.example.com
+//!
+//! # Create gaming lobby
+//! songbird federation lobby --create --name "Epic Battle""
 //! ```
 //!
-//! ## Integration
+//! ## 🔧 **Integration**
 //!
-//! Use this crate to integrate CLI functionality into your applications:
-//!
-//! ```rust,no_run
-//! use songbird_cli::cli::{CliConfig, SongbirdCli};
-//!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let config = CliConfig::default();
-//!     let cli = SongbirdCli::new(config);
-//!     
-//!     // Execute CLI commands programmatically
-//!     cli.execute_command("status").await?;
-//!     
-//!     Ok(())
-//! }
-//! ```
-//!
-//! ## Error Handling
-//!
-//! All CLI operations return detailed error information with suggestions for
-//! resolution. Common error scenarios include:
-//!
-//! - Configuration validation errors
-//! - Network connectivity issues
-//! - Permission and authentication failures
-//! - Service unavailability
-//!
-//! ## Performance
-//!
-//! The CLI is optimized for responsive user experience:
-//! - Command execution: <100ms for local operations
-//! - Network operations: Timeout after 30s with progress indicators
-//! - Large operations: Progress bars and incremental updates
+//! Integrates seamlessly with the consolidated Songbird architecture:
+//! - Uses `songbird-network-federation` for gaming protocols
+//! - Uses `songbird-security-errors` for unified error handling
+//! - Uses `songbird-orchestrator` for session coordination
 
+// unsafe_code is already forbidden at crate level
+#![warn(clippy::all)]
+#![warn(rust_2018_idioms)]
+
+// Core CLI modules
 pub mod cli;
-pub use cli::*;
+pub mod errors;
+
+// Re-export main CLI types
+pub use cli::{Cli, CliArgs, OutputFormat};
+pub use errors::{CliError, CliResult};

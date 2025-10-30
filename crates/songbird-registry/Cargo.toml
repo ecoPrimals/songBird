@@ -2,6 +2,15 @@
 name = "songbird-registry"
 version = "0.1.0"
 edition = "2021"
+description = "High-performance universal service registry with zero-cost abstractions and capability-based discovery"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/songbird"
+keywords = ["orchestration", "service-discovery", "registry", "microservices", "distributed"]
+categories = ["network-programming", "web-programming", "development-tools"]
+
+
+[lints]
+workspace = true
 
 [dependencies]
 # Core dependencies
@@ -26,7 +35,8 @@ sysinfo = "0.30"
 reqwest = { version = "0.11", features = ["json"] }
 
 # Internal dependencies
-songbird-errors = { path = "../songbird-errors" }
+# songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
+songbird-types = { path = "../songbird-types" }
 songbird-discovery = { path = "../songbird-discovery" }
 songbird-config = { path = "../songbird-config" }
 

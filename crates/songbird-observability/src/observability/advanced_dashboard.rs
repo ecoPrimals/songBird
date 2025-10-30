@@ -8,8 +8,7 @@ use crate::network::gaming::advanced_tunnel_system::{BSTPTunnelManager, TunnelMe
 
 /// Advanced dashboard with AI-driven insights
 #[derive(Debug)]
-pub struct AdvancedDashboard {
-    /// Real-time metrics collection
+pub struct AdvancedDashboard  {/// Real-time metrics collection
     metrics_collector: MetricsCollector,
     /// Performance analytics engine
     analytics_engine: PerformanceAnalytics,
@@ -23,11 +22,10 @@ pub struct AdvancedDashboard {
 
 /// Intelligent metrics collector
 #[derive(Debug)]
-pub struct MetricsCollector {
-    /// Communication performance metrics
+pub struct MetricsCollector  {/// Communication performance metrics
     communication_metrics: PerformanceMetrics,
     /// Tunnel performance metrics
-    tunnel_metrics: HashMap<String, TunnelMetrics>,
+    tunnel_metrics: HashMap<String, TunnelMetrics>)
     /// System resource metrics
     system_metrics: SystemMetrics,
     /// Collection interval
@@ -38,8 +36,7 @@ pub struct MetricsCollector {
 
 /// AI-powered performance analytics
 #[derive(Debug)]
-pub struct PerformanceAnalytics {
-    /// Performance trend analysis
+pub struct PerformanceAnalytics  {/// Performance trend analysis
     trend_analyzer: TrendAnalyzer,
     /// Anomaly detection engine
     anomaly_detector: AnomalyDetector,
@@ -51,9 +48,8 @@ pub struct PerformanceAnalytics {
 
 /// Intelligent alert management
 #[derive(Debug)]
-pub struct AlertManager {
-    /// Active alerts
-    active_alerts: HashMap<String, Alert>,
+pub struct AlertManager  {/// Active alerts
+    active_alerts: HashMap<String, Alert>)
     /// Alert rules configuration
     alert_rules: Vec<AlertRule>,
     /// Notification channels
@@ -64,8 +60,7 @@ pub struct AlertManager {
 
 /// Dashboard configuration
 #[derive(Debug, Clone)]
-pub struct DashboardConfig {
-    /// Dashboard update interval
+pub struct DashboardConfig  {/// Dashboard update interval
     pub update_interval: Duration,
     /// Enable real-time analytics
     pub enable_analytics: bool,
@@ -73,14 +68,13 @@ pub struct DashboardConfig {
     pub enable_predictions: bool,
     /// Maximum historical data points
     pub max_history_points: usize,
-    /// Alert thresholds
-    pub alert_thresholds: AlertThresholds,
+    /// Alert thresholds - using unified config system
+    pub alert_thresholds: UnifiedAlertThresholds,
 }
 
 /// System resource metrics
 #[derive(Debug, Default)]
-pub struct SystemMetrics {
-    /// CPU usage percentage
+pub struct SystemMetrics  {/// CPU usage percentage
     pub cpu_usage: f64,
     /// Memory usage in bytes
     pub memory_usage: u64,
@@ -94,8 +88,7 @@ pub struct SystemMetrics {
 
 /// Performance snapshot for historical analysis
 #[derive(Debug, Clone)]
-pub struct PerformanceSnapshot {
-    /// Snapshot timestamp
+pub struct PerformanceSnapshot  {/// Snapshot timestamp
     pub timestamp: Instant,
     /// Communication metrics at time
     pub communication_metrics: PerformanceMetrics,
@@ -109,8 +102,7 @@ pub struct PerformanceSnapshot {
 
 /// Performance trend analysis
 #[derive(Debug)]
-pub struct TrendAnalyzer {
-    /// Trend detection window
+pub struct TrendAnalyzer  {/// Trend detection window
     analysis_window: Duration,
     /// Trend confidence threshold
     confidence_threshold: f64,
@@ -120,8 +112,7 @@ pub struct TrendAnalyzer {
 
 /// Anomaly detection engine
 #[derive(Debug)]
-pub struct AnomalyDetector {
-    /// Baseline metrics for comparison
+pub struct AnomalyDetector  {/// Baseline metrics for comparison
     baseline_metrics: PerformanceSnapshot,
     /// Anomaly detection sensitivity
     sensitivity: f64,
@@ -131,8 +122,7 @@ pub struct AnomalyDetector {
 
 /// Predictive performance modeling
 #[derive(Debug)]
-pub struct PerformancePredictor {
-    /// Prediction horizon
+pub struct PerformancePredictor  {/// Prediction horizon
     prediction_horizon: Duration,
     /// Model accuracy score
     model_accuracy: f64,
@@ -142,8 +132,7 @@ pub struct PerformancePredictor {
 
 /// Alert configuration
 #[derive(Debug, Clone)]
-pub struct Alert {
-    /// Alert ID
+pub struct Alert  {/// Alert ID
     pub id: String,
     /// Alert severity
     pub severity: AlertSeverity,
@@ -159,8 +148,7 @@ pub struct Alert {
 
 /// Alert rule configuration
 #[derive(Debug, Clone)]
-pub struct AlertRule {
-    /// Rule name
+pub struct AlertRule  {/// Rule name
     pub name: String,
     /// Metric to monitor
     pub metric: String,
@@ -174,8 +162,7 @@ pub struct AlertRule {
 
 /// Alert severity levels
 #[derive(Debug, Clone, PartialEq)]
-pub enum AlertSeverity {
-    /// Information only
+pub enum AlertSeverity  {/// Information only
     Info,
     /// Warning level
     Warning,
@@ -187,34 +174,31 @@ pub enum AlertSeverity {
 
 /// Alert condition types
 #[derive(Debug, Clone)]
-pub enum AlertCondition {
-    /// Threshold exceeded
-    ThresholdExceeded(f64),
+pub enum AlertCondition  {/// Threshold exceeded
+    ThresholdExceeded(f64)
     /// Threshold below minimum
-    ThresholdBelow(f64),
+    ThresholdBelow(f64)
     /// Rate of change exceeded
-    RateExceeded(f64),
+    RateExceeded(f64)
     /// Anomaly detected
     AnomalyDetected,
 }
 
 /// Notification channel types
 #[derive(Debug, Clone)]
-pub enum NotificationChannel {
-    /// Console logging
+pub enum NotificationChannel  {/// Console logging
     Console,
     /// Email notifications
-    Email(String),
+    Email(String)
     /// Webhook notifications
-    Webhook(String),
+    Webhook(String)
     /// Slack integration
-    Slack(String),
+    Slack(String)
 }
 
 /// Alert suppression rule
 #[derive(Debug, Clone)]
-pub struct SuppressionRule {
-    /// Rule name
+pub struct SuppressionRule  {/// Rule name
     pub name: String,
     /// Alert pattern to suppress
     pub pattern: String,
@@ -224,10 +208,9 @@ pub struct SuppressionRule {
     pub enabled: bool,
 }
 
-/// Alert thresholds configuration
+/// Alert thresholds configuration - UNIFIED VERSION
 #[derive(Debug, Clone)]
-pub struct AlertThresholds {
-    /// Maximum response time (ms)
+pub struct UnifiedAlertThresholds  {/// Maximum response time (ms)
     pub max_response_time_ms: u64,
     /// Maximum CPU usage (%)
     pub max_cpu_usage: f64,
@@ -237,10 +220,11 @@ pub struct AlertThresholds {
     pub min_performance_score: f64,
 }
 
+// Legacy alert thresholds type alias removed - use UnifiedAlertThresholds directly
+
 /// Performance trend detection
 #[derive(Debug, Clone)]
-pub struct PerformanceTrend {
-    /// Trend type
+pub struct PerformanceTrend  {/// Trend type
     pub trend_type: TrendType,
     /// Trend strength (0.0-1.0)
     pub strength: f64,
@@ -252,8 +236,7 @@ pub struct PerformanceTrend {
 
 /// Trend types
 #[derive(Debug, Clone)]
-pub enum TrendType {
-    /// Performance improving
+pub enum TrendType  {/// Performance improving
     Improving,
     /// Performance degrading
     Degrading,
@@ -265,8 +248,7 @@ pub enum TrendType {
 
 /// Detected anomaly
 #[derive(Debug, Clone)]
-pub struct Anomaly {
-    /// Anomaly type
+pub struct Anomaly  {/// Anomaly type
     pub anomaly_type: AnomalyType,
     /// Anomaly severity
     pub severity: f64,
@@ -280,8 +262,7 @@ pub struct Anomaly {
 
 /// Anomaly types
 #[derive(Debug, Clone)]
-pub enum AnomalyType {
-    /// Performance spike
+pub enum AnomalyType {/// Performance spike
     Spike,
     /// Performance drop
     Drop,
@@ -293,8 +274,7 @@ pub enum AnomalyType {
 
 /// Performance prediction
 #[derive(Debug, Clone)]
-pub struct PerformancePrediction {
-    /// Predicted metric
+pub struct PerformancePrediction  {/// Predicted metric
     pub metric: String,
     /// Predicted value
     pub predicted_value: f64,
@@ -306,15 +286,13 @@ pub struct PerformancePrediction {
     pub horizon: Duration,
 }
 
-impl AdvancedDashboard {
-    /// Create new advanced dashboard
-    pub fn new(config: DashboardConfig) -> Self {
-        Self {
-            metrics_collector: MetricsCollector::new(config.update_interval),
-            analytics_engine: PerformanceAnalytics::new(),
-            alert_manager: AlertManager::new(config.alert_thresholds.clone()),
-            config,
-            started_at: Instant::now(),
+impl AdvancedDashboard  {/// Create new advanced dashboard
+    pub fn new(config: DashboardConfig) -> Self  {Self {
+            metrics_collector: MetricsCollector::new(config.update_interval,
+            analytics_engine: PerformanceAnalytics::new(,
+            alert_manager: AlertManager::new(config.alert_thresholds.clone(),
+            config)
+            started_at: Instant::now(,
         }
     }
 
@@ -325,17 +303,15 @@ impl AdvancedDashboard {
         self.analytics_engine.initialize_baseline().await?;
         self.alert_manager.activate_monitoring().await?;
 
-        Ok(())
+        Ok(()),
     }
 
     /// Get current performance overview
-    pub fn get_performance_overview(&self) -> PerformanceOverview {
-        PerformanceOverview {
-            overall_score: self.calculate_overall_performance_score(),
-            system_health: self.assess_system_health(),
-            active_alerts: self.alert_manager.get_active_alert_count(),
-            uptime: self.started_at.elapsed(),
-            key_metrics: self.get_key_metrics(),
+    pub fn get_performance_overview(&self) -> PerformanceOverview  {PerformanceOverview  {overall_score: self.calculate_overall_performance_score()
+            system_health: self.assess_system_health(,
+            active_alerts: self.alert_manager.get_active_alert_count(,
+            uptime: self.started_at.elapsed(,
+            key_metrics: self.get_key_metrics(,
         }
     }
 
@@ -344,17 +320,17 @@ impl AdvancedDashboard {
         let mut insights = Vec::with_capacity(10);
 
         // Performance insights
-        insights.extend(self.analytics_engine.get_performance_insights());
+        insights.extend(self.analytics_engine.get_performance_insights();
 
         // Trend insights
-        insights.extend(self.analytics_engine.get_trend_insights());
+        insights.extend(self.analytics_engine.get_trend_insights();
 
         // Anomaly insights
-        insights.extend(self.analytics_engine.get_anomaly_insights());
+        insights.extend(self.analytics_engine.get_anomaly_insights();
 
         // Predictive insights
         if self.config.enable_predictions {
-            insights.extend(self.analytics_engine.get_predictive_insights());
+            insights.extend(self.analytics_engine.get_predictive_insights();
         }
 
         insights
@@ -374,7 +350,7 @@ impl AdvancedDashboard {
     fn calculate_system_performance_score(&self) -> f64 {
         let cpu_score = 1.0 - (self.metrics_collector.system_metrics.cpu_usage / 100.0);
         let memory_score = if self.metrics_collector.system_metrics.memory_usage > 0 {
-            1.0 - (self.metrics_collector.system_metrics.memory_usage as f64 / (8_000_000_000.0)) // 8GB baseline
+            1.0 - (self.metrics_collector.system_metrics.memory_usage as f64 / (8_000_000_000.0) // 8GB baseline
         } else {
             1.0
         };
@@ -415,7 +391,7 @@ impl AdvancedDashboard {
     /// Assess system health
     fn assess_system_health(&self) -> SystemHealth {
         let score = self.calculate_overall_performance_score();
-        
+
         if score >= 0.9 {
             SystemHealth::Excellent
         } else if score >= 0.7 {
@@ -428,11 +404,9 @@ impl AdvancedDashboard {
     }
 
     /// Get key metrics summary
-    fn get_key_metrics(&self) -> KeyMetrics {
-        KeyMetrics {
-            requests_per_second: self.metrics_collector.communication_metrics.requests_per_second,
+    fn get_key_metrics(&self) -> KeyMetrics  {KeyMetrics  {requests_per_second: self.metrics_collector.communication_metrics.requests_per_second)
             avg_response_time: self.metrics_collector.communication_metrics.avg_response_time,
-            active_tunnels: self.metrics_collector.tunnel_metrics.len(),
+            active_tunnels: self.metrics_collector.tunnel_metrics.len(,
             cpu_usage: self.metrics_collector.system_metrics.cpu_usage,
             memory_usage: self.metrics_collector.system_metrics.memory_usage,
         }
@@ -441,8 +415,7 @@ impl AdvancedDashboard {
 
 /// Performance overview for dashboard
 #[derive(Debug)]
-pub struct PerformanceOverview {
-    /// Overall performance score (0.0-1.0)
+pub struct PerformanceOverview  {/// Overall performance score (0.0-1.0)
     pub overall_score: f64,
     /// System health status
     pub system_health: SystemHealth,
@@ -456,8 +429,7 @@ pub struct PerformanceOverview {
 
 /// System health status
 #[derive(Debug, Clone, PartialEq)]
-pub enum SystemHealth {
-    /// System performing excellently
+pub enum SystemHealth  {/// System performing excellently
     Excellent,
     /// System performing well
     Good,
@@ -469,8 +441,7 @@ pub enum SystemHealth {
 
 /// Key metrics summary
 #[derive(Debug)]
-pub struct KeyMetrics {
-    /// Requests processed per second
+pub struct KeyMetrics  {/// Requests processed per second
     pub requests_per_second: f64,
     /// Average response time
     pub avg_response_time: Duration,
@@ -484,8 +455,7 @@ pub struct KeyMetrics {
 
 /// Dashboard insight
 #[derive(Debug, Clone)]
-pub struct Insight {
-    /// Insight type
+pub struct Insight  {/// Insight type
     pub insight_type: InsightType,
     /// Insight message
     pub message: String,
@@ -499,8 +469,7 @@ pub struct Insight {
 
 /// Insight types
 #[derive(Debug, Clone)]
-pub enum InsightType {
-    /// Performance optimization opportunity
+pub enum InsightType  {/// Performance optimization opportunity
     Performance,
     /// Security concern
     Security,
@@ -514,8 +483,7 @@ pub enum InsightType {
 
 /// Insight priority levels
 #[derive(Debug, Clone, PartialEq)]
-pub enum InsightPriority {
-    /// Low priority
+pub enum InsightPriority  {/// Low priority
     Low,
     /// Medium priority
     Medium,
@@ -526,36 +494,32 @@ pub enum InsightPriority {
 }
 
 // Implementation stubs for compilation
-impl MetricsCollector {
-    fn new(interval: Duration) -> Self {
-        Self {
+impl MetricsCollector  {fn new(interval: Duration) -> Self  {Self {
             communication_metrics: PerformanceMetrics::default(),
-            tunnel_metrics: HashMap::new(),
+            tunnel_metrics: HashMap::new()),
             system_metrics: SystemMetrics::default(),
             collection_interval: interval,
-            last_collection: Instant::now(),
+            last_collection: Instant::now(,
         }
     }
 
     async fn start_collection(&mut self) -> songbird_errors::Result<()> {
         // Start metrics collection
-        Ok(())
+        Ok(()),
     }
 }
 
-impl PerformanceAnalytics {
-    fn new() -> Self {
-        Self {
-            trend_analyzer: TrendAnalyzer::new(),
-            anomaly_detector: AnomalyDetector::new(),
-            predictor: PerformancePredictor::new(),
-            historical_data: Vec::with_capacity(1440),
+impl PerformanceAnalytics  {fn new() -> Self  {Self {
+            trend_analyzer: TrendAnalyzer::new(,
+            anomaly_detector: AnomalyDetector::new(,
+            predictor: PerformancePredictor::new(,
+            historical_data: Vec::with_capacity(1440,
         }
     }
 
     async fn initialize_baseline(&mut self) -> songbird_errors::Result<()> {
         // Initialize performance baseline
-        Ok(())
+        Ok(()),
     }
 
     fn get_performance_insights(&self) -> Vec<Insight> {
@@ -575,10 +539,8 @@ impl PerformanceAnalytics {
     }
 }
 
-impl AlertManager {
-    fn new(thresholds: AlertThresholds) -> Self {
-        Self {
-            active_alerts: HashMap::new(),
+impl AlertManager  {fn new(thresholds: AlertThresholds) -> Self  {Self {
+            active_alerts: HashMap::new()),
             alert_rules: Vec::new(),
             notification_channels: Vec::new(),
             suppression_rules: Vec::new(),
@@ -587,7 +549,7 @@ impl AlertManager {
 
     async fn activate_monitoring(&mut self) -> songbird_errors::Result<()> {
         // Activate alert monitoring
-        Ok(())
+        Ok(()),
     }
 
     fn get_active_alert_count(&self) -> usize {
@@ -595,55 +557,47 @@ impl AlertManager {
     }
 }
 
-impl TrendAnalyzer {
-    fn new() -> Self {
-        Self {
-            analysis_window: Duration::from_secs(300),
+impl TrendAnalyzer  {fn new() -> Self  {Self {
+            analysis_window: Duration::from_secs(300,
             confidence_threshold: 0.8,
             detected_trends: Vec::new(),
         }
     }
 }
 
-impl AnomalyDetector {
-    fn new() -> Self {
-        Self {
+impl AnomalyDetector  {fn new() -> Self  {Self {
             baseline_metrics: PerformanceSnapshot {
-                timestamp: Instant::now(),
+                timestamp: Instant::now(,
                 communication_metrics: PerformanceMetrics::default(),
                 system_metrics: SystemMetrics::default(),
                 active_tunnels: 0,
                 performance_score: 1.0,
-            },
+            })
             sensitivity: 0.7,
             detected_anomalies: Vec::new(),
         }
     }
 }
 
-impl PerformancePredictor {
-    fn new() -> Self {
-        Self {
-            prediction_horizon: Duration::from_secs(600),
+impl PerformancePredictor  {fn new() -> Self  {Self {
+            prediction_horizon: Duration::from_secs(600,
             model_accuracy: 0.85,
             current_predictions: Vec::new(),
         }
     }
 }
 
-impl Default for DashboardConfig {
-    fn default() -> Self {
-        Self {
+impl Default for DashboardConfig  {fn default() -> Self  {Self {
             update_interval: Duration::from_secs(5),
             enable_analytics: true,
             enable_predictions: true,
             max_history_points: 1440,
-            alert_thresholds: AlertThresholds {
+            alert_thresholds: UnifiedAlertThresholds {
                 max_response_time_ms: 500,
                 max_cpu_usage: 80.0,
                 max_memory_usage: 6_000_000_000, // 6GB
                 min_performance_score: 0.7,
-            },
+            })
         }
     }
 }
@@ -656,7 +610,7 @@ mod tests {
     fn test_dashboard_creation() {
         let config = DashboardConfig::default();
         let dashboard = AdvancedDashboard::new(config);
-        
+
         assert!(dashboard.started_at.elapsed().as_secs() < 1);
     }
 
@@ -664,17 +618,17 @@ mod tests {
     fn test_performance_overview() {
         let config = DashboardConfig::default();
         let dashboard = AdvancedDashboard::new(config);
-        
+
         let overview = dashboard.get_performance_overview();
-        assert!(overview.overall_score >= 0.0);
-        assert!(overview.overall_score <= 1.0);
+        assert!(overview.overall_score >= 0.0));
+        assert!(overview.overall_score <= 1.0));
     }
 
     #[test]
     fn test_system_health_assessment() {
         let config = DashboardConfig::default();
         let dashboard = AdvancedDashboard::new(config);
-        
+
         let health = dashboard.assess_system_health();
         // Should be good initially
         assert!(matches!(health, SystemHealth::Excellent | SystemHealth::Good));

@@ -1,5 +1,6 @@
 use crate::discovery::config::MonitoringConfig;
-use crate::discovery::types::*;
+use crate::discovery::types::{CpuUsage, GpuUsage, MemoryUsage, NetworkUsage, ResourceUpdate, StorageUsage,
+};
 
 /// Resource monitoring utilities
 pub struct ResourceMonitor;
@@ -67,7 +68,7 @@ impl ResourceMonitor {
                 for line in meminfo.lines() {
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if parts.len() >= 2 {
-                        if let Ok(kb) = parts[1].parse::<u64>() {
+                        if let Ok(kb) = parts[1].parse::<u64>(), {
                             let gb = kb / 1024 / 1024;
                             match parts[0] {
                                 "MemTotal:" => total_gb = gb,
@@ -94,8 +95,7 @@ impl ResourceMonitor {
         }
 
         // Default fallback
-        MemoryUsage {
-            total_gb: 16,
+        MemoryUsage {total_gb: 16,
             used_gb: 8,
             cached_gb: 2,
             buffer_gb: 1,
@@ -116,15 +116,13 @@ impl ResourceMonitor {
     }
 
     #[must_use]
-    pub fn collect_network_usage() -> NetworkUsage {
-        // Network monitoring is delegated to external system monitoring APIs
+    pub fn collect_network_usage() -> NetworkUsage {// Network monitoring is delegated to external system monitoring APIs
         // Production implementations should integrate with:
-        // - System network interfaces (/proc/net/dev on Linux)
+        // - System network interfaces (/proc/net/dev on Linux,
         // - Platform-specific network APIs
         // - SNMP for network equipment monitoring
         // For now, return zero values (no network activity detected)
-        NetworkUsage {
-            bytes_sent_per_sec: 0,
+        NetworkUsage {bytes_sent_per_sec: 0,
             bytes_received_per_sec: 0,
             packets_sent_per_sec: 0,
             packets_received_per_sec: 0,
@@ -169,15 +167,13 @@ impl ResourceMonitor {
     pub async fn start_monitoring(
         node_id: String,
         config: MonitoringConfig,
-        mut shutdown_rx: tokio::sync::mpsc::Receiver<()>,
-    ) {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(
-            config.resource_update_interval_secs,
-        ));
+        mut shutdown_rx: tokio::sync::mpsc::Receiver<(),>,
+    )  {let mut interval = tokio::time::interval(std::time::Duration::from_secs(
+            config.resource_update_interval_secs)
+        );
 
-        loop {
-            tokio::select! {
-                _ = interval.tick() => {
+        loop { tokio::select! {
+                _ = interval.tick(), => {
                     let update = Self::collect_resource_update(&node_id, &config).await;
 
                     // Log the resource update
@@ -190,7 +186,7 @@ impl ResourceMonitor {
 
                     // In a real implementation, this would be sent to a monitoring system
                 }
-                _ = shutdown_rx.recv() => {
+                _ = shutdown_rx.recv(), => {
                     tracing::info!("Resource monitoring stopped for node: {}", node_id);
                     break;
                 }

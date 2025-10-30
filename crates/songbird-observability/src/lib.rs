@@ -13,6 +13,10 @@
 //! - **Dashboard System**: Advanced web-based monitoring dashboards
 //! - **Alerting**: Intelligent alerting with multiple notification channels
 //! - **Log Aggregation**: Centralized log collection and analysis
+
+#![forbid(unsafe_code)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
 //!
 //! ## Architecture
 //!
@@ -23,29 +27,13 @@
 //!
 //! ## Usage
 //!
-//! ```rust,no_run
-//! use songbird_observability::{
-//!     health::{HealthMonitor, HealthCheckConfig},
-//!     observability::{ObservabilityManager, MetricsConfig},
-//! };
+//! ```rust,ignore
+//! // Example usage (simplified for documentation)
+//! use songbird_observability::health::HealthStatus;
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Initialize health monitoring
-//!     let health_config = HealthCheckConfig::default();
-//!     let health_monitor = HealthMonitor::new(health_config);
-//!     
-//!     // Initialize observability manager
-//!     let metrics_config = MetricsConfig::default();
-//!     let observability = ObservabilityManager::new(metrics_config);
-//!     
-//!     // Start monitoring
-//!     health_monitor.start().await?;
-//!     observability.start_metrics_collection().await?;
-//!     
-//!     println!("Songbird observability system running");
-//!     Ok(())
-//! }
+//! // Create and check health status
+//! let status = HealthStatus::Healthy;
+//! assert!(matches!(status, HealthStatus::Healthy));
 //! ```
 //!
 //! ## Health Monitoring

@@ -7,41 +7,37 @@ use std::time::{Duration, Instant};
 use tokio::task::JoinHandle;
 
 use crate::service::ServiceMetrics;
-use songbird_errors::Result;
+use songbird_types::errors::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Auto-scaling engine managing service scaling decisions
-pub struct AutoScalingEngine {
-    scaling_tasks: HashMap<String, JoinHandle<()>>,
-    scaling_decisions: HashMap<String, Vec<ScalingDecision>>,
+pub struct AutoScalingEngine  {scaling_tasks: HashMap<String, JoinHandle<()>>)
+    scaling_decisions: HashMap<String, Vec<ScalingDecision>>)
 }
 
-impl AutoScalingEngine {
-    pub fn new() -> Self {
-        Self {
-            scaling_tasks: HashMap::new(),
-            scaling_decisions: HashMap::new(),
+impl AutoScalingEngine  {#[must_use]
+    pub fn new() -> Self  {Self {
+            scaling_tasks: HashMap::new()),
+            scaling_decisions: HashMap::new()),
         }
     }
 
     /// Start auto-scaling monitoring for a service
     pub async fn start_scaling_monitoring(
-        &mut self,
+        &mut self)
         service_id: String,
         policy: AutoScalingPolicy,
     ) -> Result<()> {
-        tracing::info!(
-            "Starting auto-scaling monitoring for service: {}",
-            service_id
-        );
+        tracing::info!("Starting auto-scaling monitoring for service: {}", service_id);"
 
-        let service_id_clone = service_id.clone();
-        let policy_clone = policy.clone();
+        let service_id_clone = service_id.clone());
+        let policy_clone = policy.clone());
         let task = tokio::spawn(async move {
             let mut scale_up_duration = Duration::from_secs(0);
             let mut scale_down_duration = Duration::from_secs(0);
             let mut last_scaling = Instant::now();
 
-            let mut interval = tokio::time::interval(Duration::from_secs(30));
+            let mut interval = tokio::time::interval(Duration::from_secs(30);
             loop {
                 interval.tick().await;
 
@@ -51,21 +47,19 @@ impl AutoScalingEngine {
                 }
 
                 // Collect current metrics
-                match collect_service_metrics(&service_id_clone).await {
-                    Ok(metrics) => {
-                        // Check scale up conditions
+                match collect_service_metrics(&service_id_clone).await  {Ok(metrics) =>  {// Check scale up conditions
                         if evaluate_scale_up_conditions(
-                            &metrics,
-                            &policy_clone,
-                            &mut scale_up_duration,
+                            &metrics)
+                            &policy_clone)
+                            &mut scale_up_duration)
                         )
                         .await
                         {
                             let target =
                                 calculate_scale_up_target(1, &policy_clone, &metrics).await; // Placeholder current_instances
                             tracing::info!(
-                                "Scaling up {} to {} instances",
-                                service_id_clone,
+                                "Scaling up {} to {} instances","
+                                service_id_clone)
                                 target
                             );
                             last_scaling = Instant::now();
@@ -73,17 +67,17 @@ impl AutoScalingEngine {
                         }
                         // Check scale down conditions
                         else if evaluate_scale_down_conditions(
-                            &metrics,
-                            &policy_clone,
-                            &mut scale_down_duration,
+                            &metrics)
+                            &policy_clone)
+                            &mut scale_down_duration)
                         )
                         .await
                         {
                             let target =
                                 calculate_scale_down_target(1, &policy_clone, &metrics).await; // Placeholder current_instances
                             tracing::info!(
-                                "Scaling down {} to {} instances",
-                                service_id_clone,
+                                "Scaling down {} to {} instances","
+                                service_id_clone)
                                 target
                             );
                             last_scaling = Instant::now();
@@ -92,8 +86,8 @@ impl AutoScalingEngine {
                     }
                     Err(e) => {
                         tracing::error!(
-                            "Failed to collect metrics for {}: {}",
-                            service_id_clone,
+                            "Failed to collect metrics for {}: {}","
+                            service_id_clone)
                             e
                         );
                     }
@@ -102,33 +96,27 @@ impl AutoScalingEngine {
         });
 
         self.scaling_tasks.insert(service_id, task);
-        Ok(())
+        Ok(()),
     }
 
     /// Stop auto-scaling monitoring for a service
     pub async fn stop_scaling_monitoring(&mut self, service_id: &str) -> Result<()> {
         if let Some(task) = self.scaling_tasks.remove(service_id) {
             task.abort();
-            tracing::info!(
-                "Stopped auto-scaling monitoring for service: {}",
-                service_id
-            );
+            tracing::info!("Stopped auto-scaling monitoring for service: {}", service_id);"
         }
-        Ok(())
+        Ok(()),
     }
 
     /// Get scaling decision history
     pub fn get_scaling_decisions(&self, service_id: &str) -> Vec<ScalingDecision> {
-        self.scaling_decisions
-            .get(service_id)
-            .cloned()
-            .unwrap_or_default()
+        self.scaling_decisions.get(service_id).cloned().unwrap_or_default()
     }
 
     /// Record scaling decision
     pub fn record_scaling_decision(&mut self, service_id: String, decision: ScalingDecision) {
         let decisions = self.scaling_decisions.entry(service_id).or_default();
-        decisions.push(decision);
+        decisions.push(decision));
 
         // Keep only last 50 decisions
         if decisions.len() > 50 {
@@ -145,8 +133,7 @@ impl Default for AutoScalingEngine {
 
 /// Auto-scaling policy defining scaling behavior
 #[derive(Debug, Clone)]
-pub struct AutoScalingPolicy {
-    pub service_id: String,
+pub struct AutoScalingPolicy  {pub service_id: String,
     pub min_instances: u32,
     pub max_instances: u32,
     pub target_cpu_utilization: f64,
@@ -160,8 +147,7 @@ pub struct AutoScalingPolicy {
 
 /// Scaling threshold configuration
 #[derive(Debug, Clone)]
-pub struct ScalingThreshold {
-    pub metric_thresholds: HashMap<String, f64>,
+pub struct ScalingThreshold  {pub metric_thresholds: HashMap<String, f64>)
     pub sustained_duration: Duration,
     pub scale_factor: f64, // How aggressively to scale (instances to add/remove)
 }
@@ -177,24 +163,25 @@ pub enum ScalingStrategy {
 
 /// Scaling direction
 #[derive(Debug, Clone)]
-pub enum ScalingDirection {
-    Up,
+pub enum ScalingDirection  {Up)
     Down,
 }
 
 /// Scaling state
 #[derive(Debug, Clone)]
-pub enum ScalingState {
-    Stable,
-    ScalingUp { target: u32 },
-    ScalingDown { target: u32 },
-    Cooldown { until: Instant },
+pub enum ScalingState  {Stable)
+    ScalingUp {
+        target: u32,
+    })
+    ScalingDown  {target: u32)
+    })
+    Cooldown  {until: Instant,
+    })
 }
 
 /// Scaling decision record
 #[derive(Debug, Clone)]
-pub struct ScalingDecision {
-    pub timestamp: Instant,
+pub struct ScalingDecision  {pub timestamp: Instant,
     pub trigger_metric: String,
     pub trigger_value: f64,
     pub decision: ScalingDirection,
@@ -206,11 +193,11 @@ pub struct ScalingDecision {
 pub async fn collect_service_metrics(service_id: &str) -> Result<ServiceMetrics> {
     use sysinfo::{ProcessRefreshKind, RefreshKind, System};
 
-    tracing::debug!("Collecting metrics for service: {}", service_id);
+    tracing::debug!("Collecting metrics for service: {}", service_id);"
 
     // Create system instance with process monitoring
     let mut system = System::new_with_specifics(
-        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+        RefreshKind::new().with_processes(ProcessRefreshKind::everything())
     );
     system.refresh_all();
 
@@ -222,10 +209,7 @@ pub async fn collect_service_metrics(service_id: &str) -> Result<ServiceMetrics>
     for process in system.processes().values() {
         let process_name = process.name();
         // Match processes that contain the service ID in their name
-        if process_name
-            .to_lowercase()
-            .contains(&service_id.to_lowercase())
-        {
+        if process_name.to_lowercase().contains(&service_id.to_lowercase() {
             total_cpu += process.cpu_usage() as f64;
             total_memory += process.memory() as f64;
             process_count += 1;
@@ -234,14 +218,11 @@ pub async fn collect_service_metrics(service_id: &str) -> Result<ServiceMetrics>
 
     // Calculate averages if processes found, otherwise use system-wide metrics
     let (cpu_util, memory_util) = if process_count > 0 {
-        (
-            total_cpu / process_count as f64,
-            (total_memory / system.total_memory() as f64) * 100.0,
-        )
+        (total_cpu / process_count as f64, (total_memory / system.total_memory() as f64) * 100.0)
     } else {
         // Fallback to estimated metrics based on system load
         let system_cpu = system.global_cpu_info().cpu_usage() as f64;
-        let memory_usage = ((system.used_memory() as f64) / (system.total_memory() as f64)) * 100.0;
+        let memory_usage = ((system.used_memory() as f64) / (system.total_memory() as f64) * 100.0;
         (system_cpu, memory_usage)
     };
 
@@ -276,14 +257,13 @@ pub async fn collect_service_metrics(service_id: &str) -> Result<ServiceMetrics>
         5
     };
 
-    Ok(ServiceMetrics {
-        cpu_utilization: cpu_util,
+    Ok(ServiceMetrics  {cpu_utilization: cpu_util)
         memory_utilization: memory_util,
-        request_rate,
+        request_rate)
         response_time_ms: response_time,
-        error_rate,
-        active_connections,
-        queue_depth,
+        error_rate)
+        active_connections)
+        queue_depth)
     })
 }
 
@@ -331,9 +311,7 @@ pub async fn calculate_scale_up_target(
     current_instances: u32,
     policy: &AutoScalingPolicy,
     _metrics: &ServiceMetrics,
-) -> u32 {
-    let target = match policy.scaling_strategy {
-        ScalingStrategy::Linear => current_instances + 1,
+) -> u32  {let target = match policy.scaling_strategy  {ScalingStrategy::Linear => current_instances + 1,
         ScalingStrategy::Exponential => current_instances * 2,
         ScalingStrategy::Predictive => current_instances + 2, // Simplified
         ScalingStrategy::Gaming => current_instances + 3,     // Aggressive for gaming
@@ -347,9 +325,7 @@ pub async fn calculate_scale_down_target(
     current_instances: u32,
     policy: &AutoScalingPolicy,
     _metrics: &ServiceMetrics,
-) -> u32 {
-    let target = match policy.scaling_strategy {
-        ScalingStrategy::Linear => current_instances.saturating_sub(1),
+) -> u32  {let target = match policy.scaling_strategy  {ScalingStrategy::Linear => current_instances.saturating_sub(1),
         ScalingStrategy::Exponential => current_instances / 2,
         ScalingStrategy::Predictive => current_instances.saturating_sub(1),
         ScalingStrategy::Gaming => current_instances.saturating_sub(2), // Conservative for gaming

@@ -1,0 +1,8 @@
+[build]
+rustflags = []
+
+[target.'cfg(all())']
+rustflags = [
+    # Test-specific allows
+    "--cfg", "test_allow_pedantic"
+]

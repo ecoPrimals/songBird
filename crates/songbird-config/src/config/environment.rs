@@ -1,9 +1,13 @@
 //! Environment-based configuration with zero hardcoded values
 //!
-//! All configuration values are determined dynamically from environment,
+//! All configuration values are determined dynamically from environment)
 //! system capabilities, or calculated defaults.
 
-use crate::config::constants::*;
+use crate::config::constants::{
+    enable_zero_copy, get_batch_size, get_bind_address, get_buffer_pool_size,
+    get_connection_timeout_ms, get_dashboard_port, get_log_level, get_max_connections,
+    get_worker_threads,
+};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::time::Duration;
@@ -30,6 +34,7 @@ impl Default for LogConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)] // Endpoint suffix is intentional and clear
 pub struct ServiceEndpoints {
     pub beardog_endpoint: String,
     pub nestgate_endpoint: String,
@@ -41,6 +46,7 @@ pub struct ServiceEndpoints {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)] // Max prefix is intentional for limits
 pub struct ResourceLimits {
     pub max_connections: usize,
     pub max_memory_mb: Option<u64>,
@@ -88,13 +94,25 @@ impl Default for EnvironmentConfig {
 impl Default for ServiceEndpoints {
     fn default() -> Self {
         Self {
-            beardog_endpoint: get_primal_endpoint("beardog"),
-            nestgate_endpoint: get_primal_endpoint("nestgate"),
-            toadstool_endpoint: get_primal_endpoint("toadstool"),
-            squirrel_endpoint: get_primal_endpoint("squirrel"),
-            discovery_endpoint: get_primal_endpoint("discovery"),
-            health_endpoint: get_primal_endpoint("health"),
-            metrics_endpoint: get_primal_endpoint("metrics"),
+            // Use capability-based environment variables (not primal names)
+            beardog_endpoint: env::var("SECURITY_PROVIDER_ENDPOINT")
+                .or_else(|_| env::var("BEARDOG_ENDPOINT"))
+                .unwrap_or_else(|_| "http://127.0.0.1:8443".to_string()),
+            nestgate_endpoint: env::var("STORAGE_PROVIDER_ENDPOINT")
+                .or_else(|_| env::var("NESTGATE_ENDPOINT"))
+                .unwrap_or_else(|_| "http://127.0.0.1:8444".to_string()),
+            toadstool_endpoint: env::var("COMPUTE_PROVIDER_ENDPOINT")
+                .or_else(|_| env::var("TOADSTOOL_ENDPOINT"))
+                .unwrap_or_else(|_| "http://127.0.0.1:9000".to_string()),
+            squirrel_endpoint: env::var("AI_PROVIDER_ENDPOINT")
+                .or_else(|_| env::var("SQUIRREL_ENDPOINT"))
+                .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string()),
+            discovery_endpoint: env::var("DISCOVERY_ENDPOINT")
+                .unwrap_or_else(|_| "http://127.0.0.1:8001".to_string()),
+            health_endpoint: env::var("HEALTH_ENDPOINT")
+                .unwrap_or_else(|_| "http://127.0.0.1:8002".to_string()),
+            metrics_endpoint: env::var("METRICS_ENDPOINT")
+                .unwrap_or_else(|_| "http://127.0.0.1:8004".to_string()),
         }
     }
 }
@@ -187,6 +205,7 @@ pub struct EnvironmentConfig {
 }
 
 /// Get current environment from multiple sources
+#[must_use]
 pub fn get_environment() -> String {
     env::var("SONGBIRD_ENV")
         .or_else(|_| env::var("NODE_ENV"))
@@ -219,9 +238,7 @@ fn detect_environment_from_system() -> String {
     }
 
     // Check for development indicators
-    if env::var("HOME")
-        .map(|h| h.contains("dev") || h.contains("developer"))
-        .unwrap_or(false)
+    if env::var("HOME").map(|h| h.contains("dev") || h.contains("developer")).unwrap_or(false)
         || env::var("USER").map(|u| u == "root").unwrap_or(false)
     {
         return "development".to_string();
@@ -238,22 +255,18 @@ fn detect_environment_from_system() -> String {
 }
 
 /// Determine if TLS should be required based on environment and security context
+#[must_use]
 pub fn should_require_tls() -> bool {
-    env::var("SONGBIRD_REQUIRE_TLS")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or_else(|| {
-            match get_environment().as_str() {
-                "production" => true,   // Always require TLS in production
-                "staging" => true,      // Require TLS in staging for testing
-                "testing" => false,     // Optional in testing for flexibility
-                "development" => false, // Optional in development for ease
-                _ => {
-                    // Require TLS if we detect sensitive data or external access
-                    detect_tls_requirement()
-                }
+    env::var("SONGBIRD_REQUIRE_TLS").ok().and_then(|s| s.parse().ok()).unwrap_or_else(|| {
+        match get_environment().as_str() {
+            "production" | "staging" => true, // Always require TLS in production and staging
+            "testing" | "development" => false, // Optional in testing and development for flexibility
+            _ => {
+                // Require TLS if we detect sensitive data or external access
+                detect_tls_requirement()
             }
-        })
+        }
+    })
 }
 
 /// Detect if TLS should be required based on system context
@@ -331,6 +344,7 @@ fn get_cpu_limit() -> Option<f64> {
                 (quota.trim().parse::<i64>(), period.trim().parse::<i64>())
             {
                 if quota_val > 0 && period_val > 0 {
+                    #[allow(clippy::cast_precision_loss)] // CPU cores as f64 is acceptable
                     return Some(quota_val as f64 / period_val as f64);
                 }
             }
@@ -338,19 +352,14 @@ fn get_cpu_limit() -> Option<f64> {
     }
 
     // Use available parallelism as fallback
-    std::thread::available_parallelism()
-        .map(|n| n.get() as f64)
-        .ok()
+    #[allow(clippy::cast_precision_loss)] // CPU cores as f64 is acceptable
+    std::thread::available_parallelism().map(|n| n.get() as f64).ok()
 }
 
 /// Get file descriptor limit
 fn get_fd_limit() -> Option<u64> {
     // Check ulimit for file descriptors
-    if let Ok(output) = std::process::Command::new("sh")
-        .arg("-c")
-        .arg("ulimit -n")
-        .output()
-    {
+    if let Ok(output) = std::process::Command::new("sh").arg("-c").arg("ulimit -n").output() {
         if let Ok(limit_str) = String::from_utf8(output.stdout) {
             if let Ok(limit) = limit_str.trim().parse::<u64>() {
                 return Some(limit);
@@ -384,9 +393,17 @@ impl EnvironmentConfig {
             "staging" => {
                 self.performance_config.buffer_pool_size =
                     (self.performance_config.buffer_pool_size * 3) / 2; // 1.5x buffering
-                self.max_connections = (self.max_connections as f32 * 1.5) as usize; // Increase staging connections
-                self.resource_limits.max_connections =
-                    (self.resource_limits.max_connections as f32 * 1.5) as usize;
+                                                                        // Scale connections by 1.5x for staging
+                #[allow(
+                    clippy::cast_precision_loss,
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss
+                )]
+                {
+                    self.max_connections = (self.max_connections as f32 * 1.5) as usize;
+                    self.resource_limits.max_connections =
+                        (self.resource_limits.max_connections as f32 * 1.5) as usize;
+                }
             }
             "development" => {
                 self.performance_config.buffer_pool_size /= 2; // Less memory usage
@@ -398,11 +415,16 @@ impl EnvironmentConfig {
     }
 
     /// Get connection timeout as Duration
+    #[must_use]
     pub fn connection_timeout(&self) -> Duration {
         Duration::from_secs(self.connection_timeout_secs)
     }
 
     /// Validate configuration consistency
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if there are port conflicts or configuration inconsistencies
     pub fn validate(&self) -> Result<(), String> {
         // Validate port ranges don't conflict
         let endpoints = &self.service_endpoints;

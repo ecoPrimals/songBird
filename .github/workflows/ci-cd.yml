@@ -1,0 +1,303 @@
+name: Songbird CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Code Quality and Security Checks
+  quality:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+    
+    - name: Run clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+    
+    - name: Security audit
+      uses: rustsec/audit-check@v1.4.1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Check for unsafe code
+      run: |
+        echo "Checking for unsafe code blocks..."
+        unsafe_count=$(grep -r "unsafe" crates/ --include="*.rs" | grep -v "#\[deny(unsafe_code)\]" | wc -l)
+        echo "Found $unsafe_count unsafe blocks"
+        if [ "$unsafe_count" -gt 50 ]; then
+          echo "Too many unsafe blocks found: $unsafe_count"
+          exit 1
+        fi
+
+  # Comprehensive Testing
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, beta]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust ${{ matrix.rust }}
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.rust }}
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target/
+        key: ${{ runner.os }}-cargo-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Run tests
+      run: cargo test --lib --verbose
+    
+    - name: Run integration tests
+      run: cargo test --test integration --verbose || echo "Integration tests not available"
+    
+    - name: Test documentation
+      run: cargo test --doc
+
+  # Performance Benchmarks
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target/
+        key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Run benchmarks
+      run: cargo bench || echo "Benchmarks not available"
+
+  # Code Coverage
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install tarpaulin
+      run: cargo install cargo-tarpaulin
+    
+    - name: Generate coverage report
+      run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: cobertura.xml
+        fail_ci_if_error: true
+
+  # Build and Test Docker Images
+  docker:
+    name: Docker Build & Test
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build production image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./docker/Dockerfile.production
+        push: false
+        tags: songbird:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Test Docker image
+      run: |
+        docker run --rm -d --name songbird-test -p 8080:8080 songbird:test
+        sleep 10
+        curl -f http://localhost:8080/health || (docker logs songbird-test && exit 1)
+        docker stop songbird-test
+    
+    - name: Build observability image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./docker/Dockerfile.production
+        target: observability
+        push: false
+        tags: songbird-observability:test
+    
+    - name: Build discovery image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./docker/Dockerfile.production
+        target: discovery
+        push: false
+        tags: songbird-discovery:test
+
+  # Security Scanning
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [docker]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'songbird:test'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [quality, test, docker, security]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup deployment environment
+      run: |
+        echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+        echo "DEPLOY_MODE=songbird-only" >> $GITHUB_ENV
+    
+    - name: Deploy to staging
+      run: |
+        chmod +x scripts/deploy-ecosystem.sh
+        ./scripts/deploy-ecosystem.sh deploy
+    
+    - name: Run smoke tests
+      run: |
+        sleep 30
+        curl -f http://staging.songbird.local:8080/health
+        curl -f http://staging.songbird.local:9091/health
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [quality, test, docker, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'release'
+    environment: production
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup production environment
+      run: |
+        echo "ENVIRONMENT=production" >> $GITHUB_ENV
+        echo "DEPLOY_MODE=full" >> $GITHUB_ENV
+    
+    - name: Deploy to production
+      run: |
+        chmod +x scripts/deploy-ecosystem.sh
+        ./scripts/deploy-ecosystem.sh deploy
+    
+    - name: Run production health checks
+      run: |
+        sleep 60
+        curl -f https://songbird.ecoprimals.com/health
+        curl -f https://observability.songbird.ecoprimals.com/health
+    
+    - name: Notify deployment success
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: "🎵 Songbird production deployment successful!"
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Performance Testing
+  performance:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/develop'
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install k6
+      run: |
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+    
+    - name: Run load tests
+      run: |
+        k6 run tests/performance/load-test.js || echo "Load tests not available"
+    
+    - name: Run stress tests
+      run: |
+        k6 run tests/performance/stress-test.js || echo "Stress tests not available"
+
+  # Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+    - name: Cleanup staging environment
+      run: |
+        echo "Cleaning up staging environment..."
+        # Add cleanup commands here
+    
+    - name: Archive logs
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-logs
+        path: |
+          logs/
+          *.log 

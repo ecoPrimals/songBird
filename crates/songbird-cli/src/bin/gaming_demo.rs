@@ -2,10 +2,11 @@
 //!
 //! A simple demo showing the gaming network bridge functionality
 
+use songbird_types::SongbirdResult;
 use std::net::{IpAddr, Ipv4Addr};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> SongbirdResult<()> {
     // Initialize logging
     tracing_subscriber::fmt::init();
 
@@ -17,21 +18,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Simulate detected games
     let games = vec![
-        (
-            "StarCraft: Brood War",
-            "IPX_Based",
-            IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)),
-        ),
-        (
-            "Age of Empires II",
-            "DirectPlay",
-            IpAddr::V4(Ipv4Addr::new(192, 168, 1, 101)),
-        ),
-        (
-            "Stronghold Crusader",
-            "TCP_HostClient",
-            IpAddr::V4(Ipv4Addr::new(192, 168, 1, 102)),
-        ),
+        ("StarCraft Brood War", "IPX_Based", IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100))),
+        ("Age of Empires 2", "DirectPlay", IpAddr::V4(Ipv4Addr::new(192, 168, 1, 101))),
+        ("Stronghold Crusader", "TCP_HostClient", IpAddr::V4(Ipv4Addr::new(192, 168, 1, 102))),
     ];
 
     for (name, protocol, addr) in &games {

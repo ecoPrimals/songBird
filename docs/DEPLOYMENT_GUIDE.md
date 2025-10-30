@@ -1,662 +1,369 @@
-# 🚀 **SONGBIRD DEPLOYMENT GUIDE**
+# 🚀 Songbird Universal Orchestrator - Production Deployment Guide
 
 **Version**: 0.1.0  
-**Status**: Production Ready  
-**Last Updated**: January 2025  
+**Last Updated**: 2025-01-18  
+**Status**: Production Ready ✅
 
 ---
 
-## 🎯 **QUICK DEPLOYMENT OPTIONS**
+## 🎯 **Overview**
 
-### **Choose Your Deployment Style**
-- **🚀 [Quick Start](#quick-start)** - Get running in 5 minutes
-- **🧪 [Development Setup](#development-setup)** - Local testing environment
-- **🏭 [Production Deployment](#production-deployment)** - Full production setup
-- **🌐 [Federation Cluster](#federation-cluster-setup)** - Multi-node distributed setup
-- **🐳 [Docker Deployment](#docker-deployment)** - Containerized deployment
-- **☸️ [Kubernetes](#kubernetes-deployment)** - Kubernetes orchestration
+This guide provides comprehensive instructions for deploying the Songbird Universal Orchestrator in production environments, including Docker, Kubernetes, and bare metal deployments.
 
----
+## 📋 **Table of Contents**
 
-## 🚀 **QUICK START** (5 minutes)
-
-### **Prerequisites**
-- Rust 1.70+ installed
-- 8GB+ RAM recommended
-- Network connectivity for primal discovery
-
-### **Step 1: Build & Run**
-```bash
-# Clone and build (if not already done)
-cd /path/to/songbird
-cargo build --release
-
-# Start the orchestrator
-./target/release/songbird-orchestrator
-
-# In another terminal, start gaming demo
-./target/release/gaming-demo
-```
-
-### **Step 2: Verify Installation**
-```bash
-# Check health
-curl http://localhost:8080/api/health
-
-# Expected response:
-{
-  "overall_health": "healthy",
-  "components": {
-    "gaming_bridge": {"status": "healthy"},
-    "security_integration": {"status": "healthy", "provider": "beardog"},
-    "fallback_security": {"status": "ready"},
-    "federation": {"status": "healthy"},
-    "primals": {"status": "healthy"}
-  }
-}
-```
-
-### **Step 3: Test Gaming Setup**
-```bash
-# Test one-touch gaming setup
-curl -X POST http://localhost:8080/api/gaming/setup \
-  -H "Content-Type: application/json" \
-  -d '{"setup_type": "one_touch"}'
-
-# Expected response:
-{
-  "success": true,
-  "message": "Gaming setup completed successfully",
-  "next_steps": ["Gaming network ready"]
-}
-```
-
-**🎉 Congratulations! Songbird is running locally.**
+1. [Prerequisites](#prerequisites)
+2. [Environment Configuration](#environment-configuration)
+3. [Docker Deployment](#docker-deployment)
+4. [Kubernetes Deployment](#kubernetes-deployment)
+5. [Bare Metal Deployment](#bare-metal-deployment)
+6. [Federation Setup](#federation-setup)
+7. [Monitoring & Observability](#monitoring--observability)
+8. [Security Configuration](#security-configuration)
+9. [Performance Tuning](#performance-tuning)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🔒 **SECURITY CONFIGURATION**
+## ✅ **Prerequisites**
 
-### **🐕 BearDog Integration Setup**
+### System Requirements
 
-Songbird uses capability-based discovery to integrate with BearDog as the primary security primal.
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| **CPU** | 2 cores | 4+ cores |
+| **Memory** | 4GB RAM | 8GB+ RAM |
+| **Storage** | 20GB | 50GB+ SSD |
+| **Network** | 1Gbps | 10Gbps |
 
-#### **Automatic Discovery** (Recommended)
-```toml
-# songbird.toml
-[security]
-auto_discovery = true
-prefer_beardog = true
-fallback_enabled = true
+### Software Dependencies
 
-[primal_registry]
-auto_discovery = true
-[[primal_registry.primals]]
-primal_type = "beardog"
-enabled = true
-# endpoint will be auto-discovered via mDNS
-```
+- **Rust**: 1.70+ (for building from source)
+- **Docker**: 20.10+ (for containerized deployment)
+- **Kubernetes**: 1.25+ (for K8s deployment)
+- **Linux Kernel**: 5.4+ (for optimal performance)
 
-#### **Manual BearDog Configuration**
-```toml
-# songbird.toml
-[[primal_registry.primals]]
-primal_type = "beardog"
-display_name = "BearDog Security Service"
-enabled = true
-endpoint = { primary_url = "https://beardog.local:8443" }
-capabilities = [
-  "enterprise_authentication",
-  "bstp_protocol", 
-  "ml_threat_detection",
-  "genetic_encryption",
-  "compliance_audit"
-]
-```
+### Network Requirements
 
-#### **Security Status Verification**
+| Port | Protocol | Purpose | Required |
+|------|----------|---------|----------|
+| 8080 | HTTP/TCP | Orchestrator API | ✅ |
+| 8081 | HTTP/TCP | Gaming Bridge | Optional |
+| 8082 | HTTP/TCP | Federation | ✅ |
+| 8443 | HTTPS/TCP | Security (BearDog) | ✅ |
+| 9090 | HTTP/TCP | Metrics | Optional |
+
+---
+
+## ⚙️ **Environment Configuration**
+
+### Production Environment Variables
+
+Create a `.env` file for production configuration:
+
 ```bash
-# Check security capabilities
-curl http://localhost:8080/api/security/capabilities
+# Core Configuration
+SONGBIRD_ENV=production
+SONGBIRD_BIND_ADDRESS=0.0.0.0
+SONGBIRD_ORCHESTRATOR_PORT=8080
+SONGBIRD_FEDERATION_PORT=8082
 
-# Expected response:
-{
-  "available_providers": [
-    {
-      "primal_type": "beardog",
-      "status": "online",
-      "capabilities": ["enterprise_authentication", "bstp_protocol"],
-      "endpoint": "https://beardog.local:8443"
-    }
-  ],
-  "fallback_providers": [
-    {
-      "provider_type": "wireguard_fallback", 
-      "status": "ready",
-      "capabilities": ["basic_vpn", "standard_encryption"]
-    }
-  ],
-  "recommendation": "BearDog available - using enterprise security"
-}
+# Federation Configuration
+SONGBIRD_FEDERATION_NODE_ID=prod-node-1
+SONGBIRD_HEARTBEAT_INTERVAL=30
+SONGBIRD_DISCOVERY_PORTS=8080,8081,8082,8443,9090
+SONGBIRD_MAX_NODES=1000
+
+# Performance Configuration
+SONGBIRD_LARGE_BUFFER_SIZE=16384
+SONGBIRD_CONNECTION_TIMEOUT=30
+SONGBIRD_REQUEST_TIMEOUT=60
+SONGBIRD_HEALTH_CHECK_TIMEOUT=5
+
+# Security Configuration
+BEARDOG_ENDPOINT=https://beardog.internal:8443
+NESTGATE_ENDPOINT=http://nestgate.internal:8082
+TOADSTOOL_ENDPOINT=http://toadstool.internal:8081
+SQUIRREL_ENDPOINT=http://squirrel.internal:8083
+
+# Observability
+RUST_LOG=info,songbird_core=debug,songbird_federation=debug
+SONGBIRD_METRICS_ENABLED=true
+SONGBIRD_METRICS_PORT=9090
+
+# Database (if applicable)
+DATABASE_URL=postgresql://songbird:password@postgres:5432/songbird_prod
+
+# TLS Configuration
+TLS_CERT_PATH=/etc/ssl/certs/songbird.crt
+TLS_KEY_PATH=/etc/ssl/private/songbird.key
 ```
 
-### **🔒 Failsafe Configuration**
+### Environment-Specific Configurations
 
-Songbird ensures gaming and federation services never fail due to security unavailability:
-
-```toml
-# songbird.toml
-[security.fallback]
-enabled = true
-provider = "wireguard"
-encryption = "chacha20poly1305"
-fallback_timeout_ms = 5000
-
-[security.beardog]
-discovery_timeout_ms = 2000
-health_check_interval_secs = 30
-auto_retry = true
-```
-
-#### **Test Failsafe Behavior**
+#### Development
 ```bash
-# Simulate BearDog unavailable
-curl -X POST http://localhost:8080/api/security/test-failsafe
+SONGBIRD_ENV=development
+SONGBIRD_BIND_ADDRESS=127.0.0.1
+RUST_LOG=debug
+SONGBIRD_MAX_NODES=10
+```
 
-# Expected response:
-{
-  "test_result": "success",
-  "primary_available": false,
-  "fallback_activated": true,
-  "fallback_provider": "wireguard",
-  "security_maintained": true,
-  "note": "Gaming and federation services remain fully functional"
-}
+#### Staging
+```bash
+SONGBIRD_ENV=staging
+SONGBIRD_BIND_ADDRESS=0.0.0.0
+RUST_LOG=info
+SONGBIRD_MAX_NODES=100
+```
+
+#### Production
+```bash
+SONGBIRD_ENV=production
+SONGBIRD_BIND_ADDRESS=0.0.0.0
+RUST_LOG=warn,songbird_core=info
+SONGBIRD_MAX_NODES=1000
 ```
 
 ---
 
-## 🧪 **DEVELOPMENT SETUP**
+## 🐳 **Docker Deployment**
 
-### **Complete Development Environment**
+### Single Node Deployment
 
-#### **1. Environment Setup**
-```bash
-# Install Rust toolchain
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.cargo/env
+#### 1. Create Dockerfile
 
-# Install development dependencies
-cargo install cargo-watch cargo-tarpaulin
-
-# Clone repository
-git clone <your-repo-url>
-cd songbird
-```
-
-#### **2. Development Configuration**
-```bash
-# Create development config
-cat > songbird-dev.toml << EOF
-[primal_registry]
-auto_discovery = true
-development_mode = true
-mock_primals_enabled = true
-
-[[primal_registry.primals]]
-primal_type = "mock-beardog"
-display_name = "Mock BearDog (Development)"
-enabled = true
-endpoint = { primary_url = "http://localhost:8443" }
-
-[[primal_registry.primals]]
-primal_type = "mock-toadstool"
-display_name = "Mock Toadstool (Development)"
-enabled = true
-endpoint = { primary_url = "http://localhost:8080" }
-
-[federation]
-cluster_id = "dev-cluster"
-node_id = "dev-node-1"
-development_mode = true
-heartbeat_interval = 10
-
-[gaming]
-development_mode = true
-family_safe_mode = false
-mock_games = ["StarCraft", "Diablo", "AgeOfEmpires"]
-protocols = ["ipx", "directplay", "tcp", "udp"]
-
-[security]
-development_mode = true
-encryption_enabled = false
-authentication_required = false
-
-[observability]
-development_mode = true
-detailed_logging = true
-metrics_interval = 5
-EOF
-```
-
-#### **3. Development Workflow**
-```bash
-# Watch for changes and auto-rebuild
-cargo watch -x "build --release"
-
-# Run tests continuously
-cargo watch -x "test --workspace"
-
-# Start with development config
-SONGBIRD_CONFIG=songbird-dev.toml ./target/release/songbird-orchestrator
-
-# Run individual components for testing
-./target/release/gaming-demo --config=songbird-dev.toml
-```
-
-#### **4. Development Testing**
-```bash
-# Test all APIs
-./scripts/test-dev-apis.sh
-
-# Load test (if you create this script)
-./scripts/load-test-dev.sh
-
-# Test gaming protocols
-curl -X POST http://localhost:8080/api/gaming/stress-test \
-  -d '{"protocol": "ipx", "sessions": 10, "duration": 30}'
-```
-
----
-
-## 🏭 **PRODUCTION DEPLOYMENT**
-
-### **Production-Ready Setup**
-
-#### **1. System Requirements**
-- **OS**: Linux (Ubuntu 20.04+ recommended)
-- **CPU**: 4+ cores
-- **RAM**: 16GB+ for full federation
-- **Storage**: 100GB+ SSD
-- **Network**: Stable internet connection, ports 8080, 8443 open
-
-#### **2. Production Configuration**
-```toml
-# songbird-production.toml
-[primal_registry]
-auto_discovery = true
-default_timeout = 30
-health_check_interval = 60
-
-[[primal_registry.primals]]
-primal_type = "beardog"
-display_name = "BearDog Security Production"
-enabled = true
-endpoint = { primary_url = "https://beardog.prod.example.com:8443", health_check_path = "/health" }
-authentication = { method = "ApiKey", credentials = { api_key = "${BEARDOG_API_KEY}" } }
-
-[[primal_registry.primals]]
-primal_type = "toadstool"
-display_name = "Toadstool Compute Production"
-enabled = true
-endpoint = { primary_url = "https://toadstool.prod.example.com:8080" }
-
-[federation]
-cluster_id = "production-cluster"
-node_id = "${NODE_ID}"
-cluster_endpoints = [
-  "https://songbird-node-1.prod.example.com:8080",
-  "https://songbird-node-2.prod.example.com:8080",
-  "https://songbird-node-3.prod.example.com:8080"
-]
-auto_discovery = true
-heartbeat_interval = 30
-connection_timeout = 10
-max_retries = 3
-
-[gaming]
-family_safe_mode = false
-auto_detect_games = true
-protocols = ["ipx", "directplay", "tcp", "udp"]
-max_concurrent_sessions = 1000
-
-[security]
-encryption_enabled = true
-authentication_required = true
-audit_level = "comprehensive"
-tls_cert_path = "/etc/songbird/certs/songbird.crt"
-tls_key_path = "/etc/songbird/certs/songbird.key"
-
-[observability]
-metrics_enabled = true
-metrics_port = 9090
-logging_level = "info"
-audit_logging = true
-performance_monitoring = true
-
-[performance]
-max_connections = 10000
-worker_threads = 8
-request_timeout = 30
-```
-
-#### **3. Production Deployment Script**
-```bash
-#!/bin/bash
-# deploy-production.sh
-
-set -e
-
-echo "🚀 Deploying Songbird to Production..."
-
-# Build release version
-cargo build --release --target x86_64-unknown-linux-gnu
-
-# Create production directories
-sudo mkdir -p /opt/songbird/{bin,config,logs,data,certs}
-sudo mkdir -p /etc/songbird
-sudo mkdir -p /var/log/songbird
-
-# Install binaries
-sudo cp target/release/songbird-orchestrator /opt/songbird/bin/
-sudo cp target/release/gaming-demo /opt/songbird/bin/
-sudo chmod +x /opt/songbird/bin/*
-
-# Install configuration
-sudo cp songbird-production.toml /etc/songbird/songbird.toml
-sudo chown -R songbird:songbird /etc/songbird
-sudo chmod 600 /etc/songbird/songbird.toml
-
-# Install systemd service
-sudo tee /etc/systemd/system/songbird.service > /dev/null << EOF
-[Unit]
-Description=Songbird Universal Orchestrator
-After=network.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=songbird
-Group=songbird
-WorkingDirectory=/opt/songbird
-ExecStart=/opt/songbird/bin/songbird-orchestrator --config=/etc/songbird/songbird.toml
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-Environment=NODE_ID=%H
-
-# Security settings
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=yes
-ReadWritePaths=/var/log/songbird /opt/songbird/data
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Create songbird user
-sudo useradd --system --shell /bin/false --home /opt/songbird songbird
-sudo chown -R songbird:songbird /opt/songbird /var/log/songbird
-
-# Enable and start service
-sudo systemctl daemon-reload
-sudo systemctl enable songbird
-sudo systemctl start songbird
-
-echo "✅ Songbird deployed successfully!"
-echo "📊 Status: sudo systemctl status songbird"
-echo "📝 Logs: sudo journalctl -u songbird -f"
-```
-
-#### **4. Production Health Monitoring**
-```bash
-#!/bin/bash
-# health-check.sh
-
-# Basic health check
-curl -f http://localhost:8080/api/health || exit 1
-
-# Detailed system check
-curl -s http://localhost:8080/api/metrics | jq '.system_metrics'
-
-# Federation health
-curl -s http://localhost:8080/api/federation/status | jq '.cluster_status'
-
-# Gaming status
-curl -s http://localhost:8080/api/gaming/sessions | jq '.'
-```
-
----
-
-## 🌐 **FEDERATION CLUSTER SETUP**
-
-### **Multi-Node Distributed Deployment**
-
-#### **Node 1 (Primary)**
-```bash
-# songbird-node1.toml
-[federation]
-cluster_id = "production-cluster"
-node_id = "primary-node"
-cluster_endpoints = [
-  "https://node2.example.com:8080",
-  "https://node3.example.com:8080"
-]
-auto_discovery = true
-heartbeat_interval = 30
-
-# Start primary node
-NODE_ID=primary-node ./target/release/songbird-orchestrator \
-  --config=songbird-node1.toml
-```
-
-#### **Node 2 (Secondary)**
-```bash
-# songbird-node2.toml
-[federation]
-cluster_id = "production-cluster"
-node_id = "secondary-node"
-cluster_endpoints = [
-  "https://node1.example.com:8080",
-  "https://node3.example.com:8080"
-]
-join_on_startup = true
-
-# Start secondary node
-NODE_ID=secondary-node ./target/release/songbird-orchestrator \
-  --config=songbird-node2.toml
-```
-
-#### **Node 3 (Tertiary)**
-```bash
-# songbird-node3.toml
-[federation]
-cluster_id = "production-cluster"
-node_id = "tertiary-node"
-cluster_endpoints = [
-  "https://node1.example.com:8080",
-  "https://node2.example.com:8080"
-]
-join_on_startup = true
-
-# Start tertiary node
-NODE_ID=tertiary-node ./target/release/songbird-orchestrator \
-  --config=songbird-node3.toml
-```
-
-#### **Federation Health Check**
-```bash
-# Check cluster status from any node
-curl http://node1.example.com:8080/api/federation/status
-
-# Expected response:
-{
-  "cluster_status": {
-    "cluster_id": "production-cluster",
-    "node_count": 3,
-    "healthy_nodes": 3,
-    "cluster_health": 1.0
-  },
-  "nodes": [
-    {"node_id": "primary-node", "status": "online"},
-    {"node_id": "secondary-node", "status": "online"}, 
-    {"node_id": "tertiary-node", "status": "online"}
-  ]
-}
-```
-
----
-
-## 🐳 **DOCKER DEPLOYMENT**
-
-### **Containerized Deployment**
-
-#### **1. Dockerfile**
 ```dockerfile
-# Dockerfile
-FROM rust:1.70 as builder
+# Production Dockerfile
+FROM rust:1.75-slim as builder
 
-WORKDIR /usr/src/songbird
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy source code
 COPY . .
-RUN cargo build --release
 
+# Build release binary
+RUN cargo build --release --bin songbird-orchestrator
+
+# Runtime stage
 FROM debian:bookworm-slim
+
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-COPY --from=builder /usr/src/songbird/target/release/songbird-orchestrator .
-COPY --from=builder /usr/src/songbird/target/release/gaming-demo .
-COPY docker/songbird-production.toml ./config/
+# Create non-root user
+RUN useradd -r -s /bin/false songbird
 
-EXPOSE 8080 8443 9090
+# Copy binary
+COPY --from=builder /app/target/release/songbird-orchestrator /usr/local/bin/
 
-ENTRYPOINT ["./songbird-orchestrator"]
-CMD ["--config=config/songbird-production.toml"]
+# Create directories
+RUN mkdir -p /etc/songbird /var/log/songbird && \
+    chown -R songbird:songbird /etc/songbird /var/log/songbird
+
+# Switch to non-root user
+USER songbird
+
+# Expose ports
+EXPOSE 8080 8082 9090
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Start application
+CMD ["songbird-orchestrator"]
 ```
 
-#### **2. Docker Compose**
+#### 2. Build and Run
+
+```bash
+# Build image
+docker build -t songbird-orchestrator:latest .
+
+# Run container
+docker run -d \
+  --name songbird-orchestrator \
+  --env-file .env \
+  -p 8080:8080 \
+  -p 8082:8082 \
+  -p 9090:9090 \
+  --restart unless-stopped \
+  songbird-orchestrator:latest
+```
+
+### Multi-Node Docker Compose
+
+#### docker-compose.yml
+
 ```yaml
-# docker-compose.yml
 version: '3.8'
 
 services:
-  songbird-primary:
-    build: .
-    container_name: songbird-primary
-    hostname: songbird-primary
+  songbird-node-1:
+    image: songbird-orchestrator:latest
+    container_name: songbird-node-1
+    environment:
+      - SONGBIRD_FEDERATION_NODE_ID=node-1
+      - SONGBIRD_BIND_ADDRESS=0.0.0.0
+      - SONGBIRD_CLUSTER_ENDPOINTS=http://songbird-node-2:8082,http://songbird-node-3:8082
     ports:
       - "8080:8080"
-      - "8443:8443"
+      - "8082:8082"
       - "9090:9090"
-    environment:
-      - NODE_ID=primary-docker
-      - CLUSTER_ID=docker-cluster
-    volumes:
-      - ./config/primary.toml:/app/config/songbird.toml:ro
-      - songbird-data:/app/data
-      - ./logs:/app/logs
     networks:
       - songbird-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  songbird-secondary:
-    build: .
-    container_name: songbird-secondary
-    hostname: songbird-secondary
+  songbird-node-2:
+    image: songbird-orchestrator:latest
+    container_name: songbird-node-2
+    environment:
+      - SONGBIRD_FEDERATION_NODE_ID=node-2
+      - SONGBIRD_BIND_ADDRESS=0.0.0.0
+      - SONGBIRD_ORCHESTRATOR_PORT=8081
+      - SONGBIRD_FEDERATION_PORT=8083
+      - SONGBIRD_CLUSTER_ENDPOINTS=http://songbird-node-1:8082,http://songbird-node-3:8082
     ports:
-      - "8081:8080"
-      - "8444:8443"
+      - "8081:8081"
+      - "8083:8083"
       - "9091:9090"
-    environment:
-      - NODE_ID=secondary-docker
-      - CLUSTER_ID=docker-cluster
-    volumes:
-      - ./config/secondary.toml:/app/config/songbird.toml:ro
-      - songbird-data-2:/app/data
-    depends_on:
-      - songbird-primary
     networks:
       - songbird-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-volumes:
-  songbird-data:
-  songbird-data-2:
+  songbird-node-3:
+    image: songbird-orchestrator:latest
+    container_name: songbird-node-3
+    environment:
+      - SONGBIRD_FEDERATION_NODE_ID=node-3
+      - SONGBIRD_BIND_ADDRESS=0.0.0.0
+      - SONGBIRD_ORCHESTRATOR_PORT=8082
+      - SONGBIRD_FEDERATION_PORT=8084
+      - SONGBIRD_CLUSTER_ENDPOINTS=http://songbird-node-1:8082,http://songbird-node-2:8083
+    ports:
+      - "8082:8082"
+      - "8084:8084"
+      - "9092:9090"
+    networks:
+      - songbird-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: songbird-lb
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/ssl:ro
+    networks:
+      - songbird-network
+    depends_on:
+      - songbird-node-1
+      - songbird-node-2
+      - songbird-node-3
+    restart: unless-stopped
+
+  # Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: songbird-prometheus
+    ports:
+      - "9093:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - songbird-network
+    restart: unless-stopped
 
 networks:
   songbird-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 ```
 
-#### **3. Deploy with Docker**
+#### Deploy Multi-Node Cluster
+
 ```bash
-# Build and deploy
+# Start the cluster
 docker-compose up -d
 
-# Check status
+# Check cluster status
 docker-compose ps
 
 # View logs
-docker-compose logs -f songbird-primary
+docker-compose logs -f songbird-node-1
 
-# Scale the cluster
-docker-compose up -d --scale songbird-secondary=3
-
-# Health check
-curl http://localhost:8080/api/health
+# Scale horizontally
+docker-compose up -d --scale songbird-node=5
 ```
 
 ---
 
-## ☸️ **KUBERNETES DEPLOYMENT**
+## ☸️ **Kubernetes Deployment**
 
-### **K8s Manifests**
+### Namespace and ConfigMap
 
-#### **1. Namespace & ConfigMap**
+#### namespace.yaml
 ```yaml
-# k8s/namespace.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
   name: songbird
----
-# k8s/configmap.yaml
+  labels:
+    name: songbird
+```
+
+#### configmap.yaml
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: songbird-config
   namespace: songbird
 data:
-  songbird.toml: |
-    [primal_registry]
-    auto_discovery = true
-    
-    [federation]
-    cluster_id = "k8s-cluster"
-    auto_discovery = true
-    heartbeat_interval = 30
-    
-    [gaming]
-    auto_detect_games = true
-    protocols = ["ipx", "directplay", "tcp", "udp"]
-    
-    [security]
-    encryption_enabled = true
-    
-    [observability]
-    metrics_enabled = true
-    metrics_port = 9090
+  SONGBIRD_ENV: "production"
+  SONGBIRD_BIND_ADDRESS: "0.0.0.0"
+  SONGBIRD_ORCHESTRATOR_PORT: "8080"
+  SONGBIRD_FEDERATION_PORT: "8082"
+  SONGBIRD_MAX_NODES: "1000"
+  RUST_LOG: "info,songbird_core=debug"
 ```
 
-#### **2. Deployment**
+### Deployment
+
+#### deployment.yaml
 ```yaml
-# k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -676,79 +383,129 @@ spec:
     spec:
       containers:
       - name: songbird-orchestrator
-        image: songbird:latest
+        image: songbird-orchestrator:latest
         ports:
         - containerPort: 8080
-        - containerPort: 8443
+          name: http
+        - containerPort: 8082
+          name: federation
         - containerPort: 9090
+          name: metrics
+        envFrom:
+        - configMapRef:
+            name: songbird-config
         env:
-        - name: NODE_ID
+        - name: SONGBIRD_FEDERATION_NODE_ID
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        - name: CLUSTER_ID
-          value: "k8s-cluster"
-        volumeMounts:
-        - name: config
-          mountPath: /app/config
-          readOnly: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
         livenessProbe:
           httpGet:
-            path: /api/health
+            path: /health
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /api/health
+            path: /ready
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "500m"
-          limits:
-            memory: "4Gi"
-            cpu: "2000m"
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: logs
+          mountPath: /var/log/songbird
       volumes:
-      - name: config
-        configMap:
-          name: songbird-config
+      - name: tmp
+        emptyDir: {}
+      - name: logs
+        emptyDir: {}
+      securityContext:
+        fsGroup: 1000
 ```
 
-#### **3. Service & Ingress**
+### Service and Ingress
+
+#### service.yaml
 ```yaml
-# k8s/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: songbird-service
+  name: songbird-orchestrator
   namespace: songbird
+  labels:
+    app: songbird-orchestrator
 spec:
   selector:
     app: songbird-orchestrator
   ports:
-  - name: api
-    port: 8080
+  - name: http
+    port: 80
     targetPort: 8080
-  - name: secure
-    port: 8443
-    targetPort: 8443
+    protocol: TCP
+  - name: federation
+    port: 8082
+    targetPort: 8082
+    protocol: TCP
   - name: metrics
     port: 9090
     targetPort: 9090
+    protocol: TCP
   type: ClusterIP
+
 ---
-# k8s/ingress.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: songbird-orchestrator-headless
+  namespace: songbird
+  labels:
+    app: songbird-orchestrator
+spec:
+  selector:
+    app: songbird-orchestrator
+  ports:
+  - name: federation
+    port: 8082
+    targetPort: 8082
+    protocol: TCP
+  clusterIP: None
+```
+
+#### ingress.yaml
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: songbird-ingress
+  name: songbird-orchestrator
   namespace: songbird
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
 spec:
+  tls:
+  - hosts:
+    - songbird.example.com
+    secretName: songbird-tls
   rules:
   - host: songbird.example.com
     http:
@@ -757,230 +514,742 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: songbird-service
+            name: songbird-orchestrator
             port:
-              number: 8080
+              number: 80
 ```
 
-#### **4. Deploy to Kubernetes**
-```bash
-# Apply all manifests
-kubectl apply -f k8s/
+### Deploy to Kubernetes
 
-# Check deployment
+```bash
+# Apply all configurations
+kubectl apply -f namespace.yaml
+kubectl apply -f configmap.yaml
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+kubectl apply -f ingress.yaml
+
+# Check deployment status
 kubectl get pods -n songbird
 kubectl get services -n songbird
+kubectl get ingress -n songbird
 
 # View logs
 kubectl logs -f deployment/songbird-orchestrator -n songbird
 
-# Port forward for testing
-kubectl port-forward -n songbird svc/songbird-service 8080:8080
-
-# Test API
-curl http://localhost:8080/api/health
+# Scale deployment
+kubectl scale deployment songbird-orchestrator --replicas=5 -n songbird
 ```
 
 ---
 
-## 🔧 **CONFIGURATION MANAGEMENT**
+## 🖥️ **Bare Metal Deployment**
 
-### **Environment Variables**
+### System Preparation
+
+#### 1. Install Dependencies
+
 ```bash
-# Core Configuration
-export SONGBIRD_CONFIG="/path/to/songbird.toml"
-export NODE_ID="unique-node-identifier"
-export CLUSTER_ID="production-cluster"
+# Ubuntu/Debian
+sudo apt update
+sudo apt install -y \
+    curl \
+    wget \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    ca-certificates
 
-# Security
-export BEARDOG_API_KEY="your-beardog-api-key"
-export TOADSTOOL_TOKEN="your-toadstool-token"
-
-# TLS Certificates
-export TLS_CERT_PATH="/etc/songbird/certs/songbird.crt"
-export TLS_KEY_PATH="/etc/songbird/certs/songbird.key"
-
-# Observability
-export METRICS_ENABLED="true"
-export LOG_LEVEL="info"
-export AUDIT_ENABLED="true"
+# CentOS/RHEL
+sudo yum update
+sudo yum groupinstall -y "Development Tools"
+sudo yum install -y \
+    openssl-devel \
+    ca-certificates
 ```
 
-### **Configuration Validation**
-```bash
-# Validate configuration before deployment
-./target/release/songbird-orchestrator --validate-config --config=songbird.toml
+#### 2. Install Rust
 
-# Test configuration connectivity
-./target/release/songbird-orchestrator --test-connections --config=songbird.toml
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+rustup update stable
+```
+
+#### 3. Build from Source
+
+```bash
+# Clone repository
+git clone https://github.com/ecoPrimals/SongBird.git
+cd SongBird
+
+# Build release binary
+cargo build --release --bin songbird-orchestrator
+
+# Install binary
+sudo cp target/release/songbird-orchestrator /usr/local/bin/
+sudo chmod +x /usr/local/bin/songbird-orchestrator
+```
+
+### Service Configuration
+
+#### 1. Create User and Directories
+
+```bash
+# Create service user
+sudo useradd -r -s /bin/false songbird
+
+# Create directories
+sudo mkdir -p /etc/songbird /var/log/songbird /var/lib/songbird
+sudo chown -R songbird:songbird /etc/songbird /var/log/songbird /var/lib/songbird
+```
+
+#### 2. Configuration File
+
+Create `/etc/songbird/config.toml`:
+
+```toml
+[core]
+node_id = "prod-node-1"
+bind_address = "0.0.0.0"
+orchestrator_port = 8080
+federation_port = 8082
+environment = "production"
+
+[federation]
+enabled = true
+heartbeat_interval_seconds = 30
+discovery_enabled = true
+max_nodes = 1000
+cluster_endpoints = [
+    "http://node2.internal:8082",
+    "http://node3.internal:8082"
+]
+
+[network]
+connection_timeout_seconds = 30
+request_timeout_seconds = 60
+health_check_timeout_seconds = 5
+
+[observability]
+metrics_enabled = true
+metrics_port = 9090
+log_level = "info"
+
+[security]
+tls_enabled = true
+cert_path = "/etc/ssl/certs/songbird.crt"
+key_path = "/etc/ssl/private/songbird.key"
+```
+
+#### 3. Systemd Service
+
+Create `/etc/systemd/system/songbird-orchestrator.service`:
+
+```ini
+[Unit]
+Description=Songbird Universal Orchestrator
+Documentation=https://github.com/ecoPrimals/SongBird
+After=network.target
+Wants=network.target
+
+[Service]
+Type=exec
+User=songbird
+Group=songbird
+ExecStart=/usr/local/bin/songbird-orchestrator --config /etc/songbird/config.toml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=songbird-orchestrator
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/songbird /var/lib/songbird
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### 4. Start Service
+
+```bash
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Enable and start service
+sudo systemctl enable songbird-orchestrator
+sudo systemctl start songbird-orchestrator
+
+# Check status
+sudo systemctl status songbird-orchestrator
+
+# View logs
+sudo journalctl -u songbird-orchestrator -f
 ```
 
 ---
 
-## 📊 **MONITORING & MAINTENANCE**
+## 🌐 **Federation Setup**
 
-### **Production Monitoring**
+### Multi-Node Federation
+
+#### 1. Node Configuration
+
+**Node 1** (`node1.internal`):
 ```bash
-# System metrics
-curl http://localhost:9090/metrics | grep songbird_
-
-# Federation health
-watch -n 30 'curl -s http://localhost:8080/api/federation/status | jq ".cluster_status.cluster_health"'
-
-# Gaming sessions
-watch -n 10 'curl -s http://localhost:8080/api/gaming/sessions | jq "length"'
-
-# Error rates
-curl -s http://localhost:8080/api/metrics | jq '.system_metrics.error_rate'
+export SONGBIRD_FEDERATION_NODE_ID=node-1
+export SONGBIRD_BIND_ADDRESS=0.0.0.0
+export SONGBIRD_ORCHESTRATOR_PORT=8080
+export SONGBIRD_FEDERATION_PORT=8082
+export SONGBIRD_CLUSTER_ENDPOINTS="http://node2.internal:8082,http://node3.internal:8082"
 ```
 
-### **Log Management**
+**Node 2** (`node2.internal`):
 ```bash
-# Centralized logging with journald
-sudo journalctl -u songbird -f --since "1 hour ago"
-
-# Log rotation
-sudo tee /etc/logrotate.d/songbird << EOF
-/var/log/songbird/*.log {
-    daily
-    rotate 30
-    compress
-    delaycompress
-    missingok
-    create 644 songbird songbird
-}
-EOF
+export SONGBIRD_FEDERATION_NODE_ID=node-2
+export SONGBIRD_BIND_ADDRESS=0.0.0.0
+export SONGBIRD_ORCHESTRATOR_PORT=8080
+export SONGBIRD_FEDERATION_PORT=8082
+export SONGBIRD_CLUSTER_ENDPOINTS="http://node1.internal:8082,http://node3.internal:8082"
 ```
 
-### **Backup & Recovery**
+**Node 3** (`node3.internal`):
 ```bash
-# Backup critical data
-tar -czf songbird-backup-$(date +%Y%m%d).tar.gz \
-  /etc/songbird \
-  /opt/songbird/data \
-  /var/log/songbird
+export SONGBIRD_FEDERATION_NODE_ID=node-3
+export SONGBIRD_BIND_ADDRESS=0.0.0.0
+export SONGBIRD_ORCHESTRATOR_PORT=8080
+export SONGBIRD_FEDERATION_PORT=8082
+export SONGBIRD_CLUSTER_ENDPOINTS="http://node1.internal:8082,http://node2.internal:8082"
+```
 
-# Database backup (if applicable)
-# Application state is typically stateless, but federation state may need backing up
+#### 2. Network Discovery
+
+```bash
+# Enable network discovery
+export SONGBIRD_AUTO_DISCOVERY_ENABLED=true
+export SONGBIRD_DISCOVERY_NETWORK_RANGES="10.0.0.0/8,192.168.0.0/16"
+export SONGBIRD_DISCOVERY_PORTS="8080,8081,8082,8443,9090"
+```
+
+#### 3. Health Monitoring
+
+```bash
+# Configure health monitoring
+export SONGBIRD_HEARTBEAT_INTERVAL=30
+export SONGBIRD_HEALTH_CHECK_INTERVAL=60
+export SONGBIRD_NODE_TIMEOUT=300
+```
+
+### Federation Verification
+
+```bash
+# Check federation status
+curl http://localhost:8080/federation/status
+
+# List federation nodes
+curl http://localhost:8080/federation/nodes
+
+# Check node health
+curl http://localhost:8080/federation/health
+
+# Send test message
+curl -X POST http://localhost:8080/federation/broadcast \
+  -H "Content-Type: application/json" \
+  -d '{"message": "test", "type": "ping"}'
 ```
 
 ---
 
-## 🚨 **TROUBLESHOOTING**
+## 📊 **Monitoring & Observability**
 
-### **Common Issues & Solutions**
+### Prometheus Configuration
 
-#### **Issue**: Service won't start
+#### prometheus.yml
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "songbird_rules.yml"
+
+scrape_configs:
+  - job_name: 'songbird-orchestrator'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  - job_name: 'songbird-federation'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - songbird
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: songbird-orchestrator
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: metrics
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+```
+
+### Grafana Dashboard
+
+#### Key Metrics to Monitor
+
+1. **System Metrics**
+   - CPU usage per node
+   - Memory usage per node
+   - Network I/O
+   - Disk usage
+
+2. **Federation Metrics**
+   - Active nodes count
+   - Heartbeat success rate
+   - Message broadcast latency
+   - Node discovery rate
+
+3. **Application Metrics**
+   - Request throughput
+   - Response latency
+   - Error rates
+   - Service registration count
+
+4. **Performance Metrics**
+   - Zero-copy message efficiency
+   - Buffer pool utilization
+   - Memory allocation rate
+   - GC pressure
+
+### Log Aggregation
+
+#### Fluentd Configuration
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+data:
+  fluent.conf: |
+    <source>
+      @type tail
+      path /var/log/songbird/*.log
+      pos_file /var/log/fluentd-songbird.log.pos
+      tag songbird.*
+      format json
+      time_key timestamp
+      time_format %Y-%m-%dT%H:%M:%S.%NZ
+    </source>
+    
+    <match songbird.**>
+      @type elasticsearch
+      host elasticsearch
+      port 9200
+      index_name songbird
+      type_name _doc
+    </match>
+```
+
+---
+
+## 🔒 **Security Configuration**
+
+### TLS/SSL Setup
+
+#### 1. Generate Certificates
+
+```bash
+# Generate private key
+openssl genrsa -out songbird.key 2048
+
+# Generate certificate signing request
+openssl req -new -key songbird.key -out songbird.csr \
+  -subj "/C=US/ST=State/L=City/O=Organization/CN=songbird.example.com"
+
+# Generate self-signed certificate (for testing)
+openssl x509 -req -in songbird.csr -signkey songbird.key -out songbird.crt -days 365
+
+# Or use Let's Encrypt for production
+certbot certonly --standalone -d songbird.example.com
+```
+
+#### 2. Configure TLS
+
+```bash
+export TLS_CERT_PATH=/etc/ssl/certs/songbird.crt
+export TLS_KEY_PATH=/etc/ssl/private/songbird.key
+export SONGBIRD_TLS_ENABLED=true
+```
+
+### Authentication
+
+#### JWT Configuration
+
+```bash
+export JWT_SECRET=your-super-secret-jwt-key
+export JWT_EXPIRATION=3600
+export SONGBIRD_AUTH_ENABLED=true
+```
+
+#### API Key Authentication
+
+```bash
+export API_KEY_ENABLED=true
+export API_KEYS="key1:read,key2:write,key3:admin"
+```
+
+### Network Security
+
+#### Firewall Rules
+
+```bash
+# Allow orchestrator port
+sudo ufw allow 8080/tcp
+
+# Allow federation port
+sudo ufw allow 8082/tcp
+
+# Allow metrics port (restrict to monitoring network)
+sudo ufw allow from 10.0.1.0/24 to any port 9090
+
+# Allow SSH (if needed)
+sudo ufw allow 22/tcp
+
+# Enable firewall
+sudo ufw enable
+```
+
+#### Network Policies (Kubernetes)
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: songbird-network-policy
+  namespace: songbird
+spec:
+  podSelector:
+    matchLabels:
+      app: songbird-orchestrator
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8082
+  egress:
+  - {}
+```
+
+---
+
+## ⚡ **Performance Tuning**
+
+### System Optimization
+
+#### 1. Kernel Parameters
+
+```bash
+# Add to /etc/sysctl.conf
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 87380 16777216
+net.ipv4.tcp_wmem = 4096 65536 16777216
+net.core.netdev_max_backlog = 5000
+net.ipv4.tcp_congestion_control = bbr
+
+# Apply changes
+sudo sysctl -p
+```
+
+#### 2. File Descriptor Limits
+
+```bash
+# Add to /etc/security/limits.conf
+songbird soft nofile 65536
+songbird hard nofile 65536
+
+# For systemd services, add to service file:
+LimitNOFILE=65536
+```
+
+### Application Tuning
+
+#### 1. Memory Configuration
+
+```bash
+# Increase buffer sizes for high throughput
+export SONGBIRD_LARGE_BUFFER_SIZE=32768
+export SONGBIRD_SMALL_BUFFER_SIZE=4096
+
+# Configure buffer pool
+export SONGBIRD_BUFFER_POOL_SIZE=1000
+```
+
+#### 2. Concurrency Settings
+
+```bash
+# Adjust worker threads
+export TOKIO_WORKER_THREADS=8
+
+# Configure connection pools
+export SONGBIRD_MAX_CONNECTIONS=1000
+export SONGBIRD_CONNECTION_POOL_SIZE=100
+```
+
+#### 3. Federation Optimization
+
+```bash
+# Optimize heartbeat intervals for your network
+export SONGBIRD_HEARTBEAT_INTERVAL=15  # For low-latency networks
+export SONGBIRD_HEARTBEAT_INTERVAL=60  # For high-latency networks
+
+# Adjust discovery intervals
+export SONGBIRD_DISCOVERY_INTERVAL=120  # 2 minutes
+export SONGBIRD_NODE_SCAN_INTERVAL=60   # 1 minute
+```
+
+### Benchmarking
+
+#### Load Testing
+
+```bash
+# Install hey (HTTP load testing tool)
+go install github.com/rakyll/hey@latest
+
+# Test orchestrator API
+hey -n 10000 -c 100 -m GET http://localhost:8080/health
+
+# Test federation endpoints
+hey -n 5000 -c 50 -m GET http://localhost:8082/federation/status
+```
+
+#### Performance Monitoring
+
+```bash
+# Monitor system resources
+htop
+iotop
+nethogs
+
+# Monitor application metrics
+curl http://localhost:9090/metrics | grep songbird
+
+# Check memory usage
+cat /proc/$(pgrep songbird)/status | grep -E "VmRSS|VmSize"
+```
+
+---
+
+## 🔧 **Troubleshooting**
+
+### Common Issues
+
+#### 1. Service Won't Start
+
+**Symptoms**: Service fails to start or exits immediately
+
+**Solutions**:
 ```bash
 # Check configuration
-./target/release/songbird-orchestrator --validate-config
+songbird-orchestrator --config /etc/songbird/config.toml --validate
+
+# Check logs
+journalctl -u songbird-orchestrator -n 50
+
+# Check port availability
+netstat -tlnp | grep :8080
 
 # Check permissions
 ls -la /etc/songbird/
-sudo chown -R songbird:songbird /opt/songbird
-
-# Check ports
-netstat -tulpn | grep :8080
+sudo -u songbird songbird-orchestrator --version
 ```
 
-#### **Issue**: Federation connection failed
+#### 2. Federation Issues
+
+**Symptoms**: Nodes can't discover each other or heartbeats fail
+
+**Solutions**:
 ```bash
-# Test network connectivity
-curl -v http://remote-node:8080/api/health
+# Check network connectivity
+telnet node2.internal 8082
 
-# Check certificates
-openssl s_client -connect remote-node:8443 -servername remote-node
+# Verify DNS resolution
+nslookup node2.internal
 
-# Verify cluster endpoints in config
-grep -A 10 "\[federation\]" /etc/songbird/songbird.toml
+# Check firewall rules
+sudo ufw status
+iptables -L
+
+# Test federation endpoints
+curl http://node2.internal:8082/federation/info
 ```
 
-#### **Issue**: Gaming setup failed
+#### 3. High Memory Usage
+
+**Symptoms**: Memory usage continuously grows
+
+**Solutions**:
 ```bash
-# Check primal connectivity
-curl http://localhost:8080/api/primals/discover
+# Check for memory leaks
+valgrind --tool=memcheck --leak-check=full songbird-orchestrator
 
-# Test gaming endpoints
-curl -X POST http://localhost:8080/api/gaming/setup \
-  -d '{"setup_type": "one_touch"}'
+# Monitor memory allocation
+export RUST_LOG=debug
+# Look for excessive allocations in logs
 
-# Check system capabilities
-curl http://localhost:8080/api/gaming/capabilities
+# Adjust buffer pool settings
+export SONGBIRD_BUFFER_POOL_SIZE=500  # Reduce pool size
 ```
 
----
+#### 4. Performance Issues
 
-## 🎯 **DEPLOYMENT CHECKLIST**
+**Symptoms**: High latency or low throughput
 
-### **Pre-Deployment**
-- [ ] System requirements met
-- [ ] Rust 1.70+ installed
-- [ ] Configuration files prepared
-- [ ] TLS certificates obtained (production)
-- [ ] Firewall rules configured
-- [ ] DNS records configured (production)
-
-### **Deployment**
-- [ ] Build successful (`cargo build --release`)
-- [ ] Configuration validated
-- [ ] Service user created
-- [ ] Systemd service installed (Linux)
-- [ ] Service started and enabled
-- [ ] Health check passes
-
-### **Post-Deployment**
-- [ ] API endpoints responding
-- [ ] Federation cluster joined (if multi-node)
-- [ ] Primal discovery working
-- [ ] Gaming setup functional
-- [ ] Monitoring alerts configured
-- [ ] Log rotation configured
-- [ ] Backup procedures tested
-
----
-
-## 🎉 **SUCCESS VALIDATION**
-
-### **Complete Deployment Test**
+**Solutions**:
 ```bash
-#!/bin/bash
-# deployment-test.sh
+# Check CPU usage
+top -p $(pgrep songbird)
 
-echo "🧪 Testing Songbird Deployment..."
+# Monitor network I/O
+iftop -i eth0
 
+# Check disk I/O
+iostat -x 1
+
+# Optimize configuration
+export TOKIO_WORKER_THREADS=16  # Match CPU cores
+export SONGBIRD_LARGE_BUFFER_SIZE=65536  # Increase buffer size
+```
+
+### Diagnostic Commands
+
+```bash
 # Health check
-echo "1. Health Check..."
-curl -f http://localhost:8080/api/health || { echo "❌ Health check failed"; exit 1; }
-echo "✅ Health check passed"
+curl http://localhost:8080/health
 
-# Gaming setup
-echo "2. Gaming Setup Test..."
-RESULT=$(curl -s -X POST http://localhost:8080/api/gaming/setup -d '{"setup_type":"one_touch"}' | jq -r '.success')
-if [ "$RESULT" = "true" ]; then
-    echo "✅ Gaming setup working"
-else
-    echo "❌ Gaming setup failed"
-    exit 1
-fi
+# Federation status
+curl http://localhost:8082/federation/status | jq
 
-# Primal discovery
-echo "3. Primal Discovery Test..."
-curl -s http://localhost:8080/api/primals/discover | jq -e '.discovered_primals | length > 0' || {
-    echo "⚠️  No primals discovered (may be normal in test environment)"
-}
+# Metrics snapshot
+curl http://localhost:9090/metrics | grep -E "songbird_(requests|errors|duration)"
 
-# Metrics
-echo "4. Metrics Test..."
-curl -f http://localhost:9090/metrics > /dev/null && echo "✅ Metrics working" || echo "⚠️  Metrics endpoint not responding"
+# Configuration dump
+curl http://localhost:8080/debug/config
 
-echo "🎉 Deployment test completed successfully!"
+# Memory statistics
+curl http://localhost:8080/debug/memory
+
+# Thread dump
+kill -USR1 $(pgrep songbird)  # If implemented
+```
+
+### Log Analysis
+
+#### Important Log Patterns
+
+```bash
+# Federation issues
+grep -i "federation\|heartbeat\|discovery" /var/log/songbird/orchestrator.log
+
+# Network errors
+grep -i "connection\|timeout\|refused" /var/log/songbird/orchestrator.log
+
+# Performance issues
+grep -i "slow\|timeout\|buffer\|memory" /var/log/songbird/orchestrator.log
+
+# Security issues
+grep -i "auth\|unauthorized\|forbidden" /var/log/songbird/orchestrator.log
 ```
 
 ---
 
-**🚀 Your Songbird Universal Orchestrator is now deployed and ready for production!**
+## 📞 **Support and Maintenance**
 
-**Next Steps**: 
-- [Gaming Setup Guide](GAMING_SETUP_GUIDE.md) - Configure gaming networks
-- [API Reference](API_REFERENCE.md) - Full API documentation  
-- [Live Testing Guide](LIVE_TESTING_GUIDE.md) - Comprehensive testing procedures 
+### Regular Maintenance Tasks
+
+1. **Daily**
+   - Check service health
+   - Monitor resource usage
+   - Review error logs
+
+2. **Weekly**
+   - Update security patches
+   - Rotate logs
+   - Backup configuration
+
+3. **Monthly**
+   - Performance review
+   - Capacity planning
+   - Security audit
+
+### Backup Strategy
+
+```bash
+# Configuration backup
+tar -czf songbird-config-$(date +%Y%m%d).tar.gz /etc/songbird/
+
+# Log backup (if not using log aggregation)
+tar -czf songbird-logs-$(date +%Y%m%d).tar.gz /var/log/songbird/
+
+# Database backup (if applicable)
+pg_dump songbird_prod > songbird-db-$(date +%Y%m%d).sql
+```
+
+### Update Procedure
+
+```bash
+# 1. Backup current installation
+sudo systemctl stop songbird-orchestrator
+cp /usr/local/bin/songbird-orchestrator /usr/local/bin/songbird-orchestrator.backup
+
+# 2. Download new version
+wget https://github.com/ecoPrimals/SongBird/releases/download/v0.2.0/songbird-orchestrator
+chmod +x songbird-orchestrator
+sudo mv songbird-orchestrator /usr/local/bin/
+
+# 3. Test configuration
+songbird-orchestrator --config /etc/songbird/config.toml --validate
+
+# 4. Start service
+sudo systemctl start songbird-orchestrator
+
+# 5. Verify operation
+curl http://localhost:8080/health
+```
+
+---
+
+*This deployment guide is continuously updated with best practices and lessons learned from production deployments.* 

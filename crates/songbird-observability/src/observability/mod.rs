@@ -1,3 +1,5 @@
+#![allow(clippy::unused_async)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -5,7 +7,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 pub mod dashboard;
 pub mod health;
@@ -66,6 +69,7 @@ impl Default for ClusterStatus {
 }
 
 impl ClusterStatus {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             total_nodes: 0,
@@ -76,14 +80,17 @@ impl ClusterStatus {
         }
     }
 
+    #[must_use]
     pub fn total_nodes(&self) -> usize {
         self.total_nodes
     }
 
+    #[must_use]
     pub fn running_services(&self) -> usize {
         self.running_services
     }
 
+    #[must_use]
     pub fn total_services(&self) -> usize {
         self.total_services
     }
@@ -147,6 +154,7 @@ pub struct ObservabilityManager {
 
 impl ObservabilityManager {
     /// Create new observability manager
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metrics_store: Arc::new(RwLock::new(HashMap::new())),
@@ -157,6 +165,10 @@ impl ObservabilityManager {
     }
 
     /// Start observability monitoring
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if metrics collection or health monitoring fails to start
     pub async fn start(&self) -> Result<()> {
         info!("Starting observability manager");
 
@@ -171,12 +183,20 @@ impl ObservabilityManager {
     }
 
     /// Stop observability monitoring
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn stop(&self) -> Result<()> {
         info!("Stopping observability manager");
         Ok(())
     }
 
     /// Get current system metrics
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_metrics(&self) -> Result<SystemMetrics> {
         let metrics = SystemMetrics {
             cpu_usage: 0.0,
@@ -194,12 +214,20 @@ impl ObservabilityManager {
     }
 
     /// Get service health status
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_service_health(&self, service_id: &str) -> Result<Option<ServiceHealth>> {
         let health_store = self.health_store.read().await;
         Ok(health_store.get(service_id).cloned())
     }
 
     /// Get cluster status
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_cluster_status(&self) -> Result<ClusterStatus> {
         let status = self.cluster_status.read().await;
         Ok(status.clone())
@@ -216,6 +244,10 @@ impl ObservabilityManager {
     }
 
     /// Record a health check result
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn record_health_check(
         &self,
         service_id: String,

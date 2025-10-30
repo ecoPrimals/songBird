@@ -10,8 +10,8 @@
 // Shows version information about Songbird Orchestrator
 
 use crate::cli::ui;
-use crate::cli::CliResult;
-use colored::*;
+use crate::errors::CliResult;
+use colored::Colorize;
 /// Execute the version command
 pub async fn execute_version_command(detailed: bool) -> CliResult<()> {
     if detailed {
@@ -77,9 +77,7 @@ fn build_info() -> String {
 
 /// Get Rust version used for build
 fn build_rust_version() -> String {
-    option_env!("VERGEN_RUSTC_SEMVER")
-        .unwrap_or(env!("CARGO_PKG_RUST_VERSION"))
-        .to_string()
+    option_env!("VERGEN_RUSTC_SEMVER").unwrap_or(env!("CARGO_PKG_RUST_VERSION")).to_string()
 }
 
 /// Show version information
@@ -101,11 +99,11 @@ pub async fn show_version(detailed: bool) -> CliResult<()> {
         println!("  Build Type: Release");
 
         println!("Features:");
-        println!("  • Zero-touch deployment ✅");
-        println!("  • Hyper HTTP client ✅");
-        println!("  • Service orchestration ✅");
-        println!("  • Load balancing ✅");
-        println!("  • Built-in observability ✅");
+        println!("  - Zero-touch deployment ✓");
+        println!("  - Hyper HTTP client ✓");
+        println!("  - Service orchestration ✓");
+        println!("  - Load balancing ✓");
+        println!("  - Built-in observability ✓");
     }
 
     Ok(())

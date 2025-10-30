@@ -17,16 +17,22 @@ pub enum FederationMessage {
         timestamp: DateTime<Utc>,
     },
     /// Request for node information
-    NodeDiscoveryRequest { sender_id: NodeId },
+    NodeDiscoveryRequest {
+        sender_id: NodeId,
+    },
     /// Response to discovery request
-    NodeDiscoveryResponse { nodes: Vec<NodeInfo> },
+    NodeDiscoveryResponse {
+        nodes: Vec<NodeInfo>,
+    },
     /// Periodic heartbeat
     Heartbeat {
         node_id: NodeId,
         resource_usage: ResourceUsage,
     },
     /// Service advertisement
-    ServiceAdvertisement { services: Vec<ServiceInfo> },
+    ServiceAdvertisement {
+        services: Vec<ServiceInfo>,
+    },
 }
 
 /// Local node information
@@ -53,7 +59,7 @@ pub struct NodeInfo {
     pub resources: ComputeResources,
     pub current_load: ResourceUsage,
 
-    /// Data capabilities  
+    /// Data capabilities
     pub available_datasets: Vec<DatasetInfo>,
     pub storage_capacity: StorageInfo,
 
@@ -72,9 +78,9 @@ pub struct NodeInfo {
 }
 
 /// Type of node in the federation
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NodeType {
-    /// Compute-focused node (CPUs, GPUs)
+    /// Compute-focused node (CPUs, GPUs,
     Compute,
     /// Storage-focused node (large datasets)
     Storage,
@@ -90,7 +96,7 @@ pub enum NodeType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputeResources {
     pub cpu_cores: u32,
-    pub cpu_architecture: String, // "x86_64", "ARM64", etc.
+    pub cpu_architecture: String, // "x86_64", "ARM64", etc."
     pub memory_total_gb: u64,
     pub memory_available_gb: u64,
     pub gpu_info: Vec<GpuInfo>,
@@ -101,7 +107,7 @@ pub struct ComputeResources {
 /// GPU information for scientific computing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuInfo {
-    pub model: String,                      // "NVIDIA A100", "AMD MI250X"
+    pub model: String,                      // "NVIDIA A100", "AMD MI250X""
     pub memory_gb: u32,                     // GPU memory
     pub compute_capability: Option<String>, // For CUDA compatibility
     pub utilization_percent: f32,
@@ -110,7 +116,7 @@ pub struct GpuInfo {
 /// Storage device information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageDevice {
-    pub device_type: String, // "NVMe", "SSD", "HDD"
+    pub device_type: String, // "NVMe", "SSD", "HDD""
     pub capacity_gb: u64,
     pub available_gb: u64,
     pub mount_point: String,
@@ -143,7 +149,7 @@ pub struct DatasetInfo {
     pub name: String,
     pub dataset_type: DatasetType,
     pub size_bytes: u64,
-    pub format: String, // "FASTA", "FASTQ", "BAM", "VCF", etc.
+    pub format: String, // "FASTA", "FASTQ", "BAM", "VCF", etc."
     pub checksum: String,
     pub access_level: AccessLevel,
     pub last_updated: DateTime<Utc>,
@@ -192,7 +198,7 @@ pub enum TrustLevel {
 /// Network location for optimization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkLocation {
-    pub region: String,         // "us-east", "eu-west", etc.
+    pub region: String,         // "us-east", "eu-west", etc."
     pub subnet: Option<String>, // For local optimization
     pub external_ip: Option<String>,
     pub internal_ip: Option<String>,
@@ -308,8 +314,9 @@ pub struct CpuUsage {
     pub interrupts_per_sec: u64,
 }
 
-/// Detailed memory usage information  
+/// Detailed memory usage information
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)]
 pub struct MemoryUsage {
     pub total_gb: u64,
     pub used_gb: u64,
@@ -332,6 +339,7 @@ pub struct GpuUsage {
 
 /// Network interface usage
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)]
 pub struct NetworkUsage {
     pub bytes_sent_per_sec: u64,
     pub bytes_received_per_sec: u64,

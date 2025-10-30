@@ -34,10 +34,11 @@ pub async fn handle_discovery_command(discovery_command: Option<DiscoveryCommand
             print_success("✅ Service discovery refreshed");
             Ok(())
         }
-        Some(DiscoveryCommands::Test { target, count }) => {
-            print_info(&format!(
-                "🔬 Testing connectivity to {target} ({count} attempts)"
-            ));
+        Some(DiscoveryCommands::Test {
+            target,
+            count,
+        }) => {
+            print_info(&format!("🔬 Testing connectivity to {target} ({count} attempts)"));
             print_success("✅ Connectivity test completed");
             Ok(())
         }

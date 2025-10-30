@@ -15,10 +15,10 @@ pub trait UniversalService: Send + Sync + 'static {
     type Error: std::error::Error + Send + Sync + 'static;
 
     /// Start the service
-    async fn start(&mut self) -> std::result::Result<(), Self::Error>;
+    async fn start(&mut self) -> Result<(), Self::Error>;
 
     /// Stop the service gracefully
-    async fn stop(&mut self) -> std::result::Result<(), Self::Error>;
+    async fn stop(&mut self) -> Result<(), Self::Error>;
 
     /// Check if the service is running
     fn is_running(&self) -> bool;
@@ -27,25 +27,20 @@ pub trait UniversalService: Send + Sync + 'static {
     fn service_info(&self) -> ServiceInfo;
 
     /// Handle a service request
-    async fn handle_request(
-        &self,
-        request: ServiceRequest,
-    ) -> std::result::Result<ServiceResponse, Self::Error>;
+    async fn handle_request(&self, request: ServiceRequest)
+        -> Result<ServiceResponse, Self::Error>;
 
     /// Get service health status
-    async fn health_check(&self) -> std::result::Result<HealthStatus, Self::Error>;
+    async fn health_check(&self) -> Result<HealthStatus, Self::Error>;
 
     /// Get service metrics
-    async fn get_metrics(&self) -> std::result::Result<ServiceMetrics, Self::Error>;
+    async fn get_metrics(&self) -> Result<ServiceMetrics, Self::Error>;
 
     /// Update service configuration
-    async fn update_config(
-        &mut self,
-        config: serde_json::Value,
-    ) -> std::result::Result<(), Self::Error>;
+    async fn update_config(&mut self, config: serde_json::Value) -> Result<(), Self::Error>;
 
     /// Shutdown the service (alias for stop)
-    async fn shutdown(&mut self) -> std::result::Result<(), Self::Error> {
+    async fn shutdown(&mut self) -> Result<(), Self::Error> {
         self.stop().await
     }
 }
@@ -62,7 +57,7 @@ pub struct ServiceRequest {
     pub client_info: Option<ClientInfo>,
     pub auth_info: Option<AuthInfo>,
     pub timestamp: DateTime<Utc>,
-    pub timeout: Option<std::time::Duration>,
+    pub timeout: Option<Duration>,
     pub correlation_id: Option<String>,
     pub trace_id: Option<String>,
 }
@@ -75,7 +70,7 @@ pub struct ServiceResponse {
     pub headers: HashMap<String, String>,
     pub body: Option<serde_json::Value>,
     pub timestamp: DateTime<Utc>,
-    pub processing_time: std::time::Duration,
+    pub processing_time: Duration,
     pub error_message: Option<String>,
     pub metadata: HashMap<String, serde_json::Value>,
 }
@@ -184,7 +179,7 @@ pub struct ParameterValidation {
 pub struct RateLimit {
     pub requests_per_minute: u32,
     pub burst_size: Option<u32>,
-    pub window_size: std::time::Duration,
+    pub window_size: Duration,
 }
 
 /// Service status enumeration
@@ -213,7 +208,7 @@ pub struct ServiceMetrics {
     pub request_count: u64,
     pub error_count: u64,
     pub average_response_time: f64,
-    pub uptime: std::time::Duration,
+    pub uptime: Duration,
     pub memory_usage: Option<u64>,
     pub cpu_usage: Option<f64>,
     pub active_connections: u64,
@@ -291,7 +286,7 @@ impl ServiceResponse {
             headers: HashMap::new(),
             body: None,
             timestamp: Utc::now(),
-            processing_time: std::time::Duration::from_millis(0),
+            processing_time: Duration::from_millis(0),
             error_message: None,
             metadata: HashMap::new(),
         }
@@ -306,7 +301,7 @@ impl ServiceResponse {
             headers: HashMap::new(),
             body: None,
             timestamp: Utc::now(),
-            processing_time: std::time::Duration::from_millis(0),
+            processing_time: Duration::from_millis(0),
             error_message: Some(message),
             metadata: HashMap::new(),
         }
@@ -328,7 +323,7 @@ impl ServiceResponse {
 
     /// Set processing time
     #[must_use]
-    pub const fn with_processing_time(mut self, duration: std::time::Duration) -> Self {
+    pub const fn with_processing_time(mut self, duration: Duration) -> Self {
         self.processing_time = duration;
         self
     }

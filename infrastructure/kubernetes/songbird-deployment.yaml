@@ -1,0 +1,405 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: songbird
+  labels:
+    name: songbird
+    environment: production
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: songbird-core
+  namespace: songbird
+  labels:
+    app: songbird-core
+    component: core
+    version: v1.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: songbird-core
+  template:
+    metadata:
+      labels:
+        app: songbird-core
+        component: core
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: songbird-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: songbird-core
+        image: songbird:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: RUST_ENV
+          value: "production"
+        - name: SONGBIRD_ENVIRONMENT
+          value: "production"
+        - name: SONGBIRD_BIND_ADDRESS
+          value: "0.0.0.0"
+        - name: SONGBIRD_PORT
+          value: "8080"
+        - name: SONGBIRD_LOG_LEVEL
+          value: "info"
+        - name: SONGBIRD_METRICS_ENABLED
+          value: "true"
+        - name: SONGBIRD_SECURITY_ENABLED
+          value: "true"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: data
+          mountPath: /app/data
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: config
+        configMap:
+          name: songbird-config
+      - name: data
+        persistentVolumeClaim:
+          claimName: songbird-data-pvc
+      - name: logs
+        emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: songbird-observability
+  namespace: songbird
+  labels:
+    app: songbird-observability
+    component: observability
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: songbird-observability
+  template:
+    metadata:
+      labels:
+        app: songbird-observability
+        component: observability
+        version: v1.0.0
+    spec:
+      serviceAccountName: songbird-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: songbird-observability
+        image: songbird-observability:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 9091
+          protocol: TCP
+        env:
+        - name: RUST_ENV
+          value: "production"
+        - name: SONGBIRD_ENVIRONMENT
+          value: "production"
+        - name: SONGBIRD_COMPONENT
+          value: "observability"
+        - name: SONGBIRD_METRICS_PORT
+          value: "9091"
+        - name: SONGBIRD_HEALTH_CHECK_INTERVAL
+          value: "30"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: metrics
+          mountPath: /app/metrics
+      volumes:
+      - name: metrics
+        persistentVolumeClaim:
+          claimName: songbird-metrics-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: songbird-discovery
+  namespace: songbird
+  labels:
+    app: songbird-discovery
+    component: discovery
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: songbird-discovery
+  template:
+    metadata:
+      labels:
+        app: songbird-discovery
+        component: discovery
+        version: v1.0.0
+    spec:
+      serviceAccountName: songbird-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: songbird-discovery
+        image: songbird-discovery:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8081
+          protocol: TCP
+        env:
+        - name: RUST_ENV
+          value: "production"
+        - name: SONGBIRD_ENVIRONMENT
+          value: "production"
+        - name: SONGBIRD_COMPONENT
+          value: "discovery"
+        - name: SONGBIRD_DISCOVERY_PORT
+          value: "8081"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: songbird-core-service
+  namespace: songbird
+  labels:
+    app: songbird-core
+    component: core
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  selector:
+    app: songbird-core
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: songbird-observability-service
+  namespace: songbird
+  labels:
+    app: songbird-observability
+    component: observability
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 9091
+    targetPort: 9091
+    protocol: TCP
+  selector:
+    app: songbird-observability
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: songbird-discovery-service
+  namespace: songbird
+  labels:
+    app: songbird-discovery
+    component: discovery
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8081
+    targetPort: 8081
+    protocol: TCP
+  selector:
+    app: songbird-discovery
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: songbird-service-account
+  namespace: songbird
+  labels:
+    app: songbird
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: songbird-config
+  namespace: songbird
+  labels:
+    app: songbird
+data:
+  ecosystem-integration.toml: |
+    # EcoPrimals Ecosystem Integration Configuration
+    # Kubernetes Production Environment
+    
+    [ecosystem]
+    name = "ecoPrimals"
+    version = "1.0.0"
+    coordinator = "songbird"
+    
+    [discovery]
+    enabled = true
+    discovery_interval = 30
+    health_check_interval = 15
+    timeout = 10
+    max_retries = 3
+    
+    [security.security_provider]
+    enabled = true
+    discovery_method = "capability"
+    auto_spawn = true
+    genetic_auth = true
+    
+    [storage.compute_provider]
+    enabled = true
+    discovery_method = "capability"
+    replication_factor = 3
+    
+    [network.storage_provider]
+    enabled = true
+    discovery_method = "capability"
+    mesh_networking = true
+    
+    [monitoring]
+    enabled = true
+    metrics_collection = true
+    distributed_tracing = true
+    
+    [federation]
+    enabled = true
+    tier = "regional"
+    auto_discovery = true
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: songbird-data-pvc
+  namespace: songbird
+  labels:
+    app: songbird
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: gp2
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: songbird-metrics-pvc
+  namespace: songbird
+  labels:
+    app: songbird
+    component: metrics
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: gp2 

@@ -3,7 +3,8 @@
 //!
 //! Comprehensive health monitoring system
 
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::sync::Arc;
 
 /// Health monitor trait for implementing custom health monitoring
@@ -20,12 +21,16 @@ pub trait HealthMonitor: Send + Sync {
 }
 
 /// Health status enumeration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthStatus {
     Healthy,
     Degraded,
     Unhealthy,
 }
+
+#[cfg(test)]
+#[path = "types_tests.rs"]
+mod types_tests;
 
 /// Health check result
 #[derive(Debug, Clone)]
@@ -48,7 +53,7 @@ pub struct HealthStatusDetails {
 }
 
 /// Health state enumeration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthState {
     Healthy,
     Degraded,
@@ -67,6 +72,7 @@ pub struct HealthRecord {
 }
 
 /// Health thresholds
+#[allow(clippy::struct_field_names)]
 pub struct HealthThresholds {
     pub response_time_threshold: std::time::Duration,
     pub error_rate_threshold: f64,
@@ -88,8 +94,11 @@ impl Default for HealthChecker {
 }
 
 impl HealthChecker {
+    #[must_use]
     pub fn new() -> Self {
-        Self { checks: Vec::new() }
+        Self {
+            checks: Vec::new(),
+        }
     }
 
     pub fn add_check(&mut self, check: Arc<dyn HealthCheckAsync + Send + Sync>) {

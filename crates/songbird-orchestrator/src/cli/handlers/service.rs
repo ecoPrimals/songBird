@@ -17,7 +17,9 @@ pub async fn handle_service_command(service_command: Option<ServiceCommands>) ->
             print_info("  • observability  - Monitoring and metrics");
             Ok(())
         }
-        Some(ServiceCommands::Show { service_name }) => {
+        Some(ServiceCommands::Show {
+            service_name,
+        }) => {
             print_info(&format!("ℹ️ Service Information: {service_name}"));
             match service_name.as_str() {
                 "orchestrator" => {
@@ -30,17 +32,23 @@ pub async fn handle_service_command(service_command: Option<ServiceCommands>) ->
             }
             Ok(())
         }
-        Some(ServiceCommands::Start { service_name }) => {
+        Some(ServiceCommands::Start {
+            service_name,
+        }) => {
             print_info(&format!("🚀 Starting service: {service_name}"));
             print_success(&format!("Service {service_name} started"));
             Ok(())
         }
-        Some(ServiceCommands::Stop { service_name }) => {
+        Some(ServiceCommands::Stop {
+            service_name,
+        }) => {
             print_info(&format!("🛑 Stopping service: {service_name}"));
             print_success(&format!("Service {service_name} stopped"));
             Ok(())
         }
-        Some(ServiceCommands::Restart { service_name }) => {
+        Some(ServiceCommands::Restart {
+            service_name,
+        }) => {
             print_info(&format!("🔄 Restarting service: {service_name}"));
             print_success(&format!("Service {service_name} restarted"));
             Ok(())

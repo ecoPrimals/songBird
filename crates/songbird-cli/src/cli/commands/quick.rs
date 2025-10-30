@@ -6,21 +6,88 @@
 //! All interactive UI elements have been removed - this module provides
 //! clean JSON APIs following the songbird headless architecture.
 
-use crate::cli::{CliError, CliResult};
+use crate::errors::{CliError, CliResult};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
-use songbird_core::biome::OrchestratorConfig;
+use std::collections::HashMap;
+
+/// Orchestrator configuration for quick setup
+///
+/// This is a local type definition for the CLI quick setup flow.
+/// It provides type-safe configuration generation for biomeOS consumption.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrchestratorConfig {
+    /// Node identity
+    pub node_name: String,
+    /// Contribution capabilities
+    pub capabilities: Vec<String>,
+    /// Discovery endpoints
+    pub discovery_endpoints: Vec<String>,
+    /// Service ports configuration
+    pub ports: HashMap<String, u16>,
+    /// Security settings
+    pub security: SecurityConfig,
+    /// Resource limits
+    pub resource_limits: ResourceLimits,
+}
+
+/// Security configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityConfig {
+    pub require_tls: bool,
+    pub enable_audit_logging: bool,
+    pub allow_insecure_networks: bool,
+}
+
+/// Resource limits configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceLimits {
+    pub max_cpu_percent: u8,
+    pub max_memory_gb: f64,
+    pub max_storage_gb: Option<f64>,
+}
+
+impl Default for OrchestratorConfig {
+    fn default() -> Self {
+        let mut ports = HashMap::new();
+        ports.insert("api".to_string(), 8080);
+        ports.insert("metrics".to_string(), 9090);
+
+        Self {
+            node_name: "songbird-node".to_string(),
+            capabilities: vec!["compute".to_string()],
+            discovery_endpoints: vec!["http://localhost:8080".to_string()],
+            ports,
+            security: SecurityConfig {
+                require_tls: true,
+                enable_audit_logging: true,
+                allow_insecure_networks: false,
+            },
+            resource_limits: ResourceLimits {
+                max_cpu_percent: 80,
+                max_memory_gb: 8.0,
+                max_storage_gb: None,
+            },
+        }
+    }
+}
 
 // Import from submodules in the quick/ directory
 mod discovery;
-mod resources;
+pub mod resources;
 
-#[derive(Debug, Clone, Serialize, Deserialize, ValueEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 pub enum ContributeType {
     Compute,
     Storage,
     Data,
     All,
+}
+
+impl Default for ContributeType {
+    fn default() -> Self {
+        Self::Compute
+    }
 }
 
 /// System resources detected
@@ -114,15 +181,14 @@ pub struct EndpointPreferences {
 /// Main headless quick setup API
 pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> CliResult<QuickSetupResponse> {
     // Step 1: Detect system resources
-    let resources = resources::detect_system_resources_api().await?;
+    let _resources = resources::detect_system_resources_api().await?;
 
     // Step 2: Discover networks
     let discovery_params = DiscoveryParameters {
-        methods: request
-            .endpoint_preferences
-            .as_ref()
-            .map(|p| p.preferred_discovery_methods.clone())
-            .unwrap_or_else(|| vec!["subnet".to_string(), "multicast".to_string()]),
+        methods: request.endpoint_preferences.as_ref().map_or_else(
+            || vec!["subnet".to_string(), "multicast".to_string()],
+            |p| p.preferred_discovery_methods.clone(),
+        ),
         timeout_ms: request
             .endpoint_preferences
             .as_ref()
@@ -140,23 +206,58 @@ pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> CliResult<Qu
 
     // Step 3: Generate optimized configuration
     let node_name = request.node_name.unwrap_or_else(|| {
-        format!(
-            "{}-{}",
-            whoami::username(),
-            hostname::get().unwrap_or_default().to_string_lossy()
-        )
+        format!("{}-{}", whoami::username(), hostname::get().unwrap_or_default().to_string_lossy())
     });
 
-    // Simple config generation (avoiding complex field access for now)
-    let config = OrchestratorConfig::default();
-    // Basic configuration will be handled by the config system
+    // Generate type-safe configuration based on request and discovered resources
+    let capabilities = match request.contribute_type {
+        ContributeType::Compute => vec!["compute".to_string()],
+        ContributeType::Storage => vec!["storage".to_string()],
+        ContributeType::Data => vec!["data".to_string()],
+        ContributeType::All => vec!["compute".to_string(), "storage".to_string(), "data".to_string()],
+    };
+
+    let discovery_endpoints: Vec<String> = discovered_networks
+        .iter()
+        .map(|n| n.endpoint.clone())
+        .collect();
+
+    let mut ports = HashMap::new();
+    ports.insert("api".to_string(), 8080);
+    ports.insert("metrics".to_string(), 9090);
+
+    let security = request.security_preferences.as_ref().map_or_else(
+        || SecurityConfig {
+            require_tls: true,
+            enable_audit_logging: true,
+            allow_insecure_networks: false,
+        },
+        |prefs| SecurityConfig {
+            require_tls: prefs.require_tls,
+            enable_audit_logging: prefs.audit_logging,
+            allow_insecure_networks: prefs.allow_insecure_networks,
+        },
+    );
+
+    let config = OrchestratorConfig {
+        node_name: node_name.clone(),
+        capabilities,
+        discovery_endpoints,
+        ports,
+        security,
+        resource_limits: ResourceLimits {
+            max_cpu_percent: 80,
+            max_memory_gb: _resources.memory_gb,
+            max_storage_gb: _resources.storage_gb,
+        },
+    };
 
     let next_steps = generate_next_steps(&discovered_networks, &request.contribute_type);
 
     Ok(QuickSetupResponse {
         success: true,
         node_name,
-        system_resources: resources,
+        system_resources: _resources,
         discovered_networks,
         recommended_config: config,
         setup_status: SetupStatus::SystemReady,
@@ -173,24 +274,25 @@ fn generate_next_steps(
 
     match networks.len() {
         0 => {
-            steps.push("Start a new Songbird network".to_string());
-            steps.push("Configure firewall and network settings".to_string());
+            steps.push("Start a new Songbird network ".to_string());
+            steps.push("Configure firewall and network settings ".to_string());
         }
         1 => {
-            steps.push(format!("Join the '{}' network", networks[0].name));
-            steps.push("Verify network connectivity".to_string());
+            steps.push(format!("Join the '{}' network ", networks[0].name));
+            steps.push("Verify network connectivity ".to_string());
         }
         _ => {
-            let best_network = networks
-                .iter()
-                .max_by(|a, b| {
-                    a.compatibility_score
-                        .partial_cmp(&b.compatibility_score)
-                        .unwrap()
-                })
-                .unwrap();
-            steps.push(format!("Recommended: Join '{}' network", best_network.name));
-            steps.push("Alternative networks available".to_string());
+            // Find the network with the highest compatibility score
+            if let Some(best_network) = networks.iter().max_by(|a, b| {
+                a.compatibility_score
+                    .partial_cmp(&b.compatibility_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            }) {
+                steps.push(format!("Recommended: Join '{}' network", best_network.name));
+                steps.push("Alternative networks available".to_string());
+            } else {
+                steps.push("No networks available".to_string());
+            }
         }
     }
 
@@ -214,6 +316,30 @@ fn generate_next_steps(
 }
 
 /// Legacy execute function for backward compatibility (now calls headless API)
+pub async fn execute_quick_gaming(
+    name: Option<String>,
+    auto_detect: bool,
+    family_safe: bool,
+) -> CliResult<()> {
+    println!("🚀 Quick gaming setup...");
+
+    if let Some(session_name) = name {
+        println!("🎮 Session name: {session_name}");
+    }
+
+    if auto_detect {
+        println!("🔍 Auto-detecting gaming protocols");
+    }
+
+    if family_safe {
+        println!("👨‍👩‍👧‍👦 Family-safe mode enabled");
+    }
+
+    println!("✅ Quick gaming setup complete");
+    Ok(())
+}
+
+// Keep the legacy function for compatibility
 pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> CliResult<()> {
     let request = QuickSetupRequest {
         contribute_type: contribute,
@@ -232,6 +358,7 @@ pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> 
             message: "Quick setup failed".to_string(),
             field: None,
             suggestion: Some("Check API response for details".to_string()),
-        })
+        }
+        .into())
     }
 }

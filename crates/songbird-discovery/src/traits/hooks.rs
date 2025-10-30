@@ -6,7 +6,8 @@ use crate::traits::service::{ServiceInfo, ServiceRequest, ServiceResponse};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 
 /// Universal event hook trait
@@ -39,8 +40,7 @@ pub trait EventHook: Send + Sync {
 
 /// Hook execution context
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HookContext {
-    /// Orchestrator instance ID
+pub struct HookContext  {/// Orchestrator instance ID
     pub orchestrator_id: String,
     /// Hook configuration
     pub config: HashMap<String, serde_json::Value>,
@@ -52,117 +52,95 @@ pub struct HookContext {
 
 /// Generic orchestrator event for hooks
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum OrchestratorEvent {
-    /// Service lifecycle events
-    ServiceRegistering {
-        service_info: ServiceInfo,
+pub enum OrchestratorEvent  {/// Service lifecycle events
+    ServiceRegistering  {service_info: ServiceInfo,
         timestamp: DateTime<Utc>,
-    },
-    ServiceRegistered {
-        service_id: String,
+    })
+    ServiceRegistered  {service_id: String,
         timestamp: DateTime<Utc>,
-    },
-    ServiceStarting {
-        service_id: String,
+    })
+    ServiceStarting  {service_id: String,
         timestamp: DateTime<Utc>,
-    },
-    ServiceStarted {
-        service_id: String,
+    })
+    ServiceStarted  {service_id: String,
         timestamp: DateTime<Utc>,
-    },
-    ServiceStopping {
-        service_id: String,
+    })
+    ServiceStopping  {service_id: String,
         reason: String,
         timestamp: DateTime<Utc>,
-    },
-    ServiceStopped {
-        service_id: String,
+    })
+    ServiceStopped  {service_id: String,
         timestamp: DateTime<Utc>,
-    },
-    ServiceUnregistering {
-        service_id: String,
+    })
+    ServiceUnregistering  {service_id: String,
         timestamp: DateTime<Utc>,
-    },
-    ServiceUnregistered {
-        service_id: String,
+    })
+    ServiceUnregistered  {service_id: String,
         timestamp: DateTime<Utc>,
-    },
+    })
     /// Request lifecycle events
-    RequestReceived {
-        request: ServiceRequest,
+    RequestReceived  {request: ServiceRequest,
         timestamp: DateTime<Utc>,
-    },
-    RequestProcessing {
-        request_id: String,
+    })
+    RequestProcessing  {request_id: String,
         service_id: String,
         timestamp: DateTime<Utc>,
-    },
-    RequestCompleted {
-        request_id: String,
+    })
+    RequestCompleted  {request_id: String,
         service_id: String,
         response: ServiceResponse,
         duration_ms: u64,
         timestamp: DateTime<Utc>,
-    },
-    RequestFailed {
-        request_id: String,
+    })
+    RequestFailed  {request_id: String,
         service_id: String,
         error: String,
         timestamp: DateTime<Utc>,
-    },
+    })
     /// Health and monitoring events
-    HealthCheckStarted {
-        service_id: String,
+    HealthCheckStarted  {service_id: String,
         timestamp: DateTime<Utc>,
-    },
-    HealthCheckCompleted {
-        service_id: String,
+    })
+    HealthCheckCompleted  {service_id: String,
         healthy: bool,
         details: HashMap<String, serde_json::Value>,
         timestamp: DateTime<Utc>,
-    },
-    MetricsCollected {
-        service_id: Option<String>,
+    })
+    MetricsCollected  {service_id: Option<String>)
         metrics: HashMap<String, f64>,
         timestamp: DateTime<Utc>,
-    },
+    })
     /// Discovery events
-    ServiceDiscovered {
-        service_info: ServiceInfo,
+    ServiceDiscovered  {service_info: ServiceInfo,
         discovery_source: String,
         timestamp: DateTime<Utc>,
-    },
-    ServiceLost {
-        service_id: String,
+    })
+    ServiceLost  {service_id: String,
         reason: String,
         timestamp: DateTime<Utc>,
-    },
+    })
     /// Configuration events
-    ConfigurationChanged {
-        config_section: String,
+    ConfigurationChanged  {config_section: String,
         old_config: serde_json::Value,
         new_config: serde_json::Value,
         timestamp: DateTime<Utc>,
-    },
+    })
     /// Error events
-    ErrorOccurred {
-        error_type: String,
+    ErrorOccurred  {error_type: String,
         error_message: String,
         context: HashMap<String, serde_json::Value>,
         timestamp: DateTime<Utc>,
-    },
+    })
     /// Custom events
-    Custom {
-        event_type: String,
+    Custom  {event_type: String,
         data: HashMap<String, serde_json::Value>,
         timestamp: DateTime<Utc>,
-    },
+    })
 }
 
 /// Hook execution result
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HookResult {
-    /// Whether the hook execution was successful
+pub struct HookResult  {/// Whether the hook execution was successful
     pub success: bool,
     /// Whether to continue processing other hooks
     pub continue_chain: bool,
@@ -178,9 +156,7 @@ pub struct HookResult {
     pub error: Option<String>,
 }
 
-impl Default for HookResult {
-    fn default() -> Self {
-        Self {
+impl Default for HookResult  {fn default() -> Self  {Self {
             success: true,
             continue_chain: true,
             allow_operation: true,
@@ -194,8 +170,7 @@ impl Default for HookResult {
 
 /// Hook configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HookConfig {
-    /// Hook-specific settings
+pub struct HookConfig  {/// Hook-specific settings
     pub settings: HashMap<String, serde_json::Value>,
     /// Event filter - which events this hook cares about
     pub event_filter: EventFilter,
@@ -207,8 +182,7 @@ pub struct HookConfig {
 
 /// Event filter configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventFilter {
-    /// Event types to process (empty = all)
+pub struct EventFilter  {/// Event types to process (empty = all)
     pub event_types: Vec<String>,
     /// Service IDs to process (empty = all)
     pub service_ids: Vec<String>,
@@ -218,16 +192,14 @@ pub struct EventFilter {
 
 /// Filter condition for events
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FilterCondition {
-    pub message: String,
+pub struct FilterCondition  {pub message: String,
     pub operator: FilterOperator,
     pub value: serde_json::Value,
 }
 
 /// Filter operators
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum FilterOperator {
-    Equals,
+pub enum FilterOperator  {Equals)
     NotEquals,
     Contains,
     StartsWith,
@@ -240,8 +212,7 @@ pub enum FilterOperator {
 
 /// Hook execution configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecutionConfig {
-    /// Whether to execute asynchronously
+pub struct ExecutionConfig  {/// Whether to execute asynchronously
     pub async_execution: bool,
     /// Maximum execution time
     pub timeout_ms: u64,
@@ -253,8 +224,7 @@ pub struct ExecutionConfig {
 
 /// Hook retry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig {
-    /// Enable retries on failure
+pub struct RetryConfig  {/// Enable retries on failure
     pub enabled: bool,
     /// Maximum retry attempts
     pub max_attempts: u32,
@@ -291,8 +261,7 @@ pub trait HookManager: Send + Sync {
 
 /// Information about a registered hook
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HookInfo {
-    pub name: String,
+pub struct HookInfo  {pub name: String,
     pub version: String,
     pub priority: u32,
     pub enabled: bool,
@@ -301,8 +270,7 @@ pub struct HookInfo {
 
 /// Statistics for hook execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HookStats {
-    pub total_executions: u64,
+pub struct HookStats  {pub total_executions: u64,
     pub successful_executions: u64,
     pub failed_executions: u64,
     pub average_execution_time_ms: f64,
@@ -313,13 +281,12 @@ pub struct HookStats {
 
 /// Lifecycle hook trait for specific service operations
 #[async_trait]
-pub trait LifecycleHook: Send + Sync {
-    /// Before service registration
+pub trait LifecycleHook: Send + Sync  {/// Before service registration
     async fn before_service_register(&self, service_info: &ServiceInfo) -> Result<HookResult>;
 
     /// After service registration
     async fn after_service_register(
-        &self,
+        &self)
         service_id: &str,
         service_info: &ServiceInfo,
     ) -> Result<HookResult>;
@@ -338,14 +305,14 @@ pub trait LifecycleHook: Send + Sync {
 
     /// Before request processing
     async fn before_request(
-        &self,
+        &self)
         service_id: &str,
         request: &ServiceRequest,
     ) -> Result<HookResult>;
 
     /// After request processing
     async fn after_request(
-        &self,
+        &self)
         service_id: &str,
         request: &ServiceRequest,
         response: &ServiceResponse,
@@ -360,8 +327,7 @@ pub trait LifecycleHook: Send + Sync {
 
 /// Hook system configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HookSystemConfig {
-    /// Whether the hook system is enabled
+pub struct HookSystemConfig  {/// Whether the hook system is enabled
     pub enabled: bool,
     /// Maximum number of hooks
     pub max_hooks: u32,
@@ -379,8 +345,7 @@ pub struct HookSystemConfig {
 
 /// Hook execution strategy
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum HookExecutionStrategy {
-    /// Execute all hooks in sequence
+pub enum HookExecutionStrategy  {/// Execute all hooks in sequence
     Sequential,
     /// Execute all hooks in parallel
     Parallel,
@@ -392,8 +357,7 @@ pub enum HookExecutionStrategy {
 
 /// Hook error handling strategy
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum HookErrorHandling {
-    /// Continue on errors
+pub enum HookErrorHandling  {/// Continue on errors
     Continue,
     /// Stop on first error
     StopOnError,
@@ -403,9 +367,7 @@ pub enum HookErrorHandling {
     SkipOnError,
 }
 
-impl Default for HookSystemConfig {
-    fn default() -> Self {
-        Self {
+impl Default for HookSystemConfig  {fn default() -> Self  {Self {
             enabled: true,
             max_hooks: 100,
             default_timeout_ms: 5000,
@@ -417,27 +379,23 @@ impl Default for HookSystemConfig {
     }
 }
 
-impl Default for HookConfig {
-    fn default() -> Self {
-        Self {
+impl Default for HookConfig  {fn default() -> Self  {Self {
             settings: HashMap::new(),
             event_filter: EventFilter {
                 event_types: Vec::new(),
                 service_ids: Vec::new(),
                 conditions: Vec::new(),
-            },
-            execution: ExecutionConfig {
-                async_execution: true,
+            })
+            execution: ExecutionConfig  {async_execution: true,
                 timeout_ms: 5000,
                 log_execution: true,
                 measure_performance: true,
-            },
-            retry: RetryConfig {
-                enabled: false,
+            })
+            retry: RetryConfig  {enabled: false,
                 max_attempts: 3,
                 retry_delay_ms: 1000,
                 backoff_multiplier: 2.0,
-            },
+            })
         }
     }
 }

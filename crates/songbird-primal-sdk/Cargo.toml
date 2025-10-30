@@ -1,0 +1,48 @@
+[package]
+name = "songbird-primal-sdk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Comprehensive Software Development Kit for building Songbird Primal integrations with universal components, BearDog integration, and zero-cost abstractions"
+readme = "README.md"
+keywords = ["songbird", "primal", "sdk", "integration", "orchestration", "universal", "beardog"]
+categories = ["development-tools", "api-bindings", "network-programming", "game-engines"]
+
+[lints]
+workspace = true
+
+[dependencies]
+# Core dependencies
+async-trait = "0.1.68"
+chrono = { version = "0.4.24", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+reqwest = { version = "0.11", features = ["json"] }
+url = "2.3"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+rand = "0.8"
+thiserror = "1.0"
+futures = "0.3"
+
+# Internal dependencies
+songbird-types = { path = "../songbird-types" }
+songbird-config = { path = "../songbird-config" }
+songbird-discovery = { path = "../songbird-discovery" }
+songbird-universal = { path = "../songbird-universal" }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[lib]
+name = "songbird_primal_sdk"
+path = "src/lib.rs"
+
+[[example]]
+name = "ecosystem_standalone_demo"
+path = "../../examples/ecosystem_standalone_demo.rs" 
+

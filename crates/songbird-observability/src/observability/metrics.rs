@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use super::SystemMetrics;
-use songbird_errors::Result;
+use songbird_types::SongbirdResult;
+type Result<T> = SongbirdResult<T>;
 
 /// Metrics collector for system and application metrics
 #[derive(Debug)]
@@ -15,6 +17,7 @@ pub struct MetricsCollector {
 
 impl MetricsCollector {
     /// Create new metrics collector
+    #[must_use]
     pub fn new() -> Self {
         Self {
             current_metrics: Arc::new(RwLock::new(None)),
@@ -23,6 +26,10 @@ impl MetricsCollector {
     }
 
     /// Collect all metrics
+    ///
+    /// # Errors
+    ///
+    /// This function is currently infallible but returns a Result for future extensibility
     pub async fn collect_all_metrics(&self) -> Result<MetricsSnapshot> {
         let metrics = MetricsSnapshot {
             system: SystemMetrics {
@@ -52,13 +59,16 @@ impl MetricsCollector {
         *current = Some(metrics.clone());
 
         // Increment collection count
-        self.collection_count
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.collection_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         Ok(metrics)
     }
 
     /// Get current metrics snapshot
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if metrics collection fails when no snapshot exists
     pub async fn get_current_snapshot(&self) -> Result<MetricsSnapshot> {
         let current = self.current_metrics.read().await;
         match current.as_ref() {
@@ -68,11 +78,19 @@ impl MetricsCollector {
     }
 
     /// Get current metrics (alias for compatibility)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if metrics collection fails when no snapshot exists
     pub async fn get_current_metrics(&self) -> Result<MetricsSnapshot> {
         self.get_current_snapshot().await
     }
 
     /// Export metrics in Prometheus format
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if metrics collection fails
     pub async fn export_prometheus(&self) -> Result<String> {
         let metrics = self.get_current_snapshot().await?;
 
@@ -81,36 +99,29 @@ impl MetricsCollector {
         // System metrics
         output.push_str("# HELP songbird_cpu_usage_percent CPU usage percentage\n");
         output.push_str("# TYPE songbird_cpu_usage_percent gauge\n");
-        output.push_str(&format!(
-            "songbird_cpu_usage_percent {}\n",
-            metrics.system.cpu_usage
-        ));
+        let _ = writeln!(output, "songbird_cpu_usage_percent {}", metrics.system.cpu_usage);
 
         output.push_str("# HELP songbird_memory_usage_ratio Memory usage ratio\n");
         output.push_str("# TYPE songbird_memory_usage_ratio gauge\n");
-        output.push_str(&format!(
-            "songbird_memory_usage_ratio {}\n",
-            metrics.system.memory_usage
-        ));
+        let _ = writeln!(output, "songbird_memory_usage_ratio {}", metrics.system.memory_usage);
 
         // Application metrics
         output.push_str("# HELP songbird_active_services Number of active services\n");
         output.push_str("# TYPE songbird_active_services gauge\n");
-        output.push_str(&format!(
-            "songbird_active_services {}\n",
-            metrics.songbird.active_services
-        ));
+        let _ = writeln!(output, "songbird_active_services {}", metrics.songbird.active_services);
 
         Ok(output)
     }
 
     /// Get collection count
+    #[must_use]
     pub fn get_collection_count(&self) -> u64 {
-        self.collection_count
-            .load(std::sync::atomic::Ordering::Relaxed)
+        self.collection_count.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Get last collection time
+    #[must_use]
+    #[allow(clippy::unused_self, clippy::unnecessary_wraps)]
     pub fn last_collection_time(&self) -> Option<DateTime<Utc>> {
         // In a real implementation, this would track the actual last collection time
         Some(Utc::now())

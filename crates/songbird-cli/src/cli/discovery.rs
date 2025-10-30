@@ -2,7 +2,7 @@
 //!
 //! Network discovery utilities for the CLI
 
-use crate::cli::CliError;
+use crate::errors::{CliError, CliResult};
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 use tokio::net::TcpStream;
@@ -32,12 +32,15 @@ pub struct NetworkScanner {
 }
 
 impl NetworkScanner {
+    #[must_use]
     pub fn new(timeout: Duration) -> Self {
-        Self { timeout }
+        Self {
+            timeout,
+        }
     }
 
     /// Scan a subnet for Songbird nodes
-    pub async fn scan_subnet(&self, subnet: &str) -> Result<Vec<DiscoveredNode>, CliError> {
+    pub async fn scan_subnet(&self, subnet: &str) -> CliResult<Vec<DiscoveredNode>> {
         // Check if we should use simulation mode
         let simulation_mode = std::env::var("SONGBIRD_DISCOVERY_SIMULATION")
             .map(|v| v.to_lowercase() == "true" || v == "1")
@@ -49,16 +52,25 @@ impl NetworkScanner {
 
         // Real subnet scanning implementation
         let mut discovered_nodes = Vec::new();
-        let common_ports = [8080, 9090, 3000, 4000, 5000, 8000];
+        // Common service ports - should be discovered via capability endpoints
+        let common_ports = [
+            std::env::var("DISCOVERY_PORT_1").ok().and_then(|p| p.parse().ok()).unwrap_or(8080),
+            std::env::var("DISCOVERY_PORT_2").ok().and_then(|p| p.parse().ok()).unwrap_or(9090),
+            std::env::var("DISCOVERY_PORT_3").ok().and_then(|p| p.parse().ok()).unwrap_or(3000),
+            std::env::var("DISCOVERY_PORT_4").ok().and_then(|p| p.parse().ok()).unwrap_or(4000),
+            std::env::var("DISCOVERY_PORT_5").ok().and_then(|p| p.parse().ok()).unwrap_or(5000),
+            std::env::var("DISCOVERY_PORT_6").ok().and_then(|p| p.parse().ok()).unwrap_or(8000),
+        ];
 
-        // Parse subnet (e.g., "192.168.1" -> scan 192.168.1.1-254)
+        // Parse subnet (e.g., "192.168.1" -> scan 192.168.1.1-254)"
         let subnet_parts: Vec<&str> = subnet.split('.').collect();
         if subnet_parts.len() != 3 {
             return Err(CliError::Network {
                 message: "Invalid subnet format. Use format like '192.168.1'".to_string(),
-                endpoint: Some(subnet.to_string()),
+                interface: Some(subnet.to_string()),
                 suggestion: Some("Provide a valid subnet in the format 'xxx.xxx.xxx'".to_string()),
-            });
+            }
+            .into());
         }
 
         let mut scan_tasks = Vec::new();
@@ -84,18 +96,19 @@ impl NetworkScanner {
 
         match results {
             Ok(results) => {
-                for node in results.into_iter().filter_map(|r| r.ok()).flatten() {
+                for node in results.into_iter().filter_map(|r| r.ok().flatten()) {
                     discovered_nodes.push(node);
                 }
             }
             Err(_) => {
                 return Err(CliError::Network {
                     message: "Subnet scan timed out".to_string(),
-                    endpoint: Some(subnet.to_string()),
+                    interface: Some(subnet.to_string()),
                     suggestion: Some(
                         "Try increasing the timeout or checking network connectivity".to_string(),
                     ),
-                });
+                }
+                .into());
             }
         }
 
@@ -107,7 +120,7 @@ impl NetworkScanner {
         &self,
         address: IpAddr,
         port: u16,
-    ) -> Result<Option<DiscoveredNode>, CliError> {
+    ) -> CliResult<Option<DiscoveredNode>> {
         // Check if we should use simulation mode
         let simulation_mode = std::env::var("SONGBIRD_DISCOVERY_SIMULATION")
             .map(|v| v.to_lowercase() == "true" || v == "1")
@@ -121,7 +134,7 @@ impl NetworkScanner {
                 port,
                 version: Some("1.0.0-sim".to_string()),
                 node_type: NodeType::ServiceNode,
-                response_time_ms: 10 + (port as u64 % 50), // Deterministic "response time"
+                response_time_ms: 10 + (u64::from(port) % 50), // Deterministic "response time"
             }));
         }
 
@@ -133,7 +146,7 @@ impl NetworkScanner {
         &self,
         address: IpAddr,
         port: u16,
-    ) -> Result<Option<DiscoveredNode>, CliError> {
+    ) -> CliResult<Option<DiscoveredNode>> {
         let socket_addr = SocketAddr::new(address, port);
         let start_time = std::time::Instant::now();
 
@@ -176,15 +189,9 @@ impl NetworkScanner {
         &self,
         address: IpAddr,
         port: u16,
-    ) -> Result<Option<(String, Option<String>, NodeType)>, CliError> {
+    ) -> CliResult<Option<(String, Option<String>, NodeType)>> {
         // Try common Songbird endpoints
-        let endpoints = [
-            "/health",
-            "/api/v1/health",
-            "/status",
-            "/api/status",
-            "/songbird/health",
-        ];
+        let endpoints = ["/health", "/api/v1/health", "/status", "/api/status", "/songbird/health"];
 
         for endpoint in &endpoints {
             let url = format!("http://{address}:{port}{endpoint}");
@@ -203,13 +210,14 @@ impl NetworkScanner {
     }
 
     /// Simulate HTTP check for now
-    async fn simulate_http_check(&self, _url: &str) -> Result<(), CliError> {
+    async fn simulate_http_check(&self, _url: &str) -> CliResult<()> {
         // This is a placeholder - in real implementation would use HTTP client
         Err(CliError::Network {
             message: "HTTP client not implemented".to_string(),
-            endpoint: Some("http_client".to_string()),
+            interface: Some("http_client".to_string()),
             suggestion: Some("This feature is not yet implemented".to_string()),
-        })
+        }
+        .into())
     }
 
     /// Extract version from API response
@@ -227,7 +235,7 @@ impl NetworkScanner {
 
         // Try to find version in plain text
         for line in response.lines() {
-            if line.to_lowercase().contains("version") && line.contains(":") {
+            if line.to_lowercase().contains("version") && line.contains(':') {
                 if let Some(version_part) = line.split(':').nth(1) {
                     return Some(version_part.trim().to_string());
                 }
@@ -239,10 +247,8 @@ impl NetworkScanner {
 
     /// Generate simulated nodes for testing/demo purposes
     fn generate_simulated_nodes(&self, subnet: &str) -> Vec<DiscoveredNode> {
-        let node_count = std::env::var("SONGBIRD_SIM_NODE_COUNT")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(3); // Default 3 simulated nodes
+        let node_count =
+            std::env::var("SONGBIRD_SIM_NODE_COUNT").ok().and_then(|s| s.parse().ok()).unwrap_or(3); // Default 3 simulated nodes
 
         let mut nodes = Vec::new();
         for i in 1..=node_count {
