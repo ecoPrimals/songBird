@@ -9,8 +9,10 @@
 //! - ✅ Automatic service startup
 //! - ✅ Health verification
 //! - ✅ Federation-integrated
+//! - ✅ Capability discovery (auto-detection)
 //!
 //! ## Endpoints
+//! - GET /api/deployment/capabilities - Discover node capabilities
 //! - POST /api/deployment/binary - Deploy and start a service
 //! - GET /api/deployment/status/:id - Check deployment status
 //! - DELETE /api/deployment/:id - Stop and remove deployment
@@ -26,6 +28,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
+use sysinfo::{System, Disks};
 use tokio::fs;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
@@ -67,14 +70,6 @@ pub enum DeploymentStatus {
     Stopped,
 }
 
-/// Deployment request
-#[derive(Debug, Deserialize)]
-pub struct DeploymentRequest {
-    pub service_name: String,
-    pub env_vars: Option<HashMap<String, String>>,
-    pub auto_start: Option<bool>,
-}
-
 /// Deployment response
 #[derive(Debug, Serialize)]
 pub struct DeploymentResponse {
@@ -84,18 +79,237 @@ pub struct DeploymentResponse {
     pub service_url: Option<String>,
 }
 
+// ============================================================================
+// PHASE 2: CAPABILITY DISCOVERY
+// ============================================================================
+
+/// Node deployment capabilities
+#[derive(Debug, Serialize)]
+pub struct DeploymentCapabilities {
+    pub node_id: String,
+    pub timestamp: String,
+    pub network: NetworkCapabilities,
+    pub deployment_methods: DeploymentMethods,
+    pub resources: ResourceInfo,
+    pub preferences: DeploymentPreferences,
+}
+
+/// Network capabilities
+#[derive(Debug, Serialize)]
+pub struct NetworkCapabilities {
+    #[serde(rename = "type")]
+    pub network_type: String, // "lan", "vpn", "internet"
+    pub bandwidth_estimate: BandwidthEstimate,
+}
+
+/// Bandwidth estimate
+#[derive(Debug, Serialize)]
+pub struct BandwidthEstimate {
+    pub download_mbps: u32,
+    pub upload_mbps: u32,
+    pub latency_ms: u32,
+    pub confidence: String, // "high", "medium", "low"
+}
+
+/// Supported deployment methods
+#[derive(Debug, Serialize)]
+pub struct DeploymentMethods {
+    pub single: SingleUploadMethod,
+    pub chunked: ChunkedUploadMethod,
+    pub streaming: StreamingUploadMethod,
+}
+
+/// Single upload method
+#[derive(Debug, Serialize)]
+pub struct SingleUploadMethod {
+    pub enabled: bool,
+    pub max_size_mb: u32,
+    pub compression_supported: Vec<String>,
+    pub recommended_for: String,
+}
+
+/// Chunked upload method
+#[derive(Debug, Serialize)]
+pub struct ChunkedUploadMethod {
+    pub enabled: bool,
+    pub max_total_size_mb: u32,
+    pub chunk_size_mb: u32,
+    pub max_chunks: u32,
+    pub compression_supported: Vec<String>,
+    pub recommended_for: String,
+}
+
+/// Streaming upload method
+#[derive(Debug, Serialize)]
+pub struct StreamingUploadMethod {
+    pub enabled: bool,
+    pub unlimited: bool,
+    pub compression_supported: Vec<String>,
+    pub recommended_for: String,
+}
+
+/// Resource information
+#[derive(Debug, Serialize)]
+pub struct ResourceInfo {
+    pub available_storage_gb: u64,
+    pub available_memory_gb: u64,
+    pub cpu_cores: usize,
+    pub cpu_load_percent: f32,
+    pub max_concurrent_deployments: usize,
+    pub current_deployments: usize,
+}
+
+/// Deployment preferences
+#[derive(Debug, Serialize)]
+pub struct DeploymentPreferences {
+    pub preferred_compression: String,
+    pub preferred_method: String,
+    pub encryption_required: bool,
+}
+
 /// Create deployment routes
 pub fn deployment_routes(state: DeploymentState) -> Router {
-    use tower_http::limit::RequestBodyLimitLayer;
-    
     Router::new()
+        .route("/capabilities", get(get_capabilities))
         .route("/binary", post(deploy_binary))
         .route("/status/:id", get(get_deployment_status))
         .route("/:id", delete(stop_deployment))
         .route("/list", get(list_deployments))
-        .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024)) // 50 MB limit
         .with_state(state)
 }
+
+/// GET /api/deployment/capabilities - Discover node capabilities
+async fn get_capabilities(
+    State(state): State<DeploymentState>,
+) -> Json<DeploymentCapabilities> {
+    info!("📊 Capability discovery request received");
+    
+    // Detect network type (simplified - assume LAN for now)
+    let network_type = detect_network_type();
+    
+    // Estimate bandwidth based on network type
+    let bandwidth = estimate_bandwidth(&network_type);
+    
+    // Detect resources
+    let mut sys = System::new_all();
+    sys.refresh_all();
+    
+    let total_memory = sys.total_memory() / 1024 / 1024 / 1024; // GB
+    let available_memory = sys.available_memory() / 1024 / 1024 / 1024; // GB
+    let cpu_cores = num_cpus::get();
+    let cpu_load = sys.global_cpu_info().cpu_usage();
+    
+    // Get available storage (first disk)
+    let disks = Disks::new_with_refreshed_list();
+    let available_storage = disks.list()
+        .first()
+        .map(|d| d.available_space() / 1024 / 1024 / 1024) // GB
+        .unwrap_or(0);
+    
+    // Count current deployments
+    let current_deployments = state.deployments.read().await.len();
+    
+    // Calculate max concurrent deployments based on available memory
+    let max_concurrent = calculate_max_concurrent(available_memory);
+    
+    // Build capabilities response
+    let capabilities = DeploymentCapabilities {
+        node_id: hostname::get()
+            .ok()
+            .and_then(|h| h.into_string().ok())
+            .unwrap_or_else(|| "unknown".to_string()),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        network: NetworkCapabilities {
+            network_type: network_type.clone(),
+            bandwidth_estimate: bandwidth,
+        },
+        deployment_methods: DeploymentMethods {
+            single: SingleUploadMethod {
+                enabled: true,
+                max_size_mb: 50,
+                compression_supported: vec!["gzip".to_string(), "zstd".to_string()],
+                recommended_for: "< 10MB".to_string(),
+            },
+            chunked: ChunkedUploadMethod {
+                enabled: false, // Phase 3
+                max_total_size_mb: 1000,
+                chunk_size_mb: 10,
+                max_chunks: 100,
+                compression_supported: vec!["gzip".to_string(), "zstd".to_string()],
+                recommended_for: "10MB - 500MB".to_string(),
+            },
+            streaming: StreamingUploadMethod {
+                enabled: false, // Phase 4
+                unlimited: true,
+                compression_supported: vec!["gzip".to_string(), "zstd".to_string()],
+                recommended_for: "> 500MB".to_string(),
+            },
+        },
+        resources: ResourceInfo {
+            available_storage_gb: available_storage,
+            available_memory_gb: available_memory,
+            cpu_cores,
+            cpu_load_percent: cpu_load,
+            max_concurrent_deployments: max_concurrent,
+            current_deployments,
+        },
+        preferences: DeploymentPreferences {
+            preferred_compression: if network_type == "lan" { "gzip" } else { "zstd" }.to_string(),
+            preferred_method: "single".to_string(), // Will be "chunked" in Phase 3
+            encryption_required: false,
+        },
+    };
+    
+    info!("✅ Capabilities: {} network, {}MB up/down, {}GB available storage",
+        capabilities.network.network_type,
+        capabilities.network.bandwidth_estimate.upload_mbps,
+        capabilities.resources.available_storage_gb
+    );
+    
+    Json(capabilities)
+}
+
+/// Detect network type (LAN, VPN, or Internet)
+fn detect_network_type() -> String {
+    // Phase 2.1: Simplified - assume LAN
+    // TODO: Check if peer is on same subnet, private IP range, etc.
+    "lan".to_string()
+}
+
+/// Estimate bandwidth based on network type
+fn estimate_bandwidth(network_type: &str) -> BandwidthEstimate {
+    match network_type {
+        "lan" => BandwidthEstimate {
+            download_mbps: 1000,
+            upload_mbps: 1000,
+            latency_ms: 1,
+            confidence: "high".to_string(),
+        },
+        "vpn" => BandwidthEstimate {
+            download_mbps: 100,
+            upload_mbps: 100,
+            latency_ms: 10,
+            confidence: "medium".to_string(),
+        },
+        _ => BandwidthEstimate {
+            download_mbps: 50,
+            upload_mbps: 20,
+            latency_ms: 50,
+            confidence: "low".to_string(),
+        },
+    }
+}
+
+/// Calculate max concurrent deployments based on available memory
+fn calculate_max_concurrent(available_memory_gb: u64) -> usize {
+    // Assume each deployment needs ~1GB
+    let max = (available_memory_gb as usize).max(1).min(10);
+    max
+}
+
+// ============================================================================
+// EXISTING DEPLOYMENT ENDPOINTS (Phase 1)
+// ============================================================================
 
 /// POST /api/deployment/binary - Deploy a binary service
 async fn deploy_binary(
@@ -358,5 +572,17 @@ mod tests {
         let state = DeploymentState::new();
         assert!(state.deployments.try_read().is_ok());
     }
+    
+    #[test]
+    fn test_detect_network_type() {
+        let network_type = detect_network_type();
+        assert!(["lan", "vpn", "internet"].contains(&network_type.as_str()));
+    }
+    
+    #[test]
+    fn test_calculate_max_concurrent() {
+        assert_eq!(calculate_max_concurrent(0), 1);
+        assert_eq!(calculate_max_concurrent(5), 5);
+        assert_eq!(calculate_max_concurrent(20), 10); // Capped at 10
+    }
 }
-
