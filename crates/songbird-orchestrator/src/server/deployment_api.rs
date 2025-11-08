@@ -86,11 +86,14 @@ pub struct DeploymentResponse {
 
 /// Create deployment routes
 pub fn deployment_routes(state: DeploymentState) -> Router {
+    use tower_http::limit::RequestBodyLimitLayer;
+    
     Router::new()
         .route("/binary", post(deploy_binary))
         .route("/status/:id", get(get_deployment_status))
         .route("/:id", delete(stop_deployment))
         .route("/list", get(list_deployments))
+        .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024)) // 50 MB limit
         .with_state(state)
 }
 

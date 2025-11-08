@@ -401,7 +401,8 @@ impl SongbirdOrchestrator {
                 "/api/deployment",
                 crate::server::deployment_api::deployment_routes(deployment_state),
             )
-            .route("/health", axum::routing::get(|| async { "OK" }));
+            .route("/health", axum::routing::get(|| async { "OK" }))
+            .layer(tower_http::limit::RequestBodyLimitLayer::new(50 * 1024 * 1024)); // 50 MB limit
 
         info!("🌐 Starting HTTP server on {}", addr);
 
