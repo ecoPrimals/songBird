@@ -402,21 +402,22 @@ impl SongbirdOrchestrator {
                 crate::server::deployment_api::deployment_routes(deployment_state),
             )
             .route("/health", axum::routing::get(|| async { "OK" }))
-            .layer(tower_http::limit::RequestBodyLimitLayer::new(50 * 1024 * 1024)); // 50 MB limit
+            .layer(axum::extract::DefaultBodyLimit::max(100 * 1024 * 1024)); // 100 MB limit
 
-        info!("🌐 Starting HTTP server on {}", addr);
+        // Smart port management: Try configured port, auto-increment if busy
+        let (listener, actual_addr) = Self::bind_with_fallback(&addr).await?;
+        let actual_port = actual_addr.port();
+        
+        if actual_port != port {
+            warn!("⚠️  Configured port {} busy, using port {} instead", port, actual_port);
+        } else {
+            info!("✅ Bound to configured port {}", port);
+        }
+
+        info!("🌐 HTTP server listening on {}", actual_addr);
 
         // Spawn server in background
         tokio::spawn(async move {
-            let listener = match tokio::net::TcpListener::bind(addr).await {
-                Ok(l) => l,
-                Err(e) => {
-                    error!("❌ Failed to bind HTTP server: {}", e);
-                    return;
-                }
-            };
-
-            info!("✅ HTTP server listening on {}", addr);
 
             if let Err(e) = axum::serve(listener, app).await {
                 error!("❌ HTTP server error: {}", e);
@@ -424,6 +425,42 @@ impl SongbirdOrchestrator {
         });
 
         Ok(())
+    }
+
+    /// Smart port binding with automatic fallback
+    /// 
+    /// Tries the requested port first, then auto-increments until it finds an available port.
+    /// Maximum 10 attempts before giving up.
+    async fn bind_with_fallback(addr: &std::net::SocketAddr) -> Result<(tokio::net::TcpListener, std::net::SocketAddr)> {
+        let host = addr.ip();
+        let mut port = addr.port();
+        let max_attempts = 10;
+        
+        for attempt in 1..=max_attempts {
+            let try_addr = std::net::SocketAddr::new(host, port);
+            
+            match tokio::net::TcpListener::bind(try_addr).await {
+                Ok(listener) => {
+                    let actual_addr = listener.local_addr()?;
+                    if attempt > 1 {
+                        info!("✅ Found available port {} (after {} attempts)", port, attempt);
+                    }
+                    return Ok((listener, actual_addr));
+                }
+                Err(_e) if attempt < max_attempts => {
+                    tracing::debug!("Port {} busy, trying {} (attempt {}/{})", port, port + 1, attempt, max_attempts);
+                    port += 1;
+                }
+                Err(e) => {
+                    return Err(anyhow::anyhow!(
+                        "Failed to bind after {} attempts. Last error: {}. Tried ports {}-{}",
+                        max_attempts, e, addr.port(), port
+                    ));
+                }
+            }
+        }
+        
+        unreachable!("Loop should have returned or errored");
     }
 
     /// Stop the orchestrator
