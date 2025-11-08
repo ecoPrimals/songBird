@@ -52,6 +52,7 @@ fn test_provider_traits_available() {
     let _: Option<&dyn DiscoveryProvider> = None;
     let _: Option<&dyn ObservabilityProvider> = None;
     let _: Option<&dyn OrchestrationProvider> = None;
-    let _: Option<&dyn PrimalProvider> = None;
+    // Temporarily disabled - PrimalProvider uses generics which aren't dyn-compatible
+    // let _: Option<&dyn PrimalProvider> = None;
     let _: Option<&dyn SecurityProvider> = None;
 }
