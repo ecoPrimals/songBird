@@ -1,0 +1,132 @@
+//! CLI Application Core Core
+//!
+//! Main CLI application structure and execution logic.
+
+use crate::cli::commands::{self, Commands};
+use songbird_types::{SongbirdError, SongbirdResult};
+
+pub async fn run_cli() -> SongbirdResult<()> {
+    use clap::Parser;
+
+    // Parse command-line arguments using clap
+    let cli = crate::Cli::parse();
+
+    // Get the command to execute, default to version if none provided
+    let command = cli.command.unwrap_or(Commands::Version {
+        detailed: false,
+    });
+
+    match command {
+        Commands::Tower {
+            command,
+        } => command.execute().await.map_err(|e| SongbirdError::Configuration {
+            message: format!("Tower command failed: {e}"),
+            field: None,
+            suggestion: None,
+        }),
+        Commands::Version {
+            detailed,
+        } => commands::version::execute_version_command(detailed).await,
+        Commands::Gaming {
+            command,
+        } => {
+            commands::gaming::handle_gaming_command(commands::gaming::GamingArgs {
+                command,
+            })
+            .await
+        }
+        Commands::Network {
+            command,
+        } => commands::network::handle_network_command(command).await,
+        Commands::Federation {
+            command,
+        } => commands::federation::handle_federation_command(command).await,
+        Commands::Config {
+            command,
+        } => commands::config::handle_config_command(command).await,
+        Commands::Status {
+            detailed,
+            gaming: _,
+        } => {
+            commands::status::execute_status(detailed, None, crate::cli::types::OutputFormat::Auto)
+                .await
+        }
+        Commands::Quick {
+            name,
+            auto_detect,
+            family_safe,
+        } => commands::quick::execute_quick_gaming(name, auto_detect, family_safe).await,
+        Commands::Discover {
+            timeout,
+            protocol,
+            continuous,
+        } => commands::discovery::execute_discovery(timeout, protocol, continuous).await, // Additional commands can be added here as they are implemented
+                                                                                          // The match is exhaustive for all currently defined Commands variants
+    }
+}
+
+/// CLI Error types for better error handling
+#[derive(Debug, thiserror::Error)]
+#[must_use = "This type represents an outcome that must be handled"]
+pub enum CliError {
+    #[error("Command error in {command}: {message}")]
+    CommandError {
+        command: String,
+        message: String,
+    },
+
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+
+    #[error("Network error: {0}")]
+    NetworkError(String),
+
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+}
+
+impl CliError {
+    pub fn command_error(command: &str, message: &str) -> Self {
+        Self::CommandError {
+            command: command.to_string(),
+            message: message.to_string(),
+        }
+    }
+}
+
+impl From<CliError> for SongbirdError {
+    fn from(error: CliError) -> Self {
+        match error {
+            CliError::CommandError {
+                command,
+                message,
+            } => Self::service("cli", format!("{command}: {message}")),
+            CliError::ConfigError(msg) => Self::configuration(&msg),
+            CliError::NetworkError(msg) => Self::network(&msg),
+            CliError::IoError(e) => Self::configuration(format!("IO error: {e}")),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Cli, OutputFormat};
+    use clap::Parser;
+
+    #[test]
+    fn test_cli_parsing() {
+        // Test basic command parsing
+        let cli = Cli::try_parse_from(["songbird", "version"]);
+
+        assert!(cli.is_ok());
+
+        let cli = Cli::try_parse_from(["songbird", "quick", "compute"]);
+
+        assert!(cli.is_ok());
+    }
+
+    #[test]
+    fn test_output_format_default() {
+        assert_eq!(OutputFormat::default(), OutputFormat::Auto);
+    }
+}
