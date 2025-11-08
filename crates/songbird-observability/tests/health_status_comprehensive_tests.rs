@@ -7,6 +7,7 @@
 #![allow(clippy::uninlined_format_args)]
 
 use songbird_observability::health::*;
+use songbird_types::SongbirdResult;
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
@@ -323,7 +324,7 @@ fn test_health_record_creation() {
     let record = HealthRecord {
         timestamp: SystemTime::now(),
         status: HealthState::Healthy,
-        checks: checks.clone(),
+        checks,
         response_time: Some(Duration::from_millis(125)),
     };
 

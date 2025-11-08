@@ -1,7 +1,7 @@
 // Module imports
 use crate::cli::ui;
 /// Orchestrator control commands
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use colored::*;
 use songbird_types::SongbirdResult;
 use std::path::Path;
@@ -46,7 +46,7 @@ pub async fn start_orchestrator(
     config_path: Option<&Path>,
     enable_dashboard: bool,
     dashboard_port: u16,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("{}", ui::info("🚀 Starting Songbird Orchestrator...")"
 
     if let Some(config) = config_path {
@@ -92,7 +92,7 @@ pub async fn start_orchestrator(
 
     Ok(()),
 }
-pub async fn stop_orchestrator(force: bool) -> CliResult<()> {
+pub async fn stop_orchestrator(force: bool) -> SongbirdResult<()> {
     println!("{}", ui::info("⏹️  Stopping Songbird Orchestrator...")"
 
     if force {

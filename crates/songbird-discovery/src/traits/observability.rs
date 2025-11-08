@@ -2,7 +2,7 @@
 //!
 //! Provides monitoring, logging, and tracing capabilities
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
@@ -123,8 +123,8 @@ pub enum MetricType  {Counter)
 }
 
 /// Observability trait for monitoring and tracing
-#[async_trait]
-pub trait Observability: Send + Sync  {/// Start a new span
+pub trait Observability: Send + Sync {
+    /// Start a new span
     async fn start_span(&self, context: RequestContext) -> Result<Span>;
 
     /// Finish a span
@@ -198,8 +198,9 @@ impl DefaultObservability  {/// Create a new metric collector
     }
 }
 
-#[async_trait]
-impl Observability for DefaultObservability  {async fn start_span(&self, context: RequestContext) -> Result<Span>  {Ok(Span {
+impl Observability for DefaultObservability {
+    async fn start_span(&self, context: RequestContext) -> Result<Span> {
+        Ok(Span {
             trace_id: context.trace_id,
             span_id: context.span_id,
             parent_span_id: context.parent_span_id,

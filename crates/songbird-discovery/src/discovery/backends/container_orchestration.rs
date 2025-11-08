@@ -5,8 +5,12 @@
 //! - Any Docker-compatible system (Docker, Podman, containerd, etc.)
 //! - Any container runtime environment
 //! - Any orchestration API that provides service information
+//!
+//! ## Native Async Traits
+//! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 
 #![allow(
+    async_fn_in_trait,
     clippy::unused_async,
     clippy::struct_field_names,
     clippy::missing_errors_doc,
@@ -17,7 +21,6 @@
 use crate::traits::discovery::ServiceHealthStatus;
 use crate::traits::service::{ServiceInfo, ServiceStatus};
 use crate::traits::{ServiceDiscovery, ServiceEvent, ServiceQuery};
-use async_trait::async_trait;
 use songbird_types::errors::SongbirdResult;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -308,7 +311,7 @@ impl UniversalContainerOrchestration {
 
     /// Detect Kubernetes-compatible APIs (K8s, K3s, `OpenShift`, etc.)
     async fn detect_kubernetes_apis(&mut self) {
-        use songbird_config::config::constants;
+        use songbird_config::canonical::constants;
 
         // Get configurable defaults
         let k8s_protocol = std::env::var("K8S_PROTOCOL").unwrap_or_else(|_| "https".to_string());
@@ -667,7 +670,7 @@ impl UniversalContainerOrchestration {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ServiceDiscovery for UniversalContainerOrchestration {
     async fn discover(&self, query: ServiceQuery) -> SongbirdResult<Vec<ServiceInfo>> {
         self.discover_services_universal(query).await

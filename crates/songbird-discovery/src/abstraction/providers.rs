@@ -1,8 +1,11 @@
 //! Provider abstraction layer for discovery services
 //!
 //! **MODERNIZED**: Now uses canonical Provider traits from songbird-types
+//!
+//! # Native Async Traits (Rust 1.75+)
+//! Traits are defined with native async fn for optimal performance
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

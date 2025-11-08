@@ -14,7 +14,8 @@
 
 use serde_json::json;
 use songbird_canonical::metadata::*;
-use songbird_types::SongbirdError;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // AIResponseMetadata Tests
@@ -50,54 +51,69 @@ fn test_ai_response_metadata_with_multiple_automation_capabilities() {
 }
 
 #[test]
-fn test_ai_response_metadata_with_custom_field() {
+fn test_ai_response_metadata_with_custom_field() -> SongbirdResult<()> {
     let metadata = AIResponseMetadata::default().with_custom_field("field1", json!("value1"));
 
     assert_eq!(metadata.custom_fields.len(), 1);
     assert!(metadata.custom_fields.contains_key("field1"));
+    Ok(())
 }
 
 #[test]
-fn test_ai_response_metadata_with_multiple_custom_fields() {
+fn test_ai_response_metadata_with_multiple_custom_fields() -> SongbirdResult<()> {
     let metadata = AIResponseMetadata::default()
         .with_custom_field("field1", json!("value1"))
         .with_custom_field("field2", json!(42))
         .with_custom_field("field3", json!({"nested": "object"}));
 
     assert_eq!(metadata.custom_fields.len(), 3);
+    Ok(())
 }
 
 #[test]
-fn test_ai_response_metadata_custom_field_json_string() {
+fn test_ai_response_metadata_custom_field_json_string() -> SongbirdResult<()> {
     let metadata = AIResponseMetadata::default().with_custom_field("test", json!("string_value"));
 
-    let value = metadata.custom_fields.get("test").expect("Should have field 'test'");
+    let value = metadata
+        .custom_fields
+        .get("test")
+        .ok_or_else(|| SongbirdError::configuration("Should have field 'test'".to_string()))?;
     assert_eq!(value, &json!("string_value"));
+    Ok(())
 }
 
 #[test]
-fn test_ai_response_metadata_custom_field_json_number() {
+fn test_ai_response_metadata_custom_field_json_number() -> SongbirdResult<()> {
     let metadata = AIResponseMetadata::default().with_custom_field("count", json!(42));
 
-    let value = metadata.custom_fields.get("count").expect("Should have field 'count'");
+    let value = metadata
+        .custom_fields
+        .get("count")
+        .ok_or_else(|| SongbirdError::configuration("Should have field 'count'".to_string()))?;
     assert_eq!(value, &json!(42));
+    Ok(())
 }
 
 #[test]
-fn test_ai_response_metadata_custom_field_json_object() {
+fn test_ai_response_metadata_custom_field_json_object() -> SongbirdResult<()> {
     let metadata =
         AIResponseMetadata::default().with_custom_field("config", json!({"key": "value"}));
 
-    let value = metadata.custom_fields.get("config").expect("Should have field 'config'");
+    let value = metadata
+        .custom_fields
+        .get("config")
+        .ok_or_else(|| SongbirdError::configuration("Should have field 'config'".to_string()))?;
     assert!(value.is_object());
+    Ok(())
 }
 
 #[test]
-fn test_ai_response_metadata_serialization() {
+fn test_ai_response_metadata_serialization() -> SongbirdResult<()> {
     let metadata = AIResponseMetadata::default();
     let serialized = serde_json::to_string(&metadata);
 
     assert!(serialized.is_ok());
+    Ok(())
 }
 
 #[test]
@@ -139,41 +155,51 @@ fn test_decision_context_with_influencing_factors() {
 }
 
 #[test]
-fn test_decision_context_with_alternatives() {
+fn test_decision_context_with_alternatives() -> SongbirdResult<()> {
     let mut context = DecisionContext::default();
     context.alternatives_considered.push("alternative1".to_string());
     context.alternatives_considered.push("alternative2".to_string());
 
     assert_eq!(context.alternatives_considered.len(), 2);
+    Ok(())
 }
 
 #[test]
-fn test_decision_context_with_reasoning() {
+fn test_decision_context_with_reasoning() -> SongbirdResult<()> {
     let context = DecisionContext {
         reasoning: Some("This is the reasoning".to_string()),
         ..Default::default()
     };
 
     assert!(context.reasoning.is_some());
-    assert_eq!(context.reasoning.as_ref().expect("Should have reasoning"), "This is the reasoning");
+    assert_eq!(
+        context
+            .reasoning
+            .as_ref()
+            .ok_or_else(|| SongbirdError::configuration("Should have reasoning".to_string()))?,
+        "This is the reasoning"
+    );
+    Ok(())
 }
 
 #[test]
-fn test_decision_context_with_risk_level() {
+fn test_decision_context_with_risk_level() -> SongbirdResult<()> {
     let context = DecisionContext {
         risk_level: RiskLevel::High,
         ..Default::default()
     };
 
     assert_eq!(context.risk_level, RiskLevel::High);
+    Ok(())
 }
 
 #[test]
-fn test_decision_context_serialization() {
+fn test_decision_context_serialization() -> SongbirdResult<()> {
     let context = DecisionContext::default();
     let serialized = serde_json::to_string(&context);
 
     assert!(serialized.is_ok());
+    Ok(())
 }
 
 #[test]
@@ -207,23 +233,26 @@ fn test_risk_level_medium() {
 }
 
 #[test]
-fn test_risk_level_high() {
+fn test_risk_level_high() -> SongbirdResult<()> {
     let risk = RiskLevel::High;
     assert_eq!(risk, RiskLevel::High);
+    Ok(())
 }
 
 #[test]
-fn test_risk_level_critical() {
+fn test_risk_level_critical() -> SongbirdResult<()> {
     let risk = RiskLevel::Critical;
     assert_eq!(risk, RiskLevel::Critical);
+    Ok(())
 }
 
 #[test]
-fn test_risk_level_ordering() {
+fn test_risk_level_ordering() -> SongbirdResult<()> {
     let low = RiskLevel::Low;
     let medium = RiskLevel::Medium;
 
     assert_ne!(low, medium);
+    Ok(())
 }
 
 #[test]
@@ -248,7 +277,7 @@ fn test_risk_level_deserialization() -> Result<(), Box<dyn std::error::Error>> {
         debug_info: None,
     })?;
     let deserialized: RiskLevel = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Error occurred".to_string()))?;
 
     assert_eq!(risk, deserialized);
     Ok(())
@@ -338,19 +367,21 @@ fn test_automation_capability_inequality_different_name() {
 }
 
 #[test]
-fn test_automation_capability_inequality_different_confidence() {
+fn test_automation_capability_inequality_different_confidence() -> SongbirdResult<()> {
     let cap1 = AutomationCapability::new("test", "Test", 0.7);
     let cap2 = AutomationCapability::new("test", "Test", 0.8);
 
     assert_ne!(cap1, cap2);
+    Ok(())
 }
 
 #[test]
-fn test_automation_capability_serialization() {
+fn test_automation_capability_serialization() -> SongbirdResult<()> {
     let capability = AutomationCapability::new("test", "Test capability", 0.8);
     let serialized = serde_json::to_string(&capability);
 
     assert!(serialized.is_ok());
+    Ok(())
 }
 
 #[test]
@@ -373,7 +404,7 @@ fn test_automation_capability_deserialization() -> Result<(), Box<dyn std::error
 // ============================================================================
 
 #[test]
-fn test_quality_metrics_default() {
+fn test_quality_metrics_default() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default();
 
     assert!(metrics.accuracy.is_none());
@@ -381,80 +412,105 @@ fn test_quality_metrics_default() {
     assert!(metrics.relevance.is_none());
     assert!(metrics.timeliness.is_none());
     assert!(metrics.overall_quality.is_none());
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_with_accuracy() {
+fn test_quality_metrics_with_accuracy() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(0.9);
 
     assert!(metrics.accuracy.is_some());
-    let accuracy = metrics.accuracy.expect("Should have accuracy");
+    let accuracy = metrics
+        .accuracy
+        .ok_or_else(|| SongbirdError::configuration("Should have accuracy".to_string()))?;
     assert!((accuracy - 0.9).abs() < f64::EPSILON);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_with_completeness() {
+fn test_quality_metrics_with_completeness() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_completeness(0.85);
 
     assert!(metrics.completeness.is_some());
-    let completeness = metrics.completeness.expect("Should have completeness");
+    let completeness = metrics
+        .completeness
+        .ok_or_else(|| SongbirdError::configuration("Should have completeness".to_string()))?;
     assert!((completeness - 0.85).abs() < f64::EPSILON);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_with_relevance() {
+fn test_quality_metrics_with_relevance() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_relevance(0.92);
 
     assert!(metrics.relevance.is_some());
-    let relevance = metrics.relevance.expect("Should have relevance");
+    let relevance = metrics
+        .relevance
+        .ok_or_else(|| SongbirdError::configuration("Should have relevance".to_string()))?;
     assert!((relevance - 0.92).abs() < f64::EPSILON);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_with_timeliness() {
+fn test_quality_metrics_with_timeliness() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_timeliness(0.88);
 
     assert!(metrics.timeliness.is_some());
-    let timeliness = metrics.timeliness.expect("Should have timeliness");
+    let timeliness = metrics
+        .timeliness
+        .ok_or_else(|| SongbirdError::configuration(format!("Should have timeliness")))?;
     assert!((timeliness - 0.88).abs() < f64::EPSILON);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_accuracy_clamped_low() {
+fn test_quality_metrics_accuracy_clamped_low() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(-0.5);
 
-    let accuracy = metrics.accuracy.expect("Should have accuracy");
+    let accuracy = metrics
+        .accuracy
+        .ok_or_else(|| SongbirdError::configuration(format!("Should have accuracy")))?;
     assert!((accuracy - 0.0).abs() < f64::EPSILON);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_accuracy_clamped_high() {
+fn test_quality_metrics_accuracy_clamped_high() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(1.5);
 
-    let accuracy = metrics.accuracy.expect("Should have accuracy");
+    let accuracy = metrics
+        .accuracy
+        .ok_or_else(|| SongbirdError::configuration(format!("Should have accuracy")))?;
     assert!((accuracy - 1.0).abs() < f64::EPSILON);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_calculate_overall_single_metric() {
+fn test_quality_metrics_calculate_overall_single_metric() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(0.8);
 
     assert!(metrics.overall_quality.is_some());
-    let overall = metrics.overall_quality.expect("Should have overall quality");
+    let overall = metrics
+        .overall_quality
+        .ok_or_else(|| SongbirdError::configuration(format!("Should have overall quality")))?;
     assert!((overall - 0.8).abs() < f64::EPSILON);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_calculate_overall_two_metrics() {
+fn test_quality_metrics_calculate_overall_two_metrics() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(0.8).with_completeness(0.9);
 
     assert!(metrics.overall_quality.is_some());
-    let overall = metrics.overall_quality.expect("Should have overall quality");
+    let overall = metrics
+        .overall_quality
+        .ok_or_else(|| SongbirdError::configuration(format!("Should have overall quality")))?;
     assert!((overall - 0.85).abs() < 0.001);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_calculate_overall_all_metrics() {
+fn test_quality_metrics_calculate_overall_all_metrics() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default()
         .with_accuracy(0.9)
         .with_completeness(0.85)
@@ -463,44 +519,56 @@ fn test_quality_metrics_calculate_overall_all_metrics() {
 
     assert!(metrics.overall_quality.is_some());
     let expected = (0.9 + 0.85 + 0.92 + 0.88) / 4.0;
-    let overall = metrics.overall_quality.expect("Should have overall quality");
+    let overall = metrics
+        .overall_quality
+        .ok_or_else(|| SongbirdError::configuration(format!("Should have overall quality")))?;
     assert!((overall - expected).abs() < 0.001);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_calculate_overall_updates_on_change() {
+fn test_quality_metrics_calculate_overall_updates_on_change() -> SongbirdResult<()> {
     let mut metrics = QualityMetrics::default().with_accuracy(0.8);
-    let first_overall = metrics.overall_quality.expect("Should have first overall quality");
+    let first_overall = metrics.overall_quality.ok_or_else(|| {
+        SongbirdError::configuration(format!("Should have first overall quality"))
+    })?;
 
     metrics = metrics.with_completeness(0.9);
-    let second_overall = metrics.overall_quality.expect("Should have second overall quality");
+    let second_overall = metrics.overall_quality.ok_or_else(|| {
+        SongbirdError::configuration(format!("Should have second overall quality"))
+    })?;
 
     assert!((first_overall - second_overall).abs() > 0.001);
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_calculate_overall_no_metrics() {
+fn test_quality_metrics_calculate_overall_no_metrics() -> SongbirdResult<()> {
     let mut metrics = QualityMetrics::default();
     metrics.calculate_overall();
 
     assert!(metrics.overall_quality.is_none());
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_serialization() {
+fn test_quality_metrics_serialization() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(0.9);
     let serialized = serde_json::to_string(&metrics);
 
     assert!(serialized.is_ok());
+    Ok(())
 }
 
 #[test]
-fn test_quality_metrics_deserialization() {
+fn test_quality_metrics_deserialization() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(0.9);
-    let serialized = serde_json::to_string(&metrics).expect("Should serialize");
+    let serialized = serde_json::to_string(&metrics)
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize")))?;
     let deserialized: Result<QualityMetrics, _> = serde_json::from_str(&serialized);
 
     assert!(deserialized.is_ok());
+    Ok(())
 }
 
 // ============================================================================
@@ -540,7 +608,7 @@ fn test_decision_context_full_workflow() {
 }
 
 #[test]
-fn test_quality_metrics_comprehensive() {
+fn test_quality_metrics_comprehensive() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default()
         .with_accuracy(0.95)
         .with_completeness(0.90)
@@ -554,6 +622,9 @@ fn test_quality_metrics_comprehensive() {
     assert!(metrics.overall_quality.is_some());
 
     let expected_overall = (0.95 + 0.90 + 0.92 + 0.88) / 4.0;
-    let overall = metrics.overall_quality.expect("Should have overall quality");
+    let overall = metrics
+        .overall_quality
+        .ok_or_else(|| SongbirdError::configuration(format!("Should have overall quality")))?;
     assert!((overall - expected_overall).abs() < 0.001);
+    Ok(())
 }

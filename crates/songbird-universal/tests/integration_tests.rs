@@ -17,6 +17,7 @@
 //! simulating real-world orchestration scenarios across all primals.
 
 use songbird_test_utils::OrchestratorTestEnvironment;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
 
 #[tokio::test]
@@ -25,10 +26,10 @@ async fn test_all_adapters_collect_metrics() {
     let env = OrchestratorTestEnvironment::with_healthy_primals().await;
 
     // Create all 4 adapters
-    let toadstool = ComputeAdapter::new(env.toadstool_endpoint().await);
-    let beardog = SecurityAdapter::new(env.beardog_endpoint().await);
-    let nestgate = StorageAdapter::new(env.nestgate_endpoint().await);
-    let squirrel = AIAdapter::new(env.squirrel_endpoint().await);
+    let toadstool = ComputeAdapter::new(env.toadstool_endpoint());
+    let beardog = SecurityAdapter::new(env.beardog_endpoint());
+    let nestgate = StorageAdapter::new(env.nestgate_endpoint());
+    let squirrel = AIAdapter::new(env.squirrel_endpoint());
 
     // Test Objective: All adapters should be able to collect metrics simultaneously
     // This validates that:
@@ -48,11 +49,12 @@ async fn test_all_adapters_collect_metrics() {
     // assert!(storage_metrics.total_capacity_bytes > 0);
     // assert!(ai_metrics.active_models > 0);
 
+    // 🍼 MIGRATED: Using capability-based error messages
     // Verify: All adapters have valid endpoints (unwrap Results first)
-    assert!(!toadstool.expect("ToadStool adapter should be created").endpoint().is_empty());
-    assert!(!beardog.expect("BearDog adapter should be created").endpoint().is_empty());
-    assert!(!nestgate.expect("NestGate adapter should be created").endpoint().is_empty());
-    assert!(!squirrel.expect("Squirrel adapter should be created").endpoint().is_empty());
+    assert!(!toadstool?.endpoint().is_empty());
+    assert!(!beardog?.endpoint().is_empty());
+    assert!(!nestgate?.endpoint().is_empty());
+    assert!(!squirrel?.endpoint().is_empty());
 
     env.cleanup().await;
 }
@@ -106,16 +108,40 @@ async fn test_multi_primal_orchestration_workflow() {
     // - Transaction-like semantics
 
     // Create all adapters
-    let toadstool = ComputeAdapter::new(env.toadstool_endpoint().await);
-    let beardog = SecurityAdapter::new(env.beardog_endpoint().await);
-    let nestgate = StorageAdapter::new(env.nestgate_endpoint().await);
-    let squirrel = AIAdapter::new(env.squirrel_endpoint().await);
+    let toadstool = ComputeAdapter::new(env.toadstool_endpoint());
+    let beardog = SecurityAdapter::new(env.beardog_endpoint());
+    let nestgate = StorageAdapter::new(env.nestgate_endpoint());
+    let squirrel = AIAdapter::new(env.squirrel_endpoint());
 
     // Verify: All components initialized (unwrap Results first)
-    assert!(!toadstool.expect("ToadStool adapter should be created").endpoint().is_empty());
-    assert!(!beardog.expect("BearDog adapter should be created").endpoint().is_empty());
-    assert!(!nestgate.expect("NestGate adapter should be created").endpoint().is_empty());
-    assert!(!squirrel.expect("Squirrel adapter should be created").endpoint().is_empty());
+    assert!(!toadstool
+        .ok_or_else(|| SongbirdError::configuration(format!(
+            "ToadStool adapter should be created: {}",
+            e
+        )))?
+        .endpoint()
+        .is_empty());
+    assert!(!beardog
+        .ok_or_else(|| SongbirdError::configuration(format!(
+            "BearDog adapter should be created: {}",
+            e
+        )))?
+        .endpoint()
+        .is_empty());
+    assert!(!nestgate
+        .ok_or_else(|| SongbirdError::configuration(format!(
+            "NestGate adapter should be created: {}",
+            e
+        )))?
+        .endpoint()
+        .is_empty());
+    assert!(!squirrel
+        .ok_or_else(|| SongbirdError::configuration(format!(
+            "Squirrel adapter should be created: {}",
+            e
+        )))?
+        .endpoint()
+        .is_empty());
 
     // Implementation would be:
     // let workflow = OrchestrationWorkflow::new()
@@ -173,9 +199,9 @@ async fn test_load_distribution_across_adapters() {
     // Expected: Round-robin or least-loaded distribution
     //
     // Implementation:
-    // let compute1 = ComputeAdapter::new("http://compute-1:8080");
-    // let compute2 = ComputeAdapter::new("http://compute-2:8080");
-    // let compute3 = ComputeAdapter::new("http://compute-3:8080");
+    // let compute1 = ComputeAdapter::new(format!("http://compute-1:{}", test_orchestrator_port()));
+    // let compute2 = ComputeAdapter::new(format!("http://compute-2:{}", test_orchestrator_port()));
+    // let compute3 = ComputeAdapter::new(format!("http://compute-3:{}", test_orchestrator_port()));
     //
     // orchestrator.register_adapter("compute", compute1);
     // orchestrator.register_adapter("compute", compute2);
@@ -270,10 +296,10 @@ async fn test_concurrent_adapter_access() {
     let env = OrchestratorTestEnvironment::with_healthy_primals().await;
 
     // Create adapters
-    let toadstool = ComputeAdapter::new(env.toadstool_endpoint().await);
-    let beardog = SecurityAdapter::new(env.beardog_endpoint().await);
-    let nestgate = StorageAdapter::new(env.nestgate_endpoint().await);
-    let squirrel = AIAdapter::new(env.squirrel_endpoint().await);
+    let toadstool = ComputeAdapter::new(env.toadstool_endpoint());
+    let beardog = SecurityAdapter::new(env.beardog_endpoint());
+    let nestgate = StorageAdapter::new(env.nestgate_endpoint());
+    let squirrel = AIAdapter::new(env.squirrel_endpoint());
 
     // Test Objective: Multiple concurrent requests to different adapters
     //
@@ -295,10 +321,34 @@ async fn test_concurrent_adapter_access() {
     // assert!(results.iter().all(|r| r.is_ok()));
 
     // Verify: All adapters accessible (unwrap Results first)
-    assert!(!toadstool.expect("ToadStool adapter should be created").endpoint().is_empty());
-    assert!(!beardog.expect("BearDog adapter should be created").endpoint().is_empty());
-    assert!(!nestgate.expect("NestGate adapter should be created").endpoint().is_empty());
-    assert!(!squirrel.expect("Squirrel adapter should be created").endpoint().is_empty());
+    assert!(!toadstool
+        .ok_or_else(|| SongbirdError::configuration(format!(
+            "ToadStool adapter should be created: {}",
+            e
+        )))?
+        .endpoint()
+        .is_empty());
+    assert!(!beardog
+        .ok_or_else(|| SongbirdError::configuration(format!(
+            "BearDog adapter should be created: {}",
+            e
+        )))?
+        .endpoint()
+        .is_empty());
+    assert!(!nestgate
+        .ok_or_else(|| SongbirdError::configuration(format!(
+            "NestGate adapter should be created: {}",
+            e
+        )))?
+        .endpoint()
+        .is_empty());
+    assert!(!squirrel
+        .ok_or_else(|| SongbirdError::configuration(format!(
+            "Squirrel adapter should be created: {}",
+            e
+        )))?
+        .endpoint()
+        .is_empty());
 
     env.cleanup().await;
 }

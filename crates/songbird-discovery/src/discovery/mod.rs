@@ -28,6 +28,8 @@
 // Type alias for convenience
 type Result<T> = songbird_types::SongbirdResult<T>;
 
+// Note: UniversalServiceDiscoveryAdapter is imported where needed via full path for clarity
+
 // Core discovery types and traits
 pub mod core;
 
@@ -96,9 +98,9 @@ pub mod migration_examples {
     ///
     /// # Errors
     /// Returns an error if the auto-detection or creation of the discovery service fails.
-    pub async fn migrate_to_canonical_providers() -> Result<Box<dyn crate::traits::ServiceDiscovery>>
+    pub async fn migrate_to_canonical_providers() -> Result<crate::discovery::factory::UniversalServiceDiscoveryAdapter>
     {
-        UniversalDiscoveryFactory::create_auto_detect().await
+        crate::discovery::factory::UniversalDiscoveryFactory::create_auto_detect().await
     }
 
     // DISABLED: federation_aware_discovery module temporarily disabled

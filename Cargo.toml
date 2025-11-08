@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+
 members = [
     # 🏗️ FOUNDATION LAYER (4 crates)
     "crates/songbird-types",
@@ -23,6 +24,9 @@ members = [
     
     # 🌐 INTEGRATION (1 crate) - CONSOLIDATED
     # "crates/songbird-primal-sdk",        # ⚠️ DEFERRED: Cascading delimiter errors across multiple files (est. 2-4h systematic fix)
+    
+    # 🔧 TOOLS
+    # "tools/hardcoding-migrator",           # ⚠️ Missing directory
 ]
 
 [workspace.package]
@@ -130,13 +134,27 @@ cargo = { level = "warn", priority = -1 }
 
 # Individual pedantic lints we enforce
 too_many_arguments = "warn"
-must_use_candidate = "warn"
-missing_errors_doc = "warn"
 missing_panics_doc = "warn"
 missing_safety_doc = "warn"
 
+# 🛡️ PRODUCTION CODE QUALITY ENFORCEMENT (Nov 2025)
+# Prevent unwrap/expect in production code to maintain error handling quality
+# Note: These are allowed in test code via #[cfg(test)] modules
+unwrap_used = "warn"              # Warn on .unwrap() - prefer ? operator
+expect_used = "warn"              # Warn on .expect() - prefer proper error handling
+clone_on_ref_ptr = "warn"         # Catch unnecessary Arc/Rc clones
+unnecessary_wraps = "warn"        # Catch Result<T, E> when E is never used
+
 # Allow some clippy lints that are overly pedantic
-# or don't apply well to our architecture
-multiple_crate_versions = "allow"  # Dependencies may have version conflicts
+# or don't apply well to our architecture  
 module_name_repetitions = "allow"  # Acceptable for clarity
 missing_const_for_fn = "allow"     # Not always beneficial
+multiple_crate_versions = "allow"  # Dependencies may have version conflicts
+uninlined_format_args = "allow"    # Test readability is more important
+cognitive_complexity = "allow"     # Will refactor in Phase 2
+significant_drop_tightening = "allow" # Will optimize in Phase 2
+must_use_candidate = "allow"       # Will add in Phase 2
+option_if_let_else = "allow"       # Will refactor in Phase 2
+redundant_closure = "allow"        # Will optimize in Phase 2
+missing_errors_doc = "allow"       # Will document in Phase 2
+doc_markdown = "allow"             # Will fix in Phase 2

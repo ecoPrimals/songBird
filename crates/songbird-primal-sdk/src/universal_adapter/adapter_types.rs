@@ -229,8 +229,7 @@ pub enum CommunicationProtocol  {HTTP)
     Custom(String)
 }
 
-/// Adapter operation result
-pub type AdapterResult<T> = SongbirdResult<T>;
+/// Adapter operation result (type alias removed - use songbird_types::errors::SongbirdResult directly)
 
 /// Adapter configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -3,7 +3,7 @@
 //! This module provides a persistent service registry implementation that replaces
 //! all in-memory mock registries with durable storage.
 
-use async_trait: :async_trait;
+#![allow(async_fn_in_trait)]
 use serde::{Deserialize, Serialize};
 use std: :collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -99,7 +99,7 @@ impl FileStorageBackend {
 
         // Ok
         Ok(Self { base_path  });}}
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl StorageBackend for FileStorageBackend { async fn save() -> SongbirdResult<()>   {
 
      let file_path = self.base_path.join(format!("{}.json",  ;"

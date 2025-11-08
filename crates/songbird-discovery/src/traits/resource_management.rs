@@ -2,7 +2,8 @@
 //!
 //! Universal resource lifecycle and cleanup patterns
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
@@ -11,7 +12,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 /// Universal resource manager trait
-#[async_trait]
 pub trait ResourceManager: Send + Sync {
     /// Initialize resource tracking
     async fn initialize(&mut self) -> Result<()>;
@@ -171,7 +171,6 @@ pub struct ResourceManagerInfo  {pub name: String,
 }
 
 /// Resource cleanup strategy trait
-#[async_trait]
 pub trait CleanupStrategy: Send + Sync {
     /// Determine if a resource should be cleaned up
     async fn should_cleanup(&self, resource: &ResourceInfo) -> Result<bool>;
@@ -201,7 +200,6 @@ pub struct CleanupStrategyInfo  {pub name: String,
 }
 
 /// Resource monitoring trait
-#[async_trait]
 pub trait ResourceMonitor: Send + Sync {
     /// Start monitoring resources
     async fn start_monitoring(&mut self) -> Result<()>;

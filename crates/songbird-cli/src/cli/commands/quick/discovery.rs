@@ -3,7 +3,7 @@
 //! Headless API for discovering Songbird networks that biomeOS can consume
 
 use super::{DiscoveredNetwork, DiscoveryParameters};
-use crate::errors::{CliError, CliResult};
+use crate::errors::{CliError, SongbirdResult};
 use std::net::IpAddr;
 
 // Discovery configuration constants
@@ -13,7 +13,7 @@ const MAX_DISCOVERY_TIMEOUT_MS: u64 = 5000;
 /// Network discovery API endpoint
 pub async fn discover_networks_api(
     params: DiscoveryParameters,
-) -> CliResult<Vec<DiscoveredNetwork>> {
+) -> SongbirdResult<Vec<DiscoveredNetwork>> {
     let mut networks = Vec::new();
 
     for method in &params.methods {
@@ -84,21 +84,21 @@ fn calculate_compatibility_score(network: &DiscoveredNetwork) -> f64 {
 }
 
 /// Discover networks via subnet scanning
-async fn discover_via_subnet_scan(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetwork>> {
+async fn discover_via_subnet_scan(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetwork>> {
     // Implementation would scan common ports on local subnet
     tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000))).await;
     Ok(vec![])
 }
 
 /// Discover networks via DNS
-async fn discover_via_dns(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetwork>> {
+async fn discover_via_dns(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetwork>> {
     // DNS-SD discovery implementation
     tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000))).await;
     Ok(vec![])
 }
 
 /// Discover networks via multicast
-async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetwork>> {
+async fn discover_via_multicast(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetwork>> {
     use std::net::UdpSocket;
     use std::time::Duration;
 
@@ -140,13 +140,13 @@ async fn discover_via_multicast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetw
 }
 
 /// Discover networks via mDNS
-async fn discover_via_mdns(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetwork>> {
+async fn discover_via_mdns(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetwork>> {
     tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000))).await;
     Ok(vec![])
 }
 
 /// Discover networks via broadcast
-async fn discover_via_broadcast(timeout_ms: u64) -> CliResult<Vec<DiscoveredNetwork>> {
+async fn discover_via_broadcast(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetwork>> {
     tokio::time::sleep(tokio::time::Duration::from_millis(timeout_ms.min(1000))).await;
     Ok(vec![])
 }

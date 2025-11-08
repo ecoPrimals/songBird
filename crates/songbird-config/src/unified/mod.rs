@@ -6,7 +6,7 @@
 pub use core::*;
 pub use federation::*;
 pub use network::*;
-pub use security::*;
+// pub use security::*; // ARCHIVED: Moved to _archived_q2_2026/, use canonical::security instead
 pub use discovery::*;
 pub use observability::*;
 
@@ -14,7 +14,7 @@ pub use observability::*;
 pub mod core;
 pub mod federation;
 pub mod network;
-pub mod security;
+// pub mod security; // ARCHIVED: November 8, 2025 - Use canonical::security instead
 pub mod discovery;
 pub mod observability;
 

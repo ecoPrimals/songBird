@@ -10,7 +10,7 @@ pub struct ErrorTestingFramework {
     /// Test scenarios
     scenarios: Arc<RwLock<HashMap<String, ErrorScenario>>>,
     /// Test results
-    results: Arc<RwLock<HashMap<String, ErrorTestResult>>>,
+    results: Arc<RwLock<HashMap<String, ErrorSongbirdResult>>>,
 }
 
 /// Error test scenario
@@ -52,7 +52,7 @@ pub struct ErrorTestConfig {
 
 /// Error test result
 #[derive(Debug, Clone)]
-pub struct ErrorTestResult {
+pub struct ErrorSongbirdResult {
     /// Test success
     pub success: bool,
     /// Actual error received
@@ -85,7 +85,7 @@ impl ErrorTestingFramework {
     ///
     /// # Errors
     /// Returns an error if the test scenario fails.
-    pub async fn run_scenario(&self, scenario_name: &str) -> SongbirdResult<ErrorTestResult> {
+    pub async fn run_scenario(&self, scenario_name: &str) -> SongbirdResult<ErrorSongbirdResult> {
         let scenarios = self.scenarios.read().await;
         let _scenario = scenarios.get(scenario_name).ok_or_else(|| {
             SongbirdError::service("test-utils", format!("Scenario '{scenario_name}' not found"))
@@ -94,7 +94,7 @@ impl ErrorTestingFramework {
         let start = std::time::Instant::now();
 
         // Simulate error testing logic
-        let result = ErrorTestResult {
+        let result = ErrorSongbirdResult {
             success: true,
             actual_error: None,
             duration: start.elapsed(),
@@ -110,7 +110,7 @@ impl ErrorTestingFramework {
     ///
     /// # Errors
     /// Returns an error if results cannot be retrieved.
-    pub async fn get_results(&self) -> SongbirdResult<HashMap<String, ErrorTestResult>> {
+    pub async fn get_results(&self) -> SongbirdResult<HashMap<String, ErrorSongbirdResult>> {
         let results = self.results.read().await;
         Ok(results.clone())
     }

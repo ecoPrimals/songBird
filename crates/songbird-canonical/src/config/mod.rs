@@ -17,3 +17,15 @@ pub mod ai_first;
 pub mod environment;
 pub mod orchestration;
 pub mod performance;
+
+// Test modules
+#[cfg(test)]
+mod adapters_tests;
+#[cfg(test)]
+mod ai_first_tests;
+#[cfg(test)]
+mod environment_tests;
+#[cfg(test)]
+mod orchestration_tests;
+#[cfg(test)]
+mod performance_tests;

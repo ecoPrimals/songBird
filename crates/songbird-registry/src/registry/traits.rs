@@ -1,14 +1,17 @@
 //! Registry traits
 //!
 //! Trait definitions for plugin registry functionality.
+//!
+//! # Native Async Traits (Rust 1.75+)
+//! Uses native async fn in traits for zero-cost abstraction
+
+#![allow(async_fn_in_trait)]
 
 use crate::registry::query::Query;
 use crate::types::{Capability, Plugin, PluginId, RegistryEvent};
-use async_trait::async_trait;
 use songbird_types::errors::SongbirdResult;
 
 /// Trait for plugin registry operations
-#[async_trait]
 pub trait PluginRegistry: Send + Sync {
     /// Register a new plugin
     ///

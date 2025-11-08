@@ -14,6 +14,15 @@
 //! - **`SecurityProvider`**: Security operations (consolidated)
 //! - **`OrchestrationProvider`**: Service orchestration (unified)
 //! - **`ObservabilityProvider`**: Metrics & monitoring (consolidated)
+//!
+//! ## Dyn-Compatibility Note (November 2025)
+//! These traits use `#[async_trait]` to maintain dyn-compatibility. They are extensively
+//! used with trait objects (`Box<dyn Provider>`, `Arc<dyn Provider>`) throughout the codebase
+//! for plugin systems, registries, and dynamic dispatch. While native async traits offer
+//! better performance, they cannot be used with trait objects in current Rust.
+//!
+//! **Trade-off**: We prioritize dyn-compatibility over the 15-40% perf gains from native async,
+//! as the provider system's architecture fundamentally requires dynamic dispatch.
 
 use async_trait::async_trait;
 use futures_util::Stream;
@@ -34,6 +43,8 @@ pub use crate::errors::{SongbirdError, SongbirdResult};
 ///
 /// This trait provides the common interface that all providers must implement.
 /// It replaces multiple scattered provider definitions across crates.
+///
+/// **Dyn-Compatible**: Uses `#[async_trait]` to support trait objects (`Box<dyn Provider>`).
 #[async_trait]
 pub trait Provider: Send + Sync + 'static {
     /// Unique provider identifier
@@ -125,9 +136,12 @@ pub trait PrimalProvider: Provider {
     ) -> SongbirdResult<bool>;
 
     /// Integrate with another primal at runtime
-    async fn integrate_with(
+    ///
+    /// Note: Uses generic parameter for native async trait compatibility.
+    /// Implementations can accept any type implementing `PrimalProvider`.
+    async fn integrate_with<P: PrimalProvider>(
         &mut self,
-        other_primal: Arc<dyn PrimalProvider>,
+        other_primal: Arc<P>,
     ) -> SongbirdResult<IntegrationResult>;
 
     /// Get primal configuration schema

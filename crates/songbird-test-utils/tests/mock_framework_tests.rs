@@ -28,17 +28,19 @@ use std::collections::HashMap;
 
 #[test]
 fn test_mock_service_creation() {
-    let mock_service = MockService::new("test-service", 8080);
+    let port = songbird_config::defaults::ports::orchestrator_port();
+    let mock_service = MockService::new("test-service", port);
 
     assert_eq!(mock_service.name, "test-service");
-    assert_eq!(mock_service.port, 8080);
+    assert_eq!(mock_service.port, port);
     assert!(mock_service.is_running());
     assert_eq!(mock_service.request_count(), 0);
 }
 
 #[test]
 fn test_mock_service_requests() {
-    let mut mock_service = MockService::new("request-service", 8081);
+    let mut mock_service =
+        MockService::new("request-service", songbird_config::defaults::ports::discovery_port());
 
     // Simulate requests
     mock_service.handle_request("GET", "/health");
@@ -52,7 +54,8 @@ fn test_mock_service_requests() {
 
 #[test]
 fn test_mock_service_responses() {
-    let mut mock_service = MockService::new("response-service", 8082);
+    let mut mock_service =
+        MockService::new("response-service", songbird_config::defaults::ports::beardog_port());
 
     // Configure responses
     mock_service.set_response("/health", MockResponse::ok(r#"{"status": "healthy"}"#));
@@ -69,7 +72,8 @@ fn test_mock_service_responses() {
 
 #[test]
 fn test_mock_service_lifecycle() {
-    let mut mock_service = MockService::new("lifecycle-service", 8083);
+    let mut mock_service =
+        MockService::new("lifecycle-service", songbird_config::defaults::ports::metrics_port());
 
     assert!(mock_service.is_running());
 
@@ -147,7 +151,7 @@ impl MockService {
     }
 
     fn get_response(&self, path: &str) -> MockResponse {
-        self.responses.get(path).cloned().unwrap_or_else(|| MockResponse::error(404, "Not Found"))
+        self.responses.get(path).cloned().unwrap_or_else(|_| MockResponse::error(404, "Not Found"))
     }
 
     fn stop(&mut self) {

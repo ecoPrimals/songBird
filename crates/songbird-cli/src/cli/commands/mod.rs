@@ -13,7 +13,7 @@ pub mod federation;
 pub mod gaming;
 pub mod network;
 pub mod status;
-pub mod tower;  // NEW: Tower management
+pub mod tower; // NEW: Tower management
 pub mod version;
 
 // Legacy compatibility modules (simplified)

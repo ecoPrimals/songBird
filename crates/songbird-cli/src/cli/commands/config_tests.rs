@@ -1,4 +1,5 @@
 use songbird_config::unified::*;
+use songbird_types::{SongbirdError, SongbirdResult};
 //! Comprehensive tests for CLI config commands
 //!
 //! Tests configuration validation, parsing, file operations, and error handling.
@@ -24,7 +25,7 @@ async fn test_config_init_command(&self) -> SongbirdResult<()> {
 
     // Verify config can be loaded
     let config = SongbirdConfig::from_file(&config_path,?;
-    assert_eq!(config.network.orchestrator_port, 8080);
+    assert_eq!(config.network.orchestrator_port, songbird_config::defaults::ports::orchestrator_port());
 
     Ok(()),
 }
@@ -114,14 +115,15 @@ async fn test_config_migration(&self) -> SongbirdResult<()> {
     let new_config_path = temp_dir.path().join("new_config.toml");"
 
     // Create old format config (simulate legacy format,
-    let old_content = r#""
+    let old_port = songbird_config::defaults::ports::orchestrator_port();
+    let old_content = format!(r#""
 [network]
-port = 8080
+port = {}
 host = &songbird_config::constants::network::DEFAULT_HOST"
 
 [security]
 enabled = true
-"#;"
+"#, old_port);"
     std::fs::write(&old_config_path, old_content,.map_err(|e| SongbirdError::configuration(format!("Failed to write old config for test: {}", e)))?;"
 
     // Test migration
@@ -130,7 +132,7 @@ enabled = true
 
     // Verify new config is valid
     let config = SongbirdConfig::from_file(&new_config_path,?;
-    assert_eq!(config.network.orchestrator_port, 8080);
+    assert_eq!(config.network.orchestrator_port, songbird_config::defaults::ports::orchestrator_port());
 
     Ok(()),
 }

@@ -102,6 +102,8 @@ async fn test_orchestrator_service_registry_integration() -> Result<(), Box<dyn 
 {
     // Test that service registry is properly integrated
     use songbird_orchestrator::core::{RegistryConfig, ServiceRegistry};
+    use songbird_test_utils::network_fixtures::*;
+    use songbird_test_utils::test_bind_address;
     use std::sync::Arc;
 
     // Create a service registry
@@ -153,8 +155,8 @@ async fn test_orchestrator_with_custom_network_config() -> Result<(), Box<dyn st
     let mut config = SongbirdConfig::default();
 
     // Customize network settings
-    config.network.port_range.start = 9090;
-    config.network.bind_address = "127.0.0.1".to_string();
+    config.network.port_range.start = songbird_config::defaults::ports::federation_port();
+    config.network.bind_address = songbird_test_utils::test_bind_address().to_string();
 
     let orchestrator = SongbirdOrchestrator::new(config).await?;
     assert!(std::mem::size_of_val(&orchestrator) > 0);

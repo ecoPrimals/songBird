@@ -2,7 +2,8 @@
 //!
 //! Core service abstractions for the Songbird Orchestrator
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -10,7 +11,6 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 /// Universal service trait for all service types
-#[async_trait]
 pub trait UniversalService: Send + Sync + 'static {
     type Error: std::error::Error + Send + Sync + 'static;
 

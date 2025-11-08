@@ -17,9 +17,11 @@ pub struct CircuitBreakerConfig {/// Number of consecutive failures before openi
     pub enabled: bool,
 }
 
-impl Default for CircuitBreakerConfig  {fn default() -> Self  {Self {
+impl Default for CircuitBreakerConfig {
+    fn default() -> Self {
+        Self {
             failure_threshold: 5,
-            timeout: Duration::from_secs(60)
+            timeout: Duration::from_secs(60),
             success_threshold: 3,
             half_open_max_requests: 10,
             enabled: true,
@@ -43,10 +45,12 @@ pub struct RetryConfig {/// Maximum number of retry attempts
     pub enabled: bool,
 }
 
-impl Default for RetryConfig  {fn default() -> Self  {Self {
+impl Default for RetryConfig {
+    fn default() -> Self {
+        Self {
             max_attempts: 3,
-            initial_delay: Duration::from_millis(100,
-            max_delay: Duration::from_secs(30)
+            initial_delay: Duration::from_millis(100),
+            max_delay: Duration::from_secs(30),
             backoff_multiplier: 2.0,
             jitter: true,
             enabled: true,
@@ -72,14 +76,15 @@ impl Default for CircuitBreakerState {
 
 /// Retry strategy
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum RetryStrategy {/// Fixed delay between retries
+pub enum RetryStrategy {
+    /// Fixed delay between retries
     Fixed,
     /// Exponential backoff with optional jitter
-    ExponentialBackoff { jitter: bool })
+    ExponentialBackoff { jitter: bool },
     /// Linear backoff
     LinearBackoff,
     /// Custom retry strategy
-    Custom { name: String })
+    Custom { name: String },
 }
 
 impl Default for RetryStrategy {
@@ -95,11 +100,12 @@ impl CircuitBreakerConfig {/// Create a new circuit breaker configuration with c
         timeout: Duration,
         success_threshold: u32,
         half_open_max_requests: u32,
-    ) -> Self  {Self {
-            failure_threshold)
-            timeout)
-            success_threshold)
-            half_open_max_requests)
+    ) -> Self {
+        Self {
+            failure_threshold,
+            timeout,
+            success_threshold,
+            half_open_max_requests,
             enabled: true,
         }
     }
@@ -122,13 +128,15 @@ impl CircuitBreakerConfig {/// Create a new circuit breaker configuration with c
     }
 }
 
-impl RetryConfig {/// Create a new retry configuration with custom settings
+impl RetryConfig {
+    /// Create a new retry configuration with custom settings
     #[must_use]
-    pub fn new(max_attempts: u32, initial_delay: Duration, backoff_multiplier: f64) -> Self  {Self {
-            max_attempts)
-            initial_delay)
-            max_delay: Duration::from_secs(30)
-            backoff_multiplier)
+    pub fn new(max_attempts: u32, initial_delay: Duration, backoff_multiplier: f64) -> Self {
+        Self {
+            max_attempts,
+            initial_delay,
+            max_delay: Duration::from_secs(30),
+            backoff_multiplier,
             jitter: true,
             enabled: true,
         }
@@ -171,6 +179,305 @@ impl RetryConfig {/// Create a new retry configuration with custom settings
     }
 }
 
+// ============================================================================
+// ROBUSTNESS TYPES - Consolidated from unified/robustness.rs
+// ============================================================================
+
+/// Unified robustness configuration wrapper
+///
+/// **Merged from**: `unified/robustness.rs`  
+/// **Purpose**: Comprehensive fault tolerance configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RobustnessConfig {
+    /// Circuit breaker configuration
+    #[serde(default)]
+    pub circuit_breaker: CircuitBreakerConfig,
+
+    /// Rate limiting configuration
+    #[serde(default)]
+    pub rate_limiting: RateLimitingConfig,
+
+    /// Bulkhead configuration
+    #[serde(default)]
+    pub bulkhead: BulkheadConfig,
+
+    /// Retry configuration
+    #[serde(default)]
+    pub retry: RetryConfig,
+
+    /// Load balancer configuration
+    #[serde(default)]
+    pub load_balancer: LoadBalancerConfig,
+
+    /// Health check configuration
+    #[serde(default)]
+    pub health_check: HealthCheckConfig,
+
+    /// Zero-cost router configuration
+    #[serde(default)]
+    pub zero_cost_router: ZeroCostRouterConfig,
+}
+
+/// Rate limiting configuration
+///
+/// **Merged from**: `unified/robustness.rs`  
+/// **Purpose**: API rate limiting and throttling
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RateLimitingConfig {
+    /// Enable rate limiting
+    pub enabled: bool,
+
+    /// Maximum requests per second
+    pub max_requests_per_second: u32,
+
+    /// Burst capacity
+    pub burst_capacity: u32,
+
+    /// Window size for rate limiting (in seconds)
+    pub window_size_secs: u64,
+
+    /// Rate limit algorithm
+    pub algorithm: RateLimitAlgorithm,
+
+    /// Per-client rate limiting
+    pub per_client_enabled: bool,
+
+    /// Per-client max requests
+    pub per_client_max_requests: u32,
+}
+
+impl Default for RateLimitingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            max_requests_per_second: 1000,
+            burst_capacity: 2000,
+            window_size_secs: 60,
+            algorithm: RateLimitAlgorithm::TokenBucket,
+            per_client_enabled: true,
+            per_client_max_requests: 100,
+        }
+    }
+}
+
+/// Rate limiting algorithms
+///
+/// **Merged from**: `unified/robustness.rs`
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum RateLimitAlgorithm {
+    /// Token bucket algorithm
+    TokenBucket,
+    /// Leaky bucket algorithm
+    LeakyBucket,
+    /// Fixed window algorithm
+    FixedWindow,
+    /// Sliding window algorithm
+    SlidingWindow,
+}
+
+/// Bulkhead configuration for resource isolation
+///
+/// **Merged from**: `unified/robustness.rs`  
+/// **Purpose**: Isolate resources to prevent cascade failures
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkheadConfig {
+    /// Enable bulkhead pattern
+    pub enabled: bool,
+
+    /// Maximum concurrent operations
+    pub max_concurrent_operations: usize,
+
+    /// Queue size for pending operations
+    pub queue_size: usize,
+
+    /// Operation timeout in milliseconds
+    pub operation_timeout_ms: u64,
+
+    /// Thread pool size
+    pub thread_pool_size: usize,
+
+    /// Isolation strategy
+    pub isolation_strategy: IsolationStrategy,
+}
+
+impl Default for BulkheadConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            max_concurrent_operations: 100,
+            queue_size: 1000,
+            operation_timeout_ms: 30000,
+            thread_pool_size: 10,
+            isolation_strategy: IsolationStrategy::ThreadPool,
+        }
+    }
+}
+
+/// Isolation strategies for bulkhead pattern
+///
+/// **Merged from**: `unified/robustness.rs`
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum IsolationStrategy {
+    /// Isolate using thread pools
+    ThreadPool,
+    /// Isolate using semaphores
+    Semaphore,
+    /// Isolate using queues
+    Queue,
+}
+
+/// Backoff strategies for retry mechanism
+///
+/// **Merged from**: `unified/robustness.rs`
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum BackoffStrategy {
+    /// Fixed delay between retries
+    Fixed,
+    /// Linear backoff
+    Linear,
+    /// Exponential backoff
+    Exponential,
+    /// Exponential backoff with jitter
+    ExponentialWithJitter,
+}
+
+/// Load balancer configuration
+///
+/// **Merged from**: `unified/robustness.rs`  
+/// **Purpose**: Load balancing and traffic distribution
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadBalancerConfig {
+    /// Load balancing algorithm
+    pub algorithm: LoadBalancingAlgorithm,
+
+    /// Sticky sessions enabled
+    pub sticky_sessions: bool,
+
+    /// Session timeout in seconds
+    pub session_timeout_secs: u64,
+
+    /// Maximum connections per backend
+    pub max_connections_per_backend: usize,
+
+    /// Connection timeout in milliseconds
+    pub connection_timeout_ms: u64,
+
+    /// Enable fail-fast
+    pub fail_fast: bool,
+}
+
+impl Default for LoadBalancerConfig {
+    fn default() -> Self {
+        Self {
+            algorithm: LoadBalancingAlgorithm::RoundRobin,
+            sticky_sessions: false,
+            session_timeout_secs: 300,
+            max_connections_per_backend: 100,
+            connection_timeout_ms: 30000,
+            fail_fast: true,
+        }
+    }
+}
+
+/// Load balancing algorithms
+///
+/// **Merged from**: `unified/robustness.rs`
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum LoadBalancingAlgorithm {
+    /// Round-robin distribution
+    RoundRobin,
+    /// Least connections algorithm
+    LeastConnections,
+    /// Weighted round-robin
+    WeightedRoundRobin,
+    /// Random selection
+    Random,
+    /// IP hash-based routing
+    IpHash,
+    /// Capability-based routing
+    CapabilityBased,
+}
+
+/// Health check configuration
+///
+/// **Merged from**: `unified/robustness.rs`  
+/// **Purpose**: Backend health monitoring
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthCheckConfig {
+    /// Enable health checks
+    pub enabled: bool,
+
+    /// Health check interval in seconds
+    pub interval_secs: u64,
+
+    /// Health check timeout in seconds
+    pub timeout_secs: u64,
+
+    /// Failure threshold before marking unhealthy
+    pub failure_threshold: u32,
+
+    /// Recovery threshold before marking healthy
+    pub recovery_threshold: u32,
+
+    /// Health check path
+    pub path: String,
+}
+
+impl Default for HealthCheckConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            interval_secs: 30,
+            timeout_secs: 10,
+            failure_threshold: 3,
+            recovery_threshold: 2,
+            path: "/health".to_string(),
+        }
+    }
+}
+
+/// Zero-cost router configuration
+///
+/// **Merged from**: `unified/robustness.rs`  
+/// **Purpose**: Compile-time route optimization
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ZeroCostRouterConfig {
+    /// Enable zero-cost routing
+    pub enabled: bool,
+
+    /// Route cache size
+    pub route_cache_size: usize,
+
+    /// Route cache TTL in seconds
+    pub route_cache_ttl_secs: u64,
+
+    /// Enable route optimization
+    pub optimize_routes: bool,
+
+    /// Maximum route depth
+    pub max_route_depth: usize,
+
+    /// Route discovery timeout in milliseconds
+    pub discovery_timeout_ms: u64,
+}
+
+impl Default for ZeroCostRouterConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            route_cache_size: 10000,
+            route_cache_ttl_secs: 300,
+            optimize_routes: true,
+            max_route_depth: 10,
+            discovery_timeout_ms: 30000,
+        }
+    }
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,18 +485,18 @@ mod tests {
     #[test]
     fn test_circuit_breaker_config_default() {
         let config = CircuitBreakerConfig::default();
-        assert_eq!(config.failure_threshold, 5)
-        assert_eq!(config.timeout, Duration::from_secs(60)
-        assert!(config.enabled));
+        assert_eq!(config.failure_threshold, 5);
+        assert_eq!(config.timeout, Duration::from_secs(60));
+        assert!(config.enabled);
         assert!(config.is_valid());
     }
 
     #[test]
     fn test_retry_config_default() {
         let config = RetryConfig::default();
-        assert_eq!(config.max_attempts, 3)
-        assert_eq!(config.initial_delay, Duration::from_millis(100)
-        assert!(config.enabled));
+        assert_eq!(config.max_attempts, 3);
+        assert_eq!(config.initial_delay, Duration::from_millis(100));
+        assert!(config.enabled);
         assert!(config.is_valid());
     }
 
@@ -201,9 +508,9 @@ mod tests {
         let delay2 = config.calculate_delay(2);
         let delay3 = config.calculate_delay(3);
 
-        assert_eq!(delay1, Duration::from_millis(100)
-        assert_eq!(delay2, Duration::from_millis(200)
-        assert_eq!(delay3, Duration::from_millis(400)
+        assert_eq!(delay1, Duration::from_millis(100));
+        assert_eq!(delay2, Duration::from_millis(200));
+        assert_eq!(delay3, Duration::from_millis(400));
     }
 
     #[test]
@@ -211,17 +518,18 @@ mod tests {
         let cb_config = CircuitBreakerConfig::disabled();
         let retry_config = RetryConfig::disabled();
 
-        assert!(!cb_config.enabled));
-        assert!(!retry_config.enabled));
+        assert!(!cb_config.enabled);
+        assert!(!retry_config.enabled);
 
         let delay = retry_config.calculate_delay(1);
-        assert_eq!(delay, Duration::from_millis(0)
+        assert_eq!(delay, Duration::from_millis(0));
     }
 
     #[test]
-    fn test_circuit_breaker_states()  {assert_eq!(CircuitBreakerState::default(), CircuitBreakerState::Closed);
+    fn test_circuit_breaker_states() {
+        assert_eq!(CircuitBreakerState::default(), CircuitBreakerState::Closed);
         assert_eq!(
-            RetryStrategy::default()
+            RetryStrategy::default(),
             RetryStrategy::ExponentialBackoff { jitter: true }
         );
     }

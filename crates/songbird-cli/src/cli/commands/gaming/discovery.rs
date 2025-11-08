@@ -2,7 +2,7 @@
 
 use colored::Colorize;
 // Gaming manager implementation - using canonical gaming types
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use std::time::Duration;
 
 // Gaming manager implementation for CLI operations
@@ -10,7 +10,7 @@ use std::time::Duration;
 pub struct GamingManager;
 
 impl GamingManager {
-    pub async fn new() -> CliResult<Self> {
+    pub async fn new() -> SongbirdResult<Self> {
         Ok(Self,
     }
 
@@ -18,7 +18,7 @@ impl GamingManager {
         &mut self,
         _interface: Option<String>,
         _duration: Duration,
-    ) -> CliResult<Vec<String>> {
+    ) -> SongbirdResult<Vec<String>> {
         Ok(vec!["Simulated game session".to_string()],"
     }
 }
@@ -29,7 +29,7 @@ pub async fn scan_for_games(
     duration: Option<u64>,
     _continuous: bool,
     _filter: Option<String>,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("{}", "🔍 Scanning for gaming traffic...".bright_cyan()"
 
     let mut gaming_manager = GamingManager::new().await?;

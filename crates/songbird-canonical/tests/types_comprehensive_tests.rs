@@ -17,7 +17,8 @@
 
 use serde_json::json;
 use songbird_canonical::types::*;
-use songbird_types::SongbirdError;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 
 // ========== ServiceId Tests ==========
 
@@ -37,27 +38,29 @@ fn test_service_id_from_string() {
 }
 
 #[test]
-fn test_service_id_equality() {
+fn test_service_id_equality() -> SongbirdResult<()> {
     let id1 = ServiceId::new("service-a");
     let id2 = ServiceId::new("service-a");
     let id3 = ServiceId::new("service-b");
 
     assert_eq!(id1, id2);
     assert_ne!(id1, id3);
+    Ok(())
 }
 
 #[test]
-fn test_service_id_clone() {
+fn test_service_id_clone() -> SongbirdResult<()> {
     let id = ServiceId::new("cloneable");
     let cloned = id.clone();
     assert_eq!(id, cloned);
+    Ok(())
 }
 
 #[test]
 fn test_service_id_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let id = ServiceId::new("serialize-me");
     let json = serde_json::to_string(&id)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("serialize-me"));
     Ok(())
 }
@@ -66,7 +69,7 @@ fn test_service_id_serialization() -> Result<(), Box<dyn std::error::Error>> {
 fn test_service_id_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let json = r#""deserialized-service""#;
     let id: ServiceId = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should deserialize".to_string()))?;
     assert_eq!(id.as_str(), "deserialized-service");
     Ok(())
 }
@@ -101,34 +104,37 @@ fn test_endpoint_to_url_with_path() {
 }
 
 #[test]
-fn test_endpoint_to_url_with_leading_slash() {
+fn test_endpoint_to_url_with_leading_slash() -> SongbirdResult<()> {
     let endpoint = Endpoint::new("http", "example.com", 80).with_path("///triple/slash");
     let url = endpoint.to_url();
     assert!(!url.contains("////")); // Should normalize slashes
+    Ok(())
 }
 
 #[test]
-fn test_endpoint_equality() {
+fn test_endpoint_equality() -> SongbirdResult<()> {
     let ep1 = Endpoint::new("tcp", "192.168.1.1", 9000);
     let ep2 = Endpoint::new("tcp", "192.168.1.1", 9000);
     let ep3 = Endpoint::new("udp", "192.168.1.1", 9000);
 
     assert_eq!(ep1, ep2);
     assert_ne!(ep1, ep3);
+    Ok(())
 }
 
 #[test]
-fn test_endpoint_clone() {
+fn test_endpoint_clone() -> SongbirdResult<()> {
     let endpoint = Endpoint::new("grpc", "service.local", 50051);
     let cloned = endpoint.clone();
     assert_eq!(endpoint, cloned);
+    Ok(())
 }
 
 #[test]
 fn test_endpoint_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = Endpoint::new("wss", "ws.example.com", 8443);
     let json = serde_json::to_string(&endpoint)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("wss"));
     assert!(json.contains("ws.example.com"));
     assert!(json.contains("8443"));
@@ -139,7 +145,7 @@ fn test_endpoint_serialization() -> Result<(), Box<dyn std::error::Error>> {
 fn test_endpoint_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let json = r#"{"protocol":"https","host":"test.com","port":443,"path":null}"#;
     let endpoint: Endpoint = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should deserialize".to_string()))?;
     assert_eq!(endpoint.protocol, "https");
     assert_eq!(endpoint.host, "test.com");
     assert_eq!(endpoint.port, 443);
@@ -162,31 +168,34 @@ fn test_request_id_unique() {
 }
 
 #[test]
-fn test_request_id_uuid_format() {
+fn test_request_id_uuid_format() -> SongbirdResult<()> {
     let id = RequestId::new();
     let uuid_str = id.as_str();
     assert_eq!(uuid_str.len(), 36); // UUID v4 format length
     assert_eq!(uuid_str.chars().filter(|c| *c == '-').count(), 4); // UUID has 4 dashes
+    Ok(())
 }
 
 #[test]
-fn test_request_id_clone() {
+fn test_request_id_clone() -> SongbirdResult<()> {
     let id = RequestId::new();
     let cloned = id.clone();
     assert_eq!(id, cloned);
+    Ok(())
 }
 
 #[test]
-fn test_request_id_default() {
+fn test_request_id_default() -> SongbirdResult<()> {
     let id = RequestId::default();
     assert!(!id.as_str().is_empty());
+    Ok(())
 }
 
 #[test]
 fn test_request_id_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let id = RequestId::new();
     let json = serde_json::to_string(&id)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(!json.is_empty());
     Ok(())
 }
@@ -232,16 +241,17 @@ fn test_confidence_score_is_medium() {
 }
 
 #[test]
-fn test_confidence_score_is_low() {
+fn test_confidence_score_is_low() -> SongbirdResult<()> {
     let low = ConfidenceScore::new(0.3);
     let not_low = ConfidenceScore::new(0.6);
 
     assert!(low.is_low());
     assert!(!not_low.is_low());
+    Ok(())
 }
 
 #[test]
-fn test_confidence_score_boundaries() {
+fn test_confidence_score_boundaries() -> SongbirdResult<()> {
     // Test exact boundary conditions
     let exactly_high = ConfidenceScore::new(0.8);
     assert!(exactly_high.is_high());
@@ -250,13 +260,14 @@ fn test_confidence_score_boundaries() {
     let exactly_medium_low = ConfidenceScore::new(0.5);
     assert!(exactly_medium_low.is_medium());
     assert!(!exactly_medium_low.is_low());
+    Ok(())
 }
 
 #[test]
 fn test_confidence_score_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let score = ConfidenceScore::new(0.85);
     let json = serde_json::to_string(&score)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("0.85"));
     Ok(())
 }
@@ -298,22 +309,24 @@ fn test_suggested_action_builder_pattern() {
 }
 
 #[test]
-fn test_suggested_action_equality() {
+fn test_suggested_action_equality() -> SongbirdResult<()> {
     let action1 = SuggestedAction::new("action-a", "Description A");
     let action2 = SuggestedAction::new("action-a", "Description A");
     let action3 = SuggestedAction::new("action-b", "Description B");
 
     assert_eq!(action1, action2);
     assert_ne!(action1, action3);
+    Ok(())
 }
 
 #[test]
-fn test_suggested_action_clone() {
+fn test_suggested_action_clone() -> SongbirdResult<()> {
     let action =
         SuggestedAction::new("clone-test", "Test cloning").with_parameter("key", json!("value"));
     let cloned = action.clone();
 
     assert_eq!(action, cloned);
+    Ok(())
 }
 
 #[test]
@@ -322,7 +335,7 @@ fn test_suggested_action_serialization() -> Result<(), Box<dyn std::error::Error
         SuggestedAction::new("test", "Test action").with_parameter("param", json!("value"));
 
     let json = serde_json::to_string(&action)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("test"));
     assert!(json.contains("Test action"));
     Ok(())

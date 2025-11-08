@@ -19,5 +19,5 @@ async fn main() {
         error!("❌ Command failed: {}", e);
         std::process::exit(1);
     }
-    info!("✅ Command completed successfully")
+    info!("✅ Command completed successfully");
 }

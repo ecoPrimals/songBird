@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Modernized configuration tests
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::float_cmp)]
@@ -17,7 +18,7 @@
 
 #[cfg(test)]
 mod config_tests {
-    use songbird_config::config::constants::DEFAULT_CONFIG_PATH;
+    use songbird_config::canonical::constants::DEFAULT_CONFIG_PATH;
     use songbird_config::EnvironmentConfig;
 
     #[test]

@@ -85,6 +85,8 @@ pkg/
 
 # Test coverage and reports
 coverage/
+coverage-report/
+tarpaulin-report.html
 *.lcov
 *.gcda
 *.gcno

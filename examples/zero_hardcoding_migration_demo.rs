@@ -80,8 +80,9 @@ async fn demonstrate_old_hardcoded_approach() -> SongbirdResult<()>   {
     println!("   // OLD: Hardcoded primal names");
     println!("   let beardog = BearDogClient::new(\"http://beardog:config.network.https_port\").await?;");
     println!("   let nestgate = NestGateClient::new(\"http://nestgate:config.network.http_port\").await?;");
-    println!("   let toadstool = ToadstoolOrchestrator::new(\"http://toadstool:8082\").await?;");
-    println!("   let squirrel = SquirrelAI::new(\"http://squirrel:8081\").await?;");
+    println!("   // Note: Now environment-aware via songbird_config::defaults::ports");
+    println!("   let toadstool = ToadstoolOrchestrator::new(&format!(\"http://toadstool:{{}}\", songbird_config::defaults::ports::beardog_port())).await?;");
+    println!("   let squirrel = SquirrelAI::new(&format!(\"http://squirrel:{{}}\", songbird_config::defaults::ports::discovery_port())).await?;");
 
     println!("\n   // OLD: Hardcoded external services");
     println!("   let k8s = KubernetesClient::new(\"https://k8s-api:6443\").await?;");

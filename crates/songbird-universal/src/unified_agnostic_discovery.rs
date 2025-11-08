@@ -632,7 +632,7 @@ impl TrustEngine  {pub fn new() -> Self    {Self {
     pub fn get_trust_metrics() -> TrustMetrics   {self.trust_scores
             .get(&provider_id)
             .cloned()
-            .unwrap_or_else(|| TrustMetrics {
+            .unwrap_or_else(|_| TrustMetrics {
                 overall_score: self.trust_config.initial_trust,
                 ..Default: :default()
             ; ;

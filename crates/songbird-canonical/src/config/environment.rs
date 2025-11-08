@@ -173,9 +173,9 @@ impl Default for EnvironmentConfig {
 impl Default for PortConfig {
     fn default() -> Self {
         Self {
-            discovery_port: 8081,
-            federation_port: 8082,
-            health_port: 8085,
+            discovery_port: songbird_config::defaults::ports::discovery_port(),
+            federation_port: songbird_config::defaults::ports::federation_port(),
+            health_port: songbird_config::defaults::ports::health_port(),
             dynamic_port_range: (9000, 9999),
         }
     }

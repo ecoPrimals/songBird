@@ -59,7 +59,7 @@ impl TestRunner {
         let client = Client::builder()
             .timeout(Duration::from_secs(config.timeout_seconds))
             .build()
-            .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+            .map_err(|e| format!("Failed to create HTTP client: {e}"))?;
 
         Ok(Self {
             config,
@@ -86,6 +86,7 @@ impl TestRunner {
     }
 
     /// Print error message
+    #[allow(clippy::unused_self)] // self kept for consistency with other print methods
     fn print_error(&self, message: &str) {
         println!("{}", format!("❌ {message}").red());
     }
@@ -333,21 +334,12 @@ async fn main() -> SongbirdResult<()> {
 
     let runner = TestRunner::new(config)?;
 
-    if let Some(("quick", _)) = matches.subcommand() {
-        let results = runner.run_quick_validation().await;
-        runner.generate_report(&results, "Quick Validation");
+    // Run quick validation (same for both branches)
+    let results = runner.run_quick_validation().await;
+    runner.generate_report(&results, "Quick Validation");
 
-        if results.iter().any(|r| !r.passed) {
-            std::process::exit(1);
-        }
-    } else {
-        // Default: run quick validation
-        let results = runner.run_quick_validation().await;
-        runner.generate_report(&results, "Quick Validation");
-
-        if results.iter().any(|r| !r.passed) {
-            std::process::exit(1);
-        }
+    if results.iter().any(|r| !r.passed) {
+        std::process::exit(1);
     }
 
     Ok(())

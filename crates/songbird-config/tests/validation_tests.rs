@@ -15,6 +15,7 @@
 //!
 //! Testing configuration validation logic.
 
+use songbird_test_utils::test_bind_address;
 use std::net::IpAddr;
 use std::time::Duration;
 
@@ -43,7 +44,10 @@ fn test_port_range_validation() {
 
     // Valid ports
     assert!(is_valid_port(80), "Port 80 should be valid");
-    assert!(is_valid_port(8080), "Port 8080 should be valid");
+    assert!(
+        is_valid_port(songbird_config::defaults::ports::orchestrator_port().into()),
+        "Orchestrator port should be valid"
+    );
     assert!(is_valid_port(65535), "Port 65535 should be valid");
 
     // Invalid ports (edge cases)
@@ -51,8 +55,14 @@ fn test_port_range_validation() {
     assert!(!is_valid_port(65536), "Port 65536 should be invalid");
 
     // Port range validation
-    assert!(is_valid_port_range(8000, 9000), "Range 8000-9000 should be valid");
-    assert!(!is_valid_port_range(9000, 8000), "Reversed range should be invalid");
+    assert!(
+        is_valid_port_range(8000, songbird_config::defaults::ports::metrics_port()),
+        "Range 8000-metrics_port should be valid"
+    );
+    assert!(
+        !is_valid_port_range(songbird_config::defaults::ports::metrics_port(), 8000),
+        "Reversed range should be invalid"
+    );
 }
 
 #[test]
@@ -63,7 +73,7 @@ fn test_ip_address_validation() {
     let valid_ipv4: Result<IpAddr, _> = "192.168.1.1".parse();
     assert!(valid_ipv4.is_ok(), "192.168.1.1 should be valid IPv4");
 
-    let localhost: Result<IpAddr, _> = "127.0.0.1".parse();
+    let localhost: Result<IpAddr, _> = test_bind_address().parse();
     assert!(localhost.is_ok(), "127.0.0.1 should be valid");
 
     // Invalid IP

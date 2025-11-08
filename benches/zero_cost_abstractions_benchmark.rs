@@ -163,7 +163,7 @@ fn bench_primal_connection_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("primal_connection");
     
     let primal_type = CanonicalPrimalType::Security;
-    let endpoint = "https://security.primal.example.com:8443";
+    let endpoint = &format!("https://security.primal.example.com:{}", songbird_config::defaults::ports::beardog_port());
     
     // Zero-allocation connection (stack-based metadata)
     group.bench_function("stack_allocated", |b| {

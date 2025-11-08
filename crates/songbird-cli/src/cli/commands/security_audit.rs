@@ -3,7 +3,7 @@
 /// This command performs a comprehensive audit of the SongBird system to identify
 /// and report ALL hardcoding security vulnerabilities. This implements our
 /// "zero hardcoding" principle for the entire ecosystem."
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use colored::Colorize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -84,7 +84,7 @@ struct SecurityVulnerability  {vulnerability_type: VulnerabilityType,
 }
 
 /// Main security audit command handler
-pub async fn handle_security_audit(args: SecurityAuditArgs) -> CliResult<()> {
+pub async fn handle_security_audit(args: SecurityAuditArgs) -> SongbirdResult<()> {
     println!("{}", "🔒 SongBird Security Hardcoding Audit".bright_blue().bold();"
     println!("{}", "=====================================".bright_blue()"
     println!()
@@ -118,7 +118,7 @@ pub async fn handle_security_audit(args: SecurityAuditArgs) -> CliResult<()> {
 }
 
 /// Scan the entire codebase for hardcoding vulnerabilities
-async fn scan_for_hardcoding_vulnerabilities() -> CliResult<Vec<SecurityVulnerability>> {
+async fn scan_for_hardcoding_vulnerabilities() -> SongbirdResult<Vec<SecurityVulnerability>> {
     let mut vulnerabilities = Vec::new();
 
     println!("{}", "🔍 Scanning for hardcoding vulnerabilities...".yellow()"
@@ -153,7 +153,7 @@ async fn scan_for_hardcoding_vulnerabilities() -> CliResult<Vec<SecurityVulnerab
 async fn scan_directory(
     dir_path: &str,
     patterns: &[(&str, VulnerabilityType,])
-) -> CliResult<Vec<SecurityVulnerability>> {
+) -> SongbirdResult<Vec<SecurityVulnerability>> {
     let mut vulnerabilities = Vec::new();
 
     if let Ok(entries, = std::fs::read_dir(dir_path) {
@@ -260,7 +260,7 @@ fn suggest_environment_variable(
 fn output_console_report(
     vulnerabilities: &[SecurityVulnerability],
     detailed: bool,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     let mut severity_counts = HashMap::new();
 
     for vuln in vulnerabilities {
@@ -330,7 +330,7 @@ fn output_console_report(
 }
 
 /// Output JSON format report
-fn output_json_report(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()> {
+fn output_json_report(vulnerabilities: &[SecurityVulnerability]) -> SongbirdResult<()> {
     let report = serde_json::json!({
         "audit_type": "hardcoding_security","
         "timestamp": chrono::Utc::now().to_rfc3339(),"
@@ -359,7 +359,7 @@ fn output_json_report(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()
 }
 
 /// Output Markdown format report
-fn output_markdown_report(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()> {
+fn output_markdown_report(vulnerabilities: &[SecurityVulnerability]) -> SongbirdResult<()> {
     println!("# SongBird Hardcoding Security Audit Report");
     println!();
     println!("**Generated:** {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");"
@@ -389,7 +389,7 @@ fn output_markdown_report(vulnerabilities: &[SecurityVulnerability]) -> CliResul
 }
 
 /// Apply automatic fixes for simple hardcoding issues
-async fn apply_automatic_fixes(vulnerabilities: &[SecurityVulnerability]) -> CliResult<()> {
+async fn apply_automatic_fixes(vulnerabilities: &[SecurityVulnerability]) -> SongbirdResult<()> {
     println!("{}", "🔧 Applying automatic fixes...".bright_green()"
 
     let mut fixes_applied = 0;

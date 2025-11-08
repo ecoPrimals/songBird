@@ -8,8 +8,11 @@
 //!
 //! Code should not know or care about specific vendors. It should request
 //! capabilities and let the discovery system find appropriate providers.
+//!
+//! # Native Async Traits (Rust 1.75+)
+//! Uses native async fn in traits for zero-cost abstraction
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
 use std::collections::HashMap;
 
 use crate::abstraction::providers::{DiscoveryProvider, ProviderConfig, ProviderFactory};

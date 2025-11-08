@@ -78,8 +78,8 @@ mod fault_recovery_tests {
         // Execute with timeout
         let result = timeout(Duration::from_secs(5), discovery_with_retry)
             .await
-            .map_err(|_| SongbirdError::network("Discovery timed out"))?
-            .map_err(|e| SongbirdError::network(e.to_string()))?;
+            .map_err(|e| SongbirdError::network("Discovery timed out"))?
+            .ok_or_else(|| SongbirdError::network(e.to_string()))?;
 
         // Verify retry behavior
         assert_eq!(
@@ -255,7 +255,7 @@ mod fault_recovery_tests {
         // Execute with total timeout
         let result = timeout(Duration::from_secs(5), network_operation_with_backoff)
             .await
-            .map_err(|_| SongbirdError::network("Operation timed out"))?;
+            .map_err(|e| SongbirdError::network("Operation timed out"))?;
 
         assert!(result.is_ok(), "Should eventually succeed");
         assert_eq!(attempt_count.load(Ordering::SeqCst), 4, "Should make 4 attempts");

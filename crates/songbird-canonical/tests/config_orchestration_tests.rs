@@ -6,6 +6,7 @@ use songbird_canonical::config::orchestration::{
     HealthConfig, LoadBalancingConfig, LoadBalancingStrategy, OrchestrationConfig, ScalingConfig,
     ServiceDiscoveryConfig,
 };
+use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_orchestration_config_default() {
@@ -148,50 +149,59 @@ fn test_scaling_config_enabled() {
 }
 
 #[test]
-fn test_scaling_config_validation() {
+fn test_scaling_config_validation() -> SongbirdResult<()> {
     let config = ScalingConfig::default();
 
     assert!(config.min_instances <= config.max_instances);
     assert!(config.target_cpu_percent > 0.0 && config.target_cpu_percent <= 100.0);
     assert!(config.target_memory_percent > 0.0 && config.target_memory_percent <= 100.0);
+    Ok(())
 }
 
 #[test]
-fn test_orchestration_config_serialization() {
+fn test_orchestration_config_serialization() -> SongbirdResult<()> {
     let config = OrchestrationConfig::default();
 
-    let json = serde_json::to_string(&config).expect("Should serialize");
+    let json = serde_json::to_string(&config)
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
     assert!(json.contains("discovery"));
     assert!(json.contains("load_balancing"));
     assert!(json.contains("health"));
     assert!(json.contains("scaling"));
 
     let deserialized: OrchestrationConfig =
-        serde_json::from_str(&json).expect("Should deserialize");
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Should deserialize: {}", e),
+            debug_info: None,
+        })?;
     assert_eq!(config.discovery.enabled, deserialized.discovery.enabled);
+    Ok(())
 }
 
 #[test]
-fn test_orchestration_config_clone() {
+fn test_orchestration_config_clone() -> SongbirdResult<()> {
     let config = OrchestrationConfig::default();
     let cloned = config.clone();
 
     assert_eq!(config.discovery.enabled, cloned.discovery.enabled);
     assert_eq!(config.health.enabled, cloned.health.enabled);
     assert_eq!(config.scaling.enabled, cloned.scaling.enabled);
+    Ok(())
 }
 
 #[test]
-fn test_orchestration_config_debug() {
+fn test_orchestration_config_debug() -> SongbirdResult<()> {
     let config = OrchestrationConfig::default();
     let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("OrchestrationConfig"));
     assert!(debug_str.contains("discovery"));
+    Ok(())
 }
 
 #[test]
-fn test_load_balancing_strategy_serialization() {
+fn test_load_balancing_strategy_serialization() -> SongbirdResult<()> {
     let strategies = vec![
         LoadBalancingStrategy::RoundRobin,
         LoadBalancingStrategy::LeastConnections,
@@ -199,10 +209,16 @@ fn test_load_balancing_strategy_serialization() {
     ];
 
     for strategy in strategies {
-        let json = serde_json::to_string(&strategy).expect("Should serialize");
+        let json = serde_json::to_string(&strategy)
+            .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
         let _deserialized: LoadBalancingStrategy =
-            serde_json::from_str(&json).expect("Should deserialize");
+            serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Should deserialize: {}", e),
+                debug_info: None,
+            })?;
     }
+    Ok(())
 }
 
 #[test]

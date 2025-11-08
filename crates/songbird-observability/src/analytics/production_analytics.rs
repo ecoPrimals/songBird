@@ -248,7 +248,7 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
     pub async fn analyze_trends(&self, metric_name: &str, window_size: usize) -> ServiceResult<TrendAnalysis> {
         let series_map = self.time_series.read().await;
         let series = series_map.get(metric_name,
-            .ok_or_else(|| SongbirdError::service_error("analytics_engine")?;"
+            .ok_or_else(|_| SongbirdError::service_error("analytics_engine")?;"
 
         if series.data_points.len() < window_size {
             return Err(SongbirdError::internal_error(service_error("analytics_engine", "Insufficient data for trend analysis");"
@@ -302,7 +302,7 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
         let models = self.anomaly_models.read().await;
 
         let model = models.get(metric_name,
-            .ok_or_else(|| {
+            .ok_or_else(|_| {
                 // Create new model if none exists
                 drop(models);
                 self.create_anomaly_model_async(metric_name, value)
@@ -360,7 +360,7 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
     pub async fn predict_metric(&self, metric_name: &str, horizon: Duration) -> ServiceResult<PredictionResult> {
         let series_map = self.time_series.read().await;
         let series = series_map.get(metric_name,
-            .ok_or_else(|| SongbirdError::service_error("analytics_engine")?;"
+            .ok_or_else(|_| SongbirdError::service_error("analytics_engine")?;"
 
         if series.data_points.len() < 10 {
             return Err(SongbirdError::internal_error(service_error("analytics_engine", "Insufficient data for prediction");"
@@ -451,7 +451,7 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
     pub async fn train_anomaly_model(&self, metric_name: &str) -> ServiceResult<()> {
         let series_map = self.time_series.read().await;
         let series = series_map.get(metric_name,
-            .ok_or_else(|| SongbirdError::service_error("analytics_engine")?;"
+            .ok_or_else(|_| SongbirdError::service_error("analytics_engine")?;"
 
         if series.data_points.len() < 30 {
             return Err(SongbirdError::internal_error(service_error("analytics_engine", "Insufficient data for model training");"

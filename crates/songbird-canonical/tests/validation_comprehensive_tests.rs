@@ -13,7 +13,8 @@
 #![allow(clippy::module_name_repetitions)]
 
 use songbird_canonical::validation::*;
-use songbird_types::SongbirdError;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // ValidationResult Tests
@@ -56,19 +57,21 @@ fn test_validation_result_failure_empty_errors() {
 }
 
 #[test]
-fn test_validation_result_success_serialization() {
+fn test_validation_result_success_serialization() -> SongbirdResult<()> {
     let result = ValidationResult::success();
     let serialized = serde_json::to_string(&result);
 
     assert!(serialized.is_ok());
+    Ok(())
 }
 
 #[test]
-fn test_validation_result_failure_serialization() {
+fn test_validation_result_failure_serialization() -> SongbirdResult<()> {
     let result = ValidationResult::failure(vec!["error".to_string()]);
     let serialized = serde_json::to_string(&result);
 
     assert!(serialized.is_ok());
+    Ok(())
 }
 
 #[test]
@@ -82,7 +85,14 @@ fn test_validation_result_deserialization() -> Result<(), Box<dyn std::error::Er
     let deserialized: Result<ValidationResult, _> = serde_json::from_str(&serialized);
 
     assert!(deserialized.is_ok());
-    assert!(deserialized.unwrap().is_valid);
+    assert!(
+        deserialized
+            .ok_or_else(|| SongbirdError::configuration(format!(
+                "TODO: Replace with proper error handling: {}",
+                e
+            )))?
+            .is_valid
+    );
     Ok(())
 }
 
@@ -96,7 +106,7 @@ fn test_validation_result_round_trip_success() -> Result<(), Box<dyn std::error:
             debug_info: None,
         })?;
     let deserialized: ValidationResult = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Error occurred".to_string()))?;
 
     assert_eq!(original.is_valid, deserialized.is_valid);
     assert_eq!(original.errors.len(), deserialized.errors.len());
@@ -114,7 +124,7 @@ fn test_validation_result_round_trip_failure() -> Result<(), Box<dyn std::error:
             debug_info: None,
         })?;
     let deserialized: ValidationResult = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Error occurred".to_string()))?;
 
     assert_eq!(original.is_valid, deserialized.is_valid);
     assert_eq!(original.errors, deserialized.errors);
@@ -132,29 +142,32 @@ fn test_validation_result_with_warnings() {
 }
 
 #[test]
-fn test_validation_result_failure_with_warnings() {
+fn test_validation_result_failure_with_warnings() -> SongbirdResult<()> {
     let mut result = ValidationResult::failure(vec!["error".to_string()]);
     result.warnings.push("warning".to_string());
 
     assert!(!result.is_valid);
     assert_eq!(result.errors.len(), 1);
     assert_eq!(result.warnings.len(), 1);
+    Ok(())
 }
 
 #[test]
-fn test_validation_result_clone() {
+fn test_validation_result_clone() -> SongbirdResult<()> {
     let original = ValidationResult::success();
     let cloned = original.clone();
 
     assert_eq!(original.is_valid, cloned.is_valid);
+    Ok(())
 }
 
 #[test]
-fn test_validation_result_debug() {
+fn test_validation_result_debug() -> SongbirdResult<()> {
     let result = ValidationResult::success();
     let debug_output = format!("{result:?}");
 
     assert!(debug_output.contains("ValidationResult"));
+    Ok(())
 }
 
 // ============================================================================
@@ -213,7 +226,7 @@ fn test_validation_workflow_with_warnings() {
 }
 
 #[test]
-fn test_validation_accumulate_errors() {
+fn test_validation_accumulate_errors() -> SongbirdResult<()> {
     // Accumulate errors from multiple checks
     let errors = vec![
         "required field missing".to_string(),
@@ -225,6 +238,7 @@ fn test_validation_accumulate_errors() {
 
     assert!(!result.is_valid);
     assert_eq!(result.errors.len(), 3);
+    Ok(())
 }
 
 #[test]
@@ -239,7 +253,7 @@ fn test_validation_result_serialization_with_all_fields() -> Result<(), Box<dyn 
         debug_info: None,
     })?;
     let deserialized: ValidationResult = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Error occurred".to_string()))?;
 
     assert_eq!(result.is_valid, deserialized.is_valid);
     assert_eq!(result.errors, deserialized.errors);

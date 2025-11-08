@@ -135,7 +135,7 @@ pub struct HealthCheckConfig {
 
 impl Default for HealthCheckConfig {
     fn default() -> Self {
-        use songbird_config::config::constants;
+        use songbird_config::canonical::constants;
 
         let health_host = std::env::var("HEALTH_CHECK_HOST")
             .unwrap_or_else(|_| constants::network::DEFAULT_HOST.to_string());

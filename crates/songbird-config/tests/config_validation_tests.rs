@@ -1,138 +1,174 @@
-//! Tests for configuration validation
-#![allow(clippy::uninlined_format_args)]
-#![allow(clippy::float_cmp)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::cast_sign_loss)]
-#![allow(clippy::needless_pass_by_value)]
-#![allow(clippy::similar_names)]
-#![allow(clippy::too_many_lines)]
-#![allow(clippy::module_name_repetitions)]
-
+//! Configuration validation and loading tests
 //!
-//! Testing configuration validation logic.
+//! Tests for configuration validation, defaults, and environment loading
+
+use songbird_config::{NetworkConfig, SecurityConfig, SongbirdConfig};
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
-fn test_port_range_validation() {
-    let valid_ports = [80, 443, 8080, 9090, 3000];
-    assert!(valid_ports.iter().all(|&p| p > 0 && p <= 65535));
+fn test_default_config_creation() {
+    let config = SongbirdConfig::default();
+
+    assert!(config.network.max_connections > 0, "Default max_connections should be positive");
+    assert!(!config.network.bind_address.is_empty(), "Default bind address should not be empty");
 }
 
 #[test]
-fn test_timeout_validation() {
-    let timeouts = [1_000, 5_000, 30_000];
-    assert!(timeouts.iter().all(|&t| t > 0));
+fn test_network_config_defaults() {
+    let network = NetworkConfig::default();
+
+    assert!(network.max_connections > 0);
+    assert!(network.connection_timeout_ms > 0);
+    assert!(!network.bind_address.is_empty());
 }
 
 #[test]
-fn test_buffer_size_validation() {
-    let buffer_sizes: Vec<u32> = vec![1024, 4096, 8192];
-    assert!(buffer_sizes.iter().all(|&b| b.is_power_of_two()));
+fn test_security_config_defaults() {
+    let security = SecurityConfig::default();
+
+    // Security config should exist with valid state
+    // Just verify the config can be created
+    let _ = security.enabled; // Access to verify field exists
 }
 
 #[test]
-fn test_thread_count_validation() {
-    let thread_counts = [1, 2, 4, 8, 16];
-    assert!(thread_counts.iter().all(|&t| t > 0 && t <= 128));
+fn test_config_clone() {
+    let config1 = SongbirdConfig::default();
+    let config2 = config1.clone();
+
+    assert_eq!(config1.network.bind_address, config2.network.bind_address);
+    assert_eq!(config1.network.max_connections, config2.network.max_connections);
 }
 
 #[test]
-fn test_memory_limit_validation() {
-    let limits_mb = [256, 512, 1024, 2048];
-    assert!(limits_mb.iter().all(|&m| m > 0));
+fn test_network_config_customization() {
+    let config = NetworkConfig {
+        max_connections: 1000,
+        bind_address: "0.0.0.0:9000".to_string(),
+        ..Default::default()
+    };
+
+    assert_eq!(config.max_connections, 1000);
+    assert_eq!(config.bind_address, "0.0.0.0:9000");
 }
 
 #[test]
-fn test_retry_count_validation() {
-    let retry_counts = [0, 1, 3, 5, 10];
-    assert!(retry_counts.iter().all(|&r| r <= 10));
+fn test_config_serialization_deserialization() {
+    let config = SongbirdConfig::default();
+
+    // Test that config can be serialized/deserialized
+    let serialized = serde_json::to_string(&config);
+    assert!(serialized.is_ok(), "Config should be serializable");
+
+    if let Ok(json) = serialized {
+        let deserialized: Result<SongbirdConfig, _> = serde_json::from_str(&json);
+        assert!(deserialized.is_ok(), "Config should be deserializable");
+    }
 }
 
 #[test]
-fn test_connection_pool_validation() {
-    let pool_sizes = [10, 50, 100];
-    assert!(pool_sizes.iter().all(|&p| (10..=10000).contains(&p)));
+fn test_network_config_validation() -> SongbirdResult<()> {
+    let mut config = NetworkConfig {
+        max_connections: 100,
+        ..Default::default()
+    };
+
+    // Test setting various values
+    assert_eq!(config.max_connections, 100);
+
+    config.max_connections = 0;
+    assert_eq!(config.max_connections, 0, "Should allow zero connections (for validation testing)");
+    Ok(())
 }
 
 #[test]
-fn test_cache_ttl_validation() {
-    let ttls = [60, 300, 3600];
-    assert!(ttls.iter().all(|&t| t > 0));
+fn test_config_debug_output() -> SongbirdResult<()> {
+    let config = SongbirdConfig::default();
+    let debug_str = format!("{config:?}");
+
+    assert!(!debug_str.is_empty(), "Debug output should not be empty");
+    assert!(
+        debug_str.contains("network") || debug_str.contains("Network"),
+        "Should contain network info"
+    );
+    Ok(())
 }
 
 #[test]
-fn test_batch_size_validation() {
-    let batch_sizes = [10, 100, 1000];
-    assert!(batch_sizes.iter().all(|&b| b > 0 && b <= 10000));
+fn test_multiple_config_instances() {
+    let config1 = SongbirdConfig::default();
+    let config2 = SongbirdConfig::default();
+
+    // Each instance should be independent
+    assert_eq!(config1.network.bind_address, config2.network.bind_address);
 }
 
 #[test]
-fn test_percentage_validation() {
-    let percentages = [0, 25, 50, 75, 100];
-    assert!(percentages.iter().all(|&p| p <= 100));
+fn test_config_field_access() {
+    let config = SongbirdConfig::default();
+
+    // Test that all major fields are accessible
+    let _ = &config.network;
+    let _ = &config.security;
+    let _ = &config.observability;
 }
 
 #[test]
-fn test_hostname_validation_patterns() {
-    let valid_hostnames = ["localhost", "example.com", "api.example.com", "service-1.internal"];
+fn test_network_timeout_configuration() {
+    let config = NetworkConfig {
+        connection_timeout_ms: 30000,
+        ..Default::default()
+    };
 
-    assert!(valid_hostnames.iter().all(|h| !h.is_empty()));
+    assert_eq!(config.connection_timeout_ms, 30000);
+
+    let config2 = NetworkConfig {
+        connection_timeout_ms: 60000,
+        ..Default::default()
+    };
+    assert_eq!(config2.connection_timeout_ms, 60000);
 }
 
 #[test]
-fn test_endpoint_url_validation() {
-    let endpoints = ["http://localhost:8080", "https://api.example.com", "grpc://service:9090"];
+fn test_config_partial_update() {
+    let mut config = SongbirdConfig::default();
+    let original_max_conn = config.network.max_connections;
 
-    assert!(endpoints.iter().all(|e| e.contains("://")));
+    // Update one field
+    config.network.bind_address = "127.0.0.1:8080".to_string();
+
+    // Other fields should remain unchanged
+    assert_eq!(config.network.max_connections, original_max_conn);
 }
 
 #[test]
-fn test_log_level_validation() {
-    let levels = ["trace", "debug", "info", "warn", "error"];
-    assert_eq!(levels.len(), 5);
+fn test_security_config_enabled_toggle() {
+    let mut security = SecurityConfig {
+        enabled: true,
+        ..Default::default()
+    };
+
+    assert!(security.enabled);
+
+    security.enabled = false;
+    assert!(!security.enabled);
 }
 
 #[test]
-fn test_environment_validation() {
-    let environments = ["development", "staging", "production"];
-    assert!(environments.contains(&"production"));
+fn test_config_builder_pattern_style() {
+    let mut config = SongbirdConfig::default();
+    config.network.max_connections = 500;
+    config.network.connection_timeout_ms = 45000;
+
+    assert_eq!(config.network.max_connections, 500);
+    assert_eq!(config.network.connection_timeout_ms, 45000);
 }
 
 #[test]
-fn test_region_validation() {
-    let regions = ["us-west-1", "us-east-1", "eu-west-1"];
-    assert_eq!(regions.len(), 3);
-}
+fn test_config_equality() {
+    let config1 = SongbirdConfig::default();
+    let config2 = config1.clone();
 
-#[test]
-fn test_version_validation() {
-    let versions = ["1.0.0", "1.1.0", "2.0.0"];
-    assert!(versions.iter().all(|v| v.contains('.')));
-}
-
-#[test]
-fn test_protocol_validation() {
-    let protocols = ["http", "https", "grpc", "tcp"];
-    assert!(protocols.iter().all(|p| !p.is_empty()));
-}
-
-#[test]
-fn test_compression_level_validation() {
-    let levels = [0, 1, 5, 9];
-    assert!(levels.iter().all(|&l| l <= 9));
-}
-
-#[test]
-fn test_priority_validation() {
-    let priorities = [1, 5, 10];
-    assert!(priorities.iter().all(|&p| p > 0 && p <= 10));
-}
-
-#[test]
-fn test_weight_validation() {
-    let weights = [1, 2, 3, 4, 5];
-    assert!(weights.iter().all(|&w| w > 0));
+    assert_eq!(config1.network.bind_address, config2.network.bind_address);
 }

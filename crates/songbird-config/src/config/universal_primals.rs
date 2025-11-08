@@ -1,30 +1,54 @@
-//! Universal Primal Configuration System
+//! Universal Primal Configuration System (DEPRECATED)
 //!
-//! **UNIVERSAL EXTENSIBILITY SOLUTION**
+//! ⚠️ **DEPRECATED - CONSOLIDATED INTO CANONICAL** (November 8, 2025)
 //!
-//! This module replaces hardcoded primal-specific configurations (`BearDog`, `NestGate`, etc.)
-//! with a generic, extensible primal registry system that supports any primal type
-//! without requiring code changes.
+//! This module has been consolidated into `crate::canonical::primals`.
 //!
-//! ## Architecture
+//! ## Migration
+//! ```rust
+//! // OLD (deprecated):
+//! use songbird_config::config::universal_primals::QosMetrics;
+//! 
+//! // NEW (canonical):
+//! use songbird_config::canonical::primals::QosMetrics;
+//! ```
 //!
-//! - `PrimalRegistry`: Dynamic registry of discovered/configured primals
-//! - `PrimalConfiguration`: Generic configuration for any primal type
-//! - `PrimalCapabilities`: Dynamic capability discovery and registration
-//! - `PrimalEndpoint`: Universal endpoint configuration with auto-discovery
+//! ## Status
+//! - **Deprecated**: November 8, 2025
+//! - **Removal Target**: v0.3.0 (Q2 2026)
+//! - **Reason**: Consolidated into simpler canonical patterns
 //!
-//! ## Benefits
+//! ## Useful Types Extracted
+//! - `QosMetrics` → `canonical::primals::QosMetrics`
+//! - `ConnectionSettings` → `canonical::primals::ConnectionSettings`
+//! - `HealthCheckConfig` → `canonical::primals::HealthCheckConfig`
 //!
-//! - **Zero Code Changes**: New primals can be added via configuration only
-//! - **Auto-Discovery**: Primals can be discovered dynamically on the network
-//! - **Type Safety**: Compile-time guarantees with runtime flexibility
-//! - **Backward Compatibility**: Existing configurations continue to work
+//! **Historical Context**: This was an experiment in universal primal registries.
+//! The simpler canonical types + universal adapters approach proved more practical.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 use tracing::debug;
 // use songbird_config; // FIXED: Circular import removed
+
+// ============================================================================
+// BACKWARD COMPATIBILITY RE-EXPORTS
+// ============================================================================
+// Re-export types from canonical for backward compatibility
+
+#[deprecated(since = "0.2.0", note = "Use `crate::canonical::primals::QosMetrics` instead")]
+pub use crate::canonical::primals::QosMetrics;
+
+#[deprecated(since = "0.2.0", note = "Use `crate::canonical::primals::ConnectionSettings` instead")]
+pub use crate::canonical::primals::ConnectionSettings;
+
+#[deprecated(since = "0.2.0", note = "Use `crate::canonical::primals::HealthCheckConfig` instead")]
+pub use crate::canonical::primals::HealthCheckConfig;
+
+// ============================================================================
+// ARCHIVED EXPERIMENTAL CODE (for reference only)
+// ============================================================================
 
 /// Universal primal registry for dynamic primal management
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -143,65 +167,23 @@ pub struct PrimalCapability {
     pub qos_metrics: QosMetrics,
 }
 
-/// Quality of service metrics for capabilities
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct QosMetrics {
-    /// Expected latency in milliseconds
-    pub latency_ms: Option<f64>,
+// NOTE: These types have been moved to canonical::primals
+// Kept here for reference only - use the canonical versions above via re-exports
 
-    /// Throughput in operations per second
-    pub throughput_ops_sec: Option<f64>,
+// /// Quality of service metrics for capabilities
+// /// **MOVED TO**: `crate::canonical::primals::QosMetrics`
+// #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// pub struct QosMetrics { ... }
 
-    /// Availability percentage (0.0 to 1.0)
-    pub availability: Option<f64>,
+// /// Connection settings for primal communication  
+// /// **MOVED TO**: `crate::canonical::primals::ConnectionSettings`
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct ConnectionSettings { ... }
 
-    /// Reliability score (0.0 to 1.0)
-    pub reliability: Option<f64>,
-}
-
-/// Connection settings for primal communication
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConnectionSettings {
-    /// Connection timeout
-    pub connection_timeout: Duration,
-
-    /// Request timeout
-    pub request_timeout: Duration,
-
-    /// Maximum retry attempts
-    pub max_retries: u32,
-
-    /// Retry backoff strategy
-    pub backoff_strategy: BackoffStrategy,
-
-    /// Keep-alive settings
-    pub keep_alive: bool,
-
-    /// Connection pooling settings
-    pub connection_pool: ConnectionPoolConfig,
-}
-
-/// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    /// Enable health checks
-    pub enabled: bool,
-
-    /// Health check interval
-    pub interval: Duration,
-
-    /// Health check endpoint path
-    pub endpoint_path: String,
-
-    /// Expected HTTP status codes for healthy response
-    pub expected_status_codes: Vec<u16>,
-
-    /// Health check timeout
-    pub timeout: Duration,
-
-    /// Number of consecutive failures before marking unhealthy
-    pub failure_threshold: u32,
-}
+// /// Health check configuration
+// /// **MOVED TO**: `crate::canonical::primals::HealthCheckConfig`
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct HealthCheckConfig { ... }
 
 /// Auto-discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -402,34 +384,7 @@ impl Default for PrimalConfigurationTemplate {
     }
 }
 
-impl Default for HealthCheckConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            interval: Duration::from_secs(30),
-            endpoint_path: "/health".to_string(),
-            expected_status_codes: vec![200],
-            timeout: Duration::from_secs(10),
-            failure_threshold: 3,
-        }
-    }
-}
-
-impl Default for ConnectionSettings {
-    fn default() -> Self {
-        Self {
-            connection_timeout: Duration::from_secs(30),
-            request_timeout: Duration::from_secs(60),
-            max_retries: 3,
-            backoff_strategy: BackoffStrategy::Exponential {
-                initial: Duration::from_millis(100),
-                max: Duration::from_secs(60),
-            },
-            keep_alive: true,
-            connection_pool: ConnectionPoolConfig::default(),
-        }
-    }
-}
+// Default implementations moved to canonical::primals
 
 impl Default for ConnectionPoolConfig {
     fn default() -> Self {

@@ -2,7 +2,7 @@
 //!
 //! Provides capability discovery through API endpoints
 
-use crate::errors::PrimalResult;
+use crate::errors::SongbirdResult;
 use std::collections::HashMap;
 use tracing::{debug, info};
 
@@ -10,7 +10,7 @@ use tracing::{debug, info};
 pub async fn discover_service_capabilities_via_api(
     endpoint: &str,
     service_name: &str,
-) -> PrimalResult<(String, Vec<String>)> {
+) -> SongbirdResult<(String, Vec<String>)> {
     debug!("Attempting API discovery for endpoint: {}", endpoint)"
 
     // In a real implementation, this would:
@@ -46,7 +46,7 @@ pub async fn discover_service_capabilities_via_api(
 /// Discover service metadata via API
 pub async fn discover_service_metadata_via_api(
     endpoint: &str,
-) -> PrimalResult<HashMap<String, serde_json::Value>> {
+) -> SongbirdResult<HashMap<String, serde_json::Value>> {
     debug!("Discovering service metadata for endpoint: {}", endpoint)"
 
     // In a real implementation, this would query the service's metadata endpoint

@@ -60,78 +60,56 @@ cargo doc --workspace --no-deps  # Reduce warnings
 
 ---
 
-## 🏗️ WEEK 3-4: CAPABILITY ADAPTERS (Our Core Work)
+## 🏗️ WEEK 3-4: UNIVERSAL CAPABILITY DISCOVERY (Our Core Work)
 
-### **ToadStool Metrics Adapter** (Compute Metrics)
-- [ ] **Create `ToadStoolMetricsAdapter`**
-  - Location: `crates/songbird-universal/src/adapters/toadstool.rs`
-  - Ingest: CPU/memory/container metrics
-  - Pattern: Via `MetricsCapabilityAdapter` trait
+### **Universal Discovery Enhancement** (No Primal-Specific Adapters!)
+- [x] **Universal Capability Discovery Already Implemented** ✅
+  - Location: `crates/songbird-universal/src/`
+  - Pattern: Pure capability-based routing (no hardcoded primal names)
+  - Architecture: Discovers ANY provider that advertises a capability
 
 ```rust
-pub struct ToadStoolMetricsAdapter {
-    endpoint: String,
+// Universal pattern - no primal-specific code!
+pub struct UniversalCapabilityAdapter {
+    discovery: CapabilityDiscovery,
 }
 
-#[async_trait]
-impl MetricsCapabilityAdapter for ToadStoolMetricsAdapter {
-    async fn collect_compute_metrics(&self) -> SongbirdResult<ComputeMetrics> {
-        // HTTP call to ToadStool metrics endpoint
-        // Parse and return standardized metrics
+impl UniversalCapabilityAdapter {
+    async fn discover_providers(&self, capability: &str) -> SongbirdResult<Vec<Provider>> {
+        // Discovers ALL providers advertising this capability
+        // ToadStool, BearDog, NestGate, Squirrel, or ANY future primal
+        // No hardcoding, pure capability-based
+    }
+    
+    async fn route_request(&self, capability: &str, request: Request) -> SongbirdResult<Response> {
+        let providers = self.discover_providers(capability).await?;
+        let selected = self.select_best_provider(providers)?;
+        self.forward_request(selected, request).await
     }
 }
 ```
 
-### **BearDog Security Adapter** (Security Metrics)
-- [ ] **Create `BearDogSecurityAdapter`**
-  - Location: `crates/songbird-universal/src/adapters/beardog.rs`
-  - Ingest: Threat levels, auth metrics, compliance scores
-  - Pattern: Via `SecurityMetricsAdapter` trait
+### **Week 3-4 Focus: Enhance What Exists**
+- [ ] **Discovery Performance Optimization**
+  - Reduce clone() calls in discovery paths
+  - Add caching for capability providers
+  - Optimize hot paths with zero-copy
+  
+- [ ] **Load Balancing Enhancement**
+  - Capability-aware load balancing
+  - Health-based traffic shaping
+  - Circuit breaker integration
 
-```rust
-pub struct BearDogSecurityAdapter {
-    endpoint: String,
-}
-
-#[async_trait]
-impl SecurityMetricsAdapter for BearDogSecurityAdapter {
-    async fn collect_security_metrics(&self) -> SongbirdResult<SecurityMetrics> {
-        // Route security metrics requests to BearDog
-    }
-}
-```
-
-### **NestGate Storage Adapter** (Storage Metrics)
-- [ ] **Create `NestGateStorageAdapter`**
-  - Location: `crates/songbird-universal/src/adapters/nestgate.rs`
-  - Ingest: Capacity, usage, performance metrics
-  - Pattern: Via `StorageMetricsAdapter` trait
-
-### **Squirrel AI Adapter** (AI Routing)
-- [ ] **Create `SquirrelAIAdapter`**
-  - Location: `crates/songbird-universal/src/adapters/squirrel.rs`
-  - Route: AI requests by capability
-  - Pattern: Delegate, don't implement AI logic
-
-```rust
-pub struct SquirrelAIAdapter {
-    endpoint: String,
-}
-
-#[async_trait]
-impl AICapabilityRouter for SquirrelAIAdapter {
-    async fn route_ai_request(&self, req: AIRequest) -> SongbirdResult<AIResponse> {
-        // Route to Squirrel, which handles OpenAI/Anthropic/local models
-        // We just orchestrate, Squirrel specializes
-    }
-}
-```
+- [ ] **Federation Discovery**
+  - Cross-node capability discovery
+  - Federated load balancing
+  - Fix broken federation tests
 
 ### **Week 3-4 Success Criteria**
-- ✅ All 4 adapter traits implemented
-- ✅ Real HTTP calls to ecosystem primals
-- ✅ Metrics aggregation working
-- ✅ Capability-based routing functional
+- ✅ Discovery working across ALL capabilities (no primal-specific code)
+- ✅ Load balancing routes by capability, not hardcoded names
+- ✅ Federation tests passing
+- ✅ Performance optimized (reduced clones)
 
 ---
 
@@ -351,11 +329,12 @@ tracing-subscriber = "0.3"
 ```
 
 ### **What We DON'T Include**
-❌ Direct OpenAI/Anthropic clients (Squirrel handles this)  
-❌ Crypto libraries (BearDog handles this)  
-❌ Storage backends (NestGate handles this)  
-❌ Container runtimes (ToadStool handles this)  
-❌ Frontend frameworks (BiomeOS handles this)
+❌ Direct OpenAI/Anthropic clients (discovered via "ai" capability)  
+❌ Crypto libraries (discovered via "security" capability)  
+❌ Storage backends (discovered via "storage" capability)  
+❌ Container runtimes (discovered via "compute" capability)  
+❌ Frontend frameworks (BiomeOS consumes our APIs)
+❌ Primal-specific adapters (ALL go through universal discovery)
 
 ---
 
@@ -367,29 +346,24 @@ tracing-subscriber = "0.3"
 - [ ] Real-time metrics
 - [ ] Event notifications
 
-### **BearDog Integration** (Security Provider)
-- [ ] Security metrics adapter
-- [ ] Auth request routing
-- [ ] Threat level ingestion
-- [ ] Deployment coordination
+### **Universal Capability Integration** (ALL Primals)
+- [x] Universal discovery system ✅
+- [x] Capability-based routing ✅
+- [ ] Enhanced load balancing
+- [ ] Federation discovery working
+- [ ] Performance optimization
 
-### **ToadStool Integration** (Compute Provider)
-- [ ] Compute metrics adapter
-- [ ] Workload routing
-- [ ] Resource monitoring
-- [ ] Container orchestration routing
+**No Primal-Specific Code!**
+- ✅ Security capability → discovers providers (could be BearDog, or ANY security provider)
+- ✅ Compute capability → discovers providers (could be ToadStool, or ANY compute provider)
+- ✅ AI capability → discovers providers (could be Squirrel, or ANY AI provider)
+- ✅ Storage capability → discovers providers (could be NestGate, or ANY storage provider)
 
-### **Squirrel Integration** (AI Provider)
-- [ ] AI request routing
-- [ ] Model capability discovery
-- [ ] MCP protocol support
-- [ ] Fallback handling
-
-### **NestGate Integration** (Storage Provider)
-- [ ] Storage metrics adapter
-- [ ] Capacity monitoring
-- [ ] Performance tracking
-- [ ] Backup coordination routing
+**Benefits**:
+- Zero hardcoding ✅
+- Works with ANY future primal ✅
+- Pure capability-based architecture ✅
+- Respects sovereignty (no forced providers) ✅
 
 ---
 

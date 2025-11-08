@@ -6,11 +6,13 @@
 #![allow(clippy::float_cmp)]
 #![allow(clippy::uninlined_format_args)]
 
+use songbird_types::SongbirdResult;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::sovereignty::types::*;
 use std::time::Duration;
 
 #[test]
-fn test_sovereignty_compliance_level_variants() {
+fn test_sovereignty_compliance_level_variants() -> SongbirdResult<()> {
     // Test all sovereignty compliance level variants exist and can be created
     let fully_compliant = SovereigntyComplianceLevel::FullyCompliant;
     let mostly_compliant = SovereigntyComplianceLevel::MostlyCompliant;
@@ -22,6 +24,7 @@ fn test_sovereignty_compliance_level_variants() {
     assert!(format!("{:?}", mostly_compliant).contains("MostlyCompliant"));
     assert!(format!("{:?}", partially_compliant).contains("PartiallyCompliant"));
     assert!(format!("{:?}", non_compliant).contains("NonCompliant"));
+    Ok(())
 }
 
 #[test]
@@ -144,7 +147,7 @@ fn test_sovereignty_risk_multiple_mitigation_strategies() {
         risk_id: "risk_003".to_string(),
         risk_type: SovereigntyRiskType::NetworkDependency,
         severity: RiskSeverity::Medium,
-        mitigation_strategies: strategies.clone(),
+        mitigation_strategies: strategies,
     };
 
     assert_eq!(risk.mitigation_strategies.len(), 3);
@@ -154,7 +157,7 @@ fn test_sovereignty_risk_multiple_mitigation_strategies() {
 }
 
 #[test]
-fn test_risk_type_variants() {
+fn test_risk_type_variants() -> SongbirdResult<()> {
     // Test all risk type variants can be created
     let data_sovereignty = SovereigntyRiskType::DataSovereignty;
     let jurisdictional_compliance = SovereigntyRiskType::JurisdictionalCompliance;
@@ -166,10 +169,11 @@ fn test_risk_type_variants() {
     assert!(format!("{:?}", jurisdictional_compliance).contains("JurisdictionalCompliance"));
     assert!(format!("{:?}", network_dependency).contains("NetworkDependency"));
     assert!(format!("{:?}", third_party_risk).contains("ThirdPartyRisk"));
+    Ok(())
 }
 
 #[test]
-fn test_risk_severity_ordering() {
+fn test_risk_severity_ordering() -> SongbirdResult<()> {
     // Test risk severity variants
     let critical = RiskSeverity::Critical;
     let high = RiskSeverity::High;
@@ -181,6 +185,7 @@ fn test_risk_severity_ordering() {
     assert!(format!("{:?}", high).contains("High"));
     assert!(format!("{:?}", medium).contains("Medium"));
     assert!(format!("{:?}", low).contains("Low"));
+    Ok(())
 }
 
 #[test]
@@ -282,7 +287,7 @@ fn test_sovereignty_timeout_variations() {
 }
 
 #[test]
-fn test_sovereignty_config_clone() {
+fn test_sovereignty_config_clone() -> SongbirdResult<()> {
     // Test config cloning
     let original = SovereigntyAdapterConfig::default();
     let cloned = original.clone();
@@ -292,10 +297,11 @@ fn test_sovereignty_config_clone() {
     assert_eq!(original.enable_network_optimization, cloned.enable_network_optimization);
     assert_eq!(original.sovereignty_timeout, cloned.sovereignty_timeout);
     assert_eq!(original.sovereignty_preference_weight, cloned.sovereignty_preference_weight);
+    Ok(())
 }
 
 #[test]
-fn test_sovereignty_level_serialization() {
+fn test_sovereignty_level_serialization() -> SongbirdResult<()> {
     // Test sovereignty level can be serialized (via Debug since Serialize may not be on all types)
     let levels = vec![
         SovereigntyLevel::FullySovereign,
@@ -309,10 +315,11 @@ fn test_sovereignty_level_serialization() {
         let debug_str = format!("{:?}", level);
         assert!(!debug_str.is_empty());
     }
+    Ok(())
 }
 
 #[test]
-fn test_security_level_variants() {
+fn test_security_level_variants() -> SongbirdResult<()> {
     // Test all security level variants
     let maximum = SecurityLevel::Maximum;
     let high = SecurityLevel::High;
@@ -326,6 +333,7 @@ fn test_security_level_variants() {
     assert!(format!("{:?}", medium).contains("Medium"));
     assert!(format!("{:?}", low).contains("Low"));
     assert!(format!("{:?}", minimal).contains("Minimal"));
+    Ok(())
 }
 
 #[test]

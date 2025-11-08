@@ -70,7 +70,7 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     // Benchmark batch operations
     let batch_endpoints = [
         "https://security-1.local:config.network.https_port",
-        "https://storage-1.local:9000",
+        &format!("https://storage-1.local:{}", songbird_config::defaults::ports::metrics_port()),
         "https://ai-1.local:8888",
         &env::var("SONGBIRD_COMPUTE_ENDPOINT").unwrap_or_else(|_| "https://compute-1.local:{}".to_string()),
         "https://network-1.local:7000",
@@ -101,7 +101,7 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     for i in 0..100 {
         let endpoint = match i % 4 {
             0 => format!("https://security-{}.local:config.network.https_port", i),
-            1 => format!("https://storage-{}.local:9000", i),
+            1 => format!("https://storage-{}.local:{}", i, songbird_config::defaults::ports::metrics_port()),
             2 => format!("https://ai-{}.local:8888", i),
             _ => {
                 let config = songbird_config::CanonicalSongbirdConfig::from_env();

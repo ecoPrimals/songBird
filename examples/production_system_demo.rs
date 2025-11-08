@@ -62,12 +62,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn demo_service_registration(system: &IntegratedUniversalSystem) -> Result<(), Box<dyn std::error::Error>> {
     info!("📝 Demonstrating Service Registration");
 
-    // Register various services
+    // 🍼 MIGRATED: Using capability-based service names (was primal-specific)
+    // Register various services with capability-based identifiers
     let services = vec![
-        ("beardog-security", "http://localhost:config.network.http_port", vec!["security", "authentication", "encryption"]),
-        ("toadstool-compute", "http://localhost:8081", vec!["compute", "processing", "analysis"]),
-        ("nestgate-storage", "http://localhost:8082", vec!["storage", "persistence", "backup"]),
-        ("squirrel-ai", "http://localhost:8083", vec!["ai", "ml", "inference", "training"]),
+        ("security-provider", &format!("http://localhost:{}", songbird_config::defaults::ports::orchestrator_port()), vec!["security", "authentication", "encryption"]),
+        ("compute-provider", &format!("http://localhost:{}", songbird_config::defaults::ports::discovery_port()), vec!["compute", "processing", "analysis"]),
+        ("storage-provider", &format!("http://localhost:{}", songbird_config::defaults::ports::beardog_port()), vec!["storage", "persistence", "backup"]),
+        ("ai-provider", &format!("http://localhost:{}", songbird_config::defaults::ports::metrics_port()), vec!["ai", "ml", "inference", "training"]),
     ];
 
     for (name, endpoint, capabilities) in services {
@@ -219,14 +220,14 @@ async fn demo_concurrent_operations(system: &IntegratedUniversalSystem) -> Resul
 async fn demo_environment_discovery() -> Result<(), Box<dyn std::error::Error>> {
     info!("🌍 Environment-based Discovery Demo");
     info!("Set these environment variables to test automatic discovery:");
-    info!("  export BEARDOG_ENDPOINT=http://localhost:config.network.http_port");
-    info!("  export TOADSTOOL_ENDPOINT=http://localhost:8081");
-    info!("  export NESTGATE_ENDPOINT=http://localhost:8082");
-    info!("  export SQUIRREL_ENDPOINT=http://localhost:8083");
+    info!("  export BEARDOG_ENDPOINT=http://localhost:{}", songbird_config::defaults::ports::orchestrator_port());
+    info!("  export TOADSTOOL_ENDPOINT=http://localhost:{}", songbird_config::defaults::ports::discovery_port());
+    info!("  export NESTGATE_ENDPOINT=http://localhost:{}", songbird_config::defaults::ports::beardog_port());
+    info!("  export SQUIRREL_ENDPOINT=http://localhost:{}", songbird_config::defaults::ports::metrics_port());
     info!("");
     info!("Or use generic service patterns:");
     info!("  export SERVICE_1_NAME=custom-service");
-    info!("  export SERVICE_1_ENDPOINT=http://localhost:9000");
+    info!("  export SERVICE_1_ENDPOINT=http://localhost:{}", songbird_config::defaults::ports::metrics_port());
     info!("  export SERVICE_1_CAPABILITIES=custom,demo,test");
 
     Ok(())

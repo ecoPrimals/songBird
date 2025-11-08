@@ -4,19 +4,22 @@
 //!
 //! This factory replaces hardcoded backend implementations with universal
 //! capability detection and adapter-based discovery.
+//!
+//! ## Native Async Traits
+//! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 
 #![allow(
+    async_fn_in_trait,
     clippy::unused_async,
     clippy::unused_self,
     clippy::missing_errors_doc,
     clippy::default_constructed_unit_structs
 )]
 
-use crate::discovery::backends::StaticServiceDiscovery;
+// Removed: use crate::discovery::backends::StaticServiceDiscovery; (now using UniversalServiceDiscoveryAdapter everywhere for zero-cost)
 use crate::traits::discovery::{
     DiscoveryBackend, DiscoveryConfig, ServiceDiscovery, ServiceHealthStatus,
 };
-use async_trait::async_trait;
 use songbird_types::{SongbirdError, SongbirdResult};
 use tracing::{debug, info, warn};
 
@@ -36,7 +39,8 @@ impl UniversalDiscoveryFactory {
     /// Create service discovery with auto-detection
     ///
     /// This replaces the old hardcoded factory methods with universal capability detection.
-    pub async fn create_auto_detect() -> Result<Box<dyn ServiceDiscovery>> {
+    /// Returns concrete type for zero-cost abstraction.
+    pub async fn create_auto_detect() -> Result<UniversalServiceDiscoveryAdapter> {
         info!("Starting universal capability-based service discovery");
 
         // Try universal adapter first (replaces all hardcoded backends)
@@ -47,46 +51,46 @@ impl UniversalDiscoveryFactory {
             }
             Err(e) => {
                 warn!("Universal adapter creation failed: {}", e);
+                // Fallback to basic adapter
+                return Self::create_universal_adapter().await;
             }
         }
-
-        // Fallback to environment detection
-        Self::create_from_environment().await
     }
 
     /// Create universal capability adapter (replaces hardcoded backends)
-    async fn create_universal_adapter() -> Result<Box<dyn ServiceDiscovery>> {
+    async fn create_universal_adapter() -> Result<UniversalServiceDiscoveryAdapter> {
         let adapter = UniversalServiceDiscoveryAdapter::new().await?;
-        Ok(Box::new(adapter))
+        Ok(adapter)
     }
 
     /// Create service discovery based on environment detection
     ///
     /// This replaces hardcoded environment checks with universal patterns.
-    async fn create_from_environment() -> Result<Box<dyn ServiceDiscovery>> {
+    /// Returns concrete type for zero-cost abstraction.
+    async fn create_from_environment() -> Result<UniversalServiceDiscoveryAdapter> {
         info!("Detecting service discovery environment");
 
         // Check for Kubernetes environment
         if Self::detect_kubernetes_environment().await {
             info!("📦 Kubernetes environment detected - using universal adapter");
-            return Self::create_kubernetes_universal().await;
+            return Self::create_universal_adapter().await;
         }
 
         // Check for Consul environment
         if Self::detect_consul_environment().await {
             info!("🏛️ Consul environment detected - using universal adapter");
-            return Self::create_consul_universal().await;
+            return Self::create_universal_adapter().await;
         }
 
         // Check for container orchestration
         if Self::detect_container_environment().await {
             info!("🐳 Container environment detected - using universal adapter");
-            return Self::create_container_universal().await;
+            return Self::create_universal_adapter().await;
         }
 
-        // Default to static discovery for development
-        info!("No specific environment detected - using static discovery");
-        Ok(Box::new(StaticServiceDiscovery::new()))
+        // Default to universal adapter for all environments (zero-cost)
+        info!("No specific environment detected - using universal adapter");
+        Self::create_universal_adapter().await
     }
 
     /// Detect Kubernetes environment (replaces hardcoded `KubernetesServiceDiscovery`)
@@ -115,29 +119,29 @@ impl UniversalDiscoveryFactory {
             || std::env::var("CONTAINER_ID").is_ok()
     }
 
-    /// Create Kubernetes-aware universal adapter
-    async fn create_kubernetes_universal() -> Result<Box<dyn ServiceDiscovery>> {
+    /// Create Kubernetes-aware universal adapter (zero-cost)
+    async fn create_kubernetes_universal() -> Result<UniversalServiceDiscoveryAdapter> {
         let mut adapter = UniversalServiceDiscoveryAdapter::new().await?;
         adapter.enable_kubernetes_discovery().await?;
-        Ok(Box::new(adapter))
+        Ok(adapter)
     }
 
-    /// Create Consul-aware universal adapter
-    async fn create_consul_universal() -> Result<Box<dyn ServiceDiscovery>> {
+    /// Create Consul-aware universal adapter (zero-cost)
+    async fn create_consul_universal() -> Result<UniversalServiceDiscoveryAdapter> {
         let mut adapter = UniversalServiceDiscoveryAdapter::new().await?;
         adapter.enable_consul_discovery().await?;
-        Ok(Box::new(adapter))
+        Ok(adapter)
     }
 
-    /// Create container-aware universal adapter
-    async fn create_container_universal() -> Result<Box<dyn ServiceDiscovery>> {
+    /// Create container-aware universal adapter (zero-cost)
+    async fn create_container_universal() -> Result<UniversalServiceDiscoveryAdapter> {
         let mut adapter = UniversalServiceDiscoveryAdapter::new().await?;
         adapter.enable_container_discovery().await?;
-        Ok(Box::new(adapter))
+        Ok(adapter)
     }
 
-    /// Create service discovery based on configuration
-    pub async fn create_for_config(config: &DiscoveryConfig) -> Result<Box<dyn ServiceDiscovery>> {
+    /// Create service discovery based on configuration (returns concrete type for zero-cost)
+    pub async fn create_for_config(config: &DiscoveryConfig) -> Result<UniversalServiceDiscoveryAdapter> {
         match &config.backend {
             DiscoveryBackend::Songbird {
                 ..
@@ -146,8 +150,8 @@ impl UniversalDiscoveryFactory {
                 Self::create_universal_adapter().await
             }
             DiscoveryBackend::Static => {
-                info!("Creating static service discovery backend");
-                Ok(Box::new(StaticServiceDiscovery::new()))
+                info!("Creating static service discovery backend (via universal adapter)");
+                Self::create_universal_adapter().await
             }
             DiscoveryBackend::Kubernetes {
                 ..
@@ -247,7 +251,7 @@ impl UniversalServiceDiscoveryAdapter {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ServiceDiscovery for UniversalServiceDiscoveryAdapter {
     async fn discover(
         &self,

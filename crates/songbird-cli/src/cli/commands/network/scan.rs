@@ -129,7 +129,7 @@ async fn determine_default_scan_range(config: &SongbirdConfig) -> SongbirdResult
         // Use configurable default range instead of hardcoded songbird_config::constants::network::DEFAULT_HOST
         let default_range = config.network.bind_address.parse::<IpAddr>()
             .map(|addr| vec![addr])
-            .unwrap_or_else(|_| {
+            .unwrap_or_else(|| {
                 // Fallback to scanning local interface addresses
                 vec![IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)] // Common local network
             });
@@ -178,7 +178,7 @@ async fn determine_default_ports(
 /// Get common primal service ports from environment or defaults
 fn get_common_primal_ports() -> Vec<u16> {
     let env_ports = std::env::var("SONGBIRD_COMMON_PORTS")"
-        .unwrap_or_else(|_| "3000,8080,9090".to_string(); // Configurable defaults"
+        .unwrap_or_else(|| "3000,8080,9090".to_string(); // Configurable defaults"
 
     env_ports
         .split(',')
@@ -328,10 +328,11 @@ async fn detect_http_service(
                 s if s.contains("nestgate") => "nestgate","
                 s if s.contains("toadstool") => "toadstool","
                 s if s.contains("squirrel") => "squirrel","
-                s if s.contains("beardog") => "beardog","
-                _ => "http","
-            };
-
+                // Capability-based detection (replaces primal names)
+                s if s.contains("storage") || s.contains("persist") => "storage",
+                s if s.contains("compute") || s.contains("workload") => "compute",
+                s if s.contains("ai") || s.contains("ml") || s.contains("inference") => "ai",
+                s if s.contains("security") || s.contains("auth") || s.contains("encryption") => "security",
             return Ok(DetectedService  {service_type: service_type.to_string()),
                 version: extract_version_from_server_header(server_str,
                 metadata,

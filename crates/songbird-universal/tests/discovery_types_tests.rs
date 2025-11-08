@@ -15,6 +15,9 @@
 //!
 //! Tests for discovery module data structures and types.
 
+use songbird_test_utils::test_orchestrator_port;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::discovery::*;
 use std::collections::HashMap;
 
@@ -32,7 +35,7 @@ fn test_discovery_config_default() {
 }
 
 #[test]
-fn test_discovery_config_custom() {
+fn test_discovery_config_custom() -> SongbirdResult<()> {
     let mechanisms = DiscoveryMechanisms {
         enable_environment_scan: true,
         enable_network_scanning: false,
@@ -48,20 +51,23 @@ fn test_discovery_config_custom() {
     assert!(!config.mechanisms.enable_network_scanning);
     assert!(!config.mechanisms.enable_container_discovery);
     assert_eq!(config.timeout.as_secs(), 60);
+    Ok(())
 }
 
 #[test]
-fn test_discovery_config_clone() {
+fn test_discovery_config_clone() -> SongbirdResult<()> {
     let config1 = DiscoveryConfig::default();
     let config2 = config1.clone();
     assert_eq!(config1.timeout, config2.timeout);
+    Ok(())
 }
 
 #[test]
-fn test_discovery_config_debug() {
+fn test_discovery_config_debug() -> SongbirdResult<()> {
     let config = DiscoveryConfig::default();
     let debug_str = format!("{:?}", config);
     assert!(debug_str.contains("DiscoveryConfig"));
+    Ok(())
 }
 
 // ============================================================================
@@ -108,7 +114,7 @@ fn test_discovery_mechanisms_selective() {
 }
 
 #[test]
-fn test_discovery_mechanisms_clone() {
+fn test_discovery_mechanisms_clone() -> SongbirdResult<()> {
     let mech1 = DiscoveryMechanisms {
         enable_environment_scan: true,
         enable_network_scanning: true,
@@ -116,10 +122,11 @@ fn test_discovery_mechanisms_clone() {
     };
     let mech2 = mech1.clone();
     assert_eq!(mech1.enable_environment_scan, mech2.enable_environment_scan);
+    Ok(())
 }
 
 #[test]
-fn test_discovery_mechanisms_debug() {
+fn test_discovery_mechanisms_debug() -> SongbirdResult<()> {
     let mechanisms = DiscoveryMechanisms {
         enable_environment_scan: true,
         enable_network_scanning: true,
@@ -127,6 +134,7 @@ fn test_discovery_mechanisms_debug() {
     };
     let debug_str = format!("{:?}", mechanisms);
     assert!(debug_str.contains("DiscoveryMechanisms"));
+    Ok(())
 }
 
 // ============================================================================
@@ -150,7 +158,7 @@ fn test_discovered_primal_creation() {
     let primal = DiscoveredPrimal {
         name: "test-primal".to_string(),
         primal_type: PrimalType::new("compute"),
-        endpoint: "http://localhost:8080".to_string(),
+        endpoint: format!("http://localhost:{}", test_orchestrator_port()),
         capabilities: vec![capability],
         health: PrimalHealth::Healthy,
         discovery_method: DiscoveryMethod::Environment,
@@ -159,7 +167,7 @@ fn test_discovered_primal_creation() {
     };
 
     assert_eq!(primal.name, "test-primal");
-    assert_eq!(primal.endpoint, "http://localhost:8080");
+    assert_eq!(primal.endpoint, format!("http://localhost:{}", test_orchestrator_port()));
     assert_eq!(primal.capabilities.len(), 1);
     assert_eq!(primal.health, PrimalHealth::Healthy);
     assert_eq!(primal.discovery_method, DiscoveryMethod::Environment);
@@ -195,7 +203,7 @@ fn test_discovered_primal_clone() {
     let primal1 = DiscoveredPrimal {
         name: "test".to_string(),
         primal_type: PrimalType::new("storage"),
-        endpoint: "http://storage:8080".to_string(),
+        endpoint: format!("http://storage:{}", test_orchestrator_port()),
         capabilities: vec![],
         health: PrimalHealth::Healthy,
         discovery_method: DiscoveryMethod::Docker,
@@ -209,7 +217,7 @@ fn test_discovered_primal_clone() {
 }
 
 #[test]
-fn test_discovered_primal_debug() {
+fn test_discovered_primal_debug() -> SongbirdResult<()> {
     use songbird_universal::types::PrimalType;
 
     let primal = DiscoveredPrimal {
@@ -225,6 +233,7 @@ fn test_discovered_primal_debug() {
 
     let debug_str = format!("{:?}", primal);
     assert!(debug_str.contains("DiscoveredPrimal"));
+    Ok(())
 }
 
 // ============================================================================
@@ -249,23 +258,26 @@ fn test_discovery_method_all_variants() {
 }
 
 #[test]
-fn test_discovery_method_equality() {
+fn test_discovery_method_equality() -> SongbirdResult<()> {
     assert_eq!(DiscoveryMethod::Environment, DiscoveryMethod::Environment);
     assert_ne!(DiscoveryMethod::Environment, DiscoveryMethod::Docker);
+    Ok(())
 }
 
 #[test]
-fn test_discovery_method_clone() {
+fn test_discovery_method_clone() -> SongbirdResult<()> {
     let method1 = DiscoveryMethod::Kubernetes;
     let method2 = method1.clone();
     assert_eq!(method1, method2);
+    Ok(())
 }
 
 #[test]
-fn test_discovery_method_debug() {
+fn test_discovery_method_debug() -> SongbirdResult<()> {
     let method = DiscoveryMethod::Kubernetes;
     let debug_str = format!("{:?}", method);
     assert!(debug_str.contains("Kubernetes"));
+    Ok(())
 }
 
 // ============================================================================
@@ -273,7 +285,7 @@ fn test_discovery_method_debug() {
 // ============================================================================
 
 #[test]
-fn test_primal_health_all_variants() {
+fn test_primal_health_all_variants() -> SongbirdResult<()> {
     let healthy = PrimalHealth::Healthy;
     let degraded = PrimalHealth::Degraded;
     let unhealthy = PrimalHealth::Unhealthy;
@@ -283,26 +295,30 @@ fn test_primal_health_all_variants() {
     assert_eq!(degraded, PrimalHealth::Degraded);
     assert_eq!(unhealthy, PrimalHealth::Unhealthy);
     assert_eq!(unknown, PrimalHealth::Unknown);
+    Ok(())
 }
 
 #[test]
-fn test_primal_health_equality() {
+fn test_primal_health_equality() -> SongbirdResult<()> {
     assert_eq!(PrimalHealth::Healthy, PrimalHealth::Healthy);
     assert_ne!(PrimalHealth::Healthy, PrimalHealth::Degraded);
+    Ok(())
 }
 
 #[test]
-fn test_primal_health_clone() {
+fn test_primal_health_clone() -> SongbirdResult<()> {
     let health1 = PrimalHealth::Healthy;
     let health2 = health1.clone();
     assert_eq!(health1, health2);
+    Ok(())
 }
 
 #[test]
-fn test_primal_health_debug() {
+fn test_primal_health_debug() -> SongbirdResult<()> {
     let health = PrimalHealth::Healthy;
     let debug_str = format!("{:?}", health);
     assert!(debug_str.contains("Healthy"));
+    Ok(())
 }
 
 // ============================================================================
@@ -310,13 +326,13 @@ fn test_primal_health_debug() {
 // ============================================================================
 
 #[test]
-fn test_discovered_primal_serialization() {
+fn test_discovered_primal_serialization() -> SongbirdResult<()> {
     use songbird_universal::types::PrimalType;
 
     let primal = DiscoveredPrimal {
         name: "serialize-test".to_string(),
         primal_type: PrimalType::new("compute"),
-        endpoint: "http://localhost:8080".to_string(),
+        endpoint: format!("http://localhost:{}", test_orchestrator_port()),
         capabilities: vec![],
         health: PrimalHealth::Healthy,
         discovery_method: DiscoveryMethod::Environment,
@@ -324,30 +340,38 @@ fn test_discovered_primal_serialization() {
         metadata: HashMap::new(),
     };
 
-    let json = serde_json::to_string(&primal).expect("Failed to serialize");
-    let deserialized: DiscoveredPrimal =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&primal)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: DiscoveredPrimal = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.name, primal.name);
     assert_eq!(deserialized.endpoint, primal.endpoint);
+    Ok(())
 }
 
 #[test]
-fn test_discovery_method_serialization() {
+fn test_discovery_method_serialization() -> SongbirdResult<()> {
     let method = DiscoveryMethod::Kubernetes;
-    let json = serde_json::to_string(&method).expect("Failed to serialize");
-    let deserialized: DiscoveryMethod = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&method)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: DiscoveryMethod = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized, method);
+    Ok(())
 }
 
 #[test]
-fn test_primal_health_serialization() {
+fn test_primal_health_serialization() -> SongbirdResult<()> {
     let health = PrimalHealth::Healthy;
-    let json = serde_json::to_string(&health).expect("Failed to serialize");
-    let deserialized: PrimalHealth = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&health)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: PrimalHealth = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized, health);
+    Ok(())
 }
 
 // ============================================================================
@@ -355,17 +379,18 @@ fn test_primal_health_serialization() {
 // ============================================================================
 
 #[test]
-fn test_universal_primal_discovery_creation() {
+fn test_universal_primal_discovery_creation() -> SongbirdResult<()> {
     let config = DiscoveryConfig::default();
     let discovery = UniversalPrimalDiscovery::new(config);
 
     // Should create successfully
     let debug_str = format!("{:?}", discovery);
     assert!(debug_str.contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[test]
-fn test_universal_primal_discovery_with_custom_config() {
+fn test_universal_primal_discovery_with_custom_config() -> SongbirdResult<()> {
     let config = DiscoveryConfig {
         mechanisms: DiscoveryMechanisms {
             enable_environment_scan: true,
@@ -378,10 +403,11 @@ fn test_universal_primal_discovery_with_custom_config() {
     let discovery = UniversalPrimalDiscovery::new(config);
     let debug_str = format!("{:?}", discovery);
     assert!(debug_str.contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[test]
-fn test_universal_primal_discovery_clone() {
+fn test_universal_primal_discovery_clone() -> SongbirdResult<()> {
     let config = DiscoveryConfig::default();
     let discovery1 = UniversalPrimalDiscovery::new(config);
     let discovery2 = discovery1.clone();
@@ -391,6 +417,7 @@ fn test_universal_primal_discovery_clone() {
     let debug2 = format!("{:?}", discovery2);
     assert!(debug1.contains("UniversalPrimalDiscovery"));
     assert!(debug2.contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 // ============================================================================
@@ -398,7 +425,7 @@ fn test_universal_primal_discovery_clone() {
 // ============================================================================
 
 #[test]
-fn test_discovery_workflow() {
+fn test_discovery_workflow() -> SongbirdResult<()> {
     // Create configuration
     let config = DiscoveryConfig {
         mechanisms: DiscoveryMechanisms {
@@ -415,6 +442,7 @@ fn test_discovery_workflow() {
     // Verify it was created successfully
     let debug_str = format!("{:?}", discovery);
     assert!(debug_str.contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[test]

@@ -1,6 +1,6 @@
 //! CLI UI utilities for beautiful terminal output
 
-use crate::errors::{CliError, CliResult};
+use crate::errors::{CliError, SongbirdResult};
 use colored::{ColoredString, Colorize};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -35,7 +35,7 @@ pub fn spinner(message: &str) -> ProgressBar {
 }
 
 /// Show a confirmation prompt with enhanced styling
-pub fn confirm(message: &str, default: bool) -> CliResult<bool> {
+pub fn confirm(message: &str, default: bool) -> SongbirdResult<bool> {
     let theme = ColorfulTheme::default();
     Confirm::with_theme(&theme)
         .with_prompt(message)
@@ -45,7 +45,7 @@ pub fn confirm(message: &str, default: bool) -> CliResult<bool> {
 }
 
 /// Show a selection prompt with enhanced options
-pub fn select<T: Display>(message: &str, items: &[T], default: Option<usize>) -> CliResult<usize> {
+pub fn select<T: Display>(message: &str, items: &[T], default: Option<usize>) -> SongbirdResult<usize> {
     let theme = ColorfulTheme::default();
     let mut select = Select::with_theme(&theme).with_prompt(message).items(items);
 
@@ -56,7 +56,7 @@ pub fn select<T: Display>(message: &str, items: &[T], default: Option<usize>) ->
 }
 
 /// Show a text input prompt with validation
-pub fn input_text(message: &str, default: Option<&str>) -> CliResult<String> {
+pub fn input_text(message: &str, default: Option<&str>) -> SongbirdResult<String> {
     let theme = ColorfulTheme::default();
     let mut input = Input::with_theme(&theme).with_prompt(message);
     if let Some(default_value) = default {
@@ -66,7 +66,7 @@ pub fn input_text(message: &str, default: Option<&str>) -> CliResult<String> {
 }
 
 /// Show a password input prompt with security considerations
-pub fn input_password(message: &str) -> CliResult<String> {
+pub fn input_password(message: &str) -> SongbirdResult<String> {
     let theme = ColorfulTheme::default();
     dialoguer::Password::with_theme(&theme)
         .with_prompt(message)

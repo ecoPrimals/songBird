@@ -101,24 +101,24 @@ fn demo_legacy_compatibility(SongbirdResult<()>) ->  {
     println!("   - Zero breaking changes for existing code");
     println!("   - Gradual migration path to capability-based architecture");
 
-    // Legacy BearDog security operation
+    // 🍼 MIGRATED: Legacy security operation (was BearDog-specific)
     let security_request = SecurityRequest {
         data: "sensitive information".to_string(),
         encryption_type: "AES256".to_string(),
     };
 
     match manager.execute_legacy_primal_operation::<_, SecurityResponse>(
-        "beardog",
+        "security",  // 🍼 MIGRATED: capability-based (was "beardog")
         "encrypt",
         security_request,
     ).await {
         Ok(response) => {
-            println!("   ✅ Legacy BearDog operation successful!");
+            println!("   ✅ Legacy security operation successful!");
             println!("      - Encrypted: {}", response.success);
             println!("      - Key ID: {}", response.key_id);
         }
         Err(e) => {
-            println!("   ⚠️  Legacy BearDog operation unavailable: {} (expected)", e);
+            println!("   ⚠️  Legacy security operation unavailable: {} (expected)", e);
             println!("      - This demonstrates graceful handling of unavailable services");
         }
     }
@@ -145,12 +145,13 @@ fn demo_legacy_compatibility(SongbirdResult<()>) ->  {
         }
     }
 
+    // 🍼 MIGRATED: Showing capability-based mapping
     println!("   📝 Note: Legacy operations are automatically mapped to capabilities:");
-    println!("      - beardog -> security capability");
+    println!("      - security-provider -> security capability");
     println!("      - biomeos -> platform capability");
-    println!("      - toadstool -> data capability");
-    println!("      - nestgate -> communication capability");
-    println!("      - squirrel -> storage capability");
+    println!("      - compute-provider -> data capability");
+    println!("      - storage-provider -> communication capability");
+    println!("      - ai-provider -> storage capability");
 
     Ok(())
 }
@@ -162,7 +163,7 @@ fn demo_capability_orchestration(SongbirdResult<()>) ->  {
     println!("   - System automatically routes to best available provider");
     println!("   - Infinite extensibility without code changes");
 
-    // Security capability request (could be provided by BearDog or any security provider)
+    // 🍼 MIGRATED: Security capability request (could be provided by any security provider)
     let security_data = json!({
         "payload": "confidential data",
         "algorithm": "RSA",
@@ -177,7 +178,7 @@ fn demo_capability_orchestration(SongbirdResult<()>) ->  {
     ).await {
         Ok(response) => {
             println!("   ✅ Security capability successful!");
-            println!("      - Provider: Unknown (could be BearDog, custom security service, etc.)");
+            println!("      - Provider: Unknown (could be any security service)");
             println!("      - Response: {}", response);
         }
         Err(e) => {
@@ -186,7 +187,7 @@ fn demo_capability_orchestration(SongbirdResult<()>) ->  {
         }
     }
 
-    // AI capability request (could be provided by ToadStool or any AI provider)
+    // 🍼 MIGRATED: AI capability request (could be provided by any AI provider)
     let ai_request = AIAnalysisRequest {
         content: "This is revolutionary capability-based architecture!".to_string(),
         analysis_type: "sentiment".to_string(),

@@ -187,4 +187,3 @@ pub type SongbirdResponse<T> = SongbirdResult<T>
 
 // Songbird result type
     // /// Type alias for SongbirdResult
-pub type SongbirdResult<T> = SongbirdResult<T>;

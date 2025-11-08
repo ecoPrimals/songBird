@@ -122,7 +122,7 @@ impl IntegratedUniversalSystem  {/// Create a new integrated universal system
                 .iter()
                 .filter(|s| matches!(s.health_status, ServiceHealth::Healthy)
                 .next()
-                .or_else(|| {
+                .or_else(|_| {
                     discovered_services
                         .iter()
                         .filter(|s| matches!(s.health_status, ServiceHealth::Degraded)

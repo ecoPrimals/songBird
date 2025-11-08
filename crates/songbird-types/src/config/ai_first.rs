@@ -31,6 +31,7 @@ impl Default for CanonicalAIFirstConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SongbirdError;
 
     #[test]
     fn test_default_ai_first_config() {
@@ -70,23 +71,34 @@ mod tests {
     }
 
     #[test]
-    fn test_ai_first_config_serialization() {
+    fn test_ai_first_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let config = CanonicalAIFirstConfig::default();
-        let json = serde_json::to_string(&config).unwrap();
+        let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Serialization failed: {}", e),
+            debug_info: None,
+        })?;
         assert!(json.contains("enabled"));
         assert!(json.contains("structured_errors"));
         assert!(json.contains("capability_discovery"));
         assert!(json.contains("observability"));
+        Ok(())
     }
 
     #[test]
-    fn test_ai_first_config_deserialization() {
+    fn test_ai_first_config_deserialization() -> Result<(), Box<dyn std::error::Error>> {
         let json = r#"{"enabled":false,"structured_errors":true,"capability_discovery":false,"observability":true}"#;
-        let config: CanonicalAIFirstConfig = serde_json::from_str(json).unwrap();
+        let config: CanonicalAIFirstConfig =
+            serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Parsing failed: {}", e),
+                debug_info: None,
+            })?;
         assert!(!config.enabled);
         assert!(config.structured_errors);
         assert!(!config.capability_discovery);
         assert!(config.observability);
+        Ok(())
     }
 
     #[test]

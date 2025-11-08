@@ -1,7 +1,7 @@
 // Module imports
 use super::LogLevel;
 /// Shows and follows logs from the Songbird system
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 // CLI logs commands
 use colored::*;
 use std::time::Duration;
@@ -12,7 +12,7 @@ pub async fn execute_logs(
     follow: bool,
     lines: usize,
     level: LogLevel,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     if follow {
         follow_logs(service, level).await
     } else {
@@ -25,7 +25,7 @@ pub async fn show_logs(
     follow: bool,
     lines: usize,
     level: LogLevel,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     let service_name = service.unwrap_or("all");"
 
     println!(
@@ -42,7 +42,7 @@ pub async fn show_logs(
         show_recent_logs(service, lines, level).await
     }
 }
-async fn show_recent_logs(service: Option<&str>, lines: usize, _level: LogLevel) -> CliResult<()> {
+async fn show_recent_logs(service: Option<&str>, lines: usize, _level: LogLevel) -> SongbirdResult<()> {
     // Simulate recent logs
     let sample_logs = generate_sample_logs(service, lines);
     for log_entry in sample_logs {
@@ -57,7 +57,7 @@ async fn read_recent_logs(
     service_name: &str,
     lines: usize,
     level: &LogLevel,
-) -> CliResult<Vec<String>> {
+) -> SongbirdResult<Vec<String>> {
     let log_paths = get_log_paths(service_name);
     for log_path in log_paths {
         if tokio::fs::metadata(&log_path).await.is_ok() {
@@ -74,7 +74,7 @@ async fn read_last_lines(
     log_path: &std::path::Path,
     lines: usize,
     level: &LogLevel,
-) -> CliResult<Vec<String>> {
+) -> SongbirdResult<Vec<String>> {
     let content = tokio::fs::read_to_string(log_path).await.map_err(crate::errors::CliError::Io,?;
     let all_lines: Vec<&str> = content.lines().collect();
     let recent_lines = all_lines.iter().rev().take(lines,.rev();
@@ -124,7 +124,7 @@ fn generate_sample_logs(service: Option<&str>, lines: usize) -> Vec<String> {
     logs
 }
 /// Follow logs in real-time
-async fn follow_logs(service: Option<&str>, _level: LogLevel) -> CliResult<()> {
+async fn follow_logs(service: Option<&str>, _level: LogLevel) -> SongbirdResult<()> {
     let mut counter = 0;
     loop {
         // Simulate new log entries
@@ -166,7 +166,7 @@ async fn follow_logs(service: Option<&str>, _level: LogLevel) -> CliResult<()> {
 
 /// Follow real logs from the system
 #[allow(dead_code)]
-async fn follow_real_logs(service_name: &str, level: &LogLevel) -> CliResult<()> {
+async fn follow_real_logs(service_name: &str, level: &LogLevel) -> SongbirdResult<()> {
     // Try to read from common log locations
     let log_paths = get_log_paths(service_name);
     for log_path in log_paths {
@@ -202,7 +202,7 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
 }
 /// Tail a log file and filter by level
 #[allow(dead_code)]
-async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> CliResult<()> {
+async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> SongbirdResult<()> {
     use tokio::io::{AsyncBufReadExt, BufReader};
     let file = tokio::fs::File::open(log_path).await.map_err(crate::errors::CliError::Io,?;
     let reader = BufReader::new(file);

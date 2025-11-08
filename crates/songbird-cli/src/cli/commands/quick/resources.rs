@@ -3,11 +3,11 @@
 //! Headless API for detecting system resources that biomeOS can consume
 
 use super::{NetworkSpeed, SystemResources};
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use serde::{Deserialize, Serialize};
 
 /// Detect system resources via API
-pub async fn detect_system_resources_api() -> CliResult<SystemResources> {
+pub async fn detect_system_resources_api() -> SongbirdResult<SystemResources> {
     // Use the parameterized version with default settings for full detection
     let request = ResourceDetectionRequest {
         detect_gpu: true,
@@ -20,7 +20,7 @@ pub async fn detect_system_resources_api() -> CliResult<SystemResources> {
 
 /// Detect system resources with selective detection for performance (used for light resource checks,
 #[allow(dead_code)]
-pub async fn detect_system_resources_fast() -> CliResult<SystemResources> {
+pub async fn detect_system_resources_fast() -> SongbirdResult<SystemResources> {
     // Fast detection - skip expensive tests
     let request = ResourceDetectionRequest {
         detect_gpu: false,
@@ -42,7 +42,7 @@ pub struct ResourceDetectionRequest {
 /// Enhanced resource detection with parameters
 pub async fn detect_resources_with_params(
     request: ResourceDetectionRequest,
-) -> CliResult<SystemResources> {
+) -> SongbirdResult<SystemResources> {
     let cpu_cores = num_cpus::get();
     let memory_gb = detect_available_memory();
     let storage_gb = if request.detect_storage {

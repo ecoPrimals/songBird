@@ -1,18 +1,20 @@
 // Module imports
 //! Communication Traits
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
+
 use chrono::{DateTime, Utc};
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
+
 /// Communication layer trait
-#[async_trait]
-pub trait CommunicationLayer: Send + Sync  {/// Send a message to a specific service
+pub trait CommunicationLayer: Send + Sync {
+    /// Send a message to a specific service
     async fn send_message(
-        &self)
+        &self,
         target: ServiceAddress,
         message: ServiceMessage,
     ) -> Result<CommunicationResponse>;
@@ -20,7 +22,7 @@ pub trait CommunicationLayer: Send + Sync  {/// Send a message to a specific ser
     async fn broadcast(&self, message: ServiceMessage) -> Result<Vec<CommunicationResponse>>;
     /// Listen for incoming messages
     async fn listen(
-        &self)
+        &self,
     ) -> Result<Box<dyn Stream<Item = (ServiceAddress, ServiceMessage)> + Send + Unpin>>;
     /// Subscribe to a topic
     async fn subscribe(&self, topic: &str) -> Result<()>;

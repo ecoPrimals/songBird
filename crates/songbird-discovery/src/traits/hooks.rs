@@ -2,8 +2,9 @@
 //!
 //! Universal event hooks and extensibility patterns
 
+#![allow(async_fn_in_trait)]
+
 use crate::traits::service::{ServiceInfo, ServiceRequest, ServiceResponse};
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
@@ -11,7 +12,6 @@ type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 
 /// Universal event hook trait
-#[async_trait]
 pub trait EventHook: Send + Sync {
     /// Hook name for identification
     fn name(&self) -> &str;
@@ -235,7 +235,6 @@ pub struct RetryConfig  {/// Enable retries on failure
 }
 
 /// Hook manager trait for managing multiple hooks
-#[async_trait]
 pub trait HookManager: Send + Sync {
     /// Register a new hook
     async fn register_hook(&mut self, hook: Box<dyn EventHook>) -> Result<()>;
@@ -280,13 +279,13 @@ pub struct HookStats  {pub total_executions: u64,
 }
 
 /// Lifecycle hook trait for specific service operations
-#[async_trait]
-pub trait LifecycleHook: Send + Sync  {/// Before service registration
+pub trait LifecycleHook: Send + Sync {
+    /// Before service registration
     async fn before_service_register(&self, service_info: &ServiceInfo) -> Result<HookResult>;
 
     /// After service registration
     async fn after_service_register(
-        &self)
+        &self,
         service_id: &str,
         service_info: &ServiceInfo,
     ) -> Result<HookResult>;

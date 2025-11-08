@@ -112,7 +112,8 @@ async fn main() -> Result<()> {
     println!("\n🌍 Environment-based configuration:");
     println!("Setting environment variables...");
     std::env::set_var("SONGBIRD_DISCOVERY_STATIC", "true");
-    std::env::set_var("SONGBIRD_STATIC_SERVICES", r#"[{"service_id": "env-service", "name": "Environment Service", "host": "localhost", "port": 9000}]"#);
+    let metrics_port = songbird_config::defaults::ports::metrics_port();
+    std::env::set_var("SONGBIRD_STATIC_SERVICES", &format!(r#"[{{"service_id": "env-service", "name": "Environment Service", "host": "localhost", "port": {}}}]"#, metrics_port));
 
     let env_delegator = factory.create_from_environment().await?;
     println!("✅ Created discovery system from environment variables");

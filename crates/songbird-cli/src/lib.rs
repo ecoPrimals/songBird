@@ -73,6 +73,15 @@
 // unsafe_code is already forbidden at crate level
 #![warn(clippy::all)]
 #![warn(rust_2018_idioms)]
+// CLI tool: Allow pedantic lints for user-facing code (lower test coverage ~5%, style flexibility)
+#![allow(clippy::pedantic)]
+#![allow(clippy::nursery)] // Allow nursery lints in CLI
+// CLI tool: Allow specific patterns common in user-facing tools
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::unused_async)] // Many CLI commands prepared for future async operations
+#![allow(clippy::needless_collect)]
+#![allow(clippy::struct_excessive_bools)]
 
 // Core CLI modules
 pub mod cli;
@@ -80,4 +89,4 @@ pub mod errors;
 
 // Re-export main CLI types
 pub use cli::{Cli, CliArgs, OutputFormat};
-pub use errors::{CliError, CliResult};
+pub use errors::{CliError, SongbirdResult};

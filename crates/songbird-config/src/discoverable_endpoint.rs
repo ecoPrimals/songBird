@@ -11,10 +11,9 @@
 //! 3. Fall back to safe defaults only for development
 
 use serde::{Deserialize, Serialize};
+use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
-
-use songbird_types::{SongbirdError, SongbirdResult};
 
 /// Discoverable endpoint configuration
 ///
@@ -230,7 +229,7 @@ impl DiscoverableEndpoint {
                 var_name,
                 parser,
             } => {
-                let value = std::env::var(var_name).map_err(|_| SongbirdError::Configuration {
+                let value = SafeEnv::get_required(var_name).map_err(|_| SongbirdError::Configuration {
                     message: format!("Environment variable {var_name} not found"),
                     field: Some(var_name.clone()),
                     suggestion: Some(format!("Set {var_name} environment variable")),
@@ -274,12 +273,12 @@ impl DiscoverableEndpoint {
                 port,
             } => {
                 // Check if we're in kubernetes
-                if std::env::var("KUBERNETES_SERVICE_HOST").is_ok() {
+                if SafeEnv::get_required("KUBERNETES_SERVICE_HOST").is_ok() {
                     let port_num = match port {
                         PortSpec::Number(n) => *n,
                         PortSpec::Named(name) => resolve_named_port(name)?,
                         PortSpec::Environment(var) => {
-                            std::env::var(var).ok().and_then(|v| v.parse().ok()).unwrap_or(8080)
+                            SafeEnv::get_port(var, 8080)
                         }
                     };
 
@@ -437,8 +436,10 @@ fn resolve_named_port(name: &str) -> SongbirdResult<u16> {
 
 /// Check if we're in development mode
 fn is_development_mode() -> bool {
-    std::env::var("SONGBIRD_ENV").map(|v| v == "development" || v == "dev").unwrap_or(false)
-        || std::env::var("RUST_ENV").map(|v| v == "development" || v == "dev").unwrap_or(false)
+    SafeEnv::get_or_default("SONGBIRD_ENV", "").as_str() == "development"
+        || SafeEnv::get_or_default("SONGBIRD_ENV", "").as_str() == "dev"
+        || SafeEnv::get_or_default("RUST_ENV", "").as_str() == "development"
+        || SafeEnv::get_or_default("RUST_ENV", "").as_str() == "dev"
 }
 
 impl EndpointSpec {

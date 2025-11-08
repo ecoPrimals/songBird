@@ -1,12 +1,27 @@
 //! Discovery configuration structures
+//!
+//! **DEPRECATED**: Use `canonical::discovery::*` instead.
+//! This module will be removed in a future release.
 
 use serde::{Deserialize, Serialize};
 use std::env;
 
 /// Discovery configuration (backward compatibility alias)
+///
+/// **DEPRECATED**: Use `canonical::discovery::DiscoveryConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::discovery::DiscoveryConfig` instead. This is fully migrated to canonical."
+)]
 pub type DiscoveryConfig = UnifiedDiscoveryConfig;
 
 /// Unified discovery configuration
+///
+/// **DEPRECATED**: Use `canonical::discovery::DiscoveryConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::discovery::DiscoveryConfig` instead. Migration: `unified::discovery::UnifiedDiscoveryConfig` → `canonical::discovery::DiscoveryConfig`"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnifiedDiscoveryConfig {
     pub service_discovery: ServiceDiscoveryConfig,
@@ -35,6 +50,12 @@ impl Default for UnifiedDiscoveryConfig {
 }
 
 /// Service discovery configuration
+///
+/// **DEPRECATED**: Use `canonical::discovery::ServiceDiscoveryConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::discovery::ServiceDiscoveryConfig` instead. Migration: `unified::discovery::ServiceDiscoveryConfig` → `canonical::discovery::ServiceDiscoveryConfig`"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceDiscoveryConfig {
     pub enabled: bool,
@@ -57,6 +78,12 @@ impl Default for ServiceDiscoveryConfig {
 }
 
 /// Capability discovery configuration
+///
+/// **DEPRECATED**: Use `canonical::discovery::CapabilityDiscoveryConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::discovery::CapabilityDiscoveryConfig` instead. Migration: `unified::discovery::CapabilityDiscoveryConfig` → `canonical::discovery::CapabilityDiscoveryConfig`"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapabilityDiscoveryConfig {
     pub enabled: bool,
@@ -79,6 +106,12 @@ impl Default for CapabilityDiscoveryConfig {
 }
 
 /// Network discovery configuration
+///
+/// **DEPRECATED**: Use `canonical::discovery::NetworkDiscoveryConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::discovery::NetworkDiscoveryConfig` instead. Migration: `unified::discovery::NetworkDiscoveryConfig` → `canonical::discovery::NetworkDiscoveryConfig`"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkDiscoveryConfig {
     pub enabled: bool,

@@ -2,7 +2,8 @@
 //!
 //! Network discovery utilities for the CLI
 
-use crate::errors::{CliError, CliResult};
+use crate::errors::{CliError, SongbirdResult};
+use songbird_types::SafeEnv;
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 use tokio::net::TcpStream;
@@ -40,11 +41,9 @@ impl NetworkScanner {
     }
 
     /// Scan a subnet for Songbird nodes
-    pub async fn scan_subnet(&self, subnet: &str) -> CliResult<Vec<DiscoveredNode>> {
+    pub async fn scan_subnet(&self, subnet: &str) -> SongbirdResult<Vec<DiscoveredNode>> {
         // Check if we should use simulation mode
-        let simulation_mode = std::env::var("SONGBIRD_DISCOVERY_SIMULATION")
-            .map(|v| v.to_lowercase() == "true" || v == "1")
-            .unwrap_or(false);
+        let simulation_mode = SafeEnv::get_bool("SONGBIRD_DISCOVERY_SIMULATION", false);
 
         if simulation_mode {
             return Ok(self.generate_simulated_nodes(subnet));
@@ -54,12 +53,12 @@ impl NetworkScanner {
         let mut discovered_nodes = Vec::new();
         // Common service ports - should be discovered via capability endpoints
         let common_ports = [
-            std::env::var("DISCOVERY_PORT_1").ok().and_then(|p| p.parse().ok()).unwrap_or(8080),
-            std::env::var("DISCOVERY_PORT_2").ok().and_then(|p| p.parse().ok()).unwrap_or(9090),
-            std::env::var("DISCOVERY_PORT_3").ok().and_then(|p| p.parse().ok()).unwrap_or(3000),
-            std::env::var("DISCOVERY_PORT_4").ok().and_then(|p| p.parse().ok()).unwrap_or(4000),
-            std::env::var("DISCOVERY_PORT_5").ok().and_then(|p| p.parse().ok()).unwrap_or(5000),
-            std::env::var("DISCOVERY_PORT_6").ok().and_then(|p| p.parse().ok()).unwrap_or(8000),
+            SafeEnv::get_port("DISCOVERY_PORT_1", songbird_config::defaults::ports::orchestrator_port()),
+            SafeEnv::get_port("DISCOVERY_PORT_2", songbird_config::defaults::ports::metrics_port()),
+            SafeEnv::get_port("DISCOVERY_PORT_3", songbird_config::defaults::ports::dashboard_port()),
+            4000, // External service port
+            5000, // External service port
+            8000, // External service port
         ];
 
         // Parse subnet (e.g., "192.168.1" -> scan 192.168.1.1-254)"
@@ -120,11 +119,9 @@ impl NetworkScanner {
         &self,
         address: IpAddr,
         port: u16,
-    ) -> CliResult<Option<DiscoveredNode>> {
+    ) -> SongbirdResult<Option<DiscoveredNode>> {
         // Check if we should use simulation mode
-        let simulation_mode = std::env::var("SONGBIRD_DISCOVERY_SIMULATION")
-            .map(|v| v.to_lowercase() == "true" || v == "1")
-            .unwrap_or(false);
+        let simulation_mode = SafeEnv::get_bool("SONGBIRD_DISCOVERY_SIMULATION", false);
 
         if simulation_mode {
             // Generate simulated response for this address
@@ -146,7 +143,7 @@ impl NetworkScanner {
         &self,
         address: IpAddr,
         port: u16,
-    ) -> CliResult<Option<DiscoveredNode>> {
+    ) -> SongbirdResult<Option<DiscoveredNode>> {
         let socket_addr = SocketAddr::new(address, port);
         let start_time = std::time::Instant::now();
 
@@ -189,7 +186,7 @@ impl NetworkScanner {
         &self,
         address: IpAddr,
         port: u16,
-    ) -> CliResult<Option<(String, Option<String>, NodeType)>> {
+    ) -> SongbirdResult<Option<(String, Option<String>, NodeType)>> {
         // Try common Songbird endpoints
         let endpoints = ["/health", "/api/v1/health", "/status", "/api/status", "/songbird/health"];
 
@@ -210,7 +207,7 @@ impl NetworkScanner {
     }
 
     /// Simulate HTTP check for now
-    async fn simulate_http_check(&self, _url: &str) -> CliResult<()> {
+    async fn simulate_http_check(&self, _url: &str) -> SongbirdResult<()> {
         // This is a placeholder - in real implementation would use HTTP client
         Err(CliError::Network {
             message: "HTTP client not implemented".to_string(),
@@ -247,8 +244,7 @@ impl NetworkScanner {
 
     /// Generate simulated nodes for testing/demo purposes
     fn generate_simulated_nodes(&self, subnet: &str) -> Vec<DiscoveredNode> {
-        let node_count =
-            std::env::var("SONGBIRD_SIM_NODE_COUNT").ok().and_then(|s| s.parse().ok()).unwrap_or(3); // Default 3 simulated nodes
+        let node_count = SafeEnv::get_usize("SONGBIRD_SIM_NODE_COUNT", 3); // Default 3 simulated nodes
 
         let mut nodes = Vec::new();
         for i in 1..=node_count {
@@ -266,7 +262,7 @@ impl NetworkScanner {
                     } else {
                         NodeType::ServiceNode
                     },
-                    response_time_ms: 5 + (i * 7) % 30, // Deterministic response times
+                    response_time_ms: (5 + (i * 7) % 30) as u64, // Deterministic response times
                 });
             }
         }

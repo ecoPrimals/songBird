@@ -3,9 +3,11 @@
 //! This module provides the core traits that define the interfaces for
 //! all Songbird components. All implementations MUST use these traits.
 
+// Allow async_fn_in_trait warning - our traits guarantee Send + Sync
+#![allow(async_fn_in_trait)]
+
 pub mod canonical;
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -13,7 +15,6 @@ use std::fmt;
 use crate::errors::SongbirdResult;
 
 /// **CANONICAL**: Health check trait
-#[async_trait]
 pub trait CanonicalHealthCheck: Send + Sync {
     /// Perform a health check
     async fn health_check(&self) -> SongbirdResult<HealthStatus>;
@@ -40,7 +41,6 @@ pub struct DetailedHealthInfo {
 }
 
 /// **CANONICAL**: Configuration provider trait
-#[async_trait]
 pub trait CanonicalConfigProvider: Send + Sync {
     /// Get configuration value
     async fn get_config(&self, key: &str) -> SongbirdResult<Option<String>>;
@@ -50,7 +50,6 @@ pub trait CanonicalConfigProvider: Send + Sync {
 }
 
 /// **CANONICAL**: Service discovery trait
-#[async_trait]
 pub trait CanonicalServiceDiscovery: Send + Sync {
     /// Register a service
     async fn register_service(
@@ -86,7 +85,6 @@ pub enum ServiceInstanceStatus {
 }
 
 /// **CANONICAL**: Load balancer trait
-#[async_trait]
 pub trait CanonicalLoadBalancer: Send + Sync {
     /// Select a service instance
     async fn select_instance(&self, service_name: &str) -> SongbirdResult<Option<String>>;
@@ -100,7 +98,6 @@ pub trait CanonicalLoadBalancer: Send + Sync {
 }
 
 /// **CANONICAL**: Observability provider trait
-#[async_trait]
 pub trait CanonicalObservabilityProvider: Send + Sync {
     /// Record a metric
     async fn record_metric(
@@ -148,7 +145,6 @@ pub trait CanonicalErrorHandler: Send + Sync {
 }
 
 /// **CANONICAL**: Capability provider trait
-#[async_trait]
 pub trait CanonicalCapabilityProvider: Send + Sync {
     /// Get available capabilities
     async fn get_capabilities(&self) -> SongbirdResult<Vec<String>>;
@@ -190,5 +186,168 @@ impl fmt::Display for ServiceInstanceStatus {
             Self::Stopping => write!(f, "stopping"),
             Self::Stopped => write!(f, "stopped"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::{SongbirdError, SongbirdResult};
+    use super::*;
+
+    #[test]
+    fn test_health_status_default() {
+        let status = HealthStatus::default();
+        assert!(!status.healthy, "Default status should be unhealthy");
+        assert_eq!(status.message, "Unknown");
+    }
+
+    #[test]
+    fn test_health_status_creation() {
+        let now = chrono::Utc::now();
+        let status = HealthStatus {
+            healthy: true,
+            message: "All systems operational".to_string(),
+            timestamp: now,
+        };
+
+        assert!(status.healthy);
+        assert_eq!(status.message, "All systems operational");
+        assert_eq!(status.timestamp, now);
+    }
+
+    #[test]
+    fn test_service_instance_status_default() {
+        let status = ServiceInstanceStatus::default();
+        assert_eq!(status, ServiceInstanceStatus::Stopped);
+    }
+
+    #[test]
+    fn test_service_instance_status_display() {
+        assert_eq!(ServiceInstanceStatus::Starting.to_string(), "starting");
+        assert_eq!(ServiceInstanceStatus::Running.to_string(), "running");
+        assert_eq!(ServiceInstanceStatus::Degraded.to_string(), "degraded");
+        assert_eq!(ServiceInstanceStatus::Unhealthy.to_string(), "unhealthy");
+        assert_eq!(ServiceInstanceStatus::Stopping.to_string(), "stopping");
+        assert_eq!(ServiceInstanceStatus::Stopped.to_string(), "stopped");
+    }
+
+    #[test]
+    fn test_service_instance_status_equality() {
+        assert_eq!(ServiceInstanceStatus::Running, ServiceInstanceStatus::Running);
+        assert_ne!(ServiceInstanceStatus::Running, ServiceInstanceStatus::Stopped);
+    }
+
+    #[test]
+    fn test_service_instance_status_serialization() -> SongbirdResult<()> {
+        let status = ServiceInstanceStatus::Running;
+        let json = serde_json::to_string(&status).map_err(|e| {
+            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+        })?;
+        assert!(json.contains("Running"));
+
+        let deserialized: ServiceInstanceStatus =
+            serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Deserialization should succeed: {}", e),
+                debug_info: None,
+            })?;
+        assert_eq!(deserialized, status);
+        Ok(())
+    }
+
+    #[test]
+    fn test_metric_value_creation() {
+        let now = chrono::Utc::now();
+        let mut tags = HashMap::new();
+        tags.insert("service".to_string(), "test".to_string());
+
+        let metric = MetricValue {
+            name: "requests_total".to_string(),
+            value: 42.0,
+            tags: tags.clone(),
+            timestamp: now,
+        };
+
+        assert_eq!(metric.name, "requests_total");
+        assert_eq!(metric.value, 42.0);
+        assert_eq!(metric.tags.len(), 1);
+        assert_eq!(metric.tags.get("service"), Some(&"test".to_string()));
+    }
+
+    #[test]
+    fn test_metric_value_serialization() -> SongbirdResult<()> {
+        let now = chrono::Utc::now();
+        let metric = MetricValue {
+            name: "cpu_usage".to_string(),
+            value: 75.5,
+            tags: HashMap::new(),
+            timestamp: now,
+        };
+
+        let json = serde_json::to_string(&metric).map_err(|e| {
+            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+        })?;
+        assert!(json.contains("cpu_usage"));
+        assert!(json.contains("75.5"));
+
+        let deserialized: MetricValue =
+            serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Deserialization should succeed: {}", e),
+                debug_info: None,
+            })?;
+        assert_eq!(deserialized.name, metric.name);
+        assert_eq!(deserialized.value, metric.value);
+        Ok(())
+    }
+
+    #[test]
+    fn test_detailed_health_info_creation() {
+        let overall = HealthStatus {
+            healthy: true,
+            message: "System healthy".to_string(),
+            timestamp: chrono::Utc::now(),
+        };
+
+        let mut components = HashMap::new();
+        components.insert(
+            "database".to_string(),
+            HealthStatus {
+                healthy: true,
+                message: "Connected".to_string(),
+                timestamp: chrono::Utc::now(),
+            },
+        );
+
+        let detailed = DetailedHealthInfo {
+            status: overall.clone(),
+            components: components.clone(),
+        };
+
+        assert!(detailed.status.healthy);
+        assert_eq!(detailed.components.len(), 1);
+        assert!(detailed.components.contains_key("database"));
+    }
+
+    #[test]
+    fn test_detailed_health_info_serialization() -> SongbirdResult<()> {
+        let detailed = DetailedHealthInfo {
+            status: HealthStatus::default(),
+            components: HashMap::new(),
+        };
+
+        let json = serde_json::to_string(&detailed).map_err(|e| {
+            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+        })?;
+        let deserialized: DetailedHealthInfo =
+            serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Deserialization should succeed: {}", e),
+                debug_info: None,
+            })?;
+
+        assert_eq!(deserialized.status.healthy, detailed.status.healthy);
+        assert_eq!(deserialized.components.len(), 0);
+        Ok(())
     }
 }

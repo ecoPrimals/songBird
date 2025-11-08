@@ -9,7 +9,7 @@
 #[tokio::test]
 async fn test_e2e_discovery_to_connection() {
     // Simulate full discovery → connection flow
-    let discovery_endpoint = "http://localhost:8080/discover";
+    let discovery_endpoint = format!("http://localhost:{}/discover", songbird_config::defaults::ports::orchestrator_port());
     let discovered_service = "compute-service";
     
     assert!(!discovery_endpoint.is_empty());
@@ -28,13 +28,14 @@ async fn test_e2e_multi_service_discovery() {
 #[tokio::test]
 async fn test_e2e_service_failover() {
     // Simulate primary failure and failover
-    let primary = "http://primary:8080";
-    let backup = "http://backup:8080";
+    let port = songbird_config::defaults::ports::orchestrator_port();
+    let primary = format!("http://primary:{}", port);
+    let backup = format!("http://backup:{}", port);
     
     let primary_failed = true;
-    let active = if primary_failed { backup } else { primary };
+    let active = if primary_failed { &backup } else { &primary };
     
-    assert_eq!(active, backup);
+    assert_eq!(active, &backup);
 }
 
 // ============================================================================
@@ -45,7 +46,7 @@ async fn test_e2e_service_failover() {
 async fn test_e2e_service_registration_flow() {
     // Simulate complete registration flow
     let service_id = "test-service-1";
-    let service_endpoint = "http://localhost:9000";
+    let service_endpoint = format!("http://localhost:{}", songbird_config::defaults::ports::metrics_port());
     
     // Registration would happen here
     assert!(!service_id.is_empty());

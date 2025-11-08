@@ -15,6 +15,7 @@
 //!
 //! Tests for capability type definitions and metrics.
 
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::capabilities::*;
 use std::collections::HashMap;
 
@@ -112,7 +113,7 @@ fn test_capability_equality() {
 }
 
 #[test]
-fn test_capability_serialization() {
+fn test_capability_serialization() -> SongbirdResult<()> {
     let cap = Capability {
         capability_type: "ai".to_string(),
         name: "model_inference".to_string(),
@@ -122,14 +123,17 @@ fn test_capability_serialization() {
         available: true,
     };
 
-    let json = serde_json::to_string(&cap).expect("Failed to serialize");
-    let deserialized: Capability = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&cap)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: Capability = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.name, cap.name);
+    Ok(())
 }
 
 #[test]
-fn test_capability_debug() {
+fn test_capability_debug() -> SongbirdResult<()> {
     let cap = Capability {
         capability_type: "test".to_string(),
         name: "debug_test".to_string(),
@@ -141,6 +145,7 @@ fn test_capability_debug() {
 
     let debug_str = format!("{:?}", cap);
     assert!(debug_str.contains("Capability"));
+    Ok(())
 }
 
 // ============================================================================
@@ -188,33 +193,39 @@ fn test_qos_metrics_high_performance() {
 }
 
 #[test]
-fn test_qos_metrics_clone() {
+fn test_qos_metrics_clone() -> SongbirdResult<()> {
     let qos1 = QoSMetrics::default();
     let qos2 = qos1.clone();
     assert_eq!(qos1.latency_ms, qos2.latency_ms);
+    Ok(())
 }
 
 #[test]
-fn test_qos_metrics_equality() {
+fn test_qos_metrics_equality() -> SongbirdResult<()> {
     let qos1 = QoSMetrics::default();
     let qos2 = QoSMetrics::default();
     assert_eq!(qos1, qos2);
+    Ok(())
 }
 
 #[test]
-fn test_qos_metrics_serialization() {
+fn test_qos_metrics_serialization() -> SongbirdResult<()> {
     let qos = QoSMetrics::default();
-    let json = serde_json::to_string(&qos).expect("Failed to serialize");
-    let deserialized: QoSMetrics = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&qos)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: QoSMetrics = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.latency_ms, qos.latency_ms);
+    Ok(())
 }
 
 #[test]
-fn test_qos_metrics_debug() {
+fn test_qos_metrics_debug() -> SongbirdResult<()> {
     let qos = QoSMetrics::default();
     let debug_str = format!("{:?}", qos);
     assert!(debug_str.contains("QoSMetrics"));
+    Ok(())
 }
 
 // ============================================================================
@@ -272,33 +283,39 @@ fn test_resource_metrics_low_usage() {
 }
 
 #[test]
-fn test_resource_metrics_clone() {
+fn test_resource_metrics_clone() -> SongbirdResult<()> {
     let metrics1 = ResourceMetrics::default();
     let metrics2 = metrics1.clone();
     assert_eq!(metrics1.cpu_percent, metrics2.cpu_percent);
+    Ok(())
 }
 
 #[test]
-fn test_resource_metrics_equality() {
+fn test_resource_metrics_equality() -> SongbirdResult<()> {
     let metrics1 = ResourceMetrics::default();
     let metrics2 = ResourceMetrics::default();
     assert_eq!(metrics1, metrics2);
+    Ok(())
 }
 
 #[test]
-fn test_resource_metrics_serialization() {
+fn test_resource_metrics_serialization() -> SongbirdResult<()> {
     let metrics = ResourceMetrics::default();
-    let json = serde_json::to_string(&metrics).expect("Failed to serialize");
-    let deserialized: ResourceMetrics = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&metrics)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: ResourceMetrics = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.cpu_percent, metrics.cpu_percent);
+    Ok(())
 }
 
 #[test]
-fn test_resource_metrics_debug() {
+fn test_resource_metrics_debug() -> SongbirdResult<()> {
     let metrics = ResourceMetrics::default();
     let debug_str = format!("{:?}", metrics);
     assert!(debug_str.contains("ResourceMetrics"));
+    Ok(())
 }
 
 // ============================================================================
@@ -335,7 +352,7 @@ fn test_discovery_config_custom() {
 }
 
 #[test]
-fn test_discovery_config_fast_refresh() {
+fn test_discovery_config_fast_refresh() -> SongbirdResult<()> {
     use std::time::Duration;
 
     let config = DiscoveryConfig {
@@ -347,20 +364,23 @@ fn test_discovery_config_fast_refresh() {
     };
 
     assert!(config.refresh_interval.as_secs() < 30);
+    Ok(())
 }
 
 #[test]
-fn test_discovery_config_clone() {
+fn test_discovery_config_clone() -> SongbirdResult<()> {
     let config1 = DiscoveryConfig::default();
     let config2 = config1.clone();
     assert_eq!(config1.max_concurrent_discoveries, config2.max_concurrent_discoveries);
+    Ok(())
 }
 
 #[test]
-fn test_discovery_config_debug() {
+fn test_discovery_config_debug() -> SongbirdResult<()> {
     let config = DiscoveryConfig::default();
     let debug_str = format!("{:?}", config);
     assert!(debug_str.contains("DiscoveryConfig"));
+    Ok(())
 }
 
 // ============================================================================
@@ -383,23 +403,26 @@ fn test_primal_type_all_variants() {
 }
 
 #[test]
-fn test_primal_type_equality() {
+fn test_primal_type_equality() -> SongbirdResult<()> {
     assert_eq!(PrimalType::Compute, PrimalType::Compute);
     assert_ne!(PrimalType::Compute, PrimalType::Storage);
+    Ok(())
 }
 
 #[test]
-fn test_primal_type_clone() {
+fn test_primal_type_clone() -> SongbirdResult<()> {
     let type1 = PrimalType::AI;
     let type2 = type1.clone();
     assert_eq!(type1, type2);
+    Ok(())
 }
 
 #[test]
-fn test_primal_type_debug() {
+fn test_primal_type_debug() -> SongbirdResult<()> {
     let primal_type = PrimalType::Security;
     let debug_str = format!("{:?}", primal_type);
     assert!(debug_str.contains("Security"));
+    Ok(())
 }
 
 // ============================================================================

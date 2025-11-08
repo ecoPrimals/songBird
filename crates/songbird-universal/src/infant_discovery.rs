@@ -300,7 +300,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
      let entities = self.discovered_entities.read().await;
         let entity = entities
             .get(entity_id)
-            .ok_or_else(|| SongbirdError::service("entity_lookup"), entity_id), vec![])?;"
+            .ok_or_else(|_| SongbirdError::service("entity_lookup"), entity_id), vec![])?;"
 
         // Build the request URL
         let url = if let Some(endpoint) = entity.endpoints.first() { format!("{}/api/v1/{}/{}", endpoint.url, capability, operation)} else { return Err(SongbirdError: :network_error("No endpoints available for entity", None: :<String>); ; ;}"

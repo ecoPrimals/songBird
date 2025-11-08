@@ -18,7 +18,9 @@
 //!
 //! Tests for capability definitions, `QoS` metrics, resource tracking, and capability matching.
 
-use songbird_types::SongbirdError;
+use songbird_test_utils::network_fixtures::*;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
 // ========== Capability Tests ==========
@@ -253,12 +255,13 @@ fn test_resource_memory_conversion() {
 // ========== Capability Registry Tests ==========
 
 #[test]
-fn test_registry_initialization() {
+fn test_registry_initialization() -> SongbirdResult<()> {
     let primal_capabilities: HashMap<String, Vec<String>> = HashMap::new();
     let capability_providers: HashMap<String, Vec<String>> = HashMap::new();
 
     assert!(primal_capabilities.is_empty());
     assert!(capability_providers.is_empty());
+    Ok(())
 }
 
 #[test]
@@ -459,17 +462,17 @@ fn test_discovery_retry_counts() {
 // ========== Capability Versioning Tests ==========
 
 #[test]
-fn test_version_parsing() {
+fn test_version_parsing() -> SongbirdResult<()> {
     let versions = vec!["1.0.0", "2.1.3", "3.0.0"];
 
     for version in &versions {
-        let parts: Vec<&str> = version.split('.').collect();
-        assert_eq!(parts.len(), 3);
+        assert_eq!(version.split('.').count(), 3);
     }
+    Ok(())
 }
 
 #[test]
-fn test_version_comparison() {
+fn test_version_comparison() -> SongbirdResult<()> {
     let v1 = "1.0.0";
     let v2 = "2.0.0";
     let v3 = "1.5.0";
@@ -478,6 +481,7 @@ fn test_version_comparison() {
     assert!(v1 < v2);
     assert!(v1 < v3);
     assert!(v3 < v2);
+    Ok(())
 }
 
 #[test]
@@ -487,13 +491,13 @@ fn test_version_major_minor_patch() -> Result<(), Box<dyn std::error::Error>> {
 
     let major = parts[0]
         .parse::<u32>()
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
+        .ok_or_else(|| SongbirdError::configuration("Error occurred".to_string()))?;
     let minor = parts[1]
         .parse::<u32>()
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
+        .ok_or_else(|| SongbirdError::configuration("Error occurred".to_string()))?;
     let patch = parts[2]
         .parse::<u32>()
-        .map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?;
+        .ok_or_else(|| SongbirdError::configuration("Error occurred".to_string()))?;
 
     assert_eq!(major, 2);
     assert_eq!(minor, 5);
@@ -580,17 +584,18 @@ fn test_performance_sla_throughput() {
 }
 
 #[test]
-fn test_performance_sla_availability() {
+fn test_performance_sla_availability() -> SongbirdResult<()> {
     let sla_availability = 0.99f64; // 99% SLA
     let measured_availability = 0.995f64; // 99.5%
 
     assert!(measured_availability >= sla_availability, "Availability should meet SLA");
+    Ok(())
 }
 
 // ========== Load Balancing Tests ==========
 
 #[test]
-fn test_load_balancing_round_robin() {
+fn test_load_balancing_round_robin() -> SongbirdResult<()> {
     let providers = ["primal-1", "primal-2", "primal-3"];
     let mut current_index = 0usize;
 
@@ -600,6 +605,7 @@ fn test_load_balancing_round_robin() {
     }
 
     assert_eq!(current_index % providers.len(), 0);
+    Ok(())
 }
 
 #[test]

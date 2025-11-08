@@ -12,9 +12,12 @@
 
 [network]
 bind_address = "127.0.0.1"
-orchestrator_port = 8080
-gaming_port = 6112
-dashboard_port = 3000
+# Use SONGBIRD_PORT env var (defaults to orchestrator_port())
+orchestrator_port = 8080  # Example default
+# Use SONGBIRD_GAMING_PORT_START env var (defaults to gaming_port_range_start())
+gaming_port = 6112  # Example default
+# Use SONGBIRD_DASHBOARD_PORT env var (defaults to dashboard_port())
+dashboard_port = 3000  # Example default
 
 [environment]
 prefix = "SONGBIRD_"
@@ -42,7 +45,8 @@ discovery_interval = "5m"
 discovery_timeout = "10s"
 discovery_methods = ["environment", "config_file", "mdns", "network_scan"]
 scan_ranges = ["127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16"]
-scan_ports = [8080, 8081, 8082, 8083, 8443, 3000, 5000]
+# Common ports to scan (use SCAN_PORTS env var for custom ports)
+scan_ports = [8080, 8081, 8082, 8083, 8443, 3000, 5000]  # Example defaults
 
 # Default template for unknown primals discovered on the network
 [primal_registry.default_template]
@@ -58,8 +62,10 @@ display_name = "BearDog Security"
 enabled = true
 
 [primal_registry.primals.endpoint]
-primary_url = "https://beardog.internal:8443"
-fallback_urls = ["https://beardog-backup.internal:8443"]
+# Recommended: Use CAPABILITY_SECURITY_ENDPOINT for auto-discovery
+# Use SONGBIRD_BEARDOG_PORT env var (defaults to beardog_port())
+primary_url = "https://beardog.internal:8443"  # Example default
+fallback_urls = ["https://beardog-backup.internal:8443"]  # Example default
 use_tls = true
 load_balancing = "health_based"
 
@@ -115,8 +121,10 @@ display_name = "NestGate Storage"
 enabled = true
 
 [primal_registry.primals.endpoint]
-primary_url = "http://nestgate.internal:8080"
-fallback_urls = ["http://nestgate-replica.internal:8080"]
+# Recommended: Use CAPABILITY_STORAGE_ENDPOINT for auto-discovery
+# Use SONGBIRD_PORT env var (defaults to orchestrator_port())
+primary_url = "http://nestgate.internal:8080"  # Example default
+fallback_urls = ["http://nestgate-replica.internal:8080"]  # Example default
 use_tls = false
 load_balancing = "least_connections"
 
@@ -148,7 +156,9 @@ display_name = "Toadstool Compute"
 enabled = true
 
 [primal_registry.primals.endpoint]
-primary_url = "http://toadstool.internal:8082"
+# Recommended: Use CAPABILITY_COMPUTE_ENDPOINT for auto-discovery
+# Use SONGBIRD_BEARDOG_PORT env var (defaults to beardog_port())
+primary_url = "http://toadstool.internal:8082"  # Example default
 use_tls = false
 
 [primal_registry.primals.authentication]
@@ -179,7 +189,9 @@ display_name = "Squirrel Analytics"
 enabled = true
 
 [primal_registry.primals.endpoint]
-primary_url = "http://squirrel.internal:8083"
+# Recommended: Use CAPABILITY_AI_ENDPOINT or CAPABILITY_ANALYTICS_ENDPOINT for auto-discovery
+# Use SONGBIRD_METRICS_PORT env var (defaults to metrics_port())
+primary_url = "http://squirrel.internal:8083"  # Example default
 use_tls = false
 
 [primal_registry.primals.authentication]
@@ -258,13 +270,15 @@ analytics = "mock_mode"  # Analytics can run in mock mode
 [beardog]
 enabled = false  # Disabled - using primal_registry instead
 [beardog.endpoint]
-primary_url = "https://localhost:8443"
+# DEPRECATED: Use primal_registry or CAPABILITY_SECURITY_ENDPOINT instead
+primary_url = "https://localhost:8443"  # Example default - legacy only
 connection_timeout_secs = 30
 verify_tls = true
 
 [toadstool]
 enabled = false  # Disabled - using primal_registry instead
 [toadstool.endpoint]  
-primary_url = "http://localhost:8082"
+# DEPRECATED: Use primal_registry or CAPABILITY_COMPUTE_ENDPOINT instead
+primary_url = "http://localhost:8082"  # Example default - legacy only
 connection_timeout_secs = 30
 verify_tls = false 

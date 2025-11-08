@@ -3,12 +3,38 @@
 //! This crate provides comprehensive configuration management for Songbird,
 //! supporting environment-based configuration, validation, and zero-hardcoded systems.
 //!
+//! ## 🎯 **Configuration Consolidation Status** (November 2025)
+//!
+//! This crate is undergoing consolidation to establish `canonical/` as the single source of truth.
+//!
+//! ### **Recommended Usage** (Modern)
+//! ```rust
+//! // ✅ PREFERRED: Use canonical exports
+//! use songbird_config::canonical::{
+//!     NetworkConfig,
+//!     EnvironmentConfig,
+//!     SecurityConfig,
+//!     ServiceConfig,
+//! };
+//! ```
+//!
+//! ### **Legacy Usage** (Deprecated - use canonical instead)
+//! ```rust
+//! // ⚠️ DEPRECATED: Old config module (use canonical:: instead)
+//! use songbird_config::config::NetworkConfig;  // ← Migrate to canonical::NetworkConfig
+//! ```
+//!
+//! ### **Migration Path**
+//! - **Old**: `use songbird_config::config::*;`
+//! - **New**: `use songbird_config::canonical::*;`
+//! - **Timeline**: Old paths maintained for backward compatibility through Q1 2026
+//!
 //! ## Key Features
+//! - **Canonical Configuration**: Single source of truth in `canonical/` module
 //! - **Environment-Based Configuration**: Support for dev/staging/production
 //! - **Zero-Hardcoded Values**: All values configurable through environment or files
-//! - **Hardcoded Value Elimination**: Dynamic configuration without hardcoded values
+//! - **Type-Safe Defaults**: Compile-time configuration validation
 //! - **Performance Tuning**: Configurable performance parameters
-//! - **Universal Configuration**: Support for any deployment scenario
 
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
@@ -17,23 +43,76 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+// ============================================================================
+// CANONICAL MODULE - SINGLE SOURCE OF TRUTH
+// ============================================================================
+/// **PRIMARY**: Canonical configuration types - use these for all new code
 pub mod canonical;
-pub mod canonical_network;
-pub mod capability_endpoints; // 🍼 NEW: Zero-hardcoding capability-based endpoints
-pub mod config;
+
+// ============================================================================
+// STABLE MODULES - KEEP
+// ============================================================================
+/// Capability-based endpoint configuration
+pub mod capability_endpoints;
+
+/// Default values for common configuration
 pub mod defaults;
+
+/// Discoverable endpoint types
 pub mod discoverable_endpoint;
-// ✅ DELETED: pub mod endpoints - was deprecated legacy primal-name endpoints (use capability_endpoints instead)
-pub mod environment_config_clean; // ✅ FIXED & ENABLED - PRODUCTION READY (13 errors fixed)
-                                  // TODO: pub mod unified; // ⚙️ 90% FIXED: 80+ errors fixed, cascading delimiter issues in security.rs remaining
+
+/// Zero-touch deployment configuration
 pub mod zero_touch;
 
+// ============================================================================
+// LEGACY MODULES - BEING CONSOLIDATED
+// ============================================================================
+/// **DEPRECATED**: Use `canonical::` instead - being consolidated into canonical
+/// 
+/// This module contains fragmented configuration that is being migrated to `canonical/`.
+/// For new code, use `songbird_config::canonical::*` instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `canonical::` module instead. This module is being phased out. \
+            Migration: `config::NetworkConfig` → `canonical::NetworkConfig`"
+)]
+pub mod config;
+
+/// **CLEANUP TARGET**: Environment configuration helper
+/// 
+/// **TODO**: Consolidate into `canonical::environment`
+pub mod environment_config_clean;
+
+// ============================================================================
+// PUBLIC API - PREFER CANONICAL
+// ============================================================================
+
+// Re-export canonical types for convenience (PREFERRED)
+// Note: Only export types that exist in canonical module
+pub use canonical::{
+    CanonicalNetworkDefaults,
+    HealthStatus,
+    ServiceHealth,
+    UniversalHealthStatus,
+};
+
+// Individual module re-exports for convenience
+pub use canonical::environment::EnvironmentConfig as CanonicalEnvironmentConfig;
+pub use canonical::network::NetworkConfig as CanonicalNetworkConfig;
+pub use canonical::service::ServiceConfig as CanonicalServiceConfig;
+
+// Security config will be added in Phase 5 of consolidation
+// pub use canonical::security::SecurityConfig as CanonicalSecurityConfig;
+
+// Legacy re-exports (DEPRECATED - maintained for backward compatibility)
+#[allow(deprecated)]
 pub use config::*;
 
-// Re-export environment configuration from config module
+// Re-export environment configuration from config module (DEPRECATED)
+#[allow(deprecated)]
 pub use config::environment::EnvironmentConfig;
 
-// Re-export environment configuration helper - ✅ NOW ENABLED
+// Re-export environment configuration helper
 pub use environment_config_clean::EnvironmentConfig as EnvironmentConfigClean;
 
 /// Performance configuration for fine-tuning system behavior

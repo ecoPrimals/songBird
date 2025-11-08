@@ -127,7 +127,8 @@ impl NestGateStorageAdapter {
     /// use songbird_universal::adapters::NestGateStorageAdapter;
     ///
     /// // Custom endpoint
-    /// let adapter = NestGateStorageAdapter::new("http://storage-service:8082".to_string()).unwrap();
+    /// let adapter = NestGateStorageAdapter::new(format!("http://storage-service:{}", 
+    ///     songbird_config::defaults::ports::beardog_port())).unwrap();
     ///
     /// // Or use default from configuration
     /// let adapter = NestGateStorageAdapter::new_default().unwrap();
@@ -299,11 +300,13 @@ mod tests {
     #[test]
     fn test_adapter_creation() {
         // Test uses localhost - acceptable for unit tests
-        let adapter = NestGateStorageAdapter::new("http://localhost:8082".to_string())
+        let port = songbird_config::defaults::ports::beardog_port();
+        let endpoint = format!("http://localhost:{}", port);
+        let adapter = NestGateStorageAdapter::new(endpoint.clone())
             .expect("Test: adapter creation should succeed");
         assert_eq!(
             adapter.endpoint(), // Test uses localhost - acceptable for unit tests
-            "http://localhost:8082"
+            &endpoint
         );
     }
 
@@ -311,7 +314,7 @@ mod tests {
     fn test_adapter_with_timeout() {
         let adapter = NestGateStorageAdapter::new(
             // Test uses localhost - acceptable for unit tests
-            "http://localhost:8082".to_string(),
+            format!("http://localhost:{}", songbird_config::defaults::ports::beardog_port()),
         )
         .expect("Test: adapter creation should succeed")
         .with_timeout(Duration::from_secs(10));

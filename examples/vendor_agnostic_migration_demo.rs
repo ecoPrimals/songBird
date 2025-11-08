@@ -9,8 +9,8 @@ use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! // 2^n connection complexity - each service knows all others
 //! let beardog = BearDogClient: :new("http://beardog:config.network.https_port").await?;
 //! let nestgate = NestGateClient::new("http://nestgate:config.network.http_port").await?;  
-//! let toadstool = ToadstoolClient::new("http://toadstool:8082").await?;
-//! let squirrel = SquirrelClient::new("http://squirrel:8083").await?;
+//! let toadstool = ToadstoolClient::new(&format!("http://toadstool:{}", songbird_config::defaults::ports::beardog_port())).await?;
+//! let squirrel = SquirrelClient::new(&format!("http://squirrel:{}", songbird_config::defaults::ports::metrics_port())).await?;
 //!
 //! // Hardcoded workflow: nestgate → squirrel → beardog → nestgate
 //! let data = nestgate.retrieve("user_data").await?;
@@ -187,7 +187,7 @@ async fn demonstrate_infant_discovery() -> SongbirdResult<()>   {
     // Demonstrate capability requests (no hardcoded names!)
     info!("🎯 Testing capability requests (no hardcoded names):");
 
-    // Request security capability (could be beardog, or any other security provider)
+    // 🍼 Request security capability (discovered dynamically - any provider)
     match infant
         .request_capability("security", "health_check", json!(    {
          
@@ -206,7 +206,7 @@ async fn demonstrate_infant_discovery() -> SongbirdResult<()>   {
         }
     }
 
-    // Request storage capability (could be nestgate, or any other storage provider)
+    // 🍼 Request storage capability (discovered dynamically - any provider)
     match infant
         .request_capability("storage", "health_check", json!(    {
          
@@ -225,7 +225,7 @@ async fn demonstrate_infant_discovery() -> SongbirdResult<()>   {
         }
     }
 
-    // Request compute capability (could be toadstool, or any other compute provider)
+    // 🍼 Request compute capability (discovered dynamically - any provider)
     match infant
         .request_capability("compute", "health_check", json!(    {
          
@@ -244,7 +244,7 @@ async fn demonstrate_infant_discovery() -> SongbirdResult<()>   {
         }
     }
 
-    // Request AI capability (could be squirrel, or any other AI provider)
+    // 🍼 Request AI capability (discovered dynamically - any provider)
     match infant
         .request_capability("ai", "health_check", json!(    {
          

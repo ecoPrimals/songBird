@@ -12,9 +12,12 @@
 
 [network]
 bind_address = "0.0.0.0"
-port = 8080
-discovery_port = 8081
-federation_port = 8082
+# Use SONGBIRD_PORT env var in production (defaults to orchestrator_port())
+port = 8080  # Example default
+# Use SONGBIRD_DISCOVERY_PORT env var (defaults to discovery_port())
+discovery_port = 8081  # Example default
+# Use SONGBIRD_FEDERATION_PORT env var (defaults to federation_port())
+federation_port = 8082  # Example default
 max_connections = 1000
 connection_timeout_secs = 30
 keep_alive_interval_secs = 60
@@ -23,8 +26,10 @@ keep_alive_interval_secs = 60
 environment = "production"
 log_level = "INFO"
 enable_metrics = true
-metrics_port = 9090
-health_check_port = 8083
+# Use SONGBIRD_METRICS_PORT env var (defaults to metrics_port())
+metrics_port = 9090  # Example default
+# Use SONGBIRD_HEALTH_PORT env var (defaults to metrics_port())
+health_check_port = 8083  # Example default
 
 [paths]
 data_dir = "/var/lib/songbird"
@@ -41,11 +46,13 @@ temp_dir = "/tmp/songbird"
 enabled = true
 
 # BearDog Service Endpoint Configuration
+# Recommended: Use CAPABILITY_SECURITY_ENDPOINT for auto-discovery in production
 [beardog.endpoint]
-primary_url = "https://beardog.internal.company.com:8443"
+# Use SONGBIRD_BEARDOG_PORT env var (defaults to beardog_port())
+primary_url = "https://beardog.internal.company.com:8443"  # Example default
 fallback_urls = [
-    "https://beardog-backup.internal.company.com:8443",
-    "https://beardog-dr.internal.company.com:8443"
+    "https://beardog-backup.internal.company.com:8443",  # Example default
+    "https://beardog-dr.internal.company.com:8443"  # Example default
 ]
 connection_timeout_secs = 30
 request_timeout_secs = 60

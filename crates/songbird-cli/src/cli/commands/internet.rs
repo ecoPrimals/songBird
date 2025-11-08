@@ -11,7 +11,7 @@ use crate::cli::commands::{InternetCommands, InternetConfigAction};
 // - Cloud provider networking APIs
 use std::collections::HashMap;
 // Internet connection CLI commands
-use crate::errors::{CliError, CliResult};
+use crate::errors::{CliError, SongbirdResult};
 use crate::ui;
 use colored::*;
 use std::path::PathBuf;
@@ -53,7 +53,7 @@ impl InternetConnectionWizard  {fn new(config: InternetConnectionConfig) -> Self
     }
 
     #[allow(dead_code)]
-    async fn setup(&self) -> CliResult<()> {
+    async fn setup(&self) -> SongbirdResult<()> {
         // Internet connection setup is delegated to external network APIs
         // Production implementations should integrate with:
         // - songbird-network crate for network configuration
@@ -62,22 +62,26 @@ impl InternetConnectionWizard  {fn new(config: InternetConnectionConfig) -> Self
         Ok(()),
     }
 
-    async fn discover_songbird_ports(&self) -> CliResult<PortDiscoveryResult>  {// Port discovery is delegated to external service discovery APIs
+    async fn discover_songbird_ports(&self) -> SongbirdResult<PortDiscoveryResult>  {// Port discovery is delegated to external service discovery APIs
         // Production implementations should integrate with:
         // - songbird-discovery crate for service discovery
         // - System port scanning and detection
         // - Service registry APIs
-        Ok(PortDiscoveryResult  {orchestrator_port: 8080)
-            federation_port: 9090,
-            metrics_port: 8081,
-            discovery_port: 9091,
-            additional_service_ports: vec![8082, 9092])
+        Ok(PortDiscoveryResult  {
+            orchestrator_port: songbird_config::defaults::ports::orchestrator_port(),
+            federation_port: songbird_config::defaults::ports::federation_port(),
+            metrics_port: songbird_config::defaults::ports::metrics_port(),
+            discovery_port: songbird_config::defaults::ports::discovery_port(),
+            additional_service_ports: vec![
+                songbird_config::defaults::ports::beardog_port(),
+                9092, // Keep as is - external service
+            ],
         })
     }
 }
 
 /// Execute the internet connection command
-pub async fn execute_internet_command(command: &InternetCommands) -> crate::errors::CliResult<()>  {match command  {InternetCommands::Wizard {
+pub async fn execute_internet_command(command: &InternetCommands) -> crate::errors::SongbirdResult<()>  {match command  {InternetCommands::Wizard {
             environment,
             tunnel,
             network_name,
@@ -101,7 +105,7 @@ pub async fn execute_internet_command(command: &InternetCommands) -> crate::erro
 }
 
 /// Handle internet command - wrapper for compatibility
-pub async fn handle_internet_command(command: &InternetCommands) -> crate::errors::CliResult<()> {
+pub async fn handle_internet_command(command: &InternetCommands) -> crate::errors::SongbirdResult<()> {
     execute_internet_command(command).await
 }
 /// Execute the internet connection wizard
@@ -111,7 +115,7 @@ async fn execute_internet_wizard(
     tunnel: Option<&str>,
     network_name: Option<&str>,
     no_discovery: bool,
-) -> crate::errors::CliResult<()> {
+) -> crate::errors::SongbirdResult<()> {
     println!("{}", ui::title("🧙‍♂️ Internet Connection Wizard")"
     println!()
 
@@ -138,7 +142,7 @@ async fn execute_internet_wizard(
     Ok(()),
 }
 /// Execute internet connection status command
-async fn execute_internet_status() -> crate::errors::CliResult<()> {
+async fn execute_internet_status() -> crate::errors::SongbirdResult<()> {
     println!("{}", ui::title("📊 Internet Connection Status")"
     println!("Connection Status: {}", "Connected".bright_green()"
     println!("Tunnel Type: {}", "WireGuard".bright_cyan()"
@@ -150,7 +154,7 @@ async fn execute_internet_status() -> crate::errors::CliResult<()> {
     Ok(()),
 }
 /// Execute internet connect command
-async fn execute_internet_connect(network: &str) -> crate::errors::CliResult<()> {
+async fn execute_internet_connect(network: &str) -> crate::errors::SongbirdResult<()> {
     println!("{}", ui::info(&format!("🔗 Connecting to network: {}", network);"
     // Simulate connection process
     println!("{}", ui::info("⏳ Establishing secure tunnel...")"
@@ -162,7 +166,7 @@ async fn execute_internet_connect(network: &str) -> crate::errors::CliResult<()>
     Ok(()),
 }
 /// Execute internet disconnect command
-async fn execute_internet_disconnect() -> crate::errors::CliResult<()> {
+async fn execute_internet_disconnect() -> crate::errors::SongbirdResult<()> {
     println!("{}", ui::info("🔌 Disconnecting from internet tunnels...")"
     // Simulate disconnection
     println!("{}", ui::success("✅ Disconnected from all tunnels")"
@@ -170,7 +174,7 @@ async fn execute_internet_disconnect() -> crate::errors::CliResult<()> {
     Ok(()),
 }
 /// Execute internet config command
-async fn execute_internet_config(action: &InternetConfigAction) -> crate::errors::CliResult<()> {
+async fn execute_internet_config(action: &InternetConfigAction) -> crate::errors::SongbirdResult<()> {
     match action {
         InternetConfigAction::Show => {
             println!("{}", "🌐 Internet Connection Configuration".bright_blue().bold();"
@@ -247,7 +251,7 @@ async fn execute_internet_config(action: &InternetConfigAction) -> crate::errors
 async fn save_internet_config(
     config: &InternetConnectionConfig,
     path: &PathBuf,
-) -> crate::errors::CliResult<()> {
+) -> crate::errors::SongbirdResult<()> {
     let config_str = toml::to_string_pretty(config,.map_err(|e| CliError::Config {
         message: format!("Failed to serialize configuration: {}", e,"
         field: "config_serialization".to_string(),
@@ -263,7 +267,7 @@ async fn save_internet_config(
     Ok(()),
 }
 /// Load internet connection configuration
-async fn load_internet_config(path: &PathBuf) -> CliResult<InternetConnectionConfig> {
+async fn load_internet_config(path: &PathBuf) -> SongbirdResult<InternetConnectionConfig> {
     let contents = tokio::fs::read_to_string(path).await.map_err(|e| CliError::Config {
         message: format!("Failed to read configuration file: {}", e,"
         field: "config_file".to_string(),

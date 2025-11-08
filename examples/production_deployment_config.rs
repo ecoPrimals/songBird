@@ -291,7 +291,7 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     // Test universal compatibility
     let test_endpoints = [
         "https://security-prod.company.com:config.network.https_port",
-        "https://storage-prod.company.com:9000",
+        &format!("https://storage-prod.company.com:{}", songbird_config::defaults::ports::metrics_port()),
         "https://ai-prod.company.com:8888",
     ];
     

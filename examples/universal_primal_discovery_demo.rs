@@ -108,7 +108,7 @@ async fn demonstrate_universal_primal_registration() -> SongbirdResult<()>   {
 
     discovery.add_custom_primal(
         "blockchain-node".to_string(),
-        "http: //blockchain:9000".to_string(),
+        format!("http://blockchain:{}", songbird_config::defaults::ports::metrics_port()),
         blockchain_capabilities,
     )?;
     info!("✅ Registered Blockchain Node as a primal");

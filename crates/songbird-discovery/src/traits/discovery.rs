@@ -1,9 +1,13 @@
 //! Service Discovery Trait
 //!
 //! Supporting static configuration, Songbird native, Kubernetes, and other discovery mechanisms.
+//!
+//! ## Native Async Traits
+//! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
+
+#![allow(async_fn_in_trait)]
 
 use crate::traits::service::ServiceInfo;
-use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
@@ -11,8 +15,7 @@ type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 use std::pin::Pin;
 
-/// Core trait for service discovery implementations
-#[async_trait]
+/// Service Discovery trait - uses native async methods (zero-cost)
 pub trait ServiceDiscovery: Send + Sync {
     /// Register a service with the discovery system
     async fn register(&self, service: ServiceInfo) -> Result<()>;

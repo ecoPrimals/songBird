@@ -2,7 +2,8 @@
 //!
 //! Provides health checking capabilities for services
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_types::errors::SongbirdResult;
@@ -12,7 +13,8 @@ use std::time::Duration;
 
 /// Health check result
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckResult  {pub service_id: String,
+pub struct HealthCheckResult {
+    pub service_id: String,
     pub status: HealthStatus,
     pub message: Option<String>,
     pub timestamp: DateTime<Utc>,
@@ -21,7 +23,8 @@ pub struct HealthCheckResult  {pub service_id: String,
 
 /// Health check configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig  {pub interval: Duration,
+pub struct HealthCheckConfig {
+    pub interval: Duration,
     pub timeout: Duration,
     pub retries: u32,
     pub endpoint: Option<String>,
@@ -30,14 +33,14 @@ pub struct HealthCheckConfig  {pub interval: Duration,
 
 /// Health status enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Copy)]
-pub enum HealthStatus  {Healthy)
+pub enum HealthStatus {
+    Healthy,
     Degraded,
     Unhealthy,
     Unknown,
 }
 
 /// Health monitoring trait
-#[async_trait]
 pub trait HealthMonitor: Send + Sync {
     /// Perform a health check on a service
     async fn check_health(&self, service_id: &str) -> Result<HealthCheckResult>;

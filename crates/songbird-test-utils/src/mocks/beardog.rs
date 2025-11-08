@@ -219,6 +219,7 @@ mod tests {
     #![allow(unused)]
 
     use super::*;
+    use songbird_types::SongbirdError;
 
     #[tokio::test]
     async fn test_mock_beardog_auth() {
@@ -246,6 +247,62 @@ mod tests {
         mock.simulate_normal_operation();
         let metrics = mock.get_metrics();
         assert!(metrics.failed_auth_attempts < 10);
+        assert_eq!(mock.get_health(), HealthStatus::Healthy);
+    }
+
+    // ========== NEW TESTS (5 tests to improve coverage) ==========
+
+    #[tokio::test]
+    async fn test_beardog_server_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
+        let mut mock = MockBearDog::new();
+        let port = mock
+            .start()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Server should start: {}", e)))?;
+        assert!(port > 0);
+        assert_eq!(mock.port(), port);
+        mock.stop().await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_security_metrics_default() {
+        let mock = MockBearDog::new();
+        let metrics = mock.get_metrics();
+        assert_eq!(metrics.active_sessions, 10);
+        assert_eq!(metrics.failed_auth_attempts, 2);
+        assert_eq!(metrics.blocked_ips, 0);
+        assert!((metrics.security_score - 0.95).abs() < 0.001);
+    }
+
+    #[tokio::test]
+    async fn test_auth_result_variants() {
+        let mock = MockBearDog::new();
+        mock.set_auth_result("auth_token", AuthResult::Authorized);
+        mock.set_auth_result("invalid_token", AuthResult::Invalid);
+        mock.set_auth_result("expired_token", AuthResult::Expired);
+
+        assert_eq!(mock.check_auth("auth_token"), AuthResult::Authorized);
+        assert_eq!(mock.check_auth("invalid_token"), AuthResult::Invalid);
+        assert_eq!(mock.check_auth("expired_token"), AuthResult::Expired);
+    }
+
+    #[tokio::test]
+    async fn test_health_status_management() {
+        let mock = MockBearDog::new();
+        assert_eq!(mock.get_health(), HealthStatus::Healthy);
+
+        mock.set_health(HealthStatus::Degraded);
+        assert_eq!(mock.get_health(), HealthStatus::Degraded);
+
+        mock.set_health(HealthStatus::Unhealthy);
+        assert_eq!(mock.get_health(), HealthStatus::Unhealthy);
+    }
+
+    #[test]
+    fn test_beardog_default_trait() {
+        let mock = MockBearDog::default();
+        assert_eq!(mock.port(), 0);
         assert_eq!(mock.get_health(), HealthStatus::Healthy);
     }
 }

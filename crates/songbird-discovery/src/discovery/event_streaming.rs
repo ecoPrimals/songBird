@@ -168,7 +168,7 @@ mod tests  {use std::collections::HashMap;
 use songbird_config;
 
     fn create_test_service(name: &str) -> ServiceInfo {
-        use songbird_config::config::constants;
+        use songbird_config::canonical::constants;
         
         let test_host = std::env::var("TEST_EVENT_HOST")
             .unwrap_or_else(|_| constants::network::DEFAULT_HOST.to_string());

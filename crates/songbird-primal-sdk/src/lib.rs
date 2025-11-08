@@ -30,8 +30,7 @@ use songbird_types::{SongbirdError,
 pub use songbird_types::primal::*;
 
 // Compatibility type aliases for common usage patterns
-/// Type alias for Songbird results in primal SDK context
-pub type PrimalResult<T> = Result<T, SongbirdError>;
+// (SongbirdResult removed - use songbird_types::errors::SongbirdResult directly)
 /// Error type alias for Primal SDK operations
 pub type PrimalError = SongbirdError;
 
@@ -124,7 +123,7 @@ impl<const MAX_CONNECTIONS: usize> OptimizedPrimalPool<MAX_CONNECTIONS>  {/// Cr
     }
 
     /// Add connection to pool - zero-cost bounds checking
-    pub fn add_connection(&mut self, connection: PrimalConnection) -> PrimalResult<()>  {
+    pub fn add_connection(&mut self, connection: PrimalConnection) -> SongbirdResult<()>  {
         self.connections.try_push(connection)
             .map_err(|_| SongbirdError::Configuration {
                 field: "connection_pool".to_string(),
@@ -196,7 +195,7 @@ pub struct PrimalSDK<const POOL_SIZE: usize = 16>  {registry: Box<dyn crate::tra
 }
 
 impl<const POOL_SIZE: usize> PrimalSDK<POOL_SIZE>  {/// Create a new PrimalSDK instance with compile-time optimizations
-    pub async fn new() -> PrimalResult<Self>  {
+    pub async fn new() -> SongbirdResult<Self>  {
         let registry = Box::new(simple_primal_registry::SimplePrimalRegistry::new());
         let orchestrator = capability_orchestrator::CapabilityOrchestrator::new().await?;
         let discovery = adaptive_discovery::AdaptiveDiscovery::new().await?;
@@ -211,7 +210,7 @@ impl<const POOL_SIZE: usize> PrimalSDK<POOL_SIZE>  {/// Create a new PrimalSDK i
     }
 
     /// Create optimized SDK for high-performance scenarios
-    pub async fn new_optimized() -> PrimalResult<Self> {
+    pub async fn new_optimized() -> SongbirdResult<Self> {
         let mut sdk = Self::new().await?;
         
         // Apply performance optimizations

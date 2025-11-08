@@ -21,7 +21,7 @@ pub async fn execute_init(
     deployment: crate::cli::DeploymentType,
     quick: bool,
     output: PathBuf,
-) -> crate::errors::CliResult<()> {
+) -> crate::errors::SongbirdResult<()> {
     println!("{}", "🎼 Songbird Orchestrator Initialization".bright_blue().bold();"
     println!("{}", "=====================================".bright_blue()"
 
@@ -87,7 +87,7 @@ impl Default for InitConfig  {fn default() -> Self  {let home_dir = dirs::home_d
     }
 }
 /// Interactive configuration wizard
-fn interactive_configuration(mut config: InitConfig) -> crate::errors::CliResult<InitConfig> {
+fn interactive_configuration(mut config: InitConfig) -> crate::errors::SongbirdResult<InitConfig> {
     let theme = ColorfulTheme::default();
     println!("\n{}", "Let's configure your Songbird cluster:".bright_green()"
     // Deployment type selection
@@ -124,13 +124,13 @@ fn interactive_configuration(mut config: InitConfig) -> crate::errors::CliResult
     Ok(config,
 }
 /// Validate the initialization configuration
-fn validate_init_config(_config: &InitConfig) -> crate::errors::CliResult<()> {
+fn validate_init_config(_config: &InitConfig) -> crate::errors::SongbirdResult<()> {
     // Simplified validation for now
     Ok(()),
 }
 
 /// Create necessary directories
-fn create_directories(config: &InitConfig) -> crate::errors::CliResult<()> {
+fn create_directories(config: &InitConfig) -> crate::errors::SongbirdResult<()> {
     std::fs::create_dir_all(&config.config_dir,.map_err(CliError::Io,?;
     std::fs::create_dir_all(&config.data_dir,.map_err(CliError::Io,?;
     std::fs::create_dir_all(&config.log_dir,.map_err(CliError::Io,?;
@@ -141,7 +141,7 @@ fn create_directories(config: &InitConfig) -> crate::errors::CliResult<()> {
 /// Generate orchestrator configuration
 fn generate_orchestrator_config(
     _config: &InitConfig,
-) -> crate::errors::CliResult<OrchestratorConfig> {
+) -> crate::errors::SongbirdResult<OrchestratorConfig> {
     // Generate a basic configuration for now
     Ok(OrchestratorConfig::default()
 }
@@ -150,7 +150,7 @@ fn generate_orchestrator_config(
 fn save_configuration(
     init_config: &InitConfig,
     orchestrator_config: &OrchestratorConfig,
-) -> crate::errors::CliResult<()> {
+) -> crate::errors::SongbirdResult<()> {
     // Save main orchestrator configuration
     let config_file = init_config.config_dir.join("songbird.toml");"
     let config_content =
@@ -190,7 +190,7 @@ fn save_configuration(
     Ok(()),
 }
 /// Generate templates and examples
-fn generate_templates(config: &InitConfig) -> crate::errors::CliResult<()> {
+fn generate_templates(config: &InitConfig) -> crate::errors::SongbirdResult<()> {
     let templates_dir = config.config_dir.join("templates");"
     std::fs::create_dir_all(&templates_dir,.map_err(|e| CliError::Config {
         message: format!("Failed to create templates directory: {}", e,"
@@ -217,8 +217,8 @@ memory_gb = 4.0
 storage_gb = 10.0
 gpu_required = false
 [service.networking]
-# Network configuration
-port = 8080
+# Network configuration (use SONGBIRD_PORT env var to customize)
+port = 8080  # Example default - customize via environment
 health_check_path = "/health""
 metrics_path = "/metrics""
 [service.scaling]
@@ -240,14 +240,16 @@ services:
   songbird-orchestrator:
     image: songbird-orchestrator:latest
     ports:
-      - "8080:8080""
-      - "9090:9090"  # Dashboard"
+      - "${SONGBIRD_PORT:-8080}:8080"  # Customize via SONGBIRD_PORT env var
+      - "${SONGBIRD_METRICS_PORT:-9090}:9090"  # Dashboard - customize via SONGBIRD_METRICS_PORT
     volumes:
       - ./data:/app/data
       - ./config:/app/config
     environment:
       - SONGBIRD_CONFIG_PATH=/app/config/songbird.toml
       - RUST_LOG=info
+      - SONGBIRD_PORT=${SONGBIRD_PORT:-8080}
+      - SONGBIRD_METRICS_PORT=${SONGBIRD_METRICS_PORT:-9090}
     networks:
       - songbird-network
   my-service:
@@ -255,7 +257,7 @@ services:
     depends_on:
       - songbird-orchestrator
     environment:
-      - SONGBIRD_ORCHESTRATOR_URL=http://songbird-orchestrator:8080
+      - SONGBIRD_ORCHESTRATOR_URL=http://songbird-orchestrator:${SONGBIRD_PORT:-8080}
 networks:
   songbird-network:
     driver: bridge
@@ -410,7 +412,7 @@ This directory contains templates and examples to help you get started with Song
 }
 
 /// Show completion message
-fn show_completion_message(config: &InitConfig) -> crate::errors::CliResult<()> {
+fn show_completion_message(config: &InitConfig) -> crate::errors::SongbirdResult<()> {
     println!("\n{}", "🎉 Initialization Complete!".bright_green().bold();"
     println!();
     println!("📁 Configuration directory: {}", config.config_dir.display()"

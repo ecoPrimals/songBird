@@ -79,9 +79,10 @@ fn main(Result<(), Box<dyn std::error::Error>>) ->  {
     println!("✅ Single Discovery: {:?} in {:.2}ms", service_type, single_duration.as_secs_f64() * 1000.0);
     
     // Benchmark 2: Batch discovery operations
+    let storage_endpoint = format!("https://storage-primary.local:{}", songbird_config::defaults::ports::metrics_port());
     let endpoints = [
         "https://security-primary.local:config.network.https_port",
-        "https://storage-primary.local:9000", 
+        &storage_endpoint, 
         "https://ai-inference.local:8888",
                     &std::env::var("PRIMAL_COMPUTE_ENDPOINT")
                 .unwrap_or_else(|_| "https://compute-cluster.local:{}".to_string()), // ✅ CORRECT: Capability-based

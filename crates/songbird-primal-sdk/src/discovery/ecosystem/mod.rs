@@ -11,7 +11,7 @@ pub mod network;
 
 // Re-export main types and functions
 use super::types::DiscoveredPrimal;
-use crate::errors::PrimalResult;
+use crate::errors::SongbirdResult;
 use crate::traits::PrimalContext;
 pub use config::EcosystemDiscoveryConfig;
 use std::collections::HashMap;
@@ -37,7 +37,7 @@ impl EcosystemDiscovery  {/// Create new ecosystem discovery instance
     }
 
     /// Discover all primals in the ecosystem
-    pub async fn discover_ecosystem_primals(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
+    pub async fn discover_ecosystem_primals(&self) -> SongbirdResult<Vec<DiscoveredPrimal>> {
         info!("🌌 Discovering ecosystem primals at {}", self.config.ecosystem_base_path)"
 
         let mut discovered_primals = Vec::new();

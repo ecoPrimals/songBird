@@ -25,6 +25,7 @@ impl Default for CanonicalStorageConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SongbirdError;
 
     #[test]
     fn test_default_storage_config() {
@@ -44,20 +45,31 @@ mod tests {
     }
 
     #[test]
-    fn test_storage_config_serialization() {
+    fn test_storage_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let config = CanonicalStorageConfig::default();
-        let json = serde_json::to_string(&config).unwrap();
+        let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Serialization failed: {}", e),
+            debug_info: None,
+        })?;
         assert!(json.contains("enabled"));
         assert!(json.contains("backend"));
         assert!(json.contains("memory"));
+        Ok(())
     }
 
     #[test]
-    fn test_storage_config_deserialization() {
+    fn test_storage_config_deserialization() -> Result<(), Box<dyn std::error::Error>> {
         let json = r#"{"enabled":true,"backend":"redis"}"#;
-        let config: CanonicalStorageConfig = serde_json::from_str(json).unwrap();
+        let config: CanonicalStorageConfig =
+            serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Parsing failed: {}", e),
+                debug_info: None,
+            })?;
         assert!(config.enabled);
         assert_eq!(config.backend, "redis");
+        Ok(())
     }
 
     #[test]

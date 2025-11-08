@@ -20,6 +20,7 @@ default = ["serde", "chrono", "reqwest"]
 serde = ["dep:serde", "dep:serde_json"]
 chrono = ["dep:chrono"]
 reqwest = ["dep:reqwest"]
+tests-incomplete = []  # Feature flag for incomplete tests
 
 [dependencies]
 # Foundation layer has minimal external dependencies
@@ -50,6 +51,7 @@ tokio-test = "0.4"
 tempfile = "3.0"
 criterion = { version = "0.5", features = ["html_reports"] }
 serial_test = "3.0"
+songbird-test-utils = { path = "../songbird-test-utils" }
 
 [[bench]]
 name = "comprehensive_unification_benchmarks"
