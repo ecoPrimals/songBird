@@ -150,7 +150,7 @@ fn test_registry_result_type() -> SongbirdResult<()> {
     assert!(result.is_ok());
     assert_eq!(
         result.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "test-service"

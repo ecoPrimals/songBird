@@ -88,7 +88,7 @@ fn test_validation_result_deserialization() -> Result<(), Box<dyn std::error::Er
     assert!(
         deserialized
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .is_valid

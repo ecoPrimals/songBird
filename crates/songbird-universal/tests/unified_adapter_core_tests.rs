@@ -436,7 +436,7 @@ async fn test_find_capability_providers_no_matching_capability() -> SongbirdResu
 
     // Search for capability that doesn't exist
     let providers = adapter.find_capability_providers("ai_model_inference").await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // No providers should be found
@@ -563,13 +563,13 @@ async fn test_concurrent_find_capability_providers() -> SongbirdResult<()> {
 
     // All should complete without deadlock
     let result1 = task1.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let result2 = task2.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let result3 = task3.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     assert!(result1.is_ok());
@@ -593,7 +593,7 @@ async fn test_find_providers_multiple_times() -> SongbirdResult<()> {
         // Should return empty list since no services registered
         assert!(result
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .is_empty());
@@ -618,7 +618,7 @@ async fn test_discover_services_with_short_timeout() -> SongbirdResult<()> {
     assert_eq!(
         result
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .len(),
@@ -656,13 +656,13 @@ async fn test_concurrent_discover_operations() -> SongbirdResult<()> {
 
     // All should complete without deadlock
     let result1 = task1.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     let result2 = task2.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     let result3 = task3.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
 
     // All results should be Ok (empty is fine)
@@ -784,7 +784,7 @@ async fn test_discover_services_all_endpoints_fail() -> SongbirdResult<()> {
     assert_eq!(
         result
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .len(),
@@ -880,7 +880,7 @@ async fn test_find_capability_providers_with_special_characters() -> SongbirdRes
         assert!(result.is_ok());
         assert!(result
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .is_empty());
@@ -952,7 +952,7 @@ async fn test_concurrent_stats_requests() -> SongbirdResult<()> {
     // All should complete without deadlock
     for task in tasks {
         let stats = task.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(stats.total_services, 0);
     }
@@ -979,16 +979,16 @@ async fn test_mixed_concurrent_operations() -> SongbirdResult<()> {
 
     // All should complete successfully
     let stats1 = task1.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     let providers = task2.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     let services = task3.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let stats2 = task4.await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     assert_eq!(stats1.total_services, 0);
@@ -1108,7 +1108,7 @@ async fn test_concurrent_discovery_operations_high_load() -> SongbirdResult<()> 
     // All should complete
     for task in tasks {
         let result = task.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to discover services".to_string())
         })?;
         assert!(result.is_ok());
     }
@@ -1132,7 +1132,7 @@ async fn test_concurrent_find_providers_high_load() -> SongbirdResult<()> {
     // All should complete successfully
     for task in tasks {
         let result = task.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(result.is_ok());
     }

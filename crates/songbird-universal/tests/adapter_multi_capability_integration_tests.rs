@@ -58,7 +58,7 @@ mod multi_capability_tests {
             format!("http://localhost:{}", test_orchestrator_port()).to_string(),
         )
         .ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?
         .with_timeout(Duration::from_secs(5));
 
@@ -66,7 +66,7 @@ mod multi_capability_tests {
             SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()).to_string())
                 .ok_or_else(|| {
                     SongbirdError::configuration(format!(
-                        "TODO: Replace with proper error handling: {}",
+                        "Error: {}",
                         e
                     ))
                 })?
@@ -76,7 +76,7 @@ mod multi_capability_tests {
             StorageAdapter::new(format!("http://localhost:{}", test_health_port()).to_string())
                 .ok_or_else(|| {
                     SongbirdError::configuration(format!(
-                        "TODO: Replace with proper error handling: {}",
+                        "Error: {}",
                         e
                     ))
                 })?
@@ -85,7 +85,7 @@ mod multi_capability_tests {
         let ai = AIAdapter::new(format!("http://localhost:{}", test_federation_port()).to_string())
             .ok_or_else(|| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 ))
             })?
@@ -228,16 +228,16 @@ mod multi_capability_tests {
 
         // Create adapters for each capability
         let compute = ComputeAdapter::new(compute_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let security = SecurityAdapter::new(security_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let storage = StorageAdapter::new(storage_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let ai = AIAdapter::new(ai_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
 
         // Act - Collect metrics from all capabilities
@@ -262,7 +262,7 @@ mod multi_capability_tests {
         assert_eq!(
             compute_metrics
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .health_status(),
@@ -271,7 +271,7 @@ mod multi_capability_tests {
         assert_eq!(
             security_metrics
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .health_status(),
@@ -280,7 +280,7 @@ mod multi_capability_tests {
         assert_eq!(
             storage_metrics
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .health_status(),
@@ -289,7 +289,7 @@ mod multi_capability_tests {
         assert_eq!(
             ai_metrics
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .health_status(),
@@ -379,16 +379,16 @@ mod multi_capability_tests {
 
         // Create adapters for network effect
         let storage = StorageAdapter::new(storage_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let ai = AIAdapter::new(ai_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let compute = ComputeAdapter::new(compute_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let security = SecurityAdapter::new(security_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
 
         // Act - Execute network effect pattern (sequential capabilities)
@@ -490,16 +490,16 @@ mod multi_capability_tests {
 
         // Create adapters
         let compute = ComputeAdapter::new(compute_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let security = SecurityAdapter::new(security_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let storage = StorageAdapter::new(storage_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let ai = AIAdapter::new(ai_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
 
         // Act
@@ -605,16 +605,16 @@ mod multi_capability_tests {
 
         // Create adapters
         let compute = ComputeAdapter::new(compute_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let security = SecurityAdapter::new(security_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let storage = StorageAdapter::new(storage_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let ai = AIAdapter::new(ai_server.url()).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed health check".to_string())
         })?;
 
         // Act - Check health of all capabilities
@@ -626,28 +626,28 @@ mod multi_capability_tests {
         // Assert - Different health statuses
         assert_eq!(
             compute_health.ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?,
             HealthStatus::Healthy
         );
         assert_eq!(
             security_health.ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?,
             SecurityHealth::Warning
         );
         assert_eq!(
             storage_health.ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?,
             StorageHealth::Warning
         );
         assert_eq!(
             ai_health.ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?,
             AIHealth::Degraded
@@ -690,7 +690,7 @@ mod multi_capability_tests {
         assert_eq!(
             compute_capability
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -699,7 +699,7 @@ mod multi_capability_tests {
         assert_eq!(
             security_capability
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -708,7 +708,7 @@ mod multi_capability_tests {
         assert_eq!(
             storage_capability
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -717,7 +717,7 @@ mod multi_capability_tests {
         assert_eq!(
             ai_capability
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -749,7 +749,7 @@ mod multi_capability_tests {
         assert_eq!(
             compute_primary
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -758,7 +758,7 @@ mod multi_capability_tests {
         assert_eq!(
             compute_secondary
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -767,7 +767,7 @@ mod multi_capability_tests {
         assert_eq!(
             compute_tertiary
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -809,7 +809,7 @@ mod multi_capability_tests {
         assert_eq!(
             compute
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -818,7 +818,7 @@ mod multi_capability_tests {
         assert_eq!(
             security
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -827,7 +827,7 @@ mod multi_capability_tests {
         assert_eq!(
             storage
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -835,7 +835,7 @@ mod multi_capability_tests {
         );
         assert_eq!(
             ai.ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .endpoint(),

@@ -141,7 +141,7 @@ async fn test_dynamic_node_join() {
     let adapter = Arc::new(UniversalCapabilityAdapter::new(DiscoveryConfig::default()));
 
     let initial_nodes = adapter.get_federation_nodes().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let initial_count = initial_nodes.len();
 
@@ -149,7 +149,7 @@ async fn test_dynamic_node_join() {
     adapter.handle_node_join("new-node", "192.168.1.100:8080").await.ok();
 
     let after_nodes = adapter.get_federation_nodes().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(after_nodes.len() >= initial_count);
 }

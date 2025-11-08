@@ -257,7 +257,7 @@ fn test_performance_configuration() -> SongbirdResult<()> {
 fn test_performance_tuning_options() -> SongbirdResult<()> {
     let config = SongbirdConfig::default();
     let perf = config.performance.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Zero-copy should be enabled by default

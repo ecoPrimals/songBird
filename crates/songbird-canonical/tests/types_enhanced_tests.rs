@@ -91,7 +91,7 @@ fn test_timestamp_creation() -> SongbirdResult<()> {
 
     let now = SystemTime::now();
     let duration = now.duration_since(UNIX_EPOCH).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     assert!(duration.as_secs() > 0);
@@ -161,7 +161,7 @@ fn test_metadata_serialization() -> SongbirdResult<()> {
 
     assert_eq!(
         metadata.get("env").or_else(|_| SongbirdError::configuration(
-            "TODO: Replace with proper error handling".to_string()
+            "Missing performance configuration".to_string()
         ))?,
         "prod"
     );

@@ -78,7 +78,7 @@ async fn test_single_endpoint_round_robin() -> SongbirdResult<()> {
     // Should consistently return the single endpoint
     for _ in 0..100 {
         let result = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[0]);
     }
@@ -92,7 +92,7 @@ async fn test_single_endpoint_least_loaded() -> SongbirdResult<()> {
 
     for _ in 0..50 {
         let result = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[0]);
     }
@@ -106,7 +106,7 @@ async fn test_single_endpoint_health_based() -> SongbirdResult<()> {
 
     for _ in 0..50 {
         let result = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[0]);
     }
@@ -120,7 +120,7 @@ async fn test_single_endpoint_random() -> SongbirdResult<()> {
 
     for _ in 0..50 {
         let result = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[0]);
     }
@@ -164,10 +164,10 @@ async fn test_endpoint_with_unusual_port() -> SongbirdResult<()> {
 
     // Should handle edge port numbers
     let result1 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let result2 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     assert!(result1.contains(":1") || result1.contains(":65535"));
@@ -183,7 +183,7 @@ async fn test_endpoint_with_long_hostname() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(vec![endpoint.clone()], LoadBalancingStrategy::RoundRobin);
 
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoint);
     Ok(())
@@ -225,7 +225,7 @@ async fn test_concurrent_endpoint_selection() -> SongbirdResult<()> {
     // All should succeed
     for handle in handles {
         let result = handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(result.is_ok());
     }
@@ -252,7 +252,7 @@ async fn test_concurrent_health_marking() -> SongbirdResult<()> {
 
     for handle in handles {
         handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
 
@@ -291,7 +291,7 @@ async fn test_concurrent_reads_and_writes() -> SongbirdResult<()> {
     // All should complete successfully
     for handle in handles {
         assert!(handle.await.map_err(|e| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?);
     }
@@ -357,13 +357,13 @@ async fn test_strategy_with_two_endpoints() -> SongbirdResult<()> {
 
     // Should alternate between the two
     let r1 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let r2 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let r3 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     assert_eq!(r1, endpoints[0]);
@@ -385,7 +385,7 @@ async fn test_random_strategy_distribution() -> SongbirdResult<()> {
     // With random selection, we should eventually see all endpoints
     for _ in 0..100 {
         let result = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         seen.insert(result);
     }
@@ -428,7 +428,7 @@ async fn test_endpoint_with_path() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
     assert!(result.contains("/api/v1"));
@@ -441,7 +441,7 @@ async fn test_endpoint_with_query_parameters() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
     Ok(())
@@ -454,7 +454,7 @@ async fn test_https_endpoints() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to start orchestrator".to_string())
     })?;
     assert!(result.starts_with("https://"));
     Ok(())
@@ -468,10 +468,10 @@ async fn test_mixed_http_https_endpoints() -> SongbirdResult<()> {
 
     // Should handle mixed protocols
     let r1 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let r2 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to start orchestrator".to_string())
     })?;
 
     assert!(r1.starts_with("http"));
@@ -551,7 +551,7 @@ async fn test_concurrent_strategy_switching() -> SongbirdResult<()> {
     // All should succeed
     for handle in handles {
         let result = handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(result.is_ok());
     }
@@ -574,7 +574,7 @@ async fn test_concurrent_availability_checks() -> SongbirdResult<()> {
 
     for handle in handles {
         let count = handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(count <= 10);
     }
@@ -598,7 +598,7 @@ async fn test_high_concurrency_selection() -> SongbirdResult<()> {
     // All should succeed
     for handle in handles {
         let result = handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(result);
     }
@@ -633,7 +633,7 @@ async fn test_endpoint_url_with_fragment() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
     Ok(())
@@ -645,7 +645,7 @@ async fn test_endpoint_url_with_username() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
     Ok(())
@@ -657,7 +657,7 @@ async fn test_endpoint_url_with_password() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
     Ok(())
@@ -671,7 +671,7 @@ async fn test_very_long_url_path() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(vec![endpoint.clone()], LoadBalancingStrategy::RoundRobin);
 
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoint);
     Ok(())
@@ -684,7 +684,7 @@ async fn test_endpoint_with_international_domain() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
     Ok(())
@@ -789,28 +789,28 @@ async fn test_round_robin_predictable_sequence() -> SongbirdResult<()> {
     // Should cycle through in order
     assert_eq!(
         lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         endpoints[0]
     );
     assert_eq!(
         lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         endpoints[1]
     );
     assert_eq!(
         lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         endpoints[2]
     );
     assert_eq!(
         lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         endpoints[0]

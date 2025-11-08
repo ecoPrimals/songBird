@@ -279,7 +279,7 @@ mod tests {
         assert!(response.is_ok());
 
         let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         assert_eq!(resp.status(), hyper::StatusCode::OK);
 
@@ -290,7 +290,7 @@ mod tests {
             .to_str()
             .map_err(|e| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {e}"
+                    "Invalid HTTP header value: {e}"
                 ))
             })?;
         assert!(content_type.contains("text/html"));
@@ -304,7 +304,7 @@ mod tests {
         assert!(response.is_ok());
 
         let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         assert_eq!(resp.status(), hyper::StatusCode::OK);
 
@@ -315,7 +315,7 @@ mod tests {
             .to_str()
             .map_err(|e| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {e}"
+                    "Invalid HTTP header value: {e}"
                 ))
             })?;
         assert!(content_type.contains("application/json"));
@@ -329,7 +329,7 @@ mod tests {
         assert!(response.is_ok());
 
         let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         assert_eq!(resp.status(), hyper::StatusCode::OK);
 
@@ -340,7 +340,7 @@ mod tests {
             .to_str()
             .map_err(|e| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {e}"
+                    "Invalid HTTP header value: {e}"
                 ))
             })?;
         assert!(content_type.contains("application/json"));
@@ -354,7 +354,7 @@ mod tests {
         assert!(response.is_ok());
 
         let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         assert_eq!(resp.status(), hyper::StatusCode::OK);
 
@@ -365,7 +365,7 @@ mod tests {
             .to_str()
             .map_err(|e| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {e}"
+                    "Invalid HTTP header value: {e}"
                 ))
             })?;
         assert!(content_type.contains("application/json"));
@@ -379,7 +379,7 @@ mod tests {
         assert!(response.is_ok());
 
         let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         assert_eq!(resp.status(), hyper::StatusCode::NOT_FOUND);
         Ok(())

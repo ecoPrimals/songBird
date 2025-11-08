@@ -334,7 +334,7 @@ mod comprehensive_config_tests {
         assert!(security_endpoint.is_some());
 
         let endpoint_str = security_endpoint.ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         // Accept any valid endpoint format, including environment-specific ones
         let bind_addr = test_bind_address();

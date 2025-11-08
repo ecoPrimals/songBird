@@ -20,7 +20,7 @@ fn test_service_registry_creation() -> SongbirdResult<()> {
 #[test]
 fn test_registry_initially_empty() -> SongbirdResult<()> {
     let registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let count = registry.service_count();
     assert_eq!(count, 0);
@@ -30,7 +30,7 @@ fn test_registry_initially_empty() -> SongbirdResult<()> {
 #[test]
 fn test_register_single_service() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let service = ServiceInfo {
@@ -48,7 +48,7 @@ fn test_register_single_service() -> SongbirdResult<()> {
 #[test]
 fn test_register_multiple_services() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     for i in 0..5 {
@@ -67,7 +67,7 @@ fn test_register_multiple_services() -> SongbirdResult<()> {
 #[test]
 fn test_deregister_service() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register service".to_string())
     })?;
 
     let service = ServiceInfo {
@@ -77,7 +77,7 @@ fn test_deregister_service() -> SongbirdResult<()> {
     };
 
     registry.register(service).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
     assert_eq!(registry.service_count(), 1);
 
@@ -90,7 +90,7 @@ fn test_deregister_service() -> SongbirdResult<()> {
 #[test]
 fn test_deregister_nonexistent_service() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let result = registry.deregister("nonexistent");
@@ -102,7 +102,7 @@ fn test_deregister_nonexistent_service() -> SongbirdResult<()> {
 #[test]
 fn test_duplicate_service_id() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let service1 = ServiceInfo {
@@ -129,7 +129,7 @@ fn test_duplicate_service_id() -> SongbirdResult<()> {
 #[test]
 fn test_find_service_by_id() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let service = ServiceInfo {
@@ -139,7 +139,7 @@ fn test_find_service_by_id() -> SongbirdResult<()> {
     };
 
     registry.register(service).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let found = registry.find_by_id("findable");
@@ -150,7 +150,7 @@ fn test_find_service_by_id() -> SongbirdResult<()> {
 #[test]
 fn test_find_nonexistent_service() -> SongbirdResult<()> {
     let registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     let found = registry.find_by_id("nonexistent");
@@ -161,7 +161,7 @@ fn test_find_nonexistent_service() -> SongbirdResult<()> {
 #[test]
 fn test_list_all_services() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     for i in 0..3 {
@@ -171,7 +171,7 @@ fn test_list_all_services() -> SongbirdResult<()> {
             ..Default::default()
         };
         registry.register(service).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register".to_string())
         })?;
     }
 
@@ -183,7 +183,7 @@ fn test_list_all_services() -> SongbirdResult<()> {
 #[test]
 fn test_clear_registry() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     for i in 0..5 {
@@ -193,7 +193,7 @@ fn test_clear_registry() -> SongbirdResult<()> {
             ..Default::default()
         };
         registry.register(service).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register".to_string())
         })?;
     }
 
@@ -205,7 +205,7 @@ fn test_clear_registry() -> SongbirdResult<()> {
 #[test]
 fn test_service_metadata() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     let mut metadata = HashMap::new();
@@ -220,7 +220,7 @@ fn test_service_metadata() -> SongbirdResult<()> {
     };
 
     registry.register(service).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let found = registry.find_by_id("metadata-service");
@@ -231,7 +231,7 @@ fn test_service_metadata() -> SongbirdResult<()> {
 #[test]
 fn test_service_with_capabilities() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     let service = ServiceInfo {
@@ -242,7 +242,7 @@ fn test_service_with_capabilities() -> SongbirdResult<()> {
     };
 
     registry.register(service).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
     assert_eq!(registry.service_count(), 1);
     Ok(())
@@ -251,7 +251,7 @@ fn test_service_with_capabilities() -> SongbirdResult<()> {
 #[test]
 fn test_service_with_tags() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let service = ServiceInfo {
@@ -262,7 +262,7 @@ fn test_service_with_tags() -> SongbirdResult<()> {
     };
 
     registry.register(service).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
     assert_eq!(registry.service_count(), 1);
     Ok(())
@@ -271,7 +271,7 @@ fn test_service_with_tags() -> SongbirdResult<()> {
 #[test]
 fn test_registry_clone() -> SongbirdResult<()> {
     let registry1 = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
     let registry2 = registry1.clone();
 
@@ -282,7 +282,7 @@ fn test_registry_clone() -> SongbirdResult<()> {
 #[test]
 fn test_registry_debug_format() -> SongbirdResult<()> {
     let registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let debug_str = format!("{:?}", registry);
 
@@ -297,7 +297,7 @@ fn test_concurrent_registrations() -> SongbirdResult<()> {
     use std::sync::Mutex;
 
     let registry = Arc::new(Mutex::new(ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?));
 
     let mut handles = vec![];
@@ -313,7 +313,7 @@ fn test_concurrent_registrations() -> SongbirdResult<()> {
 
             let mut reg = registry_clone.lock().or_else(|_| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 ))
             })?;
@@ -329,7 +329,7 @@ fn test_concurrent_registrations() -> SongbirdResult<()> {
     let final_count = registry
         .lock()
         .ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?
         .service_count();
     assert_eq!(final_count, 10);
@@ -339,7 +339,7 @@ fn test_concurrent_registrations() -> SongbirdResult<()> {
 #[test]
 fn test_service_update() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     let service = ServiceInfo {
@@ -349,7 +349,7 @@ fn test_service_update() -> SongbirdResult<()> {
     };
 
     registry.register(service).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let updated_service = ServiceInfo {
@@ -367,7 +367,7 @@ fn test_service_update() -> SongbirdResult<()> {
 #[test]
 fn test_filter_services_by_name() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     for i in 0..5 {
@@ -381,7 +381,7 @@ fn test_filter_services_by_name() -> SongbirdResult<()> {
             ..Default::default()
         };
         registry.register(service).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register".to_string())
         })?;
     }
 
@@ -394,7 +394,7 @@ fn test_filter_services_by_name() -> SongbirdResult<()> {
 #[test]
 fn test_service_exists() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     let service = ServiceInfo {
@@ -404,7 +404,7 @@ fn test_service_exists() -> SongbirdResult<()> {
     };
 
     registry.register(service).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     assert!(registry.exists("existing"));
@@ -415,7 +415,7 @@ fn test_service_exists() -> SongbirdResult<()> {
 #[test]
 fn test_empty_service_id() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     let service = ServiceInfo {
@@ -432,7 +432,7 @@ fn test_empty_service_id() -> SongbirdResult<()> {
 #[test]
 fn test_special_characters_in_id() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let service = ServiceInfo {
@@ -450,7 +450,7 @@ fn test_special_characters_in_id() -> SongbirdResult<()> {
 #[test]
 fn test_very_long_service_name() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     let long_name = "a".repeat(1000);
@@ -467,7 +467,7 @@ fn test_very_long_service_name() -> SongbirdResult<()> {
 #[test]
 fn test_registry_capacity() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register".to_string())
     })?;
 
     // Register many services

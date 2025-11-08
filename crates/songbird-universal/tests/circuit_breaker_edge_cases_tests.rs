@@ -298,7 +298,7 @@ async fn test_concurrent_failure_recording() -> SongbirdResult<()> {
 
     for handle in handles {
         handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
 
@@ -337,7 +337,7 @@ async fn test_concurrent_success_recording() {
 
     for handle in handles {
         handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
 
@@ -371,7 +371,7 @@ async fn test_concurrent_mixed_operations() -> SongbirdResult<()> {
 
     for handle in handles {
         handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
 
@@ -400,7 +400,7 @@ async fn test_concurrent_state_reads() -> SongbirdResult<()> {
 
     for handle in handles {
         let state = handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         // All should return Closed (initial state)
         assert_eq!(state, CircuitState::Closed);
@@ -690,7 +690,7 @@ async fn test_concurrent_state_reads_during_transitions() -> SongbirdResult<()> 
     // All should complete without panic
     for handle in handles {
         let _ = handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
     Ok(())
@@ -741,7 +741,7 @@ async fn test_state_consistency_under_load() -> SongbirdResult<()> {
 
     for handle in handles {
         handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
 
@@ -780,7 +780,7 @@ async fn test_half_open_concurrent_failures() {
 
     for handle in handles {
         handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
 

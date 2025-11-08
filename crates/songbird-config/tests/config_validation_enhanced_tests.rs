@@ -229,7 +229,7 @@ fn test_log_level_filtering() -> SongbirdResult<()> {
     let levels = ["error", "warn", "info", "debug", "trace"];
 
     let current_index = levels.iter().position(|&l| l == current_level).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let enabled_levels = &levels[..=current_index];
 

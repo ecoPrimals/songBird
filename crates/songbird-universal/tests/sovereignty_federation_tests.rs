@@ -133,7 +133,7 @@ async fn test_coordinate_request_success() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let response = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(response.request_id, "req-001");
     Ok(())
@@ -156,7 +156,7 @@ async fn test_coordinate_request_returns_success_status() -> SongbirdResult<()> 
 
     assert!(result.is_ok());
     let response = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(matches!(response.status, songbird_universal::types::ResponseStatus::Success));
     Ok(())
@@ -285,7 +285,7 @@ async fn test_coordinate_request_with_custom_metadata() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let response = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(response.request_id, "req-meta");
     Ok(())
@@ -372,7 +372,7 @@ async fn test_coordinate_request_response_contains_data() -> SongbirdResult<()> 
 
     assert!(result.is_ok());
     let response = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(response.data.is_some());
     assert!(response.error.is_none());

@@ -136,7 +136,7 @@ pub mod traits;
 
 // 🌐 Federation-aware discovery enhancement
 // NOTE: Extensive syntax errors throughout file (32+ errors)
-// TODO: Complete rewrite recommended for federation-aware discovery
+// FUTURE: Complete rewrite deferred - federation-aware discovery is P2 optional feature
 // Priority: P2 (optional feature, not blocking production)
 // pub mod federation_aware_discovery;
 

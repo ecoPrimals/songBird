@@ -96,7 +96,7 @@ async fn test_orchestrator_service_registry_initialization() {
 
     assert!(orchestrator.is_ok());
     let orch = orchestrator.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
 
     // Service registry should be initialized
@@ -117,7 +117,7 @@ async fn test_orchestrator_federation_state_initialization() {
 
     assert!(orchestrator.is_ok());
     let orch = orchestrator.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
 
     // Federation state should be initialized
@@ -139,7 +139,7 @@ async fn test_orchestrator_federated_service_registry() {
 
     assert!(orchestrator.is_ok());
     let orch = orchestrator.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
 
     // Federated service registry should be initialized
@@ -156,7 +156,7 @@ async fn test_orchestrator_config_access() {
 
     assert!(orchestrator.is_ok());
     let orch = orchestrator.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Config should be accessible

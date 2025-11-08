@@ -745,7 +745,7 @@ mod tests {
         // Should succeed but find no primals
         assert!(result.is_ok());
         let primals = result.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {}", e))
+            SongbirdError::configuration(format!("Failed to discover services: {}", e))
         })?;
         assert!(primals.is_empty());
         Ok(())

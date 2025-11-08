@@ -79,14 +79,14 @@ fn test_discovered_primal_with_metadata() -> SongbirdResult<()> {
     assert_eq!(metadata.len(), 3);
     assert_eq!(
         metadata.get("version").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "1.0.0"
     );
     assert_eq!(
         metadata.get("region").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "us-west"
@@ -141,7 +141,7 @@ fn test_discovery_cache_lookup() -> SongbirdResult<()> {
     assert_eq!(
         endpoint
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .as_str(),
@@ -162,7 +162,7 @@ fn test_discovery_cache_update() -> SongbirdResult<()> {
         cache
             .get("service")
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .as_str(),
@@ -174,7 +174,7 @@ fn test_discovery_cache_update() -> SongbirdResult<()> {
         cache
             .get("service")
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .as_str(),
@@ -576,7 +576,7 @@ fn test_capability_based_selection() -> SongbirdResult<()> {
     assert_eq!(
         compute_service
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .name,

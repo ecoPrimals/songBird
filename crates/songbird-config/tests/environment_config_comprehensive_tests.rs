@@ -240,7 +240,7 @@ fn test_config_from_environment_variables() -> SongbirdResult<()> {
     // Just verify we can set and get env vars
     assert_eq!(
         env::var("TEST_ENV").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "test-value"

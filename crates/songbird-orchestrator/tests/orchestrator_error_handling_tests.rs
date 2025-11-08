@@ -90,7 +90,7 @@ async fn test_orchestrator_double_start_prevention() -> SongbirdResult<()> {
             .as_ref()
             .ok_or_else(|| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 ))
             })?

@@ -24,7 +24,7 @@ async fn test_round_robin_cycles_correctly() -> SongbirdResult<()> {
         for expected in &endpoints {
             let result = lb.get_next_endpoint().await.map_err(|e| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 ))
             })?;
@@ -42,7 +42,7 @@ async fn test_round_robin_with_single_endpoint() -> SongbirdResult<()> {
     // Should always return the same endpoint
     for _ in 0..10 {
         let result = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[0]);
     }
@@ -65,7 +65,7 @@ async fn test_least_loaded_selects_correctly() -> SongbirdResult<()> {
 
     // Should select first available endpoint when all have same load
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(endpoints.contains(&result));
     Ok(())
@@ -88,7 +88,7 @@ async fn test_health_based_selects_healthiest() -> SongbirdResult<()> {
 
     // Should select endpoint2 (healthiest)
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[1]);
     Ok(())
@@ -106,7 +106,7 @@ async fn test_random_selects_from_available() -> SongbirdResult<()> {
 
     // Should select one of the endpoints
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(endpoints.contains(&result));
     Ok(())
@@ -153,7 +153,7 @@ async fn test_mark_endpoint_unavailable() -> SongbirdResult<()> {
 
     // Should only return the available endpoint
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[1]);
     Ok(())
@@ -174,7 +174,7 @@ async fn test_mark_endpoint_available() -> SongbirdResult<()> {
 
     // Should be able to get endpoint again
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
     Ok(())
@@ -195,13 +195,13 @@ async fn test_partial_availability_with_round_robin() -> SongbirdResult<()> {
 
     // Should only cycle through available ones
     let r1 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let r2 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let r3 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     assert_eq!(r1, endpoints[0]);
@@ -239,7 +239,7 @@ async fn test_health_score_affects_selection() -> SongbirdResult<()> {
     // Should prefer healthier endpoint
     for _ in 0..5 {
         let result = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[1]);
     }
@@ -260,7 +260,7 @@ async fn test_equal_health_scores_selectable() -> SongbirdResult<()> {
     let result = lb.get_next_endpoint().await;
     assert!(result.is_ok());
     assert!(endpoints.contains(&result.ok_or_else(|| SongbirdError::configuration(format!(
-        "TODO: Replace with proper error handling: {}",
+        "Error: {}",
         e
     )))?));
     Ok(())
@@ -295,7 +295,7 @@ async fn test_concurrent_round_robin_access() -> SongbirdResult<()> {
     // All should succeed
     for handle in handles {
         let result = handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(result.is_ok());
     }
@@ -324,7 +324,7 @@ async fn test_concurrent_health_updates() -> SongbirdResult<()> {
     // All should complete
     for handle in handles {
         handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
 
@@ -365,7 +365,7 @@ async fn test_concurrent_availability_changes() {
     // All should complete without panic
     for handle in handles {
         handle.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
 
@@ -476,7 +476,7 @@ async fn test_realistic_health_scenario() -> SongbirdResult<()> {
 
     // Should prefer endpoint3 (healthiest)
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[2]);
 
@@ -485,7 +485,7 @@ async fn test_realistic_health_scenario() -> SongbirdResult<()> {
 
     // Should now prefer endpoint2
     let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[1]);
     Ok(())

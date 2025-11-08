@@ -153,7 +153,7 @@ async fn test_adapter_concurrent_capability_queries() -> SongbirdResult<()> {
     for result in results {
         assert!(result.is_ok());
         let providers = result.expect("Task join failed")?.ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(providers.len(), 0);
     }
@@ -327,13 +327,13 @@ async fn test_adapter_synchronized_capability_queries() -> SongbirdResult<()> {
         .expect("Task join failed")
         .as_ref()
         .ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?
         .len();
     for result in &results {
         assert!(result.is_ok());
         let providers = result.as_ref().expect("Task join failed").as_ref().ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(providers.len(), first_result_len, "All queries should return same result");
     }

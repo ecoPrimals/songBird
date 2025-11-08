@@ -60,7 +60,7 @@ async fn test_registry_health_check() -> SongbirdResult<()> {
     assert!(health.is_ok());
 
     let health_status = health.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed health check".to_string())
     })?;
     assert_eq!(health_status.status, HealthStatus::Healthy);
     assert!(health_status.message.is_some());
@@ -228,7 +228,7 @@ async fn test_service_lifecycle() -> SongbirdResult<()> {
     assert_eq!(
         health
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .status,
@@ -254,15 +254,15 @@ async fn test_registry_health_check_message_contains_count() -> SongbirdResult<(
     for (i, port) in ports.iter().enumerate() {
         let service = create_test_service(&format!("service-{i}"), *port);
         registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register service".to_string())
         })?;
     }
 
     let health = registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register service".to_string())
     })?;
     let message = health.message.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register service".to_string())
     })?;
     assert!(message.contains('3'));
     assert!(message.contains("services"));
@@ -309,10 +309,10 @@ async fn test_registry_operations_are_async() -> SongbirdResult<()> {
     // Test that operations complete without blocking
     let start_time = std::time::Instant::now();
     registry.initialize().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
     registry.start().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
     let elapsed = start_time.elapsed();
 
@@ -509,16 +509,16 @@ async fn test_registry_operations_complete_quickly() -> SongbirdResult<()> {
     let start = std::time::Instant::now();
 
     registry.initialize().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
     registry.start().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
     registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
     registry.stop().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
 
     let elapsed = start.elapsed();

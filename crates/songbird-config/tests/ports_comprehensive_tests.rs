@@ -58,7 +58,7 @@ fn test_global_config_thread_safety() -> SongbirdResult<()> {
         .map(|h| {
             h.join().or_else(|_| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     h
                 ))
             })?

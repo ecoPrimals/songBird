@@ -352,7 +352,7 @@ fn test_qos_metrics_with_infinity() -> SongbirdResult<()> {
     assert!(qos
         .latency_ms
         .ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?
         .is_infinite());
@@ -373,7 +373,7 @@ fn test_qos_metrics_with_nan() -> SongbirdResult<()> {
     assert!(qos
         .latency_ms
         .ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?
         .is_nan());

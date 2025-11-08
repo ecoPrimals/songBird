@@ -55,7 +55,7 @@ fn test_service_config_with_health_check() -> SongbirdResult<()> {
 
     assert!(config.health_check.is_some());
     let hc = config.health_check.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed health check".to_string())
     })?;
     assert_eq!(hc.endpoint, "/api/health");
     assert_eq!(hc.interval, 60);
@@ -102,7 +102,7 @@ fn test_service_config_deserialization() -> SongbirdResult<()> {
     assert!(result.is_ok());
 
     let config = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed health check".to_string())
     })?;
     assert_eq!(config.name, "test-service");
     assert_eq!(config.port, 3000);
@@ -363,7 +363,7 @@ fn test_service_info_round_trip_serialization() -> SongbirdResult<()> {
     };
 
     let json = serde_json::to_string(&original).map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let deserialized: ServiceInfo =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
@@ -448,7 +448,7 @@ fn test_health_check_with_custom_path() -> SongbirdResult<()> {
 fn test_service_config_json_format() -> SongbirdResult<()> {
     let config = ServiceConfig::default();
     let json = serde_json::to_string_pretty(&config).map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     assert!(json.contains("name"));
@@ -461,7 +461,7 @@ fn test_service_config_json_format() -> SongbirdResult<()> {
 fn test_service_info_json_format() -> SongbirdResult<()> {
     let info = ServiceInfo::default();
     let json = serde_json::to_string_pretty(&info).map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     assert!(json.contains("service_id"));

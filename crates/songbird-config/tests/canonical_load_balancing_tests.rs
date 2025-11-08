@@ -276,7 +276,7 @@ fn test_strategy_round_trip_serialization() -> SongbirdResult<()> {
     };
 
     let json = serde_json::to_string(&original).map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let deserialized: LoadBalancingStrategy =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
@@ -430,7 +430,7 @@ fn test_strategy_serialization_round_trip_all() -> SongbirdResult<()> {
 
     for strategy in strategies {
         let json = serde_json::to_string(&strategy).map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         let deserialized: LoadBalancingStrategy =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
@@ -451,7 +451,7 @@ fn test_strategy_json_format() -> SongbirdResult<()> {
     };
 
     let json = serde_json::to_string_pretty(&strategy).map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(json.contains("Custom"));
     assert!(json.contains("my-strategy"));

@@ -47,7 +47,7 @@ fn create_test_request() -> UniversalRequest {
             .as_object()
             .ok_or_else(|| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 ))
             })?
@@ -610,7 +610,7 @@ async fn test_find_sovereignty_aware_paths_empty_services() -> SongbirdResult<()
 
     assert!(result.is_ok());
     let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(paths.len(), 0);
     Ok(())
@@ -636,7 +636,7 @@ async fn test_find_sovereignty_aware_paths_single_service() -> SongbirdResult<()
 
     assert!(result.is_ok());
     let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     // With default service assessment (ModeratelySovereign = 0.6),
     // paths are filtered out by compliance level check (requires >= 0.7)
@@ -670,7 +670,7 @@ async fn test_find_sovereignty_aware_paths_multiple_services() -> SongbirdResult
 
     assert!(result.is_ok());
     let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     // With default service assessment (ModeratelySovereign = 0.6),
     // all paths are filtered out by compliance level check (requires >= 0.7)

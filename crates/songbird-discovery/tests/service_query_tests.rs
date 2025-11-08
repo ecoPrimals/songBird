@@ -38,7 +38,7 @@ fn test_service_query_with_service_id() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_service_id("test-service-123");
     assert_eq!(
         query.service_id.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "test-service-123"
@@ -51,7 +51,7 @@ fn test_service_query_with_service_type() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_service_type("http-api");
     assert_eq!(
         query.service_type.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "http-api"
@@ -64,7 +64,7 @@ fn test_service_query_with_version() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_version("1.0.0");
     assert_eq!(
         query.version.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "1.0.0"
@@ -100,14 +100,14 @@ fn test_service_query_with_metadata() -> SongbirdResult<()> {
     assert_eq!(query.metadata.len(), 2);
     assert_eq!(
         query.metadata.get("region").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         &serde_json::json!("us-west")
     );
     assert_eq!(
         query.metadata.get("tier").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         &serde_json::json!("premium")
@@ -127,7 +127,7 @@ fn test_service_query_with_limit() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_limit(50);
     assert_eq!(
         query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         50
@@ -155,14 +155,14 @@ fn test_service_query_builder_chain() -> SongbirdResult<()> {
 
     assert_eq!(
         query.service_type.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "api"
     );
     assert_eq!(
         query.version.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         ">=1.0.0"
@@ -171,7 +171,7 @@ fn test_service_query_builder_chain() -> SongbirdResult<()> {
     assert!(matches!(query.health_status, Some(HealthStatus::Healthy)));
     assert_eq!(
         query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         100
@@ -191,14 +191,14 @@ fn test_service_query_complex_metadata() -> SongbirdResult<()> {
     assert_eq!(query.metadata.len(), 4);
     assert_eq!(
         query.metadata.get("env").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         &serde_json::json!("production")
     );
     assert_eq!(
         query.metadata.get("az").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         &serde_json::json!("us-east-1a")
@@ -350,11 +350,11 @@ fn test_service_query_deserialization() -> SongbirdResult<()> {
     assert!(result.is_ok());
 
     let query = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(
         query.service_id.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "test-123"
@@ -362,7 +362,7 @@ fn test_service_query_deserialization() -> SongbirdResult<()> {
     assert_eq!(query.tags.len(), 1);
     assert_eq!(
         query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         10
@@ -377,7 +377,7 @@ fn test_health_status_serialization() -> SongbirdResult<()> {
     assert!(json.is_ok());
     assert!(json
         .ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?
         .contains("Healthy"));
@@ -391,7 +391,7 @@ fn test_sort_by_serialization() -> SongbirdResult<()> {
     assert!(json.is_ok());
     assert!(json
         .ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?
         .contains("Name"));
@@ -417,7 +417,7 @@ fn test_query_with_wildcard_version() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_version("*");
     assert_eq!(
         query.version.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "*"
@@ -429,7 +429,7 @@ fn test_query_with_wildcard_version() -> SongbirdResult<()> {
 fn test_query_with_complex_version_constraint() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_version(">=1.0.0,<2.0.0");
     let version = query.version.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(version.contains(">="));
     assert!(version.contains('<'));
@@ -441,7 +441,7 @@ fn test_query_with_zero_limit() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_limit(0);
     assert_eq!(
         query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         0
@@ -454,7 +454,7 @@ fn test_query_with_large_limit() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_limit(10000);
     assert_eq!(
         query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         10000
@@ -468,14 +468,14 @@ fn test_query_with_empty_string_values() -> SongbirdResult<()> {
 
     assert_eq!(
         query.service_id.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         ""
     );
     assert_eq!(
         query.service_type.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         ""
@@ -490,7 +490,7 @@ fn test_query_with_special_characters() -> SongbirdResult<()> {
 
     assert_eq!(
         query.service_id.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "test-service-123_v2.0"
@@ -512,7 +512,7 @@ fn test_metadata_with_complex_json() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_metadata("complex", complex_value.clone());
     assert_eq!(
         query.metadata.get("complex").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         &complex_value
@@ -548,7 +548,7 @@ fn test_production_service_query() -> SongbirdResult<()> {
 
     assert_eq!(
         query.service_type.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "http-api"

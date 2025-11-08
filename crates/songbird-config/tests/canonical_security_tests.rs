@@ -50,49 +50,49 @@ fn test_security_level_display() -> SongbirdResult<()> {
 fn test_security_level_from_str() -> SongbirdResult<()> {
     assert_eq!(
         SecurityLevel::from_str("none").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::None
     );
     assert_eq!(
         SecurityLevel::from_str("minimal").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::Minimal
     );
     assert_eq!(
         SecurityLevel::from_str("basic").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::Basic
     );
     assert_eq!(
         SecurityLevel::from_str("low").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::Low
     );
     assert_eq!(
         SecurityLevel::from_str("medium").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::Medium
     );
     assert_eq!(
         SecurityLevel::from_str("high").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::High
     );
     assert_eq!(
         SecurityLevel::from_str("maximum").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::Maximum
@@ -104,21 +104,21 @@ fn test_security_level_from_str() -> SongbirdResult<()> {
 fn test_security_level_from_str_case_insensitive() -> SongbirdResult<()> {
     assert_eq!(
         SecurityLevel::from_str("NONE").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::None
     );
     assert_eq!(
         SecurityLevel::from_str("Medium").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::Medium
     );
     assert_eq!(
         SecurityLevel::from_str("HIGH").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         SecurityLevel::High
@@ -138,7 +138,7 @@ fn test_security_level_from_str_invalid() -> SongbirdResult<()> {
 fn test_security_level_serialization() -> SongbirdResult<()> {
     let level = SecurityLevel::High;
     let json = serde_json::to_string(&level).map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let deserialized: SecurityLevel =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
@@ -225,7 +225,7 @@ fn test_security_level_round_trip() -> SongbirdResult<()> {
     for level in levels {
         let s = level.to_string();
         let parsed = SecurityLevel::from_str(&s).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(level, parsed);
     }

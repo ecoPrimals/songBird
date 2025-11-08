@@ -43,7 +43,7 @@ async fn test_auto_scaler_health_check() -> SongbirdResult<()> {
     assert!(health.is_ok());
 
     let health_status = health.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed health check".to_string())
     })?;
     assert_eq!(health_status.status, HealthStatus::Healthy);
     assert!(health_status.message.is_some());
@@ -174,7 +174,7 @@ async fn test_auto_scaler_lifecycle() -> SongbirdResult<()> {
     assert_eq!(
         health
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .status,
@@ -208,10 +208,10 @@ async fn test_auto_scaler_health_message() -> SongbirdResult<()> {
     let scaler = AutoScaler::new(config);
 
     let health = scaler.health_check().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to start orchestrator".to_string())
     })?;
     let message = health.message.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed health check".to_string())
     })?;
     assert!(message.contains("Auto-scaler") || message.contains("instances"));
     Ok(())
@@ -250,10 +250,10 @@ async fn test_auto_scaler_operations_are_async() -> SongbirdResult<()> {
 
     let start_time = std::time::Instant::now();
     scaler.initialize().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
     scaler.start().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
     let elapsed = start_time.elapsed();
 

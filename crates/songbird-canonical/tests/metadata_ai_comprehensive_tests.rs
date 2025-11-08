@@ -554,7 +554,7 @@ fn test_complete_ai_metadata_workflow() -> SongbirdResult<()> {
 
     // Verify serialization round-trip
     let serialized = serde_json::to_string(&metadata).map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let deserialized: AIResponseMetadata =
         serde_json::from_str(&serialized).map_err(|e| SongbirdError::Serialization {

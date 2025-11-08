@@ -292,7 +292,7 @@ fn test_compute_adapter_with_endpoint() -> SongbirdResult<()> {
     assert!(config.endpoint.is_some());
     assert_eq!(
         config.endpoint.ok_or_else(|| SongbirdError::configuration(
-            "TODO: Replace with proper error handling".to_string()
+            "Failed health check".to_string()
         ))?,
         "http://compute.local:9001"
     );

@@ -48,7 +48,7 @@ fn test_health_metadata() -> SongbirdResult<()> {
 
     assert_eq!(
         metadata.get("last_check").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "2025-10-31"
