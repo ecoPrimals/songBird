@@ -31,6 +31,8 @@ use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use tracing::{debug, info, warn};
 
+mod http_deploy;
+
 #[derive(Parser, Debug)]
 #[command(name = "songbird-deploy")]
 #[command(about = "Agnostic remote service deployment for Songbird federation")]
@@ -45,7 +47,7 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Deploy a service to a remote tower
+    /// Deploy a service to a remote tower via SSH
     Deploy {
         /// Target tower ID or address
         #[arg(long)]
@@ -74,6 +76,25 @@ enum Commands {
         /// Auto-start after deployment
         #[arg(long, default_value = "true")]
         auto_start: bool,
+    },
+
+    /// Deploy a service via HTTP deployment API (adaptive)
+    DeployHttp {
+        /// Target tower HTTP endpoint (e.g. http://192.168.1.144:8080)
+        #[arg(long)]
+        tower: String,
+
+        /// Binary path to deploy
+        #[arg(long)]
+        binary: String,
+
+        /// Service name
+        #[arg(long)]
+        service: String,
+
+        /// Environment variables (can be specified multiple times)
+        #[arg(long = "env", value_parser = parse_env_var)]
+        env_vars: Vec<(String, String)>,
     },
 
     /// List available towers from federation
@@ -147,6 +168,29 @@ async fn main() -> Result<()> {
                 auto_start,
             )
             .await?;
+        }
+        Commands::DeployHttp {
+            tower,
+            binary,
+            service,
+            env_vars,
+        } => {
+            let env_map: HashMap<String, String> = env_vars.into_iter().collect();
+            let response = http_deploy::deploy_via_http_adaptive(
+                &tower,
+                &binary,
+                &service,
+                env_map,
+            )
+            .await?;
+            
+            info!("✅ Deployment successful!");
+            info!("   Deployment ID: {}", response.deployment_id);
+            info!("   Status: {}", response.status);
+            info!("   Message: {}", response.message);
+            if let Some(url) = response.service_url {
+                info!("   Service URL: {}", url);
+            }
         }
         Commands::List { detailed } => {
             list_towers(&args.songbird_endpoint, detailed).await?;

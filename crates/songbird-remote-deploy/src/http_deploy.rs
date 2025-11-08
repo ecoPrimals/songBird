@@ -120,6 +120,38 @@ pub enum SelectedMethod {
     Fallback, // Use if capabilities unavailable
 }
 
+// ============================================================================
+// PHASE 3: CHUNKED UPLOAD
+// ============================================================================
+
+/// Negotiation request
+#[derive(Debug, Serialize)]
+struct NegotiationRequest {
+    binary_size_mb: f64,
+    service_name: String,
+    compression: Option<String>,
+}
+
+/// Negotiation response
+#[derive(Debug, Deserialize)]
+struct NegotiationResponse {
+    negotiation_id: String,
+    accepted_method: String,
+    chunk_size_mb: u32,
+    total_chunks: usize,
+    chunk_upload_path: String,
+    finalize_path: String,
+    timeout_seconds: u64,
+}
+
+/// Finalize request
+#[derive(Debug, Serialize)]
+struct FinalizeRequest {
+    service_name: String,
+    env_vars: HashMap<String, String>,
+    auto_start: bool,
+}
+
 /// Query deployment capabilities from a tower
 pub async fn query_capabilities(tower_endpoint: &str) -> Result<DeploymentCapabilities> {
     debug!("📊 Querying capabilities from {}", tower_endpoint);
@@ -234,10 +266,9 @@ pub async fn deploy_via_http_adaptive(
             // Use existing single upload
             deploy_via_http(tower_endpoint, binary_path, service_name, env_vars).await
         }
-        SelectedMethod::Chunked { .. } => {
-            // TODO: Phase 3 - Implement chunked upload
-            warn!("⚠️  Chunked upload not yet implemented, falling back to single");
-            deploy_via_http(tower_endpoint, binary_path, service_name, env_vars).await
+        SelectedMethod::Chunked { chunk_size_mb } => {
+            // Phase 3: Use chunked upload
+            deploy_via_http_chunked(tower_endpoint, binary_path, service_name, env_vars, chunk_size_mb).await
         }
         SelectedMethod::Streaming => {
             // TODO: Phase 4 - Implement streaming upload
@@ -245,6 +276,163 @@ pub async fn deploy_via_http_adaptive(
             deploy_via_http(tower_endpoint, binary_path, service_name, env_vars).await
         }
     }
+}
+
+/// Deploy a binary via chunked upload
+async fn deploy_via_http_chunked(
+    tower_endpoint: &str,
+    binary_path: &str,
+    service_name: &str,
+    env_vars: HashMap<String, String>,
+    chunk_size_mb: u32,
+) -> Result<DeploymentResponse> {
+    info!("🧩 Deploying '{}' via chunked upload ({}MB chunks)", service_name, chunk_size_mb);
+    
+    // Read binary
+    let binary_data = fs::read(binary_path).await?;
+    let binary_size_mb = binary_data.len() as f64 / 1024.0 / 1024.0;
+    
+    info!("   Binary size: {:.2}MB", binary_size_mb);
+    
+    let client = Client::new();
+    
+    // Step 1: Negotiate
+    info!("🤝 Step 1: Negotiating chunked upload...");
+    let negotiation = negotiate_chunked_upload(&client, tower_endpoint, binary_size_mb, service_name).await?;
+    
+    info!("✅ Negotiation complete: {} chunks of {}MB", 
+        negotiation.total_chunks, negotiation.chunk_size_mb);
+    
+    // Step 2: Split into chunks
+    let chunk_size_bytes = (chunk_size_mb as usize) * 1024 * 1024;
+    let chunks: Vec<&[u8]> = binary_data.chunks(chunk_size_bytes).collect();
+    
+    info!("📦 Step 2: Uploading {} chunks...", chunks.len());
+    
+    // Step 3: Upload chunks
+    for (index, chunk) in chunks.iter().enumerate() {
+        upload_chunk(&client, tower_endpoint, &negotiation.negotiation_id, index, chunk).await?;
+        info!("   ✓ Chunk {}/{} uploaded ({} bytes)", 
+            index + 1, chunks.len(), chunk.len());
+    }
+    
+    info!("✅ All chunks uploaded");
+    
+    // Step 4: Finalize
+    info!("🎯 Step 3: Finalizing deployment...");
+    let deployment = finalize_chunked_upload(&client, tower_endpoint, &negotiation.negotiation_id, 
+        service_name, env_vars).await?;
+    
+    info!("🎉 Chunked deployment complete: {}", deployment.deployment_id);
+    
+    Ok(deployment)
+}
+
+/// Negotiate chunked upload with server
+async fn negotiate_chunked_upload(
+    client: &Client,
+    tower_endpoint: &str,
+    binary_size_mb: f64,
+    service_name: &str,
+) -> Result<NegotiationResponse> {
+    let url = format!("{}/api/deployment/negotiate", tower_endpoint);
+    
+    let request = NegotiationRequest {
+        binary_size_mb,
+        service_name: service_name.to_string(),
+        compression: None,
+    };
+    
+    let response = client
+        .post(&url)
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| anyhow!("Negotiation request failed: {}", e))?;
+    
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(anyhow!("Negotiation failed with status {}: {}", status, error_text));
+    }
+    
+    let negotiation: NegotiationResponse = response
+        .json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse negotiation response: {}", e))?;
+    
+    Ok(negotiation)
+}
+
+/// Upload a single chunk
+async fn upload_chunk(
+    client: &Client,
+    tower_endpoint: &str,
+    negotiation_id: &str,
+    chunk_index: usize,
+    chunk_data: &[u8],
+) -> Result<()> {
+    let url = format!("{}/api/deployment/chunk/{}/{}", 
+        tower_endpoint, negotiation_id, chunk_index);
+    
+    let form = multipart::Form::new()
+        .part(
+            "chunk",
+            multipart::Part::bytes(chunk_data.to_vec())
+                .file_name(format!("chunk-{:04}", chunk_index)),
+        );
+    
+    let response = client
+        .post(&url)
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| anyhow!("Chunk upload failed: {}", e))?;
+    
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(anyhow!("Chunk {} upload failed with status {}: {}", chunk_index, status, error_text));
+    }
+    
+    Ok(())
+}
+
+/// Finalize chunked upload
+async fn finalize_chunked_upload(
+    client: &Client,
+    tower_endpoint: &str,
+    negotiation_id: &str,
+    service_name: &str,
+    env_vars: HashMap<String, String>,
+) -> Result<DeploymentResponse> {
+    let url = format!("{}/api/deployment/finalize/{}", tower_endpoint, negotiation_id);
+    
+    let request = FinalizeRequest {
+        service_name: service_name.to_string(),
+        env_vars,
+        auto_start: true,
+    };
+    
+    let response = client
+        .post(&url)
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| anyhow!("Finalize request failed: {}", e))?;
+    
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(anyhow!("Finalize failed with status {}: {}", status, error_text));
+    }
+    
+    let deployment: DeploymentResponse = response
+        .json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse deployment response: {}", e))?;
+    
+    Ok(deployment)
 }
 
 /// Deploy a binary via HTTP to a remote tower (legacy, direct method)
