@@ -1,4 +1,7 @@
 //! Primals configuration structures
+//!
+//! **DEPRECATED**: Use `canonical::primals::*` instead.
+//! This module will be removed in a future release.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
