@@ -23,6 +23,8 @@ pub use primal::{
 
 // Re-export error types
 pub use errors::{SecurityError, SongbirdError, SongbirdResult};
+// Re-export error helper traits for unwrap elimination
+pub use error_helpers::{OptionElimination, SafeEnv, SafeParse, UnwrapElimination};
 
 // Re-export response types
 pub use response::{
@@ -48,16 +50,15 @@ pub use traits::{
     ServiceInstanceStatus,
 };
 
-// Re-export constants that actually exist
-pub use constants::{
-    DEFAULT_PORT, DEFAULT_RETRY_ATTEMPTS, DEFAULT_TIMEOUT_SECS, MAX_CONCURRENT_CONNECTIONS,
-};
+// Re-export all canonical constants
+pub use constants::*;
 
 // Module declarations
 pub mod adapters;
 pub mod config;
 pub mod constants;
 pub mod errors;
+pub mod error_helpers;
 pub mod health;
 pub mod memory_optimized;
 // pub mod performance;  // Temporarily disabled - syntax errors need fixing

@@ -16,6 +16,9 @@
 //! Tests for the zero-hardcoding endpoint discovery system.
 
 use songbird_config::discoverable_endpoint::*;
+use songbird_test_utils::test_bind_address;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // ENDPOINT SPEC TESTS
@@ -39,20 +42,20 @@ fn test_endpoint_spec_creation() {
 #[test]
 fn test_endpoint_spec_minimal() {
     let spec = EndpointSpec {
-        host: "localhost".to_string(),
+        host: test_bind_address(),
         port: 3000,
         protocol: None,
         path: None,
     };
 
-    assert_eq!(spec.host, "localhost");
+    assert_eq!(spec.host, test_bind_address());
     assert_eq!(spec.port, 3000);
     assert!(spec.protocol.is_none());
     assert!(spec.path.is_none());
 }
 
 #[test]
-fn test_endpoint_spec_clone() {
+fn test_endpoint_spec_clone() -> SongbirdResult<()> {
     let spec1 = EndpointSpec {
         host: "test.local".to_string(),
         port: 9000,
@@ -63,10 +66,11 @@ fn test_endpoint_spec_clone() {
     let spec2 = spec1.clone();
     assert_eq!(spec1.host, spec2.host);
     assert_eq!(spec1.port, spec2.port);
+    Ok(())
 }
 
 #[test]
-fn test_endpoint_spec_debug() {
+fn test_endpoint_spec_debug() -> SongbirdResult<()> {
     let spec = EndpointSpec {
         host: "debug.com".to_string(),
         port: 443,
@@ -76,10 +80,11 @@ fn test_endpoint_spec_debug() {
 
     let debug_str = format!("{spec:?}");
     assert!(debug_str.contains("EndpointSpec"));
+    Ok(())
 }
 
 #[test]
-fn test_endpoint_spec_serialization() {
+fn test_endpoint_spec_serialization() -> SongbirdResult<()> {
     let spec = EndpointSpec {
         host: "serialize.test".to_string(),
         port: 8443,
@@ -87,11 +92,18 @@ fn test_endpoint_spec_serialization() {
         path: Some("/v1".to_string()),
     };
 
-    let json = serde_json::to_string(&spec).expect("Failed to serialize");
-    let deserialized: EndpointSpec = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&spec)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: EndpointSpec =
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Failed to deserialize: {}", e),
+            debug_info: None,
+        })?;
 
     assert_eq!(deserialized.host, spec.host);
     assert_eq!(deserialized.port, spec.port);
+    Ok(())
 }
 
 // ============================================================================
@@ -121,7 +133,7 @@ fn test_port_spec_number() {
 }
 
 #[test]
-fn test_port_spec_environment() {
+fn test_port_spec_environment() -> SongbirdResult<()> {
     let port = PortSpec::Environment("SERVICE_PORT".to_string());
 
     if let PortSpec::Environment(var) = port {
@@ -129,30 +141,40 @@ fn test_port_spec_environment() {
     } else {
         panic!("Expected Environment port spec");
     }
+    Ok(())
 }
 
 #[test]
-fn test_port_spec_clone() {
+fn test_port_spec_clone() -> SongbirdResult<()> {
     let port1 = PortSpec::Number(9090);
-    let port2 = port1.clone();
+    let port2 = port1;
 
     assert!(matches!(port2, PortSpec::Number(9090)));
+    Ok(())
 }
 
 #[test]
-fn test_port_spec_debug() {
+fn test_port_spec_debug() -> SongbirdResult<()> {
     let port = PortSpec::Named("https".to_string());
     let debug_str = format!("{port:?}");
     assert!(debug_str.contains("Named"));
+    Ok(())
 }
 
 #[test]
-fn test_port_spec_serialization() {
+fn test_port_spec_serialization() -> SongbirdResult<()> {
     let port = PortSpec::Number(3000);
-    let json = serde_json::to_string(&port).expect("Failed to serialize");
-    let deserialized: PortSpec = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&port)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: PortSpec =
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Failed to deserialize: {}", e),
+            debug_info: None,
+        })?;
 
     assert!(matches!(deserialized, PortSpec::Number(3000)));
+    Ok(())
 }
 
 // ============================================================================
@@ -160,7 +182,7 @@ fn test_port_spec_serialization() {
 // ============================================================================
 
 #[test]
-fn test_endpoint_parser_all_variants() {
+fn test_endpoint_parser_all_variants() -> SongbirdResult<()> {
     let url_parser = EndpointParser::Url;
     let host_port_parser = EndpointParser::HostPort;
     let hostname_parser = EndpointParser::Hostname;
@@ -170,29 +192,39 @@ fn test_endpoint_parser_all_variants() {
     assert!(matches!(host_port_parser, EndpointParser::HostPort));
     assert!(matches!(hostname_parser, EndpointParser::Hostname));
     assert!(matches!(pattern_parser, EndpointParser::Pattern(_)));
+    Ok(())
 }
 
 #[test]
-fn test_endpoint_parser_clone() {
+fn test_endpoint_parser_clone() -> SongbirdResult<()> {
     let parser1 = EndpointParser::Url;
-    let parser2 = parser1.clone();
+    let parser2 = parser1;
     assert!(matches!(parser2, EndpointParser::Url));
+    Ok(())
 }
 
 #[test]
-fn test_endpoint_parser_debug() {
+fn test_endpoint_parser_debug() -> SongbirdResult<()> {
     let parser = EndpointParser::HostPort;
     let debug_str = format!("{parser:?}");
     assert!(debug_str.contains("HostPort"));
+    Ok(())
 }
 
 #[test]
-fn test_endpoint_parser_serialization() {
+fn test_endpoint_parser_serialization() -> SongbirdResult<()> {
     let parser = EndpointParser::Url;
-    let json = serde_json::to_string(&parser).expect("Failed to serialize");
-    let deserialized: EndpointParser = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&parser)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: EndpointParser =
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Failed to deserialize: {}", e),
+            debug_info: None,
+        })?;
 
     assert!(matches!(deserialized, EndpointParser::Url));
+    Ok(())
 }
 
 // ============================================================================
@@ -321,37 +353,46 @@ fn test_discovery_method_static() {
 }
 
 #[test]
-fn test_discovery_method_clone() {
+fn test_discovery_method_clone() -> SongbirdResult<()> {
     let method1 = DiscoveryMethod::Environment {
         var_name: "TEST_VAR".to_string(),
         parser: EndpointParser::Url,
     };
 
-    let method2 = method1.clone();
+    let method2 = method1;
     assert!(matches!(method2, DiscoveryMethod::Environment { .. }));
+    Ok(())
 }
 
 #[test]
-fn test_discovery_method_debug() {
+fn test_discovery_method_debug() -> SongbirdResult<()> {
     let method = DiscoveryMethod::DnsServiceDiscovery {
         service_name: "test".to_string(),
     };
 
     let debug_str = format!("{method:?}");
     assert!(debug_str.contains("DnsServiceDiscovery"));
+    Ok(())
 }
 
 #[test]
-fn test_discovery_method_serialization() {
+fn test_discovery_method_serialization() -> SongbirdResult<()> {
     let method = DiscoveryMethod::Environment {
         var_name: "ENDPOINT".to_string(),
         parser: EndpointParser::Url,
     };
 
-    let json = serde_json::to_string(&method).expect("Failed to serialize");
-    let deserialized: DiscoveryMethod = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&method)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: DiscoveryMethod =
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Failed to deserialize: {}", e),
+            debug_info: None,
+        })?;
 
     assert!(matches!(deserialized, DiscoveryMethod::Environment { .. }));
+    Ok(())
 }
 
 // ============================================================================
@@ -422,29 +463,37 @@ fn test_discoverable_endpoint_custom() {
 }
 
 #[test]
-fn test_discoverable_endpoint_clone() {
+fn test_discoverable_endpoint_clone() -> SongbirdResult<()> {
     let endpoint1 = DiscoverableEndpoint::from_env("TEST_ENDPOINT");
-    let endpoint2 = endpoint1.clone();
+    let endpoint2 = endpoint1;
 
     assert!(endpoint2.cache_discovery);
+    Ok(())
 }
 
 #[test]
-fn test_discoverable_endpoint_debug() {
+fn test_discoverable_endpoint_debug() -> SongbirdResult<()> {
     let endpoint = DiscoverableEndpoint::from_env("DEBUG_ENDPOINT");
     let debug_str = format!("{endpoint:?}");
     assert!(debug_str.contains("DiscoverableEndpoint"));
+    Ok(())
 }
 
 #[test]
-fn test_discoverable_endpoint_serialization() {
+fn test_discoverable_endpoint_serialization() -> SongbirdResult<()> {
     let endpoint = DiscoverableEndpoint::from_env("SERIALIZE_ENDPOINT");
 
-    let json = serde_json::to_string(&endpoint).expect("Failed to serialize");
+    let json = serde_json::to_string(&endpoint)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
     let deserialized: DiscoverableEndpoint =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Failed to deserialize: {}", e),
+            debug_info: None,
+        })?;
 
     assert!(deserialized.cache_discovery);
+    Ok(())
 }
 
 // ============================================================================
@@ -471,7 +520,7 @@ fn test_complete_discovery_workflow() {
             },
         ],
         dev_fallback: Some(EndpointSpec {
-            host: "localhost".to_string(),
+            host: test_bind_address(),
             port: 8080,
             protocol: Some("http".to_string()),
             path: Some("/api".to_string()),
@@ -485,8 +534,10 @@ fn test_complete_discovery_workflow() {
     assert!(endpoint.dev_fallback.is_some());
 
     // Verify dev fallback
-    let dev_fb = endpoint.dev_fallback.unwrap();
-    assert_eq!(dev_fb.host, "localhost");
+    let dev_fb = endpoint.dev_fallback.ok_or_else(|| {
+        SongbirdError::configuration("Failed to discover services".to_string())
+    })?;
+    assert_eq!(dev_fb.host, test_bind_address());
     assert_eq!(dev_fb.port, 8080);
 }
 

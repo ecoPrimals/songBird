@@ -4,7 +4,9 @@
 //! NOTE: These tests use the capability-based `AIAdapter` (primal-agnostic).
 
 use chrono::Utc;
-use songbird_types::SongbirdError;
+use songbird_test_utils::test_federation_port;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::ai::{AIAdapter, AIHealth, AIMetrics, ModelType};
 use std::time::Duration;
 
@@ -25,38 +27,48 @@ fn create_test_metrics() -> AIMetrics {
 // ============================================================================
 
 #[test]
-fn test_ai_adapter_new_success() {
+fn test_ai_adapter_new_success() -> SongbirdResult<()> {
     // Arrange & Act
-    let adapter = AIAdapter::new("http://example.com:8083".to_string());
+    let adapter = AIAdapter::new(format!("http://example.com:{}", test_federation_port()));
 
     // Assert
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
-    assert_eq!(adapter.endpoint(), "http://example.com:8083");
+    let adapter = adapter.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
+    assert_eq!(adapter.endpoint(), format!("http://example.com:{}", test_federation_port()));
+    Ok(())
 }
 
 #[test]
-fn test_ai_adapter_endpoint_validation() {
+fn test_ai_adapter_endpoint_validation() -> SongbirdResult<()> {
     // Arrange & Act
     let adapter = AIAdapter::new("http://ai-service".to_string());
 
     // Assert
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
+    let adapter = adapter.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert_eq!(adapter.endpoint(), "http://ai-service");
+    Ok(())
 }
 
 #[test]
-fn test_ai_adapter_with_timeout() {
+fn test_ai_adapter_with_timeout() -> SongbirdResult<()> {
     // Arrange
     let custom_timeout = Duration::from_secs(60);
 
     // Act
-    let adapter =
-        AIAdapter::new("http://example.com".to_string()).unwrap().with_timeout(custom_timeout);
+    let adapter = AIAdapter::new("http://example.com".to_string())
+        .ok_or_else(|| {
+            SongbirdError::configuration("Missing performance configuration".to_string())
+        })?
+        .with_timeout(custom_timeout);
 
     // Assert
     assert_eq!(adapter.endpoint(), "http://example.com");
+    Ok(())
 }
 
 // ============================================================================
@@ -221,7 +233,7 @@ fn test_ai_health_overloaded_latency() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_ai_collect_metrics_success() {
+async fn test_ai_collect_metrics_success() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -241,7 +253,9 @@ async fn test_ai_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).unwrap();
+    let adapter = AIAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -249,14 +263,17 @@ async fn test_ai_collect_metrics_success() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    let metrics = result.unwrap();
+    let metrics = result.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert_eq!(metrics.active_models, 3);
     assert_eq!(metrics.total_requests, 1_500);
     assert!((metrics.accuracy_score - 0.92).abs() < 0.01);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_ai_collect_metrics_server_error_500() {
+async fn test_ai_collect_metrics_server_error_500() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -267,7 +284,9 @@ async fn test_ai_collect_metrics_server_error_500() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).unwrap();
+    let adapter = AIAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -277,10 +296,11 @@ async fn test_ai_collect_metrics_server_error_500() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Service { .. }));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_ai_collect_metrics_server_error_503() {
+async fn test_ai_collect_metrics_server_error_503() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -291,7 +311,9 @@ async fn test_ai_collect_metrics_server_error_503() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).unwrap();
+    let adapter = AIAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -299,13 +321,16 @@ async fn test_ai_collect_metrics_server_error_503() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_ai_collect_metrics_network_error() {
+async fn test_ai_collect_metrics_network_error() -> SongbirdResult<()> {
     // Arrange
     let adapter = AIAdapter::new("http://nonexistent-host-12345:9999".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("Missing performance configuration".to_string())
+        })?
         .with_timeout(Duration::from_millis(100));
 
     // Act
@@ -315,14 +340,17 @@ async fn test_ai_collect_metrics_network_error() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Network { .. }));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_ai_collect_metrics_timeout() {
+async fn test_ai_collect_metrics_timeout() -> SongbirdResult<()> {
     // Arrange
     // Create adapter with very short timeout for non-responsive endpoint
     let adapter = AIAdapter::new("http://10.255.255.1:9999".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("Missing performance configuration".to_string())
+        })?
         .with_timeout(Duration::from_millis(50));
 
     // Act
@@ -330,10 +358,11 @@ async fn test_ai_collect_metrics_timeout() {
 
     // Assert
     assert!(result.is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_ai_collect_metrics_invalid_json() {
+async fn test_ai_collect_metrics_invalid_json() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -344,7 +373,9 @@ async fn test_ai_collect_metrics_invalid_json() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).unwrap();
+    let adapter = AIAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -352,10 +383,11 @@ async fn test_ai_collect_metrics_invalid_json() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_ai_collect_metrics_missing_fields() {
+async fn test_ai_collect_metrics_missing_fields() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -366,7 +398,9 @@ async fn test_ai_collect_metrics_missing_fields() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).unwrap();
+    let adapter = AIAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -374,10 +408,11 @@ async fn test_ai_collect_metrics_missing_fields() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_ai_check_health_healthy() {
+async fn test_ai_check_health_healthy() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -397,7 +432,9 @@ async fn test_ai_check_health_healthy() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).unwrap();
+    let adapter = AIAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Failed health check".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
@@ -405,11 +442,18 @@ async fn test_ai_check_health_healthy() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), AIHealth::Healthy);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        AIHealth::Healthy
+    );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_ai_check_health_degraded() {
+async fn test_ai_check_health_degraded() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -429,7 +473,9 @@ async fn test_ai_check_health_degraded() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).unwrap();
+    let adapter = AIAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Failed health check".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
@@ -437,11 +483,18 @@ async fn test_ai_check_health_degraded() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), AIHealth::Degraded);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        AIHealth::Degraded
+    );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_ai_check_health_overloaded() {
+async fn test_ai_check_health_overloaded() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -461,7 +514,9 @@ async fn test_ai_check_health_overloaded() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).unwrap();
+    let adapter = AIAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Failed health check".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
@@ -469,7 +524,14 @@ async fn test_ai_check_health_overloaded() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), AIHealth::Overloaded);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        AIHealth::Overloaded
+    );
+    Ok(())
 }
 
 // ============================================================================
@@ -522,16 +584,17 @@ fn test_ai_health_enum_equality() {
 }
 
 #[test]
-fn test_model_type_enum_equality() {
+fn test_model_type_enum_equality() -> SongbirdResult<()> {
     // Test enum equality
     assert_eq!(ModelType::Llm, ModelType::Llm);
     assert_ne!(ModelType::Llm, ModelType::Vision);
     assert_ne!(ModelType::Vision, ModelType::Audio);
     assert_eq!(ModelType::Embedding, ModelType::Embedding);
+    Ok(())
 }
 
 #[test]
-fn test_ai_metrics_serialization() {
+fn test_ai_metrics_serialization() -> SongbirdResult<()> {
     // Arrange
     let metrics = create_test_metrics();
 
@@ -540,15 +603,18 @@ fn test_ai_metrics_serialization() {
 
     // Assert
     assert!(json.is_ok());
-    let json_str = json.unwrap();
+    let json_str = json.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert!(json_str.contains("active_models"));
     assert!(json_str.contains("total_requests"));
     assert!(json_str.contains("avg_latency_ms"));
     assert!(json_str.contains("gpu_utilization_percent"));
+    Ok(())
 }
 
 #[test]
-fn test_ai_metrics_deserialization() {
+fn test_ai_metrics_deserialization() -> SongbirdResult<()> {
     // Arrange
     let json = r#"{
         "active_models": 3,
@@ -564,10 +630,13 @@ fn test_ai_metrics_deserialization() {
 
     // Assert
     assert!(metrics.is_ok());
-    let metrics = metrics.unwrap();
+    let metrics = metrics.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert_eq!(metrics.active_models, 3);
     assert_eq!(metrics.total_requests, 1_500);
     assert!((metrics.avg_latency_ms - 250.0).abs() < 0.1);
+    Ok(())
 }
 
 #[test]

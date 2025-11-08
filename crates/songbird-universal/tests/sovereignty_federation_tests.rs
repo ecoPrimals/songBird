@@ -2,6 +2,8 @@
 //!
 //! Comprehensive tests for the sovereignty-aware federation system
 
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::sovereignty::federation::SovereigntyFederationManager;
 use songbird_universal::sovereignty::types::FederationCapability;
 use songbird_universal::types::UniversalRequest;
@@ -115,7 +117,7 @@ fn test_get_capabilities_non_empty() {
 }
 
 #[tokio::test]
-async fn test_coordinate_request_success() {
+async fn test_coordinate_request_success() -> SongbirdResult<()> {
     let manager = SovereigntyFederationManager::new();
 
     let request = UniversalRequest {
@@ -130,12 +132,15 @@ async fn test_coordinate_request_success() {
     let result = manager.coordinate_request(&request).await;
 
     assert!(result.is_ok());
-    let response = result.unwrap();
+    let response = result.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert_eq!(response.request_id, "req-001");
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_coordinate_request_returns_success_status() {
+async fn test_coordinate_request_returns_success_status() -> SongbirdResult<()> {
     let manager = SovereigntyFederationManager::new();
 
     let request = UniversalRequest {
@@ -150,8 +155,11 @@ async fn test_coordinate_request_returns_success_status() {
     let result = manager.coordinate_request(&request).await;
 
     assert!(result.is_ok());
-    let response = result.unwrap();
+    let response = result.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert!(matches!(response.status, songbird_universal::types::ResponseStatus::Success));
+    Ok(())
 }
 
 #[tokio::test]
@@ -188,11 +196,12 @@ async fn test_coordinate_request_with_capabilities() {
 }
 
 #[test]
-fn test_federation_manager_debug() {
+fn test_federation_manager_debug() -> SongbirdResult<()> {
     let manager = SovereigntyFederationManager::new();
     let debug_str = format!("{manager:?}");
 
     assert!(debug_str.contains("SovereigntyFederationManager"));
+    Ok(())
 }
 
 #[test]
@@ -257,7 +266,7 @@ fn test_capability_with_metadata() {
 }
 
 #[tokio::test]
-async fn test_coordinate_request_with_custom_metadata() {
+async fn test_coordinate_request_with_custom_metadata() -> SongbirdResult<()> {
     let manager = SovereigntyFederationManager::new();
 
     let mut parameters = HashMap::new();
@@ -275,8 +284,11 @@ async fn test_coordinate_request_with_custom_metadata() {
     let result = manager.coordinate_request(&request).await;
 
     assert!(result.is_ok());
-    let response = result.unwrap();
+    let response = result.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert_eq!(response.request_id, "req-meta");
+    Ok(())
 }
 
 #[test]
@@ -332,9 +344,9 @@ fn test_capabilities_different_sovereignty_levels() {
             capability_type: songbird_universal::sovereignty::types::FederationCapabilityType::CrossNodeCommunication,
             availability_score: score,
             performance_characteristics: songbird_universal::sovereignty::types::PerformanceCharacteristics {
-                latency_ms: 10.0 + (i as f64 * 5.0),
-                throughput_ops_per_sec: 1000.0 - (i as f64 * 100.0),
-                reliability_score: 0.99 - (i as f64 * 0.02),
+                latency_ms: (i as f64).mul_add(5.0, 10.0),
+                throughput_ops_per_sec: (i as f64).mul_add(-100.0, 1000.0),
+                reliability_score: (i as f64).mul_add(-0.02, 0.99),
             },
         };
         manager.register_capability(cap);
@@ -344,7 +356,7 @@ fn test_capabilities_different_sovereignty_levels() {
 }
 
 #[tokio::test]
-async fn test_coordinate_request_response_contains_data() {
+async fn test_coordinate_request_response_contains_data() -> SongbirdResult<()> {
     let manager = SovereigntyFederationManager::new();
 
     let request = UniversalRequest {
@@ -359,7 +371,10 @@ async fn test_coordinate_request_response_contains_data() {
     let result = manager.coordinate_request(&request).await;
 
     assert!(result.is_ok());
-    let response = result.unwrap();
+    let response = result.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert!(response.data.is_some());
     assert!(response.error.is_none());
+    Ok(())
 }

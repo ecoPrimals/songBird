@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
+#![allow(clippy::uninlined_format_args)] // Test code readability is more important
 
 pub mod async_helpers;
 pub mod canonical_test_framework;
@@ -14,16 +15,18 @@ pub mod cli_helpers;
 pub mod config_helpers;
 pub mod error_testing;
 pub mod fixtures;
-pub mod fixtures_legacy;
+// REMOVED: fixtures_legacy (Nov 8, 2025) - No active usage, fully deprecated
 pub mod integration;
 pub mod mocks;
+pub mod network_fixtures;
 pub mod network_mocks;
 pub mod performance;
 pub mod performance_testing;
+pub mod service_fixtures;
 
 // Re-export core testing types (canonical pattern)
 pub use canonical_test_framework::{
-    MockService, TestEnvironment, TestResult as FrameworkTestResult,
+    MockService, TestEnvironment,
 };
 pub use chaos_engineering::ChaosEngineeringManager;
 pub use error_testing::ErrorTestingFramework;
@@ -43,3 +46,5 @@ pub use mocks::{
 pub use async_helpers::*;
 pub use cli_helpers::*;
 pub use config_helpers::*;
+pub use network_fixtures::*;
+pub use service_fixtures::*;

@@ -32,6 +32,8 @@
 pub mod federation;
 pub mod integration;
 pub mod network;
+pub mod service_registry;
+pub mod state;
 
 // Re-export core types for convenience
 pub use federation::{FederationConfig, FederationCoordinator, NodeInfo};

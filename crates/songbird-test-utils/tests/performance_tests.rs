@@ -121,7 +121,7 @@ impl PerformanceMetrics {
     }
 
     fn get_stats(&self, operation: &str) -> OperationStats {
-        self.operations.get(operation).cloned().unwrap_or_else(|| OperationStats {
+        self.operations.get(operation).cloned().unwrap_or_else(|_| OperationStats {
             count: 0,
             total_duration: Duration::from_secs(0),
         })

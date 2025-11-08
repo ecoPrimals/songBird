@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Comprehensive Configuration Tests
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::float_cmp)]
@@ -16,13 +17,17 @@
 //! This test suite provides extensive coverage for the songbird-config crate
 //! to achieve the target 90% test coverage for production readiness.
 
-use songbird_config::config::constants::{DEFAULT_BIND_ADDRESS, DEFAULT_LOCALHOST, LOCALHOST_IPV4};
+use songbird_config::canonical::constants::{DEFAULT_BIND_ADDRESS, DEFAULT_LOCALHOST, LOCALHOST_IPV4};
 use songbird_config::config::universal_primals::QosMetrics;
+use songbird_types::{SongbirdError, SongbirdResult};
 // use songbird_config::constants::network::*; // Unused import removed
 use songbird_config::{
-    config::{constants::*, hardcoded_elimination::*, universal_primals::*},
+    canonical::constants::*,
+    config::{hardcoded_elimination::*, universal_primals::*},
     EnvironmentConfig,
 };
+use songbird_test_utils::test_bind_address;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -38,9 +43,11 @@ mod comprehensive_config_tests {
         assert!(!DEFAULT_BIND_ADDRESS.is_empty());
         assert!(!DEFAULT_LOCALHOST.is_empty());
         assert!(!LOCALHOST_IPV4.is_empty());
-        assert_eq!(DEFAULT_BIND_ADDRESS, "127.0.0.1:8080");
-        assert_eq!(DEFAULT_LOCALHOST, "127.0.0.1");
-        assert_eq!(LOCALHOST_IPV4, "127.0.0.1");
+        let expected_bind =
+            format!("127.0.0.1:{}", songbird_config::defaults::ports::orchestrator_port());
+        assert_eq!(DEFAULT_BIND_ADDRESS, expected_bind);
+        assert_eq!(DEFAULT_LOCALHOST, test_bind_address());
+        assert_eq!(LOCALHOST_IPV4, test_bind_address());
     }
 
     #[test]
@@ -85,7 +92,7 @@ mod comprehensive_config_tests {
         // However, due to parallel test execution, accept valid IPs that might come from
         // other tests modifying env vars
         assert!(
-            bind_address == "127.0.0.1"
+            bind_address == test_bind_address()
                 || bind_address == "0.0.0.0"
                 || bind_address.parse::<std::net::IpAddr>().is_ok(),
             "Expected valid IP address, got: {bind_address}. \
@@ -191,8 +198,9 @@ mod comprehensive_config_tests {
         assert!(endpoint.contains("7000"));
         assert!(endpoint.contains("http"));
 
-        let service_endpoint = replace::format_service_endpoint("nestgate", "/api/v1", Some(8080));
-        assert!(service_endpoint.contains("8080"));
+        let port = songbird_config::defaults::ports::orchestrator_port();
+        let service_endpoint = replace::format_service_endpoint("nestgate", "/api/v1", Some(port));
+        assert!(service_endpoint.contains(&port.to_string()));
         assert!(service_endpoint.contains("/api/v1"));
     }
 
@@ -275,13 +283,15 @@ mod comprehensive_config_tests {
     #[test]
     fn test_environment_config_service_endpoints() {
         let config = EnvironmentConfig::default();
-        // Test that service endpoints are properly configured
-        assert!(!config.service_endpoints.nestgate_endpoint.is_empty());
-        assert!(!config.service_endpoints.beardog_endpoint.is_empty());
-        assert!(!config.service_endpoints.discovery_endpoint.is_empty());
-        // Health and metrics endpoints should be configurable
-        assert!(!config.service_endpoints.health_endpoint.is_empty());
-        assert!(!config.service_endpoints.metrics_endpoint.is_empty());
+        // Test that service endpoints are properly configured using capability-based access
+        let endpoints = &config.service_endpoints;
+
+        // Use capability-based access (modern pattern)
+        assert!(endpoints.get_by_capability("storage").is_some());
+        assert!(endpoints.get_by_capability("security").is_some());
+        assert!(endpoints.get_by_capability("discovery").is_some());
+        assert!(endpoints.get_by_capability("health").is_some());
+        assert!(endpoints.get_by_capability("metrics").is_some());
     }
 
     #[test]
@@ -304,29 +314,38 @@ mod comprehensive_config_tests {
     }
 
     #[test]
-    fn test_performance_config() {
+    fn test_performance_config() -> SongbirdResult<()> {
         let config = PerformanceConfig::default();
         assert!(config.small_buffer_size > 0);
         assert!(config.large_buffer_size > config.small_buffer_size);
         assert!(config.max_packet_size > 0);
         assert!(config.connection_pool_size > 0);
         assert!(config.cache_ttl > Duration::from_secs(0));
+        Ok(())
     }
 
     // Test Module 8: Error Handling and Edge Cases
     #[test]
-    fn test_invalid_environment_variables() {
+    fn test_invalid_environment_variables() -> SongbirdResult<()> {
         // Test that we get reasonable endpoints even with no environment variables
         let config = EnvironmentConfig::default();
-        let security_endpoint = &config.service_endpoints.beardog_endpoint;
+        // Use capability-based access (modern pattern)
+        let security_endpoint = config.service_endpoints.get_by_capability("security");
+        assert!(security_endpoint.is_some());
+
+        let endpoint_str = security_endpoint.ok_or_else(|| {
+            SongbirdError::configuration("Missing performance configuration".to_string())
+        })?;
         // Accept any valid endpoint format, including environment-specific ones
+        let bind_addr = test_bind_address();
         assert!(
-            security_endpoint.contains("localhost")
-                || security_endpoint.contains("127.0.0.1")
-                || security_endpoint.starts_with("http")
-                || !security_endpoint.is_empty(),
-            "Expected valid endpoint, got: {security_endpoint}"
+            endpoint_str.contains(&bind_addr)
+                || endpoint_str.contains(&bind_addr)
+                || endpoint_str.starts_with("http")
+                || !endpoint_str.is_empty(),
+            "Expected valid endpoint, got: {endpoint_str}"
         );
+        Ok(())
     }
 
     #[test]
@@ -347,30 +366,38 @@ mod comprehensive_config_tests {
     }
 
     #[test]
-    fn test_port_range_edge_cases() {
+    fn test_port_range_edge_cases() -> SongbirdResult<()> {
         let start = get_port_range_start();
         let end = get_port_range_end();
 
         assert!(start > 0, "Start port should be greater than 0");
         // Ports are u16, so they're always <= 65535 by type definition
         assert!(start < end, "Start port should be less than end port");
+        Ok(())
     }
 
     // Test Module 9: Configuration Serialization
     #[test]
-    fn test_primal_configuration_serialization() {
+    fn test_primal_configuration_serialization() -> SongbirdResult<()> {
         let primal = PrimalConfiguration::new_template("test", "Test");
 
         // Test JSON serialization
-        let json = serde_json::to_string(&primal).expect("Test: Should serialize to JSON");
+        let json = serde_json::to_string(&primal).map_err(|e| {
+            SongbirdError::configuration(format!("Test: Should serialize to JSON: {}", e))
+        })?;
         assert!(json.contains("test"));
         assert!(json.contains("Test"));
 
         // Test deserialization
         let deserialized: PrimalConfiguration =
-            serde_json::from_str(&json).expect("Test: Should deserialize from JSON");
+            serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Test: Should deserialize from JSON: {}", e),
+                debug_info: None,
+            })?;
         assert_eq!(deserialized.primal_type, primal.primal_type);
         assert_eq!(deserialized.display_name, primal.display_name);
+        Ok(())
     }
 
     #[test]
@@ -403,7 +430,7 @@ mod comprehensive_config_tests {
     }
 
     #[test]
-    fn test_configuration_thread_safety() {
+    fn test_configuration_thread_safety() -> SongbirdResult<()> {
         use std::sync::Arc;
         use std::thread;
 
@@ -421,7 +448,12 @@ mod comprehensive_config_tests {
         }
 
         for handle in handles {
-            handle.join().expect("Test: Thread should complete successfully");
+            handle.join().map_err(|_e| {
+                SongbirdError::configuration(
+                    "Test: Thread should complete successfully".to_string(),
+                )
+            })?;
         }
+        Ok(())
     }
 }

@@ -6,6 +6,8 @@ use songbird_canonical::config::environment::{
     Environment, EnvironmentConfig, EnvironmentSecurityConfig, LoggingConfig, NetworkConfig,
     ObservabilityConfig, PortConfig,
 };
+use songbird_test_utils::test_bind_address;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
 #[test]
@@ -198,7 +200,7 @@ fn test_network_config_defaults() {
 #[test]
 fn test_network_config_tls_enabled() {
     let config = NetworkConfig {
-        bind_address: "127.0.0.1".to_string(),
+        bind_address: test_bind_address(),
         enable_tls: true,
         tls_cert_path: Some("/path/to/cert.pem".to_string()),
         tls_key_path: Some("/path/to/key.pem".to_string()),
@@ -276,7 +278,7 @@ fn test_environment_security_config_strict() {
 }
 
 #[test]
-fn test_environment_security_config_permissive() {
+fn test_environment_security_config_permissive() -> SongbirdResult<()> {
     let config = EnvironmentSecurityConfig {
         enable_auth: false,
         auth_method: "none".to_string(),
@@ -291,13 +293,15 @@ fn test_environment_security_config_permissive() {
     assert!(!config.enable_authz);
     assert!(!config.enable_audit);
     assert!(config.cors_origins.is_empty());
+    Ok(())
 }
 
 #[test]
-fn test_environment_config_serialization() {
+fn test_environment_config_serialization() -> SongbirdResult<()> {
     let config = EnvironmentConfig::default();
 
-    let json = serde_json::to_string(&config).expect("Should serialize");
+    let json = serde_json::to_string(&config)
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
     assert!(json.contains("environment"));
     assert!(json.contains("ports"));
     assert!(json.contains("logging"));
@@ -305,27 +309,35 @@ fn test_environment_config_serialization() {
     assert!(json.contains("network"));
     assert!(json.contains("security"));
 
-    let deserialized: EnvironmentConfig = serde_json::from_str(&json).expect("Should deserialize");
+    let deserialized: EnvironmentConfig =
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Should deserialize: {}", e),
+            debug_info: None,
+        })?;
     assert_eq!(config.ports.discovery_port, deserialized.ports.discovery_port);
+    Ok(())
 }
 
 #[test]
-fn test_environment_config_clone() {
+fn test_environment_config_clone() -> SongbirdResult<()> {
     let config = EnvironmentConfig::default();
     let cloned = config.clone();
 
     assert_eq!(config.ports.discovery_port, cloned.ports.discovery_port);
     assert_eq!(config.logging.level, cloned.logging.level);
     assert_eq!(config.network.bind_address, cloned.network.bind_address);
+    Ok(())
 }
 
 #[test]
-fn test_environment_config_debug() {
+fn test_environment_config_debug() -> SongbirdResult<()> {
     let config = EnvironmentConfig::default();
     let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("EnvironmentConfig"));
     assert!(debug_str.contains("environment"));
+    Ok(())
 }
 
 #[test]
@@ -406,7 +418,7 @@ fn test_development_environment_config() {
             custom_tags: HashMap::new(),
         },
         network: NetworkConfig {
-            bind_address: "127.0.0.1".to_string(),
+            bind_address: test_bind_address(),
             enable_tls: false,
             tls_cert_path: None,
             tls_key_path: None,
@@ -466,7 +478,7 @@ fn test_logging_file_rotation() {
 }
 
 #[test]
-fn test_observability_all_disabled() {
+fn test_observability_all_disabled() -> SongbirdResult<()> {
     let config = ObservabilityConfig {
         enable_metrics: false,
         metrics_interval: 0,
@@ -480,10 +492,11 @@ fn test_observability_all_disabled() {
     assert!(!config.enable_metrics);
     assert!(!config.enable_tracing);
     assert!(!config.enable_health_checks);
+    Ok(())
 }
 
 #[test]
-fn test_environment_serialization() {
+fn test_environment_serialization() -> SongbirdResult<()> {
     let environments = vec![
         Environment::Development,
         Environment::Staging,
@@ -493,7 +506,14 @@ fn test_environment_serialization() {
     ];
 
     for env in environments {
-        let json = serde_json::to_string(&env).expect("Should serialize");
-        let _deserialized: Environment = serde_json::from_str(&json).expect("Should deserialize");
+        let json = serde_json::to_string(&env)
+            .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        let _deserialized: Environment =
+            serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Should deserialize: {}", e),
+                debug_info: None,
+            })?;
     }
+    Ok(())
 }

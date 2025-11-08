@@ -2,20 +2,26 @@
 //!
 //! Comprehensive tests for capability discovery and adaptation
 
+use songbird_test_utils::test_discovery_port;
+use songbird_test_utils::test_federation_port;
+use songbird_test_utils::test_health_port;
+use songbird_types::SongbirdResult;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::capabilities::{DiscoveryConfig, PrimalType, UniversalCapabilityAdapter};
 use std::env;
 
 #[test]
-fn test_adapter_new() {
+fn test_adapter_new() -> SongbirdResult<()> {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let debug_str = format!("{adapter:?}");
     assert!(debug_str.contains("UniversalCapabilityAdapter"));
+    Ok(())
 }
 
 #[test]
-fn test_adapter_with_custom_config() {
+fn test_adapter_with_custom_config() -> SongbirdResult<()> {
     let config = DiscoveryConfig {
         refresh_interval: std::time::Duration::from_secs(60),
         discovery_timeout: std::time::Duration::from_secs(10),
@@ -27,10 +33,11 @@ fn test_adapter_with_custom_config() {
     let adapter = UniversalCapabilityAdapter::new(config);
     let debug_str = format!("{adapter:?}");
     assert!(debug_str.contains("UniversalCapabilityAdapter"));
+    Ok(())
 }
 
 #[test]
-fn test_adapter_clone() {
+fn test_adapter_clone() -> SongbirdResult<()> {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
     let cloned = adapter.clone();
@@ -39,6 +46,7 @@ fn test_adapter_clone() {
     let debug_2 = format!("{cloned:?}");
     assert!(debug_1.contains("UniversalCapabilityAdapter"));
     assert!(debug_2.contains("UniversalCapabilityAdapter"));
+    Ok(())
 }
 
 #[tokio::test]
@@ -72,15 +80,16 @@ async fn test_find_capability_providers_empty() {
 #[tokio::test]
 async fn test_find_capability_providers_security() {
     // Set up environment for security capability
-    env::set_var("BEARDOG_ENDPOINT", "http://localhost:8081");
+    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let providers = adapter.find_capability_providers("security").await;
 
-    // Should find beardog for security
-    assert!(providers.contains(&"beardog".to_string()) || providers.is_empty());
+    // 🍼 MIGRATED: Check for any security provider, not specific primal
+    // Should find security provider
+    assert!(providers.iter().any(|p| p.contains("security")) || providers.is_empty());
 
     // Clean up
     env::remove_var("BEARDOG_ENDPOINT");
@@ -89,15 +98,16 @@ async fn test_find_capability_providers_security() {
 #[tokio::test]
 async fn test_find_capability_providers_compute() {
     // Set up environment for compute capability
-    env::set_var("TOADSTOOL_ENDPOINT", "http://localhost:8082");
+    env::set_var("TOADSTOOL_ENDPOINT", format!("http://localhost:{}", test_health_port()));
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let providers = adapter.find_capability_providers("compute").await;
 
-    // Should find toadstool for compute
-    assert!(providers.contains(&"toadstool".to_string()) || providers.is_empty());
+    // 🍼 MIGRATED: Check for any compute provider, not specific primal
+    // Should find compute provider
+    assert!(providers.iter().any(|p| p.contains("compute")) || providers.is_empty());
 
     // Clean up
     env::remove_var("TOADSTOOL_ENDPOINT");
@@ -106,15 +116,16 @@ async fn test_find_capability_providers_compute() {
 #[tokio::test]
 async fn test_find_capability_providers_storage() {
     // Set up environment for storage capability
-    env::set_var("NESTGATE_ENDPOINT", "http://localhost:8083");
+    env::set_var("NESTGATE_ENDPOINT", format!("http://localhost:{}", test_federation_port()));
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let providers = adapter.find_capability_providers("storage").await;
 
-    // Should find nestgate for storage
-    assert!(providers.contains(&"nestgate".to_string()) || providers.is_empty());
+    // 🍼 MIGRATED: Check for any storage provider, not specific primal
+    // Should find storage provider
+    assert!(providers.iter().any(|p| p.contains("storage")) || providers.is_empty());
 
     // Clean up
     env::remove_var("NESTGATE_ENDPOINT");
@@ -130,8 +141,9 @@ async fn test_find_capability_providers_ai() {
 
     let providers = adapter.find_capability_providers("ai").await;
 
-    // Should find squirrel for AI
-    assert!(providers.contains(&"squirrel".to_string()) || providers.is_empty());
+    // 🍼 MIGRATED: Check for any AI provider, not specific primal
+    // Should find AI provider
+    assert!(providers.iter().any(|p| p.contains("ai")) || providers.is_empty());
 
     // Clean up
     env::remove_var("SQUIRREL_ENDPOINT");
@@ -140,7 +152,7 @@ async fn test_find_capability_providers_ai() {
 #[tokio::test]
 async fn test_find_capability_providers_deduplication() {
     // Set up duplicate providers
-    env::set_var("BEARDOG_ENDPOINT", "http://localhost:8081");
+    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -181,16 +193,17 @@ async fn test_get_best_primal_for_capability_empty() {
 #[tokio::test]
 async fn test_get_best_primal_for_capability_security() {
     // Set up environment
-    env::set_var("BEARDOG_ENDPOINT", "http://localhost:8081");
+    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
 
     let best = adapter.get_best_primal_for_capability("security").await;
 
-    // Should return beardog for security
+    // 🍼 MIGRATED: Check for any security provider, not specific primal
+    // Should return security provider
     if let Some(primal) = best {
-        assert_eq!(primal, "beardog");
+        assert!(primal.contains("security") || primal.contains("beardog")); // Allow both during transition
     }
 
     // Clean up
@@ -251,7 +264,7 @@ fn test_discovery_config_custom() {
 }
 
 #[test]
-fn test_discovery_config_clone() {
+fn test_discovery_config_clone() -> SongbirdResult<()> {
     let config = DiscoveryConfig::default();
     let cloned = config.clone();
 
@@ -260,21 +273,23 @@ fn test_discovery_config_clone() {
     assert_eq!(config.refresh_interval, cloned.refresh_interval);
     assert_eq!(config.max_concurrent_discoveries, cloned.max_concurrent_discoveries);
     assert_eq!(config.discovery_timeout, cloned.discovery_timeout);
+    Ok(())
 }
 
 #[test]
-fn test_discovery_config_debug() {
+fn test_discovery_config_debug() -> SongbirdResult<()> {
     let config = DiscoveryConfig::default();
     let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("DiscoveryConfig"));
+    Ok(())
 }
 
 #[tokio::test]
 async fn test_adapter_multiple_capability_types() {
     // Set up multiple primals
-    env::set_var("BEARDOG_ENDPOINT", "http://localhost:8081");
-    env::set_var("TOADSTOOL_ENDPOINT", "http://localhost:8082");
+    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
+    env::set_var("TOADSTOOL_ENDPOINT", format!("http://localhost:{}", test_health_port()));
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -293,7 +308,7 @@ async fn test_adapter_multiple_capability_types() {
 #[tokio::test]
 async fn test_adapter_capability_aliases() {
     // Set up environment
-    env::set_var("BEARDOG_ENDPOINT", "http://localhost:8081");
+    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -303,12 +318,13 @@ async fn test_adapter_capability_aliases() {
     let encryption_providers = adapter.find_capability_providers("encryption").await;
     let auth_providers = adapter.find_capability_providers("authentication").await;
 
-    // All should potentially return beardog (or be empty)
+    // 🍼 MIGRATED: Check for any security provider in aliases
+    // All should potentially return security providers (or be empty)
     // This tests the inference logic
     assert!(
-        security_providers.contains(&"beardog".to_string())
-            || encryption_providers.contains(&"beardog".to_string())
-            || auth_providers.contains(&"beardog".to_string())
+        security_providers.iter().any(|p| p.contains("security"))
+            || encryption_providers.iter().any(|p| p.contains("security"))
+            || auth_providers.iter().any(|p| p.contains("security"))
             || (security_providers.is_empty()
                 && encryption_providers.is_empty()
                 && auth_providers.is_empty())
@@ -319,11 +335,12 @@ async fn test_adapter_capability_aliases() {
 }
 
 #[test]
-fn test_primal_type_debug() {
+fn test_primal_type_debug() -> SongbirdResult<()> {
     let primal_type = PrimalType::Security;
     let debug_str = format!("{primal_type:?}");
 
     assert!(debug_str.contains("Security"));
+    Ok(())
 }
 
 #[tokio::test]
@@ -338,10 +355,11 @@ async fn test_adapter_with_disabled_network_discovery() {
 
     let adapter = UniversalCapabilityAdapter::new(config);
 
+    // 🍼 MIGRATED: Check for any security provider with disabled network discovery
     // Should still work with env-based discovery
-    env::set_var("BEARDOG_ENDPOINT", "http://localhost:8081");
+    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
     let providers = adapter.find_capability_providers("security").await;
-    assert!(providers.contains(&"beardog".to_string()) || providers.is_empty());
+    assert!(providers.iter().any(|p| p.contains("security")) || providers.is_empty());
 
     // Clean up
     env::remove_var("BEARDOG_ENDPOINT");

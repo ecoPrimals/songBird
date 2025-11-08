@@ -2,6 +2,8 @@
 //!
 //! Additional configuration validation and edge case tests
 
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 
 // ============================================================================
@@ -30,7 +32,8 @@ fn test_ip_address_format() {
 fn test_hostname_validation_rules() {
     let valid_hostname = "my-service.example.com";
 
-    assert!(!valid_hostname.is_empty());
+    // Test hostname validation rules
+    assert_eq!(valid_hostname, "my-service.example.com");
     assert!(valid_hostname.len() <= 253); // RFC 1035
     assert!(!valid_hostname.starts_with('-'));
     assert!(!valid_hostname.ends_with('-'));
@@ -112,7 +115,7 @@ fn test_backoff_strategy_validation() {
 
     let mut current_delay = base_delay;
     for _ in 0..5 {
-        current_delay = std::cmp::min(current_delay * multiplier as u64, max_delay);
+        current_delay = std::cmp::min(current_delay * u64::from(multiplier), max_delay);
     }
 
     assert!(current_delay <= max_delay);
@@ -148,7 +151,7 @@ fn test_worker_thread_limits() {
 
 #[test]
 fn test_api_path_format() {
-    let valid_paths = vec!["/api/v1/health", "/api/v2/metrics", "/health", "/ready"];
+    let valid_paths = ["/api/v1/health", "/api/v2/metrics", "/health", "/ready"];
 
     assert!(valid_paths.iter().all(|p| p.starts_with('/')));
     assert!(valid_paths.iter().all(|p| !p.ends_with('/')));
@@ -170,7 +173,7 @@ fn test_url_scheme_validation() {
     let valid_schemes = vec!["http", "https", "ws", "wss"];
 
     for scheme in &valid_schemes {
-        let url = format!("{}://example.com", scheme);
+        let url = format!("{scheme}://example.com");
         assert!(url.starts_with(*scheme));
     }
 }
@@ -190,10 +193,10 @@ fn test_url_completeness() {
 
 #[test]
 fn test_environment_names() {
-    let valid_environments = vec!["development", "staging", "production"];
+    let valid_environments = ["development", "staging", "production"];
 
     assert!(valid_environments.contains(&"production"));
-    assert!(!valid_environments.is_empty());
+    assert_eq!(valid_environments.len(), 3);
 }
 
 #[test]
@@ -211,25 +214,29 @@ fn test_environment_specific_settings() {
 // ============================================================================
 
 #[test]
-fn test_log_level_hierarchy() {
-    let levels = vec!["error", "warn", "info", "debug", "trace"];
+fn test_log_level_hierarchy() -> SongbirdResult<()> {
+    let levels = ["error", "warn", "info", "debug", "trace"];
 
     assert_eq!(levels.len(), 5);
     assert!(levels[0] == "error"); // Most critical
     assert!(levels[4] == "trace"); // Most verbose
+    Ok(())
 }
 
 #[test]
-fn test_log_level_filtering() {
+fn test_log_level_filtering() -> SongbirdResult<()> {
     let current_level = "info";
-    let levels = vec!["error", "warn", "info", "debug", "trace"];
+    let levels = ["error", "warn", "info", "debug", "trace"];
 
-    let current_index = levels.iter().position(|&l| l == current_level).unwrap();
+    let current_index = levels.iter().position(|&l| l == current_level).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     let enabled_levels = &levels[..=current_index];
 
     assert!(enabled_levels.contains(&"error"));
     assert!(enabled_levels.contains(&"warn"));
     assert!(enabled_levels.contains(&"info"));
+    Ok(())
 }
 
 // ============================================================================
@@ -247,7 +254,7 @@ fn test_feature_flag_boolean() {
 #[test]
 fn test_feature_flag_dependencies() {
     let base_feature = true;
-    let dependent_feature = base_feature && true;
+    let dependent_feature = base_feature;
 
     assert!(dependent_feature);
 }
@@ -283,7 +290,7 @@ fn test_metrics_retention() {
 #[test]
 fn test_tls_version_validation() {
     let min_tls_version = "1.2";
-    let supported_versions = vec!["1.2", "1.3"];
+    let supported_versions = ["1.2", "1.3"];
 
     assert!(supported_versions.contains(&min_tls_version));
 }

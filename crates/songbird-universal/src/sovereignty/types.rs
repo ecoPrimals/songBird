@@ -194,7 +194,7 @@ pub enum SecurityLevel {
 }
 
 /// Sovereignty level classification
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SovereigntyLevel {
     /// Fully sovereign - complete autonomy and control
     FullySovereign,
@@ -288,6 +288,10 @@ pub enum FederationCapabilityType {
     DataReplication,
     /// Load distribution capability
     LoadDistribution,
+    /// Health monitoring capability
+    HealthMonitoring,
+    /// Route optimization capability
+    RouteOptimization,
 }
 
 /// Performance characteristics
@@ -299,6 +303,16 @@ pub struct PerformanceCharacteristics {
     pub throughput_ops_per_sec: f64,
     /// Reliability score (0.0 to 1.0)
     pub reliability_score: f64,
+}
+
+impl Default for PerformanceCharacteristics {
+    fn default() -> Self {
+        Self {
+            latency_ms: 0.0,
+            throughput_ops_per_sec: 0.0,
+            reliability_score: 1.0,
+        }
+    }
 }
 
 /// Network effect type
@@ -340,7 +354,7 @@ pub enum SovereigntyRiskType {
 }
 
 /// Risk severity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RiskSeverity {
     /// Critical severity - immediate action required
     Critical,

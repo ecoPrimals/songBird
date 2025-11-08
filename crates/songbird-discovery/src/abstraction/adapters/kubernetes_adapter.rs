@@ -1,8 +1,11 @@
 //! # Kubernetes Provider Adapter
 //!
 //! Provides Kubernetes service discovery using the universal provider pattern
+//!
+//! # Native Async Traits (Rust 1.75+)
+//! Uses native async fn in traits for high-performance K8s integration
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
 use futures::stream::{self, Stream};
 use std::any::Any;
 use std::collections::HashMap;
@@ -23,7 +26,6 @@ type Result<T> = songbird_types::SongbirdResult<T>;
 /// Factory for creating Kubernetes providers from configuration
 pub struct KubernetesProviderFactory;
 
-#[async_trait]
 impl ProviderFactory for KubernetesProviderFactory {
     fn provider_type(&self) -> &str {
         "kubernetes"
@@ -124,7 +126,6 @@ impl KubernetesProviderAdapter {
     }
 }
 
-#[async_trait]
 impl DiscoveryProvider for KubernetesProviderAdapter {
     fn metadata(&self) -> &ProviderMetadata {
         &self.metadata

@@ -3,6 +3,7 @@
 use super::core::{RegistryConfig, ServiceRegistry};
 use anyhow::Result;
 use songbird_config::{
+    capability_endpoints, // 🍼 NEW: Capability-based discovery
     universal_primals::{
         AuthenticationMethod, LoadBalancingStrategy, PrimalAuthentication, PrimalCapability,
         PrimalConfiguration, PrimalEndpoint, QosMetrics,
@@ -13,8 +14,12 @@ use songbird_config::{
 //     canonical_federation::CanonicalFederation)
 // }; // Temporarily disabled - complex type mismatches need resolution
 // use songbird_network::gaming::GamingManager; // Temporarily disabled - gaming module not available
+use songbird_network_federation::service_registry::FederatedServiceRegistry;
+use songbird_network_federation::state::{FederationState, NodeRegistration};
+use songbird_network_federation::{FederationConfig, FederationCoordinator};
 use songbird_observability::ObservabilityManager;
 // use songbird_security::UniversalSecurityIntegration; // Temporarily disabled for consolidation
+use songbird_types::SafeEnv;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -27,6 +32,10 @@ pub struct SongbirdOrchestrator {
     _service_registry: Arc<ServiceRegistry>,
     // gaming_manager: Arc<GamingManager>, // Temporarily disabled - gaming module not available
     // federation_manager: Arc<CanonicalFederation>, // Temporarily disabled
+    federation_coordinator: Option<Arc<FederationCoordinator>>,
+    federation_config: Option<FederationConfig>,
+    federation_state: Arc<FederationState>,
+    federated_service_registry: Arc<FederatedServiceRegistry>,
     observability_manager: Arc<ObservabilityManager>,
     // security_integration: Arc<UniversalSecurityIntegration>, // Temporarily disabled
     shutdown_signal: tokio::sync::broadcast::Receiver<()>,
@@ -34,6 +43,70 @@ pub struct SongbirdOrchestrator {
 }
 
 impl SongbirdOrchestrator {
+    /// Detect primary network interface IP address
+    fn detect_primary_ip() -> Option<String> {
+        use std::net::{IpAddr, UdpSocket};
+
+        // Try to detect by creating a UDP socket to a public DNS server
+        // This doesn't actually send data, just determines which interface would be used
+        if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
+            if matches!(socket.connect("8.8.8.8:80"), Ok(())) {
+                if let Ok(addr) = socket.local_addr() {
+                    let ip = addr.ip();
+                    // Only return if it's a real IP (not 0.0.0.0 or loopback)
+                    if !ip.is_loopback() && !ip.is_unspecified() {
+                        info!("🌐 Detected primary network IP: {}", ip);
+                        return Some(ip.to_string());
+                    }
+                }
+            }
+        }
+
+        // Fallback: Try to get from network interfaces
+        #[cfg(target_os = "linux")]
+        {
+            use std::process::Command;
+
+            // Try ip command first
+            if let Ok(output) = Command::new("ip").args(["route", "get", "1.1.1.1"]).output() {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    // Parse output like: "1.1.1.1 via X.X.X.X dev eth0 src Y.Y.Y.Y"
+                    for line in stdout.lines() {
+                        if let Some(src_pos) = line.find(" src ") {
+                            let after_src = &line[src_pos + 5..];
+                            if let Some(ip_str) = after_src.split_whitespace().next() {
+                                if let Ok(ip) = ip_str.parse::<IpAddr>() {
+                                    if !ip.is_loopback() && !ip.is_unspecified() {
+                                        info!("🌐 Detected primary network IP: {}", ip);
+                                        return Some(ip.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback to hostname -I
+            if let Ok(output) = Command::new("hostname").arg("-I").output() {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    // Get first non-loopback IP
+                    for ip_str in stdout.split_whitespace() {
+                        if let Ok(ip) = ip_str.parse::<IpAddr>() {
+                            if !ip.is_loopback() && !ip.is_unspecified() {
+                                info!("🌐 Detected primary network IP: {}", ip);
+                                return Some(ip.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        warn!("⚠️  Could not detect primary network IP, using fallback");
+        None
+    }
+
     /// Create new orchestrator instance
     pub async fn new(config: SongbirdConfig) -> Result<Self> {
         let (shutdown_sender, shutdown_signal) = tokio::sync::broadcast::channel(1);
@@ -66,7 +139,82 @@ impl SongbirdOrchestrator {
         // Initialize observability manager (no parameters)
         let observability_manager = Arc::new(ObservabilityManager::new());
 
+        // Initialize federation (if enabled)
+        let federation_state = Arc::new(FederationState::new());
+        let federated_service_registry = Arc::new(FederatedServiceRegistry::new());
+        let (federation_coordinator, federation_config) =
+            if SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false)
+            {
+                info!("🌐 Federation mode enabled");
+
+                // Build self registration
+                let self_registration = NodeRegistration {
+                    node_id: SafeEnv::get_or_default(
+                        "SONGBIRD_NODE_ID",
+                        uuid::Uuid::new_v4().to_string()
+                    ),
+                    node_name: SafeEnv::get_or_default("SONGBIRD_NODE_NAME", {
+                        hostname::get()
+                            .ok()
+                            .and_then(|h| h.into_string().ok())
+                            .unwrap_or_else(|| "unknown".to_string())
+                    }),
+                    node_address: format!(
+                        "{}:{}",
+                        SafeEnv::get_or_default("SONGBIRD_NODE_ADDRESS", 
+                            Self::detect_primary_ip()
+                                .unwrap_or_else(|| "127.0.0.1".to_string())),
+                        SafeEnv::get_or_default("SONGBIRD_PORT",
+                            songbird_config::defaults::ports::orchestrator_port().to_string()
+                        )
+                    ),
+                    capabilities: vec!["orchestrator".to_string()],
+                    cpu_cores: num_cpus::get(),
+                    memory_gb: {
+                        #[cfg(target_os = "linux")]
+                        {
+                            (sysinfo::System::new_all().total_memory() / (1024 * 1024 * 1024))
+                                as usize
+                        }
+                        #[cfg(not(target_os = "linux"))]
+                        {
+                            16 // Fallback
+                        }
+                    },
+                    gpu_model: Self::detect_gpu(),
+                    storage_gb: Self::detect_storage_capacity(),
+                    status: songbird_network_federation::state::NodeStatus::Active,
+                    joined_at: chrono::Utc::now(),
+                    last_heartbeat: chrono::Utc::now(),
+                };
+
+                // Create federation config
+                let config = FederationConfig {
+                    enabled: true,
+                    bootstrap_address: SafeEnv::get_required("SONGBIRD_BOOTSTRAP_ADDRESS").ok(),
+                    self_registration: Some(self_registration),
+                    heartbeat_interval_secs: 30,
+                    node_timeout_secs: 60,
+                };
+
+                // Register self if we have bootstrap
+                if let Some(ref bootstrap) = config.bootstrap_address {
+                    info!("🔗 Will join federation via bootstrap: {}", bootstrap);
+                }
+
+                // Create coordinator with state
+                let coordinator =
+                    Arc::new(FederationCoordinator::with_state(Arc::clone(&federation_state)));
+
+                (Some(coordinator), Some(config))
+            } else {
+                info!("🏠 Running in standalone mode (federation disabled)");
+                (None, None)
+            };
+
         // Initialize universal security integration using primal registry
+        #[allow(clippy::branches_sharing_code)]
+        // Temporary: both branches return placeholder until security integration is re-enabled
         let security_integration = if let Some(security_primal) =
             config.primal_registry.as_ref().and_then(|registry| {
                 registry
@@ -81,49 +229,66 @@ impl SongbirdOrchestrator {
             // Arc::new(UniversalSecurityIntegration::new(security_primal.clone().await?) // Temporarily disabled
             Arc::new(())
         } else {
-            // Fallback: create a basic security primal configuration if none configured
-            warn!("⚠️  No security primal configured, creating basic BearDog integration");
-            // Types already imported at module level
+            // 🍼 MIGRATED: Capability-based security discovery (was hardcoded "beardog")
+            warn!("⚠️  No security primal configured, attempting capability-based discovery");
 
-            let mut beardog_primal =
-                PrimalConfiguration::new_template("beardog", "BearDog Security (Fallback)");
-            beardog_primal.enabled = true;
-            beardog_primal.endpoint = PrimalEndpoint {
-                primary_url: std::env::var("BEARDOG_ENDPOINT").unwrap_or_else(|_| {
-                    format!(
-                        "http://{}:{}",
-                        std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
-                            songbird_config::constants::network::DEFAULT_HOST.to_string()
-                        }),
-                        std::env::var("SONGBIRD_SECURITY_PORT")
-                            .unwrap_or_else(|_| "8443".to_string())
+            // Try to discover security capability dynamically
+            let security_endpoint = match capability_endpoints::get_capability_endpoint("security")
+                .await
+            {
+                Ok(endpoint) => endpoint,
+                Err(_) => {
+                    // Final fallback: use environment or default
+                    SafeEnv::get_required("CAPABILITY_SECURITY_ENDPOINT").unwrap_or_else(|_| {
+                        warn!("💡 No security capability found. Set CAPABILITY_SECURITY_ENDPOINT environment variable");
+                        format!(
+                            "http://{}:{}",
+                            SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS",
+                                songbird_config::constants::network::DEFAULT_HOST.to_string()
+                        ),
+                        SafeEnv::get_or_default("CAPABILITY_SECURITY_PORT",
+                            SafeEnv::get_or_default("SONGBIRD_SECURITY_PORT",
+                                songbird_config::defaults::ports::beardog_port().to_string())
+                        )
                     )
-                }),
+                    })
+                }
+            };
+
+            info!("🔐 Using security capability at: {}", security_endpoint);
+
+            // Create capability-based configuration (maintaining compatibility)
+            let mut security_primal =
+                PrimalConfiguration::new_template("security", "Security Capability Provider");
+            security_primal.enabled = true;
+            security_primal.endpoint = PrimalEndpoint {
+                primary_url: security_endpoint,
                 fallback_urls: vec![],
                 use_tls: true,
                 custom_headers: HashMap::new(),
                 load_balancing: LoadBalancingStrategy::RoundRobin,
             };
-            beardog_primal.authentication = PrimalAuthentication {
+            security_primal.authentication = PrimalAuthentication {
                 method: AuthenticationMethod::ApiKey,
                 credentials: {
                     let mut creds = HashMap::new();
-                    let api_key = std::env::var("BEARDOG_API_KEY")
+                    let api_key = SafeEnv::get_required("CAPABILITY_SECURITY_API_KEY")
+                        .or_else(|_| SafeEnv::get_required("BEARDOG_API_KEY")) // Backward compatibility
                         .unwrap_or_else(|_| "development_key".to_string());
                     creds.insert("api_key".to_string(), serde_json::Value::String(api_key));
                     creds
                 },
                 token_refresh: None,
             };
-            beardog_primal.capabilities = vec![PrimalCapability {
+            security_primal.capabilities = vec![PrimalCapability {
                 capability_type: "security".to_string(),
                 version: "1.0".to_string(),
                 parameters: HashMap::new(),
                 qos_metrics: QosMetrics::default(),
             }];
 
-            // Arc::new(UniversalSecurityIntegration::new(beardog_primal).await?) // Temporarily disabled
-            Arc::new(())
+            // Arc::new(UniversalSecurityIntegration::new(security_primal).await?) // Temporarily disabled
+            Arc::new(()) // Placeholder for security integration
         };
 
         Ok(Self {
@@ -131,11 +296,27 @@ impl SongbirdOrchestrator {
             _service_registry: service_registry,
             // gaming_manager, // Temporarily disabled
             // federation_manager, // Temporarily disabled
+            federation_coordinator,
+            federation_config,
+            federation_state,
+            federated_service_registry,
             observability_manager,
             // security_integration, // Temporarily disabled
             shutdown_signal,
             shutdown_sender,
         })
+    }
+
+    /// Get federation state reference
+    #[must_use]
+    pub fn federation_state(&self) -> &Arc<FederationState> {
+        &self.federation_state
+    }
+
+    /// Get federated service registry reference
+    #[must_use]
+    pub fn federated_service_registry(&self) -> &Arc<FederatedServiceRegistry> {
+        &self.federated_service_registry
     }
 
     /// Get configuration reference
@@ -160,6 +341,22 @@ impl SongbirdOrchestrator {
         // self.federation_manager.start(&federation_config).await?; // Temporarily disabled
         self.observability_manager.start().await?;
 
+        // Start federation coordinator (if enabled)
+        if let (Some(ref coordinator), Some(ref config)) =
+            (&self.federation_coordinator, &self.federation_config)
+        {
+            info!("🌐 Starting federation coordinator...");
+            let coordinator_clone = Arc::clone(coordinator);
+            let config_clone = config.clone();
+            tokio::spawn(async move {
+                if let Err(e) = coordinator_clone.coordinate(&config_clone).await {
+                    error!("❌ Federation coordination error: {}", e);
+                } else {
+                    info!("✅ Federation coordinator started successfully");
+                }
+            });
+        }
+
         // Initialize real BearDog security integration
         info!("🐕 Initializing BearDog security integration...");
         // Temporarily disabled security integration initialization
@@ -170,7 +367,55 @@ impl SongbirdOrchestrator {
         // Start health monitoring
         self.start_health_monitoring().await?;
 
+        // Start HTTP server with federation API
+        self.start_http_server().await?;
+
         info!("✅ Songbird Orchestrator started successfully");
+        Ok(())
+    }
+
+    /// Start HTTP server with federation API
+    async fn start_http_server(&self) -> Result<()> {
+        use axum::Router;
+        use std::net::SocketAddr;
+
+        let bind_address =
+            SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0");
+        let port = SafeEnv::get_port("SONGBIRD_PORT",
+            songbird_config::defaults::ports::orchestrator_port());
+
+        let addr: SocketAddr = format!("{bind_address}:{port}").parse()?;
+
+        // Build the app with federation routes
+        let app = Router::new()
+            .nest(
+                "/api/federation",
+                crate::server::federation_api::federation_routes(
+                    Arc::clone(&self.federation_state),
+                    Arc::clone(&self.federated_service_registry),
+                ),
+            )
+            .route("/health", axum::routing::get(|| async { "OK" }));
+
+        info!("🌐 Starting HTTP server on {}", addr);
+
+        // Spawn server in background
+        tokio::spawn(async move {
+            let listener = match tokio::net::TcpListener::bind(addr).await {
+                Ok(l) => l,
+                Err(e) => {
+                    error!("❌ Failed to bind HTTP server: {}", e);
+                    return;
+                }
+            };
+
+            info!("✅ HTTP server listening on {}", addr);
+
+            if let Err(e) = axum::serve(listener, app).await {
+                error!("❌ HTTP server error: {}", e);
+            }
+        });
+
         Ok(())
     }
 
@@ -352,11 +597,93 @@ impl SongbirdOrchestrator {
     pub async fn start_web_dashboard(&self) -> Result<()> {
         info!("🌐 Starting web dashboard...");
         info!(
-            "✅ Web dashboard would start on http://{}:8080",
-            songbird_config::constants::default_bind_address()
+            "✅ Web dashboard would start on http://{}:{}",
+            songbird_config::constants::default_bind_address(),
+            songbird_config::defaults::ports::orchestrator_port()
         );
         info!("   (Dashboard implementation available but disabled for now)");
         Ok(())
+    }
+
+    /// Detect GPU model if available
+    fn detect_gpu() -> Option<String> {
+        // Try to detect GPU via multiple methods
+
+        // Method 1: Try nvidia-smi for NVIDIA GPUs
+        if let Ok(output) = std::process::Command::new("nvidia-smi")
+            .arg("--query-gpu=name")
+            .arg("--format=csv,noheader")
+            .output()
+        {
+            if output.status.success() {
+                if let Ok(gpu_name) = String::from_utf8(output.stdout) {
+                    let gpu_name = gpu_name.trim().to_string();
+                    if !gpu_name.is_empty() {
+                        return Some(gpu_name);
+                    }
+                }
+            }
+        }
+
+        // Method 2: Try lspci for any GPU
+        #[cfg(target_os = "linux")]
+        if let Ok(output) = std::process::Command::new("lspci").output() {
+            if output.status.success() {
+                if let Ok(lspci_output) = String::from_utf8(output.stdout) {
+                    for line in lspci_output.lines() {
+                        if line.to_lowercase().contains("vga") || line.to_lowercase().contains("3d")
+                        {
+                            // Extract GPU name from lspci output
+                            if let Some(gpu_part) = line.split(':').nth(2) {
+                                return Some(gpu_part.trim().to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Method 3: Check environment variable override
+        SafeEnv::get_required("GPU_MODEL").ok()
+    }
+
+    /// Detect storage capacity in GB
+    fn detect_storage_capacity() -> Option<usize> {
+        // Try to detect storage via multiple methods
+
+        // Method 1: Try to read from /proc/meminfo or df (Linux)
+        #[cfg(target_os = "linux")]
+        {
+            if let Ok(output) = std::process::Command::new("df").arg("-BG").arg("/").output() {
+                if output.status.success() {
+                    if let Ok(df_output) = String::from_utf8(output.stdout) {
+                        // Parse df output: find the root filesystem line
+                        for line in df_output.lines().skip(1) {
+                            let parts: Vec<&str> = line.split_whitespace().collect();
+                            if parts.len() >= 2 {
+                                // Second column is total size
+                                if let Some(size_str) = parts.get(1) {
+                                    // Remove 'G' suffix and parse
+                                    let size_gb = size_str.trim_end_matches('G');
+                                    if let Ok(size) = size_gb.parse::<usize>() {
+                                        return Some(size);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Method 2: Environment variable override
+        let storage = SafeEnv::get_usize("STORAGE_GB", 0);
+        if storage > 0 {
+            return Some(storage);
+        }
+
+        // Method 3: Default fallback based on available disk space
+        None
     }
 }
 

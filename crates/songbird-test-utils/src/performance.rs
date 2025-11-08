@@ -2,7 +2,7 @@
 ///
 /// Provides benchmarking, performance measurement, and load testing
 /// utilities for performance-critical components.
-use crate::canonical_test_framework::TestResult;
+use songbird_types::errors::SongbirdResult;
 use songbird_types::SongbirdError;
 use std::time::{Duration, Instant};
 
@@ -108,10 +108,10 @@ pub async fn benchmark_async<F, Fut, T>(
     name: &str,
     iterations: usize,
     mut operation: F,
-) -> TestResult<PerformanceMeasurement>
+) -> SongbirdResult<PerformanceMeasurement>
 where
     F: FnMut() -> Fut,
-    Fut: std::future::Future<Output = TestResult<T>>,
+    Fut: std::future::Future<Output = SongbirdResult<T>>,
 {
     let mut measurement = PerformanceMeasurement::new(name);
 
@@ -138,9 +138,9 @@ pub fn benchmark_sync<F, T>(
     name: &str,
     iterations: usize,
     mut operation: F,
-) -> TestResult<PerformanceMeasurement>
+) -> SongbirdResult<PerformanceMeasurement>
 where
-    F: FnMut() -> TestResult<T>,
+    F: FnMut() -> SongbirdResult<T>,
 {
     let mut measurement = PerformanceMeasurement::new(name);
 
@@ -190,10 +190,10 @@ impl LoadTester {
         &self,
         name: &str,
         operation: F,
-    ) -> TestResult<LoadTestResults>
+    ) -> SongbirdResult<LoadTestResults>
     where
         F: Fn() -> Fut + Send + Sync + Clone + 'static,
-        Fut: std::future::Future<Output = TestResult<T>> + Send + 'static,
+        Fut: std::future::Future<Output = SongbirdResult<T>> + Send + 'static,
         T: Send + 'static,
     {
         let mut results = LoadTestResults::new(name);

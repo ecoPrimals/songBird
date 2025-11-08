@@ -1,57 +1,57 @@
 //! Storage configuration
 //!
-//! **MIGRATION COMPLETE**: This module now uses the unified configuration system.
-//! All configuration types have been migrated to `songbird_config::unified`.
+//! **MIGRATION COMPLETE**: This module now uses the canonical configuration system.
+//! All configuration types have been migrated to `songbird_config::canonical`.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 
 // ============================================================================
-// UNIFIED CONFIGURATION RE-EXPORTS
+// CANONICAL CONFIGURATION RE-EXPORTS
 // ============================================================================
 
-/// Universal storage configuration - **MIGRATED TO UNIFIED**
+/// Universal storage configuration - **MIGRATED TO CANONICAL**
 ///
-/// This re-exports the unified storage configuration from songbird_config.
-/// The migration to songbird_config::unified is complete.
+/// This re-exports the canonical storage configuration from songbird_config.
+/// The migration to songbird_config::canonical is complete.
 pub use songbird_config::unified::primals::UniversalPrimalsConfig as UniversalStorageConfig;
 
-/// Retry configuration - **MIGRATED TO UNIFIED**
+/// Retry configuration - **MIGRATED TO CANONICAL**
 ///
-/// This re-exports the unified retry configuration.
-/// The migration to songbird_config::unified is complete.
-pub use songbird_config::unified::robustness::RetryConfig;
+/// This re-exports the canonical retry configuration.
+/// The migration to songbird_config::canonical is complete.
+pub use songbird_config::canonical::resilience::RetryConfig;
 
-/// Health check configuration - **MIGRATED TO UNIFIED**
+/// Health check configuration - **MIGRATED TO CANONICAL**
 ///
-/// This re-exports the unified health check configuration.
-/// The migration to songbird_config::unified is complete.
+/// This re-exports the canonical health check configuration.
+/// The migration to songbird_config::canonical is complete.
 pub use songbird_config::unified::core::HealthCheckConfig;
 
-/// Monitoring configuration - **MIGRATED TO UNIFIED**
+/// Monitoring configuration - **MIGRATED TO CANONICAL**
 ///
-/// This re-exports the unified monitoring configuration.
-/// The migration to songbird_config::unified is complete.
-pub use songbird_config::unified::observability::UnifiedObservabilityConfig as MonitoringConfig;
+/// This re-exports the canonical monitoring configuration.
+/// The migration to songbird_config::canonical is complete.
+pub use songbird_config::canonical::observability::ObservabilityConfig as MonitoringConfig;
 
-/// Security configuration - **MIGRATED TO UNIFIED**
+/// Security configuration - **MIGRATED TO CANONICAL**
 ///
-/// This re-exports the unified security configuration.
-/// The migration to songbird_config::unified is complete.
-pub use songbird_config::unified::security::UnifiedSecurityConfig as SecurityConfig;
+/// This re-exports the canonical security configuration.
+/// The migration to songbird_config::canonical is complete.
+pub use songbird_config::canonical::security::SecurityConfig;
 
-/// Access control configuration - **MIGRATED TO UNIFIED**
+/// Access control configuration - **MIGRATED TO CANONICAL**
 ///
-/// This re-exports the unified access control configuration.
-/// The migration to songbird_config::unified is complete.
-pub use songbird_config::unified::security::AccessControlConfig;
+/// This re-exports the canonical access control configuration.
+/// The migration to songbird_config::canonical is complete.
+pub use songbird_config::canonical::security::AccessControlConfig;
 
-/// Audit logging configuration - **MIGRATED TO UNIFIED**
+/// Audit logging configuration - **MIGRATED TO CANONICAL**
 ///
-/// This re-exports the unified audit configuration.
-/// The migration to songbird_config::unified is complete.
-pub use songbird_config::unified::security::AuditConfig as AuditLoggingConfig;
+/// This re-exports the canonical audit configuration.
+/// The migration to songbird_config::canonical is complete.
+pub use songbird_config::canonical::security::AuditConfig as AuditLoggingConfig;
 
 // ============================================================================
 // LEGACY COMPATIBILITY TYPES (Deprecated - Use unified config instead)

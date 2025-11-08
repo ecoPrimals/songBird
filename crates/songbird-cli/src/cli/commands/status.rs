@@ -5,7 +5,7 @@ use crate::cli::ui::{
     banner, clear_screen, error_with_suggestions, format_bytes, format_duration,
     format_health_status, format_percentage, print_info, separator, subheader, system_info, Table,
 };
-use crate::errors::{CliError, CliResult};
+use crate::errors::{CliError, SongbirdResult};
 use colored::Colorize;
 use serde_json::json;
 use std::time::Duration;
@@ -47,7 +47,7 @@ pub async fn execute_status(
     detailed: bool,
     watch: Option<u64>,
     format: OutputFormat,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     if let Some(interval) = watch {
         watch_status(detailed, interval, format).await
     } else {
@@ -60,7 +60,7 @@ pub async fn show_status(
     detailed: bool,
     watch: Option<u64>,
     format: OutputFormat,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     if let Some(interval) = watch {
         // Watch mode - continuously update status
         loop {
@@ -85,7 +85,7 @@ fn display_timestamp() {
 }
 
 /// Display status based on output format
-async fn display_status(detailed: bool, format: &OutputFormat) -> CliResult<()> {
+async fn display_status(detailed: bool, format: &OutputFormat) -> SongbirdResult<()> {
     let status = get_system_status().await?;
 
     match format {
@@ -97,7 +97,7 @@ async fn display_status(detailed: bool, format: &OutputFormat) -> CliResult<()> 
 }
 
 /// Get current system status
-async fn get_system_status() -> CliResult<SystemStatus> {
+async fn get_system_status() -> SongbirdResult<SystemStatus> {
     // This would normally query actual system components
     // For now, we'll return simulated status
     Ok(SystemStatus {
@@ -105,7 +105,7 @@ async fn get_system_status() -> CliResult<SystemStatus> {
             name: "Orchestrator".to_string(),
             status: "Running".to_string(),
             health: "Healthy".to_string(),
-            port: Some(8080),
+            port: Some(songbird_config::defaults::ports::orchestrator_port()),
             uptime: Some(Duration::from_secs(9492)), // 2h 38m 12s
             last_health_check: Some(chrono::Utc::now() - chrono::Duration::seconds(5)),
             error_count: 0,
@@ -115,7 +115,7 @@ async fn get_system_status() -> CliResult<SystemStatus> {
             name: "Discovery".to_string(),
             status: "Running".to_string(),
             health: "Healthy".to_string(),
-            port: Some(8081),
+            port: Some(songbird_config::defaults::ports::discovery_port()),
             uptime: Some(Duration::from_secs(9480)),
             last_health_check: Some(chrono::Utc::now() - chrono::Duration::seconds(3)),
             error_count: 2,
@@ -125,7 +125,7 @@ async fn get_system_status() -> CliResult<SystemStatus> {
             name: "Load Balancer".to_string(),
             status: "Running".to_string(),
             health: "Healthy".to_string(),
-            port: Some(8082),
+            port: Some(songbird_config::defaults::ports::beardog_port()),
             uptime: Some(Duration::from_secs(9475)),
             last_health_check: Some(chrono::Utc::now() - chrono::Duration::seconds(2)),
             error_count: 0,
@@ -135,7 +135,7 @@ async fn get_system_status() -> CliResult<SystemStatus> {
             name: "Monitoring".to_string(),
             status: "Running".to_string(),
             health: "Healthy".to_string(),
-            port: Some(8083),
+            port: Some(songbird_config::defaults::ports::metrics_port()),
             uptime: Some(Duration::from_secs(9470)),
             last_health_check: Some(chrono::Utc::now() - chrono::Duration::seconds(1)),
             error_count: 1,
@@ -155,7 +155,7 @@ async fn get_system_status() -> CliResult<SystemStatus> {
 }
 
 /// Display status in enhanced table format
-async fn display_table_status(status: &SystemStatus, detailed: bool) -> CliResult<()> {
+async fn display_table_status(status: &SystemStatus, detailed: bool) -> SongbirdResult<()> {
     banner("Songbird Orchestrator Status", Some("System Overview"));
 
     // Overall system status
@@ -269,7 +269,7 @@ fn display_service_details(service: &ServiceStatus) {
 }
 
 /// Display status in JSON format
-async fn display_json_status(status: &SystemStatus, detailed: bool) -> CliResult<()> {
+async fn display_json_status(status: &SystemStatus, detailed: bool) -> SongbirdResult<()> {
     let mut json_status = json!({
         "overall_status": status.orchestrator_status.health,
         "version": status.version,
@@ -315,7 +315,7 @@ fn service_to_json(service: &ServiceStatus) -> serde_json::Value {
 }
 
 /// Display status in YAML format
-async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> CliResult<()> {
+async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> SongbirdResult<()> {
     let mut yaml_status = serde_yaml::to_string(&json!({
         "overall_status": status.orchestrator_status.health,
         "version": status.version,
@@ -360,7 +360,7 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> CliResult
 }
 
 /// Display status in simple text format
-async fn display_text_status(status: &SystemStatus, detailed: bool) -> CliResult<()> {
+async fn display_text_status(status: &SystemStatus, detailed: bool) -> SongbirdResult<()> {
     println!(
         "Songbird Orchestrator Status: {}",
         format_health_status(&status.orchestrator_status.health)
@@ -387,7 +387,7 @@ async fn display_text_status(status: &SystemStatus, detailed: bool) -> CliResult
 }
 
 /// Watch status with live updates and enhanced display
-async fn watch_status(detailed: bool, interval: u64, format: OutputFormat) -> CliResult<()> {
+async fn watch_status(detailed: bool, interval: u64, format: OutputFormat) -> SongbirdResult<()> {
     banner("Songbird Status Monitor", Some("Live Updates"));
     print_info(&format!("Updating every {interval} seconds (press Ctrl+C to stop,"));
 

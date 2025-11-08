@@ -17,6 +17,10 @@ use anyhow::Result;
 use serial_test::serial;
 use songbird_config::SongbirdConfig;
 use songbird_orchestrator::SongbirdOrchestrator;
+use songbird_test_utils::network_fixtures::*;
+use songbird_test_utils::test_bind_address;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::env;
 
 // ============================================================================
@@ -64,7 +68,7 @@ fn test_environment_configuration() {
 }
 
 #[tokio::test]
-async fn test_configuration_validation() {
+async fn test_configuration_validation() -> SongbirdResult<()> {
     // Modern: Config validation through construction
     let config = SongbirdConfig::default();
 
@@ -73,6 +77,7 @@ async fn test_configuration_validation() {
     assert!(config.network.port_range.start < config.network.port_range.end);
     assert!(config.network.max_connections > 0);
     assert!(config.network.connection_timeout_ms > 0);
+    Ok(())
 }
 
 // ============================================================================
@@ -220,7 +225,7 @@ fn test_observability_configuration_structure() {
 }
 
 #[test]
-fn test_observability_defaults() {
+fn test_observability_defaults() -> SongbirdResult<()> {
     let config = SongbirdConfig::default();
 
     // Metrics should be enabled by default
@@ -228,6 +233,7 @@ fn test_observability_defaults() {
 
     // Tracing should be configured
     assert!(config.observability.tracing.enabled);
+    Ok(())
 }
 
 // ============================================================================
@@ -235,25 +241,31 @@ fn test_observability_defaults() {
 // ============================================================================
 
 #[test]
-fn test_performance_configuration() {
+fn test_performance_configuration() -> SongbirdResult<()> {
     let config = SongbirdConfig::default();
 
     // Modern: Verify PerformanceConfig
-    let perf = config.performance.expect("Performance config should exist");
+    let perf = config.performance.ok_or_else(|| {
+        SongbirdError::configuration(format!("Performance config should exist: {}", e))
+    })?;
     assert!(perf.connection_pool_size.unwrap_or(0) > 0);
     assert!(perf.request_timeout_ms.unwrap_or(0) > 0);
+    Ok(())
 }
 
 #[test]
-fn test_performance_tuning_options() {
+fn test_performance_tuning_options() -> SongbirdResult<()> {
     let config = SongbirdConfig::default();
-    let perf = config.performance.unwrap();
+    let perf = config.performance.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Zero-copy should be enabled by default
     assert!(perf.enable_zero_copy.unwrap_or(false));
 
     // Batch size should be reasonable
     assert!(perf.batch_size.unwrap_or(0) > 0);
+    Ok(())
 }
 
 // ============================================================================
@@ -371,22 +383,24 @@ async fn test_full_orchestrator_workflow() -> Result<()> {
 // ============================================================================
 
 #[test]
-fn test_config_is_clonable() {
+fn test_config_is_clonable() -> SongbirdResult<()> {
     // Modern: Config should implement Clone for flexibility
     let config1 = SongbirdConfig::default();
     let config2 = config1.clone();
 
     assert_eq!(config1.environment, config2.environment);
+    Ok(())
 }
 
 #[test]
-fn test_config_is_debug_printable() {
+fn test_config_is_debug_printable() -> SongbirdResult<()> {
     // Modern: Config should implement Debug
     let config = SongbirdConfig::default();
     let debug_str = format!("{:?}", config);
 
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("SongbirdConfig"));
+    Ok(())
 }
 
 #[test]

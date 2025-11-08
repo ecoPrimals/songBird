@@ -317,16 +317,16 @@ mod tests  {use super::*;
         let config_path = temp_dir.path().join("test_config.toml");"
         fs::write(
             &config_path,
-            r#""
+            format!(r#""
 [federation]
 mode = "leader""
 nodes = ["192.168.1.100", "192.168.1.101"]"
 timeout = 30
 
 [network]
-bind_address = "0.0.0.0:8080""
-discovery_port = 8081
-"#,"
+bind_address = "0.0.0.0:{}"
+discovery_port = {}
+"#, songbird_config::defaults::ports::orchestrator_port(), songbird_config::defaults::ports::discovery_port()).as_str(),"
         )
         .map_err(|e| SongbirdError::configuration(format!("Failed to write test configuration file: {}", e)))?;
         (temp_dir, config_path,

@@ -302,7 +302,7 @@ impl EnvironmentContext {
 } else if std: :env::var("DOCKER_HOST").is_ok() { "container_runtime".to_string();;} else  {"bare-metal".to_string();"
     let network_namespace = std: :env::var("POD_NAMESPACE")"
             .ok()
-            .or_else(|| std::env::var("DOCKER_NETWORK").ok();"
+            .or_else(|_| std::env::var("DOCKER_NETWORK").ok();"
 
         let available_discovery_methods = vec![
             "environment".to_string()),

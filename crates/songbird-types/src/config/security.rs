@@ -4,6 +4,7 @@
 //!
 //! This module consolidates all security configurations from across the codebase.
 
+use crate::SafeEnv;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -26,10 +27,7 @@ pub struct CanonicalSecurityConfig {
 impl Default for CanonicalSecurityConfig {
     fn default() -> Self {
         Self {
-            enabled: std::env::var("SONGBIRD_SECURITY_ENABLED")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(true),
+            enabled: SafeEnv::get_bool("SONGBIRD_SECURITY_ENABLED", true),
             authentication: AuthenticationConfig::default(),
             authorization: AuthorizationConfig::default(),
             encryption: EncryptionConfig::default(),
@@ -144,12 +142,8 @@ pub struct SecurityProviderConfig {
 
 impl Default for SecurityProviderConfig {
     fn default() -> Self {
-        let security_host =
-            std::env::var("SECURITY_PROVIDER_HOST").unwrap_or_else(|_| "localhost".to_string());
-        let security_port = std::env::var("SECURITY_PROVIDER_PORT")
-            .ok()
-            .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(8443);
+        let security_host = SafeEnv::get_or_default("SECURITY_PROVIDER_HOST", "localhost");
+        let security_port = SafeEnv::get_port("SECURITY_PROVIDER_PORT", 8443);
 
         Self {
             name: "default".to_string(),

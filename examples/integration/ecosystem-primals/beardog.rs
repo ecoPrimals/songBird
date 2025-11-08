@@ -116,7 +116,8 @@ impl BearDogSecurityAdapter {
     /// use songbird_universal::adapters::BearDogSecurityAdapter;
     ///
     /// // Custom endpoint
-    /// let adapter = BearDogSecurityAdapter::new("http://security-service:8081".to_string()).unwrap();
+    /// let adapter = BearDogSecurityAdapter::new(format!("http://security-service:{}", 
+    ///     songbird_config::defaults::ports::discovery_port())).unwrap();
     ///
     /// // Or use default from configuration
     /// let adapter = BearDogSecurityAdapter::new_default().unwrap();
@@ -320,11 +321,13 @@ mod tests {
     #[test]
     fn test_adapter_creation() {
         // Test uses localhost - acceptable for unit tests
-        let adapter = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
+        let port = songbird_config::defaults::ports::discovery_port();
+        let endpoint = format!("http://localhost:{}", port);
+        let adapter = BearDogSecurityAdapter::new(endpoint.clone())
             .expect("Test: adapter creation should succeed");
         assert_eq!(
             adapter.endpoint(), // Test uses localhost - acceptable for unit tests
-            "http://localhost:8081"
+            &endpoint
         );
     }
 
@@ -332,7 +335,7 @@ mod tests {
     fn test_adapter_with_timeout() {
         let adapter = BearDogSecurityAdapter::new(
             // Test uses localhost - acceptable for unit tests
-            "http://localhost:8081".to_string(),
+            format!("http://localhost:{}", songbird_config::defaults::ports::discovery_port()),
         )
         .expect("Test: adapter creation should succeed")
         .with_timeout(Duration::from_secs(10));

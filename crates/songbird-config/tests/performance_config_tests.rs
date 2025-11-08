@@ -16,6 +16,9 @@
 //! Expanding test coverage for configuration handling.
 
 use songbird_config::PerformanceConfig;
+use songbird_test_utils::test_orchestrator_port;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
 #[test]
@@ -91,7 +94,7 @@ fn test_performance_config_partial_values() {
 }
 
 #[test]
-fn test_custom_params_with_numbers() {
+fn test_custom_params_with_numbers() -> SongbirdResult<()> {
     let mut custom = HashMap::new();
     custom.insert("max_connections".to_string(), serde_json::json!(1000));
     custom.insert("timeout_seconds".to_string(), serde_json::json!(60));
@@ -109,14 +112,20 @@ fn test_custom_params_with_numbers() {
     };
 
     assert!(config.custom_params.is_some());
-    let params = config.custom_params.unwrap();
+    let params = config.custom_params.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert_eq!(params.len(), 3);
+    Ok(())
 }
 
 #[test]
-fn test_custom_params_with_strings() {
+fn test_custom_params_with_strings() -> SongbirdResult<()> {
     let mut custom = HashMap::new();
-    custom.insert("endpoint".to_string(), serde_json::json!("http://localhost:8080"));
+    custom.insert(
+        "endpoint".to_string(),
+        serde_json::json!(format!("http://localhost:{}", test_orchestrator_port())),
+    );
     custom.insert("protocol".to_string(), serde_json::json!("http"));
 
     let config = PerformanceConfig {
@@ -130,9 +139,12 @@ fn test_custom_params_with_strings() {
         custom_params: Some(custom),
     };
 
-    let params = config.custom_params.as_ref().unwrap();
+    let params = config.custom_params.as_ref().or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert!(params.contains_key("endpoint"));
     assert!(params.contains_key("protocol"));
+    Ok(())
 }
 
 #[test]
@@ -159,7 +171,12 @@ fn test_custom_params_with_booleans() {
 fn test_custom_params_with_arrays() {
     let mut custom = HashMap::new();
     custom.insert("allowed_hosts".to_string(), serde_json::json!(["host1", "host2", "host3"]));
-    custom.insert("port_ranges".to_string(), serde_json::json!([8080, 8081, 8082]));
+    let ports = vec![
+        songbird_config::defaults::ports::orchestrator_port(),
+        songbird_config::defaults::ports::discovery_port(),
+        songbird_config::defaults::ports::beardog_port(),
+    ];
+    custom.insert("port_ranges".to_string(), serde_json::json!(ports));
 
     let config = PerformanceConfig {
         buffer_pool_size: None,

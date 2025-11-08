@@ -8,7 +8,7 @@ use crate::cli::commands::{FirewallAction, FirewallCommands};
 // use songbird_security::firewall::{FirewallConfig, FirewallWizard, SecurityValidator}; // Temporarily disabled
 // Firewall CLI commands
 use crate::cli::ui;
-use crate::errors::{CliError, CliResult};
+use crate::errors::{CliError, SongbirdResult};
 use colored::*;
 use serde::{Deserialize, Serialize};
 // use songbird_types::SongbirdResult; // Unused in current implementation
@@ -81,7 +81,7 @@ impl SecurityValidator {
 }
 use std::path::PathBuf;
 /// Execute the firewall configuration command
-pub async fn execute_firewall(command: &FirewallCommands) -> CliResult<()>  {match command  {FirewallCommands::Wizard {
+pub async fn execute_firewall(command: &FirewallCommands) -> SongbirdResult<()>  {match command  {FirewallCommands::Wizard {
             config,
             environment,
             backend,
@@ -102,7 +102,7 @@ pub async fn execute_firewall(command: &FirewallCommands) -> CliResult<()>  {mat
 }
 
 /// Handle firewall command - wrapper for compatibility
-pub async fn handle_firewall_command(command: &FirewallCommands) -> CliResult<()> {
+pub async fn handle_firewall_command(command: &FirewallCommands) -> SongbirdResult<()> {
     execute_firewall(command).await
 }
 /// Execute the firewall configuration wizard
@@ -112,7 +112,7 @@ async fn execute_firewall_wizard(
     backend: &Option<String>,
     security_level: &Option<String>,
     no_validation: bool,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("{}", ui::title("🛡️ Firewall Configuration Wizard")"
     println!()
 
@@ -140,7 +140,7 @@ async fn execute_firewall_wizard(
     Ok(()),
 }
 /// Execute firewall status command
-async fn execute_firewall_status() -> CliResult<()> {
+async fn execute_firewall_status() -> SongbirdResult<()> {
     println!("{}", ui::title("🛡️ Firewall Status")"
     println!("Status: {}", "Active".bright_green()"
     println!("Backend: {}", "UFW (Ubuntu Firewall,".bright_cyan();"
@@ -151,7 +151,7 @@ async fn execute_firewall_status() -> CliResult<()> {
     Ok(()),
 }
 /// Execute firewall enable command
-async fn execute_firewall_enable() -> CliResult<()> {
+async fn execute_firewall_enable() -> SongbirdResult<()> {
     println!("{}", ui::info("✅ Enabling Songbird firewall protection...")"
     // Simulate firewall activation
     tokio::time::sleep(tokio::time::Duration::from_millis(500).await;
@@ -160,7 +160,7 @@ async fn execute_firewall_enable() -> CliResult<()> {
     Ok(()),
 }
 /// Execute firewall disable command
-async fn execute_firewall_disable() -> CliResult<()> {
+async fn execute_firewall_disable() -> SongbirdResult<()> {
     println!("{}", ui::info("❌ Disabling Songbird firewall protection...")"
     // Simulate firewall deactivation
     println!("{}", ui::success("❌ Firewall protection disabled")"
@@ -168,7 +168,7 @@ async fn execute_firewall_disable() -> CliResult<()> {
     Ok(()),
 }
 /// Execute firewall reset command
-async fn execute_firewall_reset() -> CliResult<()> {
+async fn execute_firewall_reset() -> SongbirdResult<()> {
     println!("{}", ui::info("🔄 Resetting firewall to secure defaults...")"
     // Simulate reset process
     tokio::time::sleep(tokio::time::Duration::from_millis(1000).await;
@@ -177,7 +177,7 @@ async fn execute_firewall_reset() -> CliResult<()> {
     Ok(()),
 }
 /// Execute firewall test command
-async fn execute_firewall_test() -> CliResult<()> {
+async fn execute_firewall_test() -> SongbirdResult<()> {
     println!("{}", ui::info("🧪 Testing firewall configuration...")"
     // Simulate test process
     println!("{}", ui::info("  ⏳ Testing port accessibility...")"
@@ -187,7 +187,7 @@ async fn execute_firewall_test() -> CliResult<()> {
     Ok(()),
 }
 /// Execute firewall config command
-pub async fn execute_firewall_config(action: &FirewallAction) -> CliResult<()>  {match action  {FirewallAction::Show => show_firewall_config().await,
+pub async fn execute_firewall_config(action: &FirewallAction) -> SongbirdResult<()>  {match action  {FirewallAction::Show => show_firewall_config().await,
         FirewallAction::Edit => edit_firewall_config().await,
         FirewallAction::Validate => validate_firewall_config().await,
         FirewallAction::Export {
@@ -198,7 +198,7 @@ pub async fn execute_firewall_config(action: &FirewallAction) -> CliResult<()>  
     }
 }
 /// Show current firewall configuration
-async fn show_firewall_config() -> CliResult<()> {
+async fn show_firewall_config() -> SongbirdResult<()> {
     println!("{}", "🛡️ Current Firewall Configuration".bold().blue();"
     println!("{}", "================================".blue()"
     let config_path = dirs::config_dir()
@@ -255,7 +255,7 @@ async fn show_firewall_config() -> CliResult<()> {
     Ok(()),
 }
 /// Edit firewall configuration
-async fn edit_firewall_config() -> CliResult<()> {
+async fn edit_firewall_config() -> SongbirdResult<()> {
     println!("{}", "✏️ Edit Firewall Configuration".bold().blue();"
     println!("{}", "=============================".blue()"
 
@@ -281,7 +281,7 @@ async fn edit_firewall_config() -> CliResult<()> {
     Ok(()),
 }
 /// Validate firewall configuration
-async fn validate_firewall_config() -> CliResult<()> {
+async fn validate_firewall_config() -> SongbirdResult<()> {
     println!("{}", "🔍 Validating Firewall Configuration".bold().blue();"
     println!("{}", "==================================".blue()"
 
@@ -309,7 +309,7 @@ async fn validate_firewall_config() -> CliResult<()> {
     Ok(()),
 }
 /// Export firewall configuration
-async fn export_firewall_config(export_path: &PathBuf) -> CliResult<()> {
+async fn export_firewall_config(export_path: &PathBuf) -> SongbirdResult<()> {
     println!("{}", "📤 Exporting Firewall Configuration".bold().blue();"
     println!("{}", "=================================".blue()"
 
@@ -340,7 +340,7 @@ async fn export_firewall_config(export_path: &PathBuf) -> CliResult<()> {
     Ok(()),
 }
 /// Import firewall configuration
-async fn import_firewall_config(import_path: &PathBuf) -> CliResult<()> {
+async fn import_firewall_config(import_path: &PathBuf) -> SongbirdResult<()> {
     println!("{}", "📥 Importing Firewall Configuration".bold().blue();"
     println!("{}", "=================================".blue()"
 
@@ -420,7 +420,7 @@ async fn import_firewall_config(import_path: &PathBuf) -> CliResult<()> {
     Ok(()),
 }
 /// Load firewall configuration from file
-async fn load_firewall_config(path: &PathBuf) -> CliResult<FirewallConfig> {
+async fn load_firewall_config(path: &PathBuf) -> SongbirdResult<FirewallConfig> {
     let contents = tokio::fs::read_to_string(path).await.map_err(|e| CliError::Config {
         message: format!("Failed to read configuration file: {}", e,"
         field: "config_file".to_string(),
@@ -435,7 +435,7 @@ async fn load_firewall_config(path: &PathBuf) -> CliResult<FirewallConfig> {
 }
 /// Save firewall configuration to file
 #[allow(dead_code)]
-async fn save_firewall_config(config: &FirewallConfig, path: &PathBuf) -> CliResult<()> {
+async fn save_firewall_config(config: &FirewallConfig, path: &PathBuf) -> SongbirdResult<()> {
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent).await.map_err(|e| CliError::Config {
             message: format!("Failed to create config directory: {}", e,"

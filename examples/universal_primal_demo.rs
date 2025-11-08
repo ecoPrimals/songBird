@@ -1,8 +1,9 @@
 use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! Universal Primal Integration Demo
 //!
-//! This example demonstrates how to use the Songbird Universal Primal Integration
-//! system to automatically discover and use BearDog for security operations.
+//! 🍼 MIGRATED: This example demonstrates capability-based discovery and integration.
+//! Services are discovered dynamically based on their capabilities (security, compute, etc.)
+//! rather than hardcoded primal names.
 
 use std::collections::HashMap;
 
@@ -11,22 +12,22 @@ use std::collections::HashMap;
     PrimalResult, SecurityLevel, UniversalPrimalRegistry,
 };
 
-/// Create a BearDog primal instance
+/// Create a security provider instance
 ///
-/// This demonstrates how to create and configure a BearDog primal for security services.
-/// BearDog provides advanced threat detection and security automation.
-fn create_beardog_primal(PrimalResult<String>) ->  {
-    // For demo purposes, return a placeholder since BearDogPrimal doesn't exist yet
-    Ok("BearDog primal placeholder".to_string())
+/// 🍼 MIGRATED: Demonstrates capability-based security provider discovery
+/// The provider offers threat detection and security automation capabilities.
+fn create_security_provider(PrimalResult<String>) ->  {
+    // For demo purposes, return a placeholder for capability-based discovery
+    Ok("Security provider instance".to_string())
 }
 
-/// Create a Squirrel primal instance
+/// Create an AI provider instance
 ///
-/// This demonstrates how to create and configure a Squirrel primal for data processing.
-/// Squirrel provides distributed data processing and analytics capabilities.
-fn create_squirrel_primal(PrimalResult<String>) ->  {
-    // For demo purposes, return a placeholder since SquirrelPrimal doesn't exist yet
-    Ok("Squirrel primal placeholder".to_string())
+/// 🍼 MIGRATED: Demonstrates capability-based AI provider discovery
+/// The provider offers distributed data processing and AI/ML capabilities.
+fn create_ai_provider(PrimalResult<String>) ->  {
+    // For demo purposes, return a placeholder for capability-based discovery
+    Ok("AI provider instance".to_string())
 }
 
 /// Demonstrate comprehensive universal primal usage
@@ -51,21 +52,22 @@ pub async fn demonstrate_universal_primal_usage(&self) -> PrimalResult<()> {
         metadata: HashMap::new(),
     };
 
-    // Create BearDog primal for security
-    let beardog_placeholder = create_beardog_primal(context.clone()).await?;
-    tracing::info!("✅ Created BearDog primal: {}", beardog_placeholder);
+    // 🍼 MIGRATED: Create capability-based providers (was primal-specific)
+    // Create security provider
+    let security_placeholder = create_security_provider(context.clone()).await?;
+    tracing::info!("✅ Created security provider: {}", security_placeholder);
 
-    // Create NestGate primal for networking
-    let _nestgate: NestGatePrimalClient = NestGatePrimalClient::new();
-    tracing::info!("✅ Created NestGate primal");
+    // Create storage provider for networking
+    let _storage: NestGatePrimalClient = NestGatePrimalClient::new();
+    tracing::info!("✅ Created storage provider");
 
-    // Create Toadstool primal for orchestration
-    let _toadstool: ToadstoolPrimal = ToadstoolPrimal::new(context.clone());
-    tracing::info!("✅ Created Toadstool primal");
+    // Create compute provider for orchestration
+    let _compute: ToadstoolPrimal = ToadstoolPrimal::new(context.clone());
+    tracing::info!("✅ Created compute provider");
 
-    // Create Squirrel primal for data processing
-    let squirrel_placeholder = create_squirrel_primal(context.clone()).await?;
-    tracing::info!("✅ Created Squirrel primal: {}", squirrel_placeholder);
+    // Create AI provider for data processing
+    let ai_placeholder = create_ai_provider(context.clone()).await?;
+    tracing::info!("✅ Created AI provider: {}", ai_placeholder);
 
     // Create universal primal registry
     let _registry = UniversalPrimalRegistry::new();
@@ -74,30 +76,31 @@ pub async fn demonstrate_universal_primal_usage(&self) -> PrimalResult<()> {
     // Test provider composition
     tracing::info!("🔧 Testing provider composition...");
 
+    // 🍼 MIGRATED: Capability-based operations (was primal-specific)
     // Simulate security scanning
-    tracing::info!("🔒 BearDog: Scanning for threats... (simulated)");
+    tracing::info!("🔒 Security Provider: Scanning for threats... (simulated)");
 
-    // Simulate network configuration
-    tracing::info!("🌐 NestGate: Configuring network routes... (simulated)");
+    // Simulate storage configuration
+    tracing::info!("💾 Storage Provider: Configuring storage... (simulated)");
 
-    // Simulate container orchestration
-    tracing::info!("📦 Toadstool: Orchestrating containers... (simulated)");
+    // Simulate compute orchestration
+    tracing::info!("💻 Compute Provider: Orchestrating workloads... (simulated)");
 
-    // Simulate data processing
-    tracing::info!("🐿️ Squirrel: Processing data streams... (simulated)");
+    // Simulate AI processing
+    tracing::info!("🤖 AI Provider: Processing data streams... (simulated)");
 
     // Demonstrate cross-primal coordination
     tracing::info!("🤝 Demonstrating cross-primal coordination...");
 
-    // Create second set of primals for load balancing
-    let beardog2_placeholder = create_beardog_primal(context.clone()).await?;
-    tracing::info!("✅ Created second BearDog primal: {}", beardog2_placeholder);
+    // 🍼 MIGRATED: Create second set of providers for load balancing
+    let security2_placeholder = create_security_provider(context.clone()).await?;
+    tracing::info!("✅ Created second security provider: {}", security2_placeholder);
 
     // Demonstrate failover capabilities
     tracing::info!("⚡ Demonstrating failover capabilities...");
 
     // Simulate primary failure and failover
-    tracing::info!("❌ Primary BearDog primal unavailable");
+    tracing::info!("❌ Primary security provider unavailable");
     tracing::info!("🔄 Failing over to secondary BearDog primal");
     tracing::info!("✅ Failover successful");
 

@@ -1,8 +1,11 @@
 //! # Static Provider Adapter
 //!
 //! Provides static service discovery using the universal provider pattern
+//!
+//! # Native Async Traits (Rust 1.75+)
+//! Uses native async fn in traits for optimal performance
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
 use std::any::Any;
 use std::collections::HashMap;
 
@@ -21,7 +24,6 @@ use std::pin::Pin;
 /// Factory for creating Static providers from configuration
 pub struct StaticProviderFactory;
 
-#[async_trait]
 impl ProviderFactory for StaticProviderFactory {
     fn provider_type(&self) -> &str {
         "static"
@@ -146,7 +148,6 @@ impl StaticProviderAdapter {
     }
 }
 
-#[async_trait]
 impl DiscoveryProvider for StaticProviderAdapter {
     fn metadata(&self) -> &ProviderMetadata {
         &self.metadata

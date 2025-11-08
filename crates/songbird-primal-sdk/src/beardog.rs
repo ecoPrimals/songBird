@@ -1,3 +1,8 @@
+#![deprecated(
+    since = "0.2.0",
+    note = "Use security_capability::SecurityCapabilityClient instead. See module docs for migration. Removal: v0.3.0 (Q2 2026)"
+)]
+
 //! # ⚠️ DEPRECATED: Legacy BearDog Primal (Hardcoded Security Service)
 //!
 //! **STATUS**: This module is deprecated. Use `security_capability_client` instead.

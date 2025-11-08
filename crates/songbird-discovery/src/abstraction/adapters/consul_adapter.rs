@@ -1,8 +1,11 @@
 //! # Consul Provider Adapter
 //!
 //! Provides Consul service discovery using the universal provider pattern
+//!
+//! # Native Async Traits (Rust 1.75+)
+//! Uses native async fn in traits for high-performance Consul integration
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
 use futures::stream::{self, Stream};
 use std::any::Any;
 use std::collections::HashMap;
@@ -23,7 +26,6 @@ type Result<T> = songbird_types::SongbirdResult<T>;
 /// Factory for creating Consul providers from configuration
 pub struct ConsulProviderFactory;
 
-#[async_trait]
 impl ProviderFactory for ConsulProviderFactory {
     fn provider_type(&self) -> &str {
         "consul"
@@ -68,7 +70,7 @@ impl ProviderFactory for ConsulProviderFactory {
     }
 
     fn default_config(&self, id: String, name: String) -> ProviderConfig {
-        use songbird_config::config::constants;
+        use songbird_config::canonical::constants;
        
         // Get configurable defaults from environment
         let consul_host = std::env::var("CONSUL_HOST")
@@ -225,7 +227,7 @@ impl ConsulProviderAdapter {
 
     /// Parse individual Consul service into ServiceInfo
     fn parse_consul_service(&self, service: &serde_json::Value) -> Option<ServiceInfo> {
-        use songbird_config::config::constants;
+        use songbird_config::canonical::constants;
         
         let id = service["ID"].as_str()?.to_string();
         let name = service["Service"].as_str().unwrap_or(&id).to_string();
@@ -270,7 +272,6 @@ impl ConsulProviderAdapter {
     }
 }
 
-#[async_trait]
 impl DiscoveryProvider for ConsulProviderAdapter {
     fn metadata(&self) -> &ProviderMetadata {
         &self.metadata
@@ -425,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_consul_provider_metadata() {
-        use songbird_config::config::constants;
+        use songbird_config::canonical::constants;
         
         let test_url = format!("http://{}:8500", constants::network::DEFAULT_HOST);
         let adapter = ConsulProviderAdapter::new_native(

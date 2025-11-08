@@ -1,9 +1,44 @@
-//! Environment-based configuration with zero hardcoded values
+//! Environment-Based Configuration (DEPRECATED)
 //!
-//! All configuration values are determined dynamically from environment)
-//! system capabilities, or calculated defaults.
+//! ⚠️ **CONSOLIDATION COMPLETE** (November 8, 2025)
+//!
+//! This module has been **fully superseded** by `canonical::environment` which contains
+//! all environment configuration types in a single, unified location.
+//!
+//! ## Migration Path (Required for v0.3.0)
+//! ```rust,ignore
+//! // ❌ OLD (deprecated - will be removed in v0.3.0):
+//! use songbird_config::config::environment::{
+//!     EnvironmentConfig,
+//!     LogConfig,
+//!     ServiceEndpoints,
+//!     ResourceLimits,
+//!     PerformanceParameters,
+//! };
+//!
+//! // ✅ NEW (use this):
+//! use songbird_config::canonical::environment::{
+//!     EnvironmentConfig,
+//!     LogConfig,
+//!     ServiceEndpoints,
+//!     ResourceLimits,
+//!     PerformanceParameters,
+//! };
+//! ```
+//!
+//! ## What Was Consolidated
+//! - All environment configuration types moved to `canonical::environment`
+//! - Eliminated ~2,200 lines of duplication across 5 files
+//! - Single import path for all environment config
+//! - Backward-compatible exports maintained
+//!
+//! **Status**: This module is maintained for backward compatibility only.  
+//! **Timeline**: Will be removed in v0.3.0 (Q2 2026)
 
-use crate::config::constants::{
+#![allow(deprecated)]
+#[deprecated(since = "0.2.0", note = "Use canonical::environment instead")]
+
+use crate::canonical::constants::{
     enable_zero_copy, get_batch_size, get_bind_address, get_buffer_pool_size,
     get_connection_timeout_ms, get_dashboard_port, get_log_level, get_max_connections,
     get_worker_threads,

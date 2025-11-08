@@ -82,6 +82,72 @@ pub enum SongbirdError {
         /// Suggested fix
         suggestion: Option<String>,
     },
+
+    /// Discovery-related errors
+    #[error("Discovery error: {message}")]
+    Discovery {
+        /// Error message
+        message: String,
+        /// Discovery backend that failed
+        backend: Option<String>,
+        /// Retry strategy hint
+        retry_strategy: Option<String>,
+    },
+
+    /// Service registry errors
+    #[error("Registry error: {message}")]
+    Registry {
+        /// Error message
+        message: String,
+        /// Service name involved
+        service_name: Option<String>,
+        /// Operation being performed
+        operation: String,
+    },
+
+    /// Load balancing errors
+    #[error("Load balancing error: {message}")]
+    LoadBalancing {
+        /// Error message
+        message: String,
+        /// Number of available instances
+        available_instances: usize,
+        /// Strategy being used
+        strategy: String,
+    },
+
+    /// Protocol-related errors
+    #[error("Protocol error: {message}")]
+    Protocol {
+        /// Error message
+        message: String,
+        /// Expected protocol version
+        expected_version: Option<String>,
+        /// Actual protocol version
+        actual_version: Option<String>,
+    },
+
+    /// Metrics collection errors
+    #[error("Metrics error: {message}")]
+    Metrics {
+        /// Error message
+        message: String,
+        /// Metric name involved
+        metric_name: Option<String>,
+        /// Operation being performed
+        operation: String,
+    },
+
+    /// Event processing errors
+    #[error("Event error: {message}")]
+    Event {
+        /// Error message
+        message: String,
+        /// Event type
+        event_type: Option<String>,
+        /// Processing stage where error occurred
+        processing_stage: Option<String>,
+    },
 }
 
 /// Security-specific error details
@@ -144,6 +210,69 @@ impl SongbirdError {
             message: message.into(),
             suggested_alternatives: Vec::new(),
             recovery_actions: Vec::new(),
+        }
+    }
+
+    /// Create a new discovery error
+    pub fn discovery(message: impl Into<String>) -> Self {
+        Self::Discovery {
+            message: message.into(),
+            backend: None,
+            retry_strategy: None,
+        }
+    }
+
+    /// Create a new registry error
+    pub fn registry(message: impl Into<String>, operation: impl Into<String>) -> Self {
+        Self::Registry {
+            message: message.into(),
+            service_name: None,
+            operation: operation.into(),
+        }
+    }
+
+    /// Create a new load balancing error
+    pub fn load_balancing(message: impl Into<String>, strategy: impl Into<String>) -> Self {
+        Self::LoadBalancing {
+            message: message.into(),
+            available_instances: 0,
+            strategy: strategy.into(),
+        }
+    }
+
+    /// Create a new protocol error
+    pub fn protocol(message: impl Into<String>) -> Self {
+        Self::Protocol {
+            message: message.into(),
+            expected_version: None,
+            actual_version: None,
+        }
+    }
+
+    /// Create a new metrics error
+    pub fn metrics(message: impl Into<String>, operation: impl Into<String>) -> Self {
+        Self::Metrics {
+            message: message.into(),
+            metric_name: None,
+            operation: operation.into(),
+        }
+    }
+
+    /// Create a new event error
+    pub fn event(message: impl Into<String>) -> Self {
+        Self::Event {
+            message: message.into(),
+            event_type: None,
+            processing_stage: None,
+        }
+    }
+
+    /// Create a new validation error
+    pub fn validation(message: impl Into<String>) -> Self {
+        Self::Validation {
+            message: message.into(),
+            field: None,
+            suggestion: None,
         }
     }
 

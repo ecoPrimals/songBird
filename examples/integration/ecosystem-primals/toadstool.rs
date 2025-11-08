@@ -126,7 +126,8 @@ impl ToadStoolMetricsAdapter {
     /// use songbird_universal::adapters::ToadStoolMetricsAdapter;
     ///
     /// // Custom endpoint
-    /// let adapter = ToadStoolMetricsAdapter::new("http://compute-service:8080".to_string()).unwrap();
+    /// let adapter = ToadStoolMetricsAdapter::new(format!("http://compute-service:{}", 
+    ///     songbird_config::defaults::ports::orchestrator_port())).unwrap();
     ///
     /// // Or use default from configuration
     /// let adapter = ToadStoolMetricsAdapter::new_default().unwrap();
@@ -167,7 +168,8 @@ impl ToadStoolMetricsAdapter {
     /// # use songbird_universal::adapters::ToadStoolMetricsAdapter;
     /// # async fn example() -> songbird_types::SongbirdResult<()> {
     /// // Test uses localhost - acceptable for unit tests
-    /// let adapter = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string()).unwrap();
+    /// let adapter = ToadStoolMetricsAdapter::new(format!("http://localhost:{}", 
+    ///     songbird_config::defaults::ports::orchestrator_port())).unwrap();
     /// let metrics = adapter.collect_metrics().await?;
     /// println!("CPU usage: {}%", metrics.cpu_usage_percent);
     /// # Ok(())
@@ -310,11 +312,13 @@ mod tests {
     #[test]
     fn test_adapter_creation() {
         // Test uses localhost - acceptable for unit tests
-        let adapter = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+        let port = songbird_config::defaults::ports::orchestrator_port();
+        let endpoint = format!("http://localhost:{}", port);
+        let adapter = ToadStoolMetricsAdapter::new(endpoint.clone())
             .expect("Test: adapter creation should succeed");
         assert_eq!(
             adapter.endpoint(), // Test uses localhost - acceptable for unit tests
-            "http://localhost:8080"
+            &endpoint
         );
     }
 
@@ -322,7 +326,7 @@ mod tests {
     fn test_adapter_with_timeout() {
         let adapter = ToadStoolMetricsAdapter::new(
             // Test uses localhost - acceptable for unit tests
-            "http://localhost:8080".to_string(),
+            format!("http://localhost:{}", songbird_config::defaults::ports::orchestrator_port()),
         )
         .expect("Test: adapter creation should succeed")
         .with_timeout(Duration::from_secs(10));

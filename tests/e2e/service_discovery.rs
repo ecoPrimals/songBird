@@ -326,7 +326,7 @@ async fn test_service_endpoint_validation() {
         name: "endpoint-test".to_string(),
         version: "1.0.0".to_string(),
         capabilities: vec!["http".to_string()],
-        endpoint: env.get_endpoint("endpoint-test", 8080),
+        endpoint: env.get_endpoint("endpoint-test", songbird_config::defaults::ports::orchestrator_port()),
         metadata: std::collections::HashMap::new(),
     };
     
@@ -335,7 +335,8 @@ async fn test_service_endpoint_validation() {
     
     // 2. Verify endpoint format
     assert!(service.endpoint.contains("://"), "Endpoint should be a valid URL");
-    assert!(service.endpoint.contains("endpoint-test") || service.endpoint.contains("8080"), 
+    let port_str = songbird_config::defaults::ports::orchestrator_port().to_string();
+    assert!(service.endpoint.contains("endpoint-test") || service.endpoint.contains(&port_str), 
            "Endpoint should reference service");
 }
 

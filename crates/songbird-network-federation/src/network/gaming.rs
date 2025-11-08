@@ -4,9 +4,14 @@
 //!
 //! This module provides gaming-specific networking functionality with support
 //! for legacy gaming protocols and modern gaming network patterns.
+//!
+//! ## Native Async Traits
+//! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
+//! No boxing overhead, better optimization, maximum gaming performance!
+
+#![allow(async_fn_in_trait)]
 
 use super::{GamingConfig, GamingHealth, NetworkStatus};
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
@@ -14,11 +19,63 @@ use std::net::SocketAddr;
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
-/// Gaming manager - handles gaming-specific networking
+/// Protocol handler enum - zero-cost dispatch instead of Box<dyn>
+#[derive(Debug)]
+pub enum ProtocolHandlerImpl {
+    Udp(UdpProtocolHandler),
+    Tcp(TcpProtocolHandler),
+    Ipx(IpxProtocolHandler),
+    DirectPlay(DirectPlayProtocolHandler),
+    NetBios(NetBiosProtocolHandler),
+}
+
+impl ProtocolHandler for ProtocolHandlerImpl {
+    fn protocol_type(&self) -> GameProtocolType {
+        match self {
+            Self::Udp(h) => h.protocol_type(),
+            Self::Tcp(h) => h.protocol_type(),
+            Self::Ipx(h) => h.protocol_type(),
+            Self::DirectPlay(h) => h.protocol_type(),
+            Self::NetBios(h) => h.protocol_type(),
+        }
+    }
+
+    async fn handle_packet(&mut self, data: &[u8], source: SocketAddr) -> SongbirdResult<Vec<u8>> {
+        match self {
+            Self::Udp(h) => h.handle_packet(data, source).await,
+            Self::Tcp(h) => h.handle_packet(data, source).await,
+            Self::Ipx(h) => h.handle_packet(data, source).await,
+            Self::DirectPlay(h) => h.handle_packet(data, source).await,
+            Self::NetBios(h) => h.handle_packet(data, source).await,
+        }
+    }
+
+    async fn initialize(&mut self) -> SongbirdResult<()> {
+        match self {
+            Self::Udp(h) => h.initialize().await,
+            Self::Tcp(h) => h.initialize().await,
+            Self::Ipx(h) => h.initialize().await,
+            Self::DirectPlay(h) => h.initialize().await,
+            Self::NetBios(h) => h.initialize().await,
+        }
+    }
+
+    async fn shutdown(&mut self) -> SongbirdResult<()> {
+        match self {
+            Self::Udp(h) => h.shutdown().await,
+            Self::Tcp(h) => h.shutdown().await,
+            Self::Ipx(h) => h.shutdown().await,
+            Self::DirectPlay(h) => h.shutdown().await,
+            Self::NetBios(h) => h.shutdown().await,
+        }
+    }
+}
+
+/// Gaming manager - handles gaming-specific networking (now with zero-cost dispatch)
 pub struct GamingManager {
     config: GamingConfig,
     active_sessions: HashMap<Uuid, GameSession>,
-    protocol_handlers: HashMap<GameProtocolType, Box<dyn ProtocolHandler>>,
+    protocol_handlers: HashMap<GameProtocolType, ProtocolHandlerImpl>,
 }
 
 impl GamingManager {
@@ -227,8 +284,7 @@ pub struct PlayerInfo {
     pub properties: HashMap<String, String>,
 }
 
-/// Protocol handler trait
-#[async_trait]
+/// Protocol handler trait - uses native async methods for zero-cost abstractions
 pub trait ProtocolHandler: Send + Sync {
     /// Get protocol type
     fn protocol_type(&self) -> GameProtocolType;
@@ -243,16 +299,16 @@ pub trait ProtocolHandler: Send + Sync {
     async fn shutdown(&mut self) -> SongbirdResult<()>;
 }
 
-/// Create a protocol handler for the given protocol type
+/// Create a protocol handler for the given protocol type (returns enum for zero-cost dispatch)
 pub fn create_protocol_handler(
     protocol: GameProtocolType,
-) -> SongbirdResult<Box<dyn ProtocolHandler>> {
+) -> SongbirdResult<ProtocolHandlerImpl> {
     match protocol {
-        GameProtocolType::UDP => Ok(Box::new(UdpProtocolHandler::new())),
-        GameProtocolType::TCP => Ok(Box::new(TcpProtocolHandler::new())),
-        GameProtocolType::IPX => Ok(Box::new(IpxProtocolHandler::new())),
-        GameProtocolType::DirectPlay => Ok(Box::new(DirectPlayProtocolHandler::new())),
-        GameProtocolType::NetBIOS => Ok(Box::new(NetBiosProtocolHandler::new())),
+        GameProtocolType::UDP => Ok(ProtocolHandlerImpl::Udp(UdpProtocolHandler::new())),
+        GameProtocolType::TCP => Ok(ProtocolHandlerImpl::Tcp(TcpProtocolHandler::new())),
+        GameProtocolType::IPX => Ok(ProtocolHandlerImpl::Ipx(IpxProtocolHandler::new())),
+        GameProtocolType::DirectPlay => Ok(ProtocolHandlerImpl::DirectPlay(DirectPlayProtocolHandler::new())),
+        GameProtocolType::NetBIOS => Ok(ProtocolHandlerImpl::NetBios(NetBiosProtocolHandler::new())),
         GameProtocolType::Custom(name) => Err(SongbirdError::Network {
             message: format!("Custom protocol '{name}' not supported"),
             interface: None,
@@ -282,7 +338,7 @@ impl UdpProtocolHandler {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ProtocolHandler for UdpProtocolHandler {
     fn protocol_type(&self) -> GameProtocolType {
         GameProtocolType::UDP
@@ -319,7 +375,7 @@ impl TcpProtocolHandler {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ProtocolHandler for TcpProtocolHandler {
     fn protocol_type(&self) -> GameProtocolType {
         GameProtocolType::TCP
@@ -356,7 +412,7 @@ impl IpxProtocolHandler {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ProtocolHandler for IpxProtocolHandler {
     fn protocol_type(&self) -> GameProtocolType {
         GameProtocolType::IPX
@@ -393,7 +449,7 @@ impl DirectPlayProtocolHandler {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ProtocolHandler for DirectPlayProtocolHandler {
     fn protocol_type(&self) -> GameProtocolType {
         GameProtocolType::DirectPlay
@@ -430,7 +486,7 @@ impl NetBiosProtocolHandler {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ProtocolHandler for NetBiosProtocolHandler {
     fn protocol_type(&self) -> GameProtocolType {
         GameProtocolType::NetBIOS

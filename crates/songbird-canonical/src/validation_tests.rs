@@ -8,6 +8,7 @@ mod tests {
     #![allow(clippy::unreadable_literal)]
 
     use crate::validation::*;
+    use songbird_types::{SongbirdError, SongbirdResult};
 
     #[test]
     fn test_validation_result_success() {
@@ -84,25 +85,25 @@ mod tests {
     }
 
     #[test]
-    fn test_validation_result_serialization() {
+    fn test_validation_result_serialization() -> SongbirdResult<()> {
         let result = ValidationResult::success();
-        let json = serde_json::to_string(&result);
-
-        assert!(json.is_ok());
-        let json_str = json.unwrap();
+        let json_str = serde_json::to_string(&result).map_err(|e| {
+            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        })?;
         assert!(json_str.contains("is_valid"));
         assert!(json_str.contains("true"));
+        Ok(())
     }
 
     #[test]
-    fn test_validation_result_deserialization() {
+    fn test_validation_result_deserialization() -> SongbirdResult<()> {
         let json = r#"{"is_valid":true,"errors":[],"warnings":[]}"#;
-        let result: Result<ValidationResult, _> = serde_json::from_str(json);
-
-        assert!(result.is_ok());
-        let val_result = result.unwrap();
+        let val_result: ValidationResult = serde_json::from_str(json).map_err(|e| {
+            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        })?;
         assert!(val_result.is_valid);
         assert!(val_result.errors.is_empty());
+        Ok(())
     }
 
     #[test]

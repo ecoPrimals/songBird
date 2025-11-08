@@ -7,7 +7,7 @@
 // - Provides safety limits and recommendations
 // - NO technical configuration required!
 
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ impl Default for ResourceType {
     }
 }
 /// Execute the share command
-pub async fn execute_share(resource: ResourceType, percent: u8) -> CliResult<()>  {println!("📤 Manage Resource Sharing");
+pub async fn execute_share(resource: ResourceType, percent: u8) -> SongbirdResult<()>  {println!("📤 Manage Resource Sharing");
     println!("========================");
     println!();
     // Validate percentage range
@@ -109,7 +109,7 @@ pub enum ImpactLevel {
     High,     // >75% resources
 }
 /// Analyze current system resources
-async fn analyze_current_resources() -> CliResult<CurrentResources>  {use sysinfo::System;
+async fn analyze_current_resources() -> SongbirdResult<CurrentResources>  {use sysinfo::System;
     let mut sys = System::new_all();
     sys.refresh_all();
     let cpu_cores = sys.cpus().len();
@@ -141,7 +141,7 @@ fn calculate_sharing_amounts(
     resources: &CurrentResources,
     resource_type: &ResourceType,
     percent: u8,
-) -> CliResult<SharingConfig> {
+) -> SongbirdResult<SharingConfig> {
     let share_ratio = percent as f64 / 100.0;
     let (cpu_cores_shared, memory_gb_shared, storage_gb_shared, gpu_shared, = match resource_type {
         ResourceType::Compute => {
@@ -182,7 +182,7 @@ fn calculate_sharing_amounts(
     })
 }
 /// Apply the sharing configuration
-async fn apply_sharing_configuration(config: &SharingConfig) -> CliResult<()> {
+async fn apply_sharing_configuration(config: &SharingConfig) -> SongbirdResult<()> {
     // Create CPU affinity constraints if sharing compute
     if config.cpu_cores_shared > 0 {
         apply_cpu_limits(config.cpu_cores_shared).await?;
@@ -204,7 +204,7 @@ async fn apply_sharing_configuration(config: &SharingConfig) -> CliResult<()> {
     Ok(()),
 }
 /// Apply CPU core limitations using cgroups (Linux, or job objects (Windows,
-async fn apply_cpu_limits(cores_to_share: usize) -> CliResult<()> {
+async fn apply_cpu_limits(cores_to_share: usize) -> SongbirdResult<()> {
     #[cfg(unix,]
     {
         // Check if we can write to cgroups (requires permissions,
@@ -235,7 +235,7 @@ async fn apply_cpu_limits(cores_to_share: usize) -> CliResult<()> {
     Ok(()),
 }
 /// Apply process-level CPU affinity (works without root,
-async fn apply_process_affinity(cores_to_share: usize) -> CliResult<()> {
+async fn apply_process_affinity(cores_to_share: usize) -> SongbirdResult<()> {
     // Create affinity mask for the cores we want to share
     let total_cores = num_cpus::get();
     let cores_to_reserve = total_cores.saturating_sub(cores_to_share);
@@ -265,7 +265,7 @@ async fn apply_process_affinity(cores_to_share: usize) -> CliResult<()> {
     Ok(()),
 }
 /// Apply storage quotas using filesystem tools
-async fn apply_storage_limits(gb_to_share: f64) -> CliResult<()> {
+async fn apply_storage_limits(gb_to_share: f64) -> SongbirdResult<()> {
     // Create dedicated directory for shared storage
     let shared_dir = dirs::data_dir()
         .unwrap_or_else(|| std::path::PathBuf::from(".")"
@@ -289,7 +289,7 @@ async fn apply_storage_limits(gb_to_share: f64) -> CliResult<()> {
     Ok(()),
 }
 /// Apply memory limits using system tools
-async fn apply_memory_limits(gb_to_share: f64) -> CliResult<()> {
+async fn apply_memory_limits(gb_to_share: f64) -> SongbirdResult<()> {
     // Create memory tracking
     let bytes_to_share = (gb_to_share * 1024.0 * 1024.0 * 1024.0) as u64;
 
@@ -319,7 +319,7 @@ async fn apply_memory_limits(gb_to_share: f64) -> CliResult<()> {
     Ok(()),
 }
 /// Save sharing configuration to persistent state
-async fn save_sharing_state(config: &SharingConfig) -> CliResult<()> {
+async fn save_sharing_state(config: &SharingConfig) -> SongbirdResult<()> {
     let config_dir =
         dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".").join("songbird");"
 
@@ -337,7 +337,7 @@ async fn save_sharing_state(config: &SharingConfig) -> CliResult<()> {
 }
 /// Windows-specific CPU limits
 #[cfg(windows,]
-async fn apply_windows_cpu_limits(cores_to_share: usize) -> CliResult<()> {
+async fn apply_windows_cpu_limits(cores_to_share: usize) -> SongbirdResult<()> {
     // Windows Job Objects would be the proper way to do this
     // For now, just track the intention
     println!("   📊 Windows CPU limits: {} cores (requires job objects,", cores_to_share);"
@@ -473,7 +473,7 @@ fn format_resource_type(resource_type: &ResourceType) -> &str {
     }
 }
 // Helper functions - REAL system detection (no hardcoded values,
-async fn estimate_available_storage() -> CliResult<f64> {
+async fn estimate_available_storage() -> SongbirdResult<f64> {
     // Check environment variable override first
     if let Ok(storage_gb, = std::env::var("SONGBIRD_STORAGE_GB") {"
         if let Ok(gb, = storage_gb.parse::<f64>() {
@@ -482,7 +482,7 @@ async fn estimate_available_storage() -> CliResult<f64> {
     }
 
     // Real storage detection using system APIs
-    crate::cli::commands::quick::resources::get_available_storage().ok_or_else(|| crate::errors::CliError::Command  {command: "share".to_string()),
+    crate::cli::commands::quick::resources::get_available_storage().or_else(|_| crate::errors::CliError::Command  {command: "share".to_string()),
         message: "Failed to detect available storage. Set SONGBIRD_STORAGE_GB environment variable with your available storage".to_string(),
     })
 }

@@ -1,10 +1,22 @@
-//! # 🔧 Environment Configuration - PEDANTIC PERFECT
+//! # 🔧 Environment Configuration
 //!
-//! **PEDANTIC QUALITY**: Zero errors, zero warnings, perfect environment handling
+//! ⚠️ **DEPRECATED**: This module is deprecated in favor of `canonical::environment`
 //!
-//! This module provides clean, error-free environment configuration management.
+//! ## Migration Path
+//! ```rust,ignore
+//! // OLD (deprecated):
+//! use songbird_config::environment_config_clean::EnvironmentConfig;
+//!
+//! // NEW (use this):
+//! use songbird_config::canonical::environment::{EnvironmentConfig, ServiceEndpoints, LogConfig};
+//! ```
+//!
+//! All types have been consolidated into `canonical::environment`.
 
-use std::env;
+#![allow(deprecated)]
+#[deprecated(since = "0.2.0", note = "Use canonical::environment instead")]
+
+use songbird_types::SafeEnv;
 // use songbird_config; // FIXED: Circular import removed
 
 /// **PEDANTIC**: Environment configuration manager
@@ -15,12 +27,9 @@ impl EnvironmentConfig {
     /// Get the Songbird orchestrator endpoint from environment or calculate from config
     #[must_use]
     pub fn songbird_endpoint() -> String {
-        std::env::var("SONGBIRD_ENDPOINT").unwrap_or_else(|_| {
+        SafeEnv::get_required("SONGBIRD_ENDPOINT").unwrap_or_else(|_| {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
-            let port = std::env::var("SONGBIRD_ORCHESTRATOR_PORT")
-                .ok()
-                .and_then(|p| p.parse().ok())
-                .unwrap_or(8080);
+            let port = SafeEnv::get_port("SONGBIRD_ORCHESTRATOR_PORT", 8080);
             format!("http://{bind_addr}:{port}")
         })
     }
@@ -28,8 +37,8 @@ impl EnvironmentConfig {
     /// Get service endpoint by capability instead of hardcoded primal names
     #[must_use]
     pub fn service_endpoint_by_capability(capability_type: &str, default_port: u16) -> String {
-        std::env::var("SONGBIRD_ENDPOINT")
-            .or_else(|_| env::var(format!("{capability_type}_ENDPOINT")))
+        SafeEnv::get_required("SONGBIRD_ENDPOINT")
+            .or_else(|_| SafeEnv::get_required(&format!("{capability_type}_ENDPOINT")))
             .unwrap_or_else(|_| {
                 format!("http://{}:{}", crate::constants::network::DEFAULT_HOST, default_port)
             })
@@ -38,10 +47,9 @@ impl EnvironmentConfig {
     /// Get the `ToadStool` compute endpoint from environment or calculate from config
     #[must_use]
     pub fn toadstool_endpoint() -> String {
-        std::env::var("TOADSTOOL_ENDPOINT").unwrap_or_else(|_| {
+        SafeEnv::get_required("TOADSTOOL_ENDPOINT").unwrap_or_else(|_| {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
-            let port =
-                std::env::var("TOADSTOOL_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8081);
+            let port = SafeEnv::get_port("TOADSTOOL_PORT", 8081);
             format!("http://{bind_addr}:{port}")
         })
     }
@@ -49,10 +57,9 @@ impl EnvironmentConfig {
     /// Get the `NestGate` storage endpoint from environment or calculate from config
     #[must_use]
     pub fn nestgate_endpoint() -> String {
-        std::env::var("NESTGATE_ENDPOINT").unwrap_or_else(|_| {
+        SafeEnv::get_required("NESTGATE_ENDPOINT").unwrap_or_else(|_| {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
-            let port =
-                std::env::var("NESTGATE_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8082);
+            let port = SafeEnv::get_port("NESTGATE_PORT", 8082);
             format!("http://{bind_addr}:{port}")
         })
     }
@@ -60,10 +67,9 @@ impl EnvironmentConfig {
     /// Get the Squirrel AI endpoint from environment or calculate from config
     #[must_use]
     pub fn squirrel_endpoint() -> String {
-        std::env::var("SQUIRREL_ENDPOINT").unwrap_or_else(|_| {
+        SafeEnv::get_required("SQUIRREL_ENDPOINT").unwrap_or_else(|_| {
             let bind_addr = &crate::constants::network::DEFAULT_HOST;
-            let port =
-                std::env::var("SQUIRREL_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8083);
+            let port = SafeEnv::get_port("SQUIRREL_PORT", 8083);
             format!("http://{bind_addr}:{port}")
         })
     }
@@ -71,19 +77,19 @@ impl EnvironmentConfig {
     /// Get configuration value from environment with fallback
     #[must_use]
     pub fn get_env_or_default(key: &str, default: &str) -> String {
-        std::env::var(key).unwrap_or_else(|_| default.to_string())
+        SafeEnv::get_or_default(key, default)
     }
 
     /// Get configuration value from environment as integer with fallback
     #[must_use]
     pub fn get_env_int_or_default(key: &str, default: u16) -> u16 {
-        std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+        SafeEnv::get_port(key, default)
     }
 
     /// Get configuration value from environment as boolean with fallback
     #[must_use]
     pub fn get_env_bool_or_default(key: &str, default: bool) -> bool {
-        std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+        SafeEnv::get_bool(key, default)
     }
 
     /// Check if running in development mode
@@ -150,7 +156,7 @@ impl EnvironmentConfig {
 /// Panics if the environment variable is not set
 #[must_use]
 pub fn get_required_env(key: &str) -> String {
-    std::env::var(key)
+    SafeEnv::get_required(key)
         .unwrap_or_else(|_| panic!("Required environment variable '{key}' is not set"))
 }
 
@@ -161,10 +167,13 @@ pub fn get_required_env(key: &str) -> String {
 /// Panics if the environment variable is not set or is not a valid integer
 #[must_use]
 pub fn get_required_env_int(key: &str) -> u16 {
-    std::env::var(key)
-        .unwrap_or_else(|_| panic!("Required environment variable '{key}' is not set"))
-        .parse()
-        .unwrap_or_else(|_| panic!("Environment variable '{key}' is not a valid integer"))
+    SafeEnv::get_required(key)
+        .and_then(|v| v.parse::<u16>().map_err(|_| songbird_types::SongbirdError::Configuration {
+            message: format!("Environment variable '{key}' is not a valid integer: {v}"),
+            field: Some(key.to_string()),
+            suggestion: Some("Set to a valid u16 integer".to_string()),
+        }))
+        .unwrap_or_else(|_| panic!("Required environment variable '{key}' is not set or invalid"))
 }
 
 /// **PEDANTIC**: Get environment variable as boolean or panic with helpful message
@@ -174,10 +183,13 @@ pub fn get_required_env_int(key: &str) -> u16 {
 /// Panics if the environment variable is not set or is not a valid boolean
 #[must_use]
 pub fn get_required_env_bool(key: &str) -> bool {
-    std::env::var(key)
-        .unwrap_or_else(|_| panic!("Required environment variable '{key}' is not set"))
-        .parse()
-        .unwrap_or_else(|_| panic!("Environment variable '{key}' is not a valid boolean"))
+    SafeEnv::get_required(key)
+        .and_then(|v| v.parse::<bool>().map_err(|_| songbird_types::SongbirdError::Configuration {
+            message: format!("Environment variable '{key}' is not a valid boolean: {v}"),
+            field: Some(key.to_string()),
+            suggestion: Some("Set to 'true' or 'false'".to_string()),
+        }))
+        .unwrap_or_else(|_| panic!("Required environment variable '{key}' is not set or invalid"))
 }
 
 // ============================================================================

@@ -10,10 +10,10 @@
 // Shows version information about Songbird Orchestrator
 
 use crate::cli::ui;
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use colored::Colorize;
 /// Execute the version command
-pub async fn execute_version_command(detailed: bool) -> CliResult<()> {
+pub async fn execute_version_command(detailed: bool) -> SongbirdResult<()> {
     if detailed {
         show_detailed_version().await
     } else {
@@ -21,13 +21,13 @@ pub async fn execute_version_command(detailed: bool) -> CliResult<()> {
     }
 }
 /// Show simple version information
-pub async fn show_simple_version() -> CliResult<()> {
+pub async fn show_simple_version() -> SongbirdResult<()> {
     println!("🎼 Songbird Orchestrator v{}", env!("CARGO_PKG_VERSION"));
     Ok(())
 }
 
 /// Show detailed version information
-pub async fn show_detailed_version() -> CliResult<()> {
+pub async fn show_detailed_version() -> SongbirdResult<()> {
     println!("🎼 Songbird Orchestrator");
     println!("========================");
     println!();
@@ -81,7 +81,7 @@ fn build_rust_version() -> String {
 }
 
 /// Show version information
-pub async fn show_version(detailed: bool) -> CliResult<()> {
+pub async fn show_version(detailed: bool) -> SongbirdResult<()> {
     let version = env!("CARGO_PKG_VERSION");
     let name = env!("CARGO_PKG_NAME");
     println!("{} v{}", ui::title(name), version.bright_cyan());

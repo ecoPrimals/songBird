@@ -58,10 +58,11 @@ async fn test_service_lifecycle() {
     let env = TestEnvironment::new().await;
     
     // Phase 1: Service creation
-    let service = create_test_endpoint("test-service", 9000);
+    let port = songbird_config::defaults::ports::metrics_port();
+    let service = create_test_endpoint("test-service", port);
     assert_eq!(service.name, "test-service");
     assert_eq!(service.host, "localhost");
-    assert_eq!(service.port, 9000);
+    assert_eq!(service.port, port);
     assert_eq!(service.protocol, "http");
     
     // Phase 2: Verify service configuration is valid
@@ -108,8 +109,8 @@ async fn test_cross_service_communication() {
     let env = TestEnvironment::new().await;
     
     // Phase 1: Create service endpoints
-    let service_a = create_test_endpoint("api-gateway", 8080);
-    let service_b = create_test_endpoint("backend-service", 8081);
+    let service_a = create_test_endpoint("api-gateway", songbird_config::defaults::ports::orchestrator_port());
+    let service_b = create_test_endpoint("backend-service", songbird_config::defaults::ports::discovery_port());
     
     // Phase 2: Verify service A can reference service B
     assert_eq!(service_a.name, "api-gateway");

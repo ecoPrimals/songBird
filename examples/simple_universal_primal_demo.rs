@@ -216,7 +216,7 @@ fn main() {
     // Blockchain Node: just another primal
     registry.register_primal(UniversalPrimal::custom(
         "blockchain".to_string(),
-        "http: //blockchain:9000".to_string(),
+        format!("http://blockchain:{}", songbird_config::defaults::ports::metrics_port()),
         vec!["consensus".to_string(), "smart_contracts".to_string()],
     ));
 

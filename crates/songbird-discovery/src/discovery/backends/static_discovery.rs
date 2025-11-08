@@ -1,6 +1,9 @@
 //! Static service discovery for development and testing
+//!
+//! ## Native Async Traits
+//! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -66,7 +69,7 @@ impl Default for StaticServiceDiscovery {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ServiceDiscovery for StaticServiceDiscovery {
     async fn register(&self, service: ServiceInfo) -> Result<()> {
         tracing::info!("Registering service: {} ({})", service.name, service.service_id);

@@ -24,7 +24,10 @@
 //!
 //! Tests for `songbird_types::service` module to achieve full coverage.
 
+use songbird_test_utils::test_orchestrator_port;
 use songbird_types::service::*;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // SERVICE INFO TESTS
@@ -55,15 +58,18 @@ fn test_service_info_new() {
 #[test]
 fn test_service_info_with_endpoint() {
     let mut info = CanonicalServiceInfo::new("api", "1.0");
-    info.with_endpoint("http", "http://localhost:8080");
+    info.with_endpoint("http", format!("http://localhost:{}", test_orchestrator_port()));
 
-    assert_eq!(info.endpoints.get("http"), Some(&"http://localhost:8080".to_string()));
+    assert_eq!(
+        info.endpoints.get("http"),
+        Some(&format!("http://localhost:{}", test_orchestrator_port()))
+    );
 }
 
 #[test]
 fn test_service_info_with_multiple_endpoints() {
     let mut info = CanonicalServiceInfo::new("api", "1.0");
-    info.with_endpoint("http", "http://localhost:8080")
+    info.with_endpoint("http", format!("http://localhost:{}", test_orchestrator_port()))
         .with_endpoint("grpc", "grpc://localhost:9090");
 
     assert_eq!(info.endpoints.len(), 2);
@@ -151,18 +157,20 @@ fn test_service_info_builder_chain() {
 }
 
 #[test]
-fn test_service_info_clone() {
+fn test_service_info_clone() -> SongbirdResult<()> {
     let info1 = CanonicalServiceInfo::new("service", "1.0");
     let info2 = info1.clone();
     assert_eq!(info1.name, info2.name);
     assert_eq!(info1.version, info2.version);
+    Ok(())
 }
 
 #[test]
-fn test_service_info_debug() {
+fn test_service_info_debug() -> SongbirdResult<()> {
     let info = CanonicalServiceInfo::new("service", "1.0");
     let debug_str = format!("{info:?}");
     assert!(debug_str.contains("CanonicalServiceInfo"));
+    Ok(())
 }
 
 // ============================================================================
@@ -179,7 +187,7 @@ fn test_service_metrics_default() {
 }
 
 #[test]
-fn test_service_metrics_creation() {
+fn test_service_metrics_creation() -> SongbirdResult<()> {
     let metrics = ServiceMetrics {
         request_count: 1000,
         error_count: 10,
@@ -191,24 +199,27 @@ fn test_service_metrics_creation() {
     assert_eq!(metrics.error_count, 10);
     assert!((metrics.avg_response_time_ms - 45.5).abs() < f64::EPSILON);
     assert_eq!(metrics.uptime_seconds, 3600);
+    Ok(())
 }
 
 #[test]
-fn test_service_metrics_clone() {
+fn test_service_metrics_clone() -> SongbirdResult<()> {
     let metrics1 = ServiceMetrics::default();
     let metrics2 = metrics1.clone();
     assert_eq!(metrics1.request_count, metrics2.request_count);
+    Ok(())
 }
 
 #[test]
-fn test_service_metrics_debug() {
+fn test_service_metrics_debug() -> SongbirdResult<()> {
     let metrics = ServiceMetrics::default();
     let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("ServiceMetrics"));
+    Ok(())
 }
 
 #[test]
-fn test_service_info_with_metrics() {
+fn test_service_info_with_metrics() -> SongbirdResult<()> {
     let mut info = CanonicalServiceInfo::new("service", "1.0");
     info.metrics = Some(ServiceMetrics {
         request_count: 500,
@@ -218,8 +229,11 @@ fn test_service_info_with_metrics() {
     });
 
     assert!(info.metrics.is_some());
-    let metrics = info.metrics.as_ref().unwrap();
+    let metrics = info.metrics.as_ref().ok_or_else(|| {
+        SongbirdError::configuration("Metrics not found when expected".to_string())
+    })?;
     assert_eq!(metrics.request_count, 500);
+    Ok(())
 }
 
 // ============================================================================
@@ -275,27 +289,31 @@ fn test_service_type_as_str() {
 }
 
 #[test]
-fn test_service_type_equality() {
+fn test_service_type_equality() -> SongbirdResult<()> {
     assert_eq!(CanonicalServiceType::Web, CanonicalServiceType::Web);
     assert_ne!(CanonicalServiceType::Web, CanonicalServiceType::Grpc);
+    Ok(())
 }
 
 #[test]
-fn test_service_type_clone() {
+fn test_service_type_clone() -> SongbirdResult<()> {
     let type1 = CanonicalServiceType::Storage;
     let type2 = type1.clone();
     assert_eq!(type1, type2);
+    Ok(())
 }
 
 #[test]
-fn test_service_type_debug() {
+fn test_service_type_debug() -> SongbirdResult<()> {
     let service_type = CanonicalServiceType::Web;
     let debug_str = format!("{service_type:?}");
     assert!(debug_str.contains("Web"));
+    Ok(())
 }
 
 #[test]
-fn test_service_type_hash() {
+fn test_service_type_hash() -> SongbirdResult<()> {
+    use songbird_types::{SongbirdError, SongbirdResult};
     use std::collections::HashSet;
 
     let mut set = HashSet::new();
@@ -304,6 +322,7 @@ fn test_service_type_hash() {
     set.insert(CanonicalServiceType::Web); // Duplicate
 
     assert_eq!(set.len(), 2); // Should only have 2 unique types
+    Ok(())
 }
 
 // ============================================================================
@@ -311,47 +330,56 @@ fn test_service_type_hash() {
 // ============================================================================
 
 #[test]
-fn test_service_info_serialization() {
+fn test_service_info_serialization() -> SongbirdResult<()> {
     let info = CanonicalServiceInfo::new("test-service", "1.0.0");
-    let json = serde_json::to_string(&info).expect("Failed to serialize");
-    let deserialized: CanonicalServiceInfo =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&info)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: CanonicalServiceInfo = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.name, info.name);
     assert_eq!(deserialized.version, info.version);
+    Ok(())
 }
 
 #[test]
-fn test_service_metrics_serialization() {
+fn test_service_metrics_serialization() -> SongbirdResult<()> {
     let metrics = ServiceMetrics::default();
-    let json = serde_json::to_string(&metrics).expect("Failed to serialize");
-    let deserialized: ServiceMetrics = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&metrics)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: ServiceMetrics = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.request_count, metrics.request_count);
+    Ok(())
 }
 
 #[test]
-fn test_service_type_serialization() {
+fn test_service_type_serialization() -> SongbirdResult<()> {
     let service_type = CanonicalServiceType::Web;
-    let json = serde_json::to_string(&service_type).expect("Failed to serialize");
-    let deserialized: CanonicalServiceType =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&service_type)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: CanonicalServiceType = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized, service_type);
+    Ok(())
 }
 
 #[test]
-fn test_service_type_custom_serialization() {
+fn test_service_type_custom_serialization() -> SongbirdResult<()> {
     let service_type = CanonicalServiceType::Custom("MyCustomService".to_string());
-    let json = serde_json::to_string(&service_type).expect("Failed to serialize");
-    let deserialized: CanonicalServiceType =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&service_type)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: CanonicalServiceType = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     if let CanonicalServiceType::Custom(name) = deserialized {
         assert_eq!(name, "MyCustomService");
     } else {
         panic!("Expected Custom variant");
     }
+    Ok(())
 }
 
 // ============================================================================
@@ -365,7 +393,7 @@ fn test_service_status_default() {
 }
 
 #[test]
-fn test_service_status_all_variants() {
+fn test_service_status_all_variants() -> SongbirdResult<()> {
     let running = CanonicalServiceStatus::Running;
     let starting = CanonicalServiceStatus::Starting;
     let stopping = CanonicalServiceStatus::Stopping;
@@ -379,19 +407,22 @@ fn test_service_status_all_variants() {
     assert_eq!(stopped, CanonicalServiceStatus::Stopped);
     assert_eq!(error, CanonicalServiceStatus::Error);
     assert_eq!(unknown, CanonicalServiceStatus::Unknown);
+    Ok(())
 }
 
 #[test]
-fn test_service_status_equality() {
+fn test_service_status_equality() -> SongbirdResult<()> {
     assert_eq!(CanonicalServiceStatus::Running, CanonicalServiceStatus::Running);
     assert_ne!(CanonicalServiceStatus::Running, CanonicalServiceStatus::Stopped);
+    Ok(())
 }
 
 #[test]
-fn test_service_status_debug() {
+fn test_service_status_debug() -> SongbirdResult<()> {
     let status = CanonicalServiceStatus::Running;
     let debug_str = format!("{status:?}");
     assert!(debug_str.contains("Running"));
+    Ok(())
 }
 
 #[test]
@@ -446,27 +477,30 @@ fn test_allowed_values_range() {
 }
 
 #[test]
-fn test_allowed_values_pattern() {
+fn test_allowed_values_pattern() -> SongbirdResult<()> {
     let allowed = AllowedValues::Pattern("[0-9]+".to_string());
     if let AllowedValues::Pattern(pattern) = allowed {
         assert_eq!(pattern, "[0-9]+");
     } else {
         panic!("Expected Pattern variant");
     }
+    Ok(())
 }
 
 #[test]
-fn test_allowed_values_clone() {
+fn test_allowed_values_clone() -> SongbirdResult<()> {
     let allowed1 = AllowedValues::Any;
     let allowed2 = allowed1;
     assert!(matches!(allowed2, AllowedValues::Any));
+    Ok(())
 }
 
 #[test]
-fn test_allowed_values_debug() {
+fn test_allowed_values_debug() -> SongbirdResult<()> {
     let allowed = AllowedValues::Any;
     let debug_str = format!("{allowed:?}");
     assert!(debug_str.contains("Any"));
+    Ok(())
 }
 
 // ============================================================================

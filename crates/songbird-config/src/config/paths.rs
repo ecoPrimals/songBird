@@ -3,13 +3,12 @@
 //! This module provides path configuration with environment-based defaults.
 //! All paths are configurable via environment variables.
 
-use songbird_types::{SongbirdError, SongbirdResult};
-type Result<T> = SongbirdResult<T>;
-// use crate::substrate::{PathRequest, PathRequirements, PathType};
-use crate::config::constants::{get_cache_dir, get_config_dir, get_data_dir, get_log_dir};
+use crate::canonical::constants::{get_cache_dir, get_config_dir, get_data_dir, get_log_dir};
 use serde::{Deserialize, Serialize};
+use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::fs;
 use std::path::{Path, PathBuf};
+type Result<T> = SongbirdResult<T>;
 use tracing::{debug, warn};
 
 /// Platform-agnostic path configuration using OS substrate
@@ -274,7 +273,7 @@ impl PathConfig {
 
     /// Get fallback log directory when substrate is unavailable
     fn get_fallback_log_dir() -> PathBuf {
-        if let Ok(log_dir) = std::env::var("SONGBIRD_LOG_DIR") {
+        if let Ok(log_dir) = SafeEnv::get_required("SONGBIRD_LOG_DIR") {
             return PathBuf::from(log_dir);
         }
 
@@ -283,7 +282,7 @@ impl PathConfig {
 
     /// Get fallback cache directory when substrate is unavailable
     fn get_fallback_cache_dir() -> PathBuf {
-        if let Ok(cache_dir) = std::env::var("SONGBIRD_CACHE_DIR") {
+        if let Ok(cache_dir) = SafeEnv::get_required("SONGBIRD_CACHE_DIR") {
             return PathBuf::from(cache_dir);
         }
 
@@ -292,7 +291,7 @@ impl PathConfig {
 
     /// Get fallback runtime directory when substrate is unavailable
     fn get_fallback_runtime_dir() -> PathBuf {
-        if let Ok(runtime_dir) = std::env::var("SONGBIRD_RUNTIME_DIR") {
+        if let Ok(runtime_dir) = SafeEnv::get_required("SONGBIRD_RUNTIME_DIR") {
             return PathBuf::from(runtime_dir);
         }
 

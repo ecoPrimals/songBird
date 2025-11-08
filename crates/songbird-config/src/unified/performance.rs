@@ -1,10 +1,19 @@
 //! Performance configuration structures
+//!
+//! **DEPRECATED**: Use `canonical::performance::*` instead.
+//! This module will be removed in a future release.
 
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::time::Duration;
 
 /// Object pool size configuration
+///
+/// **DEPRECATED**: Use `canonical::performance::ObjectPoolSizes` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::performance::ObjectPoolSizes` instead. Migration: `unified::performance::ObjectPoolSizes` → `canonical::performance::ObjectPoolSizes`"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ObjectPoolSizes {
     pub message: usize,
@@ -23,6 +32,12 @@ impl Default for ObjectPoolSizes {
 }
 
 /// Unified performance configuration
+///
+/// **DEPRECATED**: Use `canonical::performance::PerformanceConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::performance::PerformanceConfig` instead. Migration: `unified::performance::UnifiedPerformanceConfig` → `canonical::performance::PerformanceConfig`"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct UnifiedPerformanceConfig {
@@ -71,6 +86,12 @@ impl Default for UnifiedPerformanceConfig {
 }
 
 /// Cache configuration
+///
+/// **DEPRECATED**: Use `canonical::performance::CacheConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::performance::CacheConfig` instead. Migration: `unified::performance::CacheConfig` → `canonical::performance::CacheConfig`"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CacheConfig {
     pub enabled: bool,
@@ -89,6 +110,12 @@ impl Default for CacheConfig {
 }
 
 /// Metrics configuration
+///
+/// **DEPRECATED**: Use `canonical::performance::MetricsConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::performance::MetricsConfig` instead. Migration: `unified::performance::MetricsConfig` → `canonical::performance::MetricsConfig`"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetricsConfig {
     pub enabled: bool,
@@ -107,6 +134,12 @@ impl Default for MetricsConfig {
 }
 
 /// Benchmark configuration for performance testing
+///
+/// **DEPRECATED**: Use `canonical::performance::BenchmarkConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::performance::BenchmarkConfig` instead. Migration: `unified::performance::BenchmarkConfig` → `canonical::performance::BenchmarkConfig`"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkConfig {
     pub enabled: bool,
@@ -131,4 +164,10 @@ impl Default for BenchmarkConfig {
 }
 
 /// Performance configuration (backward compatibility alias)
+///
+/// **DEPRECATED**: Use `canonical::performance::PerformanceConfig` instead.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::performance::PerformanceConfig` instead. This is fully migrated to canonical."
+)]
 pub type PerformanceConfig = UnifiedPerformanceConfig;

@@ -10,7 +10,11 @@ use tracing::{error, info, warn};
 
 use crate::app::{OrchestratorStatus, SongbirdOrchestrator};
 use anyhow::Result;
+use songbird_types::SafeEnv;
 use tokio::time::interval;
+
+// Federation API module
+pub mod federation_api;
 /// Server management and monitoring functionality
 pub struct ServerManager {
     health_check_interval: Duration,
@@ -109,11 +113,10 @@ impl ServerManager {
                 "Service registry responding to health check, {} services",
                 service_count
             );
-            true
         } else {
             tracing::debug!("Service registry health check - no services registered");
-            true // Still healthy, just no services
         }
+        true // Still healthy regardless of service count
     }
 
     /// Check gaming manager health
@@ -389,28 +392,28 @@ impl ServiceMonitor {
     async fn check_service_registry_health() -> bool {
         // In production, this would check actual service registry endpoints
         // For now, simulate with environment variable check
-        std::env::var("SONGBIRD_SERVICE_REGISTRY_ENABLED").unwrap_or_default() != "false"
+        SafeEnv::get_or_default("SONGBIRD_SERVICE_REGISTRY_ENABLED", "true") != "false"
     }
 
     /// Check gaming bridges health
     async fn check_gaming_bridges_health() -> bool {
         // In production, this would check actual gaming bridge endpoints
         // For now, simulate with environment variable check
-        std::env::var("SONGBIRD_GAMING_ENABLED").unwrap_or_default() != "false"
+        SafeEnv::get_or_default("SONGBIRD_GAMING_ENABLED", "true") != "false"
     }
 
     /// Check federation connections health
     async fn check_federation_connections_health() -> bool {
         // In production, this would check actual federation node connections
         // For now, simulate with environment variable check
-        std::env::var("SONGBIRD_FEDERATION_ENABLED").unwrap_or_default() != "false"
+        SafeEnv::get_or_default("SONGBIRD_FEDERATION_ENABLED", "true") != "false"
     }
 
     /// Check security services health
     async fn check_security_services_health() -> bool {
         // In production, this would check actual security service endpoints
         // For now, simulate with environment variable check
-        std::env::var("SONGBIRD_SECURITY_ENABLED").unwrap_or_default() != "false"
+        SafeEnv::get_or_default("SONGBIRD_SECURITY_ENABLED", "true") != "false"
     }
 }
 

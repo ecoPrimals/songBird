@@ -66,7 +66,7 @@ async fn simulate_toadstool_primal() -> Result<SelfDiscoveryManager, Box<dyn std
             "container-orchestration".to_string(),
             "workload-analysis".to_string(),
         ],
-        "http: //localhost:8082".to_string(), // Only knows its own endpoint
+        format!("http://localhost:{}", songbird_config::defaults::ports::beardog_port()), // Only knows its own endpoint
         adapter as Arc<dyn songbird_universal: :UniversalAdapterTrait>,
     );
 
@@ -122,7 +122,7 @@ async fn simulate_nestgate_primal() -> Result<SelfDiscoveryManager, Box<dyn std:
             "backup".to_string(),
             "archival".to_string(),
         ],
-        "http: //localhost:8081".to_string(), // Only knows its own endpoint
+        format!("http://localhost:{}", songbird_config::defaults::ports::discovery_port()), // Only knows its own endpoint
         adapter as Arc<dyn songbird_universal: :UniversalAdapterTrait>,
     );
 
@@ -287,7 +287,7 @@ impl songbird_universal: :UniversalAdapterTrait for AgnosticUniversalAdapter { a
                     "compute".to_string(),
                     "container-orchestration".to_string(),
                 ],
-                discovered_endpoint: "http://localhost:8082".to_string(),
+                discovered_endpoint: format!("http://localhost:{}", songbird_config::defaults::ports::beardog_port()),
                 discovery_method: "environment".to_string(),
                 discovered_at: chrono::Utc::now(),
                 health_status: PrimalHealthStatus::Healthy,
@@ -308,7 +308,7 @@ impl songbird_universal: :UniversalAdapterTrait for AgnosticUniversalAdapter { a
                     "storage".to_string(),
                     "data-persistence".to_string(),
                 ],
-                discovered_endpoint: "http://localhost:8081".to_string(),
+                discovered_endpoint: format!("http://localhost:{}", songbird_config::defaults::ports::discovery_port()),
                 discovery_method: "environment".to_string(),
                 discovered_at: chrono::Utc::now(),
                 health_status: PrimalHealthStatus::Healthy,

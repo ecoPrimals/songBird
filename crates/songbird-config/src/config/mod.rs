@@ -1,12 +1,68 @@
 //! Core configuration management for Songbird
 //!
-//! This module provides the main configuration structures and validation
-//! for the Songbird ecosystem, with zero hardcoded values.
+//! # ⚠️ **DEPRECATION NOTICE** - Phase 1 Complete (Nov 2025)
+//!
+//! This module is being consolidated into `canonical::` module as part of the
+//! configuration unification effort. All new code should use `canonical::` instead.
+//!
+//! ## 📋 Migration Path (Simple!)
+//!
+//! ### Quick Migration Table
+//!
+//! | Old (Deprecated) | New (Canonical) | Status |
+//! |------------------|-----------------|--------|
+//! | `config::NetworkConfig` | `canonical::NetworkConfig` | ✅ Available |
+//! | `config::environment::EnvironmentConfig` | `canonical::EnvironmentConfig` | ✅ Available |
+//! | `config::ServiceConfig` | `canonical::ServiceConfig` | ✅ Available |
+//! | `config::SecurityConfig` | `canonical::SecurityConfig` | 🔄 Phase 5 |
+//! | `config::PrimalConfig` | `canonical::PrimalConfig` | 🔄 Phase 4 |
+//!
+//! ### Code Examples
+//!
+//! ```rust,ignore
+//! // ❌ OLD (deprecated - still works but discouraged)
+//! use songbird_config::config::NetworkConfig;
+//! use songbird_config::config::environment::EnvironmentConfig;
+//!
+//! // ✅ NEW (canonical - recommended for all new code)
+//! use songbird_config::canonical::{NetworkConfig, EnvironmentConfig};
+//!
+//! // Or with explicit aliases for clarity:
+//! use songbird_config::canonical::{
+//!     NetworkConfig as CanonicalNetworkConfig,
+//!     EnvironmentConfig as CanonicalEnvironmentConfig,
+//! };
+//! ```
+//!
+//! ## 📅 Timeline
+//! - **Nov 2025**: Phase 1 complete - Deprecation notices added
+//! - **Dec 2025**: Phase 2-3 - Network & Environment consolidation
+//! - **Q1 2026**: Phase 4-6 - Complete consolidation
+//! - **Q2 2026**: Remove deprecated `config::` module (6 months notice)
+//!
+//! ## 📊 Status
+//! - ✅ This module maintained for backward compatibility
+//! - ✅ New code should use `canonical::` module
+//! - ✅ Deprecation warnings guide migration
+//! - 🔄 Active consolidation in progress
+//!
+//! ## 📚 See Also
+//! - `crate::canonical` - **Single source of truth** for all config types
+//! - `CONFIG_CONSOLIDATION_ROADMAP.md` - Detailed 6-phase consolidation plan
+//! - `UNIFICATION_AUDIT_REPORT_NOV_8_2025.md` - Complete analysis
 
 use crate::PerformanceConfig;
 use serde::{Deserialize, Serialize};
+use songbird_types::SafeEnv;
 use std::collections::HashMap;
 // use songbird_config; // FIXED: Circular import removed
+
+// Archived modules (moved to _archived_q2_2026/ on November 8, 2025):
+// pub mod agnostic_primals; // Use canonical::primals instead
+
+// Backward compatibility re-exports - Module archived (Phase 4: November 8, 2025)
+#[allow(deprecated)]
+pub mod universal_primals; // DEPRECATED: Use canonical::primals instead - kept for re-exports only
 
 pub mod constants;
 pub mod environment;
@@ -14,11 +70,11 @@ pub mod hardcoded_elimination;
 pub mod network;
 pub mod paths;
 pub mod providers;
-pub mod universal_primals;
 // TEMPORARY: Disabled due to syntax errors - fix in next session
 // pub mod validation;
 
 // Re-export commonly used types
+#[allow(deprecated)]
 pub use constants::get_default_bind_address;
 pub use environment::EnvironmentConfig;
 
@@ -44,7 +100,9 @@ pub struct SongbirdConfig {
     pub observability: ObservabilityConfig,
 
     /// Universal primal registry - replaces hardcoded primal configs
-    pub primal_registry: Option<universal_primals::PrimalRegistry>,
+    /// **Deprecated**: Use `canonical::primals::PrimalRegistry` directly
+    #[deprecated(since = "0.2.0", note = "Use `canonical::primals::PrimalRegistry` instead")]
+    pub primal_registry: Option<crate::canonical::primals::PrimalRegistry>,
 
     /// Custom configuration parameters
     pub custom: Option<HashMap<String, serde_json::Value>>,
@@ -56,14 +114,13 @@ impl Default for SongbirdConfig {
     #[allow(deprecated)]
     fn default() -> Self {
         Self {
-            environment: std::env::var("SONGBIRD_ENV")
-                .unwrap_or_else(|_| "development".to_string()),
+            environment: SafeEnv::get_or_default("SONGBIRD_ENV", "development"),
             performance: Some(PerformanceConfig::default()),
             network: NetworkConfig::default(),
             security: SecurityConfig::default(),
             discovery: DiscoveryConfig::default(),
             observability: ObservabilityConfig::default(),
-            primal_registry: Some(universal_primals::PrimalRegistry::default()),
+            primal_registry: Some(crate::canonical::primals::PrimalRegistry::default()),
             custom: None,
             // Note: Legacy fields removed - use primal_registry instead
         }
@@ -122,11 +179,11 @@ impl SongbirdConfig {
     /// Enable a primal in the universal registry
     pub fn enable_primal(&mut self, primal_name: &str, endpoint: &str) {
         if self.primal_registry.is_none() {
-            self.primal_registry = Some(universal_primals::PrimalRegistry::default());
+            self.primal_registry = Some(crate::canonical::primals::PrimalRegistry::default());
         }
 
         if let Some(registry) = &mut self.primal_registry {
-            let mut primal_config = universal_primals::PrimalConfiguration::new_template(
+            let mut primal_config = crate::canonical::primals::PrimalConfiguration::new_template(
                 primal_name,
                 &format!("{} Service", primal_name.to_uppercase()),
             );
@@ -151,7 +208,7 @@ impl SongbirdConfig {
     pub fn get_primal_config(
         &self,
         primal_name: &str,
-    ) -> Option<&universal_primals::PrimalConfiguration> {
+    ) -> Option<&crate::canonical::primals::PrimalConfiguration> {
         self.primal_registry.as_ref().and_then(|registry| registry.get_primal(primal_name))
     }
 
@@ -166,7 +223,7 @@ impl SongbirdConfig {
 
     /// Get all enabled primals
     #[must_use]
-    pub fn get_enabled_primals(&self) -> Vec<&universal_primals::PrimalConfiguration> {
+    pub fn get_enabled_primals(&self) -> Vec<&crate::canonical::primals::PrimalConfiguration> {
         self.primal_registry
             .as_ref()
             .map(|registry| registry.get_enabled_primals())
@@ -202,30 +259,14 @@ pub struct NetworkConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            bind_address: std::env::var("SONGBIRD_BIND_ADDRESS")
-                .unwrap_or_else(|_| "0.0.0.0".to_string()),
+            bind_address: SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0"),
             port_range: PortRange {
-                start: std::env::var("SONGBIRD_PORT_START")
-                    .ok()
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(8000),
-                end: std::env::var("SONGBIRD_PORT_END")
-                    .ok()
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(9000),
+                start: SafeEnv::get_port("SONGBIRD_PORT_START", 8000),
+                end: SafeEnv::get_port("SONGBIRD_PORT_END", 9000),
             },
-            connection_timeout_ms: std::env::var("SONGBIRD_CONNECTION_TIMEOUT_MS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(30000),
-            max_connections: std::env::var("SONGBIRD_MAX_CONNECTIONS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(1000),
-            enable_ipv6: std::env::var("SONGBIRD_ENABLE_IPV6")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(true),
+            connection_timeout_ms: SafeEnv::get_usize("SONGBIRD_CONNECTION_TIMEOUT_MS", 30000) as u64,
+            max_connections: SafeEnv::get_usize("SONGBIRD_MAX_CONNECTIONS", 1000),
+            enable_ipv6: SafeEnv::get_bool("SONGBIRD_ENABLE_IPV6", true),
             tls: None,   // Configured separately if needed
             proxy: None, // Configured separately if needed
         }
@@ -279,10 +320,7 @@ pub struct SecurityConfig {
 impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
-            enabled: std::env::var("SONGBIRD_SECURITY_ENABLED")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(true),
+            enabled: SafeEnv::get_bool("SONGBIRD_SECURITY_ENABLED", true),
             authentication: AuthConfig::default(),
             authorization: AuthzConfig::default(),
             encryption: EncryptionConfig::default(),
@@ -485,8 +523,7 @@ impl Default for RegistrationConfig {
     fn default() -> Self {
         Self {
             auto_register: true,
-            service_name: std::env::var("SONGBIRD_SERVICE_NAME")
-                .unwrap_or_else(|_| "songbird".to_string()),
+            service_name: SafeEnv::get_or_default("SONGBIRD_SERVICE_NAME", "songbird"),
             tags: vec!["songbird".to_string(), "primal".to_string()],
             metadata: HashMap::new(),
         }

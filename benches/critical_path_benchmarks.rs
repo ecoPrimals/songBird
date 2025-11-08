@@ -55,7 +55,7 @@ fn bench_configuration_operations(c: &mut Criterion) {
             let mut config = SongbirdConfig::default();
             if let Some(ref mut network) = config.network {
                 network.bind_address = black_box("127.0.0.1".to_string());
-                network.http_port = black_box(8080);
+                network.http_port = black_box(songbird_config::defaults::ports::orchestrator_port());
             }
             black_box(config);
         });
@@ -149,7 +149,10 @@ fn bench_serialization_operations(c: &mut Criterion) {
         "metadata": {
             "version": "1.0.0",
             "status": "active",
-            "endpoints": ["http://127.0.0.1:8080", "http://127.0.0.1:8081"]
+            "endpoints": [
+                format!("http://127.0.0.1:{}", songbird_config::defaults::ports::orchestrator_port()),
+                format!("http://127.0.0.1:{}", songbird_config::defaults::ports::discovery_port())
+            ]
         }
     });
     

@@ -2,7 +2,8 @@
 //!
 //! This module provides configuration provider functionality.
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
+
 use serde::de::DeserializeOwned;
 use songbird_types::{SongbirdError, SongbirdResult};
 type Result<T> = SongbirdResult<T>;
@@ -18,7 +19,6 @@ pub enum ConfigFormat {
 }
 
 /// Configuration provider trait
-#[async_trait]
 pub trait ConfigProvider<T>: Send + Sync {
     async fn load(&self) -> Result<T>;
     async fn save(&self, config: &T) -> Result<()>;
@@ -61,7 +61,6 @@ impl<T> FileConfigProvider<T> {
     }
 }
 
-#[async_trait]
 impl<T> ConfigProvider<T> for FileConfigProvider<T>
 where
     T: DeserializeOwned + serde::Serialize + Send + Sync,

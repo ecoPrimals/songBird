@@ -2,7 +2,7 @@
 //!
 //! Discovers primals by scanning the local filesystem for service indicators
 
-use crate::errors::{PrimalError, PrimalResult};
+use crate::errors::{PrimalError, SongbirdResult};
 // use crate::traits::PrimalCapability; // Unused in this module
 use super::super::types::{DiscoveredPrimal, DiscoveryMethod};
 use super::api_discovery;
@@ -14,7 +14,7 @@ use songbird_config;
 pub async fn discover_via_filesystem(
     config: &EcosystemDiscoveryConfig,
     http_client: &reqwest::Client,
-) -> PrimalResult<Vec<DiscoveredPrimal>> {
+) -> SongbirdResult<Vec<DiscoveredPrimal>> {
     let base_path = Path::new(&config.ecosystem_base_path);
     if !base_path.exists() {
         return Err(PrimalError::discovery_error(format!(
@@ -110,7 +110,7 @@ async fn probe_directory_for_primal_service(
     http_client: &reqwest::Client,
     dir_path: &Path,
     dir_name: &str,
-) -> PrimalResult<Option<DiscoveredPrimal>> {
+) -> SongbirdResult<Option<DiscoveredPrimal>> {
     debug!("🔍 Probing directory for primal service: {}", dir_path.display()"
 
     // Look for service indicators (language/framework agnostic)

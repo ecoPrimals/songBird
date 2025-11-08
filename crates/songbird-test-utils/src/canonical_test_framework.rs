@@ -18,7 +18,7 @@ pub const QUICK_TEST_TIMEOUT: Duration = Duration::from_secs(5);
 pub const EXTENDED_TEST_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Test result type alias for canonical usage
-pub type TestResult<T> = SongbirdResult<T>;
+// Type alias removed - use SongbirdResult<T> directly
 
 /// Test execution context with timing and resource tracking
 #[derive(Debug)]
@@ -76,7 +76,7 @@ impl CanonicalAssertions {
     /// # Errors
     ///
     /// Returns an error if the result is not `Ok`.
-    pub fn assert_success<T>(result: &SongbirdResult<T>) -> TestResult<()> {
+    pub fn assert_success<T>(result: &SongbirdResult<T>) -> SongbirdResult<()> {
         match result {
             Ok(_) => Ok(()),
             Err(e) => Err(SongbirdError::service(
@@ -91,7 +91,7 @@ impl CanonicalAssertions {
     /// # Errors
     ///
     /// Returns an error if the result is `Ok` instead of `Err`.
-    pub fn assert_error<T>(result: &SongbirdResult<T>) -> TestResult<()> {
+    pub fn assert_error<T>(result: &SongbirdResult<T>) -> SongbirdResult<()> {
         match result {
             Ok(_) => Err(SongbirdError::service("test-utils", "Expected error but got success")),
             Err(_) => Ok(()),
@@ -106,7 +106,7 @@ impl CanonicalAssertions {
     pub fn assert_error_contains<T>(
         result: &SongbirdResult<T>,
         expected_msg: &str,
-    ) -> TestResult<()> {
+    ) -> SongbirdResult<()> {
         match result {
             Ok(_) => Err(SongbirdError::service("test-utils", "Expected error but got success")),
             Err(e) => {
@@ -129,7 +129,7 @@ impl CanonicalAssertions {
     ///
     /// This function currently always succeeds but returns `Result` for API consistency.
     #[allow(clippy::unnecessary_wraps)]
-    pub fn assert_response_success<T>(_response: &SongbirdResult<T>) -> TestResult<()> {
+    pub fn assert_response_success<T>(_response: &SongbirdResult<T>) -> SongbirdResult<()> {
         // SongbirdResponse doesn't have a success field - it's always successful if Ok
         // The presence of data indicates success
         Ok(())
@@ -143,7 +143,7 @@ impl CanonicalAssertions {
     pub async fn assert_timeout<F, Fut, T>(
         operation: F,
         timeout_duration: Duration,
-    ) -> TestResult<T>
+    ) -> SongbirdResult<T>
     where
         F: FnOnce() -> Fut,
         Fut: Future<Output = SongbirdResult<T>>,
@@ -163,7 +163,7 @@ impl CanonicalAssertions {
         value: &T,
         min: &T,
         max: &T,
-    ) -> TestResult<()> {
+    ) -> SongbirdResult<()> {
         if value >= min && value <= max {
             Ok(())
         } else {
@@ -179,7 +179,7 @@ impl CanonicalAssertions {
     /// # Errors
     ///
     /// Returns an error if the actual and expected values differ by more than the tolerance.
-    pub fn assert_approx_equal(actual: f64, expected: f64, tolerance: f64) -> TestResult<()> {
+    pub fn assert_approx_equal(actual: f64, expected: f64, tolerance: f64) -> SongbirdResult<()> {
         let diff = (actual - expected).abs();
         if diff <= tolerance {
             Ok(())
@@ -202,7 +202,7 @@ impl CanonicalAssertions {
         actual: Duration,
         expected: Duration,
         tolerance: Duration,
-    ) -> TestResult<()> {
+    ) -> SongbirdResult<()> {
         let diff = actual.abs_diff(expected);
 
         if diff <= tolerance {
@@ -268,7 +268,7 @@ impl PerformanceTestUtils {
         operation: F,
         max_duration: Duration,
         iterations: usize,
-    ) -> TestResult<()>
+    ) -> SongbirdResult<()>
     where
         F: Fn() -> Fut + Clone,
         Fut: Future<Output = T>,
@@ -457,7 +457,7 @@ impl TestEnvironment {
     /// # Errors
     /// Returns an error if setup fails.
     #[allow(clippy::unnecessary_wraps)]
-    pub fn setup() -> TestResult<()> {
+    pub fn setup() -> SongbirdResult<()> {
         // Initialize logging for tests if not already done
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();
 
@@ -468,7 +468,7 @@ impl TestEnvironment {
     ///
     /// # Errors
     /// Returns an error if cleanup fails.
-    pub async fn cleanup() -> TestResult<()> {
+    pub async fn cleanup() -> SongbirdResult<()> {
         // Perform any necessary cleanup
         tokio::time::sleep(Duration::from_millis(10)).await;
         Ok(())
@@ -490,7 +490,7 @@ impl TestEnvironment {
 macro_rules! canonical_test {
     ($name:ident, $test_fn:expr) => {
         #[tokio::test]
-        async fn $name() -> $crate::canonical_test_framework::TestResult<()> {
+        async fn $name() -> $crate::canonical_test_framework::SongbirdResult<()> {
             use $crate::canonical_test_framework::{TestContext, TestEnvironment};
 
             // Setup test environment
@@ -515,7 +515,7 @@ macro_rules! canonical_test {
 macro_rules! performance_test {
     ($name:ident, $max_duration:expr, $iterations:expr, $test_fn:expr) => {
         #[tokio::test]
-        async fn $name() -> $crate::canonical_test_framework::TestResult<()> {
+        async fn $name() -> $crate::canonical_test_framework::SongbirdResult<()> {
             use $crate::canonical_test_framework::{PerformanceTestUtils, TestEnvironment};
 
             TestEnvironment::setup().await?;

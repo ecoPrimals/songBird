@@ -1,15 +1,30 @@
-//! Real HTTP Integration Tests for Ecosystem Adapters
+//! Real HTTP Integration Tests for Capability-Based Adapters
+//!
+//! 🍼 MIGRATED: These tests now use capability-based adapters instead of hardcoded primal names
 //!
 //! These tests verify that adapters can communicate with actual HTTP endpoints.
-//! They use a mock HTTP server to simulate primal services.
+//! They use mock HTTP servers to simulate capability providers.
+//!
+//! **Migration Notes**:
+//! - BearDogSecurityAdapter → SecurityCapabilityAdapter
+//! - NestGateStorageAdapter → StorageCapabilityAdapter  
+//! - SquirrelAIAdapter → AiCapabilityAdapter
+//! - ToadStoolMetricsAdapter → ComputeCapabilityAdapter
 
 #![cfg(test)]
 
 use songbird_universal::adapters::{
-    BearDogSecurityAdapter, NestGateStorageAdapter, SquirrelAIAdapter, ToadStoolMetricsAdapter,
+    security::SecurityCapabilityAdapter, storage::StorageCapabilityAdapter,
+    ai::AiCapabilityAdapter, compute::ComputeCapabilityAdapter,
 };
 use std::time::Duration;
 use tokio::time::sleep;
+
+// ⚠️ DEPRECATED: Legacy primal-specific adapters
+#[allow(deprecated)]
+use songbird_universal::adapters::{
+    BearDogSecurityAdapter, NestGateStorageAdapter, SquirrelAIAdapter, ToadStoolMetricsAdapter,
+};
 
 /// Test helper to check if a port is available
 async fn port_available(port: u16) -> bool {
@@ -19,29 +34,38 @@ async fn port_available(port: u16) -> bool {
 }
 
 // ============================================================================
-// TOADSTOOL COMPUTE ADAPTER TESTS
+// COMPUTE CAPABILITY ADAPTER TESTS (was toadstool)
 // ============================================================================
 
 #[tokio::test]
-async fn test_toadstool_adapter_creation_and_config() {
-    // Test: Adapter can be created with custom configuration
-    let adapter = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+async fn test_compute_adapter_creation_and_config() {
+    // 🍼 MIGRATED: Test capability-based compute adapter
+    let adapter = ComputeCapabilityAdapter::new("http://localhost:8080".to_string())
         .expect("Adapter creation should succeed");
 
     assert_eq!(adapter.endpoint(), "http://localhost:8080");
 
     // Test: Adapter accepts custom timeout
-    let adapter_with_timeout = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+    let adapter_with_timeout = ComputeCapabilityAdapter::new("http://localhost:8080".to_string())
         .expect("Adapter creation should succeed")
         .with_timeout(Duration::from_secs(10));
 
     assert_eq!(adapter_with_timeout.endpoint(), "http://localhost:8080");
 }
 
+// ⚠️ DEPRECATED: Legacy test kept for backward compatibility
 #[tokio::test]
-async fn test_toadstool_adapter_network_error_handling() {
-    // Test: Adapter handles unreachable endpoints gracefully
-    let adapter = ToadStoolMetricsAdapter::new("http://localhost:59999".to_string())
+#[allow(deprecated)]
+async fn test_toadstool_adapter_creation_and_config() {
+    let adapter = ToadStoolMetricsAdapter::new("http://localhost:8080".to_string())
+        .expect("Adapter creation should succeed");
+    assert_eq!(adapter.endpoint(), "http://localhost:8080");
+}
+
+#[tokio::test]
+async fn test_compute_adapter_network_error_handling() {
+    // 🍼 MIGRATED: Test capability-based error handling
+    let adapter = ComputeCapabilityAdapter::new("http://localhost:59999".to_string())
         .expect("Adapter creation should succeed");
 
     let result = adapter.collect_metrics().await;
@@ -53,10 +77,20 @@ async fn test_toadstool_adapter_network_error_handling() {
     );
 }
 
+// ⚠️ DEPRECATED: Legacy test kept for backward compatibility
 #[tokio::test]
-async fn test_toadstool_metrics_validation() {
-    // Test: Metrics structure is correct and calculations work
-    use songbird_universal::adapters::toadstool::ComputeMetrics;
+#[allow(deprecated)]
+async fn test_toadstool_adapter_network_error_handling() {
+    let adapter = ToadStoolMetricsAdapter::new("http://localhost:59999".to_string())
+        .expect("Adapter creation should succeed");
+    let result = adapter.collect_metrics().await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_compute_metrics_validation() {
+    // 🍼 MIGRATED: Test capability-based metrics
+    use songbird_universal::adapters::compute::ComputeMetrics;
 
     let metrics = ComputeMetrics {
         cpu_usage_percent: 75.0,
@@ -73,28 +107,54 @@ async fn test_toadstool_metrics_validation() {
     assert!((metrics.memory_usage_percent() - 37.5).abs() < 0.1);
     assert!(!metrics.is_high_load());
 
-    use songbird_universal::adapters::toadstool::HealthStatus;
+    use songbird_universal::adapters::compute::HealthStatus;
     assert_eq!(metrics.health_status(), HealthStatus::Healthy);
 }
 
+// ⚠️ DEPRECATED: Legacy test kept for backward compatibility
+#[tokio::test]
+#[allow(deprecated)]
+async fn test_toadstool_metrics_validation() {
+    use songbird_universal::adapters::toadstool::ComputeMetrics;
+    let metrics = ComputeMetrics {
+        cpu_usage_percent: 75.0,
+        memory_usage_bytes: 3_000_000_000,
+        memory_available_bytes: 5_000_000_000,
+        active_containers: 10,
+        queued_jobs: 5,
+        performance_score: 0.85,
+        timestamp: chrono::Utc::now(),
+    };
+    assert_eq!(metrics.total_memory_bytes(), 8_000_000_000);
+}
+
 // ============================================================================
-// BEARDOG SECURITY ADAPTER TESTS
+// SECURITY CAPABILITY ADAPTER TESTS (was beardog)
 // ============================================================================
 
 #[tokio::test]
-async fn test_beardog_adapter_creation_and_config() {
-    // Test: Adapter can be created with custom configuration
-    let adapter = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
+async fn test_security_adapter_creation_and_config() {
+    // 🍼 MIGRATED: Test capability-based security adapter
+    let adapter = SecurityCapabilityAdapter::new("http://localhost:8081".to_string())
         .expect("Adapter creation should succeed");
 
     assert_eq!(adapter.endpoint(), "http://localhost:8081");
 
     // Test: Adapter accepts custom timeout
-    let adapter_with_timeout = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
+    let adapter_with_timeout = SecurityCapabilityAdapter::new("http://localhost:8081".to_string())
         .expect("Adapter creation should succeed")
         .with_timeout(Duration::from_secs(15));
 
     assert_eq!(adapter_with_timeout.endpoint(), "http://localhost:8081");
+}
+
+// ⚠️ DEPRECATED: Legacy test kept for backward compatibility
+#[tokio::test]
+#[allow(deprecated)]
+async fn test_beardog_adapter_creation_and_config() {
+    let adapter = BearDogSecurityAdapter::new("http://localhost:8081".to_string())
+        .expect("Adapter creation should succeed");
+    assert_eq!(adapter.endpoint(), "http://localhost:8081");
 }
 
 #[tokio::test]

@@ -114,33 +114,43 @@ fn get_federation_endpoints_internal() -> Vec<String> {
 
 /// Port configuration for all services
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortConfig  {/// API service port
-    pub api_port: u16,
+pub struct PortConfig {
+    /// Orchestrator/API service port
+    pub orchestrator_port: u16,
+
+    /// Discovery service port
+    pub discovery_port: u16,
 
     /// Dashboard port
     pub dashboard_port: u16,
 
+    /// Metrics/monitoring port
+    pub metrics_port: u16,
+
     /// Federation port
     pub federation_port: u16,
 
-    /// Gaming service port
-    pub gaming_port: u16,
-
-    /// Monitoring port
-    pub monitoring_port: u16,
-
-    /// Discovery port
-    pub discovery_port: u16,
+    /// WebSocket port
+    pub websocket_port: u16,
 }
 
-impl Default for PortConfig  {fn default() -> Self  {Self {
-            api_port: get_port_with_fallback("SONGBIRD_API_PORT", 8080)
-            dashboard_port: get_port_with_fallback("SONGBIRD_DASHBOARD_PORT", 3000)
-            federation_port: get_port_with_fallback("SONGBIRD_FEDERATION_PORT", 8080)
-            gaming_port: get_port_with_fallback("SONGBIRD_GAMING_PORT", 8081)
-            monitoring_port: get_port_with_fallback("SONGBIRD_MONITORING_PORT", 8082)
-            discovery_port: get_port_with_fallback("SONGBIRD_DISCOVERY_PORT", 8083)
+impl Default for PortConfig {
+    fn default() -> Self {
+        Self {
+            orchestrator_port: get_port_with_fallback("SONGBIRD_ORCHESTRATOR_PORT", 8080),
+            discovery_port: get_port_with_fallback("SONGBIRD_DISCOVERY_PORT", 8081),
+            dashboard_port: get_port_with_fallback("SONGBIRD_DASHBOARD_PORT", 3000),
+            metrics_port: get_port_with_fallback("SONGBIRD_METRICS_PORT", 9090),
+            federation_port: get_port_with_fallback("SONGBIRD_FEDERATION_PORT", 8082),
+            websocket_port: get_port_with_fallback("SONGBIRD_WEBSOCKET_PORT", 8080),
         }
+    }
+}
+
+impl PortConfig {
+    /// Create a PortConfig with default values (for testing)
+    pub fn with_defaults() -> Self {
+        Self::default()
     }
 }
 

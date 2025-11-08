@@ -85,9 +85,9 @@ fn create_legacy_federation_config() -> LegacyFederationConfig {
         cluster_name: Some("example-cluster".to_string()),
         peer_discovery_enabled: true,
         discovery_endpoints: vec![
-            "localhost:8080".to_string(),
-            "localhost:8081".to_string(),
-            "192.168.1.100:8443".to_string(),
+            format!("localhost:{}", songbird_config::defaults::ports::orchestrator_port()),
+            format!("localhost:{}", songbird_config::defaults::ports::discovery_port()),
+            format!("192.168.1.100:{}", songbird_config::defaults::ports::beardog_port()),
         ],
         heartbeat_interval: Duration::from_secs(30),
         sovereignty_level: Some(LegacySovereigntyLevel::High),
@@ -240,7 +240,7 @@ fn example_old_federation_code() {
         let config = FederationConfig {
             cluster_name: Some("example-cluster".to_string()),
             peer_discovery_enabled: true,
-            discovery_endpoints: vec!["localhost:8080".to_string()],
+            discovery_endpoints: vec![format!("localhost:{}", songbird_config::defaults::ports::orchestrator_port())],
             heartbeat_interval: Duration::from_secs(30),
             // ... other old settings
         };

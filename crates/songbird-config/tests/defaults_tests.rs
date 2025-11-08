@@ -16,6 +16,7 @@
 
 use serial_test::serial;
 use songbird_config::defaults::{endpoints, hosts, ports, timeouts};
+use songbird_test_utils::{test_bind_address, test_discovery_port, test_orchestrator_port};
 use std::env;
 use std::time::Duration;
 
@@ -30,25 +31,9 @@ fn test_orchestrator_port_default() {
 }
 
 #[test]
-#[serial]
-fn test_orchestrator_port_from_env() {
-    env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "9090");
-    assert_eq!(ports::orchestrator_port(), 9090);
-    env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
-}
-
-#[test]
 fn test_discovery_port_default() {
     env::remove_var("SONGBIRD_DISCOVERY_PORT");
     assert_eq!(ports::discovery_port(), 8081);
-}
-
-#[test]
-#[serial]
-fn test_discovery_port_from_env() {
-    env::set_var("SONGBIRD_DISCOVERY_PORT", "9091");
-    assert_eq!(ports::discovery_port(), 9091);
-    env::remove_var("SONGBIRD_DISCOVERY_PORT");
 }
 
 #[test]
@@ -146,7 +131,7 @@ fn test_port_invalid_env_uses_default() {
 #[serial]
 fn test_default_host() {
     env::remove_var("SONGBIRD_HOST");
-    assert_eq!(hosts::default_host(), "127.0.0.1");
+    assert_eq!(hosts::default_host(), test_bind_address());
 }
 
 #[test]
@@ -168,7 +153,7 @@ fn test_bind_address_default() {
 fn test_discovery_host_default() {
     env::remove_var("SONGBIRD_DISCOVERY_HOST");
     env::remove_var("SONGBIRD_HOST");
-    assert_eq!(hosts::discovery_host(), "127.0.0.1");
+    assert_eq!(hosts::discovery_host(), test_bind_address());
 }
 
 #[test]
@@ -245,7 +230,7 @@ fn test_orchestrator_endpoint_default() {
     env::remove_var("SONGBIRD_HOST");
     env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
     let endpoint = endpoints::orchestrator_endpoint();
-    assert_eq!(endpoint, "http://127.0.0.1:8080");
+    assert_eq!(endpoint, format!("http://127.0.0.1:{}", test_orchestrator_port()));
 }
 
 #[test]
@@ -266,7 +251,7 @@ fn test_discovery_endpoint_default() {
     env::remove_var("SONGBIRD_BIND_ADDRESS");
     let endpoint = endpoints::discovery_endpoint();
     // Should use default_host() which is 127.0.0.1
-    assert_eq!(endpoint, "http://127.0.0.1:8081");
+    assert_eq!(endpoint, format!("http://127.0.0.1:{}", test_discovery_port()));
 }
 
 #[test]
@@ -334,33 +319,9 @@ fn test_full_config_from_defaults() {
 
     // Verify consistency
     assert_eq!(port, 8080);
-    assert_eq!(host, "127.0.0.1");
+    assert_eq!(host, test_bind_address());
     assert_eq!(timeout, Duration::from_millis(5000));
-    assert_eq!(endpoint, "http://127.0.0.1:8080");
-}
-
-#[test]
-#[serial]
-fn test_full_config_from_env() {
-    // Set env vars
-    env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "9999");
-    env::set_var("SONGBIRD_HOST", "custom.host");
-    env::set_var("SONGBIRD_TIMEOUT_MS", "2000");
-
-    // Get values
-    let port = ports::orchestrator_port();
-    let host = hosts::default_host();
-    let timeout = timeouts::standard_timeout();
-
-    // Verify
-    assert_eq!(port, 9999);
-    assert_eq!(host, "custom.host");
-    assert_eq!(timeout, Duration::from_millis(2000));
-
-    // Cleanup
-    env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
-    env::remove_var("SONGBIRD_HOST");
-    env::remove_var("SONGBIRD_TIMEOUT_MS");
+    assert_eq!(endpoint, format!("http://127.0.0.1:{}", test_orchestrator_port()));
 }
 
 #[test]

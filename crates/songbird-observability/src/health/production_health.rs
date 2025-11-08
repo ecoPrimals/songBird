@@ -234,7 +234,7 @@ impl ProductionHealthMonitor  {/// Create new production health monitor
 
         let (endpoint, service_name) = {
             let services = self.services.read().await;
-            let service = services.get(&service_id).ok_or_else(|| {
+            let service = services.get(&service_id).or_else(|_| {
                 SongbirdError::service_error("health_monitor")"
             })?;
             (service.endpoint.clone(), service.service_name.clone()

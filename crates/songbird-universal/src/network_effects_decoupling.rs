@@ -449,7 +449,7 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
         // Get workflow pattern
         let patterns = self.workflow_patterns.read().await;
         let pattern = patterns.get(pattern_id)
-            .ok_or_else(|| SongbirdError: :service_error("network-effects",
+            .ok_or_else(|_| SongbirdError: :service_error("network-effects",
                 &format!("Unknown workflow pattern: {;}", pattern_id);
                 vec![])?
             .clone());
@@ -637,7 +637,7 @@ impl NetworkEffectsOrchestrator  {/// Create new network effects orchestrator
      let active_workflows = self.active_workflows.read().await
         active_workflows.get(workflow_id)
             .cloned()
-            .ok_or_else(|| SongbirdError: :service_error("network-effects",
+            .ok_or_else(|_| SongbirdError: :service_error("network-effects",
                 &format!("Workflow not found: {;
 ;
 }", workflow_id)

@@ -3,7 +3,9 @@
 //! Tests for security metrics collection, authentication verification, and error handling.
 
 use chrono::Utc;
-use songbird_types::SongbirdError;
+use songbird_test_utils::test_discovery_port;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::security::{
     AuthResult, SecurityAdapter, SecurityHealth, SecurityMetrics,
 };
@@ -25,39 +27,49 @@ fn create_test_metrics() -> SecurityMetrics {
 // ============================================================================
 
 #[test]
-fn test_beardog_adapter_new_success() {
+fn test_beardog_adapter_new_success() -> SongbirdResult<()> {
     // Arrange & Act
-    let adapter = SecurityAdapter::new("http://example.com:8081".to_string());
+    let adapter =
+        SecurityAdapter::new(format!("http://example.com:{}", test_discovery_port()).to_string());
 
     // Assert
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
-    assert_eq!(adapter.endpoint(), "http://example.com:8081");
+    let adapter = adapter.ok_or_else(|| {
+        SongbirdError::configuration("Failed to discover services".to_string())
+    })?;
+    assert_eq!(adapter.endpoint(), format!("http://example.com:{}", test_discovery_port()));
+    Ok(())
 }
 
 #[test]
-fn test_beardog_adapter_endpoint_validation() {
+fn test_beardog_adapter_endpoint_validation() -> SongbirdResult<()> {
     // Arrange & Act
     let adapter = SecurityAdapter::new("http://security-service".to_string());
 
     // Assert
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
+    let adapter = adapter.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert_eq!(adapter.endpoint(), "http://security-service");
+    Ok(())
 }
 
 #[test]
-fn test_beardog_adapter_with_timeout() {
+fn test_beardog_adapter_with_timeout() -> SongbirdResult<()> {
     // Arrange
     let custom_timeout = Duration::from_secs(30);
 
     // Act
     let adapter = SecurityAdapter::new("http://example.com".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("Missing performance configuration".to_string())
+        })?
         .with_timeout(custom_timeout);
 
     // Assert
     assert_eq!(adapter.endpoint(), "http://example.com");
+    Ok(())
 }
 
 // ============================================================================
@@ -65,7 +77,7 @@ fn test_beardog_adapter_with_timeout() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_beardog_collect_metrics_success() {
+async fn test_beardog_collect_metrics_success() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -84,23 +96,28 @@ async fn test_beardog_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
 
     // Assert
     assert!(result.is_ok());
-    let metrics = result.unwrap();
+    let metrics = result.ok_or_else(|| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
     assert_eq!(metrics.active_sessions, 50);
     assert_eq!(metrics.failed_auth_attempts, 10);
     assert_eq!(metrics.blocked_ips, 2);
     assert!((metrics.security_score - 0.95).abs() < 0.001);
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_collect_metrics_url_formatting() {
+async fn test_beardog_collect_metrics_url_formatting() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -119,7 +136,9 @@ async fn test_beardog_collect_metrics_url_formatting() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -127,6 +146,7 @@ async fn test_beardog_collect_metrics_url_formatting() {
     // Assert
     assert!(result.is_ok());
     mock.assert_async().await;
+    Ok(())
 }
 
 // ============================================================================
@@ -134,10 +154,12 @@ async fn test_beardog_collect_metrics_url_formatting() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_beardog_collect_metrics_network_error() {
+async fn test_beardog_collect_metrics_network_error() -> SongbirdResult<()> {
     // Arrange
     let adapter = SecurityAdapter::new("http://nonexistent-host-12345:9999".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("Missing performance configuration".to_string())
+        })?
         .with_timeout(Duration::from_millis(100));
 
     // Act
@@ -147,13 +169,16 @@ async fn test_beardog_collect_metrics_network_error() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Network { .. }));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_collect_metrics_timeout() {
+async fn test_beardog_collect_metrics_timeout() -> SongbirdResult<()> {
     // Arrange
     let adapter = SecurityAdapter::new("http://10.255.255.1:9999".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("Missing performance configuration".to_string())
+        })?
         .with_timeout(Duration::from_millis(50));
 
     // Act
@@ -163,10 +188,11 @@ async fn test_beardog_collect_metrics_timeout() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Network { .. }));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_collect_metrics_server_error_500() {
+async fn test_beardog_collect_metrics_server_error_500() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -176,7 +202,9 @@ async fn test_beardog_collect_metrics_server_error_500() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -187,10 +215,11 @@ async fn test_beardog_collect_metrics_server_error_500() {
     assert!(matches!(error, SongbirdError::Security { .. }));
     assert!(error.to_string().contains("500"));
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_collect_metrics_server_error_503() {
+async fn test_beardog_collect_metrics_server_error_503() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -200,7 +229,9 @@ async fn test_beardog_collect_metrics_server_error_503() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -211,10 +242,11 @@ async fn test_beardog_collect_metrics_server_error_503() {
     assert!(matches!(error, SongbirdError::Security { .. }));
     assert!(error.to_string().contains("503"));
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_collect_metrics_invalid_json() {
+async fn test_beardog_collect_metrics_invalid_json() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -225,7 +257,9 @@ async fn test_beardog_collect_metrics_invalid_json() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -238,7 +272,7 @@ async fn test_beardog_collect_metrics_invalid_json() {
 }
 
 #[tokio::test]
-async fn test_beardog_collect_metrics_missing_fields() {
+async fn test_beardog_collect_metrics_missing_fields() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -249,7 +283,9 @@ async fn test_beardog_collect_metrics_missing_fields() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -259,6 +295,7 @@ async fn test_beardog_collect_metrics_missing_fields() {
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Security { .. }));
     mock.assert_async().await;
+    Ok(())
 }
 
 // ============================================================================
@@ -266,7 +303,7 @@ async fn test_beardog_collect_metrics_missing_fields() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_beardog_verify_auth_authorized() {
+async fn test_beardog_verify_auth_authorized() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -277,36 +314,54 @@ async fn test_beardog_verify_auth_authorized() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.verify_auth("valid_token").await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), AuthResult::Authorized);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        AuthResult::Authorized
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_verify_auth_unauthorized() {
+async fn test_beardog_verify_auth_unauthorized() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server.mock("POST", "/auth/verify").with_status(401).create_async().await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.verify_auth("invalid_token").await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), AuthResult::Unauthorized);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        AuthResult::Unauthorized
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_verify_auth_expired() {
+async fn test_beardog_verify_auth_expired() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -317,19 +372,28 @@ async fn test_beardog_verify_auth_expired() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.verify_auth("expired_token").await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), AuthResult::Expired);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        AuthResult::Expired
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_verify_auth_invalid() {
+async fn test_beardog_verify_auth_invalid() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -340,22 +404,33 @@ async fn test_beardog_verify_auth_invalid() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Missing performance configuration".to_string())
+    })?;
 
     // Act
     let result = adapter.verify_auth("malformed_token").await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), AuthResult::Invalid);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        AuthResult::Invalid
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_verify_auth_network_error() {
+async fn test_beardog_verify_auth_network_error() -> SongbirdResult<()> {
     // Arrange
     let adapter = SecurityAdapter::new("http://nonexistent-host-12345:9999".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("Missing performance configuration".to_string())
+        })?
         .with_timeout(Duration::from_millis(100));
 
     // Act
@@ -365,6 +440,7 @@ async fn test_beardog_verify_auth_network_error() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Network { .. }));
+    Ok(())
 }
 
 // ============================================================================
@@ -372,7 +448,7 @@ async fn test_beardog_verify_auth_network_error() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_beardog_check_health_healthy() {
+async fn test_beardog_check_health_healthy() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -391,19 +467,28 @@ async fn test_beardog_check_health_healthy() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Failed health check".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), SecurityHealth::Healthy);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        SecurityHealth::Healthy
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_check_health_warning() {
+async fn test_beardog_check_health_warning() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -422,19 +507,28 @@ async fn test_beardog_check_health_warning() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Failed health check".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), SecurityHealth::Warning);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        SecurityHealth::Warning
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_check_health_critical() {
+async fn test_beardog_check_health_critical() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -453,15 +547,24 @@ async fn test_beardog_check_health_critical() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).unwrap();
+    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("Failed health check".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), SecurityHealth::Critical);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        SecurityHealth::Critical
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 // ============================================================================

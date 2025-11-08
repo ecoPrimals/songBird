@@ -2,7 +2,7 @@
 //!
 //! **MODERN GAMING NETWORK OPTIMIZATION** ✅
 
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use clap::Subcommand;
 
 #[derive(Debug, Clone, Subcommand)]
@@ -95,7 +95,7 @@ pub enum GamingProtocol {
 }
 
 /// Handle network commands
-pub async fn handle_network_command(command: NetworkCommand) -> CliResult<()> {
+pub async fn handle_network_command(command: NetworkCommand) -> SongbirdResult<()> {
     match command {
         NetworkCommand::Optimize {
             game_mode,
@@ -128,7 +128,7 @@ async fn optimize_gaming_network(
     game_mode: bool,
     target_latency: u32,
     protocol: Option<GamingProtocol>,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("🎮 Optimizing gaming network...");
 
     if game_mode {
@@ -150,7 +150,7 @@ async fn test_gaming_network(
     gaming_protocols: bool,
     server: Option<String>,
     iterations: u32,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("🧪 Testing gaming network performance...");
 
     if gaming_protocols {
@@ -178,7 +178,7 @@ async fn configure_gaming_ports(
     gaming: bool,
     auto_configure: bool,
     port_range: Option<String>,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("🔌 Configuring gaming network ports...");
 
     if gaming {
@@ -202,7 +202,7 @@ async fn monitor_gaming_network(
     _interval: u64,
     protocol: Option<GamingProtocol>,
     continuous: bool,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("📊 Starting gaming network monitoring...");
 
     if let Some(protocol) = protocol {
@@ -225,7 +225,7 @@ async fn monitor_gaming_network(
     Ok(())
 }
 
-async fn diagnose_gaming_network(comprehensive: bool, export: Option<String>) -> CliResult<()> {
+async fn diagnose_gaming_network(comprehensive: bool, export: Option<String>) -> SongbirdResult<()> {
     println!("🔍 Diagnosing gaming network...");
 
     if comprehensive {

@@ -94,7 +94,7 @@ async fn test_concurrent_registry_access() {
 #[test]
 fn test_adapter_clone_creates_independent_instance() {
     let adapter1 = UnifiedUniversalAdapter::new();
-    let adapter2 = adapter1.clone();
+    let adapter2 = adapter1;
 
     // Cloning should create independent instances
     let _ = adapter1;

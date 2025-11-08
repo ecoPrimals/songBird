@@ -17,6 +17,7 @@ use songbird_cli::cli::core::{
     types::{CliConfig, CliResult, CommandContext, ProgressIndicator},
 };
 use songbird_cli::cli::types::OutputFormat;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
 // ============================================================================
@@ -184,7 +185,7 @@ fn test_command_context_with_args() {
 }
 
 #[test]
-fn test_command_context_clone() {
+fn test_command_context_clone() -> SongbirdResult<()> {
     let context = CommandContext {
         command: "test".to_string(),
         args: HashMap::new(),
@@ -193,10 +194,11 @@ fn test_command_context_clone() {
 
     let cloned = context.clone();
     assert_eq!(context.command, cloned.command);
+    Ok(())
 }
 
 #[test]
-fn test_command_context_debug() {
+fn test_command_context_debug() -> SongbirdResult<()> {
     let context = CommandContext {
         command: "test".to_string(),
         args: HashMap::new(),
@@ -205,6 +207,7 @@ fn test_command_context_debug() {
 
     let debug_output = format!("{:?}", context);
     assert!(debug_output.contains("CommandContext"));
+    Ok(())
 }
 
 // ============================================================================
@@ -356,29 +359,32 @@ fn test_cli_error_network_error() {
 }
 
 #[test]
-fn test_cli_error_serialization_error() {
+fn test_cli_error_serialization_error() -> SongbirdResult<()> {
     let error = CliError::SerializationError("test serialization error".to_string());
     let error_string = format!("{}", error);
 
     assert!(error_string.contains("Serialization error"));
     assert!(error_string.contains("test serialization error"));
+    Ok(())
 }
 
 #[test]
-fn test_cli_error_io_error() {
+fn test_cli_error_io_error() -> SongbirdResult<()> {
     let error = CliError::IoError("test io error".to_string());
     let error_string = format!("{}", error);
 
     assert!(error_string.contains("IO error"));
     assert!(error_string.contains("test io error"));
+    Ok(())
 }
 
 #[test]
-fn test_cli_error_debug() {
+fn test_cli_error_debug() -> SongbirdResult<()> {
     let error = CliError::CommandError("test".to_string());
     let debug_output = format!("{:?}", error);
 
     assert!(debug_output.contains("CommandError"));
+    Ok(())
 }
 
 #[test]
@@ -455,35 +461,40 @@ fn test_output_format_yaml() {
 }
 
 #[test]
-fn test_output_format_table() {
+fn test_output_format_table() -> SongbirdResult<()> {
     let format = OutputFormat::Table;
     assert_eq!(format, OutputFormat::Table);
+    Ok(())
 }
 
 #[test]
-fn test_output_format_text() {
+fn test_output_format_text() -> SongbirdResult<()> {
     let format = OutputFormat::Text;
     assert_eq!(format, OutputFormat::Text);
+    Ok(())
 }
 
 #[test]
-fn test_output_format_text_equivalent() {
+fn test_output_format_text_equivalent() -> SongbirdResult<()> {
     let format = OutputFormat::Text;
     assert_eq!(format, OutputFormat::Text);
+    Ok(())
 }
 
 #[test]
-fn test_output_format_equality() {
+fn test_output_format_equality() -> SongbirdResult<()> {
     assert_eq!(OutputFormat::Json, OutputFormat::Json);
     assert_ne!(OutputFormat::Json, OutputFormat::Yaml);
+    Ok(())
 }
 
 #[test]
-fn test_output_format_debug() {
+fn test_output_format_debug() -> SongbirdResult<()> {
     let format = OutputFormat::Json;
     let debug_output = format!("{:?}", format);
 
     assert!(debug_output.contains("Json"));
+    Ok(())
 }
 
 #[test]
@@ -549,7 +560,7 @@ fn test_cli_progress_tracking() {
             progress: stage,
             message: format!("{}% complete", stage),
             eta_seconds: if stage < 100 {
-                Some(((100 - stage) / 10) as u64)
+                Some(u64::from((100 - stage) / 10))
             } else {
                 Some(0)
             },

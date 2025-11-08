@@ -71,8 +71,11 @@ impl MetricsCollector {
     /// Returns an error if metrics collection fails when no snapshot exists
     pub async fn get_current_snapshot(&self) -> Result<MetricsSnapshot> {
         let current = self.current_metrics.read().await;
-        match current.as_ref() {
-            Some(metrics) => Ok(metrics.clone()),
+        let metrics_copy = current.as_ref().cloned();
+        drop(current); // Explicitly drop the read lock before potentially acquiring write lock
+
+        match metrics_copy {
+            Some(metrics) => Ok(metrics),
             None => self.collect_all_metrics().await,
         }
     }
@@ -155,33 +158,293 @@ pub struct ApplicationMetrics {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use songbird_types::SongbirdError;
 
     #[tokio::test]
-    async fn test_metrics_collector_creation() {
+    async fn test_metrics_collector_new() {
         let collector = MetricsCollector::new();
         assert_eq!(collector.get_collection_count(), 0);
     }
 
     #[tokio::test]
-    async fn test_metrics_collection() {
+    async fn test_metrics_collector_default() {
+        let collector = MetricsCollector::default();
+        assert_eq!(collector.get_collection_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_collect_all_metrics() -> Result<()> {
         let collector = MetricsCollector::new();
-        let metrics = collector.collect_all_metrics().await;
-        assert!(metrics.is_ok());
+        let result = collector.collect_all_metrics().await;
+
+        assert!(result.is_ok());
+        let metrics = result.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+        assert!((metrics.system.cpu_usage - 0.0).abs() < f64::EPSILON);
+        assert_eq!(metrics.songbird.active_services, 0);
+        assert_eq!(collector.get_collection_count(), 1);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_current_snapshot_after_collection() -> Result<()> {
+        let collector = MetricsCollector::new();
+
+        // First collection
+        let _ = collector.collect_all_metrics().await;
+
+        // Get snapshot
+        let result = collector.get_current_snapshot().await;
+        assert!(result.is_ok());
+        let snapshot = result.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+        assert!((snapshot.system.cpu_usage - 0.0).abs() < f64::EPSILON);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_current_snapshot_without_prior_collection() {
+        let collector = MetricsCollector::new();
+
+        // Get snapshot without prior collection - should auto-collect
+        let result = collector.get_current_snapshot().await;
+        assert!(result.is_ok());
         assert_eq!(collector.get_collection_count(), 1);
     }
 
     #[tokio::test]
-    async fn test_prometheus_export() -> Result<()> {
+    async fn test_get_current_metrics_alias() -> Result<()> {
         let collector = MetricsCollector::new();
-        collector.collect_all_metrics().await?;
 
-        let prometheus_output = collector.export_prometheus().await;
-        assert!(prometheus_output.is_ok());
+        let result = collector.get_current_metrics().await;
+        assert!(result.is_ok());
+        let metrics = result.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+        assert!((metrics.system.cpu_usage - 0.0).abs() < f64::EPSILON);
+        Ok(())
+    }
 
-        let output = prometheus_output?;
+    #[tokio::test]
+    async fn test_collection_count_increments() {
+        let collector = MetricsCollector::new();
+
+        assert_eq!(collector.get_collection_count(), 0);
+        let _ = collector.collect_all_metrics().await;
+        assert_eq!(collector.get_collection_count(), 1);
+        let _ = collector.collect_all_metrics().await;
+        assert_eq!(collector.get_collection_count(), 2);
+        let _ = collector.collect_all_metrics().await;
+        assert_eq!(collector.get_collection_count(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_export_prometheus_format() -> Result<()> {
+        let collector = MetricsCollector::new();
+        let _ = collector.collect_all_metrics().await;
+
+        let result = collector.export_prometheus().await;
+        assert!(result.is_ok());
+
+        let output = result.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
         assert!(output.contains("songbird_cpu_usage_percent"));
         assert!(output.contains("songbird_memory_usage_ratio"));
         assert!(output.contains("songbird_active_services"));
+        assert!(output.contains("# HELP"));
+        assert!(output.contains("# TYPE"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_export_prometheus_without_prior_collection() {
+        let collector = MetricsCollector::new();
+
+        // Export should auto-collect if needed
+        let result = collector.export_prometheus().await;
+        assert!(result.is_ok());
+        assert_eq!(collector.get_collection_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_last_collection_time() {
+        let collector = MetricsCollector::new();
+        let time = collector.last_collection_time();
+        assert!(time.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_metrics_snapshot_contains_timestamp() -> Result<()> {
+        let collector = MetricsCollector::new();
+        let metrics = collector.collect_all_metrics().await.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+
+        // Timestamp should be recent (within last second)
+        let now = Utc::now();
+        let diff = now.signed_duration_since(metrics.timestamp);
+        assert!(diff.num_seconds() < 2);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_metrics_snapshot_system_metrics() -> Result<()> {
+        let collector = MetricsCollector::new();
+        let metrics = collector.collect_all_metrics().await.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+
+        assert!((metrics.system.cpu_usage - 0.0).abs() < f64::EPSILON);
+        assert!((metrics.system.memory_usage - 0.0).abs() < f64::EPSILON);
+        assert!((metrics.system.disk_usage - 0.0).abs() < f64::EPSILON);
+        assert_eq!(metrics.system.network_io.bytes_in, 0);
+        assert_eq!(metrics.system.network_io.bytes_out, 0);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_metrics_snapshot_application_metrics() -> Result<()> {
+        let collector = MetricsCollector::new();
+        let metrics = collector.collect_all_metrics().await.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+
+        assert_eq!(metrics.songbird.active_services, 0);
+        assert!((metrics.songbird.request_rate - 0.0).abs() < f64::EPSILON);
+        assert!((metrics.songbird.error_rate - 0.0).abs() < f64::EPSILON);
+        assert!((metrics.songbird.avg_response_time_ms - 0.0).abs() < f64::EPSILON);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_metrics_snapshot_clone() -> Result<()> {
+        let collector = MetricsCollector::new();
+        let metrics = collector.collect_all_metrics().await.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+
+        let cloned = metrics.clone();
+        assert!((metrics.system.cpu_usage - cloned.system.cpu_usage).abs() < f64::EPSILON);
+        assert_eq!(metrics.songbird.active_services, cloned.songbird.active_services);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_metrics_snapshot_serialization() -> Result<()> {
+        let collector = MetricsCollector::new();
+        let metrics = collector.collect_all_metrics().await.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+
+        let serialized =
+            serde_json::to_string(&metrics).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Serialization failed: {e}"),
+                debug_info: None,
+            })?;
+        let deserialized: MetricsSnapshot =
+            serde_json::from_str(&serialized).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Parsing failed: {e}"),
+                debug_info: None,
+            })?;
+
+        assert!((metrics.system.cpu_usage - deserialized.system.cpu_usage).abs() < f64::EPSILON);
+        assert_eq!(metrics.songbird.active_services, deserialized.songbird.active_services);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_application_metrics_serialization() -> Result<()> {
+        let app_metrics = ApplicationMetrics {
+            active_services: 5,
+            request_rate: 100.5,
+            error_rate: 0.01,
+            avg_response_time_ms: 25.3,
+        };
+
+        let serialized =
+            serde_json::to_string(&app_metrics).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Serialization failed: {e}"),
+                debug_info: None,
+            })?;
+        let deserialized: ApplicationMetrics =
+            serde_json::from_str(&serialized).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Parsing failed: {e}"),
+                debug_info: None,
+            })?;
+
+        assert_eq!(app_metrics.active_services, deserialized.active_services);
+        assert!((app_metrics.request_rate - deserialized.request_rate).abs() < f64::EPSILON);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_collections() -> Result<()> {
+        let collector = Arc::new(MetricsCollector::new());
+
+        let mut handles = vec![];
+        for _ in 0..10 {
+            let collector_clone = Arc::clone(&collector);
+            let handle = tokio::spawn(async move { collector_clone.collect_all_metrics().await });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            let result = handle.await.map_err(|e| {
+                SongbirdError::configuration(format!(
+                    "Failed to join concurrent metrics task: {e}"
+                ))
+            })?;
+            assert!(result.is_ok());
+        }
+
+        assert_eq!(collector.get_collection_count(), 10);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_metrics_collector_debug() {
+        let collector = MetricsCollector::new();
+        let debug_str = format!("{collector:?}");
+        assert!(debug_str.contains("MetricsCollector"));
+    }
+
+    #[tokio::test]
+    async fn test_metrics_snapshot_debug() -> Result<()> {
+        let collector = MetricsCollector::new();
+        let metrics = collector.collect_all_metrics().await.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+        let debug_str = format!("{metrics:?}");
+        assert!(debug_str.contains("MetricsSnapshot"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_prometheus_export_format_correctness() -> Result<()> {
+        let collector = MetricsCollector::new();
+        let output = collector.export_prometheus().await.map_err(|e| {
+            SongbirdError::configuration(format!("Operation failed: {e}"))
+        })?;
+
+        // Check format: metric name followed by value
+        let mut found_metric_line = false;
+
+        for line in output.lines() {
+            if line.starts_with("songbird_cpu_usage_percent") && !line.starts_with('#') {
+                found_metric_line = true;
+                // Should have format: metric_name value
+                assert_eq!(line.split_whitespace().count(), 2);
+            }
+        }
+
+        assert!(found_metric_line, "Should have at least one metric line");
         Ok(())
     }
 }

@@ -3,6 +3,11 @@
 //! Additional comprehensive tests for universal primal discovery system
 //! to improve coverage of core discovery functionality.
 
+use songbird_test_utils::network_fixtures::*;
+use songbird_test_utils::test_discovery_port;
+use songbird_test_utils::test_orchestrator_port;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -52,18 +57,19 @@ fn test_discovery_mechanisms_flags() {
 // ============================================================================
 
 #[test]
-fn test_discovered_primal_data_structure() {
-    let primal_id = "test-primal-1";
-    let primal_endpoint = "http://localhost:8080";
-    let capabilities = vec!["compute", "storage"];
+fn test_discovered_primal_data_structure() -> SongbirdResult<()> {
+    let primal_id = "test-primal-1".to_string();
+    let primal_endpoint = format!("http://localhost:{}", test_orchestrator_port());
+    let capabilities = ["compute", "storage"];
 
     assert!(!primal_id.is_empty());
     assert!(primal_endpoint.contains("http"));
     assert_eq!(capabilities.len(), 2);
+    Ok(())
 }
 
 #[test]
-fn test_discovered_primal_with_metadata() {
+fn test_discovered_primal_with_metadata() -> SongbirdResult<()> {
     let metadata = HashMap::from([
         ("version".to_string(), "1.0.0".to_string()),
         ("region".to_string(), "us-west".to_string()),
@@ -71,13 +77,26 @@ fn test_discovered_primal_with_metadata() {
     ]);
 
     assert_eq!(metadata.len(), 3);
-    assert_eq!(metadata.get("version").unwrap(), "1.0.0");
-    assert_eq!(metadata.get("region").unwrap(), "us-west");
+    assert_eq!(
+        metadata.get("version").or_else(|_| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        "1.0.0"
+    );
+    assert_eq!(
+        metadata.get("region").or_else(|_| SongbirdError::configuration(format!(
+            "Error: {}",
+            e
+        )))?,
+        "us-west"
+    );
+    Ok(())
 }
 
 #[test]
 fn test_discovered_primal_capabilities_list() {
-    let capabilities = vec!["ai", "ml", "inference"];
+    let capabilities = ["ai", "ml", "inference"];
 
     assert!(capabilities.contains(&"ai"));
     assert!(capabilities.contains(&"ml"));
@@ -97,7 +116,7 @@ fn test_discovery_cache_empty() {
 }
 
 #[test]
-fn test_discovery_cache_insert() {
+fn test_discovery_cache_insert() -> SongbirdResult<()> {
     let mut cache = HashMap::new();
 
     cache.insert("primal1".to_string(), "endpoint1".to_string());
@@ -106,30 +125,62 @@ fn test_discovery_cache_insert() {
     assert_eq!(cache.len(), 2);
     assert!(cache.contains_key("primal1"));
     assert!(cache.contains_key("primal2"));
+    Ok(())
 }
 
 #[test]
-fn test_discovery_cache_lookup() {
+fn test_discovery_cache_lookup() -> SongbirdResult<()> {
     let mut cache = HashMap::new();
-    cache.insert("compute-service".to_string(), "http://compute:8080".to_string());
+    cache.insert(
+        "compute-service".to_string(),
+        format!("http://compute:{}", test_orchestrator_port()),
+    );
 
     let endpoint = cache.get("compute-service");
     assert!(endpoint.is_some());
-    assert_eq!(endpoint.unwrap(), "http://compute:8080");
+    assert_eq!(
+        endpoint
+            .ok_or_else(|| SongbirdError::configuration(format!(
+                "Error: {}",
+                e
+            )))?
+            .as_str(),
+        format!("http://compute:{}", test_orchestrator_port())
+    );
 
     let missing = cache.get("nonexistent");
     assert!(missing.is_none());
+    Ok(())
 }
 
 #[test]
-fn test_discovery_cache_update() {
+fn test_discovery_cache_update() -> SongbirdResult<()> {
     let mut cache = HashMap::new();
 
-    cache.insert("service".to_string(), "http://old:8080".to_string());
-    assert_eq!(cache.get("service").unwrap(), "http://old:8080");
+    cache.insert("service".to_string(), format!("http://old:{}", test_orchestrator_port()));
+    assert_eq!(
+        cache
+            .get("service")
+            .ok_or_else(|| SongbirdError::configuration(format!(
+                "Error: {}",
+                e
+            )))?
+            .as_str(),
+        format!("http://old:{}", test_orchestrator_port())
+    );
 
-    cache.insert("service".to_string(), "http://new:8080".to_string());
-    assert_eq!(cache.get("service").unwrap(), "http://new:8080");
+    cache.insert("service".to_string(), format!("http://new:{}", test_orchestrator_port()));
+    assert_eq!(
+        cache
+            .get("service")
+            .ok_or_else(|| SongbirdError::configuration(format!(
+                "Error: {}",
+                e
+            )))?
+            .as_str(),
+        format!("http://new:{}", test_orchestrator_port())
+    );
+    Ok(())
 }
 
 #[test]
@@ -149,7 +200,7 @@ fn test_discovery_cache_remove() {
 
 #[test]
 fn test_discovery_result_success() {
-    let discovered = vec!["primal1", "primal2", "primal3"];
+    let discovered = ["primal1", "primal2", "primal3"];
 
     assert!(!discovered.is_empty());
     assert_eq!(discovered.len(), 3);
@@ -166,7 +217,7 @@ fn test_discovery_result_empty() {
 #[test]
 fn test_discovery_result_deduplication() {
     let mut discovered = vec!["primal1", "primal2", "primal1", "primal3", "primal2"];
-    discovered.sort();
+    discovered.sort_unstable();
     discovered.dedup();
 
     assert_eq!(discovered.len(), 3);
@@ -181,21 +232,23 @@ fn test_discovery_result_deduplication() {
 
 #[test]
 fn test_environment_variable_parsing() {
-    let env_value = "http://service1:8080,http://service2:8081";
+    let port1 = test_orchestrator_port();
+    let port2 = test_discovery_port();
+    let env_value = format!("http://service1:{},http://service2:{}", port1, port2);
     let endpoints: Vec<&str> = env_value.split(',').collect();
 
     assert_eq!(endpoints.len(), 2);
-    assert_eq!(endpoints[0], "http://service1:8080");
-    assert_eq!(endpoints[1], "http://service2:8081");
+    assert_eq!(endpoints[0], format!("http://service1:{}", port1));
+    assert_eq!(endpoints[1], format!("http://service2:{}", port2));
 }
 
 #[test]
 fn test_environment_variable_single_value() {
-    let env_value = "http://single-service:8080";
+    let env_value = format!("http://single-service:{}", test_orchestrator_port());
     let endpoints: Vec<&str> = env_value.split(',').collect();
 
     assert_eq!(endpoints.len(), 1);
-    assert_eq!(endpoints[0], "http://single-service:8080");
+    assert_eq!(endpoints[0], format!("http://single-service:{}", test_orchestrator_port()));
 }
 
 #[test]
@@ -206,12 +259,14 @@ fn test_environment_variable_empty() {
 
 #[test]
 fn test_environment_variable_with_spaces() {
-    let env_value = " http://service1:8080 , http://service2:8081 ";
+    let port1 = test_orchestrator_port();
+    let port2 = test_discovery_port();
+    let env_value = format!(" http://service1:{} , http://service2:{} ", port1, port2);
     let endpoints: Vec<String> = env_value.split(',').map(|s| s.trim().to_string()).collect();
 
     assert_eq!(endpoints.len(), 2);
-    assert_eq!(endpoints[0], "http://service1:8080");
-    assert_eq!(endpoints[1], "http://service2:8081");
+    assert_eq!(endpoints[0], format!("http://service1:{}", port1));
+    assert_eq!(endpoints[1], format!("http://service2:{}", port2));
 }
 
 // ============================================================================
@@ -220,29 +275,34 @@ fn test_environment_variable_with_spaces() {
 
 #[test]
 fn test_dns_record_parsing() {
-    let dns_record = "service.example.com:8080";
+    let port = test_orchestrator_port();
+    let dns_record = format!("service.example.com:{}", port);
     let parts: Vec<&str> = dns_record.split(':').collect();
 
     assert_eq!(parts.len(), 2);
     assert_eq!(parts[0], "service.example.com");
-    assert_eq!(parts[1], "8080");
+    assert_eq!(parts[1], &port.to_string());
 }
 
 #[test]
 fn test_dns_srv_record_structure() {
     // SRV record format: priority weight port target
-    let srv_parts = (10, 20, 8080, "service.example.com");
+    let port = test_orchestrator_port();
+    let srv_parts = (10, 20, port, "service.example.com");
 
     assert_eq!(srv_parts.0, 10); // priority
     assert_eq!(srv_parts.1, 20); // weight
-    assert_eq!(srv_parts.2, 8080); // port
+    assert_eq!(srv_parts.2, port); // port
     assert_eq!(srv_parts.3, "service.example.com"); // target
 }
 
 #[test]
 fn test_dns_multiple_records() {
-    let records =
-        vec!["service1.example.com:8080", "service2.example.com:8081", "service3.example.com:8082"];
+    let records = [
+        format!("service1.example.com:{}", test_orchestrator_port()),
+        format!("service2.example.com:{}", test_discovery_port()),
+        format!("service3.example.com:{}", test_health_port()),
+    ];
 
     assert_eq!(records.len(), 3);
     assert!(records.iter().all(|r| r.contains("example.com")));
@@ -266,7 +326,7 @@ fn test_network_range_parsing() {
 #[test]
 fn test_port_range_validation() {
     let port_min = 8000;
-    let port_max = 9000;
+    let port_max = songbird_config::defaults::ports::metrics_port();
 
     assert!(port_min < port_max);
     assert!(port_min >= 1024); // Above reserved range
@@ -275,7 +335,14 @@ fn test_port_range_validation() {
 
 #[test]
 fn test_network_scan_ports() {
-    let common_ports = vec![80, 443, 8080, 8443, 3000, 5000];
+    let common_ports = [
+        80,
+        443,
+        songbird_config::defaults::ports::orchestrator_port(),
+        songbird_config::defaults::ports::beardog_port(),
+        songbird_config::defaults::ports::dashboard_port(),
+        5000,
+    ];
 
     assert_eq!(common_ports.len(), 6);
     assert!(common_ports.iter().all(|&p| p > 0 && p <= 65535));
@@ -288,15 +355,15 @@ fn test_network_scan_ports() {
 #[test]
 fn test_capability_exact_match() {
     let required = "compute";
-    let available = vec!["compute", "storage", "network"];
+    let available = ["compute", "storage", "network"];
 
     assert!(available.contains(&required));
 }
 
 #[test]
 fn test_capability_multiple_match() {
-    let required = vec!["compute", "storage"];
-    let available = vec!["compute", "storage", "network", "ai"];
+    let required = ["compute", "storage"];
+    let available = ["compute", "storage", "network", "ai"];
 
     assert!(required.iter().all(|r| available.contains(r)));
 }
@@ -304,15 +371,15 @@ fn test_capability_multiple_match() {
 #[test]
 fn test_capability_no_match() {
     let required = "blockchain";
-    let available = vec!["compute", "storage", "network"];
+    let available = ["compute", "storage", "network"];
 
     assert!(!available.contains(&required));
 }
 
 #[test]
 fn test_capability_partial_match() {
-    let required = vec!["compute", "storage", "blockchain"];
-    let available = vec!["compute", "storage"];
+    let required = ["compute", "storage", "blockchain"];
+    let available = ["compute", "storage"];
 
     let matched: Vec<_> = required.iter().filter(|r| available.contains(r)).collect();
     assert_eq!(matched.len(), 2); // compute and storage match
@@ -324,7 +391,7 @@ fn test_capability_partial_match() {
 
 #[test]
 fn test_health_check_paths() {
-    let paths = vec!["/health", "/api/health", "/api/v1/health", "/status"];
+    let paths = ["/health", "/api/health", "/api/v1/health", "/status"];
 
     assert_eq!(paths.len(), 4);
     assert!(paths.iter().all(|p| p.starts_with('/')));
@@ -332,8 +399,8 @@ fn test_health_check_paths() {
 
 #[test]
 fn test_health_check_response_codes() {
-    let success_codes = vec![200, 204];
-    let error_codes = vec![500, 503, 404];
+    let success_codes = [200, 204];
+    let error_codes = [500, 503, 404];
 
     assert!(success_codes.contains(&200));
     assert!(error_codes.contains(&500));
@@ -342,11 +409,12 @@ fn test_health_check_response_codes() {
 
 #[test]
 fn test_health_endpoint_construction() {
-    let base_url = "http://service:8080";
+    let port = test_orchestrator_port();
+    let base_url = format!("http://service:{}", port);
     let health_path = "/health";
-    let full_url = format!("{}{}", base_url, health_path);
+    let full_url = format!("{base_url}{health_path}");
 
-    assert_eq!(full_url, "http://service:8080/health");
+    assert_eq!(full_url, format!("http://service:{}/health", port));
 }
 
 // ============================================================================
@@ -393,7 +461,7 @@ fn test_exponential_backoff() {
 
 #[test]
 fn test_primal_priority_ordering() {
-    let mut primals = vec![("primal1", 10), ("primal2", 5), ("primal3", 15)];
+    let mut primals = [("primal1", 10), ("primal2", 5), ("primal3", 15)];
 
     primals.sort_by(|a, b| b.1.cmp(&a.1)); // Sort by priority descending
 
@@ -405,9 +473,9 @@ fn test_primal_priority_ordering() {
 #[test]
 fn test_capability_score_calculation() {
     // Score based on number of matching capabilities
-    let required = vec!["compute", "storage", "network"];
-    let primal1 = vec!["compute", "storage"]; // 2 matches
-    let primal2 = vec!["compute", "storage", "network"]; // 3 matches
+    let required = ["compute", "storage", "network"];
+    let primal1 = ["compute", "storage"]; // 2 matches
+    let primal2 = ["compute", "storage", "network"]; // 3 matches
 
     let score1 = required.iter().filter(|r| primal1.contains(r)).count();
     let score2 = required.iter().filter(|r| primal2.contains(r)).count();
@@ -442,7 +510,11 @@ fn test_empty_result_handling() {
 
 #[test]
 fn test_invalid_endpoint_detection() {
-    let endpoints = vec!["http://valid:8080", "invalid-url", "http://another-valid:8081"];
+    let endpoints = [
+        format!("http://valid:{}", test_orchestrator_port()),
+        "invalid-url".to_string(),
+        format!("http://another-valid:{}", test_discovery_port()),
+    ];
 
     let valid: Vec<_> = endpoints
         .iter()
@@ -481,13 +553,13 @@ fn test_full_discovery_workflow() {
 }
 
 #[test]
-fn test_capability_based_selection() {
+fn test_capability_based_selection() -> SongbirdResult<()> {
     struct Service {
         name: String,
         capabilities: Vec<String>,
     }
 
-    let services = vec![
+    let services = [
         Service {
             name: "compute-service".to_string(),
             capabilities: vec!["compute".to_string()],
@@ -501,5 +573,14 @@ fn test_capability_based_selection() {
     let compute_service = services.iter().find(|s| s.capabilities.contains(&"compute".to_string()));
 
     assert!(compute_service.is_some());
-    assert_eq!(compute_service.unwrap().name, "compute-service");
+    assert_eq!(
+        compute_service
+            .ok_or_else(|| SongbirdError::configuration(format!(
+                "Error: {}",
+                e
+            )))?
+            .name,
+        "compute-service"
+    );
+    Ok(())
 }

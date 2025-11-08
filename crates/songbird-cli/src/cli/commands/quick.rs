@@ -6,7 +6,7 @@
 //! All interactive UI elements have been removed - this module provides
 //! clean JSON APIs following the songbird headless architecture.
 
-use crate::errors::{CliError, CliResult};
+use crate::errors::{CliError, SongbirdResult};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -50,13 +50,16 @@ pub struct ResourceLimits {
 impl Default for OrchestratorConfig {
     fn default() -> Self {
         let mut ports = HashMap::new();
-        ports.insert("api".to_string(), 8080);
-        ports.insert("metrics".to_string(), 9090);
+        ports.insert("api".to_string(), songbird_config::defaults::ports::orchestrator_port());
+        ports.insert("metrics".to_string(), songbird_config::defaults::ports::metrics_port());
 
         Self {
             node_name: "songbird-node".to_string(),
             capabilities: vec!["compute".to_string()],
-            discovery_endpoints: vec!["http://localhost:8080".to_string()],
+            discovery_endpoints: vec![format!(
+                "http://localhost:{}",
+                songbird_config::defaults::ports::orchestrator_port()
+            )],
             ports,
             security: SecurityConfig {
                 require_tls: true,
@@ -179,7 +182,7 @@ pub struct EndpointPreferences {
 }
 
 /// Main headless quick setup API
-pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> CliResult<QuickSetupResponse> {
+pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> SongbirdResult<QuickSetupResponse> {
     // Step 1: Detect system resources
     let _resources = resources::detect_system_resources_api().await?;
 
@@ -214,17 +217,17 @@ pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> CliResult<Qu
         ContributeType::Compute => vec!["compute".to_string()],
         ContributeType::Storage => vec!["storage".to_string()],
         ContributeType::Data => vec!["data".to_string()],
-        ContributeType::All => vec!["compute".to_string(), "storage".to_string(), "data".to_string()],
+        ContributeType::All => {
+            vec!["compute".to_string(), "storage".to_string(), "data".to_string()]
+        }
     };
 
-    let discovery_endpoints: Vec<String> = discovered_networks
-        .iter()
-        .map(|n| n.endpoint.clone())
-        .collect();
+    let discovery_endpoints: Vec<String> =
+        discovered_networks.iter().map(|n| n.endpoint.clone()).collect();
 
     let mut ports = HashMap::new();
-    ports.insert("api".to_string(), 8080);
-    ports.insert("metrics".to_string(), 9090);
+    ports.insert("api".to_string(), songbird_config::defaults::ports::orchestrator_port());
+    ports.insert("metrics".to_string(), songbird_config::defaults::ports::metrics_port());
 
     let security = request.security_preferences.as_ref().map_or_else(
         || SecurityConfig {
@@ -320,7 +323,7 @@ pub async fn execute_quick_gaming(
     name: Option<String>,
     auto_detect: bool,
     family_safe: bool,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("🚀 Quick gaming setup...");
 
     if let Some(session_name) = name {
@@ -340,7 +343,7 @@ pub async fn execute_quick_gaming(
 }
 
 // Keep the legacy function for compatibility
-pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> CliResult<()> {
+pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> SongbirdResult<()> {
     let request = QuickSetupRequest {
         contribute_type: contribute,
         node_name: name,

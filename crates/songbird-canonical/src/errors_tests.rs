@@ -8,6 +8,7 @@ mod tests {
     #![allow(clippy::unreadable_literal)]
 
     use crate::errors::*;
+    use songbird_types::SongbirdResult;
 
     #[test]
     fn test_error_context_creation() {
@@ -48,31 +49,34 @@ mod tests {
     }
 
     #[test]
-    fn test_error_context_display() {
+    fn test_error_context_display() -> SongbirdResult<()> {
         let context = ErrorContext::new("Test error", "In module X").with_suggestion("Check logs");
 
         let display = format!("{context}");
         assert!(display.contains("Test error"));
         assert!(display.contains("In module X"));
         assert!(display.contains("Check logs"));
+        Ok(())
     }
 
     #[test]
-    fn test_error_context_display_no_suggestions() {
+    fn test_error_context_display_no_suggestions() -> SongbirdResult<()> {
         let context = ErrorContext::new("Simple error", "Simple context");
 
         let display = format!("{context}");
         assert!(display.contains("Simple error"));
         assert!(display.contains("Simple context"));
+        Ok(())
     }
 
     #[test]
-    fn test_error_context_debug() {
+    fn test_error_context_debug() -> SongbirdResult<()> {
         let context = ErrorContext::new("Debug test", "Debug context");
 
         let debug_str = format!("{context:?}");
         assert!(debug_str.contains("ErrorContext"));
         assert!(debug_str.contains("Debug test"));
+        Ok(())
     }
 
     #[test]
@@ -174,5 +178,31 @@ mod tests {
         let result = success_result(value.clone());
 
         assert_eq!(result, value);
+    }
+
+    #[test]
+    fn test_unit_success() {
+        let result = unit_success();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_unit_success_multiple_calls() {
+        for _ in 0..10 {
+            let result = unit_success();
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_error_context_combined_operations() {
+        let context = ErrorContext::new("Combined test", "Multiple operations")
+            .with_suggestion("First")
+            .with_suggestions(vec!["Second", "Third"])
+            .with_suggestion("Fourth");
+
+        assert_eq!(context.suggestions().len(), 4);
+        assert_eq!(context.message(), "Combined test");
+        assert_eq!(context.context(), "Multiple operations");
     }
 }

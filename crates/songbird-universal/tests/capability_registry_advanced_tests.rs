@@ -2,6 +2,7 @@
 //!
 //! Tests capability registration, lookup, indexing, and service discovery
 
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::{CapabilityRegistry, RegistryStats};
 
 // ============================================================================
@@ -9,32 +10,35 @@ use songbird_universal::{CapabilityRegistry, RegistryStats};
 // ============================================================================
 
 #[test]
-fn test_capability_registry_new() {
+fn test_capability_registry_new() -> SongbirdResult<()> {
     let registry = CapabilityRegistry::default();
     assert!(registry.service_capabilities.is_empty());
     assert!(registry.capability_providers.is_empty());
     assert!(registry.service_info.is_empty());
     assert!(registry.last_updated.is_empty());
+    Ok(())
 }
 
 #[test]
-fn test_capability_registry_clone() {
+fn test_capability_registry_clone() -> SongbirdResult<()> {
     let registry = CapabilityRegistry::default();
-    let cloned = registry.clone();
+    let cloned = registry;
 
     assert!(cloned.service_capabilities.is_empty());
     assert!(cloned.capability_providers.is_empty());
+    Ok(())
 }
 
 #[test]
-fn test_capability_registry_debug() {
+fn test_capability_registry_debug() -> SongbirdResult<()> {
     let registry = CapabilityRegistry::default();
     let debug_str = format!("{registry:?}");
     assert!(debug_str.contains("CapabilityRegistry"));
+    Ok(())
 }
 
 #[test]
-fn test_capability_registry_service_capabilities() {
+fn test_capability_registry_service_capabilities() -> SongbirdResult<()> {
     let mut registry = CapabilityRegistry::default();
 
     // Add service capabilities
@@ -42,10 +46,11 @@ fn test_capability_registry_service_capabilities() {
 
     assert_eq!(registry.service_capabilities.len(), 1);
     assert!(registry.service_capabilities.contains_key("service-1"));
+    Ok(())
 }
 
 #[test]
-fn test_capability_registry_capability_providers() {
+fn test_capability_registry_capability_providers() -> SongbirdResult<()> {
     let mut registry = CapabilityRegistry::default();
 
     // Add capability providers
@@ -54,7 +59,15 @@ fn test_capability_registry_capability_providers() {
         .insert("compute".to_string(), vec!["service-1".to_string(), "service-2".to_string()]);
 
     assert_eq!(registry.capability_providers.len(), 1);
-    assert_eq!(registry.capability_providers.get("compute").unwrap().len(), 2);
+    assert_eq!(
+        registry
+            .capability_providers
+            .get("compute")
+            .ok_or_else(|| SongbirdError::configuration("Capability not found".to_string()))?
+            .len(),
+        2
+    );
+    Ok(())
 }
 
 #[test]
@@ -98,7 +111,7 @@ fn test_capability_registry_multiple_capabilities() {
 }
 
 #[test]
-fn test_capability_registry_service_removal() {
+fn test_capability_registry_service_removal() -> SongbirdResult<()> {
     let mut registry = CapabilityRegistry::default();
 
     registry.service_capabilities.insert("service-1".to_string(), vec![]);
@@ -106,10 +119,11 @@ fn test_capability_registry_service_removal() {
 
     registry.service_capabilities.remove("service-1");
     assert_eq!(registry.service_capabilities.len(), 0);
+    Ok(())
 }
 
 #[test]
-fn test_capability_registry_capability_lookup() {
+fn test_capability_registry_capability_lookup() -> SongbirdResult<()> {
     let mut registry = CapabilityRegistry::default();
 
     registry
@@ -118,7 +132,13 @@ fn test_capability_registry_capability_lookup() {
 
     let providers = registry.capability_providers.get("ai");
     assert!(providers.is_some());
-    assert_eq!(providers.unwrap().len(), 2);
+    assert_eq!(
+        providers
+            .ok_or_else(|| SongbirdError::configuration("Capability not found".to_string()))?
+            .len(),
+        2
+    );
+    Ok(())
 }
 
 // ============================================================================
@@ -139,7 +159,7 @@ fn test_registry_stats_creation() {
 }
 
 #[test]
-fn test_registry_stats_clone() {
+fn test_registry_stats_clone() -> SongbirdResult<()> {
     let stats = RegistryStats {
         total_services: 5,
         total_capabilities: 10,
@@ -149,10 +169,11 @@ fn test_registry_stats_clone() {
     let cloned = stats.clone();
     assert_eq!(stats.total_services, cloned.total_services);
     assert_eq!(stats.total_capabilities, cloned.total_capabilities);
+    Ok(())
 }
 
 #[test]
-fn test_registry_stats_debug() {
+fn test_registry_stats_debug() -> SongbirdResult<()> {
     let stats = RegistryStats {
         total_services: 5,
         total_capabilities: 10,
@@ -161,6 +182,7 @@ fn test_registry_stats_debug() {
 
     let debug_str = format!("{stats:?}");
     assert!(debug_str.contains("RegistryStats"));
+    Ok(())
 }
 
 #[test]
@@ -211,7 +233,7 @@ fn test_registry_with_stats() {
 }
 
 #[test]
-fn test_capability_provider_mapping() {
+fn test_capability_provider_mapping() -> SongbirdResult<()> {
     let mut registry = CapabilityRegistry::default();
 
     // Map capabilities to providers
@@ -226,8 +248,23 @@ fn test_capability_provider_mapping() {
 
     // Verify mappings
     assert_eq!(registry.capability_providers.len(), 2);
-    assert_eq!(registry.capability_providers.get("storage").unwrap().len(), 2);
-    assert_eq!(registry.capability_providers.get("compute").unwrap().len(), 2);
+    assert_eq!(
+        registry
+            .capability_providers
+            .get("storage")
+            .ok_or_else(|| SongbirdError::configuration("Capability not found".to_string()))?
+            .len(),
+        2
+    );
+    assert_eq!(
+        registry
+            .capability_providers
+            .get("compute")
+            .ok_or_else(|| SongbirdError::configuration("Capability not found".to_string()))?
+            .len(),
+        2
+    );
+    Ok(())
 }
 
 #[test]
@@ -303,7 +340,7 @@ fn test_registry_timestamp_tracking() {
 }
 
 #[test]
-fn test_capability_provider_updates() {
+fn test_capability_provider_updates() -> SongbirdResult<()> {
     let mut registry = CapabilityRegistry::default();
 
     // Initial provider list
@@ -314,11 +351,19 @@ fn test_capability_provider_updates() {
         providers.push("mysql".to_string());
     }
 
-    assert_eq!(registry.capability_providers.get("database").unwrap().len(), 2);
+    assert_eq!(
+        registry
+            .capability_providers
+            .get("database")
+            .ok_or_else(|| SongbirdError::configuration("Capability not found".to_string()))?
+            .len(),
+        2
+    );
+    Ok(())
 }
 
 #[test]
-fn test_multi_capability_service() {
+fn test_multi_capability_service() -> SongbirdResult<()> {
     let mut registry = CapabilityRegistry::default();
 
     let service_id = "multi-service";
@@ -335,7 +380,10 @@ fn test_multi_capability_service() {
 
     // Verify service is registered for all capabilities
     for capability in capabilities {
-        let providers = registry.capability_providers.get(capability).unwrap();
+        let providers = registry.capability_providers.get(capability).or_else(|_| {
+            SongbirdError::configuration("Failed to register".to_string())
+        })?;
         assert!(providers.contains(&service_id.to_string()));
     }
+    Ok(())
 }

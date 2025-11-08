@@ -355,7 +355,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_config_builder() {
-        use songbird_config::config::constants;
+        use songbird_config::canonical::constants;
         
         let test_consul_url = format!("http://{}:8500", 
             std::env::var("TEST_CONSUL_HOST")

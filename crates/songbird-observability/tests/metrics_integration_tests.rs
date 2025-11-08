@@ -2,6 +2,7 @@
 
 use songbird_observability::observability::metrics::*;
 use songbird_observability::observability::*;
+use songbird_types::SongbirdResult;
 
 #[tokio::test]
 async fn test_metrics_collector_default() {
@@ -229,7 +230,7 @@ async fn test_service_health_tracking() {
 }
 
 #[tokio::test]
-async fn test_multiple_services_health_tracking() {
+async fn test_multiple_services_health_tracking() -> SongbirdResult<()> {
     let manager = ObservabilityManager::new();
     manager.start().await.unwrap();
 
@@ -238,25 +239,28 @@ async fn test_multiple_services_health_tracking() {
     for service in services {
         manager.record_health_check(service.to_string(), HealthStatus::Healthy, 100).await.unwrap();
     }
+    Ok(())
 }
 
 #[test]
-fn test_health_status_clone() {
+fn test_health_status_clone() -> SongbirdResult<()> {
     let status = HealthStatus::Healthy;
     let cloned = status.clone();
 
     assert!(matches!(status, HealthStatus::Healthy));
     assert!(matches!(cloned, HealthStatus::Healthy));
+    Ok(())
 }
 
 #[test]
-fn test_health_status_debug() {
+fn test_health_status_debug() -> SongbirdResult<()> {
     let statuses = vec![HealthStatus::Healthy, HealthStatus::Degraded, HealthStatus::Unhealthy];
 
     for status in statuses {
         let debug_str = format!("{status:?}");
         assert!(!debug_str.is_empty());
     }
+    Ok(())
 }
 
 #[test]

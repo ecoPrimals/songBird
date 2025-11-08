@@ -124,7 +124,8 @@ impl SquirrelAIAdapter {
     /// use songbird_universal::adapters::SquirrelAIAdapter;
     ///
     /// // Custom endpoint
-    /// let adapter = SquirrelAIAdapter::new("http://ai-service:8083".to_string()).unwrap();
+    /// let adapter = SquirrelAIAdapter::new(format!("http://ai-service:{}", 
+    ///     songbird_config::defaults::ports::metrics_port())).unwrap();
     ///
     /// // Or use default from configuration
     /// let adapter = SquirrelAIAdapter::new_default().unwrap();
@@ -293,11 +294,13 @@ mod tests {
     #[test]
     fn test_adapter_creation() {
         // Test uses localhost - acceptable for unit tests
-        let adapter = SquirrelAIAdapter::new("http://localhost:8083".to_string())
+        let port = songbird_config::defaults::ports::metrics_port();
+        let endpoint = format!("http://localhost:{}", port);
+        let adapter = SquirrelAIAdapter::new(endpoint.clone())
             .expect("Test: adapter creation should succeed");
         assert_eq!(
             adapter.endpoint(), // Test uses localhost - acceptable for unit tests
-            "http://localhost:8083"
+            &endpoint
         );
     }
 
@@ -305,7 +308,7 @@ mod tests {
     fn test_adapter_with_timeout() {
         let adapter = SquirrelAIAdapter::new(
             // Test uses localhost - acceptable for unit tests
-            "http://localhost:8083".to_string(),
+            format!("http://localhost:{}", songbird_config::defaults::ports::metrics_port()),
         )
         .expect("Test: adapter creation should succeed")
         .with_timeout(Duration::from_secs(20));

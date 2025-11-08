@@ -1,6 +1,12 @@
 //! Unified Configuration System
 //!
 //! **CANONICAL**: Single Source of Truth for all Songbird configuration
+//!
+//! # Future Direction
+//!
+//! This configuration structure is stable and actively used. For new projects,
+//! consider `CanonicalSongbirdConfig` in `consolidated_canonical` module which provides
+//! additional structure and organization. Both are fully supported.
 
 use super::{
     ai_first::CanonicalAIFirstConfig, health::CanonicalHealthConfig,
@@ -8,6 +14,7 @@ use super::{
     orchestration::CanonicalOrchestrationConfig, performance::CanonicalPerformanceConfig,
     security::CanonicalSecurityConfig, system::CanonicalSystemConfig,
 };
+use crate::SafeEnv;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -67,11 +74,11 @@ impl UnifiedSongbirdConfig {
     /// Get bind address based on environment
     #[must_use]
     pub fn get_bind_address(&self) -> String {
-        std::env::var("SONGBIRD_BIND_ADDRESS").unwrap_or_else(|_| {
+        SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", {
             if self.is_production() {
-                "0.0.0.0".to_string()
+                "0.0.0.0"
             } else {
-                "127.0.0.1".to_string()
+                "127.0.0.1"
             }
         })
     }
@@ -79,13 +86,13 @@ impl UnifiedSongbirdConfig {
     /// Get data directory path
     #[must_use]
     pub fn get_data_dir(&self) -> String {
-        std::env::var("SONGBIRD_DATA_DIR").unwrap_or_else(|_| {
+        SafeEnv::get_or_default("SONGBIRD_DATA_DIR", {
             if self.is_production() {
                 "/var/lib/songbird".to_string()
             } else {
                 format!(
-                    "{  }/.local/share/songbird",
-                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+                    "{}/.local/share/songbird",
+                    SafeEnv::get_or_default("HOME", "/tmp")
                 )
             }
         })
@@ -94,13 +101,13 @@ impl UnifiedSongbirdConfig {
     /// Get config directory path
     #[must_use]
     pub fn get_config_dir(&self) -> String {
-        std::env::var("SONGBIRD_CONFIG_DIR").unwrap_or_else(|_| {
+        SafeEnv::get_or_default("SONGBIRD_CONFIG_DIR", {
             if self.is_production() {
                 "/etc/songbird".to_string()
             } else {
                 format!(
-                    "{  }/.config/songbird",
-                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+                    "{}/.config/songbird",
+                    SafeEnv::get_or_default("HOME", "/tmp")
                 )
             }
         })
@@ -109,13 +116,13 @@ impl UnifiedSongbirdConfig {
     /// Get cache directory path
     #[must_use]
     pub fn get_cache_dir(&self) -> String {
-        std::env::var("SONGBIRD_CACHE_DIR").unwrap_or_else(|_| {
+        SafeEnv::get_or_default("SONGBIRD_CACHE_DIR", {
             if self.is_production() {
                 "/var/cache/songbird".to_string()
             } else {
                 format!(
-                    "{  }/.cache/songbird",
-                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+                    "{}/.cache/songbird",
+                    SafeEnv::get_or_default("HOME", "/tmp")
                 )
             }
         })
@@ -124,13 +131,13 @@ impl UnifiedSongbirdConfig {
     /// Get log directory path
     #[must_use]
     pub fn get_log_dir(&self) -> String {
-        std::env::var("SONGBIRD_LOG_DIR").unwrap_or_else(|_| {
+        SafeEnv::get_or_default("SONGBIRD_LOG_DIR", {
             if self.is_production() {
                 "/var/log/songbird".to_string()
             } else {
                 format!(
-                    "{  }/.local/share/songbird/logs",
-                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+                    "{}/.local/share/songbird/logs",
+                    SafeEnv::get_or_default("HOME", "/tmp")
                 )
             }
         })
@@ -140,23 +147,23 @@ impl UnifiedSongbirdConfig {
     #[must_use]
     pub fn is_production(&self) -> bool {
         self.system.environment == "production"
-            || std::env::var("SONGBIRD_ENV").as_deref() == Ok("production")
-            || std::env::var("NODE_ENV").as_deref() == Ok("production")
+            || SafeEnv::get_or_default("SONGBIRD_ENV", "development") == "production"
+            || SafeEnv::get_or_default("NODE_ENV", "development") == "production"
     }
 
     /// Check if running in development mode
     #[must_use]
     pub fn is_development(&self) -> bool {
         self.system.environment == "development"
-            || std::env::var("SONGBIRD_ENV").as_deref() == Ok("development")
-            || std::env::var("NODE_ENV").as_deref() == Ok("development")
+            || SafeEnv::get_or_default("SONGBIRD_ENV", "") == "development"
+            || SafeEnv::get_or_default("NODE_ENV", "") == "development"
     }
 
     /// Check if running in test mode
     #[must_use]
     pub fn is_test() -> bool {
-        std::env::var("SONGBIRD_ENV").as_deref() == Ok("testing")
-            || std::env::var("NODE_ENV").as_deref() == Ok("test")
-            || std::env::var("CI").is_ok()
+        SafeEnv::get_or_default("SONGBIRD_ENV", "") == "testing"
+            || SafeEnv::get_or_default("NODE_ENV", "") == "test"
+            || SafeEnv::get_required("CI").is_ok()
     }
 }

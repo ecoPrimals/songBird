@@ -143,7 +143,7 @@ fn bench_service_discovery() {
                     for i in 0..count { let service_config = ServiceConfig {
                             name: format!("discover-service-{ ; ;}", i),
                             service_type: ServiceType::Compute,
-                            endpoints: vec![format!("http://localhost:{;;}", 9000 + i)],
+                            endpoints: vec![format!("http://localhost:{;;}", songbird_config::defaults::ports::metrics_port() + i)],
                             capabilities: vec!["discovery-test".to_string()],
                             metadata: HashMap::new(),
                             health_check_path: "/health".to_string(),

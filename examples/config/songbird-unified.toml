@@ -15,7 +15,9 @@ region = "us-east-1"
 
 [network]
 bind_address = "127.0.0.1"
-port = 8080
+# Port for the main orchestrator service (override with SONGBIRD_PORT env var)
+# Default: uses orchestrator_port() from songbird_config::defaults::ports
+port = 8080  # Example default - set via environment in production
 max_connections = 1000
 
 [network.gaming]
@@ -28,7 +30,8 @@ wireguard_enabled = true
 
 [network.reverse_proxy]
 enabled = false
-port = 8081
+# Reverse proxy port (override with SONGBIRD_DISCOVERY_PORT env var)
+port = 8081  # Example default - set via environment in production
 upstream_servers = []
 health_check_enabled = true
 
@@ -52,7 +55,8 @@ burst_size = 200
 [federation]
 enabled = false
 mode = "standalone"  # Options: standalone, client, server, hybrid, clustered
-discovery_port = 8082
+# Federation discovery port (override with SONGBIRD_BEARDOG_PORT env var)
+discovery_port = 8082  # Example default - set via environment in production
 # cluster_name = "songbird-cluster"
 max_nodes = 100
 heartbeat_interval_secs = 30
@@ -67,7 +71,9 @@ service_registration_enabled = true
 
 [security.beardog_integration]
 enabled = false
-# endpoint = "https://beardog.internal:8443"
+# Endpoint should use CAPABILITY_SECURITY_ENDPOINT env var in production
+# Example: export CAPABILITY_SECURITY_ENDPOINT="https://beardog.internal:${SONGBIRD_BEARDOG_PORT}"
+# endpoint = "https://beardog.internal:8443"  # Example only - use env vars
 # api_key = "your-api-key-here"
 fallback_to_wireguard = true
 
@@ -86,21 +92,24 @@ auto_discovery_enabled = true
 
 [primals.beardog]
 enabled = false
-# endpoint = "https://beardog.internal:8443"
+# Use CAPABILITY_SECURITY_ENDPOINT env var in production (auto-discovery preferred)
+# endpoint = "https://beardog.internal:8443"  # Example only - use capability-based discovery
 fallback_endpoints = []
 health_check_enabled = true
 timeout_secs = 30
 
 [primals.nestgate]
 enabled = false
-# endpoint = "http://nestgate.internal:8080"
+# Use CAPABILITY_STORAGE_ENDPOINT env var in production (auto-discovery preferred)
+# endpoint = "http://nestgate.internal:8080"  # Example only - use capability-based discovery
 fallback_endpoints = []
 health_check_enabled = true
 timeout_secs = 30
 
 [primals.toadstool]
 enabled = false
-# endpoint = "http://toadstool.internal:8080"
+# Use CAPABILITY_COMPUTE_ENDPOINT env var in production (auto-discovery preferred)
+# endpoint = "http://toadstool.internal:8080"  # Example only - use capability-based discovery
 fallback_endpoints = []
 health_check_enabled = true
 timeout_secs = 30

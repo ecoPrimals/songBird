@@ -16,6 +16,8 @@
 //! This test suite validates all four primal adapters (`ToadStool`, `BearDog`, `NestGate`, Squirrel)
 //! using mock HTTP servers to simulate real primal interactions.
 
+use songbird_test_utils::test_orchestrator_port;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
 use std::time::Duration;
 
@@ -24,7 +26,7 @@ use std::time::Duration;
 // ============================================================================
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_success() {
+async fn test_toadstool_collect_metrics_success() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let mock = server
@@ -45,8 +47,12 @@ async fn test_toadstool_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("Failed to create adapter");
-    let metrics = adapter.collect_metrics().await.expect("Failed to collect metrics");
+    let adapter = ComputeAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let metrics = adapter
+        .collect_metrics()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
 
     assert_eq!(metrics.cpu_usage_percent, 45.5);
     assert_eq!(metrics.active_containers, 5);
@@ -54,22 +60,27 @@ async fn test_toadstool_collect_metrics_success() {
     assert!((metrics.performance_score - 0.85).abs() < 0.01);
 
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_network_error() {
-    let adapter = ComputeAdapter::new("http://nonexistent-host-12345.invalid:8080".to_string())
-        .expect("Failed to create adapter");
+async fn test_toadstool_collect_metrics_network_error() -> SongbirdResult<()> {
+    let adapter = ComputeAdapter::new(format!(
+        "http://nonexistent-host-12345.invalid:{}",
+        test_orchestrator_port()
+    ))
+    .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
 
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.to_string().contains("Failed to reach compute service"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_check_health() {
+async fn test_toadstool_check_health() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -90,15 +101,20 @@ async fn test_toadstool_check_health() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("Failed to create adapter");
-    let health = adapter.check_health().await.expect("Failed to check health");
+    let adapter = ComputeAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let health = adapter
+        .check_health()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
 
     // Should be healthy (CPU < 80%, Memory usage = 62.5%)
     assert_eq!(health, songbird_universal::adapters::compute::HealthStatus::Healthy);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_adapter_with_custom_timeout() {
+async fn test_toadstool_adapter_with_custom_timeout() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -120,11 +136,15 @@ async fn test_toadstool_adapter_with_custom_timeout() {
         .await;
 
     let adapter = ComputeAdapter::new(server.url())
-        .expect("Failed to create adapter")
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?
         .with_timeout(Duration::from_secs(2));
 
-    let metrics = adapter.collect_metrics().await.expect("Failed to collect metrics");
+    let metrics = adapter
+        .collect_metrics()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
     assert_eq!(metrics.cpu_usage_percent, 30.0);
+    Ok(())
 }
 
 // ============================================================================
@@ -132,7 +152,7 @@ async fn test_toadstool_adapter_with_custom_timeout() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_beardog_collect_metrics_success() {
+async fn test_beardog_collect_metrics_success() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -151,17 +171,22 @@ async fn test_beardog_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("Failed to create adapter");
-    let metrics = adapter.collect_metrics().await.expect("Failed to collect metrics");
+    let adapter = SecurityAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let metrics = adapter
+        .collect_metrics()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
 
     assert_eq!(metrics.active_sessions, 50);
     assert_eq!(metrics.failed_auth_attempts, 10);
     assert_eq!(metrics.blocked_ips, 2);
     assert!((metrics.security_score - 0.95).abs() < 0.01);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_verify_auth_success() {
+async fn test_beardog_verify_auth_success() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -172,26 +197,36 @@ async fn test_beardog_verify_auth_success() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("Failed to create adapter");
-    let result = adapter.verify_auth("valid_token").await.expect("Failed to verify auth");
+    let adapter = SecurityAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let result = adapter
+        .verify_auth("valid_token")
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to verify auth: {}", e)))?;
 
     assert_eq!(result, songbird_universal::adapters::security::AuthResult::Authorized);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_verify_auth_unauthorized() {
+async fn test_beardog_verify_auth_unauthorized() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server.mock("POST", "/auth/verify").with_status(401).create_async().await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("Failed to create adapter");
-    let result = adapter.verify_auth("invalid_token").await.expect("Failed to verify auth");
+    let adapter = SecurityAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let result = adapter
+        .verify_auth("invalid_token")
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to verify auth: {}", e)))?;
 
     assert_eq!(result, songbird_universal::adapters::security::AuthResult::Unauthorized);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_beardog_check_health() {
+async fn test_beardog_check_health() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -210,10 +245,15 @@ async fn test_beardog_check_health() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("Failed to create adapter");
-    let health = adapter.check_health().await.expect("Failed to check health");
+    let adapter = SecurityAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let health = adapter
+        .check_health()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
 
     assert_eq!(health, songbird_universal::adapters::security::SecurityHealth::Healthy);
+    Ok(())
 }
 
 // ============================================================================
@@ -221,7 +261,7 @@ async fn test_beardog_check_health() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_nestgate_collect_metrics_success() {
+async fn test_nestgate_collect_metrics_success() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -242,18 +282,23 @@ async fn test_nestgate_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).expect("Failed to create adapter");
-    let metrics = adapter.collect_metrics().await.expect("Failed to collect metrics");
+    let adapter = StorageAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let metrics = adapter
+        .collect_metrics()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
 
     assert_eq!(metrics.total_capacity_bytes, 1_000_000_000_000);
     assert_eq!(metrics.used_bytes, 250_000_000_000);
     assert_eq!(metrics.object_count, 1500);
     assert!((metrics.avg_read_latency_ms - 15.0).abs() < 0.1);
     assert!((metrics.avg_write_latency_ms - 25.0).abs() < 0.1);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_nestgate_check_health() {
+async fn test_nestgate_check_health() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -274,15 +319,20 @@ async fn test_nestgate_check_health() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).expect("Failed to create adapter");
-    let health = adapter.check_health().await.expect("Failed to check health");
+    let adapter = StorageAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let health = adapter
+        .check_health()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
 
     // 50% usage should be healthy
     assert_eq!(health, songbird_universal::adapters::storage::StorageHealth::Healthy);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_nestgate_high_latency_detection() {
+async fn test_nestgate_high_latency_detection() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -303,11 +353,16 @@ async fn test_nestgate_high_latency_detection() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).expect("Failed to create adapter");
-    let health = adapter.check_health().await.expect("Failed to check health");
+    let adapter = StorageAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let health = adapter
+        .check_health()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
 
     // 90% usage + high latency should be warning or critical
     assert_ne!(health, songbird_universal::adapters::storage::StorageHealth::Healthy);
+    Ok(())
 }
 
 // ============================================================================
@@ -315,7 +370,7 @@ async fn test_nestgate_high_latency_detection() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_squirrel_collect_metrics_success() {
+async fn test_squirrel_collect_metrics_success() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -335,18 +390,23 @@ async fn test_squirrel_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).expect("Failed to create adapter");
-    let metrics = adapter.collect_metrics().await.expect("Failed to collect metrics");
+    let adapter = AIAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let metrics = adapter
+        .collect_metrics()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
 
     assert_eq!(metrics.active_models, 3);
     assert_eq!(metrics.total_requests, 1000);
     assert!((metrics.avg_latency_ms - 250.0).abs() < 0.1);
     assert!((metrics.accuracy_score - 0.92).abs() < 0.01);
     assert!((metrics.gpu_utilization_percent - 75.0).abs() < 0.1);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_squirrel_check_health() {
+async fn test_squirrel_check_health() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -366,15 +426,20 @@ async fn test_squirrel_check_health() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).expect("Failed to create adapter");
-    let health = adapter.check_health().await.expect("Failed to check health");
+    let adapter = AIAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let health = adapter
+        .check_health()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
 
     // 60% GPU, 500ms latency should be healthy
     assert_eq!(health, songbird_universal::adapters::ai::AIHealth::Healthy);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_squirrel_high_gpu_load() {
+async fn test_squirrel_high_gpu_load() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -394,11 +459,16 @@ async fn test_squirrel_high_gpu_load() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).expect("Failed to create adapter");
-    let health = adapter.check_health().await.expect("Failed to check health");
+    let adapter = AIAdapter::new(server.url())
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    let health = adapter
+        .check_health()
+        .await
+        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
 
     // 99% GPU + high latency should be overloaded
     assert_eq!(health, songbird_universal::adapters::ai::AIHealth::Overloaded);
+    Ok(())
 }
 
 // ============================================================================
@@ -406,7 +476,7 @@ async fn test_squirrel_high_gpu_load() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_all_adapters_handle_500_error() {
+async fn test_all_adapters_handle_500_error() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -416,20 +486,29 @@ async fn test_all_adapters_handle_500_error() {
         .create_async()
         .await;
 
-    let toadstool = ComputeAdapter::new(server.url()).expect("Failed to create ToadStool adapter");
-    let beardog = SecurityAdapter::new(server.url()).expect("Failed to create BearDog adapter");
-    let nestgate = StorageAdapter::new(server.url()).expect("Failed to create NestGate adapter");
-    let squirrel = AIAdapter::new(server.url()).expect("Failed to create Squirrel adapter");
+    let toadstool = ComputeAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create ToadStool adapter: {}", e))
+    })?;
+    let beardog = SecurityAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create BearDog adapter: {}", e))
+    })?;
+    let nestgate = StorageAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create NestGate adapter: {}", e))
+    })?;
+    let squirrel = AIAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create Squirrel adapter: {}", e))
+    })?;
 
     // All should return errors
     assert!(toadstool.collect_metrics().await.is_err());
     assert!(beardog.collect_metrics().await.is_err());
     assert!(nestgate.collect_metrics().await.is_err());
     assert!(squirrel.collect_metrics().await.is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_all_adapters_handle_invalid_json() {
+async fn test_all_adapters_handle_invalid_json() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock = server
@@ -440,16 +519,25 @@ async fn test_all_adapters_handle_invalid_json() {
         .create_async()
         .await;
 
-    let toadstool = ComputeAdapter::new(server.url()).expect("Failed to create ToadStool adapter");
-    let beardog = SecurityAdapter::new(server.url()).expect("Failed to create BearDog adapter");
-    let nestgate = StorageAdapter::new(server.url()).expect("Failed to create NestGate adapter");
-    let squirrel = AIAdapter::new(server.url()).expect("Failed to create Squirrel adapter");
+    let toadstool = ComputeAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create ToadStool adapter: {}", e))
+    })?;
+    let beardog = SecurityAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create BearDog adapter: {}", e))
+    })?;
+    let nestgate = StorageAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create NestGate adapter: {}", e))
+    })?;
+    let squirrel = AIAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create Squirrel adapter: {}", e))
+    })?;
 
     // All should return parse errors
     assert!(toadstool.collect_metrics().await.is_err());
     assert!(beardog.collect_metrics().await.is_err());
     assert!(nestgate.collect_metrics().await.is_err());
     assert!(squirrel.collect_metrics().await.is_err());
+    Ok(())
 }
 
 // ============================================================================
@@ -457,7 +545,7 @@ async fn test_all_adapters_handle_invalid_json() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_concurrent_adapter_operations() {
+async fn test_concurrent_adapter_operations() -> SongbirdResult<()> {
     let mut server = mockito::Server::new_async().await;
 
     let _mock_compute = server
@@ -494,19 +582,21 @@ async fn test_concurrent_adapter_operations() {
         .create_async()
         .await;
 
-    let toadstool = ComputeAdapter::new(server.url()).expect("Failed to create ToadStool adapter");
-    let beardog = SecurityAdapter::new(server.url()).expect("Failed to create BearDog adapter");
+    let toadstool = ComputeAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create ToadStool adapter: {}", e))
+    })?;
+    let beardog = SecurityAdapter::new(server.url()).map_err(|e| {
+        SongbirdError::configuration(format!("Failed to create BearDog adapter: {}", e))
+    })?;
 
     // Run both adapters concurrently
     let (compute_result, security_result) =
         tokio::join!(toadstool.collect_metrics(), beardog.collect_metrics());
 
-    assert!(compute_result.is_ok());
-    assert!(security_result.is_ok());
-
-    let compute_metrics = compute_result.unwrap();
-    let security_metrics = security_result.unwrap();
+    let compute_metrics = compute_result?;
+    let security_metrics = security_result?;
 
     assert_eq!(compute_metrics.active_containers, 7);
     assert_eq!(security_metrics.active_sessions, 75);
+    Ok(())
 }

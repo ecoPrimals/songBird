@@ -1,8 +1,8 @@
 [build]
-rustflags = []
+rustflags = ["-Dwarnings"]
 
 [target.'cfg(all())']
 rustflags = [
-    # Test-specific allows
-    "--cfg", "test_allow_pedantic"
+    # Allow multiple crate versions for now (transitive dependencies)
+    "-A", "clippy::multiple_crate_versions",
 ]

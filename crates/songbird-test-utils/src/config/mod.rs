@@ -142,7 +142,7 @@ pub struct TestNetworkConfig  {/// Base port for test services
     pub port_range: (u16, u16)
     /// Network timeouts
         pub timeouts: TestTimeoutConfig,
-    /// Whether to use songbird_config::constants::network::DEFAULT_HOST only
+    /// Whether to use songbird_config::canonical::constants::network::DEFAULT_HOST only
     /// Localhost Only field
 
     pub songbird_config::constants::network::DEFAULT_HOST_only: bool ;,

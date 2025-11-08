@@ -15,6 +15,8 @@
 //!
 //! Tests for universal types module covering all data structures.
 
+use songbird_test_utils::test_orchestrator_port;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::types::*;
 use std::collections::HashMap;
 
@@ -44,35 +46,41 @@ fn test_primal_type_as_str() {
 }
 
 #[test]
-fn test_primal_type_display() {
+fn test_primal_type_display() -> SongbirdResult<()> {
     let primal = PrimalType::new("security");
     assert_eq!(format!("{}", primal), "security");
+    Ok(())
 }
 
 #[test]
-fn test_primal_type_equality() {
+fn test_primal_type_equality() -> SongbirdResult<()> {
     let p1 = PrimalType::new("compute");
     let p2 = PrimalType::new("compute");
     let p3 = PrimalType::new("storage");
 
     assert_eq!(p1, p2);
     assert_ne!(p1, p3);
+    Ok(())
 }
 
 #[test]
-fn test_primal_type_clone() {
+fn test_primal_type_clone() -> SongbirdResult<()> {
     let p1 = PrimalType::new("network");
     let p2 = p1.clone();
     assert_eq!(p1, p2);
+    Ok(())
 }
 
 #[test]
-fn test_primal_type_serialization() {
+fn test_primal_type_serialization() -> SongbirdResult<()> {
     let primal = PrimalType::new("compute");
-    let json = serde_json::to_string(&primal).expect("Failed to serialize");
-    let deserialized: PrimalType = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&primal)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: PrimalType = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized, primal);
+    Ok(())
 }
 
 // ============================================================================
@@ -95,31 +103,37 @@ fn test_security_level_all_variants() {
 }
 
 #[test]
-fn test_security_level_default() {
+fn test_security_level_default() -> SongbirdResult<()> {
     let default = SecurityLevel::default();
     assert_eq!(default, SecurityLevel::Standard);
+    Ok(())
 }
 
 #[test]
-fn test_security_level_equality() {
+fn test_security_level_equality() -> SongbirdResult<()> {
     assert_eq!(SecurityLevel::High, SecurityLevel::High);
     assert_ne!(SecurityLevel::High, SecurityLevel::Basic);
+    Ok(())
 }
 
 #[test]
-fn test_security_level_clone() {
+fn test_security_level_clone() -> SongbirdResult<()> {
     let level1 = SecurityLevel::Maximum;
     let level2 = level1.clone();
     assert_eq!(level1, level2);
+    Ok(())
 }
 
 #[test]
-fn test_security_level_serialization() {
+fn test_security_level_serialization() -> SongbirdResult<()> {
     let level = SecurityLevel::High;
-    let json = serde_json::to_string(&level).expect("Failed to serialize");
-    let deserialized: SecurityLevel = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&level)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: SecurityLevel = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized, level);
+    Ok(())
 }
 
 // ============================================================================
@@ -151,7 +165,7 @@ fn test_qos_metrics_with_values() {
 }
 
 #[test]
-fn test_qos_metrics_clone() {
+fn test_qos_metrics_clone() -> SongbirdResult<()> {
     let qos1 = QosMetrics {
         latency_ms: Some(100.0),
         throughput_ops_sec: Some(500.0),
@@ -161,10 +175,11 @@ fn test_qos_metrics_clone() {
     let qos2 = qos1.clone();
 
     assert_eq!(qos1.latency_ms, qos2.latency_ms);
+    Ok(())
 }
 
 #[test]
-fn test_qos_metrics_serialization() {
+fn test_qos_metrics_serialization() -> SongbirdResult<()> {
     let qos = QosMetrics {
         latency_ms: Some(75.0),
         throughput_ops_sec: Some(800.0),
@@ -172,10 +187,13 @@ fn test_qos_metrics_serialization() {
         reliability: Some(0.99),
     };
 
-    let json = serde_json::to_string(&qos).expect("Failed to serialize");
-    let deserialized: QosMetrics = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&qos)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: QosMetrics = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.latency_ms, qos.latency_ms);
+    Ok(())
 }
 
 // ============================================================================
@@ -196,31 +214,37 @@ fn test_health_status_all_variants() {
 }
 
 #[test]
-fn test_health_status_default() {
+fn test_health_status_default() -> SongbirdResult<()> {
     let default = HealthStatus::default();
     assert_eq!(default, HealthStatus::Unknown);
+    Ok(())
 }
 
 #[test]
-fn test_health_status_equality() {
+fn test_health_status_equality() -> SongbirdResult<()> {
     assert_eq!(HealthStatus::Healthy, HealthStatus::Healthy);
     assert_ne!(HealthStatus::Healthy, HealthStatus::Degraded);
+    Ok(())
 }
 
 #[test]
-fn test_health_status_clone() {
+fn test_health_status_clone() -> SongbirdResult<()> {
     let health1 = HealthStatus::Healthy;
     let health2 = health1.clone();
     assert_eq!(health1, health2);
+    Ok(())
 }
 
 #[test]
-fn test_health_status_serialization() {
+fn test_health_status_serialization() -> SongbirdResult<()> {
     let health = HealthStatus::Degraded;
-    let json = serde_json::to_string(&health).expect("Failed to serialize");
-    let deserialized: HealthStatus = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&health)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: HealthStatus = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized, health);
+    Ok(())
 }
 
 // ============================================================================
@@ -251,7 +275,7 @@ fn test_discovered_capability_clone() {
         version: "1.0.0".to_string(),
         description: "Test capability".to_string(),
         provider: "test-provider".to_string(),
-        endpoint: "http://localhost:8080".to_string(),
+        endpoint: format!("http://localhost:{}", test_orchestrator_port()),
         qos_metrics: QosMetrics::default(),
         health_status: HealthStatus::Healthy,
     };
@@ -262,7 +286,7 @@ fn test_discovered_capability_clone() {
 }
 
 #[test]
-fn test_discovered_capability_serialization() {
+fn test_discovered_capability_serialization() -> SongbirdResult<()> {
     let cap = DiscoveredCapability {
         name: "storage".to_string(),
         version: "1.5.0".to_string(),
@@ -273,11 +297,13 @@ fn test_discovered_capability_serialization() {
         health_status: HealthStatus::Healthy,
     };
 
-    let json = serde_json::to_string(&cap).expect("Failed to serialize");
-    let deserialized: DiscoveredCapability =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&cap)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: DiscoveredCapability = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.name, cap.name);
+    Ok(())
 }
 
 // ============================================================================
@@ -302,7 +328,7 @@ fn test_primal_capability_creation() {
 }
 
 #[test]
-fn test_primal_capability_clone() {
+fn test_primal_capability_clone() -> SongbirdResult<()> {
     let cap1 = PrimalCapability {
         capability_type: "network".to_string(),
         version: "2.0.0".to_string(),
@@ -312,10 +338,11 @@ fn test_primal_capability_clone() {
 
     let cap2 = cap1.clone();
     assert_eq!(cap1.capability_type, cap2.capability_type);
+    Ok(())
 }
 
 #[test]
-fn test_primal_capability_serialization() {
+fn test_primal_capability_serialization() -> SongbirdResult<()> {
     let cap = PrimalCapability {
         capability_type: "storage".to_string(),
         version: "1.0.0".to_string(),
@@ -323,11 +350,13 @@ fn test_primal_capability_serialization() {
         qos_metrics: QosMetrics::default(),
     };
 
-    let json = serde_json::to_string(&cap).expect("Failed to serialize");
-    let deserialized: PrimalCapability =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&cap)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: PrimalCapability = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.capability_type, cap.capability_type);
+    Ok(())
 }
 
 // ============================================================================
@@ -380,7 +409,7 @@ fn test_service_info_creation() {
     let service = ServiceInfo {
         name: "test-service".to_string(),
         primal_type: PrimalType::new("compute"),
-        endpoint: "http://localhost:8080".to_string(),
+        endpoint: format!("http://localhost:{}", test_orchestrator_port()),
         capabilities: vec![],
         health: HealthStatus::Healthy,
         metadata: HashMap::new(),
@@ -415,20 +444,23 @@ fn test_service_info_with_capabilities() {
 }
 
 #[test]
-fn test_service_info_serialization() {
+fn test_service_info_serialization() -> SongbirdResult<()> {
     let service = ServiceInfo {
         name: "serialize-test".to_string(),
         primal_type: PrimalType::new("storage"),
-        endpoint: "http://storage:8080".to_string(),
+        endpoint: format!("http://storage:{}", test_orchestrator_port()).to_string(),
         capabilities: vec![],
         health: HealthStatus::Degraded,
         metadata: HashMap::new(),
     };
 
-    let json = serde_json::to_string(&service).expect("Failed to serialize");
-    let deserialized: ServiceInfo = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&service)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: ServiceInfo = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.name, service.name);
+    Ok(())
 }
 
 // ============================================================================
@@ -436,39 +468,43 @@ fn test_service_info_serialization() {
 // ============================================================================
 
 #[test]
-fn test_response_status_all_variants() {
+fn test_response_status_all_variants() -> SongbirdResult<()> {
     let success = ResponseStatus::Success;
-    let partial = ResponseStatus::Partial;
-    let failed = ResponseStatus::Failed;
-    let timeout = ResponseStatus::Timeout;
-    let not_found = ResponseStatus::NotFound;
+    let error = ResponseStatus::Error;
+    let pending = ResponseStatus::Pending;
+    let partial = ResponseStatus::PartialSuccess;
 
     assert_eq!(success, ResponseStatus::Success);
-    assert_eq!(partial, ResponseStatus::Partial);
-    assert_eq!(failed, ResponseStatus::Failed);
-    assert_eq!(timeout, ResponseStatus::Timeout);
-    assert_eq!(not_found, ResponseStatus::NotFound);
+    assert_eq!(error, ResponseStatus::Error);
+    assert_eq!(pending, ResponseStatus::Pending);
+    assert_eq!(partial, ResponseStatus::PartialSuccess);
+    Ok(())
 }
 
 #[test]
-fn test_response_status_default() {
+fn test_response_status_default() -> SongbirdResult<()> {
     let default = ResponseStatus::default();
     assert_eq!(default, ResponseStatus::Success);
+    Ok(())
 }
 
 #[test]
-fn test_response_status_equality() {
+fn test_response_status_equality() -> SongbirdResult<()> {
     assert_eq!(ResponseStatus::Success, ResponseStatus::Success);
-    assert_ne!(ResponseStatus::Success, ResponseStatus::Failed);
+    assert_ne!(ResponseStatus::Success, ResponseStatus::Error);
+    Ok(())
 }
 
 #[test]
-fn test_response_status_serialization() {
-    let status = ResponseStatus::Timeout;
-    let json = serde_json::to_string(&status).expect("Failed to serialize");
-    let deserialized: ResponseStatus = serde_json::from_str(&json).expect("Failed to deserialize");
+fn test_response_status_serialization() -> SongbirdResult<()> {
+    let status = ResponseStatus::Pending;
+    let json = serde_json::to_string(&status)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: ResponseStatus = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized, status);
+    Ok(())
 }
 
 // ============================================================================
@@ -491,7 +527,7 @@ fn test_universal_request_creation() {
 }
 
 #[test]
-fn test_universal_request_with_parameters() {
+fn test_universal_request_with_parameters() -> SongbirdResult<()> {
     let mut params = HashMap::new();
     params.insert("key".to_string(), serde_json::json!("value"));
 
@@ -505,10 +541,11 @@ fn test_universal_request_with_parameters() {
     };
 
     assert_eq!(request.parameters.len(), 1);
+    Ok(())
 }
 
 #[test]
-fn test_universal_request_serialization() {
+fn test_universal_request_serialization() -> SongbirdResult<()> {
     let request = UniversalRequest {
         request_id: "req-003".to_string(),
         source: "test-source".to_string(),
@@ -518,11 +555,13 @@ fn test_universal_request_serialization() {
         security_context: None,
     };
 
-    let json = serde_json::to_string(&request).expect("Failed to serialize");
-    let deserialized: UniversalRequest =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&request)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: UniversalRequest = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.request_id, request.request_id);
+    Ok(())
 }
 
 // ============================================================================
@@ -545,21 +584,22 @@ fn test_universal_response_success() {
 }
 
 #[test]
-fn test_universal_response_error() {
+fn test_universal_response_error() -> SongbirdResult<()> {
     let response = UniversalResponse {
         request_id: "req-002".to_string(),
-        status: ResponseStatus::Failed,
+        status: ResponseStatus::Error,
         data: None,
         error: Some("Operation failed".to_string()),
         metadata: HashMap::new(),
     };
 
-    assert_eq!(response.status, ResponseStatus::Failed);
+    assert_eq!(response.status, ResponseStatus::Error);
     assert!(response.error.is_some());
+    Ok(())
 }
 
 #[test]
-fn test_universal_response_serialization() {
+fn test_universal_response_serialization() -> SongbirdResult<()> {
     let response = UniversalResponse {
         request_id: "req-003".to_string(),
         status: ResponseStatus::Success,
@@ -568,11 +608,13 @@ fn test_universal_response_serialization() {
         metadata: HashMap::new(),
     };
 
-    let json = serde_json::to_string(&response).expect("Failed to serialize");
-    let deserialized: UniversalResponse =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&response)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: UniversalResponse = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.request_id, response.request_id);
+    Ok(())
 }
 
 // ============================================================================
@@ -595,7 +637,7 @@ fn test_security_config_creation() {
 }
 
 #[test]
-fn test_security_config_disabled() {
+fn test_security_config_disabled() -> SongbirdResult<()> {
     let config = SecurityConfig {
         enabled: false,
         level: SecurityLevel::None,
@@ -606,10 +648,11 @@ fn test_security_config_disabled() {
 
     assert!(!config.enabled);
     assert_eq!(config.level, SecurityLevel::None);
+    Ok(())
 }
 
 #[test]
-fn test_security_config_serialization() {
+fn test_security_config_serialization() -> SongbirdResult<()> {
     let config = SecurityConfig {
         enabled: true,
         level: SecurityLevel::Maximum,
@@ -618,10 +661,13 @@ fn test_security_config_serialization() {
         certificate_path: Some("/cert.pem".to_string()),
     };
 
-    let json = serde_json::to_string(&config).expect("Failed to serialize");
-    let deserialized: SecurityConfig = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&config)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: SecurityConfig = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.enabled, config.enabled);
+    Ok(())
 }
 
 // ============================================================================
@@ -642,7 +688,7 @@ fn test_security_context_creation() {
 }
 
 #[test]
-fn test_security_context_anonymous() {
+fn test_security_context_anonymous() -> SongbirdResult<()> {
     let context = SecurityContext {
         user_id: None,
         session_id: "anon-session".to_string(),
@@ -652,10 +698,11 @@ fn test_security_context_anonymous() {
 
     assert!(context.user_id.is_none());
     assert_eq!(context.permissions.len(), 1);
+    Ok(())
 }
 
 #[test]
-fn test_security_context_serialization() {
+fn test_security_context_serialization() -> SongbirdResult<()> {
     let context = SecurityContext {
         user_id: Some("user-456".to_string()),
         session_id: "session-xyz".to_string(),
@@ -663,8 +710,11 @@ fn test_security_context_serialization() {
         security_level: SecurityLevel::Maximum,
     };
 
-    let json = serde_json::to_string(&context).expect("Failed to serialize");
-    let deserialized: SecurityContext = serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&context)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: SecurityContext = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.user_id, context.user_id);
+    Ok(())
 }

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Configuration Tests
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::float_cmp)]
@@ -17,6 +18,7 @@
 
 use songbird_config::config::hardcoded_elimination::HardcodingEliminationConfig;
 use songbird_types::SongbirdError;
+use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_default_config_creation() {
@@ -75,9 +77,9 @@ fn test_config_merging() {
 
     // Simulate merge (in real implementation)
     let merged_name = if override_config.service.service_name.is_empty() {
-        base_config.service.service_name.clone()
+        base_config.service.service_name
     } else {
-        override_config.service.service_name.clone()
+        override_config.service.service_name
     };
 
     assert_eq!(merged_name, "override-service");
@@ -101,13 +103,13 @@ fn test_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
 
     // Serialize
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("test"));
     assert!(json.contains("42"));
 
     // Deserialize
     let deserialized: TestConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should deserialize".to_string()))?;
     assert_eq!(deserialized, config);
     Ok(())
 }
@@ -117,7 +119,7 @@ fn test_environment_variable_override() {
     // Test: Environment variables should override defaults
 
     // Simulate environment variable check
-    let env_value = std::env::var("SONGBIRD_TEST_PORT").unwrap_or_else(|_| "8080".to_string());
+    let env_value = std::env::var("SONGBIRD_TEST_PORT").unwrap_or_else(|| "8080".to_string());
     let default_port = "3000";
 
     // If env var exists, it should override
@@ -134,14 +136,15 @@ fn test_environment_variable_override() {
 #[test]
 fn test_config_file_loading() -> Result<(), Box<dyn std::error::Error>> {
     // Test: Config file loading pattern
+    use songbird_types::{SongbirdError, SongbirdResult};
     use std::path::PathBuf;
 
     let config_path = PathBuf::from("config.toml");
 
     // Verify path creation
     assert_eq!(
-        config_path.to_str().ok_or_else(|| SongbirdError::configuration(
-            "Config path should be valid UTF-8".to_string()
+        config_path.to_str().ok_or_else(|| Box::<dyn std::error::Error>::from(
+            "Config path should be valid UTF-8"
         ))?,
         "config.toml"
     );

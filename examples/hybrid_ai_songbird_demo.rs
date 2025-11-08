@@ -783,7 +783,7 @@ async fn main() {
     // Register external AI primals via universal adapter
     println!("🔗 Registering External AI Primals via Universal Adapter:");
     orchestrator.register_squirrel_primal("https://ai-capability.primal.network:get_orchestrator_port()".to_string());
-    orchestrator.register_toadstool_primal("https://compute-capability.primal.network:9000".to_string());
+    orchestrator.register_toadstool_primal(&format!("https://compute-capability.primal.network:{}", songbird_config::defaults::ports::metrics_port()));
     println!();
 
     // Test various AI tasks with different complexity levels

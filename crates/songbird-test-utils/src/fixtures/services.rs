@@ -25,7 +25,7 @@ impl TestService {
         let name = name.into();
         Self {
             id: uuid::Uuid::new_v4().to_string(),
-            name: name,
+            name,
             endpoint: format!(
                 // Test uses localhost - acceptable for unit tests
                 "http://localhost:{}",
@@ -90,29 +90,33 @@ impl TestService {
 }
 
 /// Create a compute service fixture
+/// 🍼 MIGRATED: Using capability-based type (was "toadstool")
 pub fn compute_service(name: impl Into<String>) -> TestService {
-    TestService::new(name).with_capability("compute").with_metadata("type", "toadstool")
+    TestService::new(name).with_capability("compute").with_metadata("type", "compute-provider")
 }
 
 /// Create a storage service fixture
+/// 🍼 MIGRATED: Using capability-based type (was "nestgate")
 pub fn storage_service(name: impl Into<String>) -> TestService {
-    TestService::new(name).with_capability("storage").with_metadata("type", "nestgate")
+    TestService::new(name).with_capability("storage").with_metadata("type", "storage-provider")
 }
 
 /// Create a security service fixture
+/// 🍼 MIGRATED: Using capability-based type (was "beardog")
 pub fn security_service(name: impl Into<String>) -> TestService {
     TestService::new(name)
         .with_capability("security")
         .with_capability("auth")
-        .with_metadata("type", "beardog")
+        .with_metadata("type", "security-provider")
 }
 
 /// Create an AI service fixture
+/// 🍼 MIGRATED: Using capability-based type (was "squirrel")
 pub fn ai_service(name: impl Into<String>) -> TestService {
     TestService::new(name)
         .with_capability("ai")
         .with_capability("inference")
-        .with_metadata("type", "squirrel")
+        .with_metadata("type", "ai-provider")
 }
 
 /// Create a multi-capability service fixture
@@ -155,14 +159,14 @@ mod tests {
     fn test_compute_service() {
         let service = compute_service("toadstool-1");
         assert!(service.capabilities().contains(&"compute".to_string()));
-        assert_eq!(service.metadata.get("type"), Some(&"toadstool".to_string()));
+        assert_eq!(service.metadata.get("type"), Some(&"compute-provider".to_string()));
     }
 
     #[test]
     fn test_storage_service() {
         let service = storage_service("nestgate-1");
         assert!(service.capabilities().contains(&"storage".to_string()));
-        assert_eq!(service.metadata.get("type"), Some(&"nestgate".to_string()));
+        assert_eq!(service.metadata.get("type"), Some(&"storage-provider".to_string()));
     }
 
     #[test]

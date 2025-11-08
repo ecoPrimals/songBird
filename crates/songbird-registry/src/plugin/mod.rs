@@ -1,24 +1,24 @@
 //! Dynamic plugin registry and composition
 //!
 //! Provides runtime plugin discovery and composition capabilities
+//!
+//! # Native Async Traits (Rust 1.75+)
+//! Uses native async fn in traits for zero-cost plugin composition
+
+#![allow(async_fn_in_trait)]
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use async_trait::async_trait;
 use serde_json;
 use uuid::Uuid;
 use songbird_types::errors::{SongbirdResult, SongbirdError};
 use tracing;
 
-// Local Result type for non-trait methods
-type LocalResult<T> = SongbirdResult<T>;
-
 // NOTE: Plugin types defined locally until architecture is finalized
 // FUTURE WORK: Move to songbird-discovery::traits once plugin system is fully implemented
 // This is a deferred architectural decision pending plugin ecosystem maturity
 
-#[async_trait]
 pub trait ComposablePlugin: Send + Sync {
     /// Get the capabilities provided by this plugin
     fn capabilities(&self) -> Vec<PluginCapability>;
@@ -117,7 +117,7 @@ impl DynamicPluginRegistry {
     }
 
     /// Get plugin capabilities
-    pub async fn get_plugin_capabilities(&self, plugin_id: &str) -> LocalResult<Vec<PluginCapability>> {
+    pub async fn get_plugin_capabilities(&self, plugin_id: &str) -> SongbirdResult<Vec<PluginCapability>> {
         let plugins = self.plugins.read().await;
         if let Some(plugin) = plugins.get(plugin_id) {
             Ok(plugin.capabilities())
@@ -132,7 +132,7 @@ impl DynamicPluginRegistry {
         task_description: &str,
         required_capabilities: Vec<PluginCapability>,
         constraints: CompositionConstraints,
-    ) -> LocalResult<Vec<CompositionPlan>> {
+    ) -> SongbirdResult<Vec<CompositionPlan>> {
         tracing::info!("Discovering optimal composition for: {}", task_description);
 
         // Find plugins that provide required capabilities
@@ -169,7 +169,7 @@ impl DynamicPluginRegistry {
     async fn find_plugins_by_capabilities(
         &self,
         capabilities: &[PluginCapability],
-    ) -> LocalResult<Vec<String>> {
+    ) -> SongbirdResult<Vec<String>> {
         let mut plugins = Vec::new();
         let caps = self.capabilities.read().await;
 
@@ -191,7 +191,7 @@ impl DynamicPluginRegistry {
         &self,
         plugin_combination: Vec<String>,
         _constraints: &CompositionConstraints,
-    ) -> LocalResult<CompositionPlan> {
+    ) -> SongbirdResult<CompositionPlan> {
         // Calculate estimated performance
         let estimated_performance = PerformanceEstimate {
             latency_ms: 50.0,
@@ -212,7 +212,7 @@ impl DynamicPluginRegistry {
         &self,
         available_plugins: &[String],
         _required_capabilities: &[PluginCapability],
-    ) -> LocalResult<Vec<Vec<String>>> {
+    ) -> SongbirdResult<Vec<Vec<String>>> {
         let mut combinations = Vec::new();
 
         // Generate single plugin combinations
@@ -235,7 +235,7 @@ impl DynamicPluginRegistry {
 
     /// Integrate two plugins
     #[allow(dead_code)]
-    async fn integrate_plugins(&self, plugin_a: &str, plugin_b: &str) -> LocalResult<String> {
+    async fn integrate_plugins(&self, plugin_a: &str, plugin_b: &str) -> SongbirdResult<String> {
         let integration_id = format!("{}_{plugin_b}", plugin_a);
 
         // Event broadcasting removed - would need to be implemented differently
@@ -246,7 +246,7 @@ impl DynamicPluginRegistry {
 
     /// Check system health for given plugins
     #[allow(dead_code)]
-    async fn check_system_health(&self, plugin_ids: &[String]) -> LocalResult<SystemHealth> {
+    async fn check_system_health(&self, plugin_ids: &[String]) -> SongbirdResult<SystemHealth> {
         let plugins = self.plugins.read().await;
         let mut plugin_health = HashMap::new();
         let mut all_healthy = true;
@@ -286,7 +286,7 @@ impl Default for DynamicPluginRegistry {
 // FUTURE WORK: Define PluginRegistry trait in songbird-discovery or songbird-registry
 // This requires cross-crate trait coordination and is deferred to plugin ecosystem v2.0
 /* 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl PluginRegistry for DynamicPluginRegistry {
     async fn register_plugin(
         &self,
