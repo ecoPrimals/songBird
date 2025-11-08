@@ -1,6 +1,7 @@
-//! HTTP-based deployment client
+//! HTTP-based deployment client with capability negotiation
 //!
-//! Deploy services via Songbird's HTTP deployment API
+//! Deploy services via Songbird's HTTP deployment API with intelligent
+//! method selection based on node capabilities.
 
 use anyhow::{anyhow, Result};
 use reqwest::{multipart, Client};
@@ -8,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 use tokio::fs;
-use tracing::info;
+use tracing::{info, debug, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeploymentResponse {
@@ -30,7 +31,223 @@ pub struct DeploymentInfo {
     pub port: Option<u16>,
 }
 
-/// Deploy a binary via HTTP to a remote tower
+// ============================================================================
+// PHASE 2.2: CAPABILITY NEGOTIATION
+// ============================================================================
+
+/// Node deployment capabilities (from server)
+#[derive(Debug, Deserialize)]
+pub struct DeploymentCapabilities {
+    pub node_id: String,
+    pub timestamp: String,
+    pub network: NetworkCapabilities,
+    pub deployment_methods: DeploymentMethods,
+    pub resources: ResourceInfo,
+    pub preferences: DeploymentPreferences,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NetworkCapabilities {
+    #[serde(rename = "type")]
+    pub network_type: String,
+    pub bandwidth_estimate: BandwidthEstimate,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BandwidthEstimate {
+    pub download_mbps: u32,
+    pub upload_mbps: u32,
+    pub latency_ms: u32,
+    pub confidence: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeploymentMethods {
+    pub single: SingleUploadMethod,
+    pub chunked: ChunkedUploadMethod,
+    pub streaming: StreamingUploadMethod,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SingleUploadMethod {
+    pub enabled: bool,
+    pub max_size_mb: u32,
+    pub compression_supported: Vec<String>,
+    pub recommended_for: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChunkedUploadMethod {
+    pub enabled: bool,
+    pub max_total_size_mb: u32,
+    pub chunk_size_mb: u32,
+    pub max_chunks: u32,
+    pub compression_supported: Vec<String>,
+    pub recommended_for: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StreamingUploadMethod {
+    pub enabled: bool,
+    pub unlimited: bool,
+    pub compression_supported: Vec<String>,
+    pub recommended_for: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResourceInfo {
+    pub available_storage_gb: u64,
+    pub available_memory_gb: u64,
+    pub cpu_cores: usize,
+    pub cpu_load_percent: f32,
+    pub max_concurrent_deployments: usize,
+    pub current_deployments: usize,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeploymentPreferences {
+    pub preferred_compression: String,
+    pub preferred_method: String,
+    pub encryption_required: bool,
+}
+
+/// Selected deployment method
+#[derive(Debug, Clone)]
+pub enum SelectedMethod {
+    Single { max_size_mb: u32 },
+    Chunked { chunk_size_mb: u32 },
+    Streaming,
+    Fallback, // Use if capabilities unavailable
+}
+
+/// Query deployment capabilities from a tower
+pub async fn query_capabilities(tower_endpoint: &str) -> Result<DeploymentCapabilities> {
+    debug!("📊 Querying capabilities from {}", tower_endpoint);
+    
+    let client = Client::new();
+    let url = format!("{}/api/deployment/capabilities", tower_endpoint);
+    
+    let response = client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+        .map_err(|e| anyhow!("Failed to query capabilities: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(anyhow!("Capabilities query failed with status {}", response.status()));
+    }
+    
+    let capabilities: DeploymentCapabilities = response
+        .json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse capabilities: {}", e))?;
+    
+    info!("✅ Capabilities received from {}", capabilities.node_id);
+    debug!("   Network: {} ({} Mbps up/down)", 
+        capabilities.network.network_type,
+        capabilities.network.bandwidth_estimate.upload_mbps);
+    debug!("   Resources: {} cores, {}GB RAM, {}GB storage",
+        capabilities.resources.cpu_cores,
+        capabilities.resources.available_memory_gb,
+        capabilities.resources.available_storage_gb);
+    
+    Ok(capabilities)
+}
+
+/// Select optimal deployment method based on capabilities and binary size
+pub fn select_deployment_method(
+    capabilities: Option<&DeploymentCapabilities>,
+    binary_size_mb: f64,
+) -> SelectedMethod {
+    // If capabilities unavailable, use fallback
+    let Some(caps) = capabilities else {
+        warn!("⚠️  Capabilities unavailable, using fallback method");
+        return SelectedMethod::Fallback;
+    };
+    
+    // Check if binary fits in single upload
+    if binary_size_mb < (caps.deployment_methods.single.max_size_mb as f64) && 
+       caps.deployment_methods.single.enabled {
+        info!("✓ Selected: Single upload ({:.2}MB < {}MB limit)", 
+            binary_size_mb, caps.deployment_methods.single.max_size_mb);
+        return SelectedMethod::Single { 
+            max_size_mb: caps.deployment_methods.single.max_size_mb 
+        };
+    }
+    
+    // Check if chunked is available
+    if binary_size_mb < (caps.deployment_methods.chunked.max_total_size_mb as f64) && 
+       caps.deployment_methods.chunked.enabled {
+        info!("✓ Selected: Chunked upload ({:.2}MB, chunks of {}MB)", 
+            binary_size_mb, caps.deployment_methods.chunked.chunk_size_mb);
+        return SelectedMethod::Chunked { 
+            chunk_size_mb: caps.deployment_methods.chunked.chunk_size_mb 
+        };
+    }
+    
+    // Check if streaming is available
+    if caps.deployment_methods.streaming.enabled {
+        info!("✓ Selected: Streaming upload ({:.2}MB)", binary_size_mb);
+        return SelectedMethod::Streaming;
+    }
+    
+    // Fallback
+    warn!("⚠️  No suitable method found, using fallback");
+    SelectedMethod::Fallback
+}
+
+/// Deploy a binary via HTTP to a remote tower (with capability negotiation)
+pub async fn deploy_via_http_adaptive(
+    tower_endpoint: &str,
+    binary_path: &str,
+    service_name: &str,
+    env_vars: HashMap<String, String>,
+) -> Result<DeploymentResponse> {
+    info!("📤 Adaptive deployment to {}", tower_endpoint);
+    
+    // Get binary size
+    let metadata = tokio::fs::metadata(binary_path).await?;
+    let binary_size_bytes = metadata.len();
+    let binary_size_mb = binary_size_bytes as f64 / 1024.0 / 1024.0;
+    
+    info!("   Binary: {} ({:.2} MB)", 
+        Path::new(binary_path).file_name().unwrap().to_str().unwrap(),
+        binary_size_mb);
+    
+    // Query capabilities
+    let capabilities = match query_capabilities(tower_endpoint).await {
+        Ok(caps) => Some(caps),
+        Err(e) => {
+            warn!("⚠️  Failed to query capabilities: {}", e);
+            warn!("   Falling back to direct deployment");
+            None
+        }
+    };
+    
+    // Select method
+    let method = select_deployment_method(capabilities.as_ref(), binary_size_mb);
+    
+    // Execute deployment based on selected method
+    match method {
+        SelectedMethod::Single { .. } | SelectedMethod::Fallback => {
+            // Use existing single upload
+            deploy_via_http(tower_endpoint, binary_path, service_name, env_vars).await
+        }
+        SelectedMethod::Chunked { .. } => {
+            // TODO: Phase 3 - Implement chunked upload
+            warn!("⚠️  Chunked upload not yet implemented, falling back to single");
+            deploy_via_http(tower_endpoint, binary_path, service_name, env_vars).await
+        }
+        SelectedMethod::Streaming => {
+            // TODO: Phase 4 - Implement streaming upload
+            warn!("⚠️  Streaming upload not yet implemented, falling back to single");
+            deploy_via_http(tower_endpoint, binary_path, service_name, env_vars).await
+        }
+    }
+}
+
+/// Deploy a binary via HTTP to a remote tower (legacy, direct method)
 pub async fn deploy_via_http(
     tower_endpoint: &str,
     binary_path: &str,
