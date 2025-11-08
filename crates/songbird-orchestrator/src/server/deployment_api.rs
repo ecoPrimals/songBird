@@ -13,7 +13,10 @@
 //!
 //! ## Endpoints
 //! - GET /api/deployment/capabilities - Discover node capabilities
-//! - POST /api/deployment/binary - Deploy and start a service
+//! - POST /api/deployment/binary - Deploy and start a service (single upload)
+//! - POST /api/deployment/negotiate - Start chunked upload negotiation
+//! - POST /api/deployment/chunk/:neg_id/:index - Upload chunk
+//! - POST /api/deployment/finalize/:neg_id - Finalize chunked upload
 //! - GET /api/deployment/status/:id - Check deployment status
 //! - DELETE /api/deployment/:id - Stop and remove deployment
 
@@ -23,6 +26,11 @@ use axum::{
     http::StatusCode,
     routing::{delete, get, post},
     Json, Router,
+};
+
+// Re-export chunked upload handlers
+pub use super::chunked_upload::{
+    negotiate_chunked_upload, upload_chunk, finalize_chunked_upload,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -36,15 +44,71 @@ use tracing::{debug, error, info, warn};
 /// Deployment state
 #[derive(Clone)]
 pub struct DeploymentState {
-    deployments: Arc<RwLock<HashMap<String, DeploymentInfo>>>,
+    pub deployments: Arc<RwLock<HashMap<String, DeploymentInfo>>>,
+    pub negotiations: Arc<RwLock<HashMap<String, NegotiationState>>>,
 }
 
 impl DeploymentState {
     pub fn new() -> Self {
         Self {
             deployments: Arc::new(RwLock::new(HashMap::new())),
+            negotiations: Arc::new(RwLock::new(HashMap::new())),
         }
     }
+}
+
+// ============================================================================
+// PHASE 3: CHUNKED UPLOAD
+// ============================================================================
+
+/// Negotiation state for chunked uploads
+#[derive(Debug, Clone)]
+pub struct NegotiationState {
+    pub negotiation_id: String,
+    pub binary_size_mb: f64,
+    pub chunk_size_mb: u32,
+    pub total_chunks: usize,
+    pub received_chunks: HashMap<usize, ChunkInfo>,
+    pub temp_dir: String,
+    pub created_at: String,
+    pub timeout_seconds: u64,
+}
+
+/// Chunk information
+#[derive(Debug, Clone)]
+pub struct ChunkInfo {
+    pub index: usize,
+    pub size_bytes: usize,
+    pub received_at: String,
+    pub file_path: String,
+}
+
+/// Negotiation request
+#[derive(Debug, Deserialize)]
+pub struct NegotiationRequest {
+    pub binary_size_mb: f64,
+    pub service_name: String,
+    pub compression: Option<String>,
+}
+
+/// Negotiation response
+#[derive(Debug, Serialize)]
+pub struct NegotiationResponse {
+    pub negotiation_id: String,
+    pub accepted_method: String,
+    pub chunk_size_mb: u32,
+    pub total_chunks: usize,
+    pub chunk_upload_path: String,
+    pub finalize_path: String,
+    pub timeout_seconds: u64,
+}
+
+/// Finalize request
+#[derive(Debug, Deserialize)]
+pub struct FinalizeRequest {
+    pub service_name: String,
+    pub env_vars: HashMap<String, String>,
+    pub auto_start: bool,
 }
 
 /// Deployment information
@@ -172,6 +236,9 @@ pub fn deployment_routes(state: DeploymentState) -> Router {
     Router::new()
         .route("/capabilities", get(get_capabilities))
         .route("/binary", post(deploy_binary))
+        .route("/negotiate", post(negotiate_chunked_upload))
+        .route("/chunk/:neg_id/:index", post(upload_chunk))
+        .route("/finalize/:neg_id", post(finalize_chunked_upload))
         .route("/status/:id", get(get_deployment_status))
         .route("/:id", delete(stop_deployment))
         .route("/list", get(list_deployments))
@@ -231,12 +298,12 @@ async fn get_capabilities(
                 recommended_for: "< 10MB".to_string(),
             },
             chunked: ChunkedUploadMethod {
-                enabled: false, // Phase 3
+                enabled: true, // Phase 3 ✅
                 max_total_size_mb: 1000,
                 chunk_size_mb: 10,
                 max_chunks: 100,
                 compression_supported: vec!["gzip".to_string(), "zstd".to_string()],
-                recommended_for: "10MB - 500MB".to_string(),
+                recommended_for: "2MB - 500MB".to_string(),
             },
             streaming: StreamingUploadMethod {
                 enabled: false, // Phase 4
@@ -464,7 +531,7 @@ async fn deploy_binary(
 }
 
 /// Start a service with environment variables
-async fn start_service(binary_path: &str, env_vars: &HashMap<String, String>) -> Result<u32, String> {
+pub async fn start_service(binary_path: &str, env_vars: &HashMap<String, String>) -> Result<u32, String> {
     debug!("🎬 Starting service: {}", binary_path);
 
     let mut command = Command::new(binary_path);
