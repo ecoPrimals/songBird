@@ -86,7 +86,7 @@ impl TestDataBuilder {
         Self {
             service_count: 1,
             endpoint_base: "http://localhost".to_string(),
-            port_range: (8000, 9000),
+            port_range: (8000, songbird_config::defaults::ports::metrics_port()),
         }
     }
 

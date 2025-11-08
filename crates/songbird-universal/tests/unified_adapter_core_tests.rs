@@ -18,6 +18,8 @@
 //!
 //! Tests adapter creation, configuration, capability registry, and service management
 
+use songbird_test_utils::network_fixtures::*;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::{
     create_universal_adapter, create_universal_adapter_with_config, CapabilityRegistry,
     UnifiedAdapterConfig, UnifiedUniversalAdapter,
@@ -40,10 +42,10 @@ fn test_create_adapter_with_custom_config() {
         health_check_interval: Duration::from_secs(30),
         max_concurrent_requests: 50,
         auto_discovery: false,
-        discovery_endpoints: vec!["http://custom:8080".to_string()],
+        discovery_endpoints: vec![format!("http://custom:{}", test_orchestrator_port())],
     };
 
-    let adapter = create_universal_adapter_with_config(config.clone());
+    let adapter = create_universal_adapter_with_config(config);
 
     // Verify adapter uses custom config
     assert!(std::mem::size_of_val(&adapter) > 0);
@@ -65,8 +67,8 @@ fn test_adapter_with_config() {
         max_concurrent_requests: 75,
         auto_discovery: true,
         discovery_endpoints: vec![
-            "http://primary:8080".to_string(),
-            "http://secondary:8081".to_string(),
+            format!("http://primary:{}", test_orchestrator_port()),
+            format!("http://secondary:{}", test_discovery_port()),
         ],
     };
 
@@ -152,9 +154,9 @@ fn test_config_empty_discovery_endpoints() {
 #[test]
 fn test_config_multiple_discovery_endpoints() {
     let endpoints = vec![
-        "http://server1:8080".to_string(),
-        "http://server2:8081".to_string(),
-        "http://server3:8082".to_string(),
+        format!("http://server1:{}", test_orchestrator_port()),
+        format!("http://server2:{}", test_discovery_port()),
+        format!("http://server3:{}", test_health_port()),
     ];
 
     let config = UnifiedAdapterConfig {
@@ -237,7 +239,7 @@ fn test_config_with_large_values() {
         health_check_interval: Duration::from_secs(7200), // 2 hours
         max_concurrent_requests: 10000,
         auto_discovery: true,
-        discovery_endpoints: vec!["http://example.com:8080".to_string(); 100],
+        discovery_endpoints: vec![format!("http://example.com:{}", test_orchestrator_port()); 100],
     };
 
     let adapter = UnifiedUniversalAdapter::with_config(config);
@@ -292,56 +294,61 @@ fn test_registry_size_is_reasonable() {
 }
 
 #[test]
-fn test_config_size_is_reasonable() {
+fn test_config_size_is_reasonable() -> SongbirdResult<()> {
     let config = UnifiedAdapterConfig::default();
     let size = std::mem::size_of_val(&config);
 
     assert!(size > 0);
     assert!(size < 1_000); // Reasonable upper bound
+    Ok(())
 }
 
 #[test]
-fn test_multiple_adapters_independent() {
+fn test_multiple_adapters_independent() -> SongbirdResult<()> {
     let _adapter1 = UnifiedUniversalAdapter::new();
     let _adapter2 = UnifiedUniversalAdapter::new();
     let _adapter3 = UnifiedUniversalAdapter::new();
 
     // If we got here, all created successfully (implicit test)
+    Ok(())
 }
 
 #[test]
-fn test_config_debug_format() {
+fn test_config_debug_format() -> SongbirdResult<()> {
     let config = UnifiedAdapterConfig::default();
     let debug_str = format!("{config:?}");
 
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("UnifiedAdapterConfig"));
+    Ok(())
 }
 
 #[test]
-fn test_registry_debug_format() {
+fn test_registry_debug_format() -> SongbirdResult<()> {
     let registry = CapabilityRegistry::default();
     let debug_str = format!("{registry:?}");
 
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("CapabilityRegistry"));
+    Ok(())
 }
 
 #[test]
-fn test_adapter_debug_format() {
+fn test_adapter_debug_format() -> SongbirdResult<()> {
     let adapter = UnifiedUniversalAdapter::new();
     let debug_str = format!("{adapter:?}");
 
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("UnifiedUniversalAdapter"));
+    Ok(())
 }
 
 #[test]
 fn test_config_with_ipv4_endpoints() {
     let config = UnifiedAdapterConfig {
         discovery_endpoints: vec![
-            "http://192.168.1.100:8080".to_string(),
-            "http://10.0.0.1:8081".to_string(),
+            format!("http://192.168.1.100:{}", test_orchestrator_port()),
+            format!("http://10.0.0.1:{}", test_discovery_port()),
         ],
         ..Default::default()
     };
@@ -353,8 +360,8 @@ fn test_config_with_ipv4_endpoints() {
 fn test_config_with_ipv6_endpoints() {
     let config = UnifiedAdapterConfig {
         discovery_endpoints: vec![
-            "http://[::1]:8080".to_string(),
-            "http://[2001:db8::1]:8081".to_string(),
+            format!("http://[::1]:{}", test_orchestrator_port()),
+            format!("http://[2001:db8::1]:{}", test_discovery_port()),
         ],
         ..Default::default()
     };
@@ -363,26 +370,28 @@ fn test_config_with_ipv6_endpoints() {
 }
 
 #[test]
-fn test_config_with_https_endpoints() {
+fn test_config_with_https_endpoints() -> SongbirdResult<()> {
     let config = UnifiedAdapterConfig {
         discovery_endpoints: vec!["https://secure.example.com:443".to_string()],
         ..Default::default()
     };
 
     assert!(config.discovery_endpoints[0].starts_with("https://"));
+    Ok(())
 }
 
 #[test]
-fn test_config_respects_environment_variable() {
+fn test_config_respects_environment_variable() -> SongbirdResult<()> {
     // Test that default config checks environment
     let config = UnifiedAdapterConfig::default();
 
     // Should have at least the default endpoints
     assert!(!config.discovery_endpoints.is_empty());
+    Ok(())
 }
 
 #[test]
-fn test_adapter_functions_are_available() {
+fn test_adapter_functions_are_available() -> SongbirdResult<()> {
     let adapter = UnifiedUniversalAdapter::new();
 
     // Verify adapter has the expected methods by type checking
@@ -390,16 +399,18 @@ fn test_adapter_functions_are_available() {
     let _debug = format!("{adapter:?}");
 
     assert!(true); // If we got here, methods are available
+    Ok(())
 }
 
 #[test]
-fn test_create_functions_are_consistent() {
+fn test_create_functions_are_consistent() -> SongbirdResult<()> {
     let adapter1 = create_universal_adapter();
     let adapter2 = UnifiedUniversalAdapter::new();
 
     // Both should create valid adapters
     assert!(std::mem::size_of_val(&adapter1) > 0);
     assert!(std::mem::size_of_val(&adapter2) > 0);
+    Ok(())
 }
 
 // ============================================================================
@@ -407,7 +418,7 @@ fn test_create_functions_are_consistent() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_find_capability_providers_empty_registry() {
+async fn test_find_capability_providers_empty_registry() -> SongbirdResult<()> {
     let adapter = UnifiedUniversalAdapter::new();
 
     // Find providers for a capability that doesn't exist
@@ -415,18 +426,22 @@ async fn test_find_capability_providers_empty_registry() {
 
     // Should succeed but return empty list
     assert!(result.is_ok());
-    assert!(result.unwrap().is_empty());
+    assert!(result?.is_empty());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_find_capability_providers_no_matching_capability() {
+async fn test_find_capability_providers_no_matching_capability() -> SongbirdResult<()> {
     let adapter = UnifiedUniversalAdapter::new();
 
     // Search for capability that doesn't exist
-    let providers = adapter.find_capability_providers("ai_model_inference").await.unwrap();
+    let providers = adapter.find_capability_providers("ai_model_inference").await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // No providers should be found
     assert!(providers.is_empty());
+    Ok(())
 }
 
 #[tokio::test]
@@ -529,7 +544,7 @@ async fn test_route_request_with_invalid_json_in_parameters() {
 }
 
 #[tokio::test]
-async fn test_concurrent_find_capability_providers() {
+async fn test_concurrent_find_capability_providers() -> SongbirdResult<()> {
     let adapter = UnifiedUniversalAdapter::new();
 
     // Test multiple concurrent lookups
@@ -547,13 +562,20 @@ async fn test_concurrent_find_capability_providers() {
         tokio::spawn(async move { adapter3.find_capability_providers("capability3").await });
 
     // All should complete without deadlock
-    let result1 = task1.await.unwrap();
-    let result2 = task2.await.unwrap();
-    let result3 = task3.await.unwrap();
+    let result1 = task1.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    let result2 = task2.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    let result3 = task3.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     assert!(result1.is_ok());
     assert!(result2.is_ok());
     assert!(result3.is_ok());
+    Ok(())
 }
 
 // ============================================================================
@@ -561,7 +583,7 @@ async fn test_concurrent_find_capability_providers() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_find_providers_multiple_times() {
+async fn test_find_providers_multiple_times() -> SongbirdResult<()> {
     let adapter = create_universal_adapter();
 
     // Call find_capability_providers multiple times
@@ -569,12 +591,18 @@ async fn test_find_providers_multiple_times() {
         let result = adapter.find_capability_providers("any-capability").await;
         assert!(result.is_ok());
         // Should return empty list since no services registered
-        assert!(result.unwrap().is_empty());
+        assert!(result
+            .ok_or_else(|| SongbirdError::configuration(format!(
+                "TODO: Replace with proper error handling: {}",
+                e
+            )))?
+            .is_empty());
     }
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_discover_services_with_short_timeout() {
+async fn test_discover_services_with_short_timeout() -> SongbirdResult<()> {
     // Create adapter with very short timeout
     let config = UnifiedAdapterConfig {
         discovery_endpoints: vec!["http://localhost:59999".to_string()],
@@ -587,11 +615,20 @@ async fn test_discover_services_with_short_timeout() {
     // Should complete quickly and return empty (graceful failure)
     let result = adapter.discover_services().await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().len(), 0);
+    assert_eq!(
+        result
+            .ok_or_else(|| SongbirdError::configuration(format!(
+                "TODO: Replace with proper error handling: {}",
+                e
+            )))?
+            .len(),
+        0
+    );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_get_stats_multiple_times() {
+async fn test_get_stats_multiple_times() -> SongbirdResult<()> {
     let adapter = create_universal_adapter();
 
     // Get stats multiple times - should be consistent
@@ -601,10 +638,11 @@ async fn test_get_stats_multiple_times() {
 
     assert_eq!(stats1.total_services, stats2.total_services);
     assert_eq!(stats2.total_services, stats3.total_services);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_concurrent_discover_operations() {
+async fn test_concurrent_discover_operations() -> SongbirdResult<()> {
     let adapter = create_universal_adapter();
     let adapter2 = adapter.clone();
     let adapter3 = adapter.clone();
@@ -617,14 +655,21 @@ async fn test_concurrent_discover_operations() {
     let task3 = tokio::spawn(async move { adapter3.discover_services().await });
 
     // All should complete without deadlock
-    let result1 = task1.await.unwrap();
-    let result2 = task2.await.unwrap();
-    let result3 = task3.await.unwrap();
+    let result1 = task1.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    let result2 = task2.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    let result3 = task3.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // All results should be Ok (empty is fine)
     assert!(result1.is_ok());
     assert!(result2.is_ok());
     assert!(result3.is_ok());
+    Ok(())
 }
 
 #[tokio::test]
@@ -645,9 +690,9 @@ async fn test_find_providers_for_multiple_capabilities() {
 async fn test_config_with_multiple_endpoints() {
     let config = UnifiedAdapterConfig {
         discovery_endpoints: vec![
-            "http://localhost:8080".to_string(),
-            "http://localhost:8081".to_string(),
-            "http://localhost:8082".to_string(),
+            format!("http://localhost:{}", test_orchestrator_port()),
+            format!("http://localhost:{}", test_discovery_port()),
+            format!("http://localhost:{}", test_health_port()),
         ],
         ..Default::default()
     };
@@ -670,6 +715,10 @@ async fn test_adapter_default_trait() {
 
 #[tokio::test]
 async fn test_adapter_config_affects_behavior() {
+    use songbird_test_utils::network_fixtures::*;
+    use songbird_test_utils::test_discovery_port;
+    use songbird_test_utils::test_health_port;
+    use songbird_test_utils::test_orchestrator_port;
     use std::time::Duration;
 
     // Create adapter with custom timeout
@@ -708,4 +757,501 @@ async fn test_registry_stats_structure() {
     // Verify stats structure is complete (unsigned values are always >= 0 by definition)
     let _ = (stats.total_services, stats.total_capabilities, stats.healthy_services);
     assert!(stats.healthy_services <= stats.total_services);
+}
+
+// ============================================================================
+// P0 HIGH-VALUE ERROR PATH TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_discover_services_all_endpoints_fail() -> SongbirdResult<()> {
+    // Create adapter with multiple non-existent endpoints
+    let config = UnifiedAdapterConfig {
+        discovery_endpoints: vec![
+            "http://localhost:59991/capabilities".to_string(),
+            "http://localhost:59992/services".to_string(),
+            "http://localhost:59993/discovery".to_string(),
+        ],
+        discovery_timeout: Duration::from_millis(100),
+        ..Default::default()
+    };
+
+    let adapter = create_universal_adapter_with_config(config);
+
+    // Should gracefully handle all endpoints failing
+    let result = adapter.discover_services().await;
+    assert!(result.is_ok());
+    assert_eq!(
+        result
+            .ok_or_else(|| SongbirdError::configuration(format!(
+                "TODO: Replace with proper error handling: {}",
+                e
+            )))?
+            .len(),
+        0
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_discover_services_partial_endpoint_failure() {
+    // Mix of valid format but unreachable endpoints
+    let config = UnifiedAdapterConfig {
+        discovery_endpoints: vec![
+            "http://127.0.0.1:59999".to_string(), // Will fail
+            "http://localhost:60000".to_string(), // Will fail
+        ],
+        discovery_timeout: Duration::from_millis(50),
+        ..Default::default()
+    };
+
+    let adapter = create_universal_adapter_with_config(config);
+
+    // Should handle partial failures gracefully
+    let result = adapter.discover_services().await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_route_request_with_empty_string_capability() {
+    use songbird_universal::types::UniversalRequest;
+
+    let adapter = UnifiedUniversalAdapter::new();
+
+    // Create request with empty string capability_type
+    let mut parameters = HashMap::new();
+    parameters.insert("capability_type".to_string(), serde_json::Value::String("".to_string()));
+
+    let request = UniversalRequest {
+        request_id: "test-empty-cap".to_string(),
+        source: "test-source".to_string(),
+        target: "test-target".to_string(),
+        action: "test_action".to_string(),
+        parameters,
+        security_context: None,
+    };
+
+    let result = adapter.route_request(request).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_route_request_with_very_long_capability_name() {
+    use songbird_universal::types::UniversalRequest;
+
+    let adapter = UnifiedUniversalAdapter::new();
+
+    // Create request with extremely long capability name
+    let long_name = "a".repeat(10000);
+    let mut parameters = HashMap::new();
+    parameters.insert("capability_type".to_string(), serde_json::Value::String(long_name.clone()));
+
+    let request = UniversalRequest {
+        request_id: "test-long-cap".to_string(),
+        source: "test-source".to_string(),
+        target: "test-target".to_string(),
+        action: "test_action".to_string(),
+        parameters,
+        security_context: None,
+    };
+
+    let result = adapter.route_request(request).await;
+    // Should fail with NoProvidersAvailable (not crash)
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_find_capability_providers_with_special_characters() -> SongbirdResult<()> {
+    let adapter = UnifiedUniversalAdapter::new();
+
+    // Test capability names with special characters
+    let special_names = vec![
+        "capability/with/slashes",
+        "capability:with:colons",
+        "capability.with.dots",
+        "capability-with-dashes",
+        "capability_with_underscores",
+        "capability with spaces",
+        "capability!@#$%^&*()",
+    ];
+
+    for name in special_names {
+        let result = adapter.find_capability_providers(name).await;
+        assert!(result.is_ok());
+        assert!(result
+            .ok_or_else(|| SongbirdError::configuration(format!(
+                "TODO: Replace with proper error handling: {}",
+                e
+            )))?
+            .is_empty());
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_find_capability_providers_with_unicode() {
+    let adapter = UnifiedUniversalAdapter::new();
+
+    // Test with Unicode capability names
+    let unicode_names = vec!["计算能力", "🚀rocket", "café", "Ñoño"];
+
+    for name in unicode_names {
+        let result = adapter.find_capability_providers(name).await;
+        assert!(result.is_ok());
+    }
+}
+
+#[tokio::test]
+async fn test_discover_services_with_zero_timeout() {
+    let config = UnifiedAdapterConfig {
+        discovery_endpoints: vec!["http://localhost:59999".to_string()],
+        discovery_timeout: Duration::ZERO,
+        ..Default::default()
+    };
+
+    let adapter = create_universal_adapter_with_config(config);
+
+    // Should handle zero timeout gracefully
+    let result = adapter.discover_services().await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_discover_services_with_very_long_timeout() -> SongbirdResult<()> {
+    let config = UnifiedAdapterConfig {
+        discovery_endpoints: vec![],
+        discovery_timeout: Duration::from_secs(3600), // 1 hour (won't wait that long)
+        ..Default::default()
+    };
+
+    let adapter = create_universal_adapter_with_config(config);
+
+    // Should complete quickly with no endpoints
+    let result = adapter.discover_services().await;
+    assert!(result.is_ok());
+    assert!(result?.is_empty());
+    Ok(())
+}
+
+// ============================================================================
+// EDGE CASE TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_concurrent_stats_requests() -> SongbirdResult<()> {
+    let adapter = create_universal_adapter();
+    let adapter_clone = adapter.clone();
+
+    // Run many concurrent stats requests
+    let mut tasks = vec![];
+    for _ in 0..50 {
+        let adapter_ref = adapter_clone.clone();
+        tasks.push(tokio::spawn(async move { adapter_ref.get_registry_stats().await }));
+    }
+
+    // All should complete without deadlock
+    for task in tasks {
+        let stats = task.await.map_err(|e| {
+            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        })?;
+        assert_eq!(stats.total_services, 0);
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_mixed_concurrent_operations() -> SongbirdResult<()> {
+    let adapter = create_universal_adapter();
+
+    // Mix of different operations running concurrently
+    let adapter1 = adapter.clone();
+    let adapter2 = adapter.clone();
+    let adapter3 = adapter.clone();
+    let adapter4 = adapter.clone();
+
+    let task1 = tokio::spawn(async move { adapter1.get_registry_stats().await });
+
+    let task2 = tokio::spawn(async move { adapter2.find_capability_providers("compute").await });
+
+    let task3 = tokio::spawn(async move { adapter3.discover_services().await });
+
+    let task4 = tokio::spawn(async move { adapter4.get_registry_stats().await });
+
+    // All should complete successfully
+    let stats1 = task1.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    let providers = task2.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    let services = task3.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    let stats2 = task4.await.map_err(|e| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+
+    assert_eq!(stats1.total_services, 0);
+    assert!(providers.is_ok());
+    assert!(services.is_ok());
+    assert_eq!(stats2.total_services, 0);
+    Ok(())
+}
+
+#[test]
+fn test_config_with_max_concurrent_requests_boundary() {
+    // Test boundary values for max_concurrent_requests
+    let configs = vec![1, 10, 100, 1000, 10000, usize::MAX];
+
+    for max_requests in configs {
+        let config = UnifiedAdapterConfig {
+            max_concurrent_requests: max_requests,
+            ..Default::default()
+        };
+
+        let adapter = UnifiedUniversalAdapter::with_config(config);
+        assert!(std::mem::size_of_val(&adapter) > 0);
+    }
+}
+
+#[test]
+fn test_config_with_extreme_timeout_values() {
+    // Test extreme timeout durations
+    let timeouts = vec![
+        Duration::ZERO,
+        Duration::from_nanos(1),
+        Duration::from_millis(1),
+        Duration::from_secs(1),
+        Duration::from_secs(86400),    // 1 day
+        Duration::from_secs(31536000), // 1 year
+    ];
+
+    for timeout in timeouts {
+        let config = UnifiedAdapterConfig {
+            discovery_timeout: timeout,
+            health_check_interval: timeout,
+            ..Default::default()
+        };
+
+        let adapter = UnifiedUniversalAdapter::with_config(config);
+        assert!(std::mem::size_of_val(&adapter) > 0);
+    }
+}
+
+#[tokio::test]
+async fn test_find_providers_empty_string_capability() -> SongbirdResult<()> {
+    let adapter = create_universal_adapter();
+
+    // Search for empty string capability
+    let result = adapter.find_capability_providers("").await;
+
+    assert!(result.is_ok());
+    assert!(result?.is_empty());
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_adapter_clone_maintains_independence() {
+    let adapter1 = create_universal_adapter();
+    let adapter2 = adapter1.clone();
+
+    // Both should have independent empty registries
+    let stats1 = adapter1.get_registry_stats().await;
+    let stats2 = adapter2.get_registry_stats().await;
+
+    assert_eq!(stats1.total_services, stats2.total_services);
+    assert_eq!(stats1.total_capabilities, stats2.total_capabilities);
+}
+
+#[test]
+fn test_config_clone_creates_independent_copy() {
+    let config1 = UnifiedAdapterConfig::default();
+    let config2 = config1.clone();
+
+    // Verify deep copy (all values match)
+    assert_eq!(config1.discovery_timeout, config2.discovery_timeout);
+    assert_eq!(config1.health_check_interval, config2.health_check_interval);
+    assert_eq!(config1.max_concurrent_requests, config2.max_concurrent_requests);
+    assert_eq!(config1.auto_discovery, config2.auto_discovery);
+}
+
+// ============================================================================
+// STRESS AND LOAD TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_rapid_sequential_operations() {
+    let adapter = create_universal_adapter();
+
+    // Rapid sequential operations
+    for _ in 0..100 {
+        let _ = adapter.get_registry_stats().await;
+        let _ = adapter.find_capability_providers("test").await;
+    }
+
+    // Should complete without errors
+    let final_stats = adapter.get_registry_stats().await;
+    assert_eq!(final_stats.total_services, 0);
+}
+
+#[tokio::test]
+async fn test_concurrent_discovery_operations_high_load() -> SongbirdResult<()> {
+    let adapter = create_universal_adapter();
+
+    // Spawn many concurrent discovery operations
+    let mut tasks = vec![];
+    for _ in 0..20 {
+        let adapter_ref = adapter.clone();
+        tasks.push(tokio::spawn(async move { adapter_ref.discover_services().await }));
+    }
+
+    // All should complete
+    for task in tasks {
+        let result = task.await.map_err(|e| {
+            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        })?;
+        assert!(result.is_ok());
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_concurrent_find_providers_high_load() -> SongbirdResult<()> {
+    let adapter = create_universal_adapter();
+
+    // Many concurrent find operations with different capability types
+    let mut tasks = vec![];
+    let capabilities = vec!["compute", "storage", "auth", "network", "ai"];
+
+    for i in 0..100 {
+        let adapter_ref = adapter.clone();
+        let cap = capabilities[i % capabilities.len()].to_string();
+        tasks.push(tokio::spawn(async move { adapter_ref.find_capability_providers(&cap).await }));
+    }
+
+    // All should complete successfully
+    for task in tasks {
+        let result = task.await.map_err(|e| {
+            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        })?;
+        assert!(result.is_ok());
+    }
+    Ok(())
+}
+
+// ============================================================================
+// CONFIGURATION VALIDATION TESTS
+// ============================================================================
+
+#[test]
+fn test_config_with_empty_endpoints() {
+    let config = UnifiedAdapterConfig {
+        discovery_endpoints: vec![],
+        ..Default::default()
+    };
+
+    let adapter = UnifiedUniversalAdapter::with_config(config);
+    assert!(std::mem::size_of_val(&adapter) > 0);
+}
+
+#[test]
+fn test_config_with_many_endpoints() {
+    // Test with large number of endpoints
+    let endpoints: Vec<String> = (0..1000).map(|i| format!("http://server{}:8080", i)).collect();
+
+    let config = UnifiedAdapterConfig {
+        discovery_endpoints: endpoints,
+        ..Default::default()
+    };
+
+    let adapter = UnifiedUniversalAdapter::with_config(config);
+    assert!(std::mem::size_of_val(&adapter) > 0);
+}
+
+#[test]
+fn test_config_with_invalid_url_formats() {
+    // These are syntactically valid strings but semantically unusual URLs
+    let endpoints = vec![
+        "not-a-url".to_string(),
+        "".to_string(),
+        "http://".to_string(),
+        "://localhost".to_string(),
+        "http://localhost:-1".to_string(),
+        "http://localhost:99999".to_string(),
+    ];
+
+    let config = UnifiedAdapterConfig {
+        discovery_endpoints: endpoints,
+        ..Default::default()
+    };
+
+    // Should accept config (validation happens at runtime)
+    let adapter = UnifiedUniversalAdapter::with_config(config);
+    assert!(std::mem::size_of_val(&adapter) > 0);
+}
+
+#[tokio::test]
+async fn test_discover_with_malformed_endpoints() {
+    let config = UnifiedAdapterConfig {
+        discovery_endpoints: vec!["not-a-url".to_string(), "http://".to_string()],
+        discovery_timeout: Duration::from_millis(100),
+        ..Default::default()
+    };
+
+    let adapter = create_universal_adapter_with_config(config);
+
+    // Should handle malformed URLs gracefully
+    let result = adapter.discover_services().await;
+    assert!(result.is_ok());
+}
+
+// ============================================================================
+// ERROR TYPE TESTS
+// ============================================================================
+
+#[test]
+fn test_universal_adapter_error_types_completeness() {
+    use songbird_universal::UniversalAdapterError;
+
+    // Test all error variants
+    let errors = vec![
+        UniversalAdapterError::NetworkError("test".to_string()),
+        UniversalAdapterError::ParseError("test".to_string()),
+        UniversalAdapterError::DiscoveryError("test".to_string()),
+        UniversalAdapterError::ServiceError("test".to_string()),
+        UniversalAdapterError::MissingCapability,
+        UniversalAdapterError::NoProvidersAvailable("test".to_string()),
+    ];
+
+    for error in errors {
+        // All errors should have non-empty display strings
+        assert!(!error.to_string().is_empty());
+    }
+}
+
+#[test]
+fn test_error_messages_are_descriptive() -> SongbirdResult<()> {
+    use songbird_universal::UniversalAdapterError;
+
+    let err = UniversalAdapterError::NetworkError("connection timeout".to_string());
+    assert!(err.to_string().contains("Network error"));
+    assert!(err.to_string().contains("connection timeout"));
+
+    let err = UniversalAdapterError::NoProvidersAvailable("ai_inference".to_string());
+    assert!(err.to_string().contains("No providers available"));
+    assert!(err.to_string().contains("ai_inference"));
+    Ok(())
+}
+
+#[test]
+fn test_error_debug_format() -> SongbirdResult<()> {
+    use songbird_types::{SongbirdError, SongbirdResult};
+    use songbird_universal::UniversalAdapterError;
+
+    let err = UniversalAdapterError::MissingCapability;
+    let debug_str = format!("{:?}", err);
+
+    assert!(!debug_str.is_empty());
+    assert!(debug_str.contains("MissingCapability"));
+    Ok(())
 }

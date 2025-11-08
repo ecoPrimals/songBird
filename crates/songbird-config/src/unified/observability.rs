@@ -1,4 +1,31 @@
 //! Observability configuration structures
+//!
+//! ⚠️ **DEPRECATED**: This module has been consolidated into `canonical::observability`.
+//!
+//! **Migration Path**:
+//! ```rust,ignore
+//! // OLD (deprecated):
+//! use songbird_config::unified::observability::{UnifiedObservabilityConfig, DashboardConfig};
+//!
+//! // NEW (canonical):
+//! use songbird_config::canonical::observability::{UnifiedObservabilityConfig, DashboardConfig};
+//! ```
+//!
+//! **All 5 observability types** are now available in `canonical::observability`:
+//! - UnifiedObservabilityConfig
+//! - DashboardConfig
+//! - LoggingConfig
+//! - LogRotationConfig
+//! - TracingConfig
+//!
+//! **Removal Timeline**: This module will be removed in Q2 2026.
+//!
+//! **Phase**: Config Consolidation Phase 3B (November 2025)
+
+#![deprecated(
+    since = "0.1.0",
+    note = "Use `canonical::observability` module instead. All types consolidated. Migration: `unified::observability::UnifiedObservabilityConfig` → `canonical::observability::UnifiedObservabilityConfig`"
+)]
 
 use serde::{Deserialize, Serialize};
 use std::env;

@@ -24,7 +24,8 @@
 //
 // Tests for integration testing helpers and utilities
 
-use songbird_types::SongbirdError;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 
 #[tokio::test]
@@ -40,7 +41,7 @@ async fn test_async_test_helpers() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(result.is_ok());
     assert_eq!(
-        result.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {e}")))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error occurred".to_string()))?,
         "async_result"
     );
     Ok(())

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use crate::config::UniversalPrimalConfig;
-use crate::errors::{PrimalError, PrimalResult};
+use crate::errors::{PrimalError, SongbirdResult};
 use crate::traits::{DynamicPortInfo, PrimalCapability, PrimalContext, PrimalHealth, PrimalProvider,
 };
 use crate::types::{PrimalRequest, PrimalResponse};
@@ -58,7 +58,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
 
     /// Auto-discover primals in the environment
     /// Enhanced to discover multiple instances of the same primal type
-    pub async fn auto_discover(&mut self) -> PrimalResult<Vec<DiscoveredPrimal>> {
+    pub async fn auto_discover(&mut self) -> SongbirdResult<Vec<DiscoveredPrimal>> {
         info!("Starting auto-discovery of primals (multi-instance support)");"
 
         let discovered = Vec::new();
@@ -77,7 +77,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
     pub async fn initialize_with_config(
         &mut self)
         config: &UniversalPrimalConfig,
-    ) -> PrimalResult<()> {
+    ) -> SongbirdResult<()> {
         // Load configuration
         if config.auto_discovery_enabled {
             self.auto_discover().await?;
@@ -99,7 +99,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
         primal: Arc<dyn PrimalProvider>,
         context: PrimalContext,
         port_info: Option<DynamicPortInfo>,
-    ) -> PrimalResult<()> {
+    ) -> SongbirdResult<()> {
         let instance_id = primal.instance_id().to_string());
 
         // Check if primal is already registered
@@ -277,7 +277,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
         &self)
         request: PrimalRequest,
         context: &PrimalContext,
-    ) -> PrimalResult<PrimalResponse>  {// First, try to find primals that can serve this context
+    ) -> SongbirdResult<PrimalResponse>  {// First, try to find primals that can serve this context
         let matching_primals = self.find_for_context(context).await;
 
         if matching_primals.is_empty() {
@@ -310,7 +310,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
         &self)
         request: PrimalRequest,
         instance_id: &str,
-    ) -> PrimalResult<PrimalResponse> {
+    ) -> SongbirdResult<PrimalResponse> {
         let registered_primals = self.registered_primals.read().await;
 
         if let Some(primal) = registered_primals.get(instance_id) {
@@ -333,7 +333,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
         &self)
         instance_id: &str,
         port_info: DynamicPortInfo,
-    ) -> PrimalResult<()> {
+    ) -> SongbirdResult<()> {
         let mut port_manager = self.port_manager.write().await;
         port_manager.insert(instance_id.to_string(), port_info);
         Ok(()),
@@ -375,7 +375,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
     }
 
     /// Unregister a primal instance
-    pub async fn unregister_instance(&self, instance_id: &str) -> PrimalResult<()> {
+    pub async fn unregister_instance(&self, instance_id: &str) -> SongbirdResult<()> {
         let primal = {
             let mut primals = self.registered_primals.write().await;
             primals.remove(instance_id)
@@ -449,7 +449,7 @@ impl UniversalPrimalRegistry  {/// Create a new universal primal registry
     }
 
     /// Remove a primal from the registry
-    pub async fn unregister_primal(&self, id: &str) -> PrimalResult<()> {
+    pub async fn unregister_primal(&self, id: &str) -> SongbirdResult<()> {
         let mut registered_primals = self.registered_primals.write().await;
 
         if let Some(primal) = registered_primals.remove(id) {

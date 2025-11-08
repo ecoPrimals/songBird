@@ -1,3 +1,8 @@
+#![deprecated(
+    since = "0.2.0",
+    note = "Use compute_capability::ComputeCapabilityClient instead. See module docs for migration. Removal: v0.3.0 (Q2 2026)"
+)]
+
 //! # ⚠️ DEPRECATED: Legacy Toadstool Primal (Hardcoded Compute Service)
 //!
 //! **STATUS**: This module is deprecated. Use `compute_capability` instead.

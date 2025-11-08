@@ -8,6 +8,7 @@
 use crate::capabilities::Capability;
 use crate::types::{HealthStatus, ServiceInfo, UniversalRequest, UniversalResponse};
 use serde::{Deserialize, Serialize};
+use songbird_types::SafeEnv;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -87,13 +88,12 @@ impl Default for UnifiedAdapterConfig {
             max_concurrent_requests: 100,
             auto_discovery: true,
             discovery_endpoints: {
-                let host = std::env::var("ADAPTER_DISCOVERY_HOST").unwrap_or_else(|_| {
-                    songbird_config::constants::network::DEFAULT_HOST.to_string()
-                });
-                let capabilities_port = std::env::var("ADAPTER_CAPABILITIES_PORT")
-                    .unwrap_or_else(|_| songbird_config::constants::network::DEFAULT_DEV_PORT.to_string());
-                let services_port = std::env::var("ADAPTER_SERVICES_PORT")
-                    .unwrap_or_else(|_| "8081".to_string());
+                let host = SafeEnv::get_or_default("ADAPTER_DISCOVERY_HOST",
+                    songbird_config::constants::network::DEFAULT_HOST);
+                let capabilities_port = SafeEnv::get_port("ADAPTER_CAPABILITIES_PORT",
+                    songbird_config::constants::network::DEFAULT_DEV_PORT).to_string();
+                let services_port = SafeEnv::get_port("ADAPTER_SERVICES_PORT",
+                    songbird_config::defaults::ports::discovery_port()).to_string();
                 vec![
                     format!("http://{}:{}/capabilities", host, capabilities_port),
                     format!("http://{}:{}/services", host, services_port),
@@ -143,20 +143,22 @@ impl UnifiedUniversalAdapter {
         }
 
         // Update registry with discovered services
-        let mut registry = self.capability_registry.write().await;
-        for service in &discovered_services {
-            registry.service_info.insert(service.name.clone(), service.clone());
-            registry.last_updated.insert(service.name.clone(), chrono::Utc::now());
+        {
+            let mut registry = self.capability_registry.write().await;
+            for service in &discovered_services {
+                registry.service_info.insert(service.name.clone(), service.clone());
+                registry.last_updated.insert(service.name.clone(), chrono::Utc::now());
 
-            // Index capabilities
-            for capability in &service.capabilities {
-                registry
-                    .capability_providers
-                    .entry(capability.name.clone())
-                    .or_insert_with(Vec::new)
-                    .push(service.name.clone());
+                // Index capabilities
+                for capability in &service.capabilities {
+                    registry
+                        .capability_providers
+                        .entry(capability.name.clone())
+                        .or_insert_with(Vec::new)
+                        .push(service.name.clone());
+                }
             }
-        }
+        } // Drop registry lock here
 
         info!("✅ Discovered {} services", discovered_services.len());
         Ok(discovered_services)
@@ -352,6 +354,7 @@ mod tests {
     use super::*;
     use crate::capabilities::{Capability, QoSMetrics, ResourceMetrics};
     use crate::types::{DiscoveredCapability, PrimalType, QosMetrics};
+    use songbird_types::{SongbirdError, SongbirdResult};
     use std::collections::HashMap;
 
     // Helper functions for test data creation
@@ -424,23 +427,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_discover_services_empty_endpoints() {
+    async fn test_discover_services_empty_endpoints() -> SongbirdResult<()> {
         let adapter = UnifiedUniversalAdapter::new();
-        let result = adapter.discover_services().await;
-
-        assert!(result.is_ok());
-        let services = result.unwrap();
+        let services = adapter.discover_services().await.map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Failed to discover services from empty registry: {}",
+                e
+            ))
+        })?;
         assert!(services.is_empty());
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_find_capability_providers_empty_registry() {
+    async fn test_find_capability_providers_empty_registry() -> SongbirdResult<()> {
         let adapter = UnifiedUniversalAdapter::new();
-        let result = adapter.find_capability_providers("compute").await;
-
-        assert!(result.is_ok());
-        let providers = result.unwrap();
+        let providers = adapter.find_capability_providers("compute").await.map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Failed to find capability providers from empty registry: {}",
+                e
+            ))
+        })?;
         assert!(providers.is_empty());
+        Ok(())
     }
 
     #[test]
@@ -608,7 +617,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_find_capability_providers_with_data() {
+    async fn test_find_capability_providers_with_data() -> SongbirdResult<()> {
         let adapter = UnifiedUniversalAdapter::new();
 
         // Populate registry
@@ -628,19 +637,25 @@ mod tests {
                 metadata: HashMap::new(),
             };
 
-            registry.service_info.insert("compute-service".to_string(), service.clone());
+            registry.service_info.insert("compute-service".to_string(), service);
             registry
                 .capability_providers
                 .insert("compute".to_string(), vec!["compute-service".to_string()]);
         }
 
-        let providers = adapter.find_capability_providers("compute").await.unwrap();
+        let providers = adapter.find_capability_providers("compute").await.map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Failed to find capability providers with test data: {}",
+                e
+            ))
+        })?;
         assert_eq!(providers.len(), 1);
         assert_eq!(providers[0].name, "compute-service");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_find_capability_providers_multiple() {
+    async fn test_find_capability_providers_multiple() -> SongbirdResult<()> {
         let adapter = UnifiedUniversalAdapter::new();
 
         // Populate registry with multiple providers
@@ -681,8 +696,14 @@ mod tests {
             );
         }
 
-        let providers = adapter.find_capability_providers("compute").await.unwrap();
+        let providers = adapter.find_capability_providers("compute").await.map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Failed to find multiple capability providers: {}",
+                e
+            ))
+        })?;
         assert_eq!(providers.len(), 2);
+        Ok(())
     }
 
     #[test]
@@ -717,7 +738,7 @@ mod tests {
     }
 
     #[test]
-    fn test_registry_stats_serialization() {
+    fn test_registry_stats_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let stats = RegistryStats {
             total_services: 10,
             total_capabilities: 20,
@@ -725,19 +746,29 @@ mod tests {
         };
 
         // Test serialization
-        let json = serde_json::to_string(&stats).unwrap();
+        let json = serde_json::to_string(&stats).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Serialization failed: {}", e),
+            debug_info: None,
+        })?;
         assert!(json.contains("total_services"));
         assert!(json.contains("\"10\"") || json.contains("10"));
 
         // Test deserialization
-        let deserialized: RegistryStats = serde_json::from_str(&json).unwrap();
+        let deserialized: RegistryStats =
+            serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Parsing failed: {}", e),
+                debug_info: None,
+            })?;
         assert_eq!(deserialized.total_services, 10);
         assert_eq!(deserialized.total_capabilities, 20);
         assert_eq!(deserialized.healthy_services, 8);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_capability_registry_indexing() {
+    async fn test_capability_registry_indexing() -> SongbirdResult<()> {
         let adapter = UnifiedUniversalAdapter::new();
 
         // Manually test registry capability indexing logic
@@ -792,13 +823,26 @@ mod tests {
         }
 
         // Verify indexing worked
-        let compute_providers = adapter.find_capability_providers("compute").await.unwrap();
-        let storage_providers = adapter.find_capability_providers("storage").await.unwrap();
+        let compute_providers =
+            adapter.find_capability_providers("compute").await.map_err(|e| {
+                SongbirdError::configuration(format!(
+                    "Failed to find compute providers in capability registry: {}",
+                    e
+                ))
+            })?;
+        let storage_providers =
+            adapter.find_capability_providers("storage").await.map_err(|e| {
+                SongbirdError::configuration(format!(
+                    "Failed to find storage providers in capability registry: {}",
+                    e
+                ))
+            })?;
 
         assert_eq!(compute_providers.len(), 1);
         assert_eq!(storage_providers.len(), 1);
         assert_eq!(compute_providers[0].name, "multi-cap-service");
         assert_eq!(storage_providers[0].name, "multi-cap-service");
+        Ok(())
     }
 
     #[test]

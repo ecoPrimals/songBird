@@ -265,12 +265,12 @@ impl ZeroTouchConfig {
     pub fn from_environment() -> SongbirdResult<Self> {
         info!("🍼 Creating zero-touch configuration from environment (no hardcoded knowledge)");
 
-        let self_identity = Self::discover_self_identity()?;
-        let required_capabilities = Self::discover_required_capabilities()?;
-        let optional_capabilities = Self::discover_optional_capabilities()?;
-        let discovery = Self::create_discovery_config()?;
+        let self_identity = Self::discover_self_identity();
+        let required_capabilities = Self::discover_required_capabilities();
+        let optional_capabilities = Self::discover_optional_capabilities();
+        let discovery = Self::create_discovery_config();
         let network = Self::create_network_config()?;
-        let bootstrap = Self::create_bootstrap_config()?;
+        let bootstrap = Self::create_bootstrap_config();
 
         Ok(Self {
             self_identity,
@@ -283,7 +283,7 @@ impl ZeroTouchConfig {
     }
 
     /// Discover this service's own identity from environment
-    fn discover_self_identity() -> SongbirdResult<ServiceIdentity> {
+    fn discover_self_identity() -> ServiceIdentity {
         // Service ID from environment or generate one
         let service_id = env::var("SERVICE_ID")
             .or_else(|_| env::var("HOSTNAME"))
@@ -308,15 +308,15 @@ impl ZeroTouchConfig {
 
         info!("🔍 Discovered self identity: {} providing {:?}", service_id, provides_capabilities);
 
-        Ok(ServiceIdentity {
+        ServiceIdentity {
             service_id,
             provides_capabilities,
             metadata,
-        })
+        }
     }
 
     /// Discover required capabilities from environment
-    fn discover_required_capabilities() -> SongbirdResult<Vec<CapabilityRequirement>> {
+    fn discover_required_capabilities() -> Vec<CapabilityRequirement> {
         let mut requirements = Vec::new();
 
         // Check for required capabilities in environment
@@ -337,18 +337,18 @@ impl ZeroTouchConfig {
                 requirements.push(CapabilityRequirement {
                     capability_type: cap_type.to_string(),
                     required_operations: operations,
-                    quality_requirements: Self::parse_quality_requirements(cap_type)?,
-                    fallback_behavior: Self::parse_fallback_behavior(cap_type)?,
+                    quality_requirements: Self::parse_quality_requirements(cap_type),
+                    fallback_behavior: Self::parse_fallback_behavior(cap_type),
                 });
             }
         }
 
         debug!("🎯 Discovered {} required capabilities", requirements.len());
-        Ok(requirements)
+        requirements
     }
 
     /// Discover optional capabilities from environment
-    fn discover_optional_capabilities() -> SongbirdResult<Vec<CapabilityRequirement>> {
+    fn discover_optional_capabilities() -> Vec<CapabilityRequirement> {
         let mut requirements = Vec::new();
 
         if let Ok(optional) = env::var("OPTIONAL_CAPABILITIES") {
@@ -368,11 +368,11 @@ impl ZeroTouchConfig {
         }
 
         debug!("🎯 Discovered {} optional capabilities", requirements.len());
-        Ok(requirements)
+        requirements
     }
 
     /// Create discovery configuration from environment
-    fn create_discovery_config() -> SongbirdResult<DiscoveryConfig> {
+    fn create_discovery_config() -> DiscoveryConfig {
         let mut methods = Vec::new();
 
         // Always include environment variable discovery
@@ -424,13 +424,13 @@ impl ZeroTouchConfig {
         let cache_ttl_secs =
             env::var("DISCOVERY_CACHE_TTL_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(300);
 
-        Ok(DiscoveryConfig {
+        DiscoveryConfig {
             methods,
             timeout: Duration::from_secs(timeout_secs),
             refresh_interval: Duration::from_secs(refresh_secs),
             enable_cache: env::var("DISABLE_DISCOVERY_CACHE").is_err(),
             cache_ttl: Duration::from_secs(cache_ttl_secs),
-        })
+        }
     }
 
     /// Create network configuration from environment (NO hardcoded ports)
@@ -506,7 +506,7 @@ impl ZeroTouchConfig {
     }
 
     /// Create bootstrap configuration
-    fn create_bootstrap_config() -> SongbirdResult<BootstrapConfig> {
+    fn create_bootstrap_config() -> BootstrapConfig {
         let enable_infant_discovery = env::var("ENABLE_INFANT_DISCOVERY")
             .map(|v| v.to_lowercase() == "true" || v == "1")
             .unwrap_or(true);
@@ -529,12 +529,12 @@ impl ZeroTouchConfig {
             .map(|v| v.to_lowercase() == "true" || v == "1")
             .unwrap_or(true);
 
-        Ok(BootstrapConfig {
+        BootstrapConfig {
             enable_infant_discovery,
             discovery_phases,
             max_bootstrap_time: Duration::from_secs(max_bootstrap_secs),
             fail_on_missing_required: fail_on_missing,
-        })
+        }
     }
 
     /// Collect service metadata from environment
@@ -570,7 +570,7 @@ impl ZeroTouchConfig {
     }
 
     /// Parse quality requirements for a capability
-    fn parse_quality_requirements(capability_type: &str) -> SongbirdResult<QualityRequirements> {
+    fn parse_quality_requirements(capability_type: &str) -> QualityRequirements {
         let prefix = format!("CAPABILITY_{}_", capability_type.to_uppercase());
 
         let max_response_time =
@@ -594,19 +594,19 @@ impl ZeroTouchConfig {
             })
             .unwrap_or(SecurityLevel::Basic);
 
-        Ok(QualityRequirements {
+        QualityRequirements {
             max_response_time_ms: max_response_time,
             min_availability,
             min_throughput_rps: min_throughput,
             security_level,
-        })
+        }
     }
 
     /// Parse fallback behavior for a capability
-    fn parse_fallback_behavior(capability_type: &str) -> SongbirdResult<FallbackBehavior> {
+    fn parse_fallback_behavior(capability_type: &str) -> FallbackBehavior {
         let var_name = format!("CAPABILITY_{}_FALLBACK", capability_type.to_uppercase());
 
-        let behavior = env::var(&var_name)
+        env::var(&var_name)
             .ok()
             .and_then(|s| match s.to_lowercase().as_str() {
                 "fail" => Some(FallbackBehavior::Fail),
@@ -623,9 +623,7 @@ impl ZeroTouchConfig {
             .unwrap_or(FallbackBehavior::Retry {
                 max_attempts: 3,
                 backoff_ms: 1000,
-            });
-
-        Ok(behavior)
+            })
     }
 }
 
@@ -659,7 +657,7 @@ mod tests {
         env::set_var("SERVICE_ID", "test-service-123");
         env::set_var("SERVICE_CAPABILITIES", "compute,storage");
 
-        let identity = ZeroTouchConfig::discover_self_identity().unwrap();
+        let identity = ZeroTouchConfig::discover_self_identity();
         assert_eq!(identity.service_id, "test-service-123");
         assert_eq!(identity.provides_capabilities.len(), 2);
 

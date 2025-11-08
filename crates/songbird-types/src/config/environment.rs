@@ -2,6 +2,7 @@
 //!
 //! Enhanced with comprehensive features from various environment configuration fragments.
 
+use crate::SafeEnv;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -206,45 +207,35 @@ impl Default for CanonicalEnvironmentConfig {
     }
 }
 
+impl DeploymentMode {
+    /// Create deployment mode from environment string
+    #[must_use]
+    pub fn from_env_string(env_str: &str) -> Self {
+        match env_str {
+            "production" => Self::Production,
+            "staging" => Self::Staging,
+            "testing" => Self::Testing,
+            "development" => Self::Development,
+            custom => Self::Custom(custom.to_string()),
+        }
+    }
+}
+
 impl Default for DeploymentMode {
     fn default() -> Self {
-        match std::env::var("SONGBIRD_ENV").as_deref() {
-            Ok("production") => Self::Production,
-            Ok("staging") => Self::Staging,
-            Ok("testing") => Self::Testing,
-            Ok(custom) => Self::Custom(custom.to_string()),
-            _ => Self::Development,
-        }
+        Self::from_env_string(&SafeEnv::get_or_default("SONGBIRD_ENV", "development"))
     }
 }
 
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_connections: std::env::var("SONGBIRD_MAX_CONNECTIONS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(1000),
-            max_memory_mb: std::env::var("SONGBIRD_MAX_MEMORY_MB")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(2048),
-            max_cpu_cores: std::env::var("SONGBIRD_MAX_CPU_CORES")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(4),
-            max_file_descriptors: std::env::var("SONGBIRD_MAX_FDS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(1024),
-            max_threads: std::env::var("SONGBIRD_MAX_THREADS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(100),
-            disk_space_gb: std::env::var("SONGBIRD_MAX_DISK_GB")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(100),
+            max_connections: SafeEnv::get_usize("SONGBIRD_MAX_CONNECTIONS", 1000) as u32,
+            max_memory_mb: SafeEnv::get_usize("SONGBIRD_MAX_MEMORY_MB", 2048) as u64,
+            max_cpu_cores: SafeEnv::get_usize("SONGBIRD_MAX_CPU_CORES", 4) as u32,
+            max_file_descriptors: SafeEnv::get_usize("SONGBIRD_MAX_FDS", 1024) as u32,
+            max_threads: SafeEnv::get_usize("SONGBIRD_MAX_THREADS", 100) as u32,
+            disk_space_gb: SafeEnv::get_usize("SONGBIRD_MAX_DISK_GB", 100) as u64,
             memory_pool: MemoryPoolConfig::default(),
         }
     }
@@ -253,9 +244,7 @@ impl Default for ResourceLimits {
 impl Default for MemoryPoolConfig {
     fn default() -> Self {
         Self {
-            enabled: std::env::var("SONGBIRD_MEMORY_POOL_ENABLED")
-                .map(|s| s.parse().unwrap_or(true))
-                .unwrap_or(true),
+            enabled: SafeEnv::get_bool("SONGBIRD_MEMORY_POOL_ENABLED", true),
             initial_size_mb: 64,
             max_size_mb: 512,
             growth_increment_mb: 32,
@@ -266,14 +255,9 @@ impl Default for MemoryPoolConfig {
 impl Default for ServiceDiscoveryConfig {
     fn default() -> Self {
         Self {
-            auto_discovery: std::env::var("SONGBIRD_AUTO_DISCOVERY")
-                .map(|s| s.parse().unwrap_or(true))
-                .unwrap_or(true),
+            auto_discovery: SafeEnv::get_bool("SONGBIRD_AUTO_DISCOVERY", true),
             refresh_interval: Duration::from_secs(
-                std::env::var("SONGBIRD_DISCOVERY_REFRESH_INTERVAL")
-                    .ok()
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(30),
+                SafeEnv::get_usize("SONGBIRD_DISCOVERY_REFRESH_INTERVAL", 30) as u64,
             ),
             discovery_timeout: Duration::from_secs(10),
             fallback_endpoints: HashMap::new(),
@@ -297,28 +281,13 @@ impl Default for EnvironmentHealthCheckConfig {
 impl Default for NetworkBindingConfig {
     fn default() -> Self {
         Self {
-            bind_address: std::env::var("SONGBIRD_BIND_ADDRESS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or_else(|| {
-                    // Default to 0.0.0.0 for binding, with fallback
-                    "0.0.0.0"
-                        .parse()
-                        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED))
-                }),
-            production_bind_address: std::env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or_else(|| {
-                    // Default to localhost, with fallback
-                    "127.0.0.1"
-                        .parse()
-                        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
-                }),
-            bind_port: std::env::var("SONGBIRD_BIND_PORT")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(8080),
+            bind_address: SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0")
+                .parse()
+                .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
+            production_bind_address: SafeEnv::get_or_default("SONGBIRD_PRODUCTION_BIND_ADDRESS", "127.0.0.1")
+                .parse()
+                .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)),
+            bind_port: SafeEnv::get_port("SONGBIRD_BIND_PORT", crate::constants::DEFAULT_PORT),
             port_range: PortRange::default(),
             interface_preferences: vec!["eth0".to_string(), "en0".to_string()],
         }
@@ -338,11 +307,11 @@ impl Default for PortRange {
 impl Default for CapabilityEndpoints {
     fn default() -> Self {
         Self {
-            storage: std::env::var("SONGBIRD_STORAGE_ENDPOINT").ok(),
-            compute: std::env::var("SONGBIRD_COMPUTE_ENDPOINT").ok(),
-            ai: std::env::var("SONGBIRD_AI_ENDPOINT").ok(),
-            security: std::env::var("SONGBIRD_SECURITY_ENDPOINT").ok(),
-            orchestration: std::env::var("SONGBIRD_ORCHESTRATION_ENDPOINT").ok(),
+            storage: SafeEnv::get_required("SONGBIRD_STORAGE_ENDPOINT").ok(),
+            compute: SafeEnv::get_required("SONGBIRD_COMPUTE_ENDPOINT").ok(),
+            ai: SafeEnv::get_required("SONGBIRD_AI_ENDPOINT").ok(),
+            security: SafeEnv::get_required("SONGBIRD_SECURITY_ENDPOINT").ok(),
+            orchestration: SafeEnv::get_required("SONGBIRD_ORCHESTRATION_ENDPOINT").ok(),
             custom: HashMap::new(),
         }
     }
@@ -351,9 +320,7 @@ impl Default for CapabilityEndpoints {
 impl Default for LegacyCompatibilityConfig {
     fn default() -> Self {
         Self {
-            enable_legacy_primal_names: std::env::var("SONGBIRD_ENABLE_LEGACY_NAMES")
-                .map(|s| s.parse().unwrap_or(true))
-                .unwrap_or(true),
+            enable_legacy_primal_names: SafeEnv::get_bool("SONGBIRD_ENABLE_LEGACY_NAMES", true),
             legacy_endpoints: HashMap::new(),
             deprecation_warnings: DeprecationWarningsConfig::default(),
         }
@@ -363,9 +330,7 @@ impl Default for LegacyCompatibilityConfig {
 impl Default for DeprecationWarningsConfig {
     fn default() -> Self {
         Self {
-            enabled: std::env::var("SONGBIRD_DEPRECATION_WARNINGS")
-                .map(|s| s.parse().unwrap_or(true))
-                .unwrap_or(true),
+            enabled: SafeEnv::get_bool("SONGBIRD_DEPRECATION_WARNINGS", true),
             log_level: "warn".to_string(),
             suppress_warnings: Vec::new(),
         }
@@ -435,6 +400,7 @@ impl CanonicalEnvironmentConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SongbirdError;
     use std::env;
 
     #[test]
@@ -445,29 +411,27 @@ mod tests {
     }
 
     #[test]
-    fn test_deployment_mode_from_env() {
-        env::set_var("SONGBIRD_ENV", "production");
-        let mode = DeploymentMode::default();
-        assert!(matches!(mode, DeploymentMode::Production));
-        env::remove_var("SONGBIRD_ENV");
-
-        env::set_var("SONGBIRD_ENV", "staging");
-        let mode = DeploymentMode::default();
-        assert!(matches!(mode, DeploymentMode::Staging));
-        env::remove_var("SONGBIRD_ENV");
-
-        env::set_var("SONGBIRD_ENV", "testing");
-        let mode = DeploymentMode::default();
-        assert!(matches!(mode, DeploymentMode::Testing));
-        env::remove_var("SONGBIRD_ENV");
+    fn test_deployment_mode_from_string() {
+        // Test standard modes
+        assert!(matches!(
+            DeploymentMode::from_env_string("production"),
+            DeploymentMode::Production
+        ));
+        assert!(matches!(DeploymentMode::from_env_string("staging"), DeploymentMode::Staging));
+        assert!(matches!(DeploymentMode::from_env_string("testing"), DeploymentMode::Testing));
+        assert!(matches!(
+            DeploymentMode::from_env_string("development"),
+            DeploymentMode::Development
+        ));
     }
 
     #[test]
     fn test_deployment_mode_custom() {
-        env::set_var("SONGBIRD_ENV", "custom-env");
-        let mode = DeploymentMode::default();
+        let mode = DeploymentMode::from_env_string("custom-env");
         assert!(matches!(mode, DeploymentMode::Custom(_)));
-        env::remove_var("SONGBIRD_ENV");
+        if let DeploymentMode::Custom(name) = mode {
+            assert_eq!(name, "custom-env");
+        }
     }
 
     #[test]
@@ -544,7 +508,15 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_capability_endpoints_default() {
+        // Clear any environment variables that might interfere with default test
+        env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
+        env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
+        env::remove_var("SONGBIRD_AI_ENDPOINT");
+        env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
+        env::remove_var("SONGBIRD_ORCHESTRATION_ENDPOINT");
+
         let endpoints = CapabilityEndpoints::default();
         assert!(endpoints.storage.is_none());
         assert!(endpoints.compute.is_none());
@@ -555,6 +527,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_capability_endpoints_from_env() {
         env::set_var("SONGBIRD_STORAGE_ENDPOINT", "http://storage:8001");
         env::set_var("SONGBIRD_AI_ENDPOINT", "http://ai:8002");
@@ -608,14 +581,22 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_get_capability_endpoint_none() {
+        env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
         let config = CanonicalEnvironmentConfig::default();
         let endpoint = config.get_capability_endpoint("storage");
         assert_eq!(endpoint, None);
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_get_all_endpoints_empty() {
+        env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
+        env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
+        env::remove_var("SONGBIRD_AI_ENDPOINT");
+        env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
+        env::remove_var("SONGBIRD_ORCHESTRATION_ENDPOINT");
         let config = CanonicalEnvironmentConfig::default();
         let endpoints = config.get_all_endpoints();
         assert_eq!(endpoints.len(), 0);
@@ -640,51 +621,72 @@ mod tests {
 
     #[test]
     fn test_is_production() {
-        let mut config = CanonicalEnvironmentConfig::default();
-        config.deployment_mode = DeploymentMode::Production;
+        let config = CanonicalEnvironmentConfig {
+            deployment_mode: DeploymentMode::Production,
+            ..Default::default()
+        };
         assert!(config.is_production());
         assert!(!config.is_development());
     }
 
     #[test]
     fn test_is_development() {
-        let mut config = CanonicalEnvironmentConfig::default();
-        config.deployment_mode = DeploymentMode::Development;
+        let config = CanonicalEnvironmentConfig {
+            deployment_mode: DeploymentMode::Development,
+            ..Default::default()
+        };
         assert!(config.is_development());
         assert!(!config.is_production());
     }
 
     #[test]
     fn test_get_bind_address_production() {
-        let mut config = CanonicalEnvironmentConfig::default();
-        config.deployment_mode = DeploymentMode::Production;
+        let config = CanonicalEnvironmentConfig {
+            deployment_mode: DeploymentMode::Production,
+            ..Default::default()
+        };
         let addr = config.get_bind_address();
         assert_eq!(addr, IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
     }
 
     #[test]
     fn test_get_bind_address_development() {
-        let mut config = CanonicalEnvironmentConfig::default();
-        config.deployment_mode = DeploymentMode::Development;
+        let config = CanonicalEnvironmentConfig {
+            deployment_mode: DeploymentMode::Development,
+            ..Default::default()
+        };
         let addr = config.get_bind_address();
         assert_eq!(addr, IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
     }
 
     #[test]
-    fn test_serialization_canonical_config() {
+    fn test_serialization_canonical_config() -> Result<(), Box<dyn std::error::Error>> {
         let config = CanonicalEnvironmentConfig::default();
-        let json = serde_json::to_string(&config).expect("Failed to serialize");
+        let json = serde_json::to_string(&config)
+            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
         let deserialized: CanonicalEnvironmentConfig =
-            serde_json::from_str(&json).expect("Failed to deserialize");
+            serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Failed to deserialize: {}", e),
+                debug_info: None,
+            })?;
         assert!(matches!(deserialized.deployment_mode, DeploymentMode::Development));
+        Ok(())
     }
 
     #[test]
-    fn test_port_range_serialization() {
+    fn test_port_range_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let range = PortRange::default();
-        let json = serde_json::to_string(&range).expect("Failed to serialize");
-        let deserialized: PortRange = serde_json::from_str(&json).expect("Failed to deserialize");
+        let json = serde_json::to_string(&range)
+            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+        let deserialized: PortRange =
+            serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Failed to deserialize: {}", e),
+                debug_info: None,
+            })?;
         assert_eq!(deserialized.start, range.start);
         assert_eq!(deserialized.end, range.end);
+        Ok(())
     }
 }

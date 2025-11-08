@@ -117,7 +117,7 @@ pub enum Commands {
     /// Web dashboard
     Dashboard {
         /// Port to run dashboard on
-        #[arg(short, long, default_value_t = 8080)]
+        #[arg(short, long, default_value_t = songbird_config::defaults::ports::orchestrator_port())]
         port: u16,
         /// Bind address
         #[arg(short, long, default_value = songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS)]

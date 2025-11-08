@@ -24,7 +24,7 @@
 use songbird_test_utils::canonical_test_framework::{
     CanonicalAssertions, TestContext, TestEnvironment, TestResult,
 };
-use songbird_types::{SongbirdError as ErrorType, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdError as ErrorType, SongbirdResult};
 use std::time::Duration;
 
 #[cfg(test)]

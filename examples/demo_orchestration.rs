@@ -50,10 +50,11 @@ fn demo_service_registry(Result<(), Box<dyn std::error::Error>>) ->  {
     let plugin_registry = DynamicPluginRegistry::new();
     info!("✅ Dynamic plugin registry created successfully");
 
+    // 🍼 MIGRATED: Using capability-based plugin names (was primal-specific)
     // Register some mock plugins
     let plugin_id1 = plugin_registry
         .register_plugin(
-            "beardog-encryption".to_string(),
+            "security-encryption".to_string(),
             vec![PluginCapability::Encryption {
                 algorithms: vec!["AES-256".to_string(), "ChaCha20".to_string()],
             }],
@@ -63,11 +64,12 @@ fn demo_service_registry(Result<(), Box<dyn std::error::Error>>) ->  {
             }],
         )
         .await?;
-    info!("🔐 Registered BearDog encryption plugin: {}", plugin_id1);
+    info!("🔐 Registered security encryption plugin: {}", plugin_id1);
 
+    // 🍼 MIGRATED: Using capability-based plugin names (was primal-specific)
     let plugin_id2 = plugin_registry
         .register_plugin(
-            "toadstool-compute".to_string(),
+            "compute-provider".to_string(),
             vec![PluginCapability::Compute {
                 cpu_cores: 16,
                 memory_gb: 64,
@@ -78,11 +80,12 @@ fn demo_service_registry(Result<(), Box<dyn std::error::Error>>) ->  {
             }],
         )
         .await?;
-    info!("💻 Registered Toadstool compute plugin: {}", plugin_id2);
+    info!("💻 Registered compute provider plugin: {}", plugin_id2);
 
+    // 🍼 MIGRATED: Using capability-based plugin names (was primal-specific)
     let plugin_id3 = plugin_registry
         .register_plugin(
-            "nestgate-storage".to_string(),
+            "storage-provider".to_string(),
             vec![PluginCapability::Storage {
                 capacity_gb: 1024,
                 storage_type: "SSD".to_string(),
@@ -90,7 +93,7 @@ fn demo_service_registry(Result<(), Box<dyn std::error::Error>>) ->  {
             vec![],
         )
         .await?;
-    info!("💾 Registered NestGate storage plugin: {}", plugin_id3);
+    info!("💾 Registered storage provider plugin: {}", plugin_id3);
 
     // List all registered plugins
     let all_plugins = plugin_registry.list_plugins().await;
@@ -181,7 +184,7 @@ fn demo_byob_deployment(Result<(), Box<dyn std::error::Error>>) ->  {
                         interval_secs: 60,
                         timeout_secs: 10,
                     }),
-                    primal_managed: Some("nestgate".to_string()),
+                    primal_managed: Some("storage".to_string()), // 🍼 MIGRATED: capability-based (was "nestgate")
                 },
             );
 

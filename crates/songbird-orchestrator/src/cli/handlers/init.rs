@@ -32,15 +32,28 @@ async fn create_default_config(target_dir: &str) -> Result<()> {
     let config_dir = format!("{target_dir}/.songbird");
     std::fs::create_dir_all(&config_dir)?;
 
-    let config_content = r#"# Songbird Universal Orchestrator Configuration
+    // Get configurable defaults for config template
+    let bind_port = std::env::var("SONGBIRD_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or_else(|| songbird_config::defaults::ports::orchestrator_port());
+    let discovery_port = std::env::var("SONGBIRD_DISCOVERY_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or_else(|| songbird_config::defaults::ports::discovery_port());
+
+    let config_content = format!(
+        r#"# Songbird Universal Orchestrator Configuration
 [environment]
 data_dir = "./.songbird/data"
 log_level = "info"
 
 [network]
-bind_port = 8080
-discovery_port = 8001
-"#;
+bind_port = {}
+discovery_port = {}
+"#,
+        bind_port, discovery_port
+    );
 
     let config_path = format!("{config_dir}/songbird.toml");
     std::fs::write(&config_path, config_content)?;

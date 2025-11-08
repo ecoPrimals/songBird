@@ -18,7 +18,8 @@
 //!
 //! Tests for load balancing algorithms, strategies, and health-aware routing.
 
-use songbird_types::SongbirdError;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
 // ========== Load Balancing Strategy Tests ==========
@@ -113,7 +114,7 @@ fn test_weighted_distribution() {
 }
 
 #[test]
-fn test_weighted_selection_probability() {
+fn test_weighted_selection_probability() -> SongbirdResult<()> {
     let weight1 = 1;
     let weight2 = 3;
     let total = weight1 + weight2;
@@ -123,14 +124,16 @@ fn test_weighted_selection_probability() {
 
     assert!((prob1 - 0.25).abs() < 0.01); // 25%
     assert!((prob2 - 0.75).abs() < 0.01); // 75%
+    Ok(())
 }
 
 #[test]
-fn test_weighted_zero_weight() {
+fn test_weighted_zero_weight() -> SongbirdResult<()> {
     let weights = [1, 0, 3];
-    let active_weights: Vec<u32> = weights.iter().filter(|&&w| w > 0).copied().collect();
+    let active_count = weights.iter().filter(|&&w| w > 0).count();
 
-    assert_eq!(active_weights.len(), 2);
+    assert_eq!(active_count, 2);
+    Ok(())
 }
 
 // ========== Least Connections Tests ==========
@@ -264,17 +267,19 @@ fn test_health_status_transitions() {
 // ========== Connection Tracking Tests ==========
 
 #[test]
-fn test_connection_increment() {
+fn test_connection_increment() -> SongbirdResult<()> {
     let mut connections = 5u32;
     connections += 1;
     assert_eq!(connections, 6);
+    Ok(())
 }
 
 #[test]
-fn test_connection_decrement() {
+fn test_connection_decrement() -> SongbirdResult<()> {
     let mut connections = 5u32;
     connections -= 1;
     assert_eq!(connections, 4);
+    Ok(())
 }
 
 #[test]
@@ -306,19 +311,21 @@ fn test_load_percentage() {
 }
 
 #[test]
-fn test_load_threshold() {
+fn test_load_threshold() -> SongbirdResult<()> {
     let current_load = 85.0f64;
     let threshold = 80.0f64;
 
     assert!(current_load > threshold, "Load exceeds threshold");
+    Ok(())
 }
 
 #[test]
-fn test_load_below_threshold() {
+fn test_load_below_threshold() -> SongbirdResult<()> {
     let current_load = 60.0f64;
     let threshold = 80.0f64;
 
     assert!(current_load < threshold, "Load within acceptable range");
+    Ok(())
 }
 
 // ========== Sticky Sessions Tests ==========
@@ -456,7 +463,7 @@ fn test_circuit_breaker_threshold() {
 }
 
 #[test]
-fn test_circuit_breaker_reset() {
+fn test_circuit_breaker_reset() -> SongbirdResult<()> {
     let mut failure_count = 5u32;
     let success = true;
 
@@ -465,12 +472,14 @@ fn test_circuit_breaker_reset() {
     }
 
     assert_eq!(failure_count, 0, "Circuit should reset");
+    Ok(())
 }
 
 #[test]
-fn test_circuit_breaker_half_open() {
+fn test_circuit_breaker_half_open() -> SongbirdResult<()> {
     let circuit_state = "half_open";
     assert_eq!(circuit_state, "half_open");
+    Ok(())
 }
 
 // ========== Priority-Based Routing Tests ==========

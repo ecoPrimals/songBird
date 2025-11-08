@@ -4,7 +4,8 @@
 //! NOTE: These tests now use the capability-based `ComputeAdapter`.
 
 use chrono::Utc;
-use songbird_types::SongbirdError;
+use songbird_test_utils::test_orchestrator_port;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::compute::{ComputeAdapter, ComputeMetrics, HealthStatus};
 use std::time::Duration;
 
@@ -26,38 +27,49 @@ fn create_test_metrics() -> ComputeMetrics {
 // ============================================================================
 
 #[test]
-fn test_compute_adapter_new_success() {
+fn test_compute_adapter_new_success() -> SongbirdResult<()> {
     // Arrange & Act
-    let adapter = ComputeAdapter::new("http://example.com:8080".to_string());
+    let adapter = ComputeAdapter::new(format!("http://example.com:{}", test_orchestrator_port()));
 
     // Assert
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
-    assert_eq!(adapter.endpoint(), "http://example.com:8080");
+    let adapter = adapter.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    assert_eq!(adapter.endpoint(), format!("http://example.com:{}", test_orchestrator_port()));
+    Ok(())
 }
 
 #[test]
-fn test_compute_adapter_endpoint_validation() {
+fn test_compute_adapter_endpoint_validation() -> SongbirdResult<()> {
     // Arrange & Act
     let adapter = ComputeAdapter::new("http://compute-service".to_string());
 
     // Assert
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
+    let adapter = adapter.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
     assert_eq!(adapter.endpoint(), "http://compute-service");
+    Ok(())
 }
 
 #[test]
-fn test_toadstool_adapter_with_timeout() {
+fn test_compute_adapter_with_timeout() -> SongbirdResult<()> {
+    // 🍼 MIGRATED: Renamed from test_toadstool_adapter_with_timeout
     // Arrange
     let custom_timeout = Duration::from_secs(30);
 
     // Act
-    let adapter =
-        ComputeAdapter::new("http://example.com".to_string()).unwrap().with_timeout(custom_timeout);
+    let adapter = ComputeAdapter::new("http://example.com".to_string())
+        .ok_or_else(|| {
+            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        })?
+        .with_timeout(custom_timeout);
 
     // Assert
     assert_eq!(adapter.endpoint(), "http://example.com");
+    Ok(())
 }
 
 // ============================================================================
@@ -65,7 +77,7 @@ fn test_toadstool_adapter_with_timeout() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_success() {
+async fn test_toadstool_collect_metrics_success() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -86,14 +98,18 @@ async fn test_toadstool_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
 
     // Assert
     assert!(result.is_ok());
-    let metrics = result.unwrap();
+    let metrics = result.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
     assert!((metrics.cpu_usage_percent - 45.5).abs() < 0.001);
     assert_eq!(metrics.memory_usage_bytes, 4_000_000_000);
     assert_eq!(metrics.memory_available_bytes, 12_000_000_000);
@@ -101,10 +117,11 @@ async fn test_toadstool_collect_metrics_success() {
     assert_eq!(metrics.queued_jobs, 3);
     assert!((metrics.performance_score - 0.85).abs() < 0.001);
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_url_formatting() {
+async fn test_toadstool_collect_metrics_url_formatting() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -125,7 +142,9 @@ async fn test_toadstool_collect_metrics_url_formatting() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -133,6 +152,7 @@ async fn test_toadstool_collect_metrics_url_formatting() {
     // Assert
     assert!(result.is_ok());
     mock.assert_async().await;
+    Ok(())
 }
 
 // ============================================================================
@@ -140,10 +160,12 @@ async fn test_toadstool_collect_metrics_url_formatting() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_network_error() {
+async fn test_toadstool_collect_metrics_network_error() -> SongbirdResult<()> {
     // Arrange
     let adapter = ComputeAdapter::new("http://nonexistent-host-12345:9999".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        })?
         .with_timeout(Duration::from_millis(100));
 
     // Act
@@ -153,14 +175,17 @@ async fn test_toadstool_collect_metrics_network_error() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Network { .. }));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_timeout() {
+async fn test_toadstool_collect_metrics_timeout() -> SongbirdResult<()> {
     // Arrange
     // Create adapter with very short timeout for non-responsive endpoint
     let adapter = ComputeAdapter::new("http://10.255.255.1:9999".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        })?
         .with_timeout(Duration::from_millis(50));
 
     // Act
@@ -170,10 +195,11 @@ async fn test_toadstool_collect_metrics_timeout() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Network { .. }));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_server_error_500() {
+async fn test_toadstool_collect_metrics_server_error_500() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -183,7 +209,9 @@ async fn test_toadstool_collect_metrics_server_error_500() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -194,10 +222,11 @@ async fn test_toadstool_collect_metrics_server_error_500() {
     assert!(matches!(error, SongbirdError::Service { .. }));
     assert!(error.to_string().contains("500"));
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_server_error_503() {
+async fn test_toadstool_collect_metrics_server_error_503() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -207,7 +236,9 @@ async fn test_toadstool_collect_metrics_server_error_503() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -218,10 +249,11 @@ async fn test_toadstool_collect_metrics_server_error_503() {
     assert!(matches!(error, SongbirdError::Service { .. }));
     assert!(error.to_string().contains("503"));
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_invalid_json() {
+async fn test_toadstool_collect_metrics_invalid_json() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -232,7 +264,9 @@ async fn test_toadstool_collect_metrics_invalid_json() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -245,7 +279,7 @@ async fn test_toadstool_collect_metrics_invalid_json() {
 }
 
 #[tokio::test]
-async fn test_toadstool_collect_metrics_missing_fields() {
+async fn test_toadstool_collect_metrics_missing_fields() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -256,7 +290,9 @@ async fn test_toadstool_collect_metrics_missing_fields() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -266,6 +302,7 @@ async fn test_toadstool_collect_metrics_missing_fields() {
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Service { .. }));
     mock.assert_async().await;
+    Ok(())
 }
 
 // ============================================================================
@@ -273,7 +310,7 @@ async fn test_toadstool_collect_metrics_missing_fields() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_toadstool_check_health_healthy() {
+async fn test_toadstool_check_health_healthy() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -294,19 +331,28 @@ async fn test_toadstool_check_health_healthy() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), HealthStatus::Healthy);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "TODO: Replace with proper error handling: {}",
+            e
+        )))?,
+        HealthStatus::Healthy
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_check_health_degraded() {
+async fn test_toadstool_check_health_degraded() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -327,19 +373,28 @@ async fn test_toadstool_check_health_degraded() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), HealthStatus::Degraded);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "TODO: Replace with proper error handling: {}",
+            e
+        )))?,
+        HealthStatus::Degraded
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_toadstool_check_health_unhealthy() {
+async fn test_toadstool_check_health_unhealthy() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -360,15 +415,24 @@ async fn test_toadstool_check_health_unhealthy() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
 
     // Assert
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), HealthStatus::Unhealthy);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "TODO: Replace with proper error handling: {}",
+            e
+        )))?,
+        HealthStatus::Unhealthy
+    );
     mock.assert_async().await;
+    Ok(())
 }
 
 // ============================================================================

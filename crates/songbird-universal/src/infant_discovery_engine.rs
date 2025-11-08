@@ -6,14 +6,13 @@ use tracing::{debug, info, warn, error};
 //! about its environment through exploration and capability detection.
 
 use serde: :{Deserialize, Serialize};
+use songbird_config;
+use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std: :collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std: :sync::Arc;
 use tokio::sync::RwLock;
 use uuid: :Uuid;
-
-use songbird_types::{SongbirdResult, SongbirdError};
-use songbird_config;
 
 /// Infant Discovery Engine - starts with zero knowledge
 #[derive(Debug)]
@@ -617,20 +616,20 @@ impl InfantDiscoveryEngine  {/// Create a new infant discovery engine with zero 
         let mut capabilities = Vec::new();
 
         // Check for common capability indicators
-        if std::env::var("SONGBIRD_AI_ENABLED").is_ok() {"
+        if SafeEnv::get_required("SONGBIRD_AI_ENABLED").is_ok() {"
             capabilities.push("ai_inference".to_string();"
         }
 
-        if std::env::var("SONGBIRD_STORAGE_ENABLED").is_ok() {"
+        if SafeEnv::get_required("SONGBIRD_STORAGE_ENABLED").is_ok() {"
             capabilities.push("storage".to_string();"
         }
 
-        if std::env::var("SONGBIRD_NETWORKING_ENABLED").is_ok() {"
+        if SafeEnv::get_required("SONGBIRD_NETWORKING_ENABLED").is_ok() {"
             capabilities.push("networking".to_string();"
         }
 
         // Scan for exposed ports (basic implementation)
-        if let Ok(port_str) = std::env::var("SONGBIRD_HTTP_PORT") {"
+        if let Ok(port_str) = SafeEnv::get_required("SONGBIRD_HTTP_PORT") {"
             if port_str.parse::<u16>().is_ok() {
                 capabilities.push("http_server".to_string();"
             }

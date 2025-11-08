@@ -539,7 +539,7 @@ mod tests {
             security_level: super::super::types::SecurityLevel::High,
         };
 
-        let paths = vec![path.clone()];
+        let paths = vec![path];
         let result = adapter.select_best_path(&paths);
 
         assert!(result.is_ok());
@@ -635,6 +635,83 @@ mod tests {
         assert!(!adapter1.get_config().enable_federation_routing);
         assert!(adapter2.get_config().enable_federation_routing);
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_config_timeout_very_short() -> Result<(), Box<dyn std::error::Error>> {
+        let config_short = SovereigntyAdapterConfig {
+            enable_sovereignty_routing: true,
+            enable_federation_routing: true,
+            enable_network_optimization: true,
+            sovereignty_timeout: std::time::Duration::from_millis(100),
+            sovereignty_preference_weight: 0.7,
+        };
+
+        let config_long = SovereigntyAdapterConfig {
+            enable_sovereignty_routing: true,
+            enable_federation_routing: true,
+            enable_network_optimization: true,
+            sovereignty_timeout: std::time::Duration::from_secs(60),
+            sovereignty_preference_weight: 0.7,
+        };
+
+        let adapter_short = SovereigntyAwareAdapter::with_config(config_short)
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
+        let adapter_long = SovereigntyAwareAdapter::with_config(config_long)
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
+
+        assert_eq!(
+            adapter_short.get_config().sovereignty_timeout,
+            std::time::Duration::from_millis(100)
+        );
+        assert_eq!(
+            adapter_long.get_config().sovereignty_timeout,
+            std::time::Duration::from_secs(60)
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_config_preference_weight_boundary() -> Result<(), Box<dyn std::error::Error>> {
+        let config_min = SovereigntyAdapterConfig {
+            enable_sovereignty_routing: true,
+            enable_federation_routing: true,
+            enable_network_optimization: true,
+            sovereignty_timeout: std::time::Duration::from_secs(5),
+            sovereignty_preference_weight: 0.0,
+        };
+
+        let config_max = SovereigntyAdapterConfig {
+            enable_sovereignty_routing: true,
+            enable_federation_routing: true,
+            enable_network_optimization: true,
+            sovereignty_timeout: std::time::Duration::from_secs(5),
+            sovereignty_preference_weight: 1.0,
+        };
+
+        let adapter_min = SovereigntyAwareAdapter::with_config(config_min)
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
+        let adapter_max = SovereigntyAwareAdapter::with_config(config_max)
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
+
+        assert!((adapter_min.get_config().sovereignty_preference_weight - 0.0).abs() < 0.001);
+        assert!((adapter_max.get_config().sovereignty_preference_weight - 1.0).abs() < 0.001);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_adapter_debug_trait() -> Result<(), Box<dyn std::error::Error>> {
+        let adapter = SovereigntyAwareAdapter::new()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
+
+        let debug_str = format!("{adapter:?}");
+        assert!(debug_str.contains("SovereigntyAwareAdapter"));
         Ok(())
     }
 }

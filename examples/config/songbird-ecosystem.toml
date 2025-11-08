@@ -10,7 +10,8 @@ description = "Songbird with full ecosystem integration"
 # Core Songbird configuration (standalone operation)
 mode = "standalone-with-ecosystem"
 bind_address = "127.0.0.1"
-orchestrator_port = 8080
+# Use SONGBIRD_PORT env var (defaults to orchestrator_port())
+orchestrator_port = 8080  # Example default
 enable_discovery = true
 
 [discovery]
@@ -21,21 +22,25 @@ discovery_methods = ["network_scan", "service_registry", "broadcast"]
 
 # Network ranges to scan for other primals
 scan_ranges = ["127.0.0.1", "192.168.1.0/24", "10.0.0.0/24"]
-scan_ports = [8080, 8081, 8082, 8083, 8084, 8085, 9090, 9091, 9092]
+# Common ports to scan (use SCAN_PORTS env var to customize)
+scan_ports = [8080, 8081, 8082, 8083, 8084, 8085, 9090, 9091, 9092]  # Example defaults
 
 # Well-known primal endpoints (if available)
+# Recommended: Use CAPABILITY_* endpoints for auto-discovery in production
 [discovery.well_known]
-toadstool = "http://localhost:8082"
-nestgate = "http://localhost:8081" 
-squirrel = "http://localhost:8084"
-beardog = "https://localhost:8443"
-biomeos = "http://localhost:8085"
+# Use capability-based discovery or env vars: CAPABILITY_COMPUTE_ENDPOINT, etc.
+toadstool = "http://localhost:8082"  # Example - use CAPABILITY_COMPUTE_ENDPOINT
+nestgate = "http://localhost:8081"  # Example - use CAPABILITY_STORAGE_ENDPOINT
+squirrel = "http://localhost:8084"  # Example - use CAPABILITY_AI_ENDPOINT
+beardog = "https://localhost:8443"  # Example - use CAPABILITY_SECURITY_ENDPOINT
+biomeos = "http://localhost:8085"  # Example - use auto-discovery
 
 # Other Songbird instances for clustering
 [discovery.federation]
 enable_songbird_federation = true
 cluster_name = "songbird-cluster-1"
-federation_ports = [8080, 8081, 8082]
+# Federation ports (use SONGBIRD_FEDERATION_PORTS env var to customize)
+federation_ports = [8080, 8081, 8082]  # Example defaults
 
 # Capability-based routing preferences
 [routing]

@@ -1,57 +1,58 @@
 //! Traits for Universal Service Registry
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
+
 use super::types::*;
-use crate::errors::PrimalResult;
+use crate::errors::SongbirdResult;
 
 /// Universal Service Registry trait - ALL IMPLEMENTATIONS MUST SUPPORT
-#[async_trait]
-pub trait UniversalServiceRegistry: Send + Sync  {/// Register a new service in the registry
+pub trait UniversalServiceRegistry: Send + Sync {
+    /// Register a new service in the registry
     async fn register_service(
-        &self)
+        &self,
         registration: UniversalServiceRegistration,
-    ) -> PrimalResult<ServiceHandle>;
+    ) -> SongbirdResult<ServiceHandle>;
 
     /// Deregister a service from the registry
-    async fn deregister_service(&self, service_id: Uuid) -> PrimalResult<()>;
+    async fn deregister_service(&self, service_id: Uuid) -> SongbirdResult<()>;
 
     /// Update service registration (for configuration changes)
     async fn update_service(
-        &self)
+        &self,
         service_id: Uuid,
         registration: UniversalServiceRegistration,
-    ) -> PrimalResult<()>;
+    ) -> SongbirdResult<()>;
 
     /// Get service information by ID
-    async fn get_service(&self, service_id: Uuid) -> PrimalResult<Option<ServiceInfo>>;
+    async fn get_service(&self, service_id: Uuid) -> SongbirdResult<Option<ServiceInfo>>;
 
     /// List all services with optional filtering
-    async fn list_services(&self, filter: Option<ServiceFilter>) -> PrimalResult<Vec<ServiceInfo>>;
+    async fn list_services(&self, filter: Option<ServiceFilter>) -> SongbirdResult<Vec<ServiceInfo>>;
 
     /// Find services by capability requirements
     async fn find_services_by_capability(
-        &self)
+        &self,
         required_capabilities: Vec<ServiceCapability>,
-    ) -> PrimalResult<Vec<ServiceInfo>>;
+    ) -> SongbirdResult<Vec<ServiceInfo>>;
 
     /// Update service health status
     async fn update_health_status(
-        &self)
+        &self,
         service_id: Uuid,
         health_status: HealthStatus,
-    ) -> PrimalResult<()>;
+    ) -> SongbirdResult<()>;
 
     /// Record service heartbeat
-    async fn heartbeat(&self, service_id: Uuid) -> PrimalResult<()>;
+    async fn heartbeat(&self, service_id: Uuid) -> SongbirdResult<()>;
 
     /// Get services by category
     async fn get_services_by_category(
-        &self)
+        &self,
         category: ServiceCategory,
-    ) -> PrimalResult<Vec<ServiceInfo>>;
+    ) -> SongbirdResult<Vec<ServiceInfo>>;
 
     /// Get service statistics
-    async fn get_registry_stats(&self) -> PrimalResult<RegistryStats>;
+    async fn get_registry_stats(&self) -> SongbirdResult<RegistryStats>;
 }
 
 /// Service filter for registry queries

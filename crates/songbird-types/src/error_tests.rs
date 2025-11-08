@@ -1,5 +1,6 @@
 //! Unit tests for error types
 
+use songbird_types::{SongbirdError, SongbirdResult};
 #[cfg(test)]
 #[allow(clippy::uninlined_format_args)]
 #[allow(clippy::float_cmp)]
@@ -24,35 +25,40 @@ mod tests {
     }
 
     #[test]
-    fn test_songbird_error_configuration() {
+    fn test_songbird_error_configuration() -> SongbirdResult<()> {
         let error = SongbirdError::configuration("Invalid config");
         assert!(matches!(error, SongbirdError::Configuration(_)));
+        Ok(())
     }
 
     #[test]
-    fn test_songbird_error_discovery() {
+    fn test_songbird_error_discovery() -> SongbirdResult<()> {
         let error = SongbirdError::discovery("Service not found");
         assert!(matches!(error, SongbirdError::Discovery(_)));
+        Ok(())
     }
 
     #[test]
-    fn test_songbird_error_adapters() {
+    fn test_songbird_error_adapters() -> SongbirdResult<()> {
         let error = SongbirdError::adapters("Adapter error");
         assert!(matches!(error, SongbirdError::Adapters(_)));
+        Ok(())
     }
 
     #[test]
-    fn test_songbird_error_display() {
+    fn test_songbird_error_display() -> SongbirdResult<()> {
         let error = SongbirdError::network("Test error");
         let display = format!("{error}");
         assert!(display.contains("Network error"));
+        Ok(())
     }
 
     #[test]
-    fn test_songbird_error_debug() {
+    fn test_songbird_error_debug() -> SongbirdResult<()> {
         let error = SongbirdError::configuration("Test");
         let debug = format!("{error:?}");
         assert!(debug.contains("Configuration"));
+        Ok(())
     }
 
     #[test]
@@ -82,32 +88,36 @@ mod tests {
     }
 
     #[test]
-    fn test_songbird_error_long_message() {
+    fn test_songbird_error_long_message() -> SongbirdResult<()> {
         let long_msg = "x".repeat(1000);
         let error = SongbirdError::network(&long_msg);
         let display = format!("{error}");
         assert!(display.len() > 500);
+        Ok(())
     }
 
     #[test]
-    fn test_songbird_error_unicode() {
+    fn test_songbird_error_unicode() -> SongbirdResult<()> {
         let error = SongbirdError::network("エラー: 日本語");
         let display = format!("{error}");
         assert!(display.contains("日本語"));
+        Ok(())
     }
 
     #[test]
-    fn test_songbird_error_special_chars() {
+    fn test_songbird_error_special_chars() -> SongbirdResult<()> {
         let error = SongbirdError::network("Error: !@#$%^&*()");
         let display = format!("{error}");
         assert!(display.contains("!@#$%"));
+        Ok(())
     }
 
     #[test]
-    fn test_songbird_result_ok() {
+    fn test_songbird_result_ok() -> SongbirdResult<()> {
         let result: SongbirdResult<i32> = Ok(42);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
+        assert_eq!(result.map_err(|e| SongbirdError::configuration(format!("Result should be Ok: {}", e)))?, 42);
+        Ok(())
     }
 
     #[test]

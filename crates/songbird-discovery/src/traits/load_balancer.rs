@@ -2,10 +2,11 @@
 //!
 //! Provides load balancing capabilities for service requests
 
+#![allow(async_fn_in_trait)]
+
 use crate::traits::service::{ServiceInfo, ServiceRequest};
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_types::SongbirdResult;
+use songbird_types::{SongbirdError, SongbirdResult};
 type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -40,10 +41,10 @@ pub struct ServiceStats  {pub requests: u64,
 }
 
 /// Load balancer trait
-#[async_trait]
-pub trait LoadBalancer: Send + Sync  {/// Select a service instance for the given request
+pub trait LoadBalancer: Send + Sync {
+    /// Select a service instance for the given request
     async fn select_service(
-        &self)
+        &self,
         services: &[ServiceInfo],
         request: &ServiceRequest,
     ) -> Result<ServiceInfo>;
@@ -78,9 +79,9 @@ impl Default for RoundRobinLoadBalancer {
     }
 }
 
-#[async_trait]
-impl LoadBalancer for RoundRobinLoadBalancer  {async fn select_service(
-        &self)
+impl LoadBalancer for RoundRobinLoadBalancer {
+    async fn select_service(
+        &self,
         services: &[ServiceInfo],
         _request: &ServiceRequest,
     ) -> Result<ServiceInfo> {
@@ -137,9 +138,9 @@ impl Default for WeightedRoundRobinLoadBalancer {
     }
 }
 
-#[async_trait]
-impl LoadBalancer for WeightedRoundRobinLoadBalancer  {async fn select_service(
-        &self)
+impl LoadBalancer for WeightedRoundRobinLoadBalancer {
+    async fn select_service(
+        &self,
         services: &[ServiceInfo],
         _request: &ServiceRequest,
     ) -> Result<ServiceInfo> {

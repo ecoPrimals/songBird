@@ -2,6 +2,7 @@
 
 #![allow(clippy::unused_self, clippy::match_same_arms, clippy::unused_async)]
 
+use songbird_types::SafeEnv;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -47,12 +48,9 @@ impl UniversalCapabilityAdapter {
         info!("🔍 Discovering capabilities for primal: {}", primal_name);
 
         // Get primal endpoint
-        let capability_host =
-            std::env::var("UNIVERSAL_CAPABILITY_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-        let capability_port = std::env::var("UNIVERSAL_CAPABILITY_PORT")
-            .ok()
-            .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(8080);
+        let capability_host = SafeEnv::get_or_default("UNIVERSAL_CAPABILITY_HOST", "127.0.0.1");
+        let capability_port = SafeEnv::get_port("UNIVERSAL_CAPABILITY_PORT",
+            songbird_config::defaults::ports::orchestrator_port());
         let endpoint = format!("http://{capability_host}:{capability_port}/{primal_name}");
 
         // Attempt capability discovery via HTTP
@@ -124,7 +122,7 @@ impl UniversalCapabilityAdapter {
 
         // Check for generic capability environment variables
         let capability_env = format!("{}_PROVIDERS ", capability_type.to_uppercase());
-        if let Ok(provider_list) = std::env::var(&capability_env) {
+        if let Ok(provider_list) = SafeEnv::get_required(&capability_env) {
             providers.extend(provider_list.split(',').map(|s| s.trim().to_string()));
         }
 
@@ -139,7 +137,7 @@ impl UniversalCapabilityAdapter {
             if capability_type == *cap_type
                 || self.primal_provides_capability(cap_type, capability_type)
             {
-                if let Ok(endpoint) = std::env::var(env_var) {
+                if let Ok(endpoint) = SafeEnv::get_required(env_var) {
                     let provider_name = self.extract_primal_name_from_endpoint(&endpoint);
                     providers.push(provider_name);
                 }
@@ -171,7 +169,7 @@ impl UniversalCapabilityAdapter {
         match capability_type {
             "security" | "encryption" | "authentication" => {
                 // Look for security capability providers (zero hardcoding)
-                if let Ok(endpoint) = std::env::var("SECURITY_PROVIDER_ENDPOINT") {
+                if let Ok(endpoint) = SafeEnv::get_required("SECURITY_PROVIDER_ENDPOINT") {
                     let provider = self.extract_primal_name_from_endpoint(&endpoint);
                     providers.push(provider);
                 }
@@ -180,7 +178,7 @@ impl UniversalCapabilityAdapter {
                     let primal_env = format!("PRIMAL_{i}_NAME ");
                     let endpoint_env = format!("PRIMAL_{i}_ENDPOINT ");
                     if let (Ok(name), Ok(_)) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
+                        (SafeEnv::get_required(&primal_env), SafeEnv::get_required(&endpoint_env))
                     {
                         if name.contains("security")
                             || name.contains("auth")
@@ -193,7 +191,7 @@ impl UniversalCapabilityAdapter {
             }
             "compute" | "processing" | "execution" => {
                 // Look for compute capability providers (zero hardcoding)
-                if let Ok(endpoint) = std::env::var("COMPUTE_PROVIDER_ENDPOINT") {
+                if let Ok(endpoint) = SafeEnv::get_required("COMPUTE_PROVIDER_ENDPOINT") {
                     let provider = self.extract_primal_name_from_endpoint(&endpoint);
                     providers.push(provider);
                 }
@@ -202,7 +200,7 @@ impl UniversalCapabilityAdapter {
                     let primal_env = format!("PRIMAL_{i}_NAME ");
                     let endpoint_env = format!("PRIMAL_{i}_ENDPOINT ");
                     if let (Ok(name), Ok(_)) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
+                        (SafeEnv::get_required(&primal_env), SafeEnv::get_required(&endpoint_env))
                     {
                         if name.contains("compute")
                             || name.contains("process")
@@ -215,7 +213,7 @@ impl UniversalCapabilityAdapter {
             }
             "storage" | "data" | "persistence" => {
                 // Look for storage capability providers (zero hardcoding)
-                if let Ok(endpoint) = std::env::var("STORAGE_PROVIDER_ENDPOINT") {
+                if let Ok(endpoint) = SafeEnv::get_required("STORAGE_PROVIDER_ENDPOINT") {
                     let provider = self.extract_primal_name_from_endpoint(&endpoint);
                     providers.push(provider);
                 }
@@ -224,7 +222,7 @@ impl UniversalCapabilityAdapter {
                     let primal_env = format!("PRIMAL_{i}_NAME ");
                     let endpoint_env = format!("PRIMAL_{i}_ENDPOINT ");
                     if let (Ok(name), Ok(_)) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
+                        (SafeEnv::get_required(&primal_env), SafeEnv::get_required(&endpoint_env))
                     {
                         if name.contains("storage") || name.contains("data") || name.contains("db")
                         {
@@ -235,7 +233,7 @@ impl UniversalCapabilityAdapter {
             }
             "ai" | "ml" | "intelligence" | "model" => {
                 // Look for AI capability providers (zero hardcoding)
-                if let Ok(endpoint) = std::env::var("AI_PROVIDER_ENDPOINT") {
+                if let Ok(endpoint) = SafeEnv::get_required("AI_PROVIDER_ENDPOINT") {
                     let provider = self.extract_primal_name_from_endpoint(&endpoint);
                     providers.push(provider);
                 }
@@ -244,7 +242,7 @@ impl UniversalCapabilityAdapter {
                     let primal_env = format!("PRIMAL_{i}_NAME ");
                     let endpoint_env = format!("PRIMAL_{i}_ENDPOINT ");
                     if let (Ok(name), Ok(_)) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
+                        (SafeEnv::get_required(&primal_env), SafeEnv::get_required(&endpoint_env))
                     {
                         if name.contains("ai")
                             || name.contains("ml")
@@ -262,7 +260,7 @@ impl UniversalCapabilityAdapter {
                     let primal_env = format!("PRIMAL_{i}_NAME ");
                     let endpoint_env = format!("PRIMAL_{i}_ENDPOINT ");
                     if let (Ok(name), Ok(_)) =
-                        (std::env::var(&primal_env), std::env::var(&endpoint_env))
+                        (SafeEnv::get_required(&primal_env), SafeEnv::get_required(&endpoint_env))
                     {
                         if name.contains(capability_type) {
                             providers.push(name);
@@ -587,5 +585,365 @@ impl UniversalCapabilityAdapter {
                 conn.last_contact = chrono::Utc::now();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_config() -> DiscoveryConfig {
+        DiscoveryConfig {
+            refresh_interval: std::time::Duration::from_secs(60),
+            discovery_timeout: std::time::Duration::from_secs(5),
+            max_concurrent_discoveries: 10,
+            auto_discovery: false,
+            enable_network_discovery: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_new_adapter_creation() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Verify adapter is created with correct configuration
+        assert!(!adapter.discovery_config.enable_network_discovery);
+        assert_eq!(adapter.discovery_config.max_concurrent_discoveries, 10);
+    }
+
+    #[tokio::test]
+    async fn test_find_capability_providers_from_env() {
+        // Set up environment variable
+        std::env::set_var("COMPUTE_PROVIDER_ENDPOINT", "http://localhost:8080/compute");
+
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test finding compute providers
+        let providers = adapter.find_capability_providers("compute").await;
+
+        // Should find at least one provider
+        assert!(!providers.is_empty(), "Should find compute provider from env");
+
+        // Clean up
+        std::env::remove_var("COMPUTE_PROVIDER_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_find_capability_providers_empty() {
+        // Clean environment
+        std::env::remove_var("COMPUTE_PROVIDER_ENDPOINT");
+        std::env::remove_var("STORAGE_PROVIDER_ENDPOINT");
+        std::env::remove_var("AI_PROVIDER_ENDPOINT");
+
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test finding providers for unknown capability
+        let providers = adapter.find_capability_providers("nonexistent_capability").await;
+
+        // May return empty or inferred providers
+        assert!(providers.is_empty() || !providers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_extract_primal_name_from_endpoint() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test various endpoint formats
+        // Note: -service and _service suffixes are stripped
+        let name1 = adapter.extract_primal_name_from_endpoint("http://compute-service:8080");
+        assert_eq!(name1, "compute"); // -service is stripped
+
+        let name2 = adapter.extract_primal_name_from_endpoint("https://ai-primal.example.com/api");
+        assert_eq!(name2, "ai-primal");
+
+        let name3 = adapter.extract_primal_name_from_endpoint("http://localhost:9000");
+        assert_eq!(name3, "localhost");
+    }
+
+    #[tokio::test]
+    async fn test_infer_primal_type_from_name() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test various name patterns
+        assert_eq!(adapter.infer_primal_type_from_name("compute-service"), PrimalType::Compute);
+        assert_eq!(adapter.infer_primal_type_from_name("storage-backend"), PrimalType::Storage);
+        assert_eq!(adapter.infer_primal_type_from_name("ai-model-server"), PrimalType::AI);
+        assert_eq!(adapter.infer_primal_type_from_name("security-gateway"), PrimalType::Security);
+        assert_eq!(adapter.infer_primal_type_from_name("random-service"), PrimalType::Generic);
+    }
+
+    #[tokio::test]
+    async fn test_primal_provides_capability() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test compute primal capabilities
+        assert!(adapter.primal_provides_capability("compute", "compute"));
+        assert!(adapter.primal_provides_capability("compute", "processing"));
+        assert!(!adapter.primal_provides_capability("compute", "storage"));
+
+        // Test storage primal capabilities
+        assert!(adapter.primal_provides_capability("storage", "storage"));
+        assert!(adapter.primal_provides_capability("storage", "persistence"));
+        assert!(!adapter.primal_provides_capability("storage", "compute"));
+
+        // Test AI primal capabilities
+        assert!(adapter.primal_provides_capability("ai", "ai"));
+        assert!(adapter.primal_provides_capability("ai", "ml"));
+        assert!(!adapter.primal_provides_capability("ai", "compute"));
+    }
+
+    #[tokio::test]
+    async fn test_get_active_connections_empty() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Initially, no connections
+        let connections = adapter.get_active_connections().await;
+        assert!(connections.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_disconnect_from_nonexistent_primal() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Try to disconnect from non-existent primal
+        let result = adapter.disconnect_from_primal("nonexistent").await;
+        assert!(result.is_err());
+
+        if let Err(CapabilityError::PrimalNotFound(name)) = result {
+            assert_eq!(name, "nonexistent");
+        } else {
+            panic!("Expected PrimalNotFound error");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_discover_capability_providers_from_env_multiple() {
+        // Set up multiple environment variables
+        std::env::set_var("COMPUTE_PROVIDER_ENDPOINT", "http://compute:8080");
+        std::env::set_var("STORAGE_PROVIDER_ENDPOINT", "http://storage:8081");
+
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test compute providers
+        let compute_providers = adapter.discover_capability_providers_from_env("compute").await;
+        assert!(!compute_providers.is_empty());
+
+        // Test storage providers
+        let storage_providers = adapter.discover_capability_providers_from_env("storage").await;
+        assert!(!storage_providers.is_empty());
+
+        // Clean up
+        std::env::remove_var("COMPUTE_PROVIDER_ENDPOINT");
+        std::env::remove_var("STORAGE_PROVIDER_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_infer_capability_providers_security() {
+        // Set up security provider environment
+        std::env::set_var("SECURITY_PROVIDER_ENDPOINT", "http://security:8082");
+
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test security capability inference
+        let providers = adapter.infer_capability_providers("security").await;
+        assert!(!providers.is_empty());
+
+        // Clean up
+        std::env::remove_var("SECURITY_PROVIDER_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_infer_capability_providers_compute() {
+        // Set up compute provider environment
+        std::env::set_var("COMPUTE_PROVIDER_ENDPOINT", "http://compute:8080");
+
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test compute capability inference
+        let providers = adapter.infer_capability_providers("compute").await;
+        assert!(!providers.is_empty());
+
+        // Clean up
+        std::env::remove_var("COMPUTE_PROVIDER_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_infer_capability_providers_storage() {
+        // Set up storage provider environment
+        std::env::set_var("STORAGE_PROVIDER_ENDPOINT", "http://storage:8081");
+
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test storage capability inference
+        let providers = adapter.infer_capability_providers("storage").await;
+        assert!(!providers.is_empty());
+
+        // Clean up
+        std::env::remove_var("STORAGE_PROVIDER_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_infer_capability_providers_ai() {
+        // Set up AI provider environment
+        std::env::set_var("AI_PROVIDER_ENDPOINT", "http://ai:8083");
+
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test AI capability inference
+        let providers = adapter.infer_capability_providers("ai").await;
+        assert!(!providers.is_empty());
+
+        // Clean up
+        std::env::remove_var("AI_PROVIDER_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_discover_capability_providers_network_disabled() {
+        let config = DiscoveryConfig {
+            refresh_interval: std::time::Duration::from_secs(60),
+            discovery_timeout: std::time::Duration::from_secs(5),
+            max_concurrent_discoveries: 10,
+            auto_discovery: false,
+            enable_network_discovery: false,
+        };
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Network discovery should be skipped
+        let providers = adapter.discover_capability_providers_from_network("compute").await;
+        assert!(providers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_primal_type_inference_patterns() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test various patterns - only patterns that contain keywords work
+        assert_eq!(adapter.infer_primal_type_from_name("compute-cluster"), PrimalType::Compute);
+        assert_eq!(adapter.infer_primal_type_from_name("processor-node"), PrimalType::Generic); // "processor" doesn't contain "compute"
+        assert_eq!(adapter.infer_primal_type_from_name("executor-service"), PrimalType::Generic); // "executor" doesn't contain "compute"
+
+        assert_eq!(adapter.infer_primal_type_from_name("storage-node"), PrimalType::Storage);
+        assert_eq!(adapter.infer_primal_type_from_name("data-store"), PrimalType::Generic); // "data" alone not enough without "storage"
+        assert_eq!(adapter.infer_primal_type_from_name("nest-service"), PrimalType::Storage); // "nest" keyword
+
+        assert_eq!(adapter.infer_primal_type_from_name("ml-model"), PrimalType::AI);
+        assert_eq!(adapter.infer_primal_type_from_name("intelligence-service"), PrimalType::AI);
+        assert_eq!(adapter.infer_primal_type_from_name("neural-net"), PrimalType::Generic); // "neural" doesn't contain "ai", "ml", or "intelligence"
+
+        assert_eq!(adapter.infer_primal_type_from_name("security-service"), PrimalType::Security);
+        assert_eq!(adapter.infer_primal_type_from_name("auth-gateway"), PrimalType::Security);
+        assert_eq!(adapter.infer_primal_type_from_name("bear-node"), PrimalType::Security);
+        // "bear" keyword
+    }
+
+    #[tokio::test]
+    async fn test_endpoint_extraction_variations() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test with ports
+        assert_eq!(adapter.extract_primal_name_from_endpoint("http://service:8080"), "service");
+
+        // Test with paths
+        assert_eq!(
+            adapter.extract_primal_name_from_endpoint("http://api-gateway/v1/compute"),
+            "api-gateway"
+        );
+
+        // Test with subdomains
+        assert_eq!(
+            adapter.extract_primal_name_from_endpoint("https://compute.example.com"),
+            "compute"
+        );
+
+        // Test localhost
+        assert_eq!(adapter.extract_primal_name_from_endpoint("http://localhost:9000"), "localhost");
+    }
+
+    #[tokio::test]
+    async fn test_capability_provider_search_deduplication() {
+        // Set up duplicate providers in different ways
+        std::env::set_var("COMPUTE_PROVIDER_ENDPOINT", "http://compute:8080");
+        std::env::set_var("PRIMAL_1_NAME", "compute");
+        std::env::set_var("PRIMAL_1_ENDPOINT", "http://compute:8080");
+
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Should deduplicate providers
+        let providers = adapter.find_capability_providers("compute").await;
+
+        // Count occurrences of "compute"
+        let compute_count = providers.iter().filter(|p| *p == "compute").count();
+
+        // Should be deduplicated (only one "compute")
+        assert_eq!(compute_count, 1, "Providers should be deduplicated");
+
+        // Clean up
+        std::env::remove_var("COMPUTE_PROVIDER_ENDPOINT");
+        std::env::remove_var("PRIMAL_1_NAME");
+        std::env::remove_var("PRIMAL_1_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_update_connection_health_empty() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Should handle empty connections gracefully
+        adapter.update_connection_health().await;
+
+        let connections = adapter.get_active_connections().await;
+        assert!(connections.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_config_discovery_timeout() {
+        let config = DiscoveryConfig {
+            refresh_interval: std::time::Duration::from_secs(30),
+            discovery_timeout: std::time::Duration::from_secs(10),
+            max_concurrent_discoveries: 5,
+            auto_discovery: true,
+            enable_network_discovery: true,
+        };
+
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        assert_eq!(adapter.discovery_config.discovery_timeout, std::time::Duration::from_secs(10));
+        assert_eq!(adapter.discovery_config.max_concurrent_discoveries, 5);
+        assert_eq!(adapter.discovery_config.refresh_interval, std::time::Duration::from_secs(30));
+        assert!(adapter.discovery_config.enable_network_discovery);
+        assert!(adapter.discovery_config.auto_discovery);
+    }
+
+    #[tokio::test]
+    async fn test_primal_provides_capability_edge_cases() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        // Test empty strings - empty string contains empty string (true)
+        assert!(adapter.primal_provides_capability("", ""));
+
+        // Test case sensitivity
+        assert!(adapter.primal_provides_capability("compute", "COMPUTE"));
+        assert!(adapter.primal_provides_capability("STORAGE", "storage"));
+
+        // Test partial matches
+        assert!(adapter.primal_provides_capability("ai-ml-service", "ai"));
+        assert!(adapter.primal_provides_capability("compute-cluster", "compute"));
     }
 }

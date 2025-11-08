@@ -12,6 +12,9 @@ pub mod network_optimizer;
 pub mod router;
 pub mod types;
 
+#[cfg(test)]
+mod router_comprehensive_tests;
+
 // Re-export main interfaces
 pub use adapter::SovereigntyAwareAdapter;
 pub use types::{

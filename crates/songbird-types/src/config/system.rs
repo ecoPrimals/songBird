@@ -3,6 +3,7 @@
 //! This module contains the fundamental system-level configuration
 //! that applies across the entire Songbird ecosystem.
 
+use crate::SafeEnv;
 use serde::{Deserialize, Serialize};
 
 /// **CANONICAL**: Core system configuration
@@ -24,12 +25,9 @@ pub struct CanonicalSystemConfig {
 impl Default for CanonicalSystemConfig {
     fn default() -> Self {
         Self {
-            environment: std::env::var("SONGBIRD_ENVIRONMENT")
-                .unwrap_or_else(|_| "development".to_string()),
-            system_id: std::env::var("SONGBIRD_SYSTEM_ID")
-                .unwrap_or_else(|_| "songbird-default".to_string()),
-            instance_id: std::env::var("SONGBIRD_INSTANCE_ID")
-                .unwrap_or_else(|_| "default-instance".to_string()),
+            environment: SafeEnv::get_or_default("SONGBIRD_ENVIRONMENT", "development"),
+            system_id: SafeEnv::get_or_default("SONGBIRD_SYSTEM_ID", "songbird-default"),
+            instance_id: SafeEnv::get_or_default("SONGBIRD_INSTANCE_ID", "default-instance"),
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
@@ -38,6 +36,7 @@ impl Default for CanonicalSystemConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SongbirdError;
 
     #[test]
     fn test_default_system_config() {
@@ -90,7 +89,7 @@ mod tests {
     }
 
     #[test]
-    fn test_system_config_serialization() {
+    fn test_system_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let config = CanonicalSystemConfig {
             environment: "production".to_string(),
             system_id: "songbird-1".to_string(),
@@ -98,15 +97,20 @@ mod tests {
             version: "2.0.0".to_string(),
         };
 
-        let json = serde_json::to_string(&config).unwrap();
+        let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Serialization failed: {}", e),
+            debug_info: None,
+        })?;
         assert!(json.contains("production"));
         assert!(json.contains("songbird-1"));
         assert!(json.contains("inst-1"));
         assert!(json.contains("2.0.0"));
+        Ok(())
     }
 
     #[test]
-    fn test_system_config_deserialization() {
+    fn test_system_config_deserialization() -> Result<(), Box<dyn std::error::Error>> {
         let json = r#"{
             "environment": "staging",
             "system_id": "songbird-staging",
@@ -114,11 +118,17 @@ mod tests {
             "version": "1.5.0"
         }"#;
 
-        let config: CanonicalSystemConfig = serde_json::from_str(json).unwrap();
+        let config: CanonicalSystemConfig =
+            serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Parsing failed: {}", e),
+                debug_info: None,
+            })?;
         assert_eq!(config.environment, "staging");
         assert_eq!(config.system_id, "songbird-staging");
         assert_eq!(config.instance_id, "staging-1");
         assert_eq!(config.version, "1.5.0");
+        Ok(())
     }
 
     #[test]

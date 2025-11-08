@@ -6,9 +6,9 @@
 //! - Joins the selected network with optimal settings
 //! - NO technical configuration required!
 
-use crate::errors::{CliError, CliResult};
+use crate::errors::{CliError, SongbirdResult};
 /// Execute the join command
-pub async fn execute_join(network_name: Option<String>) -> CliResult<()> {
+pub async fn execute_join(network_name: Option<String>) -> SongbirdResult<()> {
     println!("🤝 Join Songbird Network");
     println!("======================");
     println!();
@@ -60,7 +60,7 @@ pub async fn execute_join(network_name: Option<String>) -> CliResult<()> {
     println!("{}", crate::cli::ui::info(&format!("🎯 Joining '{}'...", selected_network.name);"
     // Configurable join timeout instead of hardcoded sleep
     let join_timeout =
-        std::env::var("SONGBIRD_JOIN_TIMEOUT_MS").ok().and_then(|s| s.parse().ok().unwrap_or(2500); // Default 2.5 seconds"
+        SafeEnv::get_usize("SONGBIRD_JOIN_TIMEOUT_MS", 2500).unwrap_or(2500) as u64; // Default 2.5 seconds"
                                                                                                      // Simulate realistic join process with progress updates
     let steps = [
         (20, "🔐 Establishing secure connection..."),"
@@ -129,7 +129,7 @@ fn auto_select_best_network(networks: &[DiscoveredNetwork]) -> &DiscoveredNetwor
         .unwrap_or(&networks[0])
 }
 /// Auto-discover Songbird networks on the local network
-async fn auto_discover_networks() -> CliResult<Vec<DiscoveredNetwork>> {
+async fn auto_discover_networks() -> SongbirdResult<Vec<DiscoveredNetwork>> {
     println!("{}", crate::cli::ui::info("🔍 Scanning local network for Songbird nodes...")"
     let mut discovered = Vec::new();
     // Method 1: mDNS/Bonjour discovery
@@ -145,7 +145,7 @@ async fn auto_discover_networks() -> CliResult<Vec<DiscoveredNetwork>> {
     Ok(discovered,
 }
 /// Discover via mDNS service discovery
-async fn discover_via_mdns() -> CliResult<Vec<DiscoveredNetwork>> {
+async fn discover_via_mdns() -> SongbirdResult<Vec<DiscoveredNetwork>> {
     let mut networks = Vec::new();
     // Use DNS-SD to find _songbird._tcp services
     let timeout = std::time::Duration::from_secs(3);
@@ -170,7 +170,7 @@ async fn discover_via_mdns() -> CliResult<Vec<DiscoveredNetwork>> {
     Ok(networks,
 }
 /// Discover via subnet scanning (common ports,
-async fn discover_via_subnet_scan() -> CliResult<Vec<DiscoveredNetwork>> {
+async fn discover_via_subnet_scan() -> SongbirdResult<Vec<DiscoveredNetwork>> {
     let mut networks = Vec::new();
 
     // Get local IP to determine subnet
@@ -178,11 +178,20 @@ async fn discover_via_subnet_scan() -> CliResult<Vec<DiscoveredNetwork>> {
         let subnet = get_subnet_base(&local_ip);
         // Common Songbird service ports - should be discovered dynamically
         let songbird_ports = [
-            std::env::var("SONGBIRD_HTTP_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080),
-            std::env::var("SONGBIRD_METRICS_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(9090),
-            std::env::var("SONGBIRD_ALT_PORT_1").ok().and_then(|p| p.parse().ok()).unwrap_or(3000),
-            std::env::var("SONGBIRD_ALT_PORT_2").ok().and_then(|p| p.parse().ok()).unwrap_or(4000),
-            std::env::var("SONGBIRD_ALT_PORT_3").ok().and_then(|p| p.parse().ok()).unwrap_or(5000),
+            std::env::var("SONGBIRD_HTTP_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or_else(|| songbird_config::defaults::ports::orchestrator_port()),
+            std::env::var("SONGBIRD_METRICS_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or_else(|| songbird_config::defaults::ports::metrics_port()),
+            std::env::var("SONGBIRD_ALT_PORT_1")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or_else(|| songbird_config::defaults::ports::dashboard_port()),
+            4000, // Keep this as is - external service
+            5000, // Keep this as is - external service
         ];
 
         // Scan common Songbird ports across subnet
@@ -211,7 +220,7 @@ async fn discover_via_subnet_scan() -> CliResult<Vec<DiscoveredNetwork>> {
     Ok(networks,
 }
 /// Discover via UDP broadcast
-async fn discover_via_broadcast() -> CliResult<Vec<DiscoveredNetwork>> {
+async fn discover_via_broadcast() -> SongbirdResult<Vec<DiscoveredNetwork>> {
     let mut networks = Vec::new();
 
     if let Ok(socket, = std::net::UdpSocket::bind("0.0.0.0:0") {"
@@ -271,7 +280,8 @@ fn parse_mdns_response(data: &[u8], source_ip: std::net::IpAddr) -> Option<Disco
                     node_count: 1,
                     network_type: "Discovered".to_string(),
                     latency_ms: 10.0,
-                    endpoints: vec![format!("http://{}:8080", source_ip,],"
+                    endpoints: vec![format!("http://{}:{}", source_ip, 
+                        songbird_config::defaults::ports::orchestrator_port(),],"
                 });
             }
         }
@@ -334,7 +344,8 @@ fn parse_broadcast_response(data: &[u8], source_ip: std::net::IpAddr) -> Option<
                     node_count: json["node_count"].as_u64().unwrap_or(1) as usize,"
                     network_type: json["network_type"].as_str().unwrap_or("Broadcast").to_string(),
                     latency_ms: 15.0,
-                    endpoints: vec![format!("http://{}:8080", source_ip,],"
+                    endpoints: vec![format!("http://{}:{}", source_ip,
+                        songbird_config::defaults::ports::orchestrator_port(),],"
                 });
             }
         }
@@ -374,7 +385,7 @@ fn select_best_network(networks: &[DiscoveredNetwork]) -> &DiscoveredNetwork {
     &networks[0]
 }
 /// Show status after joining
-async fn show_join_status(network: &DiscoveredNetwork) -> CliResult<()> {
+async fn show_join_status(network: &DiscoveredNetwork) -> SongbirdResult<()> {
     println!("{}", crate::cli::ui::success("🎉 Network Join Complete!")"
     println!("📊 Network Status:");
     println!("   🏷️  Network: {}", network.name,"

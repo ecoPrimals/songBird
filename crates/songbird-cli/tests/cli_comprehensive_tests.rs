@@ -23,13 +23,14 @@ use songbird_cli::cli::{
     commands::{quick::ContributeType, Commands, LogLevel},
     Cli,
 };
-use songbird_types::SongbirdError;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 
 /// Test CLI argument parsing for version command
 #[test]
 fn test_version_command_parsing() -> Result<(), SongbirdError> {
     // Test version command
-    let cli = Cli::try_parse_from(&["songbird", "version"]).map_err(|e| {
+    let cli = Cli::try_parse_from(["songbird", "version"]).or_else(|_| {
         SongbirdError::configuration(format!("Version command should parse: {}", e))
     })?;
     match cli.command {
@@ -40,7 +41,7 @@ fn test_version_command_parsing() -> Result<(), SongbirdError> {
     }
 
     // Test version command with detailed flag
-    let cli = Cli::try_parse_from(&["songbird", "version", "--detailed"]).map_err(|e| {
+    let cli = Cli::try_parse_from(["songbird", "version", "--detailed"]).or_else(|_| {
         SongbirdError::configuration(format!("Detailed version should parse: {}", e))
     })?;
     match cli.command {
@@ -57,8 +58,8 @@ fn test_version_command_parsing() -> Result<(), SongbirdError> {
 #[test]
 fn test_quick_command_parsing() -> Result<(), SongbirdError> {
     // Test quick command with defaults
-    let cli = Cli::try_parse_from(&["songbird", "quick"])
-        .map_err(|e| SongbirdError::configuration(format!("Quick command should parse: {}", e)))?;
+    let cli = Cli::try_parse_from(["songbird", "quick"])
+        .or_else(|_| SongbirdError::configuration(format!("Quick command should parse: {}", e)))?;
     match cli.command {
         Some(Commands::Quick {
             name,
@@ -73,14 +74,16 @@ fn test_quick_command_parsing() -> Result<(), SongbirdError> {
     }
 
     // Test quick command with parameters
-    let cli = Cli::try_parse_from(&[
+    let cli = Cli::try_parse_from([
         "songbird",
         "quick",
         "test-session",
         "--auto-detect",
         "--family-safe",
     ])
-    .map_err(|e| SongbirdError::configuration(format!("Quick with params should parse: {}", e)))?;
+    .ok_or_else(|_| {
+        SongbirdError::configuration(format!("Quick with params should parse: {}", e))
+    })?;
     match cli.command {
         Some(Commands::Quick {
             name,
@@ -101,7 +104,7 @@ fn test_quick_command_parsing() -> Result<(), SongbirdError> {
 #[test]
 fn test_discover_command_parsing() -> Result<(), SongbirdError> {
     // Test discover with defaults
-    let cli = Cli::try_parse_from(&["songbird", "discover"]).map_err(|e| {
+    let cli = Cli::try_parse_from(["songbird", "discover"]).or_else(|_| {
         SongbirdError::configuration(format!("Discover command should parse: {}", e))
     })?;
     match cli.command {
@@ -118,7 +121,7 @@ fn test_discover_command_parsing() -> Result<(), SongbirdError> {
     }
 
     // Test discover with parameters
-    let cli = Cli::try_parse_from(&[
+    let cli = Cli::try_parse_from([
         "songbird",
         "discover",
         "--timeout",
@@ -127,7 +130,7 @@ fn test_discover_command_parsing() -> Result<(), SongbirdError> {
         "minecraft",
         "--continuous",
     ])
-    .map_err(|e| {
+    .ok_or_else(|_| {
         SongbirdError::configuration(format!("Discover with params should parse: {}", e))
     })?;
 
@@ -151,8 +154,8 @@ fn test_discover_command_parsing() -> Result<(), SongbirdError> {
 #[test]
 fn test_status_command_parsing() -> Result<(), SongbirdError> {
     // Test status with defaults
-    let cli = Cli::try_parse_from(&["songbird", "status"])
-        .map_err(|e| SongbirdError::configuration(format!("Status should parse: {}", e)))?;
+    let cli = Cli::try_parse_from(["songbird", "status"])
+        .ok_or_else(|_| SongbirdError::configuration(format!("Status should parse: {}", e)))?;
     match cli.command {
         Some(Commands::Status {
             detailed,
@@ -166,7 +169,7 @@ fn test_status_command_parsing() -> Result<(), SongbirdError> {
 
     // Test status with parameters
     let cli =
-        Cli::try_parse_from(&["songbird", "status", "--detailed", "--gaming"]).map_err(|e| {
+        Cli::try_parse_from(["songbird", "status", "--detailed", "--gaming"]).or_else(|_| {
             SongbirdError::configuration(format!("Status with params should parse: {}", e))
         })?;
 
@@ -188,7 +191,7 @@ fn test_status_command_parsing() -> Result<(), SongbirdError> {
 #[test]
 fn test_gaming_command_exists() -> Result<(), SongbirdError> {
     // Test that gaming command can be parsed (subcommands tested in gaming module tests)
-    let result = Cli::try_parse_from(&["songbird", "gaming"]);
+    let result = Cli::try_parse_from(["songbird", "gaming"]);
     // Gaming requires a subcommand, so this should error
     assert!(result.is_err());
 
@@ -199,7 +202,7 @@ fn test_gaming_command_exists() -> Result<(), SongbirdError> {
 #[test]
 fn test_network_command_exists() -> Result<(), SongbirdError> {
     // Test that network command can be parsed (subcommands tested in network module tests)
-    let result = Cli::try_parse_from(&["songbird", "network"]);
+    let result = Cli::try_parse_from(["songbird", "network"]);
     // Network requires a subcommand, so this should error
     assert!(result.is_err());
 
@@ -210,7 +213,7 @@ fn test_network_command_exists() -> Result<(), SongbirdError> {
 #[test]
 fn test_federation_command_exists() -> Result<(), SongbirdError> {
     // Test that federation command can be parsed (subcommands tested in federation module tests)
-    let result = Cli::try_parse_from(&["songbird", "federation"]);
+    let result = Cli::try_parse_from(["songbird", "federation"]);
     // Federation requires a subcommand, so this should error
     assert!(result.is_err());
 
@@ -221,7 +224,7 @@ fn test_federation_command_exists() -> Result<(), SongbirdError> {
 #[test]
 fn test_config_command_exists() -> Result<(), SongbirdError> {
     // Test that config command can be parsed (subcommands tested in config module tests)
-    let result = Cli::try_parse_from(&["songbird", "config"]);
+    let result = Cli::try_parse_from(["songbird", "config"]);
     // Config requires a subcommand, so this should error
     assert!(result.is_err());
 
@@ -273,30 +276,33 @@ async fn test_cli_execute_version_command() {
 
 /// Test invalid command line arguments
 #[test]
-fn test_invalid_cli_arguments() {
+fn test_invalid_cli_arguments() -> SongbirdResult<()> {
     // Test invalid timeout (not a number)
-    let result = Cli::try_parse_from(&["songbird", "discover", "--timeout", "invalid"]);
+    let result = Cli::try_parse_from(["songbird", "discover", "--timeout", "invalid"]);
     assert!(result.is_err()); // Should fail validation for non-numeric timeout
+    Ok(())
 }
 
 /// Test CLI help output
 #[test]
-fn test_cli_help() {
-    let result = Cli::try_parse_from(&["songbird", "--help"]);
+fn test_cli_help() -> SongbirdResult<()> {
+    let result = Cli::try_parse_from(["songbird", "--help"]);
     assert!(result.is_err()); // Help exits with error code but provides help text
+    Ok(())
 }
 
 /// Test subcommand help
 #[test]
-fn test_subcommand_help() {
-    let result = Cli::try_parse_from(&["songbird", "status", "--help"]);
+fn test_subcommand_help() -> SongbirdResult<()> {
+    let result = Cli::try_parse_from(["songbird", "status", "--help"]);
     assert!(result.is_err()); // Help exits with error code but provides help text
+    Ok(())
 }
 
 /// Test CLI parsing with no arguments
 #[test]
 fn test_cli_no_args() -> Result<(), SongbirdError> {
-    let cli = Cli::try_parse_from(&["songbird"]).map_err(|e| {
+    let cli = Cli::try_parse_from(["songbird"]).or_else(|_| {
         SongbirdError::configuration(format!("CLI should parse with no args: {}", e))
     })?;
 
@@ -312,14 +318,14 @@ fn test_cli_no_args() -> Result<(), SongbirdError> {
 #[test]
 fn test_cli_command_combinations() -> Result<(), SongbirdError> {
     // Quick with all flags
-    let cli = Cli::try_parse_from(&[
+    let cli = Cli::try_parse_from([
         "songbird",
         "quick",
         "session-name",
         "--auto-detect",
         "--family-safe",
     ])
-    .map_err(|e| SongbirdError::configuration(format!("Should parse: {}", e)))?;
+    .ok_or_else(|_| SongbirdError::configuration(format!("Should parse: {}", e)))?;
 
     match cli.command {
         Some(Commands::Quick {
@@ -383,7 +389,7 @@ async fn test_status_execution() {
 
 /// Test quick command execution
 #[tokio::test]
-async fn test_quick_execution() {
+async fn test_quick_execution() -> SongbirdResult<()> {
     let cli = Cli {
         command: Some(Commands::Quick {
             name: Some("test-session".to_string()),
@@ -395,18 +401,19 @@ async fn test_quick_execution() {
     let result = cli.execute().await;
     // Execution may succeed or fail depending on environment, just test it runs
     assert!(result.is_ok() || result.is_err());
+    Ok(())
 }
 
 /// Test CLI command parsing with various option orders
 #[test]
 fn test_command_option_ordering() -> Result<(), SongbirdError> {
     // Options before positional args
-    let cli1 = Cli::try_parse_from(&["songbird", "quick", "--auto-detect", "test-session"])
-        .map_err(|e| SongbirdError::configuration(format!("Should parse: {}", e)))?;
+    let cli1 = Cli::try_parse_from(["songbird", "quick", "--auto-detect", "test-session"])
+        .ok_or_else(|_| SongbirdError::configuration(format!("Should parse: {}", e)))?;
 
     // Options after positional args
-    let cli2 = Cli::try_parse_from(&["songbird", "quick", "test-session", "--auto-detect"])
-        .map_err(|e| SongbirdError::configuration(format!("Should parse: {}", e)))?;
+    let cli2 = Cli::try_parse_from(["songbird", "quick", "test-session", "--auto-detect"])
+        .ok_or_else(|_| SongbirdError::configuration(format!("Should parse: {}", e)))?;
 
     // Both should parse to the same structure
     match (cli1.command, cli2.command) {

@@ -2,7 +2,7 @@
 //!
 //! **MODERN GAMING CONFIG MANAGEMENT** ✅
 
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use clap::Subcommand;
 
 #[derive(Debug, Clone, Subcommand)]
@@ -32,7 +32,7 @@ pub enum ConfigCommand {
 }
 
 /// Handle configuration commands
-pub async fn handle_config_command(command: ConfigCommand) -> CliResult<()> {
+pub async fn handle_config_command(command: ConfigCommand) -> SongbirdResult<()> {
     match command {
         ConfigCommand::Show {
             detailed,
@@ -47,7 +47,7 @@ pub async fn handle_config_command(command: ConfigCommand) -> CliResult<()> {
     }
 }
 
-async fn show_config(detailed: bool) -> CliResult<()> {
+async fn show_config(detailed: bool) -> SongbirdResult<()> {
     println!("🔧 Gaming Configuration:");
     println!("  gaming_mode: enabled");
     println!("  target_latency: 50ms");
@@ -63,13 +63,13 @@ async fn show_config(detailed: bool) -> CliResult<()> {
     Ok(())
 }
 
-async fn set_config(key: String, value: String) -> CliResult<()> {
+async fn set_config(key: String, value: String) -> SongbirdResult<()> {
     println!("✏️  Setting configuration: {key} = {value}");
     println!("✅ Configuration updated");
     Ok(())
 }
 
-async fn reset_config(yes: bool) -> CliResult<()> {
+async fn reset_config(yes: bool) -> SongbirdResult<()> {
     if !yes {
         println!("⚠️  This will reset all gaming configuration to defaults.");
         println!("💡 Use --yes to confirm");

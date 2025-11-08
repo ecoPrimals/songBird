@@ -6,7 +6,7 @@
 //! - Network scanning (port scanning ranges)
 
 use crate::discovery::types::{DiscoveredPrimal, DiscoveryMethod};
-use crate::errors::{PrimalError, PrimalResult};
+use crate::errors::{PrimalError, SongbirdResult};
 use crate::traits::PrimalCapability;
 use songbird_universal::PrimalType;
 use std::collections::HashMap;
@@ -80,7 +80,7 @@ impl Default for CapabilityAdapter {
 }
 
 /// Discover services via network using pure capability detection
-pub async fn network_capability_discovery() -> PrimalResult<Vec<DiscoveredPrimal>> {
+pub async fn network_capability_discovery() -> SongbirdResult<Vec<DiscoveredPrimal>> {
     info!("🔍 Starting capability-based network discovery")"
     let mut discovered = Vec::new();
 

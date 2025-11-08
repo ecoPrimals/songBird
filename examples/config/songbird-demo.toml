@@ -15,7 +15,8 @@ node_id = "demo-node-001"
 
 [network]
 bind_address = "127.0.0.1"
-port = 8080
+# Main service port (override with SONGBIRD_PORT env var)
+port = 8080  # Example default - use environment-aware config in production
 max_connections = 1000
 
 # Self-awareness configuration - Songbird only knows itself
@@ -25,7 +26,8 @@ self_capabilities = ["orchestration", "service_discovery", "load_balancing", "ga
 
 [network.self_config.self_endpoint]
 host = "127.0.0.1"
-port = 8080
+# Self endpoint port (should match network.port or use SONGBIRD_PORT)
+port = 8080  # Example default - use environment-aware config in production
 scheme = "http"
 
 # Universal discovery configuration for capability-based routing
@@ -51,7 +53,8 @@ scheme = "http"
 
 [[network.external_services.service_discovery.kubernetes]]
 host = "127.0.0.1"
-port = 8080
+# Kubernetes API port (use KUBERNETES_SERVICE_PORT env var in production)
+port = 8080  # Example default - typically 6443 for k8s
 scheme = "https"
 
 [[network.external_services.service_discovery.docker]]

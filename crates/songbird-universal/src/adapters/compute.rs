@@ -25,9 +25,11 @@
 //! # });
 //! ```
 
-use async_trait::async_trait;
+// Allow async_fn_in_trait warning - our traits guarantee Send + Sync
+#![allow(async_fn_in_trait)]
+
 use serde::{Deserialize, Serialize};
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
 
@@ -105,6 +107,7 @@ pub enum HealthStatus {
 /// **SOVEREIGNTY**: This adapter discovers compute providers by capability,
 /// not by hardcoded primal names. It works with ANY service that implements
 /// the compute capability interface.
+#[derive(Debug)]
 pub struct ComputeAdapter {
     /// Endpoint URL for the compute service (discovered dynamically)
     endpoint: String,
@@ -137,32 +140,40 @@ impl ComputeAdapter {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// # });
     /// ```
-    #[allow(clippy::unused_async)] // Will be async when ZeroKnowledgeBootstrap integration is complete
     pub async fn new_from_discovery() -> SongbirdResult<Self> {
-        // Try environment variable first for explicit configuration
-        if let Ok(endpoint) = std::env::var("SONGBIRD_COMPUTE_ENDPOINT") {
-            debug!("🔍 Compute capability discovered via SONGBIRD_COMPUTE_ENDPOINT: {}", endpoint);
-            return Self::new(endpoint);
+        use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
+
+        // ✅ PHASE 1 INTEGRATION: Multi-tier capability discovery
+        // Priority: Environment → Service Registry → Container Metadata → DNS SRV
+        let resolver = CapabilityEndpointResolver::new();
+
+        match resolver.get_endpoint(CapabilityType::Compute).await {
+            Ok(endpoint) => {
+                debug!("✅ Compute capability discovered via resolver: {}", endpoint);
+                Self::new(endpoint)
+            }
+            Err(discovery_err) => {
+                debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
+
+                // Fallback 1: Legacy environment variables
+                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_COMPUTE_ENDPOINT")
+                    .or_else(|_| SafeEnv::get_required("COMPUTE_CAPABILITY_ENDPOINT"))
+                    .or_else(|_| SafeEnv::get_required("TOADSTOOL_ENDPOINT"))
+                {
+                    debug!("⚠️ Using legacy environment variable for compute endpoint");
+                    return Self::new(endpoint);
+                }
+
+                // Fallback 2: Construct from host + port
+                let host = SafeEnv::get_or_default("SONGBIRD_HOST", "http://localhost");
+                let port = SafeEnv::get_port("SONGBIRD_COMPUTE_PORT",
+                    songbird_config::defaults::ports::service_port("COMPUTE", 8080)).to_string();
+                let endpoint = format!("{host}:{port}");
+
+                debug!("🔄 Using fallback compute endpoint: {}", endpoint);
+                Self::new(endpoint)
+            }
         }
-
-        // Fallback: Check legacy environment variables
-        if let Ok(endpoint) = std::env::var("COMPUTE_CAPABILITY_ENDPOINT") {
-            debug!("⚠️ Using legacy COMPUTE_CAPABILITY_ENDPOINT (deprecated)");
-            return Self::new(endpoint);
-        }
-
-        // TODO: Integrate with ZeroKnowledgeBootstrap for true infant discovery
-        // (Bootstrap module needs syntax cleanup first - see PHASE_1_COMPLETE_PHASE_2_PLAN.md)
-        debug!("🍼 Using environment-based compute capability discovery...");
-
-        // Fallback: Construct from SONGBIRD_HOST + port
-        let host =
-            std::env::var("SONGBIRD_HOST").unwrap_or_else(|_| "http://localhost".to_string());
-        let port = std::env::var("SONGBIRD_COMPUTE_PORT").unwrap_or_else(|_| "8080".to_string());
-        let endpoint = format!("{host}:{port}");
-
-        debug!("🔍 Compute capability discovered at: {}", endpoint);
-        Self::new(endpoint)
     }
 
     /// Create adapter with explicit endpoint
@@ -272,8 +283,7 @@ impl ComputeAdapter {
 }
 
 /// Trait for compute metrics collection (capability-based)
-#[async_trait]
-pub trait ComputeMetricsProvider {
+pub trait ComputeMetricsProvider: Send + Sync {
     /// Collect current compute metrics
     async fn collect_compute_metrics(&self) -> SongbirdResult<ComputeMetrics>;
 
@@ -284,7 +294,6 @@ pub trait ComputeMetricsProvider {
     }
 }
 
-#[async_trait]
 impl ComputeMetricsProvider for ComputeAdapter {
     async fn collect_compute_metrics(&self) -> SongbirdResult<ComputeMetrics> {
         self.collect_metrics().await
@@ -314,7 +323,7 @@ mod tests {
     }
 
     #[test]
-    fn test_high_load_detection() {
+    fn test_high_load_detection() -> SongbirdResult<()> {
         let metrics = ComputeMetrics {
             cpu_usage_percent: 96.0,
             memory_usage_bytes: 7_600_000_000,
@@ -327,12 +336,337 @@ mod tests {
 
         assert!(metrics.is_high_load());
         assert_eq!(metrics.health_status(), HealthStatus::Unhealthy);
+        Ok(())
     }
 
     #[test]
-    fn test_adapter_creation() {
-        let adapter = ComputeAdapter::new("http://localhost:8080".to_string())
-            .expect("Adapter creation should succeed");
+    fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
+        let adapter = ComputeAdapter::new("http://localhost:8080".to_string()).map_err(|e| {
+            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+        })?;
         assert_eq!(adapter.endpoint(), "http://localhost:8080");
+        Ok(())
+    }
+
+    #[test]
+    fn test_health_status_equality() {
+        assert_eq!(HealthStatus::Healthy, HealthStatus::Healthy);
+        assert_eq!(HealthStatus::Degraded, HealthStatus::Degraded);
+        assert_eq!(HealthStatus::Unhealthy, HealthStatus::Unhealthy);
+        assert_ne!(HealthStatus::Healthy, HealthStatus::Degraded);
+        assert_ne!(HealthStatus::Degraded, HealthStatus::Unhealthy);
+    }
+
+    #[test]
+    fn test_memory_usage_zero_total() {
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 50.0,
+            memory_usage_bytes: 0,
+            memory_available_bytes: 0,
+            active_containers: 5,
+            queued_jobs: 2,
+            performance_score: 0.85,
+            timestamp: chrono::Utc::now(),
+        };
+
+        assert_eq!(metrics.total_memory_bytes(), 0);
+        assert_eq!(metrics.memory_usage_percent(), 0.0);
+    }
+
+    #[test]
+    fn test_high_load_cpu_boundary() {
+        // Just below threshold
+        let metrics_below = ComputeMetrics {
+            cpu_usage_percent: 80.0,
+            memory_usage_bytes: 1_000_000_000,
+            memory_available_bytes: 9_000_000_000,
+            active_containers: 5,
+            queued_jobs: 2,
+            performance_score: 0.85,
+            timestamp: chrono::Utc::now(),
+        };
+        assert!(!metrics_below.is_high_load());
+
+        // Just above threshold
+        let metrics_above = ComputeMetrics {
+            cpu_usage_percent: 80.1,
+            memory_usage_bytes: 1_000_000_000,
+            memory_available_bytes: 9_000_000_000,
+            active_containers: 5,
+            queued_jobs: 2,
+            performance_score: 0.85,
+            timestamp: chrono::Utc::now(),
+        };
+        assert!(metrics_above.is_high_load());
+    }
+
+    #[test]
+    fn test_high_load_memory_boundary() {
+        // Just below threshold (85%)
+        let metrics_below = ComputeMetrics {
+            cpu_usage_percent: 50.0,
+            memory_usage_bytes: 8_499_000_000,
+            memory_available_bytes: 1_501_000_000,
+            active_containers: 5,
+            queued_jobs: 2,
+            performance_score: 0.85,
+            timestamp: chrono::Utc::now(),
+        };
+        assert!(!metrics_below.is_high_load());
+
+        // Just above threshold
+        let metrics_above = ComputeMetrics {
+            cpu_usage_percent: 50.0,
+            memory_usage_bytes: 8_501_000_000,
+            memory_available_bytes: 1_499_000_000,
+            active_containers: 5,
+            queued_jobs: 2,
+            performance_score: 0.85,
+            timestamp: chrono::Utc::now(),
+        };
+        assert!(metrics_above.is_high_load());
+    }
+
+    #[test]
+    fn test_high_load_queued_jobs_boundary() {
+        // At threshold
+        let metrics_at = ComputeMetrics {
+            cpu_usage_percent: 50.0,
+            memory_usage_bytes: 1_000_000_000,
+            memory_available_bytes: 9_000_000_000,
+            active_containers: 5,
+            queued_jobs: 10,
+            performance_score: 0.85,
+            timestamp: chrono::Utc::now(),
+        };
+        assert!(!metrics_at.is_high_load());
+
+        // Above threshold
+        let metrics_above = ComputeMetrics {
+            cpu_usage_percent: 50.0,
+            memory_usage_bytes: 1_000_000_000,
+            memory_available_bytes: 9_000_000_000,
+            active_containers: 5,
+            queued_jobs: 11,
+            performance_score: 0.85,
+            timestamp: chrono::Utc::now(),
+        };
+        assert!(metrics_above.is_high_load());
+    }
+
+    #[test]
+    fn test_health_status_degraded_cpu() {
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 85.0,
+            memory_usage_bytes: 2_000_000_000,
+            memory_available_bytes: 8_000_000_000,
+            active_containers: 10,
+            queued_jobs: 5,
+            performance_score: 0.7,
+            timestamp: chrono::Utc::now(),
+        };
+        assert_eq!(metrics.health_status(), HealthStatus::Degraded);
+    }
+
+    #[test]
+    fn test_health_status_degraded_memory() {
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 50.0,
+            memory_usage_bytes: 9_000_000_000,
+            memory_available_bytes: 1_000_000_000,
+            active_containers: 10,
+            queued_jobs: 5,
+            performance_score: 0.7,
+            timestamp: chrono::Utc::now(),
+        };
+        assert_eq!(metrics.health_status(), HealthStatus::Degraded);
+    }
+
+    #[test]
+    fn test_health_status_unhealthy_cpu() {
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 96.0,
+            memory_usage_bytes: 2_000_000_000,
+            memory_available_bytes: 8_000_000_000,
+            active_containers: 10,
+            queued_jobs: 5,
+            performance_score: 0.3,
+            timestamp: chrono::Utc::now(),
+        };
+        assert_eq!(metrics.health_status(), HealthStatus::Unhealthy);
+    }
+
+    #[test]
+    fn test_health_status_unhealthy_memory() {
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 50.0,
+            memory_usage_bytes: 9_600_000_000,
+            memory_available_bytes: 400_000_000,
+            active_containers: 10,
+            queued_jobs: 5,
+            performance_score: 0.3,
+            timestamp: chrono::Utc::now(),
+        };
+        assert_eq!(metrics.health_status(), HealthStatus::Unhealthy);
+    }
+
+    #[test]
+    fn test_health_status_boundary_95_cpu() {
+        // Exactly at threshold
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 95.0,
+            memory_usage_bytes: 2_000_000_000,
+            memory_available_bytes: 8_000_000_000,
+            active_containers: 5,
+            queued_jobs: 2,
+            performance_score: 0.7,
+            timestamp: chrono::Utc::now(),
+        };
+        assert_eq!(metrics.health_status(), HealthStatus::Degraded);
+    }
+
+    #[test]
+    fn test_health_status_boundary_95_memory() {
+        // Exactly at threshold
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 50.0,
+            memory_usage_bytes: 9_500_000_000,
+            memory_available_bytes: 500_000_000,
+            active_containers: 5,
+            queued_jobs: 2,
+            performance_score: 0.7,
+            timestamp: chrono::Utc::now(),
+        };
+        assert_eq!(metrics.health_status(), HealthStatus::Degraded);
+    }
+
+    #[test]
+    fn test_compute_metrics_serialization() -> SongbirdResult<()> {
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 45.0,
+            memory_usage_bytes: 2_000_000_000,
+            memory_available_bytes: 6_000_000_000,
+            active_containers: 5,
+            queued_jobs: 2,
+            performance_score: 0.85,
+            timestamp: chrono::Utc::now(),
+        };
+
+        let json = serde_json::to_string(&metrics).map_err(|e| {
+            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+        })?;
+        assert!(json.contains("cpu_usage_percent"));
+        assert!(json.contains("memory_usage_bytes"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_health_status_serialization() -> SongbirdResult<()> {
+        assert_eq!(
+            serde_json::to_string(&HealthStatus::Healthy).map_err(|e| {
+                SongbirdError::Serialization {
+                    format: Some("JSON".to_string()),
+                    message: format!("Serialization failed: {}", e),
+                    debug_info: None,
+                }
+            })?,
+            "\"Healthy\""
+        );
+        assert_eq!(
+            serde_json::to_string(&HealthStatus::Degraded).map_err(|e| {
+                SongbirdError::Serialization {
+                    format: Some("JSON".to_string()),
+                    message: format!("Serialization failed: {}", e),
+                    debug_info: None,
+                }
+            })?,
+            "\"Degraded\""
+        );
+        assert_eq!(
+            serde_json::to_string(&HealthStatus::Unhealthy).map_err(|e| {
+                SongbirdError::Serialization {
+                    format: Some("JSON".to_string()),
+                    message: format!("Serialization failed: {}", e),
+                    debug_info: None,
+                }
+            })?,
+            "\"Unhealthy\""
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_adapter_with_timeout() -> SongbirdResult<()> {
+        let adapter = ComputeAdapter::new("http://compute-service:8080".to_string())
+            .map_err(|e| {
+                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            })?
+            .with_timeout(Duration::from_secs(25));
+        assert_eq!(adapter.timeout, Duration::from_secs(25));
+        Ok(())
+    }
+
+    #[test]
+    fn test_adapter_default_timeout() -> SongbirdResult<()> {
+        let adapter =
+            ComputeAdapter::new("http://compute-service:8080".to_string()).map_err(|e| {
+                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            })?;
+        assert_eq!(adapter.timeout, Duration::from_secs(5));
+        Ok(())
+    }
+
+    #[test]
+    fn test_adapter_endpoint_access() -> SongbirdResult<()> {
+        let adapter = ComputeAdapter::new("http://test-compute:9000".to_string()).map_err(|e| {
+            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+        })?;
+        assert_eq!(adapter.endpoint(), "http://test-compute:9000");
+        Ok(())
+    }
+
+    #[test]
+    fn test_adapter_debug_format() -> SongbirdResult<()> {
+        let adapter = ComputeAdapter::new("http://compute:8080".to_string()).map_err(|e| {
+            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+        })?;
+        let debug_str = format!("{:?}", adapter);
+        assert!(debug_str.contains("ComputeAdapter"));
+        assert!(debug_str.contains("http://compute:8080"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_compute_metrics_perfect_conditions() {
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 10.0,
+            memory_usage_bytes: 1_000_000_000,
+            memory_available_bytes: 9_000_000_000,
+            active_containers: 2,
+            queued_jobs: 0,
+            performance_score: 0.99,
+            timestamp: chrono::Utc::now(),
+        };
+
+        assert!(!metrics.is_high_load());
+        assert_eq!(metrics.health_status(), HealthStatus::Healthy);
+    }
+
+    #[test]
+    fn test_compute_metrics_all_zero() {
+        let metrics = ComputeMetrics {
+            cpu_usage_percent: 0.0,
+            memory_usage_bytes: 0,
+            memory_available_bytes: 0,
+            active_containers: 0,
+            queued_jobs: 0,
+            performance_score: 0.0,
+            timestamp: chrono::Utc::now(),
+        };
+
+        assert_eq!(metrics.total_memory_bytes(), 0);
+        assert_eq!(metrics.memory_usage_percent(), 0.0);
+        assert!(!metrics.is_high_load());
+        assert_eq!(metrics.health_status(), HealthStatus::Healthy);
     }
 }

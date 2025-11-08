@@ -5,10 +5,11 @@
 //! - Any file-based service registry
 //! - Any environment-based service configuration
 //! - Any capability-based service detection
+//!
+//! ## Native Async Traits
+//! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 
-#![allow(clippy::unused_async, clippy::missing_errors_doc, clippy::unused_self)]
-
-use async_trait::async_trait;
+#![allow(async_fn_in_trait, clippy::unused_async, clippy::missing_errors_doc, clippy::unused_self)]
 use futures_util::Stream;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -220,7 +221,7 @@ impl UniversalServiceDiscovery {
 
     /// Detect HTTP-based service registries (Consul, Eureka, etc.)
     async fn detect_http_registries(&mut self) {
-        use songbird_config::config::constants;
+        use songbird_config::canonical::constants;
 
         // Get configurable protocol
         let registry_protocol =
@@ -504,7 +505,7 @@ impl UniversalServiceDiscovery {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ServiceDiscovery for UniversalServiceDiscovery {
     async fn discover(&self, query: ServiceQuery) -> SongbirdResult<Vec<ServiceInfo>> {
         self.discover_services_universal(query).await

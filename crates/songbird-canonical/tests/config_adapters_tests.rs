@@ -9,6 +9,7 @@ use songbird_canonical::config::adapters::{
     UniversalAdapterConfig,
 };
 use songbird_types::config::consolidated_canonical::CanonicalHealthCheckConfig;
+use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_universal_adapter_config_default() {
@@ -117,7 +118,7 @@ fn test_security_adapter_config_clone() {
 }
 
 #[test]
-fn test_compute_adapter_config_debug() {
+fn test_compute_adapter_config_debug() -> SongbirdResult<()> {
     let config = ComputeAdapterConfig {
         enabled: false,
         discovery_mode: "manual".to_string(),
@@ -132,10 +133,11 @@ fn test_compute_adapter_config_debug() {
     assert!(debug_str.contains("ComputeAdapterConfig"));
     assert!(debug_str.contains("enabled"));
     assert!(debug_str.contains("false") || debug_str.contains("true"));
+    Ok(())
 }
 
 #[test]
-fn test_storage_adapter_config_serialization() {
+fn test_storage_adapter_config_serialization() -> SongbirdResult<()> {
     let config = StorageAdapterConfig {
         enabled: true,
         discovery_mode: "auto".to_string(),
@@ -147,16 +149,22 @@ fn test_storage_adapter_config_serialization() {
     };
 
     // Test serialization
-    let json = serde_json::to_string(&config).expect("Should serialize");
+    let json = serde_json::to_string(&config)
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
     assert!(json.contains("enabled"));
     assert!(json.contains("discovery_mode"));
 
     // Test deserialization
     let deserialized: StorageAdapterConfig =
-        serde_json::from_str(&json).expect("Should deserialize");
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Should deserialize: {}", e),
+            debug_info: None,
+        })?;
     assert_eq!(config.enabled, deserialized.enabled);
     assert_eq!(config.discovery_mode, deserialized.discovery_mode);
     assert_eq!(config.timeout_ms, deserialized.timeout_ms);
+    Ok(())
 }
 
 #[test]
@@ -181,7 +189,7 @@ fn test_adapter_settings_default() {
 }
 
 #[test]
-fn test_adapter_settings_disabled() {
+fn test_adapter_settings_disabled() -> SongbirdResult<()> {
     let settings = AdapterSettings {
         default_timeout_ms: 10000,
         max_concurrent_requests: 10,
@@ -198,49 +206,59 @@ fn test_adapter_settings_disabled() {
     assert!(!settings.enable_standalone_failover);
     assert_eq!(settings.max_concurrent_requests, 10);
     assert_eq!(settings.default_timeout_ms, 10000);
+    Ok(())
 }
 
 #[test]
-fn test_security_provider_config_default() {
+fn test_security_provider_config_default() -> SongbirdResult<()> {
     let config = SecurityProviderConfigSecurityConfig::default();
 
     // Verify default can be created
     let debug_str = format!("{config:?}");
     assert!(debug_str.contains("SecurityProviderConfigSecurityConfig"));
+    Ok(())
 }
 
 #[test]
-fn test_compute_provider_config_default() {
+fn test_compute_provider_config_default() -> SongbirdResult<()> {
     let config = ComputeProviderConfigComputeConfig::default();
 
     // Verify default can be created
     let debug_str = format!("{config:?}");
     assert!(debug_str.contains("ComputeProviderConfigComputeConfig"));
+    Ok(())
 }
 
 #[test]
-fn test_storage_provider_config_default() {
+fn test_storage_provider_config_default() -> SongbirdResult<()> {
     let config = StorageProviderConfigStorageConfig::default();
 
     // Verify default can be created
     let debug_str = format!("{config:?}");
     assert!(debug_str.contains("StorageProviderConfigStorageConfig"));
+    Ok(())
 }
 
 #[test]
-fn test_universal_adapter_config_serialization() {
+fn test_universal_adapter_config_serialization() -> SongbirdResult<()> {
     let config = UniversalAdapterConfig::default();
 
     // Test JSON serialization
-    let json = serde_json::to_string(&config).expect("Should serialize");
+    let json = serde_json::to_string(&config)
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
     assert!(json.contains("security_adapters") || json.contains("compute_adapters"));
 
     // Test deserialization
     let deserialized: UniversalAdapterConfig =
-        serde_json::from_str(&json).expect("Should deserialize");
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Should deserialize: {}", e),
+            debug_info: None,
+        })?;
 
     // Verify structure is preserved
     assert_eq!(format!("{:?}", config.settings), format!("{:?}", deserialized.settings));
+    Ok(())
 }
 
 #[test]
@@ -260,7 +278,7 @@ fn test_security_adapter_with_no_endpoint() {
 }
 
 #[test]
-fn test_compute_adapter_with_endpoint() {
+fn test_compute_adapter_with_endpoint() -> SongbirdResult<()> {
     let config = ComputeAdapterConfig {
         enabled: true,
         discovery_mode: "manual".to_string(),
@@ -272,7 +290,13 @@ fn test_compute_adapter_with_endpoint() {
     };
 
     assert!(config.endpoint.is_some());
-    assert_eq!(config.endpoint.unwrap(), "http://compute.local:9001");
+    assert_eq!(
+        config.endpoint.ok_or_else(|| SongbirdError::configuration(
+            "TODO: Replace with proper error handling".to_string()
+        ))?,
+        "http://compute.local:9001"
+    );
+    Ok(())
 }
 
 #[test]
@@ -335,16 +359,17 @@ fn test_adapter_settings_extreme_values() {
 }
 
 #[test]
-fn test_universal_adapter_config_clone() {
+fn test_universal_adapter_config_clone() -> SongbirdResult<()> {
     let config = UniversalAdapterConfig::default();
     let cloned = config.clone();
 
     // Verify clone creates independent copy
     assert_eq!(format!("{:?}", config.settings), format!("{:?}", cloned.settings));
+    Ok(())
 }
 
 #[test]
-fn test_health_check_config_integration() {
+fn test_health_check_config_integration() -> SongbirdResult<()> {
     let health_check = CanonicalHealthCheckConfig::default();
 
     let config = SecurityAdapterConfig {
@@ -360,4 +385,5 @@ fn test_health_check_config_integration() {
     // Verify health check is integrated
     let debug_str = format!("{:?}", config.health_check);
     assert!(!debug_str.is_empty());
+    Ok(())
 }

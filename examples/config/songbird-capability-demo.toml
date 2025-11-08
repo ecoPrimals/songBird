@@ -10,7 +10,8 @@ node_id = "songbird-demo-001"
 
 [network]
 bind_address = "127.0.0.1"
-port = 8080
+# Main service port (override with SONGBIRD_PORT env var)
+port = 8080  # Example default - use environment-aware config in production
 max_connections = 1000
 
 # ✅ CORRECT: Self-awareness only - Songbird knows itself
@@ -20,7 +21,8 @@ self_capabilities = ["orchestration", "service_discovery", "load_balancing", "ga
 
 [network.self_config.self_endpoint]
 host = "127.0.0.1"  
-port = 8080
+# Self endpoint port (should match network.port or use SONGBIRD_PORT)
+port = 8080  # Example default - use environment-aware config in production
 scheme = "http"
 
 # ✅ CORRECT: Universal discovery for capability-based routing
@@ -71,26 +73,30 @@ tracing_enabled = true
 # PRIMAL_{UNIQUE_ID}_ENDPOINT="https://endpoint.url"
 # PRIMAL_{UNIQUE_ID}_CAPABILITIES="capability1,capability2,capability3"
 #
-# Examples:
+# Examples (use environment-aware ports from songbird_config::defaults::ports):
 #
-# # Security capabilities
-# PRIMAL_BEARDOG_V1_ENDPOINT="https://security.internal:8443"
+# # Security capabilities (uses SONGBIRD_BEARDOG_PORT or auto-discovery)
+# PRIMAL_BEARDOG_V1_ENDPOINT="https://security.internal:${SONGBIRD_BEARDOG_PORT}"
 # PRIMAL_BEARDOG_V1_CAPABILITIES="security,encryption,audit"
+# # Or better: Use CAPABILITY_SECURITY_ENDPOINT for auto-discovery
 #
-# # Storage capabilities  
-# PRIMAL_NESTGATE_V1_ENDPOINT="https://storage.internal:9000"
+# # Storage capabilities (uses SONGBIRD_METRICS_PORT or auto-discovery)
+# PRIMAL_NESTGATE_V1_ENDPOINT="https://storage.internal:${SONGBIRD_METRICS_PORT}"
 # PRIMAL_NESTGATE_V1_CAPABILITIES="storage,backup,archival"
+# # Or better: Use CAPABILITY_STORAGE_ENDPOINT for auto-discovery
 #
-# # Compute capabilities
-# PRIMAL_TOADSTOOL_V1_ENDPOINT="https://compute.internal:8082"
+# # Compute capabilities (uses SONGBIRD_BEARDOG_PORT or auto-discovery)
+# PRIMAL_TOADSTOOL_V1_ENDPOINT="https://compute.internal:${SONGBIRD_BEARDOG_PORT}"
 # PRIMAL_TOADSTOOL_V1_CAPABILITIES="compute,metrics,scaling"
+# # Or better: Use CAPABILITY_COMPUTE_ENDPOINT for auto-discovery
 #
-# # AI capabilities
-# PRIMAL_SQUIRREL_V1_ENDPOINT="https://ai.internal:8002"  
+# # AI capabilities (uses custom port or auto-discovery)
+# PRIMAL_SQUIRREL_V1_ENDPOINT="https://ai.internal:${AI_SERVICE_PORT:-8002}"
 # PRIMAL_SQUIRREL_V1_CAPABILITIES="ai,inference,training"
+# # Or better: Use CAPABILITY_AI_ENDPOINT for auto-discovery
 #
 # # Future/Custom capabilities (no code changes needed!)
-# PRIMAL_QUANTUM_LAB_ENDPOINT="https://quantum.research.edu:9000"
+# PRIMAL_QUANTUM_LAB_ENDPOINT="https://quantum.research.edu:${QUANTUM_SERVICE_PORT}"
 # PRIMAL_QUANTUM_LAB_CAPABILITIES="quantum_compute,cryptography,simulation"
 #
 # PRIMAL_COMPANY_AUTH_ENDPOINT="https://auth.company.com:443"

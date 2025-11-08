@@ -24,12 +24,14 @@ impl IntegrationManager {
     }
 
     /// Set startup timeout
+    #[must_use]
     pub fn with_startup_timeout(mut self, timeout: Duration) -> Self {
         self.startup_timeout = timeout;
         self
     }
 
     /// Set shutdown timeout
+    #[must_use]
     pub fn with_shutdown_timeout(mut self, timeout: Duration) -> Self {
         self.shutdown_timeout = timeout;
         self
@@ -65,7 +67,7 @@ impl IntegrationManager {
         info!("🔧 Initializing orchestrator with integration checks...");
 
         // Validate configuration
-        self.validate_configuration()?;
+        Self::validate_configuration();
 
         // Create orchestrator
         let orchestrator = SongbirdOrchestrator::new(self.config.clone()).await?;
@@ -78,7 +80,7 @@ impl IntegrationManager {
     }
 
     /// Validate configuration for integration
-    fn validate_configuration(&self) -> Result<()> {
+    fn validate_configuration() {
         info!("🔍 Validating configuration...");
 
         // Validate gaming configuration via environment
@@ -87,7 +89,6 @@ impl IntegrationManager {
         }
 
         info!("✅ Configuration validation passed");
-        Ok(())
     }
 
     /// Run integration checks

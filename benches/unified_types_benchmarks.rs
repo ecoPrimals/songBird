@@ -79,7 +79,7 @@ fn unified_service_info_benchmarks() {
                 black_box("web".to_string())),
                 black_box("1.0.0".to_string())),
                 black_box("localhost".to_string())),
-                black_box(8080),
+                black_box(songbird_config::defaults::ports::orchestrator_port()),
             );
             black_box(service_info);
           

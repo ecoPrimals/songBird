@@ -16,7 +16,11 @@
 //! Testing canonical type definitions and conversions.
 
 use songbird_canonical::types::{Endpoint, RequestId, ServiceId};
-use songbird_types::SongbirdError;
+use songbird_test_utils::test_bind_address;
+use songbird_test_utils::test_dashboard_port;
+use songbird_test_utils::test_orchestrator_port;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_canonical_type_creation() {
@@ -34,18 +38,20 @@ fn test_canonical_type_creation() {
 }
 
 #[test]
-fn test_canonical_validation() {
+fn test_canonical_validation() -> SongbirdResult<()> {
     // Test: Canonical types should validate their data
     let service_id = ServiceId::new("valid-service-123");
     assert_eq!(service_id.as_str(), "valid-service-123");
 
-    let endpoint = Endpoint::new("http", "localhost", 8080);
+    let bind_addr = test_bind_address();
+    let endpoint = Endpoint::new("http", bind_addr.as_str(), test_orchestrator_port());
     let url = endpoint.to_url();
-    assert_eq!(url, "http://localhost:8080");
+    assert_eq!(url, format!("http://{}:{}", bind_addr, test_orchestrator_port()));
 
     // Endpoint with path
     let endpoint_with_path = Endpoint::new("https", "api.example.com", 443).with_path("/v1/users");
     assert_eq!(endpoint_with_path.to_url(), "https://api.example.com:443/v1/users");
+    Ok(())
 }
 
 #[test]
@@ -53,12 +59,12 @@ fn test_canonical_serialization() -> Result<(), Box<dyn std::error::Error>> {
     // Test: Canonical types should serialize to JSON
     let service_id = ServiceId::new("my-service");
     let json = serde_json::to_string(&service_id)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("my-service"));
 
     let endpoint = Endpoint::new("tcp", "192.168.1.1", 9000);
     let json = serde_json::to_string(&endpoint)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("tcp"));
     assert!(json.contains("192.168.1.1"));
     assert!(json.contains("9000"));
@@ -70,12 +76,12 @@ fn test_canonical_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     // Test: Canonical types should deserialize from JSON
     let json = r#""test-service""#;
     let service_id: ServiceId = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should deserialize".to_string()))?;
     assert_eq!(service_id.as_str(), "test-service");
 
     let json = r#"{"protocol":"https","host":"example.com","port":443,"path":null}"#;
     let endpoint: Endpoint = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
+        .map_err(|e| SongbirdError::configuration("Should deserialize".to_string()))?;
     assert_eq!(endpoint.protocol, "https");
     assert_eq!(endpoint.host, "example.com");
     assert_eq!(endpoint.port, 443);
@@ -92,8 +98,9 @@ fn test_canonical_conversion() {
     assert_eq!(service_id.as_str(), "owned-service");
 
     // Endpoint URL conversion
-    let endpoint = Endpoint::new("http", "localhost", 3000);
-    assert_eq!(endpoint.to_url(), "http://localhost:3000");
+    let bind_addr = test_bind_address();
+    let endpoint = Endpoint::new("http", bind_addr.as_str(), test_dashboard_port());
+    assert_eq!(endpoint.to_url(), format!("http://{}:{}", bind_addr, test_dashboard_port()));
 }
 
 #[test]
@@ -134,7 +141,7 @@ fn test_canonical_defaults() {
     assert!(request_id.uuid().to_string().len() == 36); // UUID v4 length
 
     // Endpoint can be created with minimal parameters
-    let endpoint = Endpoint::new("http", "localhost", 8080);
+    let endpoint = Endpoint::new("http", test_bind_address(), 8080);
     assert!(endpoint.path.is_none());
 
     // ServiceId can be created from simple strings
@@ -143,7 +150,7 @@ fn test_canonical_defaults() {
 }
 
 #[test]
-fn test_canonical_thread_safety() {
+fn test_canonical_thread_safety() -> SongbirdResult<()> {
     // Test: Canonical types should be Send + Sync
     fn assert_send<T: Send>() {}
     fn assert_sync<T: Sync>() {}
@@ -154,10 +161,11 @@ fn test_canonical_thread_safety() {
     assert_sync::<Endpoint>();
     assert_send::<RequestId>();
     assert_sync::<RequestId>();
+    Ok(())
 }
 
 #[test]
-fn test_canonical_documentation() {
+fn test_canonical_documentation() -> SongbirdResult<()> {
     // Test: Canonical types should be well-documented (compile-time check)
     // This test verifies that types have proper Debug implementation
     let service_id = ServiceId::new("documented");
@@ -168,4 +176,5 @@ fn test_canonical_documentation() {
     let debug_str = format!("{endpoint:?}");
     assert!(debug_str.contains("Endpoint"));
     assert!(debug_str.contains("wss"));
+    Ok(())
 }

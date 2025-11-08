@@ -2,7 +2,7 @@
 //!
 //! **MODERN GAMING FEDERATION & MATCHMAKING** ✅
 
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use clap::Subcommand;
 
 #[derive(Debug, Clone, Subcommand)]
@@ -120,7 +120,7 @@ pub enum MatchmakingAction {
 }
 
 /// Handle federation commands
-pub async fn handle_federation_command(command: FederationCommand) -> CliResult<()> {
+pub async fn handle_federation_command(command: FederationCommand) -> SongbirdResult<()> {
     match command {
         FederationCommand::Init {
             gaming,
@@ -149,7 +149,7 @@ async fn init_federation(
     gaming: bool,
     name: Option<String>,
     region: Option<String>,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("🚀 Initializing gaming federation...");
 
     if gaming {
@@ -172,7 +172,7 @@ async fn join_federation(
     gaming_endpoint: Option<String>,
     token: Option<String>,
     auto_discover: bool,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     println!("🤝 Joining gaming federation...");
 
     if let Some(endpoint) = gaming_endpoint {
@@ -191,7 +191,7 @@ async fn join_federation(
     Ok(())
 }
 
-async fn handle_lobby_action(action: LobbyAction) -> CliResult<()> {
+async fn handle_lobby_action(action: LobbyAction) -> SongbirdResult<()> {
     match action {
         LobbyAction::Create {
             name,
@@ -230,7 +230,7 @@ async fn handle_lobby_action(action: LobbyAction) -> CliResult<()> {
     Ok(())
 }
 
-async fn handle_matchmaking_action(action: MatchmakingAction) -> CliResult<()> {
+async fn handle_matchmaking_action(action: MatchmakingAction) -> SongbirdResult<()> {
     match action {
         MatchmakingAction::Start {
             skill_level,
@@ -261,7 +261,7 @@ async fn handle_matchmaking_action(action: MatchmakingAction) -> CliResult<()> {
     Ok(())
 }
 
-async fn show_federation_status(detailed: bool, gaming_metrics: bool) -> CliResult<()> {
+async fn show_federation_status(detailed: bool, gaming_metrics: bool) -> SongbirdResult<()> {
     println!("📊 Gaming Federation Status:");
     println!("  Status: Connected");
     println!("  Active nodes: 24");

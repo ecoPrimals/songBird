@@ -1,0 +1,16 @@
+# Quick Docs Reference (Generated: Nov 8, 2025)
+
+START HERE: 00_START_HERE.md
+FULL INDEX: DOCUMENTATION_INDEX.md
+
+Root docs: 25 files (was 43)
+Archives: docs/archive/2025-11-consolidation/ (10 files)
+
+Key files:
+  00_START_HERE.md                  - Navigation hub
+  DOCUMENTATION_INDEX.md            - Complete index
+  ARCHITECTURE_OVERVIEW.md          - System design
+  STATUS.md                         - Project status
+  CONSOLIDATION_COMPLETE_HANDOFF.md - Latest work
+
+All builds passing ✅

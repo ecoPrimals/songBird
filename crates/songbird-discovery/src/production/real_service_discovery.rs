@@ -2,8 +2,11 @@
 //!
 //! This module provides real service discovery implementations that replace
 //! all mock and placeholder discovery providers.
+//!
+//! # Native Async Traits (Rust 1.75+)
+//! Uses native async fn in traits for zero-cost abstraction
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -256,7 +259,6 @@ struct HealthCheckResult {
     error_message: Option<String>,
 }
 
-#[async_trait]
 impl ServiceDiscovery for ProductionServiceDiscovery {
     async fn discover(&self, query: crate::traits::ServiceQuery) -> SongbirdResult<Vec<crate::traits::ServiceInfo>> {
         info!("Discovering services with query: {:?}", query);

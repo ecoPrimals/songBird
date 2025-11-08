@@ -244,6 +244,7 @@ mod tests {
     #![allow(unused)]
 
     use super::*;
+    use songbird_types::SongbirdError;
 
     #[tokio::test]
     async fn test_mock_toadstool_creation() {
@@ -286,6 +287,62 @@ mod tests {
         mock.simulate_idle();
         let metrics = mock.get_metrics();
         assert!(metrics.cpu_usage_percent < 10.0);
+        assert_eq!(mock.get_health(), HealthStatus::Healthy);
+    }
+
+    // ========== NEW TESTS (5 tests to improve coverage) ==========
+
+    #[tokio::test]
+    async fn test_toadstool_server_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
+        let mut mock = MockToadStool::new();
+        let port = mock
+            .start()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Server should start: {}", e)))?;
+        assert!(port > 0);
+        assert_eq!(mock.port(), port);
+        mock.stop().await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_compute_metrics_default() {
+        let mock = MockToadStool::new();
+        let metrics = mock.get_metrics();
+        assert!((metrics.cpu_usage_percent - 15.0).abs() < 0.001);
+        assert_eq!(metrics.memory_usage_bytes, 1_000_000_000);
+        assert_eq!(metrics.active_containers, 3);
+        assert_eq!(metrics.queued_jobs, 0);
+    }
+
+    #[tokio::test]
+    async fn test_container_management() {
+        let mock = MockToadStool::new();
+        let initial_count = mock.get_metrics().active_containers;
+
+        mock.set_active_containers(10);
+        assert_eq!(mock.get_metrics().active_containers, 10);
+
+        mock.set_active_containers(0);
+        assert_eq!(mock.get_metrics().active_containers, 0);
+    }
+
+    #[tokio::test]
+    async fn test_health_status_transitions() {
+        let mock = MockToadStool::new();
+        assert_eq!(mock.get_health(), HealthStatus::Healthy);
+
+        mock.set_health(HealthStatus::Degraded);
+        assert_eq!(mock.get_health(), HealthStatus::Degraded);
+
+        mock.set_health(HealthStatus::Unhealthy);
+        assert_eq!(mock.get_health(), HealthStatus::Unhealthy);
+    }
+
+    #[test]
+    fn test_toadstool_default_trait() {
+        let mock = MockToadStool::default();
+        assert_eq!(mock.port(), 0);
         assert_eq!(mock.get_health(), HealthStatus::Healthy);
     }
 }

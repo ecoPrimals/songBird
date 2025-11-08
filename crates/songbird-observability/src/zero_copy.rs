@@ -336,7 +336,7 @@ impl ZeroCopyMetricsStreamSender  {/// Send metrics snapshot (zero-copy)
             metrics)
             service_id;};
         // Send to stream
-        self.sender.send(snapshot.clone().map_err(|_||| {
+        self.sender.send(snapshot.clone().map_err(|e||| {
 
 
 

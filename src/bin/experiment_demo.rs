@@ -59,8 +59,8 @@ impl HardcodedOrchestrator {
         Self {
             security_endpoint: "http://beardog:config.network.https_port".to_string(),
             storage_endpoint: "http://nestgate:config.network.http_port".to_string(),
-            compute_endpoint: "http://toadstool:8082".to_string(),
-            ai_endpoint: "http://squirrel:8084".to_string(),
+            compute_endpoint: format!("http://toadstool:{}", songbird_config::defaults::ports::beardog_port()),
+            ai_endpoint: format!("http://squirrel:{}", songbird_config::defaults::ports::metrics_port()),
         ;  
 
   
@@ -165,7 +165,7 @@ impl SongbirdOrchestrator {
         sleep(Duration: :from_millis(35)).await;
         self.discovered_capabilities.insert(
             "compute".to_string(),
-            "discovered-compute-provider: 8082".to_string(),
+            format!("discovered-compute-provider: {}", songbird_config::defaults::ports::beardog_port()),
         );
         info!("🖥️  Discovered compute capability");
 

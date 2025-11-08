@@ -219,6 +219,7 @@ mod tests {
     #![allow(unused)]
 
     use super::*;
+    use songbird_types::SongbirdError;
 
     #[tokio::test]
     async fn test_mock_nestgate_storage() {
@@ -265,6 +266,69 @@ mod tests {
         mock.simulate_healthy_storage();
         let metrics = mock.get_metrics();
         assert!(metrics.available_bytes > 500_000_000_000); // More than 500GB
+        assert_eq!(mock.get_health(), HealthStatus::Healthy);
+    }
+
+    // ========== NEW TESTS (5 tests to improve coverage) ==========
+
+    #[tokio::test]
+    async fn test_nestgate_server_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
+        let mut mock = MockNestGate::new();
+        let port = mock
+            .start()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Server should start: {}", e)))?;
+        assert!(port > 0);
+        assert_eq!(mock.port(), port);
+        mock.stop().await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_storage_metrics_default() {
+        let mock = MockNestGate::new();
+        let metrics = mock.get_metrics();
+        assert_eq!(metrics.total_capacity_bytes, 1_000_000_000_000);
+        assert_eq!(metrics.used_bytes, 250_000_000_000);
+        assert_eq!(metrics.available_bytes, 750_000_000_000);
+        assert_eq!(metrics.object_count, 1_500);
+    }
+
+    #[tokio::test]
+    async fn test_object_retrieval() -> Result<(), Box<dyn std::error::Error>> {
+        let mock = MockNestGate::new();
+        let data = vec![1, 2, 3, 4, 5];
+        mock.store_object("test_key", data.clone());
+
+        let retrieved = mock.retrieve_object("test_key");
+        assert!(retrieved.is_some());
+        assert_eq!(
+            retrieved.ok_or_else(|| SongbirdError::configuration(
+                "TODO: Replace with proper error handling".to_string()
+            ))?,
+            data
+        );
+
+        let missing = mock.retrieve_object("nonexistent");
+        assert!(missing.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_storage_usage_percentage() {
+        let mock = MockNestGate::new();
+        mock.set_storage_usage(75.0);
+
+        let metrics = mock.get_metrics();
+        let usage_percent =
+            (metrics.used_bytes as f64 / metrics.total_capacity_bytes as f64) * 100.0;
+        assert!((usage_percent - 75.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_nestgate_default_trait() {
+        let mock = MockNestGate::default();
+        assert_eq!(mock.port(), 0);
         assert_eq!(mock.get_health(), HealthStatus::Healthy);
     }
 }

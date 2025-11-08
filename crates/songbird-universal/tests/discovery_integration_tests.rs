@@ -15,13 +15,15 @@
 //!
 //! These tests verify that discovery mechanisms work correctly in realistic scenarios.
 
+use songbird_types::SongbirdResult;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::discovery::{
     DiscoveryConfig, DiscoveryMechanisms, UniversalPrimalDiscovery,
 };
 use std::time::Duration;
 
 #[tokio::test]
-async fn test_discovery_with_all_mechanisms_enabled() {
+async fn test_discovery_with_all_mechanisms_enabled() -> SongbirdResult<()> {
     // ARRANGE
     let mechanisms = DiscoveryMechanisms {
         enable_environment_scan: true,
@@ -39,10 +41,11 @@ async fn test_discovery_with_all_mechanisms_enabled() {
     // ACT & ASSERT
     // Discovery should be created successfully
     assert!(format!("{:?}", discovery).contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_discovery_with_only_environment_enabled() {
+async fn test_discovery_with_only_environment_enabled() -> SongbirdResult<()> {
     // ARRANGE
     let mechanisms = DiscoveryMechanisms {
         enable_environment_scan: true,
@@ -60,10 +63,11 @@ async fn test_discovery_with_only_environment_enabled() {
 
     // ASSERT
     assert!(format!("{:?}", discovery).contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_discovery_with_network_scanning_enabled() {
+async fn test_discovery_with_network_scanning_enabled() -> SongbirdResult<()> {
     // ARRANGE
     let mechanisms = DiscoveryMechanisms {
         enable_environment_scan: false,
@@ -81,10 +85,11 @@ async fn test_discovery_with_network_scanning_enabled() {
 
     // ASSERT
     assert!(format!("{:?}", discovery).contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_discovery_with_container_discovery_enabled() {
+async fn test_discovery_with_container_discovery_enabled() -> SongbirdResult<()> {
     // ARRANGE
     let mechanisms = DiscoveryMechanisms {
         enable_environment_scan: false,
@@ -102,10 +107,11 @@ async fn test_discovery_with_container_discovery_enabled() {
 
     // ASSERT
     assert!(format!("{:?}", discovery).contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_discovery_config_with_short_timeout() {
+async fn test_discovery_config_with_short_timeout() -> SongbirdResult<()> {
     // ARRANGE & ACT
     let config = DiscoveryConfig {
         mechanisms: DiscoveryMechanisms {
@@ -120,10 +126,11 @@ async fn test_discovery_config_with_short_timeout() {
 
     // ASSERT
     assert!(format!("{:?}", discovery).contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_discovery_config_with_long_timeout() {
+async fn test_discovery_config_with_long_timeout() -> SongbirdResult<()> {
     // ARRANGE & ACT
     let config = DiscoveryConfig {
         mechanisms: DiscoveryMechanisms {
@@ -138,10 +145,11 @@ async fn test_discovery_config_with_long_timeout() {
 
     // ASSERT
     assert!(format!("{:?}", discovery).contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_discovery_mechanisms_all_disabled() {
+async fn test_discovery_mechanisms_all_disabled() -> SongbirdResult<()> {
     // ARRANGE
     let mechanisms = DiscoveryMechanisms {
         enable_environment_scan: false,
@@ -159,6 +167,7 @@ async fn test_discovery_mechanisms_all_disabled() {
 
     // ASSERT - Should still create successfully even with all mechanisms disabled
     assert!(format!("{:?}", discovery).contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[test]
@@ -230,7 +239,7 @@ fn test_discovery_config_clone() {
 }
 
 #[tokio::test]
-async fn test_discovery_with_custom_timeout_boundaries() {
+async fn test_discovery_with_custom_timeout_boundaries() -> SongbirdResult<()> {
     // Test minimum timeout
     let config_min = DiscoveryConfig {
         mechanisms: DiscoveryMechanisms {
@@ -254,10 +263,11 @@ async fn test_discovery_with_custom_timeout_boundaries() {
     };
     let discovery_max = UniversalPrimalDiscovery::new(config_max);
     assert!(format!("{:?}", discovery_max).contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_discovery_sequential_creation() {
+async fn test_discovery_sequential_creation() -> SongbirdResult<()> {
     // Test that we can create multiple discovery instances
     let config = DiscoveryConfig {
         mechanisms: DiscoveryMechanisms {
@@ -275,10 +285,11 @@ async fn test_discovery_sequential_creation() {
     assert!(format!("{:?}", discovery1).contains("UniversalPrimalDiscovery"));
     assert!(format!("{:?}", discovery2).contains("UniversalPrimalDiscovery"));
     assert!(format!("{:?}", discovery3).contains("UniversalPrimalDiscovery"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_discovery_mechanisms_partial_combinations() {
+async fn test_discovery_mechanisms_partial_combinations() -> SongbirdResult<()> {
     // Test various combinations of enabled mechanisms
     let combinations = vec![
         (true, false, false),
@@ -305,4 +316,5 @@ async fn test_discovery_mechanisms_partial_combinations() {
         let discovery = UniversalPrimalDiscovery::new(config);
         assert!(format!("{:?}", discovery).contains("UniversalPrimalDiscovery"));
     }
+    Ok(())
 }

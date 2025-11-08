@@ -4,7 +4,7 @@
 //! joining sessions, and various family-safe setup modes.
 
 use crate::cli::ui::success;
-use crate::errors::CliResult;
+use crate::errors::SongbirdResult;
 use clap::{Parser, Subcommand};
 
 fn success_message(msg: &str) -> String {
@@ -90,8 +90,8 @@ pub enum GamingCommand {
 /// * `args` - Gaming command arguments containing the specific command to execute
 ///
 /// # Returns
-/// * `CliResult<()>` - Success or error status
-pub async fn handle_gaming_command(args: GamingArgs) -> CliResult<()> {
+/// * `SongbirdResult<()>` - Success or error status
+pub async fn handle_gaming_command(args: GamingArgs) -> SongbirdResult<()> {
     match args.command {
         GamingCommand::Scan {
             interface,
@@ -139,7 +139,7 @@ async fn scan_for_games(
     _duration: Option<u64>,
     _continuous: bool,
     _filter: Option<String>,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     success_message("Gaming scan started");
     Ok(())
 }
@@ -149,32 +149,32 @@ async fn host_game(
     _name: Option<String>,
     _encrypt: bool,
     _private: bool,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     success_message("Game hosting initialized");
     Ok(())
 }
 
-async fn join_game(_code: String) -> CliResult<()> {
+async fn join_game(_code: String) -> SongbirdResult<()> {
     success_message("Joined game session");
     Ok(())
 }
 
-async fn show_gaming_status() -> CliResult<()> {
+async fn show_gaming_status() -> SongbirdResult<()> {
     success_message("Gaming status displayed");
     Ok(())
 }
 
-async fn browse_available_games() -> CliResult<()> {
+async fn browse_available_games() -> SongbirdResult<()> {
     success_message("Available games listed");
     Ok(())
 }
 
-async fn run_gaming_diagnostics() -> CliResult<()> {
+async fn run_gaming_diagnostics() -> SongbirdResult<()> {
     success_message("Gaming diagnostics completed");
     Ok(())
 }
 
-async fn configure_gaming() -> CliResult<()> {
+async fn configure_gaming() -> SongbirdResult<()> {
     success_message("Gaming configuration updated");
     Ok(())
 }
@@ -184,17 +184,17 @@ async fn one_touch_setup(
     _family_safe: bool,
     _parental_controls: bool,
     _guests: bool,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     success_message("One-touch setup completed");
     Ok(())
 }
 
-async fn zero_touch_setup(_endpoint: Option<String>, _token: Option<String>) -> CliResult<()> {
+async fn zero_touch_setup(_endpoint: Option<String>, _token: Option<String>) -> SongbirdResult<()> {
     success_message("Zero-touch setup completed");
     Ok(())
 }
 
-async fn family_safe_setup(_family_name: String) -> CliResult<()> {
+async fn family_safe_setup(_family_name: String) -> SongbirdResult<()> {
     success_message("Family-safe mode enabled");
     Ok(())
 }
@@ -204,7 +204,7 @@ async fn quick_start(
     _game: Option<String>,
     _family_safe: bool,
     _name: Option<String>,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     success_message("Quick start completed");
     Ok(())
 }

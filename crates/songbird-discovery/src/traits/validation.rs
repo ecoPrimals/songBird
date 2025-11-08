@@ -2,7 +2,8 @@
 //!
 //! Universal validation patterns for runtime configuration verification
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
@@ -10,17 +11,17 @@ type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 
 /// Universal configuration validator trait
-#[async_trait]
-pub trait ConfigValidator: Send + Sync  {/// Validate a configuration value
+pub trait ConfigValidator: Send + Sync {
+    /// Validate a configuration value
     async fn validate(
-        &self)
+        &self,
         value: &serde_json::Value,
         context: &ValidationContext,
     ) -> Result<ValidationResult>;
 
     /// Validate a complete configuration object
     async fn validate_config(
-        &self)
+        &self,
         config: &serde_json::Value,
         schema: &ValidationSchema,
     ) -> Result<ConfigValidationResult>;
@@ -336,24 +337,24 @@ pub enum PerformanceImpact  {Low)
 }
 
 /// Configuration validation manager trait
-#[async_trait]
-pub trait ValidationManager: Send + Sync  {/// Register a validator
+pub trait ValidationManager: Send + Sync {
+    /// Register a validator
     async fn register_validator(
-        &mut self)
+        &mut self,
         name: &str,
         validator: Box<dyn ConfigValidator>,
     ) -> Result<()>;
 
     /// Validate configuration with schema
     async fn validate_with_schema(
-        &self)
+        &self,
         config: &serde_json::Value,
         schema: &ValidationSchema,
     ) -> Result<ConfigValidationResult>;
 
     /// Validate configuration against multiple schemas
     async fn validate_multi_schema(
-        &self)
+        &self,
         config: &serde_json::Value,
         schemas: &[&ValidationSchema],
     ) -> Result<Vec<ConfigValidationResult>>;

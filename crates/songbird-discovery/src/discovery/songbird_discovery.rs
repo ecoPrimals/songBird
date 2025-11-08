@@ -1,4 +1,10 @@
-use async_trait::async_trait;
+//! Songbird Discovery Service
+//!
+//! ## Native Async Traits
+//! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
+
+#![allow(async_fn_in_trait)]
+
 use futures_util::Stream;
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -247,7 +253,7 @@ impl SongbirdDiscovery {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ServiceDiscovery for SongbirdDiscovery {
     // ServiceDiscovery trait methods
 

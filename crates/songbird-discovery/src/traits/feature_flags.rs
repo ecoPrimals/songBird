@@ -1,8 +1,13 @@
 //! Feature Flag Traits
 //!
 //! Universal feature toggles and configuration management
+//!
+//! ## Native Async Traits
+//! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
+//! No boxing overhead, better optimization, and improved performance.
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
@@ -10,7 +15,8 @@ type Result<T> = SongbirdResult<T>;
 use std::collections::HashMap;
 
 /// Universal feature flag provider trait
-#[async_trait]
+///
+/// Uses native async methods for zero-cost abstractions (no boxing overhead).
 pub trait FeatureFlagProvider: Send + Sync {
     /// Initialize the feature flag provider
     async fn initialize(&mut self, config: &FeatureFlagConfig) -> Result<()>;
@@ -302,16 +308,20 @@ pub struct FlagStats {
 }
 
 /// Feature flag manager trait
-#[async_trait]
+///
+/// Uses native async methods for zero-cost abstractions (no boxing overhead).
 pub trait FeatureFlagManager: Send + Sync {
     /// Initialize the manager
     async fn initialize(&mut self, config: &FeatureFlagConfig) -> Result<()>;
 
     /// Register a feature flag provider
-    async fn register_provider(
+    /// 
+    /// Note: Uses concrete type parameter for zero-cost abstraction.
+    /// Pass the provider directly, not boxed.
+    async fn register_provider<P: FeatureFlagProvider + 'static>(
         &mut self,
         name: &str,
-        user: Box<dyn FeatureFlagProvider>,
+        provider: P,
     ) -> Result<()>;
 
     /// Evaluate a feature flag

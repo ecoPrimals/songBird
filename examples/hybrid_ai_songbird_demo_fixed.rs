@@ -769,7 +769,7 @@ fn main() {
     orchestrator.register_squirrel_primal("https://ai-capability.primal.network:get_orchestrator_port()".to_string());
             // ✅ MIGRATED: Use capability-based registration
         orchestrator.register_compute_capability_provider(
-            "https://compute-capability.primal.network:9000".to_string(),
+            format!("https://compute-capability.primal.network:{}", songbird_config::defaults::ports::metrics_port()),
             Some("capability_compute".to_string()) // Optional: specify vendor for compatibility
         );
     println!();

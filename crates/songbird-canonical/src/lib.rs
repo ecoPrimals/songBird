@@ -28,6 +28,7 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::multiple_crate_versions)] // Transitive dependencies we don't control
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::pub_use)] // Wildcard imports are acceptable for canonical re-exports
 
@@ -35,11 +36,21 @@
 pub mod adapters;
 pub mod config;
 pub mod discovery;
+#[cfg(test)]
+mod discovery_tests;
 pub mod errors;
 pub mod metadata;
+#[cfg(test)]
+mod metadata_tests;
 pub mod migration;
+#[cfg(test)]
+mod migration_tests;
 pub mod performance;
+#[cfg(test)]
+mod performance_tests;
 pub mod providers;
+#[cfg(test)]
+mod providers_tests;
 pub mod responses;
 pub mod traits;
 pub mod types;

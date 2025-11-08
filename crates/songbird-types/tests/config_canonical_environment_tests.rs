@@ -3,11 +3,18 @@
 //! Comprehensive tests for environment configuration structures
 
 use serial_test::serial;
+use songbird_test_utils::test_bind_address;
+use songbird_test_utils::test_discovery_port;
+use songbird_test_utils::test_federation_port;
+use songbird_test_utils::test_health_port;
+use songbird_test_utils::test_orchestrator_port;
 use songbird_types::config::environment::{
     CanonicalEnvironmentConfig, CapabilityEndpoints, DeploymentMode, DeprecationWarningsConfig,
     EnvironmentHealthCheckConfig, LegacyCompatibilityConfig, MemoryPoolConfig,
     NetworkBindingConfig, PortRange, ResourceLimits, ServiceDiscoveryConfig,
 };
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
@@ -209,7 +216,7 @@ fn test_network_binding_config_default() {
 #[test]
 #[serial]
 fn test_network_binding_config_from_env() {
-    std::env::set_var("SONGBIRD_BIND_ADDRESS", "127.0.0.1");
+    std::env::set_var("SONGBIRD_BIND_ADDRESS", test_bind_address());
     std::env::set_var("SONGBIRD_BIND_PORT", "3000");
 
     let config = NetworkBindingConfig::default();
@@ -251,13 +258,19 @@ fn test_capability_endpoints_default() {
 #[test]
 #[serial]
 fn test_capability_endpoints_from_env() {
-    std::env::set_var("SONGBIRD_STORAGE_ENDPOINT", "http://storage:8080");
-    std::env::set_var("SONGBIRD_COMPUTE_ENDPOINT", "http://compute:8081");
+    std::env::set_var(
+        "SONGBIRD_STORAGE_ENDPOINT",
+        format!("http://storage:{}", test_orchestrator_port()),
+    );
+    std::env::set_var(
+        "SONGBIRD_COMPUTE_ENDPOINT",
+        format!("http://compute:{}", test_discovery_port()),
+    );
 
     let endpoints = CapabilityEndpoints::default();
 
-    assert_eq!(endpoints.storage, Some("http://storage:8080".to_string()));
-    assert_eq!(endpoints.compute, Some("http://compute:8081".to_string()));
+    assert_eq!(endpoints.storage, Some(format!("http://storage:{}", test_orchestrator_port())));
+    assert_eq!(endpoints.compute, Some(format!("http://compute:{}", test_discovery_port())));
 
     std::env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
     std::env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
@@ -292,13 +305,17 @@ fn test_canonical_environment_get_capability_endpoint() {
     std::env::remove_var("SONGBIRD_ENV");
 
     let mut config = CanonicalEnvironmentConfig::default();
-    config.capability_endpoints.storage = Some("http://storage:8080".to_string());
+    config.capability_endpoints.storage =
+        Some(format!("http://storage:{}", test_orchestrator_port()));
     config
         .capability_endpoints
         .custom
         .insert("custom".to_string(), "http://custom:9000".to_string());
 
-    assert_eq!(config.get_capability_endpoint("storage"), Some("http://storage:8080".to_string()));
+    assert_eq!(
+        config.get_capability_endpoint("storage"),
+        Some(format!("http://storage:{}", test_orchestrator_port()))
+    );
     assert_eq!(config.get_capability_endpoint("custom"), Some("http://custom:9000".to_string()));
     assert_eq!(config.get_capability_endpoint("nonexistent"), None);
 }
@@ -309,14 +326,21 @@ fn test_canonical_environment_get_all_endpoints() {
     std::env::remove_var("SONGBIRD_ENV");
 
     let mut config = CanonicalEnvironmentConfig::default();
-    config.capability_endpoints.storage = Some("http://storage:8080".to_string());
-    config.capability_endpoints.compute = Some("http://compute:8081".to_string());
+    config.capability_endpoints.storage =
+        Some(format!("http://storage:{}", test_orchestrator_port()));
+    config.capability_endpoints.compute = Some(format!("http://compute:{}", test_discovery_port()));
 
     let endpoints = config.get_all_endpoints();
 
     assert_eq!(endpoints.len(), 2);
-    assert_eq!(endpoints.get("storage"), Some(&"http://storage:8080".to_string()));
-    assert_eq!(endpoints.get("compute"), Some(&"http://compute:8081".to_string()));
+    assert_eq!(
+        endpoints.get("storage"),
+        Some(&format!("http://storage:{}", test_orchestrator_port()))
+    );
+    assert_eq!(
+        endpoints.get("compute"),
+        Some(&format!("http://compute:{}", test_discovery_port()))
+    );
 }
 
 #[test]
@@ -356,7 +380,7 @@ fn test_canonical_environment_get_bind_address() {
 }
 
 #[test]
-fn test_resource_limits_serialization() {
+fn test_resource_limits_serialization() -> SongbirdResult<()> {
     let limits = ResourceLimits {
         max_connections: 5000,
         max_memory_mb: 4096,
@@ -367,10 +391,13 @@ fn test_resource_limits_serialization() {
         memory_pool: MemoryPoolConfig::default(),
     };
 
-    let json = serde_json::to_string(&limits).expect("Should serialize");
-    let deserialized: ResourceLimits = serde_json::from_str(&json).expect("Should deserialize");
+    let json = serde_json::to_string(&limits)
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+    let deserialized: ResourceLimits = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {}", e)))?;
 
     assert_eq!(limits.max_connections, deserialized.max_connections);
+    Ok(())
 }
 
 #[test]
@@ -410,8 +437,12 @@ fn test_port_range_with_reservations() {
 #[test]
 fn test_service_discovery_with_fallbacks() {
     let mut config = ServiceDiscoveryConfig::default();
-    config.fallback_endpoints.insert("service1".to_string(), "http://fallback:8080".to_string());
-    config.fallback_endpoints.insert("service2".to_string(), "http://fallback:8081".to_string());
+    config
+        .fallback_endpoints
+        .insert("service1".to_string(), format!("http://fallback:{}", test_orchestrator_port()));
+    config
+        .fallback_endpoints
+        .insert("service2".to_string(), format!("http://fallback:{}", test_discovery_port()));
 
     assert_eq!(config.fallback_endpoints.len(), 2);
 }
@@ -443,10 +474,10 @@ fn test_deprecation_warnings_suppression() {
 #[test]
 fn test_capability_endpoints_all_set() {
     let endpoints = CapabilityEndpoints {
-        storage: Some("http://storage:8080".to_string()),
-        compute: Some("http://compute:8081".to_string()),
-        ai: Some("http://ai:8082".to_string()),
-        security: Some("http://security:8083".to_string()),
+        storage: Some(format!("http://storage:{}", test_orchestrator_port())),
+        compute: Some(format!("http://compute:{}", test_discovery_port())),
+        ai: Some(format!("http://ai:{}", test_health_port())),
+        security: Some(format!("http://security:{}", test_federation_port())),
         orchestration: Some("http://orchestration:8084".to_string()),
         custom: HashMap::from([
             ("custom1".to_string(), "http://custom1:9000".to_string()),
@@ -467,8 +498,11 @@ fn test_legacy_compatibility_with_mappings() {
     let config = LegacyCompatibilityConfig {
         enable_legacy_primal_names: true,
         legacy_endpoints: HashMap::from([
-            ("old_api".to_string(), "http://new-api:8080".to_string()),
-            ("deprecated_service".to_string(), "http://new-service:8081".to_string()),
+            ("old_api".to_string(), format!("http://new-api:{}", test_orchestrator_port())),
+            (
+                "deprecated_service".to_string(),
+                format!("http://new-service:{}", test_discovery_port()),
+            ),
         ]),
         deprecation_warnings: DeprecationWarningsConfig::default(),
     };

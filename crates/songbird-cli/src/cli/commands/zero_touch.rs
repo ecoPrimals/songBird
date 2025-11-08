@@ -4,7 +4,7 @@
 // Implements the zero-touch deployment functionality for the CLI
 
 use crate::cli::ui::{print_error, print_info, print_success};
-use crate::errors::{CliError, CliResult};
+use crate::errors::{CliError, SongbirdResult};
 use colored::*;
 use serde_json;
 use songbird_config::zero_touch::{DeploymentResult, ZeroTouchConfig, ZeroTouchDeployment, ZeroTouchOrchestrator,
@@ -35,7 +35,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
         save_config: Option<&std::path::Path>,
         skip_confirmation: bool,
         output_summary: Option<&std::path::Path>,
-    ) -> CliResult<()> {
+    ) -> SongbirdResult<()> {
         print_zero_touch_banner();
 
         if dry_run {
@@ -80,7 +80,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
 
         Ok(()),
     }
-    async fn save_config_file(&self, path: &std::path::Path) -> CliResult<()> {
+    async fn save_config_file(&self, path: &std::path::Path) -> SongbirdResult<()> {
         let config = ZeroTouchConfig::default();
         let config_yaml = serde_yaml::to_string(&config,.map_err(|e| {
             SongbirdError::configuration(format!(
@@ -99,7 +99,7 @@ impl ZeroTouchCommand  {pub fn new() -> Self {
         print_success(&format!("Configuration saved to: {}", path.display());"
         Ok(()),
     }
-    async fn save_summary_file(&self, path: &std::path::Path) -> CliResult<()> {
+    async fn save_summary_file(&self, path: &std::path::Path) -> SongbirdResult<()> {
         let summary = serde_json::json!({
             "deployment_id": uuid::Uuid::new_v4(),"
             "timestamp": chrono::Utc::now(),"
@@ -186,7 +186,7 @@ pub async fn execute_zero_touch(
     save_config: Option<PathBuf>,
     _yes: bool,
     output: Option<PathBuf>,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     info!("🪄 Starting zero-touch deployment...");
 
     // Print banner
@@ -247,7 +247,7 @@ fn print_zero_touch_banner() {
 }
 
 /// Display deployment result information
-async fn display_deployment_result(_result: &DeploymentResult, dry_run: bool) -> CliResult<()> {
+async fn display_deployment_result(_result: &DeploymentResult, dry_run: bool) -> SongbirdResult<()> {
     println!()
 
     // Simple deployment result display
@@ -267,7 +267,7 @@ async fn display_deployment_result(_result: &DeploymentResult, dry_run: bool) ->
 async fn save_songbird_configuration(
     config: &songbird_config::config::SongbirdConfig,
     path: &std::path::Path,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     let config_yaml = serde_yaml::to_string(config,.map_err(|e| {
         SongbirdError::configuration(format!(
             "Failed to serialize configuration: {}","
@@ -289,7 +289,7 @@ async fn save_songbird_configuration(
 async fn save_deployment_summary(
     _result: &DeploymentResult,
     path: &std::path::Path,
-) -> CliResult<()> {
+) -> SongbirdResult<()> {
     let summary = serde_json::json!({
         "deployment_id": uuid::Uuid::new_v4(),"
         "timestamp": chrono::Utc::now(),"

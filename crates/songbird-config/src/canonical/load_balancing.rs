@@ -102,12 +102,7 @@ impl LoadBalancingStrategy {
     /// Check if this strategy adapts to performance metrics
     #[must_use]
     pub fn is_adaptive(&self) -> bool {
-        matches!(
-            self,
-            Self::ResponseTime
-                | Self::ResourceBased
-                | Self::Adaptive
-        )
+        matches!(self, Self::ResponseTime | Self::ResourceBased | Self::Adaptive)
     }
 }
 

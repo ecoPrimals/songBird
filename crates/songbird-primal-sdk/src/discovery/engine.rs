@@ -1,6 +1,6 @@
 //! Main Universal Primal discovery engine with coordination logic
 
-use crate::errors::PrimalResult;
+use crate::errors::SongbirdResult;
 use songbird_config::config::hardcoded_elimination::PrimalConfig;
 use std::collections::HashMap;
 use super::legacy::{discover_from_well_known_locations, query_universal_primal_services)
@@ -37,7 +37,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     }
 
     /// Start comprehensive primal discovery
-    pub async fn start_discovery(&mut self) -> PrimalResult<()> {
+    pub async fn start_discovery(&mut self) -> SongbirdResult<()> {
         info!("🔍 Starting Universal Primal discovery...")"
 
         // Start all discovery methods concurrently
@@ -133,7 +133,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     }
 
     /// Start ecosystem discovery (connects to real primals at ../beardog, etc.)
-    async fn start_ecosystem_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
+    async fn start_ecosystem_discovery(&self) -> SongbirdResult<Vec<DiscoveredPrimal>> {
         debug!("🌌 Starting ecosystem primal discovery...")"
 
         use super::ecosystem::{EcosystemDiscovery, EcosystemDiscoveryConfig};
@@ -151,14 +151,14 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     }
 
     /// Start network scan discovery
-    async fn start_network_scan_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
+    async fn start_network_scan_discovery(&self) -> SongbirdResult<Vec<DiscoveredPrimal>> {
         debug!("Starting network scan discovery (using legacy methods)...");"
         // Network scanning functionality removed - using legacy discovery methods
         Ok(Vec::new()
     }
 
     /// Start service registry discovery
-    async fn start_service_registry_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>>  {debug!("Starting service registry discovery...")"
+    async fn start_service_registry_discovery(&self) -> SongbirdResult<Vec<DiscoveredPrimal>>  {debug!("Starting service registry discovery...")"
 
         let mut all_primals = Vec::new();
 
@@ -182,14 +182,14 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     }
 
     /// Start broadcast discovery
-    async fn start_broadcast_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
+    async fn start_broadcast_discovery(&self) -> SongbirdResult<Vec<DiscoveredPrimal>> {
         debug!("Starting broadcast discovery...")"
         // For now, return empty as UDP broadcast is complex to implement
         Ok(Vec::new()
     }
 
     /// Start federation discovery
-    async fn start_federation_discovery(&self) -> PrimalResult<Vec<DiscoveredPrimal>> {
+    async fn start_federation_discovery(&self) -> SongbirdResult<Vec<DiscoveredPrimal>> {
         debug!("Starting federation discovery...")"
         // For now, return empty as federation discovery is complex
         Ok(Vec::new()
@@ -267,7 +267,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     }
 
     /// Refresh discovery for all methods
-    pub async fn refresh_discovery(&mut self) -> PrimalResult<()> {
+    pub async fn refresh_discovery(&mut self) -> SongbirdResult<()> {
         info!("🔄 Refreshing Universal Primal discovery...")"
 
         // Clear old discoveries
@@ -278,7 +278,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
     }
 
     /// Perform health check on all discovered primals
-    pub async fn health_check_all_primals(&mut self) -> PrimalResult<()> {
+    pub async fn health_check_all_primals(&mut self) -> SongbirdResult<()> {
         debug!("Performing health checks on all discovered primals...")"
 
         let mut unhealthy_primals = Vec::new();

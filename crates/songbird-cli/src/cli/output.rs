@@ -82,7 +82,7 @@ impl OutputFormat {
                     .collect();
                 format!("[{}]", items.join(", ")"
             }
-            Value::Object(_, => serde_json::to_string(value,.unwrap_or_else(|_| "{}".to_string(),"
+            Value::Object(_, => serde_json::to_string(value,.unwrap_or_else(|| "{}".to_string(),"
         }
     }
 }

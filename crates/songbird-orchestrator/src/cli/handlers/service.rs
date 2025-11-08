@@ -25,7 +25,10 @@ pub async fn handle_service_command(service_command: Option<ServiceCommands>) ->
                 "orchestrator" => {
                     print_info("  Type: Core Service");
                     print_info("  Status: Running");
-                    print_info("  Port: 8080");
+                    print_info(&format!(
+                        "  Port: {}",
+                        songbird_config::defaults::ports::orchestrator_port()
+                    ));
                     print_info("  Description: Main orchestration service");
                 }
                 _ => print_error(&format!("Unknown service: {service_name}")),

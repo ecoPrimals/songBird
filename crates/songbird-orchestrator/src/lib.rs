@@ -75,8 +75,7 @@
 pub mod app;
 pub mod cli;
 pub mod core; // Consolidated core functionality
-              // Temporarily disabled pending syntax fixes
-              // pub mod integration;
+pub mod integration;
 pub mod server;
 
 // Re-export main orchestrator

@@ -29,7 +29,8 @@ pub mod compute;
 pub mod security;
 pub mod storage;
 
-pub use ai::AIAdapter;
-pub use compute::ComputeAdapter;
-pub use security::SecurityAdapter;
-pub use storage::StorageAdapter;
+// Re-export adapters
+pub use ai::{AIAdapter, AIHealth, AIMetrics, ModelType};
+pub use compute::{ComputeAdapter, ComputeMetrics, HealthStatus as ComputeHealth};
+pub use security::{SecurityAdapter, SecurityHealth, SecurityMetrics};
+pub use storage::{StorageAdapter, StorageHealth, StorageMetrics};

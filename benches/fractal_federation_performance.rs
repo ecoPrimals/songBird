@@ -37,7 +37,7 @@ fn benchmark_message_handling() {
     
     let test_provider = ServiceProviderInfo {
         name: "benchmark-service".to_string(),
-        endpoints: vec!["http://localhost:8080".to_string()],
+        endpoints: vec![format!("http://localhost:{}", songbird_config::defaults::ports::orchestrator_port())],
         capabilities: vec!["compute".to_string(), "storage".to_string()],
         metadata: HashMap::new(),
     ;};

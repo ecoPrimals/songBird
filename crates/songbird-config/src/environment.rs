@@ -1,3 +1,24 @@
+//! # Environment Configuration (DEPRECATED)
+//!
+//! ⚠️ **CONSOLIDATION COMPLETE** (November 8, 2025)
+//!
+//! This module just re-exports from config::environment, which itself is deprecated.
+//! Use `canonical::environment` instead for all environment configuration needs.
+//!
+//! ## Migration Path
+//! ```rust,ignore
+//! // ❌ OLD (deprecated):
+//! use songbird_config::environment::*;
+//!
+//! // ✅ NEW (use this):
+//! use songbird_config::canonical::environment::*;
+//! ```
+//!
+//! **Status**: Will be removed in v0.3.0 (Q2 2026)
+
+#![allow(deprecated)]
+#[deprecated(since = "0.2.0", note = "Use canonical::environment instead")]
+
 // use songbird_config; // FIXED: Circular import removed
 /// Environment configuration module
 ///

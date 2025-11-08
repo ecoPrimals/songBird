@@ -4,7 +4,9 @@
 //! NOTE: These tests use the capability-based `StorageAdapter` (primal-agnostic).
 
 use chrono::Utc;
-use songbird_types::SongbirdError;
+use songbird_test_utils::test_health_port;
+use songbird_types::SongbirdResult;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::storage::{StorageAdapter, StorageHealth, StorageMetrics};
 use std::time::Duration;
 
@@ -26,38 +28,48 @@ fn create_test_metrics() -> StorageMetrics {
 // ============================================================================
 
 #[test]
-fn test_storage_adapter_new_success() {
+fn test_storage_adapter_new_success() -> SongbirdResult<()> {
     // Arrange & Act
-    let adapter = StorageAdapter::new("http://example.com:8082".to_string());
+    let adapter = StorageAdapter::new(format!("http://example.com:{}", test_health_port()));
 
     // Assert
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
-    assert_eq!(adapter.endpoint(), "http://example.com:8082");
+    let adapter = adapter.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    assert_eq!(adapter.endpoint(), format!("http://example.com:{}", test_health_port()));
+    Ok(())
 }
 
 #[test]
-fn test_storage_adapter_endpoint_validation() {
+fn test_storage_adapter_endpoint_validation() -> SongbirdResult<()> {
     // Arrange & Act
     let adapter = StorageAdapter::new("http://storage-service".to_string());
 
     // Assert
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
+    let adapter = adapter.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
     assert_eq!(adapter.endpoint(), "http://storage-service");
+    Ok(())
 }
 
 #[test]
-fn test_storage_adapter_with_timeout() {
+fn test_storage_adapter_with_timeout() -> SongbirdResult<()> {
     // Arrange
     let custom_timeout = Duration::from_secs(30);
 
     // Act
-    let adapter =
-        StorageAdapter::new("http://example.com".to_string()).unwrap().with_timeout(custom_timeout);
+    let adapter = StorageAdapter::new("http://example.com".to_string())
+        .ok_or_else(|| {
+            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        })?
+        .with_timeout(custom_timeout);
 
     // Assert
     assert_eq!(adapter.endpoint(), "http://example.com");
+    Ok(())
 }
 
 // ============================================================================
@@ -274,7 +286,7 @@ fn test_storage_health_critical_write_latency() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_storage_collect_metrics_success() {
+async fn test_storage_collect_metrics_success() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -295,7 +307,9 @@ async fn test_storage_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -303,14 +317,17 @@ async fn test_storage_collect_metrics_success() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    let metrics = result.unwrap();
+    let metrics = result.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
     assert_eq!(metrics.total_capacity_bytes, 1_000_000_000_000);
     assert_eq!(metrics.used_bytes, 250_000_000_000);
     assert_eq!(metrics.object_count, 1_500);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_storage_collect_metrics_server_error_500() {
+async fn test_storage_collect_metrics_server_error_500() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -321,7 +338,9 @@ async fn test_storage_collect_metrics_server_error_500() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -331,10 +350,11 @@ async fn test_storage_collect_metrics_server_error_500() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Service { .. }));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_storage_collect_metrics_server_error_503() {
+async fn test_storage_collect_metrics_server_error_503() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -345,7 +365,9 @@ async fn test_storage_collect_metrics_server_error_503() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -353,13 +375,16 @@ async fn test_storage_collect_metrics_server_error_503() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_storage_collect_metrics_network_error() {
+async fn test_storage_collect_metrics_network_error() -> SongbirdResult<()> {
     // Arrange
     let adapter = StorageAdapter::new("http://nonexistent-host-12345:9999".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        })?
         .with_timeout(Duration::from_millis(100));
 
     // Act
@@ -369,14 +394,17 @@ async fn test_storage_collect_metrics_network_error() {
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(matches!(error, SongbirdError::Network { .. }));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_storage_collect_metrics_timeout() {
+async fn test_storage_collect_metrics_timeout() -> SongbirdResult<()> {
     // Arrange
     // Create adapter with very short timeout for non-responsive endpoint
     let adapter = StorageAdapter::new("http://10.255.255.1:9999".to_string())
-        .unwrap()
+        .ok_or_else(|| {
+            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        })?
         .with_timeout(Duration::from_millis(50));
 
     // Act
@@ -384,10 +412,11 @@ async fn test_storage_collect_metrics_timeout() {
 
     // Assert
     assert!(result.is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_storage_collect_metrics_invalid_json() {
+async fn test_storage_collect_metrics_invalid_json() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -398,7 +427,9 @@ async fn test_storage_collect_metrics_invalid_json() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -406,10 +437,11 @@ async fn test_storage_collect_metrics_invalid_json() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_storage_collect_metrics_missing_fields() {
+async fn test_storage_collect_metrics_missing_fields() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -420,7 +452,9 @@ async fn test_storage_collect_metrics_missing_fields() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.collect_metrics().await;
@@ -428,10 +462,11 @@ async fn test_storage_collect_metrics_missing_fields() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_storage_check_health_healthy() {
+async fn test_storage_check_health_healthy() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -452,7 +487,9 @@ async fn test_storage_check_health_healthy() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
@@ -460,11 +497,18 @@ async fn test_storage_check_health_healthy() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), StorageHealth::Healthy);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "TODO: Replace with proper error handling: {}",
+            e
+        )))?,
+        StorageHealth::Healthy
+    );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_storage_check_health_warning() {
+async fn test_storage_check_health_warning() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -485,7 +529,9 @@ async fn test_storage_check_health_warning() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
@@ -493,11 +539,18 @@ async fn test_storage_check_health_warning() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), StorageHealth::Warning);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "TODO: Replace with proper error handling: {}",
+            e
+        )))?,
+        StorageHealth::Warning
+    );
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_storage_check_health_critical() {
+async fn test_storage_check_health_critical() -> SongbirdResult<()> {
     // Arrange
     let mut server = mockito::Server::new_async().await;
     let mock = server
@@ -518,7 +571,9 @@ async fn test_storage_check_health_critical() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Act
     let result = adapter.check_health().await;
@@ -526,7 +581,14 @@ async fn test_storage_check_health_critical() {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), StorageHealth::Critical);
+    assert_eq!(
+        result.ok_or_else(|| SongbirdError::configuration(format!(
+            "TODO: Replace with proper error handling: {}",
+            e
+        )))?,
+        StorageHealth::Critical
+    );
+    Ok(())
 }
 
 // ============================================================================
@@ -573,16 +635,17 @@ fn test_storage_metrics_empty() {
 }
 
 #[test]
-fn test_storage_health_enum_equality() {
+fn test_storage_health_enum_equality() -> SongbirdResult<()> {
     // Test enum equality
     assert_eq!(StorageHealth::Healthy, StorageHealth::Healthy);
     assert_ne!(StorageHealth::Healthy, StorageHealth::Warning);
     assert_ne!(StorageHealth::Warning, StorageHealth::Critical);
     assert_eq!(StorageHealth::Critical, StorageHealth::Critical);
+    Ok(())
 }
 
 #[test]
-fn test_storage_metrics_serialization() {
+fn test_storage_metrics_serialization() -> SongbirdResult<()> {
     // Arrange
     let metrics = create_test_metrics();
 
@@ -591,14 +654,17 @@ fn test_storage_metrics_serialization() {
 
     // Assert
     assert!(json.is_ok());
-    let json_str = json.unwrap();
+    let json_str = json.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
     assert!(json_str.contains("total_capacity_bytes"));
     assert!(json_str.contains("used_bytes"));
     assert!(json_str.contains("object_count"));
+    Ok(())
 }
 
 #[test]
-fn test_storage_metrics_deserialization() {
+fn test_storage_metrics_deserialization() -> SongbirdResult<()> {
     // Arrange
     let json = r#"{
         "total_capacity_bytes": 1000000000000,
@@ -615,8 +681,11 @@ fn test_storage_metrics_deserialization() {
 
     // Assert
     assert!(metrics.is_ok());
-    let metrics = metrics.unwrap();
+    let metrics = metrics.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
     assert_eq!(metrics.total_capacity_bytes, 1_000_000_000_000);
     assert_eq!(metrics.used_bytes, 250_000_000_000);
     assert_eq!(metrics.object_count, 1_500);
+    Ok(())
 }

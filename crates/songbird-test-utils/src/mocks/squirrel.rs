@@ -241,6 +241,7 @@ mod tests {
     #![allow(unused)]
 
     use super::*;
+    use songbird_types::SongbirdError;
 
     #[tokio::test]
     async fn test_mock_squirrel_inference() {
@@ -252,7 +253,7 @@ mod tests {
             confidence: 0.95,
             latency_ms: 200.0,
         };
-        mock.set_response("test input", response.clone());
+        mock.set_response("test input", response);
 
         // Test inference
         let request = InferenceRequest {
@@ -282,6 +283,72 @@ mod tests {
         mock.simulate_normal_operation();
         let metrics = mock.get_metrics();
         assert!(metrics.gpu_utilization_percent < 50.0);
+        assert_eq!(mock.get_health(), HealthStatus::Healthy);
+    }
+
+    // ========== NEW TESTS (5 tests to improve coverage) ==========
+
+    #[tokio::test]
+    async fn test_squirrel_server_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
+        let mut mock = MockSquirrel::new();
+        let port = mock
+            .start()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Server should start: {}", e)))?;
+        assert!(port > 0);
+        assert_eq!(mock.port(), port);
+        mock.stop().await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_ai_metrics_default() {
+        let mock = MockSquirrel::new();
+        let metrics = mock.get_metrics();
+        assert_eq!(metrics.active_models, 3);
+        assert_eq!(metrics.total_requests, 1_500);
+        assert!((metrics.avg_latency_ms - 250.0).abs() < 0.001);
+        assert!((metrics.gpu_utilization_percent - 45.0).abs() < 0.001);
+    }
+
+    #[tokio::test]
+    async fn test_inference_with_different_models() {
+        let mock = MockSquirrel::new();
+
+        let llm_response = InferenceResponse {
+            output: "LLM output".to_string(),
+            confidence: 0.9,
+            latency_ms: 150.0,
+        };
+        mock.set_response("llm_input", llm_response);
+
+        let vision_request = InferenceRequest {
+            model_type: ModelType::Vision,
+            input: "vision_input".to_string(),
+            parameters: HashMap::new(),
+        };
+
+        // Unknown input returns None
+        let result = mock.infer(&vision_request);
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_health_status_changes() {
+        let mock = MockSquirrel::new();
+        assert_eq!(mock.get_health(), HealthStatus::Healthy);
+
+        mock.set_health(HealthStatus::Degraded);
+        assert_eq!(mock.get_health(), HealthStatus::Degraded);
+
+        mock.set_health(HealthStatus::Unhealthy);
+        assert_eq!(mock.get_health(), HealthStatus::Unhealthy);
+    }
+
+    #[test]
+    fn test_squirrel_default_trait() {
+        let mock = MockSquirrel::default();
+        assert_eq!(mock.port(), 0);
         assert_eq!(mock.get_health(), HealthStatus::Healthy);
     }
 }

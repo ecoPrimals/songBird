@@ -85,7 +85,7 @@ async fn main() -> SongbirdResult<()> {
     println!("\n🔍 Port Validation Utilities");
     println!("----------------------------");
     
-    let test_ports = [80, 8080, 49152, 65535];
+    let test_ports = [80, songbird_config::defaults::ports::orchestrator_port(), 49152, 65535];
     
     for port in test_ports {
         println!("  Port {}: Reserved={}, Dynamic={}", 

@@ -5,6 +5,7 @@
 use songbird_canonical::config::performance::{
     LatencyConfig, MemoryConfig, PerformanceConfig, ThroughputConfig,
 };
+use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_performance_config_default() {
@@ -123,7 +124,7 @@ fn test_latency_config_aggressive() {
 }
 
 #[test]
-fn test_latency_config_no_caching() {
+fn test_latency_config_no_caching() -> SongbirdResult<()> {
     let config = LatencyConfig {
         enable_pipelining: true,
         keep_alive_timeout: 60,
@@ -135,43 +136,53 @@ fn test_latency_config_no_caching() {
 
     assert!(!config.enable_caching);
     assert_eq!(config.cache_ttl, 0);
+    Ok(())
 }
 
 #[test]
-fn test_performance_config_serialization() {
+fn test_performance_config_serialization() -> SongbirdResult<()> {
     let config = PerformanceConfig::default();
 
-    let json = serde_json::to_string(&config).expect("Should serialize");
+    let json = serde_json::to_string(&config)
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
     assert!(json.contains("enable_zero_cost"));
     assert!(json.contains("memory"));
     assert!(json.contains("throughput"));
     assert!(json.contains("latency"));
 
-    let deserialized: PerformanceConfig = serde_json::from_str(&json).expect("Should deserialize");
+    let deserialized: PerformanceConfig =
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Should deserialize: {}", e),
+            debug_info: None,
+        })?;
     assert_eq!(config.enable_zero_cost, deserialized.enable_zero_cost);
+    Ok(())
 }
 
 #[test]
-fn test_performance_config_clone() {
+fn test_performance_config_clone() -> SongbirdResult<()> {
     let config = PerformanceConfig::default();
     let cloned = config.clone();
 
     assert_eq!(config.enable_zero_cost, cloned.enable_zero_cost);
     assert_eq!(config.memory.pool_size, cloned.memory.pool_size);
     assert_eq!(config.throughput.batch_size, cloned.throughput.batch_size);
+    Ok(())
 }
 
 #[test]
-fn test_performance_config_debug() {
+fn test_performance_config_debug() -> SongbirdResult<()> {
     let config = PerformanceConfig::default();
     let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("PerformanceConfig"));
     assert!(debug_str.contains("memory"));
+    Ok(())
 }
 
 #[test]
-fn test_memory_config_extreme_values() {
+fn test_memory_config_extreme_values() -> SongbirdResult<()> {
     let minimal = MemoryConfig {
         enable_pooling: false,
         pool_size: 10,
@@ -189,7 +200,16 @@ fn test_memory_config_extreme_values() {
     };
 
     assert!(minimal.pool_size < maximal.pool_size);
-    assert!(minimal.memory_limit_mb.unwrap() < maximal.memory_limit_mb.unwrap());
+    assert!(
+        minimal.memory_limit_mb.ok_or_else(|| SongbirdError::configuration(format!(
+            "TODO: Replace with proper error handling: {}",
+            e
+        )))? < maximal.memory_limit_mb.ok_or_else(|| SongbirdError::configuration(format!(
+            "TODO: Replace with proper error handling: {}",
+            e
+        )))?
+    );
+    Ok(())
 }
 
 #[test]

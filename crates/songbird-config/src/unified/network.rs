@@ -1,6 +1,48 @@
-//! Network configuration structures
+//! Network Configuration Structures (DEPRECATED)
+//!
+//! ⚠️ **CONSOLIDATION COMPLETE** (November 8, 2025)
+//!
+//! This module has been **fully migrated** to `canonical::network`. All 32 structs
+//! from this file have been either moved to canonical or removed as duplicates.
+//!
+//! ## Migration Path (Required for v0.3.0)
+//! ```rust,ignore
+//! // ❌ OLD (deprecated - will be removed in v0.3.0):
+//! use songbird_config::unified::network::{
+//!     UnifiedNetworkConfig,
+//!     LoadBalancingConfig,
+//!     ProxyConfig,
+//!     SelfAwareConfig,
+//! };
+//!
+//! // ✅ NEW (use this):
+//! use songbird_config::canonical::network::{
+//!     CanonicalNetworkConfig as NetworkConfig,
+//!     LoadBalancingConfig,
+//!     ProxyConfig,
+//!     SelfAwareConfig,
+//! };
+//! ```
+//!
+//! ## What Was Migrated
+//! All essential types from this module are now in `canonical::network`:
+//! - ✅ ServiceEndpoint
+//! - ✅ SelfAwareConfig  
+//! - ✅ LoadBalancingConfig
+//! - ✅ ProxyConfig
+//! - ✅ ConnectionPoolConfig
+//! - ✅ TcpConfig / UdpConfig
+//! - ✅ All other unique structs
+//!
+//! Duplicate structs were consolidated into canonical equivalents.
+//!
+//! **Status**: This module is maintained for backward compatibility only.  
+//! **Timeline**: Will be removed in v0.3.0 (Q2 2026)
 
-use crate::config::constants::get_bind_address;
+#![allow(deprecated)]
+#[deprecated(since = "0.2.0", note = "Use canonical::network instead")]
+
+use crate::canonical::constants::get_bind_address;
 use serde::{Deserialize, Serialize};
 
 use std::env;

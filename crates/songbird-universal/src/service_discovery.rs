@@ -7,7 +7,7 @@ use tracing::{debug, info, warn, error};
 
 use crate::types::CapabilityProvider;
 use serde::{Deserialize, Serialize};
-use songbird_types::errors::SongbirdResult;
+use songbird_types::{errors::SongbirdResult, SafeEnv};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -121,7 +121,7 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
             )
         ];
 
-        for (env_var, service_name, capabilities) in service_patterns  {if let Ok(endpoint) = std::env::var(env_var) {
+        for (env_var, service_name, capabilities) in service_patterns  {if let Ok(endpoint) = SafeEnv::get_required(env_var) {
                 let service = DiscoveredService {
                     id: Uuid::new_v4(,
                     name: service_name.to_string(),
@@ -144,9 +144,8 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
             let caps_env = format!("SERVICE_{}_CAPABILITIES", i)
 
             if let (Ok(endpoint), Ok(name) =
-                (std::env::var(&service_env), std::env::var(&name_env)
-             {let capabilities = std::env::var(&caps_env)
-                    .unwrap_or_else(|_| "generic".to_string()"
+                (SafeEnv::get_required(&service_env), SafeEnv::get_required(&name_env)
+             {let capabilities = SafeEnv::get_or_default(&caps_env, "generic")
                     .split(',')
                     .map(|s| s.trim().to_string()),
                     .collect();
@@ -340,9 +339,9 @@ use songbird_config;
         let test_service = DiscoveredService  {id: Uuid::new_v4()
             name: "test-service".to_string(),
             endpoint: &format!("http://{}:{}", 
-                std::env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string()),
-                std::env::var("TEST_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8080)
-            ),
+            SafeEnv::get_or_default("TEST_HOST", "localhost"),
+            SafeEnv::get_port("TEST_PORT", 8080)
+        ),
             capabilities: vec!["test".to_string(), "demo".to_string()],"
             health_status: ServiceHealth::Healthy,
             last_seen: chrono::Utc::now(,
@@ -369,9 +368,9 @@ use songbird_config;
         let service = DiscoveredService  {id: Uuid::new_v4()
             name: "test-service".to_string(),
             endpoint: &format!("http://{}:{}", 
-                std::env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string()),
-                std::env::var("TEST_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8080)
-            ),
+            SafeEnv::get_or_default("TEST_HOST", "localhost"),
+            SafeEnv::get_port("TEST_PORT", 8080)
+        ),
             capabilities: vec!["security".to_string()],"
             health_status: ServiceHealth::Healthy,
             last_seen: chrono::Utc::now(,

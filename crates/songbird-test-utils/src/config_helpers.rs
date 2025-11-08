@@ -1,7 +1,9 @@
 // Configuration test helpers
 ///
 /// Centralizes common configuration creation patterns used across tests
+
 /// Performance configuration test helpers
+#[allow(deprecated)]
 pub mod performance {
     use songbird_config::config::SongbirdConfig;
 
@@ -40,6 +42,7 @@ pub mod performance {
 }
 
 /// Network configuration test helpers
+#[allow(deprecated)]
 pub mod network {
     use songbird_config::config::SongbirdConfig;
 

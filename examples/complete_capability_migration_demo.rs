@@ -13,8 +13,9 @@ use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig;
 //! // Hardcoded primal names everywhere
 //! let beardog = Security PrimalClient: :new("http://beardog:config.network.https_port").await?;
 //! let nestgate = Storage PrimalClient::new("http://nestgate:config.network.http_port").await?;
-//! let toadstool = ComputePrimalClient::new("http://toadstool:8082").await?;
-//! let squirrel = AIPrimalClient::new("http://squirrel:8083").await?;
+//! // Note: These ports are now environment-aware via songbird_config::defaults::ports
+//! let toadstool = ComputePrimalClient::new(&format!("http://toadstool:{}", songbird_config::defaults::ports::beardog_port())).await?;
+//! let squirrel = AIPrimalClient::new(&format!("http://squirrel:{}", songbird_config::defaults::ports::metrics_port())).await?;
 //!
 //! // 2^n connection complexity
 //! beardog.connect_to_nestgate(nestgate_config).await?;

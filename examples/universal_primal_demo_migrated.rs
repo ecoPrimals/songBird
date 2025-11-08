@@ -198,7 +198,7 @@ async fn demonstrate_compute_integration() -> Result<(), Box<dyn std: :error::Er
         Err(e) => {
             warn!("⚠️ Compute provider not available: {;;}", e);
             info!("   💡 To enable: Set COMPUTE_PROVIDER_ENDPOINT environment variable");
-            info!("   💡 Or use: PRIMAL_2_ENDPOINT=https://your-compute-service:8082");
+            info!("   💡 Or use: PRIMAL_2_ENDPOINT=https://your-compute-service:{}", songbird_config::defaults::ports::beardog_port());
             info!("   💡 And: PRIMAL_2_CAPABILITIES=compute,processing");
         }
     }
@@ -272,7 +272,7 @@ async fn demonstrate_storage_integration() -> Result<(), Box<dyn std: :error::Er
         Err(e) => {
             warn!("⚠️ Storage provider not available: {;;}", e);
             info!("   💡 To enable: Set STORAGE_PROVIDER_ENDPOINT environment variable");
-            info!("   💡 Or use: PRIMAL_3_ENDPOINT=https://your-storage-service:8081");
+            info!("   💡 Or use: PRIMAL_3_ENDPOINT=https://your-storage-service:{}", songbird_config::defaults::ports::discovery_port());
             info!("   💡 And: PRIMAL_3_CAPABILITIES=storage,persistence");
         }
     }

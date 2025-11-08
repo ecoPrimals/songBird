@@ -8,6 +8,7 @@
 #![allow(
     clippy::unused_self,
     clippy::struct_excessive_bools,
+    clippy::similar_names,
     clippy::cast_precision_loss,
     clippy::unused_async
 )]
@@ -297,6 +298,7 @@ mod tests {
         PathSegment, RoutingPath, SecurityCapability, SecurityLevel, SovereigntyLevel,
     };
     use crate::types::{HealthStatus, PrimalType, ServiceInfo};
+    use songbird_types::SongbirdError;
     use std::collections::HashMap;
 
     fn create_test_service() -> ServiceInfo {
@@ -353,7 +355,7 @@ mod tests {
             enable_security_enhancement: false,
             enable_cost_optimization: true,
         };
-        let optimizer = NetworkEffectsOptimizer::with_config(config.clone());
+        let optimizer = NetworkEffectsOptimizer::with_config(config);
         assert!(!optimizer.optimization_config.enable_latency_optimization);
         assert!(optimizer.optimization_config.enable_throughput_optimization);
         assert!(!optimizer.optimization_config.enable_security_enhancement);
@@ -433,125 +435,154 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_optimize_for_network_effects_empty() {
+    async fn test_optimize_for_network_effects_empty() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let paths: Vec<RoutingPath> = vec![];
-        let result = optimizer.optimize_for_network_effects(&paths).await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().len(), 0);
+        let result = optimizer.optimize_for_network_effects(&paths).await.map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Failed to optimize empty paths for network effects: {}",
+                e
+            ))
+        })?;
+        assert_eq!(result.len(), 0);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_optimize_for_network_effects_single_path() {
+    async fn test_optimize_for_network_effects_single_path() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let paths = vec![create_test_path()];
-        let result = optimizer.optimize_for_network_effects(&paths).await;
-        assert!(result.is_ok());
-        let optimized = result.unwrap();
+        let optimized = optimizer.optimize_for_network_effects(&paths).await.map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Failed to optimize single path for network effects: {}",
+                e
+            ))
+        })?;
         assert_eq!(optimized.len(), 1);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_optimize_segment_for_network_effects() {
+    async fn test_optimize_segment_for_network_effects() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
-        let result = optimizer.optimize_segment_for_network_effects(&segment).await;
-        assert!(result.is_ok());
-        let optimized = result.unwrap();
+        let optimized =
+            optimizer.optimize_segment_for_network_effects(&segment).await.map_err(|e| {
+                SongbirdError::configuration(format!(
+                    "Failed to optimize segment for network effects: {}",
+                    e
+                ))
+            })?;
         assert!(optimized.security_capabilities.contains(&SecurityCapability::NetworkOptimized));
         assert_eq!(optimized.metadata.get("network_optimized"), Some(&"true".to_string()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_optimize_for_latency() {
+    async fn test_optimize_for_latency() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
         let original_score = segment.efficiency_score;
-        let result = optimizer.optimize_for_latency(&segment).await;
-        assert!(result.is_ok());
-        let optimized = result.unwrap();
+        let optimized = optimizer.optimize_for_latency(&segment).await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to optimize segment for latency: {}", e))
+        })?;
         assert_eq!(optimized.metadata.get("latency_optimized"), Some(&"true".to_string()));
         assert!(optimized.efficiency_score >= original_score);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_optimize_for_throughput() {
+    async fn test_optimize_for_throughput() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
         let original_score = segment.efficiency_score;
-        let result = optimizer.optimize_for_throughput(&segment).await;
-        assert!(result.is_ok());
-        let optimized = result.unwrap();
+        let optimized = optimizer.optimize_for_throughput(&segment).await.map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Failed to optimize segment for throughput: {}",
+                e
+            ))
+        })?;
         assert_eq!(optimized.metadata.get("throughput_optimized"), Some(&"true".to_string()));
         assert!(optimized.efficiency_score >= original_score);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_enhance_security() {
+    async fn test_enhance_security() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
-        let result = optimizer.enhance_security(&segment).await;
-        assert!(result.is_ok());
-        let optimized = result.unwrap();
+        let optimized = optimizer.enhance_security(&segment).await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to enhance security for segment: {}", e))
+        })?;
         assert!(optimized
             .security_capabilities
             .contains(&SecurityCapability::SovereigntyCompliant));
         assert_eq!(optimized.metadata.get("security_enhanced"), Some(&"true".to_string()));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_optimize_for_cost() {
+    async fn test_optimize_for_cost() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
         let original_score = segment.efficiency_score;
-        let result = optimizer.optimize_for_cost(&segment).await;
-        assert!(result.is_ok());
-        let optimized = result.unwrap();
+        let optimized = optimizer.optimize_for_cost(&segment).await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to optimize segment for cost: {}", e))
+        })?;
         assert_eq!(optimized.metadata.get("cost_optimized"), Some(&"true".to_string()));
         assert!(optimized.efficiency_score <= original_score);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_assess_path_security_level_minimal() {
+    async fn test_assess_path_security_level_minimal() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let services: Vec<&ServiceInfo> = vec![];
-        let result = optimizer.assess_path_security_level(&services).await;
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), SecurityLevel::Minimal));
+        let result = optimizer.assess_path_security_level(&services).await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to assess minimal security level: {}", e))
+        })?;
+        assert!(matches!(result, SecurityLevel::Minimal));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_assess_path_security_level_medium() {
+    async fn test_assess_path_security_level_medium() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let service = create_test_service();
         let services = vec![&service];
-        let result = optimizer.assess_path_security_level(&services).await;
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), SecurityLevel::Medium));
+        let result = optimizer.assess_path_security_level(&services).await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to assess medium security level: {}", e))
+        })?;
+        assert!(matches!(result, SecurityLevel::Medium));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_assess_path_security_level_high() {
+    async fn test_assess_path_security_level_high() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let service1 = create_test_service();
         let service2 = create_test_service();
         let services = vec![&service1, &service2];
-        let result = optimizer.assess_path_security_level(&services).await;
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), SecurityLevel::High));
+        let result = optimizer.assess_path_security_level(&services).await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to assess high security level: {}", e))
+        })?;
+        assert!(matches!(result, SecurityLevel::High));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_assess_path_security_level_maximum() {
+    async fn test_assess_path_security_level_maximum() -> SongbirdResult<()> {
         let optimizer = NetworkEffectsOptimizer::new();
         let service1 = create_test_service();
         let service2 = create_test_service();
         let service3 = create_test_service();
         let service4 = create_test_service();
         let services = vec![&service1, &service2, &service3, &service4];
-        let result = optimizer.assess_path_security_level(&services).await;
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), SecurityLevel::Maximum));
+        let result = optimizer.assess_path_security_level(&services).await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to assess maximum security level: {}", e))
+        })?;
+        assert!(matches!(result, SecurityLevel::Maximum));
+        Ok(())
     }
 
     #[test]

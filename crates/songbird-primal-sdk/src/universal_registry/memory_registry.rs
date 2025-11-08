@@ -1,6 +1,7 @@
 //! In-memory implementation of Universal Service Registry
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
+
 use chrono::Utc;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
@@ -8,17 +9,19 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use super::traits::*;
 use super::types::*;
-use crate::errors::{PrimalError, PrimalResult};
+use crate::errors::{PrimalError, SongbirdResult};
 
 /// In-memory service registry implementation
 #[derive(Debug)]
-pub struct MemoryServiceRegistry  {services: Arc<RwLock<HashMap<Uuid, ServiceInfo>>>)
+pub struct MemoryServiceRegistry {
+    services: Arc<RwLock<HashMap<Uuid, ServiceInfo>>>,
 }
 
-impl MemoryServiceRegistry  {/// Create a new memory-based service registry
+impl MemoryServiceRegistry {
+    /// Create a new memory-based service registry
     pub fn new() -> Self {
         Self {
-            services: Arc::new(RwLock::new(HashMap::new()),
+            services: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
@@ -29,11 +32,11 @@ impl Default for MemoryServiceRegistry {
     }
 }
 
-#[async_trait]
-impl UniversalServiceRegistry for MemoryServiceRegistry  {async fn register_service(
-        &self)
+impl UniversalServiceRegistry for MemoryServiceRegistry {
+    async fn register_service(
+        &self,
         registration: UniversalServiceRegistration,
-    ) -> PrimalResult<ServiceHandle>  {let mut services = self.services.write().await;
+    ) -> SongbirdResult<ServiceHandle> {let mut services = self.services.write().await;
 
         let service_info = ServiceInfo {
             registration: registration.clone(,
@@ -48,7 +51,7 @@ impl UniversalServiceRegistry for MemoryServiceRegistry  {async fn register_serv
         })
     }
 
-    async fn deregister_service(&self, service_id: Uuid) -> PrimalResult<()> {
+    async fn deregister_service(&self, service_id: Uuid) -> SongbirdResult<()> {
         let mut services = self.services.write().await;
         services.remove(&service_id);
         Ok(()),
@@ -58,7 +61,7 @@ impl UniversalServiceRegistry for MemoryServiceRegistry  {async fn register_serv
         &self)
         service_id: Uuid,
         registration: UniversalServiceRegistration,
-    ) -> PrimalResult<()> {
+    ) -> SongbirdResult<()> {
         let mut services = self.services.write().await;
 
         if let Some(service_info) = services.get_mut(&service_id) {
@@ -69,12 +72,12 @@ impl UniversalServiceRegistry for MemoryServiceRegistry  {async fn register_serv
         }
     }
 
-    async fn get_service(&self, service_id: Uuid) -> PrimalResult<Option<ServiceInfo>> {
+    async fn get_service(&self, service_id: Uuid) -> SongbirdResult<Option<ServiceInfo>> {
         let services = self.services.read().await;
         Ok(services.get(&service_id).cloned()
     }
 
-    async fn list_services(&self, filter: Option<ServiceFilter>) -> PrimalResult<Vec<ServiceInfo>> {
+    async fn list_services(&self, filter: Option<ServiceFilter>) -> SongbirdResult<Vec<ServiceInfo>> {
         let services = self.services.read().await;
         let mut result: Vec<ServiceInfo> = services.values().cloned().collect();
 
@@ -119,7 +122,7 @@ impl UniversalServiceRegistry for MemoryServiceRegistry  {async fn register_serv
     async fn find_services_by_capability(
         &self)
         required_capabilities: Vec<ServiceCapability>,
-    ) -> PrimalResult<Vec<ServiceInfo>> {
+    ) -> SongbirdResult<Vec<ServiceInfo>> {
         let services = self.services.read().await;
         // Pre-allocate with estimated capacity based on service count
         let mut matching_services = Vec::with_capacity(services.len().min(16);
@@ -150,7 +153,7 @@ impl UniversalServiceRegistry for MemoryServiceRegistry  {async fn register_serv
         &self)
         service_id: Uuid,
         health_status: HealthStatus,
-    ) -> PrimalResult<()> {
+    ) -> SongbirdResult<()> {
         let mut services = self.services.write().await;
 
         if let Some(service_info) = services.get_mut(&service_id) {
@@ -161,7 +164,7 @@ impl UniversalServiceRegistry for MemoryServiceRegistry  {async fn register_serv
         }
     }
 
-    async fn heartbeat(&self, service_id: Uuid) -> PrimalResult<()> {
+    async fn heartbeat(&self, service_id: Uuid) -> SongbirdResult<()> {
         // In a real implementation, this would update last_heartbeat timestamp
         // For now, just verify the service exists
         let services = self.services.read().await;
@@ -176,7 +179,7 @@ impl UniversalServiceRegistry for MemoryServiceRegistry  {async fn register_serv
     async fn get_services_by_category(
         &self)
         category: ServiceCategory,
-    ) -> PrimalResult<Vec<ServiceInfo>> {
+    ) -> SongbirdResult<Vec<ServiceInfo>> {
         let services = self.services.read().await;
         let result: Vec<ServiceInfo> = services
             .values()
@@ -187,7 +190,7 @@ impl UniversalServiceRegistry for MemoryServiceRegistry  {async fn register_serv
         Ok(result)
     }
 
-    async fn get_registry_stats(&self) -> PrimalResult<RegistryStats>  {let services = self.services.read().await;
+    async fn get_registry_stats(&self) -> SongbirdResult<RegistryStats>  {let services = self.services.read().await;
 
         let total_services = services.len();
         let mut healthy_services = 0;

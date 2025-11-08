@@ -6,6 +6,7 @@ use songbird_canonical::config::ai_first::{
     AIFirstConfig, ClassificationStrategy, ConfidenceScoringConfig, HumanCollaborationConfig,
     StreamingInterfaceConfig, WorkloadClassificationConfig,
 };
+use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_ai_first_config_default() {
@@ -119,7 +120,7 @@ fn test_streaming_interface_defaults() {
 }
 
 #[test]
-fn test_streaming_interface_high_load() {
+fn test_streaming_interface_high_load() -> SongbirdResult<()> {
     let config = StreamingInterfaceConfig {
         enabled: true,
         max_concurrent_streams: 1000,
@@ -131,20 +132,28 @@ fn test_streaming_interface_high_load() {
     assert_eq!(config.max_concurrent_streams, 1000);
     assert_eq!(config.buffer_size, 65536);
     assert_eq!(config.heartbeat_interval, 10);
+    Ok(())
 }
 
 #[test]
-fn test_ai_first_config_serialization() {
+fn test_ai_first_config_serialization() -> SongbirdResult<()> {
     let config = AIFirstConfig::default();
 
     // Test JSON serialization
-    let json = serde_json::to_string(&config).expect("Should serialize");
+    let json = serde_json::to_string(&config)
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
     assert!(json.contains("enable_ai_responses"));
     assert!(json.contains("confidence_scoring"));
 
     // Test deserialization
-    let deserialized: AIFirstConfig = serde_json::from_str(&json).expect("Should deserialize");
+    let deserialized: AIFirstConfig =
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Should deserialize: {}", e),
+            debug_info: None,
+        })?;
     assert_eq!(config.enable_ai_responses, deserialized.enable_ai_responses);
+    Ok(())
 }
 
 #[test]
@@ -160,7 +169,7 @@ fn test_ai_first_config_clone() {
 }
 
 #[test]
-fn test_confidence_thresholds_validation() {
+fn test_confidence_thresholds_validation() -> SongbirdResult<()> {
     // Valid configuration
     let valid = ConfidenceScoringConfig {
         enabled: true,
@@ -172,15 +181,17 @@ fn test_confidence_thresholds_validation() {
     assert!(valid.min_threshold < valid.high_threshold);
     assert!(valid.min_threshold >= 0.0 && valid.min_threshold <= 1.0);
     assert!(valid.high_threshold >= 0.0 && valid.high_threshold <= 1.0);
+    Ok(())
 }
 
 #[test]
-fn test_ai_first_config_debug() {
+fn test_ai_first_config_debug() -> SongbirdResult<()> {
     let config = AIFirstConfig::default();
     let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("AIFirstConfig"));
     assert!(debug_str.contains("enable_ai_responses"));
+    Ok(())
 }
 
 #[test]
@@ -211,7 +222,7 @@ fn test_streaming_interface_disabled() {
 }
 
 #[test]
-fn test_human_collaboration_timeout_variations() {
+fn test_human_collaboration_timeout_variations() -> SongbirdResult<()> {
     let fast = HumanCollaborationConfig {
         enabled: true,
         require_human_approval: true,
@@ -228,20 +239,27 @@ fn test_human_collaboration_timeout_variations() {
 
     assert!(fast.max_human_response_time < slow.max_human_response_time);
     assert!(fast.escalation_threshold > slow.escalation_threshold);
+    Ok(())
 }
 
 #[test]
-fn test_workload_classification_serialization() {
+fn test_workload_classification_serialization() -> SongbirdResult<()> {
     let config = WorkloadClassificationConfig {
         enabled: true,
         strategies: vec![ClassificationStrategy::Hybrid],
         model_update_interval: 48,
     };
 
-    let json = serde_json::to_string(&config).expect("Should serialize");
+    let json = serde_json::to_string(&config)
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
     let deserialized: WorkloadClassificationConfig =
-        serde_json::from_str(&json).expect("Should deserialize");
+        serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Should deserialize: {}", e),
+            debug_info: None,
+        })?;
 
     assert_eq!(config.enabled, deserialized.enabled);
     assert_eq!(config.model_update_interval, deserialized.model_update_interval);
+    Ok(())
 }

@@ -4,9 +4,11 @@
 //! It does NOT know about specific primals (`BearDog` is just one example).
 //! Discovery is capability-based through environment hints or zero-knowledge bootstrap.
 
-use async_trait::async_trait;
+// Allow async_fn_in_trait warning - our traits guarantee Send + Sync
+#![allow(async_fn_in_trait)]
+
 use serde::{Deserialize, Serialize};
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
 
@@ -107,25 +109,39 @@ impl SecurityAdapter {
     /// # Errors
     ///
     /// Returns an error if no security capability can be discovered.
-    #[allow(clippy::unused_async)] // Will be async when ZeroKnowledgeBootstrap integration is complete
     pub async fn from_discovery() -> SongbirdResult<Self> {
-        // Try environment variable first
-        if let Ok(endpoint) = std::env::var("SONGBIRD_SECURITY_ENDPOINT") {
-            debug!("🔍 Security capability discovered via SONGBIRD_SECURITY_ENDPOINT");
-            return Self::new(endpoint);
+        use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
+
+        // ✅ PHASE 1 INTEGRATION: Multi-tier capability discovery
+        let resolver = CapabilityEndpointResolver::new();
+
+        match resolver.get_endpoint(CapabilityType::Security).await {
+            Ok(endpoint) => {
+                debug!("✅ Security capability discovered via resolver: {}", endpoint);
+                Self::new(endpoint)
+            }
+            Err(discovery_err) => {
+                debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
+
+                // Fallback 1: Legacy environment variables
+                if let Ok(endpoint) = SafeEnv::get_required("SONGBIRD_SECURITY_ENDPOINT")
+                    .or_else(|_| SafeEnv::get_required("SECURITY_PROVIDER_ENDPOINT"))
+                    .or_else(|_| SafeEnv::get_required("BEARDOG_ENDPOINT"))
+                {
+                    debug!("⚠️ Using legacy environment variable for security endpoint");
+                    return Self::new(endpoint);
+                }
+
+                // Fallback 2: Construct from host + port
+                let endpoint = SafeEnv::get_or_default("SONGBIRD_HOST", 
+                    &format!("http://{}", songbird_config::constants::network::DEFAULT_HOST));
+                let port = SafeEnv::get_port("SONGBIRD_SECURITY_PORT", 8081).to_string();
+                let discovered_endpoint = format!("{endpoint}:{port}");
+
+                debug!("🔄 Using fallback security endpoint: {}", discovered_endpoint);
+                Self::new(discovered_endpoint)
+            }
         }
-
-        // Capability-based discovery using ZeroKnowledgeBootstrap
-        // This provides true infant discovery without hardcoded endpoints
-        let endpoint = std::env::var("SONGBIRD_HOST").unwrap_or_else(|_| {
-            format!("http://{}", songbird_config::constants::network::DEFAULT_HOST)
-        });
-        let port = std::env::var("SONGBIRD_SECURITY_PORT")
-            .unwrap_or_else(|_| "8081".to_string());
-        let discovered_endpoint = format!("{endpoint}:{port}");
-
-        debug!("🔍 Security capability discovered at: {}", discovered_endpoint);
-        Self::new(discovered_endpoint)
     }
 
     /// Create adapter with explicit endpoint (for testing or explicit configuration)
@@ -259,8 +275,7 @@ impl SecurityAdapter {
 }
 
 /// Trait for security capability providers
-#[async_trait]
-pub trait SecurityProvider {
+pub trait SecurityProvider: Send + Sync {
     /// Collect current security metrics
     async fn collect_security_metrics(&self) -> SongbirdResult<SecurityMetrics>;
 
@@ -274,7 +289,6 @@ pub trait SecurityProvider {
     }
 }
 
-#[async_trait]
 impl SecurityProvider for SecurityAdapter {
     async fn collect_security_metrics(&self) -> SongbirdResult<SecurityMetrics> {
         self.collect_metrics().await
@@ -286,302 +300,5 @@ impl SecurityProvider for SecurityAdapter {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_security_metrics_calculations() {
-        let metrics = SecurityMetrics {
-            active_sessions: 50,
-            failed_auth_attempts: 10,
-            blocked_ips: 2,
-            security_score: 0.95,
-            timestamp: chrono::Utc::now(),
-        };
-
-        assert!(!metrics.is_under_attack());
-        assert_eq!(metrics.health_status(), SecurityHealth::Healthy);
-    }
-
-    #[test]
-    fn test_security_under_attack() {
-        let metrics = SecurityMetrics {
-            active_sessions: 100,
-            failed_auth_attempts: 150,
-            blocked_ips: 60,
-            security_score: 0.45,
-            timestamp: chrono::Utc::now(),
-        };
-
-        assert!(metrics.is_under_attack());
-        assert_eq!(metrics.health_status(), SecurityHealth::Critical);
-    }
-
-    #[test]
-    fn test_security_warning() {
-        let metrics = SecurityMetrics {
-            active_sessions: 75,
-            failed_auth_attempts: 60,
-            blocked_ips: 10,
-            security_score: 0.65,
-            timestamp: chrono::Utc::now(),
-        };
-
-        assert!(!metrics.is_under_attack());
-        assert_eq!(metrics.health_status(), SecurityHealth::Warning);
-    }
-
-    #[test]
-    fn test_adapter_creation() {
-        let adapter = SecurityAdapter::new("http://security-provider:8081".to_string())
-            .expect("Adapter creation should succeed");
-        assert_eq!(adapter.endpoint(), "http://security-provider:8081");
-    }
-
-    #[test]
-    fn test_adapter_with_timeout() {
-        let adapter = SecurityAdapter::new("http://security-provider:8081".to_string())
-            .expect("Adapter creation should succeed")
-            .with_timeout(Duration::from_secs(10));
-        assert_eq!(adapter.timeout, Duration::from_secs(10));
-    }
-
-    #[test]
-    fn test_auth_result_equality() {
-        assert_eq!(AuthResult::Authorized, AuthResult::Authorized);
-        assert_ne!(AuthResult::Authorized, AuthResult::Unauthorized);
-        assert_eq!(AuthResult::Expired, AuthResult::Expired);
-    }
-
-    #[test]
-    fn test_security_health_critical_low_score() {
-        let metrics = SecurityMetrics {
-            active_sessions: 10,
-            failed_auth_attempts: 5,
-            blocked_ips: 1,
-            security_score: 0.45,
-            timestamp: chrono::Utc::now(),
-        };
-
-        assert_eq!(
-            metrics.health_status(),
-            SecurityHealth::Critical,
-            "Low security score should result in Critical status"
-        );
-    }
-
-    #[test]
-    fn test_security_health_critical_high_failed_attempts() {
-        let metrics = SecurityMetrics {
-            active_sessions: 10,
-            failed_auth_attempts: 101,
-            blocked_ips: 1,
-            security_score: 0.95,
-            timestamp: chrono::Utc::now(),
-        };
-
-        assert!(metrics.is_under_attack(), "High failed attempts should trigger under attack");
-        assert_eq!(metrics.health_status(), SecurityHealth::Critical);
-    }
-
-    #[test]
-    fn test_security_health_critical_high_blocked_ips() {
-        let metrics = SecurityMetrics {
-            active_sessions: 10,
-            failed_auth_attempts: 5,
-            blocked_ips: 51,
-            security_score: 0.95,
-            timestamp: chrono::Utc::now(),
-        };
-
-        assert!(metrics.is_under_attack(), "High blocked IPs should trigger under attack");
-        assert_eq!(metrics.health_status(), SecurityHealth::Critical);
-    }
-
-    #[test]
-    fn test_security_health_warning_moderate_score() {
-        let metrics = SecurityMetrics {
-            active_sessions: 25,
-            failed_auth_attempts: 55,
-            blocked_ips: 10,
-            security_score: 0.65,
-            timestamp: chrono::Utc::now(),
-        };
-
-        assert_eq!(
-            metrics.health_status(),
-            SecurityHealth::Warning,
-            "Moderate score with elevated failed attempts should be Warning"
-        );
-    }
-
-    #[test]
-    fn test_security_health_boundary_cases() {
-        // Test exactly at boundary: security_score = 0.5
-        let metrics = SecurityMetrics {
-            active_sessions: 10,
-            failed_auth_attempts: 10,
-            blocked_ips: 5,
-            security_score: 0.5,
-            timestamp: chrono::Utc::now(),
-        };
-        assert_eq!(
-            metrics.health_status(),
-            SecurityHealth::Warning,
-            "Score at 0.5 boundary should be Warning"
-        );
-
-        // Test exactly at boundary: failed_auth_attempts = 100
-        let metrics = SecurityMetrics {
-            active_sessions: 10,
-            failed_auth_attempts: 100,
-            blocked_ips: 5,
-            security_score: 0.9,
-            timestamp: chrono::Utc::now(),
-        };
-        assert!(
-            !metrics.is_under_attack(),
-            "Exactly 100 failed attempts should not trigger attack"
-        );
-    }
-
-    #[test]
-    fn test_auth_result_variants() {
-        let results = vec![
-            AuthResult::Authorized,
-            AuthResult::Unauthorized,
-            AuthResult::Expired,
-            AuthResult::Invalid,
-        ];
-
-        assert_eq!(results.len(), 4, "Should have all 4 auth result variants");
-    }
-
-    #[test]
-    fn test_security_metrics_serialization() {
-        let metrics = SecurityMetrics {
-            active_sessions: 42,
-            failed_auth_attempts: 7,
-            blocked_ips: 3,
-            security_score: 0.88,
-            timestamp: chrono::Utc::now(),
-        };
-
-        let serialized = serde_json::to_string(&metrics);
-        assert!(serialized.is_ok(), "SecurityMetrics should serialize successfully");
-
-        let json = serialized.unwrap();
-        assert!(json.contains("42"), "JSON should contain active_sessions value");
-        assert!(json.contains("0.88"), "JSON should contain security_score");
-    }
-
-    #[test]
-    fn test_security_metrics_deserialization() {
-        let json = r#"{
-            "active_sessions": 100,
-            "failed_auth_attempts": 25,
-            "blocked_ips": 8,
-            "security_score": 0.75,
-            "timestamp": "2024-01-01T00:00:00Z"
-        }"#;
-
-        let result: Result<SecurityMetrics, _> = serde_json::from_str(json);
-        assert!(result.is_ok(), "SecurityMetrics should deserialize successfully");
-
-        let metrics = result.unwrap();
-        assert_eq!(metrics.active_sessions, 100);
-        assert_eq!(metrics.failed_auth_attempts, 25);
-        assert_eq!(metrics.blocked_ips, 8);
-        assert!((metrics.security_score - 0.75).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_security_health_serialization() {
-        let health = SecurityHealth::Critical;
-        let serialized = serde_json::to_string(&health);
-        assert!(serialized.is_ok(), "SecurityHealth should serialize successfully");
-    }
-
-    #[test]
-    fn test_adapter_endpoint_access() {
-        let endpoint = "http://test-security:9000";
-        let adapter =
-            SecurityAdapter::new(endpoint.to_string()).expect("Adapter creation should succeed");
-
-        assert_eq!(adapter.endpoint(), endpoint, "Endpoint should be accessible");
-    }
-
-    #[test]
-    fn test_adapter_timeout_configuration() {
-        let adapter = SecurityAdapter::new("http://test:8080".to_string())
-            .expect("Adapter creation should succeed")
-            .with_timeout(Duration::from_secs(5));
-
-        assert_eq!(adapter.timeout, Duration::from_secs(5), "Timeout should be configurable");
-    }
-
-    #[test]
-    fn test_adapter_default_timeout() {
-        let adapter = SecurityAdapter::new("http://test:8080".to_string())
-            .expect("Adapter creation should succeed");
-
-        assert_eq!(adapter.timeout, Duration::from_secs(5), "Default timeout should be 5 seconds");
-    }
-
-    #[test]
-    fn test_auth_result_serialization() {
-        let result = AuthResult::Authorized;
-        let serialized = serde_json::to_string(&result);
-        assert!(serialized.is_ok(), "AuthResult should serialize successfully");
-    }
-
-    #[test]
-    fn test_security_metrics_zero_values() {
-        let metrics = SecurityMetrics {
-            active_sessions: 0,
-            failed_auth_attempts: 0,
-            blocked_ips: 0,
-            security_score: 1.0,
-            timestamp: chrono::Utc::now(),
-        };
-
-        assert!(!metrics.is_under_attack(), "Zero values should not indicate attack");
-        assert_eq!(
-            metrics.health_status(),
-            SecurityHealth::Healthy,
-            "Perfect score should be Healthy"
-        );
-    }
-
-    #[test]
-    fn test_security_metrics_max_values() {
-        let metrics = SecurityMetrics {
-            active_sessions: u32::MAX,
-            failed_auth_attempts: u32::MAX,
-            blocked_ips: u32::MAX,
-            security_score: 0.0,
-            timestamp: chrono::Utc::now(),
-        };
-
-        assert!(metrics.is_under_attack(), "Max values should indicate attack");
-        assert_eq!(
-            metrics.health_status(),
-            SecurityHealth::Critical,
-            "Worst case should be Critical"
-        );
-    }
-
-    #[test]
-    fn test_adapter_with_various_endpoints() {
-        // Test empty endpoint (currently accepted, may want to validate later)
-        let result = SecurityAdapter::new("".to_string());
-        assert!(result.is_ok(), "Empty endpoint creates adapter (validation could be added)");
-
-        // Test various endpoint formats
-        let result = SecurityAdapter::new("http://localhost:8080".to_string());
-        assert!(result.is_ok(), "Valid HTTP endpoint should work");
-
-        let result = SecurityAdapter::new("https://security.example.com".to_string());
-        assert!(result.is_ok(), "Valid HTTPS endpoint should work");
-    }
-}
+#[path = "security_tests.rs"]
+mod tests;

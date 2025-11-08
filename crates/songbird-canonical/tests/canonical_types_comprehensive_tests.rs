@@ -6,6 +6,7 @@ use songbird_canonical::{
     AIResponseMetadata, CacheStatus, ConfidenceScore, Endpoint, RequestId, ResponsePerformance,
     ServiceId, SongbirdResponse, SuggestedAction,
 };
+use songbird_test_utils::{test_bind_address, test_orchestrator_port};
 use std::time::Instant;
 
 // ============================================================================
@@ -48,7 +49,8 @@ fn test_service_id_clone() {
 }
 
 #[test]
-fn test_service_id_hash() {
+fn test_service_id_hash() -> SongbirdResult<()> {
+    use songbird_types::{SongbirdError, SongbirdResult};
     use std::collections::HashSet;
     let mut set = HashSet::new();
     set.insert(ServiceId::new("service-1"));
@@ -56,6 +58,7 @@ fn test_service_id_hash() {
     set.insert(ServiceId::new("service-1")); // Duplicate
 
     assert_eq!(set.len(), 2);
+    Ok(())
 }
 
 #[test]
@@ -104,8 +107,9 @@ fn test_endpoint_to_url_with_leading_slash() {
 
 #[test]
 fn test_endpoint_http() {
-    let endpoint = Endpoint::new("http", "localhost", 8080);
-    assert_eq!(endpoint.to_url(), "http://localhost:8080");
+    let bind_addr = test_bind_address();
+    let endpoint = Endpoint::new("http", bind_addr.as_str(), test_orchestrator_port());
+    assert_eq!(endpoint.to_url(), format!("http://{}:{}", bind_addr, test_orchestrator_port()));
 }
 
 #[test]
@@ -475,9 +479,10 @@ fn test_full_response_workflow() {
 
 #[test]
 fn test_endpoint_combinations() {
+    let bind_addr = test_bind_address();
     let endpoints = vec![
         ("https", "api.example.com", 443, Some("/v1/users")),
-        ("http", "localhost", 8080, Some("/api/test")),
+        ("http", bind_addr.as_str(), 8080, Some("/api/test")),
         ("tcp", "192.168.1.1", 9000, None),
         ("ws", "websocket.example.com", 8443, Some("/stream")),
     ];

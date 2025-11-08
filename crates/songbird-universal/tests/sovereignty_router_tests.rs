@@ -2,6 +2,11 @@
 //!
 //! Comprehensive tests for sovereignty-aware routing functionality
 
+use songbird_test_utils::test_discovery_port;
+use songbird_test_utils::test_federation_port;
+use songbird_test_utils::test_health_port;
+use songbird_test_utils::test_orchestrator_port;
+use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::sovereignty::router::{SovereigntyPreferences, SovereigntyRouter};
 use songbird_universal::sovereignty::types::{RiskSeverity, SecurityCapability, SovereigntyLevel};
 use songbird_universal::types::{
@@ -35,20 +40,22 @@ fn create_test_service(id: &str, name: &str, endpoint: &str) -> ServiceInfo {
 }
 
 #[test]
-fn test_sovereignty_router_new() {
+fn test_sovereignty_router_new() -> SongbirdResult<()> {
     let router = SovereigntyRouter::new();
 
     // Should have default preferences
     let debug_str = format!("{router:?}");
     assert!(debug_str.contains("SovereigntyRouter"));
+    Ok(())
 }
 
 #[test]
-fn test_sovereignty_router_default() {
+fn test_sovereignty_router_default() -> SongbirdResult<()> {
     let router = SovereigntyRouter::default();
 
     let debug_str = format!("{router:?}");
     assert!(debug_str.contains("SovereigntyRouter"));
+    Ok(())
 }
 
 #[test]
@@ -83,7 +90,7 @@ fn test_sovereignty_preferences_custom() {
 }
 
 #[test]
-fn test_sovereignty_router_with_preferences() {
+fn test_sovereignty_router_with_preferences() -> SongbirdResult<()> {
     let prefs = SovereigntyPreferences {
         minimum_sovereignty_level: SovereigntyLevel::HighlySovereign,
         sovereignty_weight: 0.8,
@@ -95,10 +102,11 @@ fn test_sovereignty_router_with_preferences() {
 
     let debug_str = format!("{router:?}");
     assert!(debug_str.contains("SovereigntyRouter"));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_find_sovereignty_aware_paths_empty_services() {
+async fn test_find_sovereignty_aware_paths_empty_services() -> SongbirdResult<()> {
     let router = SovereigntyRouter::new();
 
     let request = UniversalRequest {
@@ -114,12 +122,15 @@ async fn test_find_sovereignty_aware_paths_empty_services() {
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let paths = result.unwrap();
+    let paths = result.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
     assert!(paths.is_empty());
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_find_sovereignty_aware_paths_single_service() {
+async fn test_find_sovereignty_aware_paths_single_service() -> SongbirdResult<()> {
     // Use lower sovereignty requirements to ensure paths are found
     let prefs = SovereigntyPreferences {
         minimum_sovereignty_level: SovereigntyLevel::LimitedSovereignty,
@@ -138,14 +149,18 @@ async fn test_find_sovereignty_aware_paths_single_service() {
         security_context: None,
     };
 
-    let service = create_test_service("service-001", "Test Service", "http://localhost:8080");
+    let endpoint = format!("http://localhost:{}", test_orchestrator_port());
+    let service = create_test_service("service-001", "Test Service", &endpoint);
 
     let services = vec![service];
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
     // Note: May be empty if services don't meet even relaxed requirements
-    let _paths = result.unwrap();
+    let _paths = result.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
+    Ok(())
 }
 
 #[tokio::test]
@@ -168,21 +183,27 @@ async fn test_find_sovereignty_aware_paths_multiple_services() {
         security_context: None,
     };
 
+    let discovery_endpoint = format!("http://localhost:{}", test_discovery_port());
+    let health_endpoint = format!("http://localhost:{}", test_health_port());
+    let federation_endpoint = format!("http://localhost:{}", test_federation_port());
+
     let services = vec![
-        create_test_service("service-001", "Service 1", "http://localhost:8081"),
-        create_test_service("service-002", "Service 2", "http://localhost:8082"),
-        create_test_service("service-003", "Service 3", "http://localhost:8083"),
+        create_test_service("service-001", "Service 1", &discovery_endpoint),
+        create_test_service("service-002", "Service 2", &health_endpoint),
+        create_test_service("service-003", "Service 3", &federation_endpoint),
     ];
 
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let _paths = result.unwrap();
+    let _paths = result.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
     // Note: May be empty if services don't meet sovereignty requirements
 }
 
 #[tokio::test]
-async fn test_paths_sorted_by_score() {
+async fn test_paths_sorted_by_score() -> SongbirdResult<()> {
     let router = SovereigntyRouter::new();
 
     let request = UniversalRequest {
@@ -194,24 +215,30 @@ async fn test_paths_sorted_by_score() {
         security_context: None,
     };
 
+    let discovery_endpoint = format!("http://localhost:{}", test_discovery_port());
+    let health_endpoint = format!("http://localhost:{}", test_health_port());
+
     let services = vec![
-        create_test_service("service-001", "Service 1", "http://localhost:8081"),
-        create_test_service("service-002", "Service 2", "http://localhost:8082"),
+        create_test_service("service-001", "Service 1", &discovery_endpoint),
+        create_test_service("service-002", "Service 2", &health_endpoint),
     ];
 
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let paths = result.unwrap();
+    let paths = result.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     // Paths should be sorted by combined score (descending)
     for i in 1..paths.len() {
         assert!(paths[i - 1].combined_score >= paths[i].combined_score);
     }
+    Ok(())
 }
 
 #[test]
-fn test_sovereignty_preferences_clone() {
+fn test_sovereignty_preferences_clone() -> SongbirdResult<()> {
     let prefs = SovereigntyPreferences::default();
     let cloned = prefs.clone();
 
@@ -220,14 +247,16 @@ fn test_sovereignty_preferences_clone() {
         prefs.required_security_capabilities.len(),
         cloned.required_security_capabilities.len()
     );
+    Ok(())
 }
 
 #[test]
-fn test_sovereignty_preferences_debug() {
+fn test_sovereignty_preferences_debug() -> SongbirdResult<()> {
     let prefs = SovereigntyPreferences::default();
     let debug_str = format!("{prefs:?}");
 
     assert!(debug_str.contains("SovereigntyPreferences"));
+    Ok(())
 }
 
 #[test]
@@ -349,15 +378,16 @@ fn test_security_capability_variants() {
 }
 
 #[test]
-fn test_risk_severity_levels() {
+fn test_risk_severity_levels() -> SongbirdResult<()> {
     let levels =
         [RiskSeverity::Critical, RiskSeverity::High, RiskSeverity::Medium, RiskSeverity::Low];
 
     assert_eq!(levels.len(), 4);
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_paths_have_segments() {
+async fn test_paths_have_segments() -> SongbirdResult<()> {
     let router = SovereigntyRouter::new();
 
     let request = UniversalRequest {
@@ -375,7 +405,9 @@ async fn test_paths_have_segments() {
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let paths = result.unwrap();
+    let paths = result.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     for path in paths {
         assert!(!path.segments.is_empty());
@@ -384,10 +416,11 @@ async fn test_paths_have_segments() {
             assert!(!segment.service.name.is_empty());
         }
     }
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_paths_have_scores() {
+async fn test_paths_have_scores() -> SongbirdResult<()> {
     let router = SovereigntyRouter::new();
 
     let request = UniversalRequest {
@@ -405,7 +438,9 @@ async fn test_paths_have_scores() {
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let paths = result.unwrap();
+    let paths = result.ok_or_else(|| {
+        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+    })?;
 
     for path in paths {
         // Scores should be within valid range
@@ -413,6 +448,7 @@ async fn test_paths_have_scores() {
         assert!(path.efficiency_score >= 0.0 && path.efficiency_score <= 1.0);
         assert!(path.combined_score >= 0.0 && path.combined_score <= 1.0);
     }
+    Ok(())
 }
 
 #[tokio::test]

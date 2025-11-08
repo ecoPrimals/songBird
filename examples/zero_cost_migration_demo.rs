@@ -223,7 +223,7 @@ fn create_sample_legacy_system() -> PrimalDiscoveryEngine {
                 "persistence".to_string(),
                 "backup".to_string(),
             ],
-            endpoint: "https://storage-primary.local:9000".to_string(),
+            endpoint: format!("https://storage-primary.local:{}", songbird_config::defaults::ports::metrics_port()),
             discovery_method: DiscoveryMethod::NetworkScan,
             health_status: "healthy".to_string(),
             last_seen: chrono::Utc::now(),

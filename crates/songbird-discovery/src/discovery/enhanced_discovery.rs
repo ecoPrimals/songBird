@@ -4,8 +4,11 @@
 //!
 //! This module provides an enhanced discovery system that incorporates federation
 //! capabilities, eliminating the need for separate federation infrastructure.
+//!
+//! ## Native Async Traits
+//! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 
-use async_trait::async_trait;
+#![allow(async_fn_in_trait)]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -514,7 +517,7 @@ impl FederationAwareDiscovery {
     }
 }
 
-#[async_trait]
+// Native async trait implementation (no boxing overhead)
 impl ServiceDiscovery for FederationAwareDiscovery {
     async fn discover(&self, _query: crate::traits::ServiceQuery) -> Result<Vec<ServiceInfo>> {
         info!("🔍 Discovering services with federation awareness");

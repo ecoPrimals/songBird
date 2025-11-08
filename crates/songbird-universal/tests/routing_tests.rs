@@ -21,6 +21,7 @@ use songbird_test_utils::{
     mocks::common::{HealthStatus, MockPrimalServer},
     multi_capability_service, security_service, storage_service, OrchestratorTestEnvironment,
 };
+use songbird_types::{SongbirdError, SongbirdResult};
 
 #[tokio::test]
 async fn test_route_to_single_provider_by_capability() {
@@ -28,7 +29,7 @@ async fn test_route_to_single_provider_by_capability() {
     let env = OrchestratorTestEnvironment::with_compute_only().await;
 
     // Create a compute service registration
-    let compute = compute_service("toadstool-1").with_endpoint(&env.toadstool_endpoint().await);
+    let compute = compute_service("toadstool-1").with_endpoint(&env.toadstool_endpoint());
 
     // Verify: Service has compute capability
     assert!(compute.capabilities().contains(&"compute".to_string()));
@@ -51,10 +52,10 @@ async fn test_route_distributes_across_multiple_providers() {
     let env = OrchestratorTestEnvironment::with_healthy_primals().await;
 
     let compute1 = compute_service("toadstool-1")
-        .with_endpoint(format!("{}/compute1", env.toadstool_endpoint().await));
+        .with_endpoint(format!("{}/compute1", env.toadstool_endpoint()));
 
     let compute2 = compute_service("toadstool-2")
-        .with_endpoint(format!("{}/compute2", env.toadstool_endpoint().await));
+        .with_endpoint(format!("{}/compute2", env.toadstool_endpoint()));
 
     // Both provide the same capability
     assert_eq!(compute1.capabilities(), compute2.capabilities());
@@ -146,11 +147,11 @@ async fn test_route_selects_best_multi_capability_provider() {
     let env = OrchestratorTestEnvironment::with_healthy_primals().await;
 
     let specialized =
-        compute_service("specialized-compute").with_endpoint(&env.toadstool_endpoint().await);
+        compute_service("specialized-compute").with_endpoint(&env.toadstool_endpoint());
 
     let generalist =
         multi_capability_service("multi-service", vec!["compute", "storage", "processing"])
-            .with_endpoint(&env.nestgate_endpoint().await);
+            .with_endpoint(&env.nestgate_endpoint());
 
     // Test Objective: When multiple services can satisfy a capability,
     // choose based on:
@@ -191,13 +192,13 @@ async fn test_routing_with_all_primal_types() {
     let env = OrchestratorTestEnvironment::with_healthy_primals().await;
 
     // Create one of each primal type
-    let compute = compute_service("toadstool").with_endpoint(&env.toadstool_endpoint().await);
+    let compute = compute_service("toadstool").with_endpoint(&env.toadstool_endpoint());
 
-    let security = security_service("beardog").with_endpoint(&env.beardog_endpoint().await);
+    let security = security_service("beardog").with_endpoint(&env.beardog_endpoint());
 
-    let storage = storage_service("nestgate").with_endpoint(&env.nestgate_endpoint().await);
+    let storage = storage_service("nestgate").with_endpoint(&env.nestgate_endpoint());
 
-    let ai = ai_service("squirrel").with_endpoint(&env.squirrel_endpoint().await);
+    let ai = ai_service("squirrel").with_endpoint(&env.squirrel_endpoint());
 
     // Test Objective: Verify capability-based routing works for all primal types
     //
@@ -223,7 +224,7 @@ async fn test_routing_with_all_primal_types() {
     //
     // for (capability, expected_primal_type) in test_cases {
     //     let response = orchestrator.route(capability).await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
-    //     let service_type = response.metadata.get("type").map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    //     let service_type = response.metadata.get("type").or_else(|_| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
     //     assert_eq!(service_type, expected_primal_type);
     // }
 

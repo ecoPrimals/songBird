@@ -1,3 +1,8 @@
+#![deprecated(
+    since = "0.2.0",
+    note = "Use ai_capability::AiCapabilityClient instead. See module docs for migration. Removal: v0.3.0 (Q2 2026)"
+)]
+
 //! # ⚠️ DEPRECATED: Legacy Squirrel Primal (Hardcoded AI Service)
 //!
 //! **STATUS**: This module is deprecated. Use `ai_capability` instead.

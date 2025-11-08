@@ -1,16 +1,186 @@
-//! Common constants used throughout Songbird
+//! 🔧 Songbird Canonical Constants System
+//!
+//! **SINGLE SOURCE OF TRUTH FOR ALL STATIC CONSTANTS** ✅
+//!
+//! This module consolidates all static constants from across the Songbird ecosystem.
+//! Dynamic/calculated constants remain in `songbird-config` for environment-specific logic.
+//!
+//! ## Consolidation Summary
+//! - **Static constants**: Defined here once
+//! - **Dynamic constants**: Calculated in songbird-config based on environment
+//! - **Test constants**: Specialized variants in songbird-test-utils
+//!
+//! ## Usage
+//! ```rust
+//! use songbird_types::constants::*;
+//! ```
+
+use std::time::Duration;
+
+// ============================================================================
+// NETWORK CONSTANTS
+// ============================================================================
+
+/// Default HTTP port for Songbird services
+pub const DEFAULT_HTTP_PORT: u16 = 8080;
+
+/// Default HTTPS port for Songbird services
+pub const DEFAULT_HTTPS_PORT: u16 = 8443;
+
+/// Default port for Songbird services (alias for HTTP)
+pub const DEFAULT_PORT: u16 = DEFAULT_HTTP_PORT;
+
+/// Default discovery service port
+pub const DEFAULT_DISCOVERY_PORT: u16 = 8081;
+
+/// Default federation service port
+pub const DEFAULT_FEDERATION_PORT: u16 = 8082;
+
+/// Default health check port
+pub const DEFAULT_HEALTH_PORT: u16 = 8002;
+
+/// Default dashboard port
+pub const DEFAULT_DASHBOARD_PORT: u16 = 8003;
+
+/// Default metrics port
+pub const DEFAULT_METRICS_PORT: u16 = 8004;
+
+/// Localhost IPv4 address
+pub const LOCALHOST: &str = "127.0.0.1";
+
+/// Production bind address (all interfaces)
+pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
+
+/// Development bind address (localhost only)
+pub const DEVELOPMENT_BIND_ADDRESS: &str = "127.0.0.1";
+
+// ============================================================================
+// TIMEOUT CONSTANTS
+// ============================================================================
 
 /// Default timeout for network operations (in seconds)
 pub const DEFAULT_TIMEOUT_SECS: u64 = 30;
 
+/// Default connection timeout
+pub const CONNECTION_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Default read timeout
+pub const READ_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Default write timeout
+pub const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Default request timeout
+pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Default health check timeout
+pub const HEALTH_CHECK_TIMEOUT: Duration = Duration::from_secs(5);
+
+// ============================================================================
+// RESOURCE LIMITS
+// ============================================================================
+
 /// Default retry attempts for failed operations
 pub const DEFAULT_RETRY_ATTEMPTS: u32 = 3;
 
-/// Default port for Songbird services
-pub const DEFAULT_PORT: u16 = 8080;
-
 /// Maximum number of concurrent connections
 pub const MAX_CONCURRENT_CONNECTIONS: usize = 1000;
+
+/// Default buffer size (64KB)
+pub const DEFAULT_BUFFER_SIZE: usize = 65536;
+
+/// Maximum request size (10MB)
+pub const MAX_REQUEST_SIZE: u64 = 10_485_760;
+
+/// Maximum connections per IP
+pub const MAX_CONNECTIONS_PER_IP: u32 = 10;
+
+// ============================================================================
+// GAMING CONSTANTS
+// ============================================================================
+
+/// Gaming port range start
+pub const GAMING_PORT_RANGE_START: u16 = 6112;
+
+/// Gaming port range end
+pub const GAMING_PORT_RANGE_END: u16 = 6200;
+
+/// Maximum players per gaming session
+pub const MAX_PLAYERS_PER_SESSION: usize = 100;
+
+/// Gaming buffer size (64KB)
+pub const GAMING_BUFFER_SIZE: usize = 65536;
+
+// ============================================================================
+// HEALTH CHECK CONSTANTS
+// ============================================================================
+
+/// Default health check interval
+pub const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(30);
+
+/// Maximum failed health checks before marking unhealthy
+pub const MAX_FAILED_HEALTH_CHECKS: u32 = 3;
+
+/// Default health check endpoint path
+pub const DEFAULT_HEALTH_ENDPOINT: &str = "/health";
+
+// ============================================================================
+// DISCOVERY CONSTANTS
+// ============================================================================
+
+/// Discovery interval
+pub const DISCOVERY_INTERVAL: Duration = Duration::from_secs(30);
+
+/// Service registration TTL
+pub const REGISTRATION_TTL: Duration = Duration::from_secs(300);
+
+/// Maximum discovery retries
+pub const MAX_DISCOVERY_RETRIES: u32 = 3;
+
+// ============================================================================
+// SYSTEM CONSTANTS
+// ============================================================================
+
+/// Default configuration file path
+pub const DEFAULT_CONFIG_PATH: &str = "songbird.toml";
+
+/// Default log level
+pub const DEFAULT_LOG_LEVEL: &str = "info";
+
+/// Default cache TTL
+pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(300);
+
+/// Metrics collection interval
+pub const METRICS_COLLECTION_INTERVAL: Duration = Duration::from_secs(60);
+
+// ============================================================================
+// ENVIRONMENT NAMES
+// ============================================================================
+
+/// Development environment name
+pub const ENV_DEVELOPMENT: &str = "development";
+
+/// Testing environment name
+pub const ENV_TESTING: &str = "testing";
+
+/// Staging environment name
+pub const ENV_STAGING: &str = "staging";
+
+/// Production environment name
+pub const ENV_PRODUCTION: &str = "production";
+
+// ============================================================================
+// BACKWARD COMPATIBILITY EXPORTS
+// ============================================================================
+
+/// Backward compatibility module for legacy code
+pub mod legacy {
+    pub use super::*;
+    
+    // Additional legacy aliases if needed
+    pub const DEFAULT_BIND_ADDRESS: &str = super::DEVELOPMENT_BIND_ADDRESS;
+    pub const DEFAULT_LOCALHOST: &str = super::LOCALHOST;
+}
 
 #[cfg(test)]
 mod tests {

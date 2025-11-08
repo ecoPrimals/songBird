@@ -25,6 +25,8 @@
 //! Tests for `songbird_types::config::federation` module.
 
 use songbird_types::config::federation::*;
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // FEDERATION CONFIG TESTS
@@ -60,6 +62,7 @@ fn test_local_node_config_default() {
 
 #[test]
 fn test_local_node_config_custom() {
+    use songbird_types::{SongbirdError, SongbirdResult};
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     let config = CanonicalLocalNodeConfig {
@@ -396,7 +399,7 @@ fn test_resource_allocation_config_default() {
 }
 
 #[test]
-fn test_allocation_strategies() {
+fn test_allocation_strategies() -> SongbirdResult<()> {
     let balanced = AllocationStrategy::Balanced;
     let cpu_opt = AllocationStrategy::CpuOptimized;
     let mem_opt = AllocationStrategy::MemoryOptimized;
@@ -406,14 +409,16 @@ fn test_allocation_strategies() {
     assert!(matches!(cpu_opt, AllocationStrategy::CpuOptimized));
     assert!(matches!(mem_opt, AllocationStrategy::MemoryOptimized));
     assert!(matches!(custom, AllocationStrategy::Custom(_)));
+    Ok(())
 }
 
 #[test]
-fn test_reserved_resources_default() {
+fn test_reserved_resources_default() -> SongbirdResult<()> {
     let reserved = ReservedResources::default();
     assert_eq!(reserved.memory, 512 * 1024 * 1024);
     assert!((reserved.cpu - 0.1).abs() < f64::EPSILON);
     assert_eq!(reserved.disk, 1024 * 1024 * 1024);
+    Ok(())
 }
 
 // ============================================================================
@@ -421,21 +426,25 @@ fn test_reserved_resources_default() {
 // ============================================================================
 
 #[test]
-fn test_federation_config_serialization() {
+fn test_federation_config_serialization() -> SongbirdResult<()> {
     let config = CanonicalFederationConfig::default();
-    let json = serde_json::to_string(&config).expect("Failed to serialize");
-    let deserialized: CanonicalFederationConfig =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&config)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: CanonicalFederationConfig = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized.peers.max_peers, config.peers.max_peers);
+    Ok(())
 }
 
 #[test]
-fn test_node_type_serialization() {
+fn test_node_type_serialization() -> SongbirdResult<()> {
     let node_type = CanonicalNodeType::default();
-    let json = serde_json::to_string(&node_type).expect("Failed to serialize");
-    let deserialized: CanonicalNodeType =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let json = serde_json::to_string(&node_type)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+    let deserialized: CanonicalNodeType = serde_json::from_str(&json)
+        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
 
     assert_eq!(deserialized, node_type);
+    Ok(())
 }
