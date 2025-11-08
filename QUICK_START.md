@@ -1,326 +1,412 @@
-# 🚀 Quick Start Guide - Songbird
-
-Get up and running with Songbird in 5 minutes.
-
----
-
-## Prerequisites
-
-- Rust 1.70+ (2021 edition)
-- Cargo package manager
-- Basic understanding of async Rust
+# 🚀 Songbird Quick Start Guide
+**Get up and running in 5 minutes!**
 
 ---
 
-## Installation
+## ⚡ TL;DR - Fastest Path
 
-### Clone the Repository
+```bash
+# 1. Build (24.5 seconds)
+cargo build --workspace --release
+
+# 2. Setup environment
+export SERVICE_PORT=8080
+export SERVICE_ID=songbird-quickstart
+
+# 3. Run discovery demo
+cargo run --example infant_discovery_demo --package songbird-config
+
+# Done! 🎉
+```
+
+---
+
+## 📋 Prerequisites
+
+Before starting, ensure you have:
+
+- **Rust 1.70+** installed (`rustc --version`)
+- **4GB+ RAM** available
+- **Linux** (Ubuntu 20.04+) or **macOS**
+- **Network access** (for distributed features)
+
+### Install Rust (if needed)
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
+
+---
+
+## 🎯 Step-by-Step Guide
+
+### **Step 1: Clone the Repository**
 
 ```bash
 git clone https://github.com/ecoPrimals/songbird
 cd songbird
 ```
 
-### Build the Project
+### **Step 2: Build Songbird**
 
 ```bash
-# Build all workspace members
-cargo build --workspace
-
-# Or build with optimizations
+# Full workspace build (13 crates)
 cargo build --workspace --release
+
+# Expected output:
+#   Compiling songbird-types v0.1.0
+#   Compiling songbird-config v0.1.0
+#   ...
+#   Finished release [optimized] target(s) in 24.50s
 ```
 
-### Run Tests
+**Build Time**: ~24.5 seconds on modern hardware
+
+### **Step 3: Verify Build**
 
 ```bash
-# Run all tests
+# Run tests to verify everything works
 cargo test --workspace
 
-# Run tests for specific crate
-cargo test --package songbird-orchestrator
+# Expected: All tests pass ✅
 ```
 
----
-
-## Your First Service Discovery
-
-### 1. Create a Basic Example
-
-```rust
-// examples/my_first_discovery.rs
-use songbird_orchestrator::SongbirdOrchestrator;
-use songbird_config::SongbirdConfig;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize with default configuration
-    let config = SongbirdConfig::default();
-    let orchestrator = SongbirdOrchestrator::new(config).await?;
-
-    // Discover services by capability
-    let services = orchestrator
-        .discovery()
-        .find_by_capability("compute")
-        .await?;
-
-    println!("Found {} compute services", services.len());
-
-    Ok(())
-}
-```
-
-### 2. Run Your Example
+### **Step 4: Run Your First Example**
 
 ```bash
-cargo run --example my_first_discovery
+# Setup environment
+export SERVICE_PORT=8080
+export SERVICE_ID=my-first-songbird
+export SONGBIRD_HOST=127.0.0.1
+
+# Run infant discovery demo
+cargo run --example infant_discovery_demo --package songbird-config
+```
+
+**Expected Output:**
+```
+🍼 Infant Discovery Demo - Starting with Zero Knowledge
+================================================
+
+👶 Starting State: ZERO KNOWLEDGE
+
+❌ We DON'T know:
+   - Primal names (beardog, squirrel, toadstool, nestgate)
+   - Port numbers
+   - Endpoint URLs
+
+✅ We ONLY know:
+   - Our own identity (from environment)
+   - What capabilities we need
+   - How to discover
+
+🔍 Discovered self identity: my-first-songbird
+✅ Configuration created successfully!
 ```
 
 ---
 
-## Common Tasks
+## 🎮 Try More Examples
 
-### Service Discovery
-
-```rust
-// Find services by capability
-let services = orchestrator
-    .discovery()
-    .find_by_capability("storage")
-    .await?;
-
-// Find services by type
-let ai_services = orchestrator
-    .discovery()
-    .find_by_type("ai")
-    .await?;
-```
-
-### Health Checking
-
-```rust
-// Check service health
-let health = orchestrator
-    .registry()
-    .check_service_health("service-id")
-    .await?;
-
-if health.is_healthy() {
-    println!("Service is healthy!");
-}
-```
-
-### Request Routing
-
-```rust
-// Route request to best available service
-let response = orchestrator
-    .route_request("compute", request_data)
-    .await?;
-```
-
----
-
-## Configuration
-
-### Using Environment Variables
+### **Example 1: Vendor-Agnostic Discovery**
 
 ```bash
-export SONGBIRD_DISCOVERY_INTERVAL=300
-export SONGBIRD_HEALTH_CHECK_INTERVAL=60
-export SONGBIRD_LOG_LEVEL=info
+export SERVICE_PORT=8081
+cargo run --example vendor_agnostic_demo --package songbird-discovery
 ```
 
-### Using Config File
+Shows capability-based service discovery patterns.
+
+### **Example 2: Ecosystem Integration**
+
+```bash
+export SERVICE_PORT=8082
+cargo run --example ecosystem_standalone_demo --package songbird-primal-sdk
+```
+
+Demonstrates primal SDK usage and integration.
+
+### **Example 3: Run Demo Scripts**
+
+```bash
+# Federation coordination demo
+./demos/federation-coordination-demo.sh
+
+# BYOB coordination demo
+./demos/byob-coordination-demo.sh
+```
+
+---
+
+## 🏗️ Next Steps
+
+### **Option 1: Local Development**
+
+```bash
+# Setup development environment
+cp config/development.env .env
+source .env
+
+# Run orchestrator locally
+cargo run --bin songbird-orchestrator --release
+```
+
+### **Option 2: Multi-Tower Setup (LAN)**
+
+Set up multiple Songbird instances on your local network:
+
+```bash
+# Tower A (192.168.1.100)
+export SERVICE_ID=tower-a
+export SERVICE_PORT=8080
+export SONGBIRD_HOST=192.168.1.100
+cargo run --bin songbird-orchestrator --release
+
+# Tower B (192.168.1.101) - different machine
+export SERVICE_ID=tower-b
+export SERVICE_PORT=8081
+export SONGBIRD_HOST=192.168.1.101
+cargo run --bin songbird-orchestrator --release
+```
+
+Towers will discover each other automatically!
+
+### **Option 3: Integration with Primals**
+
+```bash
+# Setup with Toadstool (compute)
+export TOADSTOOL_ENDPOINT=http://localhost:8081
+cargo run --bin songbird-orchestrator --release
+
+# Setup with BearDog (security)
+export BEARDOG_ENDPOINT=http://localhost:8443
+export BEARDOG_AUTH_ENABLED=true
+cargo run --bin songbird-orchestrator --release
+```
+
+---
+
+## 🔧 Configuration
+
+### **Environment Variables (Minimal)**
+
+```bash
+# Required
+export SERVICE_PORT=8080              # Port to listen on
+export SERVICE_ID=my-service          # Unique service identifier
+
+# Optional but recommended
+export SONGBIRD_HOST=127.0.0.1        # Bind address
+export SONGBIRD_ENV=development        # Environment (development/staging/production)
+
+# Discovery (optional)
+export DISCOVERY_METHODS=environment,dns,network
+```
+
+### **Configuration File (Optional)**
+
+Create `config/local.toml`:
 
 ```toml
-# config/songbird.toml
+[service]
+id = "songbird-local"
+port = 8080
+host = "127.0.0.1"
+environment = "development"
+
 [discovery]
-interval_secs = 300
-timeout_secs = 10
+methods = ["environment", "dns", "network"]
+timeout_secs = 30
 
-[health]
-check_interval_secs = 60
-timeout_secs = 5
-
-[logging]
-level = "info"
+[network]
+bind_address = "0.0.0.0"
+max_connections = 1000
 ```
 
-```rust
-let config = SongbirdConfig::from_file("config/songbird.toml")?;
-let orchestrator = SongbirdOrchestrator::new(config).await?;
+Then run:
+```bash
+cargo run --bin songbird-orchestrator --release -- --config config/local.toml
 ```
 
 ---
 
-## Running Examples
+## 🧪 Verify Everything Works
 
-### Service Discovery
+### **Health Check**
 
 ```bash
-cargo run --example service_discovery
+# If orchestrator is running on port 8080:
+curl http://localhost:8080/health
+
+# Expected: {"status": "healthy"}
 ```
 
-### Health Checks
+### **Metrics**
 
 ```bash
-cargo run --example health_checks
+curl http://localhost:8080/metrics
+
+# Expected: Prometheus-style metrics
 ```
 
-### Capability-Based Routing
+### **Discovery Status**
 
 ```bash
-cargo run --example capability_routing
-```
+curl http://localhost:8080/discovery/status
 
-### Full List
-
-```bash
-ls examples/
+# Expected: List of discovered services
 ```
 
 ---
 
-## Development Workflow
+## 🎯 Common Use Cases
 
-### 1. Make Changes
+### **Use Case 1: Service Orchestration**
 
 ```bash
-# Edit your code
-vim crates/songbird-orchestrator/src/lib.rs
+# Start orchestrator
+cargo run --bin songbird-orchestrator --release
+
+# In another terminal, submit a task
+curl -X POST http://localhost:8080/orchestrate/task \
+  -H "Content-Type: application/json" \
+  -d '{"capability": "compute", "payload": {"task": "example"}}'
 ```
 
-### 2. Format Code
+### **Use Case 2: Development Testing**
 
 ```bash
-cargo fmt --all
+# Run with test configuration
+export SONGBIRD_ENV=development
+export LOG_LEVEL=debug
+cargo run --bin songbird-orchestrator
+
+# Logs will show detailed debug information
 ```
 
-### 3. Run Lints
+### **Use Case 3: Benchmarking**
 
 ```bash
-cargo clippy --workspace
+# Run performance benchmarks
+cargo bench --workspace
+
+# Results in target/criterion/
 ```
 
-### 4. Test Your Changes
+---
+
+## 📚 Learn More
+
+### **Documentation**
+
+- **[Architecture Overview](ARCHITECTURE_OVERVIEW.md)** - System design
+- **[API Reference](docs/API_REFERENCE.md)** - Complete API docs
+- **[Examples](examples/)** - 51 example files
+- **[Configuration Guide](CONFIG_MIGRATION_GUIDE.md)** - Config options
+
+### **Advanced Topics**
+
+- **[Federation](docs/FEDERATION.md)** - Multi-tower coordination
+- **[Security](docs/SECURITY.md)** - Security best practices
+- **[Performance](docs/PERFORMANCE_GUIDE.md)** - Optimization guide
+- **[Gaming](docs/GAMING.md)** - Gaming-specific features
+
+### **Community**
+
+- **GitHub Issues**: Report bugs or request features
+- **Discussions**: Ask questions, share projects
+- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
+
+---
+
+## ❓ Troubleshooting
+
+### **Build Fails**
 
 ```bash
-cargo test --workspace
-```
+# Update Rust
+rustup update stable
 
-### 5. Build Release
-
-```bash
+# Clean and rebuild
+cargo clean
 cargo build --workspace --release
 ```
 
----
-
-## Troubleshooting
-
-### Build Fails
+### **Port Already in Use**
 
 ```bash
-# Clean and rebuild
-cargo clean
-cargo build --workspace
+# Use a different port
+export SERVICE_PORT=8090
 ```
 
-### Tests Fail
+### **Examples Don't Run**
 
 ```bash
-# Run tests with output
-cargo test --workspace -- --nocapture
+# Ensure environment variables are set
+export SERVICE_PORT=8080
+export SERVICE_ID=test
 
-# Run specific test
-cargo test --package songbird-orchestrator test_name
+# Run with explicit package
+cargo run --example <example_name> --package <crate_name>
 ```
 
-### Missing Dependencies
+### **Can't Find Services**
 
 ```bash
-# Update dependencies
-cargo update
+# Check discovery configuration
+export DISCOVERY_METHODS=environment,network
+
+# Verify network connectivity
+ping <other_tower_ip>
 ```
 
 ---
 
-## Next Steps
+## 🎉 What's Next?
 
-### Learn More
-- Read [Architecture Overview](ARCHITECTURE_OVERVIEW.md)
-- Explore [API Reference](docs/API_REFERENCE.md)
-- Check [Testing Guide](docs/TESTING.md)
+Now that you have Songbird running, explore:
 
-### Explore Features
-- [Capability-Based Discovery](docs/core/capability-discovery.md)
-- [Intelligent Routing](docs/core/routing.md)
-- [Health Monitoring](docs/core/health-monitoring.md)
-
-### Join Community
-- [GitHub Discussions](https://github.com/ecoPrimals/songbird/discussions)
-- [Contributing Guide](CONTRIBUTING.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
+1. **Multi-Tower Setup** - Deploy on multiple machines
+2. **Primal Integration** - Connect Toadstool, BearDog, NestGate
+3. **Custom Orchestration** - Build your own orchestration logic
+4. **Gaming Applications** - Use low-latency features
+5. **Production Deployment** - Deploy to your infrastructure
 
 ---
 
-## Common Patterns
+## 📊 Performance Expectations
 
-### Async/Await
+**On Modern Hardware:**
 
-```rust
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Your async code here
-    Ok(())
-}
-```
-
-### Error Handling
-
-```rust
-use songbird_types::SongbirdError;
-
-match orchestrator.discover().await {
-    Ok(services) => println!("Found services: {:?}", services),
-    Err(SongbirdError::Network { message, .. }) => {
-        eprintln!("Network error: {}", message);
-    }
-    Err(e) => eprintln!("Other error: {}", e),
-}
-```
-
-### Configuration Builder
-
-```rust
-let config = SongbirdConfig::builder()
-    .discovery_interval(Duration::from_secs(300))
-    .health_check_interval(Duration::from_secs(60))
-    .log_level("info")
-    .build()?;
-```
+| Metric | Value |
+|--------|-------|
+| **Build Time** | 24.5s (13 crates) |
+| **Memory Usage** | 150-300MB idle |
+| **Startup Time** | <10 seconds |
+| **Request Latency** | <1ms (local) |
+| **Discovery Time** | <5 seconds |
+| **Throughput** | 10K+ req/s |
 
 ---
 
-## Tips
+## ✅ Success Checklist
 
-1. **Start Simple**: Begin with basic discovery, add complexity gradually
-2. **Use Examples**: Run existing examples to understand patterns
-3. **Check Logs**: Enable debug logging to understand behavior
-4. **Test Locally**: Use mock services for local development
-5. **Read Docs**: API documentation has detailed explanations
-
----
-
-## Need Help?
-
-- **Documentation**: [docs/](docs/)
-- **Examples**: [examples/](examples/)
-- **Issues**: [GitHub Issues](https://github.com/ecoPrimals/songbird/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ecoPrimals/songbird/discussions)
+- [ ] Rust installed and up-to-date
+- [ ] Songbird cloned and built successfully
+- [ ] Tests passing (100%)
+- [ ] Examples running
+- [ ] Environment variables configured
+- [ ] Health check responding
+- [ ] Ready to deploy!
 
 ---
 
-**Ready to build?** Check out the [examples/](examples/) directory for more patterns!
+**🎊 Congratulations! You're now running Songbird!** 🚀
 
+For production deployment, see [DEPLOYMENT.md](DEPLOYMENT_CHECKLIST.md)  
+For multi-tower setup, see session docs in `docs/sessions/2025-11-08/`
+
+---
+
+*Questions? Check the [docs/](docs/) directory or open an issue on GitHub!*

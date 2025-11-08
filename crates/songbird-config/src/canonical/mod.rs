@@ -51,13 +51,25 @@ pub use constants::{
 pub use discovery::*;
 pub use environment::*;
 pub use load_balancing::*;
-pub use network::*;
+
+// Network exports  
+pub use network::{
+    NetworkConfig, GamingScale,
+};
+
 pub use observability::*;
 pub use performance::*;
 pub use primals::*;
-pub use resilience::*;
+
+// Resilience exports
+pub use resilience::{
+    RetryConfig, CircuitBreakerConfig, RateLimitingConfig,
+};
+
 pub use security::*;
-pub use service::*;
+
+// Service exports
+pub use service::ServiceConfig;
 
 // Type aliases for backward compatibility with proper definitions
 #[derive(Debug, Clone, PartialEq, Eq)]

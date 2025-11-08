@@ -60,8 +60,9 @@ use std::collections::HashMap;
 // Archived modules (moved to _archived_q2_2026/ on November 8, 2025):
 // pub mod agnostic_primals; // Use canonical::primals instead
 
-// Deprecated but kept for backward compatibility (used in SongbirdConfig):
-pub mod universal_primals; // DEPRECATED: Use canonical::primals instead
+// Backward compatibility re-exports - Module archived (Phase 4: November 8, 2025)
+#[allow(deprecated)]
+pub mod universal_primals; // DEPRECATED: Use canonical::primals instead - kept for re-exports only
 
 pub mod constants;
 pub mod environment;
@@ -99,7 +100,9 @@ pub struct SongbirdConfig {
     pub observability: ObservabilityConfig,
 
     /// Universal primal registry - replaces hardcoded primal configs
-    pub primal_registry: Option<universal_primals::PrimalRegistry>,
+    /// **Deprecated**: Use `canonical::primals::PrimalRegistry` directly
+    #[deprecated(since = "0.2.0", note = "Use `canonical::primals::PrimalRegistry` instead")]
+    pub primal_registry: Option<crate::canonical::primals::PrimalRegistry>,
 
     /// Custom configuration parameters
     pub custom: Option<HashMap<String, serde_json::Value>>,
@@ -117,7 +120,7 @@ impl Default for SongbirdConfig {
             security: SecurityConfig::default(),
             discovery: DiscoveryConfig::default(),
             observability: ObservabilityConfig::default(),
-            primal_registry: Some(universal_primals::PrimalRegistry::default()),
+            primal_registry: Some(crate::canonical::primals::PrimalRegistry::default()),
             custom: None,
             // Note: Legacy fields removed - use primal_registry instead
         }
@@ -176,11 +179,11 @@ impl SongbirdConfig {
     /// Enable a primal in the universal registry
     pub fn enable_primal(&mut self, primal_name: &str, endpoint: &str) {
         if self.primal_registry.is_none() {
-            self.primal_registry = Some(universal_primals::PrimalRegistry::default());
+            self.primal_registry = Some(crate::canonical::primals::PrimalRegistry::default());
         }
 
         if let Some(registry) = &mut self.primal_registry {
-            let mut primal_config = universal_primals::PrimalConfiguration::new_template(
+            let mut primal_config = crate::canonical::primals::PrimalConfiguration::new_template(
                 primal_name,
                 &format!("{} Service", primal_name.to_uppercase()),
             );
@@ -205,7 +208,7 @@ impl SongbirdConfig {
     pub fn get_primal_config(
         &self,
         primal_name: &str,
-    ) -> Option<&universal_primals::PrimalConfiguration> {
+    ) -> Option<&crate::canonical::primals::PrimalConfiguration> {
         self.primal_registry.as_ref().and_then(|registry| registry.get_primal(primal_name))
     }
 
@@ -220,7 +223,7 @@ impl SongbirdConfig {
 
     /// Get all enabled primals
     #[must_use]
-    pub fn get_enabled_primals(&self) -> Vec<&universal_primals::PrimalConfiguration> {
+    pub fn get_enabled_primals(&self) -> Vec<&crate::canonical::primals::PrimalConfiguration> {
         self.primal_registry
             .as_ref()
             .map(|registry| registry.get_enabled_primals())

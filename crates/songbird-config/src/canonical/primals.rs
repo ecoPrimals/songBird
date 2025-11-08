@@ -272,6 +272,133 @@ impl Default for HealthCheckConfig {
     }
 }
 
+// ============================================================================
+// PHASE 4: PRIMAL REGISTRY CONSOLIDATION (November 8, 2025)
+// ============================================================================
+// Consolidated from config/universal_primals.rs - simplified for production use
+
+use std::collections::HashMap;
+
+/// **CANONICAL**: Universal primal registry for dynamic primal management
+/// 
+/// Simplified registry system consolidating experimental patterns from:
+/// - `config/universal_primals.rs` (archived)
+/// - `unified/primals.rs` (archived)
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PrimalRegistry {
+    /// Registered primals by their type identifier
+    pub primals: HashMap<String, PrimalConfiguration>,
+}
+
+impl PrimalRegistry {
+    /// Create a new empty registry
+    pub fn new() -> Self {
+        Self {
+            primals: HashMap::new(),
+        }
+    }
+
+    /// Register a primal configuration
+    pub fn register_primal(&mut self, config: PrimalConfiguration) {
+        self.primals.insert(config.primal_type.clone(), config);
+    }
+
+    /// Get a primal configuration by type
+    pub fn get_primal(&self, primal_type: &str) -> Option<&PrimalConfiguration> {
+        self.primals.get(primal_type)
+    }
+
+    /// Get all enabled primals
+    pub fn get_enabled_primals(&self) -> Vec<&PrimalConfiguration> {
+        self.primals
+            .values()
+            .filter(|p| p.enabled)
+            .collect()
+    }
+
+    /// Check if a primal is registered
+    pub fn is_registered(&self, primal_type: &str) -> bool {
+        self.primals.contains_key(primal_type)
+    }
+}
+
+/// **CANONICAL**: Universal configuration for any primal type
+/// 
+/// Simplified from experimental universal_primals patterns
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrimalConfiguration {
+    /// Primal type identifier (e.g., "beardog", "nestgate", "toadstool", "squirrel")
+    pub primal_type: String,
+
+    /// Human-readable name
+    pub display_name: String,
+
+    /// Whether this primal is enabled
+    pub enabled: bool,
+
+    /// Primary endpoint configuration
+    pub endpoint: PrimalEndpoint,
+
+    /// Declared capabilities of this primal
+    pub capabilities: Vec<PrimalCapability>,
+
+    /// Connection and timeout settings
+    pub connection_settings: ConnectionSettings,
+
+    /// Health check configuration
+    pub health_check: HealthCheckConfig,
+}
+
+impl PrimalConfiguration {
+    /// Create a new primal configuration template
+    pub fn new_template(primal_type: &str, display_name: &str) -> Self {
+        Self {
+            primal_type: primal_type.to_string(),
+            display_name: display_name.to_string(),
+            enabled: false,
+            endpoint: PrimalEndpoint::default(),
+            capabilities: Vec::new(),
+            connection_settings: ConnectionSettings::default(),
+            health_check: HealthCheckConfig::default(),
+        }
+    }
+}
+
+/// **CANONICAL**: Primal capability declaration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrimalCapability {
+    /// Capability identifier (e.g., "security", "storage", "compute", "gaming")
+    pub capability_type: String,
+
+    /// Capability version
+    pub version: String,
+
+    /// Capability-specific parameters
+    pub parameters: std::collections::HashMap<String, serde_json::Value>,
+
+    /// Quality of service metrics
+    pub qos_metrics: QosMetrics,
+}
+
+/// **CANONICAL**: Universal primal endpoint configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrimalEndpoint {
+    /// Primary URL for this primal
+    pub primary_url: String,
+
+    /// Whether to use TLS
+    pub use_tls: bool,
+}
+
+impl Default for PrimalEndpoint {
+    fn default() -> Self {
+        Self {
+            primary_url: String::new(),
+            use_tls: true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
