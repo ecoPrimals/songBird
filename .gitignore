@@ -93,8 +93,10 @@ tarpaulin-report.html
 
 # Memory dumps and core files
 *.dmp
-core
-core.*
+# NOTE: Only ignore core dumps in root, not source files named core.rs or core/
+/core
+/core.*
+*.dmp.core
 
 # Performance profiling
 perf.data*

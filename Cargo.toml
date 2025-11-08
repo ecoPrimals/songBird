@@ -2,6 +2,8 @@
 resolver = "2"
 
 members = [
+    "crates/songbird-remote-deploy",
+    "crates/songbird-compute-bridge",
     # 🏗️ FOUNDATION LAYER (4 crates)
     "crates/songbird-types",
     "crates/songbird-config",

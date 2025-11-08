@@ -386,7 +386,9 @@ impl SongbirdOrchestrator {
 
         let addr: SocketAddr = format!("{bind_address}:{port}").parse()?;
 
-        // Build the app with federation routes
+        // Build the app with federation and deployment routes
+        let deployment_state = crate::server::deployment_api::DeploymentState::new();
+        
         let app = Router::new()
             .nest(
                 "/api/federation",
@@ -394,6 +396,10 @@ impl SongbirdOrchestrator {
                     Arc::clone(&self.federation_state),
                     Arc::clone(&self.federated_service_registry),
                 ),
+            )
+            .nest(
+                "/api/deployment",
+                crate::server::deployment_api::deployment_routes(deployment_state),
             )
             .route("/health", axum::routing::get(|| async { "OK" }));
 
