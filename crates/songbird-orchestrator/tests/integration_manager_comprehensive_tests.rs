@@ -97,7 +97,7 @@ async fn test_check_service_availability_success() -> SongbirdResult<()> {
     assert!(result.is_ok(), "Service availability check should succeed");
     assert!(
         result.ok_or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         "Services should be available"
@@ -116,7 +116,7 @@ async fn test_check_service_availability_with_custom_config() -> SongbirdResult<
 
     assert!(result.is_ok());
     assert!(result.ok_or_else(|_| SongbirdError::configuration(format!(
-        "TODO: Replace with proper error handling: {}",
+        "Error: {}",
         e
     )))?);
 
@@ -207,21 +207,21 @@ async fn test_concurrent_service_availability_checks() -> SongbirdResult<()> {
     assert!(
         r1.is_ok()
             && r1.ok_or_else(|_| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
     );
     assert!(
         r2.is_ok()
             && r2.ok_or_else(|_| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
     );
     assert!(
         r3.is_ok()
             && r3.ok_or_else(|_| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
     );

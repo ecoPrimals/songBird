@@ -39,7 +39,7 @@ async fn test_consolidated_orchestrator_start() -> SongbirdResult<()> {
 
     // Initialize first
     orchestrator.initialize().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
 
     // Then start
@@ -54,10 +54,10 @@ async fn test_consolidated_orchestrator_stop() -> SongbirdResult<()> {
     let mut orchestrator = ConsolidatedOrchestrator::new(config);
 
     orchestrator.initialize().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
     orchestrator.start().await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
 
     let result = orchestrator.stop().await;

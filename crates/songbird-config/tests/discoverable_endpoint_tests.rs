@@ -535,7 +535,7 @@ fn test_complete_discovery_workflow() {
 
     // Verify dev fallback
     let dev_fb = endpoint.dev_fallback.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     assert_eq!(dev_fb.host, test_bind_address());
     assert_eq!(dev_fb.port, 8080);

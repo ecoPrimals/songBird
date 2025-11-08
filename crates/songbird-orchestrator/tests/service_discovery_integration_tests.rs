@@ -28,7 +28,7 @@ async fn test_service_discovery_by_id() -> SongbirdResult<()> {
     };
 
     registry.register_service(service.clone()).await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register service".to_string())
     })?;
 
     // Discover by ID
@@ -39,7 +39,7 @@ async fn test_service_discovery_by_id() -> SongbirdResult<()> {
     assert_eq!(
         found
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .name,
@@ -90,7 +90,7 @@ async fn test_service_discovery_multiple_criteria() {
             metadata: HashMap::new(),
         };
         registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register service".to_string())
         })?;
     }
 
@@ -139,10 +139,10 @@ async fn test_service_discovery_after_unregister() -> SongbirdResult<()> {
     };
 
     registry.register_service(service).await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register service".to_string())
     })?;
     registry.unregister_service(&service_id).await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register service".to_string())
     })?;
 
     let services = registry.get_services();
@@ -167,7 +167,7 @@ async fn test_service_discovery_by_port() -> SongbirdResult<()> {
     };
 
     registry.register_service(service).await.map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to register service".to_string())
     })?;
 
     let services = registry.get_services();
@@ -196,7 +196,7 @@ async fn test_service_discovery_by_address() -> SongbirdResult<()> {
             metadata: HashMap::new(),
         };
         registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register service".to_string())
         })?;
     }
 
@@ -252,7 +252,7 @@ async fn test_service_discovery_with_metadata_filter() {
             metadata,
         };
         registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register service".to_string())
         })?;
     }
 
@@ -291,7 +291,7 @@ async fn test_service_discovery_ordering() -> SongbirdResult<()> {
             metadata: HashMap::new(),
         };
         registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register service".to_string())
         })?;
         service_ids.push(id);
     }
@@ -351,7 +351,7 @@ async fn test_service_discovery_complex_query() {
             metadata,
         };
         registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register service".to_string())
         })?;
     }
 

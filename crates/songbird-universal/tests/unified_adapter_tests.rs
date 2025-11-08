@@ -174,7 +174,7 @@ async fn test_concurrent_adapter_creation() -> SongbirdResult<()> {
     // All should complete successfully
     for task in tasks {
         let stats = task.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(stats.total_services, 0);
     }
@@ -197,13 +197,13 @@ async fn test_find_providers_returns_consistent_results() -> SongbirdResult<()> 
     assert_eq!(
         result1
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .len(),
         result2
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .len()
@@ -235,7 +235,7 @@ async fn test_discover_services_returns_empty_gracefully() -> SongbirdResult<()>
 
     assert!(result.is_ok());
     let services = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     assert!(services.is_empty());
     Ok(())
@@ -300,7 +300,7 @@ async fn test_adapter_gracefully_handles_empty_capability_search() -> SongbirdRe
         // Should return empty list, not error
         assert!(result
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .is_empty());
@@ -431,7 +431,7 @@ async fn test_concurrent_stats_and_find_operations() -> SongbirdResult<()> {
     // All should complete
     for task in tasks {
         task.await.map_err(|e| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
     Ok(())

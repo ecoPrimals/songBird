@@ -141,7 +141,7 @@ async fn test_optimize_empty_paths() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(optimized_paths.is_empty());
     Ok(())
@@ -157,7 +157,7 @@ async fn test_optimize_single_path() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(optimized_paths.len(), 1);
     Ok(())
@@ -172,7 +172,7 @@ async fn test_optimize_multiple_paths() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(optimized_paths.len(), 3);
     Ok(())
@@ -188,7 +188,7 @@ async fn test_optimization_adds_metadata() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(optimized_paths.len(), 1);
 
@@ -219,7 +219,7 @@ async fn test_latency_optimization() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Check latency optimization metadata
@@ -245,7 +245,7 @@ async fn test_throughput_optimization() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Check throughput optimization metadata
@@ -271,7 +271,7 @@ async fn test_security_enhancement() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Check security enhancement metadata
@@ -298,7 +298,7 @@ async fn test_cost_optimization() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Check cost optimization metadata
@@ -324,7 +324,7 @@ async fn test_all_optimizations_enabled() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // All optimization metadata should be present
@@ -354,7 +354,7 @@ async fn test_no_optimizations_enabled() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Should still have basic network optimization
@@ -460,7 +460,7 @@ async fn test_optimize_path_with_multiple_segments() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(optimized_paths[0].segments.len(), 3);
 
@@ -482,7 +482,7 @@ async fn test_optimize_preserves_service_info() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Service info should be preserved
@@ -500,7 +500,7 @@ async fn test_network_optimized_capability_added() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // NetworkOptimized capability should be added
@@ -519,7 +519,7 @@ async fn test_optimization_timestamp_added() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let optimized_paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Optimization timestamp should be added

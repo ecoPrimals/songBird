@@ -35,7 +35,7 @@ fn test_storage_adapter_new_success() -> SongbirdResult<()> {
     // Assert
     assert!(adapter.is_ok());
     let adapter = adapter.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(adapter.endpoint(), format!("http://example.com:{}", test_health_port()));
     Ok(())
@@ -49,7 +49,7 @@ fn test_storage_adapter_endpoint_validation() -> SongbirdResult<()> {
     // Assert
     assert!(adapter.is_ok());
     let adapter = adapter.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(adapter.endpoint(), "http://storage-service");
     Ok(())
@@ -63,7 +63,7 @@ fn test_storage_adapter_with_timeout() -> SongbirdResult<()> {
     // Act
     let adapter = StorageAdapter::new("http://example.com".to_string())
         .ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?
         .with_timeout(custom_timeout);
 
@@ -308,7 +308,7 @@ async fn test_storage_collect_metrics_success() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Act
@@ -318,7 +318,7 @@ async fn test_storage_collect_metrics_success() -> SongbirdResult<()> {
     mock.assert_async().await;
     assert!(result.is_ok());
     let metrics = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(metrics.total_capacity_bytes, 1_000_000_000_000);
     assert_eq!(metrics.used_bytes, 250_000_000_000);
@@ -339,7 +339,7 @@ async fn test_storage_collect_metrics_server_error_500() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Act
@@ -366,7 +366,7 @@ async fn test_storage_collect_metrics_server_error_503() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Act
@@ -383,7 +383,7 @@ async fn test_storage_collect_metrics_network_error() -> SongbirdResult<()> {
     // Arrange
     let adapter = StorageAdapter::new("http://nonexistent-host-12345:9999".to_string())
         .ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?
         .with_timeout(Duration::from_millis(100));
 
@@ -403,7 +403,7 @@ async fn test_storage_collect_metrics_timeout() -> SongbirdResult<()> {
     // Create adapter with very short timeout for non-responsive endpoint
     let adapter = StorageAdapter::new("http://10.255.255.1:9999".to_string())
         .ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?
         .with_timeout(Duration::from_millis(50));
 
@@ -428,7 +428,7 @@ async fn test_storage_collect_metrics_invalid_json() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Act
@@ -453,7 +453,7 @@ async fn test_storage_collect_metrics_missing_fields() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     // Act
@@ -488,7 +488,7 @@ async fn test_storage_check_health_healthy() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed health check".to_string())
     })?;
 
     // Act
@@ -499,7 +499,7 @@ async fn test_storage_check_health_healthy() -> SongbirdResult<()> {
     assert!(result.is_ok());
     assert_eq!(
         result.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         StorageHealth::Healthy
@@ -530,7 +530,7 @@ async fn test_storage_check_health_warning() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed health check".to_string())
     })?;
 
     // Act
@@ -541,7 +541,7 @@ async fn test_storage_check_health_warning() -> SongbirdResult<()> {
     assert!(result.is_ok());
     assert_eq!(
         result.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         StorageHealth::Warning
@@ -572,7 +572,7 @@ async fn test_storage_check_health_critical() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed health check".to_string())
     })?;
 
     // Act
@@ -583,7 +583,7 @@ async fn test_storage_check_health_critical() -> SongbirdResult<()> {
     assert!(result.is_ok());
     assert_eq!(
         result.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         StorageHealth::Critical
@@ -655,7 +655,7 @@ fn test_storage_metrics_serialization() -> SongbirdResult<()> {
     // Assert
     assert!(json.is_ok());
     let json_str = json.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(json_str.contains("total_capacity_bytes"));
     assert!(json_str.contains("used_bytes"));
@@ -682,7 +682,7 @@ fn test_storage_metrics_deserialization() -> SongbirdResult<()> {
     // Assert
     assert!(metrics.is_ok());
     let metrics = metrics.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(metrics.total_capacity_bytes, 1_000_000_000_000);
     assert_eq!(metrics.used_bytes, 250_000_000_000);

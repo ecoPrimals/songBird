@@ -381,7 +381,7 @@ fn test_multi_capability_service() -> SongbirdResult<()> {
     // Verify service is registered for all capabilities
     for capability in capabilities {
         let providers = registry.capability_providers.get(capability).or_else(|_| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Failed to register".to_string())
         })?;
         assert!(providers.contains(&service_id.to_string()));
     }

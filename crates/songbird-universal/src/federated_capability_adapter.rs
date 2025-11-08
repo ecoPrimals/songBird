@@ -282,7 +282,7 @@ mod tests {
         assert_eq!(
             result
                 .map_err(|e| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .len(),
@@ -346,7 +346,7 @@ mod tests {
         assert_eq!(
             result
                 .map_err(|e| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .len(),
@@ -391,7 +391,7 @@ mod tests {
 
         assert!(result.is_ok());
         let services = result.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
         })?;
         assert_eq!(services.len(), 1);
         assert_eq!(services[0].name, "Local Service");

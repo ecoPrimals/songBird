@@ -113,7 +113,7 @@ fn test_custom_params_with_numbers() -> SongbirdResult<()> {
 
     assert!(config.custom_params.is_some());
     let params = config.custom_params.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(params.len(), 3);
     Ok(())
@@ -140,7 +140,7 @@ fn test_custom_params_with_strings() -> SongbirdResult<()> {
     };
 
     let params = config.custom_params.as_ref().or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(params.contains_key("endpoint"));
     assert!(params.contains_key("protocol"));

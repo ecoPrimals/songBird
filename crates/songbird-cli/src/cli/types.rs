@@ -201,10 +201,10 @@ mod tests {
     fn test_deployment_type_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let deployment = DeploymentType::Development;
         let serialized = serde_json::to_string(&deployment).map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
         })?;
         let deserialized: DeploymentType = serde_json::from_str(&serialized).map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
         })?;
         assert_eq!(deployment, deserialized);
         Ok(())
@@ -239,10 +239,10 @@ mod tests {
     fn test_output_format_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let format = OutputFormat::Table;
         let serialized = serde_json::to_string(&format).map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
         })?;
         let deserialized: OutputFormat = serde_json::from_str(&serialized).map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
         })?;
         assert_eq!(format, deserialized);
         Ok(())

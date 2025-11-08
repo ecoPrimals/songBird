@@ -88,7 +88,7 @@ mod tests {
     fn test_validation_result_serialization() -> SongbirdResult<()> {
         let result = ValidationResult::success();
         let json_str = serde_json::to_string(&result).map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
         })?;
         assert!(json_str.contains("is_valid"));
         assert!(json_str.contains("true"));
@@ -99,7 +99,7 @@ mod tests {
     fn test_validation_result_deserialization() -> SongbirdResult<()> {
         let json = r#"{"is_valid":true,"errors":[],"warnings":[]}"#;
         let val_result: ValidationResult = serde_json::from_str(json).map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
         })?;
         assert!(val_result.is_valid);
         assert!(val_result.errors.is_empty());

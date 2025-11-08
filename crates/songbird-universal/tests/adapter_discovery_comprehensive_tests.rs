@@ -35,7 +35,7 @@ async fn test_ai_adapter_discovery_from_environment() {
     // Should succeed with environment discovery
     assert!(result.is_ok());
     let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     assert_eq!(adapter.endpoint(), format!("http://ai-provider:{}", test_orchestrator_port()));
 }
@@ -54,7 +54,7 @@ async fn test_compute_adapter_discovery_from_environment() {
 
     assert!(result.is_ok());
     let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     assert_eq!(adapter.endpoint(), format!("http://compute-provider:{}", test_metrics_port()));
 }
@@ -70,7 +70,7 @@ async fn test_security_adapter_discovery_from_environment() {
 
     assert!(result.is_ok());
     let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     assert_eq!(adapter.endpoint(), "https://security-provider:8443");
 }
@@ -86,7 +86,7 @@ async fn test_storage_adapter_discovery_from_environment() {
 
     assert!(result.is_ok());
     let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     assert_eq!(adapter.endpoint(), "http://storage-provider:9000");
 }
@@ -111,7 +111,7 @@ async fn test_adapter_discovery_fallback_to_default() {
     // This is by design - fail-safe with sensible defaults
     assert!(result.is_ok(), "Discovery should succeed with fallback, but got: {:?}", result);
     let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     // Default fallback uses DEFAULT_HOST and port 8083
     assert!(
@@ -162,7 +162,7 @@ async fn test_multiple_adapter_discovery_independence() {
     assert_eq!(
         ai_result
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .endpoint(),
@@ -171,7 +171,7 @@ async fn test_multiple_adapter_discovery_independence() {
     assert_eq!(
         compute_result
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .endpoint(),
@@ -180,7 +180,7 @@ async fn test_multiple_adapter_discovery_independence() {
     assert_eq!(
         storage_result
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .endpoint(),
@@ -222,7 +222,7 @@ async fn test_adapter_discovery_priority_order() {
     assert_eq!(
         result
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .endpoint(),
@@ -238,7 +238,7 @@ async fn test_compute_adapter_direct_construction() {
         ComputeAdapter::new(format!("http://explicit:{}", test_metrics_port()).to_string());
     assert!(adapter.is_ok());
     let adapter = adapter.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(adapter.endpoint(), format!("http://explicit:{}", test_metrics_port()));
 }
@@ -263,7 +263,7 @@ async fn test_adapter_endpoint_formats() {
         assert_eq!(
             result
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .endpoint(),
@@ -337,7 +337,7 @@ async fn test_adapter_discovery_with_explicit_host_port() {
         result
     );
     let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     assert_eq!(adapter.endpoint(), "http://custom-host:9999");
 

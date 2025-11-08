@@ -123,7 +123,7 @@ async fn test_find_sovereignty_aware_paths_empty_services() -> SongbirdResult<()
 
     assert!(result.is_ok());
     let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(paths.is_empty());
     Ok(())
@@ -158,7 +158,7 @@ async fn test_find_sovereignty_aware_paths_single_service() -> SongbirdResult<()
     assert!(result.is_ok());
     // Note: May be empty if services don't meet even relaxed requirements
     let _paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     Ok(())
 }
@@ -197,7 +197,7 @@ async fn test_find_sovereignty_aware_paths_multiple_services() {
 
     assert!(result.is_ok());
     let _paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
     // Note: May be empty if services don't meet sovereignty requirements
 }
@@ -227,7 +227,7 @@ async fn test_paths_sorted_by_score() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Failed to discover services".to_string())
     })?;
 
     // Paths should be sorted by combined score (descending)
@@ -406,7 +406,7 @@ async fn test_paths_have_segments() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     for path in paths {
@@ -439,7 +439,7 @@ async fn test_paths_have_scores() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
     for path in paths {

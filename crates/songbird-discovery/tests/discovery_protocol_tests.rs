@@ -134,7 +134,7 @@ fn test_service_find_by_type() -> SongbirdResult<()> {
     assert_eq!(
         storage
             .ok_or_else(|| SongbirdError::configuration(format!(
-                "TODO: Replace with proper error handling: {}",
+                "Error: {}",
                 e
             )))?
             .0,
@@ -152,7 +152,7 @@ fn test_ttl_expiration_logic() -> SongbirdResult<()> {
     assert!(remaining.is_some());
     assert_eq!(
         remaining.ok_or_else(|| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))?,
         Duration::from_secs(20)

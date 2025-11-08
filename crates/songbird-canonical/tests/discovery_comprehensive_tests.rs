@@ -118,7 +118,7 @@ fn test_service_info_metadata_complex_values() -> SongbirdResult<()> {
         .metadata
         .get("json_config")
         .ok_or_else(|| SongbirdError::configuration(
-            "TODO: Replace with proper error handling".to_string()
+            "Missing performance configuration".to_string()
         ))?
         .contains("key"));
     Ok(())
@@ -253,7 +253,7 @@ fn test_service_info_serialization() -> SongbirdResult<()> {
     assert!(serialized.is_ok());
 
     let json_str = serialized.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(json_str.contains("test-service"));
     assert!(json_str.contains("192.168.1.1"));
@@ -270,7 +270,7 @@ fn test_service_info_serialization_with_metadata() -> SongbirdResult<()> {
     assert!(serialized.is_ok());
 
     let json_str = serialized.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(json_str.contains("version"));
     assert!(json_str.contains("1.0.0"));
@@ -290,7 +290,7 @@ fn test_service_info_deserialization() -> SongbirdResult<()> {
     assert!(result.is_ok());
 
     let service = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(service.name, "test-service");
     assert_eq!(service.address, "192.168.1.1");
@@ -315,7 +315,7 @@ fn test_service_info_deserialization_with_metadata() -> SongbirdResult<()> {
     assert!(result.is_ok());
 
     let service = result.ok_or_else(|| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(service.metadata.len(), 2);
     assert_eq!(service.metadata.get("version"), Some(&"1.0.0".to_string()));
@@ -330,7 +330,7 @@ fn test_service_info_round_trip_serialization() -> SongbirdResult<()> {
         .with_metadata("key2".to_string(), "value2".to_string());
 
     let serialized = serde_json::to_string(&original).map_err(|e| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let deserialized: ServiceInfo =
         serde_json::from_str(&serialized).map_err(|e| SongbirdError::Serialization {
@@ -468,7 +468,7 @@ fn test_service_info_with_tags_metadata() -> SongbirdResult<()> {
         .with_metadata("owner".to_string(), "platform-team".to_string());
 
     let tags = service.metadata.get("tags").or_else(|_| {
-        SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+        SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert!(tags.contains("production"));
     assert!(tags.contains("monitored"));

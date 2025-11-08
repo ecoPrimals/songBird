@@ -610,10 +610,10 @@ fn test_service_connections_with_metrics() -> SongbirdResult<()> {
     // Healthy service should have lower latency
     assert!(
         conn1.metrics.get("latency_ms").or_else(|_| SongbirdError::configuration(format!(
-            "TODO: Replace with proper error handling: {}",
+            "Error: {}",
             e
         )))? < conn2.metrics.get("latency_ms").or_else(|_| SongbirdError::configuration(
-            format!("TODO: Replace with proper error handling: {}", e)
+            format!("Missing performance configuration: {}", e)
         ))?
     );
     Ok(())

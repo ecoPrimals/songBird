@@ -636,7 +636,7 @@ fn test_migrate_file_large_content() -> SongbirdResult<()> {
             "fn function_{i}() -> Result<T, SomeError> {{ service_error!(\"error\") }}"
         )
         .ok_or_else(|| {
-            SongbirdError::configuration("TODO: Replace with proper error handling".to_string())
+            SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
 

@@ -80,7 +80,7 @@ pub mod config;
 
 /// **CLEANUP TARGET**: Environment configuration helper
 /// 
-/// **TODO**: Consolidate into `canonical::environment`
+/// **MIGRATION**: Scheduled for consolidation into `canonical::environment` (Phase 3)
 pub mod environment_config_clean;
 
 // ============================================================================

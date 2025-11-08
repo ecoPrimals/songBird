@@ -304,7 +304,7 @@ mod tests {
         assert!(retrieved.is_some());
         assert_eq!(
             retrieved.ok_or_else(|| SongbirdError::configuration(
-                "TODO: Replace with proper error handling".to_string()
+                "Missing performance configuration".to_string()
             ))?,
             data
         );

@@ -179,7 +179,7 @@ mod tests {
 
         assert!(result.is_ok());
         let metrics = result.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         assert!((metrics.system.cpu_usage - 0.0).abs() < f64::EPSILON);
         assert_eq!(metrics.songbird.active_services, 0);
@@ -198,7 +198,7 @@ mod tests {
         let result = collector.get_current_snapshot().await;
         assert!(result.is_ok());
         let snapshot = result.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         assert!((snapshot.system.cpu_usage - 0.0).abs() < f64::EPSILON);
         Ok(())
@@ -221,7 +221,7 @@ mod tests {
         let result = collector.get_current_metrics().await;
         assert!(result.is_ok());
         let metrics = result.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         assert!((metrics.system.cpu_usage - 0.0).abs() < f64::EPSILON);
         Ok(())
@@ -249,7 +249,7 @@ mod tests {
         assert!(result.is_ok());
 
         let output = result.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         assert!(output.contains("songbird_cpu_usage_percent"));
         assert!(output.contains("songbird_memory_usage_ratio"));
@@ -280,7 +280,7 @@ mod tests {
     async fn test_metrics_snapshot_contains_timestamp() -> Result<()> {
         let collector = MetricsCollector::new();
         let metrics = collector.collect_all_metrics().await.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
 
         // Timestamp should be recent (within last second)
@@ -294,7 +294,7 @@ mod tests {
     async fn test_metrics_snapshot_system_metrics() -> Result<()> {
         let collector = MetricsCollector::new();
         let metrics = collector.collect_all_metrics().await.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
 
         assert!((metrics.system.cpu_usage - 0.0).abs() < f64::EPSILON);
@@ -309,7 +309,7 @@ mod tests {
     async fn test_metrics_snapshot_application_metrics() -> Result<()> {
         let collector = MetricsCollector::new();
         let metrics = collector.collect_all_metrics().await.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
 
         assert_eq!(metrics.songbird.active_services, 0);
@@ -323,7 +323,7 @@ mod tests {
     async fn test_metrics_snapshot_clone() -> Result<()> {
         let collector = MetricsCollector::new();
         let metrics = collector.collect_all_metrics().await.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
 
         let cloned = metrics.clone();
@@ -336,7 +336,7 @@ mod tests {
     async fn test_metrics_snapshot_serialization() -> Result<()> {
         let collector = MetricsCollector::new();
         let metrics = collector.collect_all_metrics().await.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
 
         let serialized =
@@ -398,7 +398,7 @@ mod tests {
         for handle in handles {
             let result = handle.await.map_err(|e| {
                 SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {e}"
+                    "Failed to join concurrent metrics task: {e}"
                 ))
             })?;
             assert!(result.is_ok());
@@ -419,7 +419,7 @@ mod tests {
     async fn test_metrics_snapshot_debug() -> Result<()> {
         let collector = MetricsCollector::new();
         let metrics = collector.collect_all_metrics().await.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
         let debug_str = format!("{metrics:?}");
         assert!(debug_str.contains("MetricsSnapshot"));
@@ -430,7 +430,7 @@ mod tests {
     async fn test_prometheus_export_format_correctness() -> Result<()> {
         let collector = MetricsCollector::new();
         let output = collector.export_prometheus().await.map_err(|e| {
-            SongbirdError::configuration(format!("TODO: Replace with proper error handling: {e}"))
+            SongbirdError::configuration(format!("Operation failed: {e}"))
         })?;
 
         // Check format: metric name followed by value

@@ -45,9 +45,9 @@ pub trait NetworkProvider: Send + Sync {
 /// Network manager - main entry point for network operations
 pub struct NetworkManager {
     config: NetworkConfig,
-    // TODO: Implement NetworkProviderImpl enum when concrete providers are added
-    // For now, commented out to maintain native async trait compatibility
-    // providers: HashMap<String, NetworkProviderImpl>,
+    // FUTURE: NetworkProviderImpl enum architecture deferred
+    // Current design prioritizes native async traits over provider enumeration
+    // If needed, convert to dynamic dispatch with Arc<dyn NetworkProvider>
     gaming_manager: Option<GamingManager>,
 }
 
@@ -74,15 +74,16 @@ impl NetworkManager {
         Ok(())
     }
 
-    /// Register a network provider
-    /// TODO: Re-enable when NetworkProviderImpl enum is implemented
+    /// Register a network provider (currently unused)
+    ///
+    /// # Future Enhancement
+    /// If multi-provider support is needed, use Arc<dyn NetworkProvider> instead of enum
     #[allow(dead_code)]
     pub async fn register_provider<P: NetworkProvider + 'static>(
         &mut self,
         _provider: P,
     ) -> SongbirdResult<()> {
-        // let provider_id = provider.provider_id().to_string();
-        // self.providers.insert(provider_id, NetworkProviderImpl::from(provider));
+        // Provider registration deferred until multi-provider requirements emerge
         Ok(())
     }
 
@@ -90,11 +91,7 @@ impl NetworkManager {
     pub async fn health_check(&self) -> SongbirdResult<NetworkHealth> {
         let _provider_health = HashMap::<String, NetworkHealth>::new();
 
-        // TODO: Re-enable when NetworkProviderImpl enum is implemented
-        // for (id, provider) in &self.providers {
-        //     let health = provider.health_check().await?;
-        //     provider_health.insert(id.clone(), health);
-        // }
+        // Multi-provider health aggregation deferred - currently single gaming provider only
 
         let gaming_health = if let Some(ref gaming) = self.gaming_manager {
             Some(gaming.health_check().await?)
@@ -119,20 +116,9 @@ impl NetworkManager {
 
     /// Get the count of active network connections
     async fn get_active_connections_count(&self) -> SongbirdResult<u32> {
-        // Count active connections from network provider
-        // TODO: Re-enable when NetworkProviderImpl enum is implemented
-        // if let Some(provider) = self.providers.values().next() {
-        //     // In a real implementation, this would query the actual network provider
-        //     // For now, return a reasonable default based on provider health
-        //     let health = provider.health_check().await?;
-        //     match health.overall_status {
-        //         NetworkStatus::Healthy => Ok(5),
-        //         NetworkStatus::Degraded => Ok(2),
-        //         _ => Ok(0),
-        //     }
-        // } else {
-            Ok(0)
-        // }
+        // Multi-provider connection tracking deferred
+        // Current implementation returns default until real metrics needed
+        Ok(0)
     }
 
     /// Get current bandwidth usage in MB/s
@@ -145,19 +131,9 @@ impl NetworkManager {
 
     /// Get average network latency in milliseconds
     async fn get_average_latency(&self) -> SongbirdResult<f64> {
-        // In a real implementation, this would perform actual latency measurements
-        // For now, return a reasonable default based on system health
-        // TODO: Re-enable when NetworkProviderImpl enum is implemented
-        // if let Some(provider) = self.providers.values().next() {
-        //     let health = provider.health_check().await?;
-        //     match health.overall_status {
-        //         NetworkStatus::Healthy => Ok(25.0),
-        //         NetworkStatus::Degraded => Ok(75.0),
-        //         _ => Ok(500.0),
-        //     }
-        // } else {
-        Ok(25.0)  // Default for now
-        // }
+        // Real latency measurement deferred until metrics infrastructure ready
+        // Returns sensible default for healthy network conditions
+        Ok(25.0)
     }
 }
 

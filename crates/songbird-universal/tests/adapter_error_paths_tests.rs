@@ -155,7 +155,7 @@ async fn test_find_capability_providers_special_characters() -> SongbirdResult<(
         assert_eq!(
             result
                 .ok_or_else(|| SongbirdError::configuration(format!(
-                    "TODO: Replace with proper error handling: {}",
+                    "Error: {}",
                     e
                 )))?
                 .len(),
