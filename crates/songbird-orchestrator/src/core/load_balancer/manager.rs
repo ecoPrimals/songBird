@@ -7,7 +7,7 @@ use super::types::*;
 use crate::traits::load_balancer::{LoadBalancer, LoadBalancerDyn, LoadBalancerStats};
 // use songbird_discovery::{discovery::ServiceInstance, traits::ServiceDiscovery;};  // TEMPORARILY /// DISABLED
 // DISABLED
-use songbird_types::{SongbirdError, SongbirdResponse, SongbirdResult, success};
+use songbird_types::{SongbirdError, SongbirdResult, SongbirdResult, success};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::info;

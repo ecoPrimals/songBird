@@ -65,9 +65,9 @@ use std::collections::HashMap;
 pub mod universal_primals; // DEPRECATED: Use canonical::primals instead - kept for re-exports only
 
 pub mod constants;
-pub mod environment;
+// pub mod environment; // ✅ REMOVED: Fully consolidated into canonical::environment (Nov 9, 2025)
 pub mod hardcoded_elimination;
-pub mod network;
+// pub mod network; // ✅ REMOVED: Fully consolidated into canonical::network (Nov 9, 2025)
 pub mod paths;
 pub mod providers;
 // TEMPORARY: Disabled due to syntax errors - fix in next session
@@ -76,7 +76,8 @@ pub mod providers;
 // Re-export commonly used types
 #[allow(deprecated)]
 pub use constants::get_default_bind_address;
-pub use environment::EnvironmentConfig;
+// ✅ REMOVED: Use canonical::environment::EnvironmentConfig instead (Nov 9, 2025)
+// pub use environment::EnvironmentConfig;
 
 /// Main Songbird configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

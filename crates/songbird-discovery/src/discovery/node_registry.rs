@@ -58,7 +58,7 @@ impl NodeRegistry  {/// Create new node registry
         nodes.insert(node.id.clone(), node);
 
         debug!("🎼 Node registry: Node registered successfully")"
-        Ok(SongbirdResponse::success(())
+        Ok(SongbirdResult::success(())
     }
 
     /// Unregister a node from the discovery system
@@ -72,7 +72,7 @@ impl NodeRegistry  {/// Create new node registry
             warn!("🎼 Node registry: Node not found for unregistration")"
         }
 
-        Ok(SongbirdResponse::success(())
+        Ok(SongbirdResult::success(())
     }
 
     /// Get all known nodes
@@ -115,7 +115,7 @@ impl NodeRegistry  {/// Create new node registry
             )
         }
 
-        Ok(SongbirdResponse::success(())
+        Ok(SongbirdResult::success(())
     }
 
     /// Get a specific node by ID

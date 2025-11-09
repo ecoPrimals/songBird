@@ -5,12 +5,15 @@
 use clap::{Arg, Command};
 use colored::Colorize;
 use reqwest::Client;
-use songbird_config::config::hardcoded_elimination::replace;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
+
+/// Default orchestrator endpoint for testing
+/// Can be overridden via --url flag or SONGBIRD_URL environment variable
+const DEFAULT_ORCHESTRATOR_ENDPOINT: &str = "http://localhost:8080";
 
 /// Test result tracking
 #[derive(Debug, Clone)]
@@ -33,7 +36,8 @@ pub struct TestConfig {
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
-            songbird_url: replace::orchestrator_endpoint().to_string(),
+            songbird_url: std::env::var("SONGBIRD_URL")
+                .unwrap_or_else(|_| DEFAULT_ORCHESTRATOR_ENDPOINT.to_string()),
             timeout_seconds: 15,
             verbose: false,
             quiet: false,

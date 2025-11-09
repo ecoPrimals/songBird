@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use songbird_config::SongbirdConfig;
-use songbird_types::ai_first::SongbirdResponse;
+use songbird_types::ai_first::SongbirdResult;
 use songbird_types::EvolvedResult;
 
 /// **MODERNIZED**: Ecosystem discovery configuration using unified config system
@@ -97,13 +97,13 @@ impl EcosystemPrimalDiscovery {
         }
 
         info!("🎯 Discovery complete: {} primals found", discovered.len()"
-        Ok(SongbirdResponse::success(discovered)
+        Ok(SongbirdResult::success(discovered)
     }
 
     /// Discover primal in a specific directory
     pub async fn discover_primal_in_directory(&self) -> SongbirdResult<()> {let manifest_path = path.join("Cargo.toml");"
         if !manifest_path.exists() {
-            return Ok(SongbirdResponse::success(None);
+            return Ok(SongbirdResult::success(None);
         }
 
         // Read the Cargo.toml file to get primal information
@@ -113,20 +113,20 @@ impl EcosystemPrimalDiscovery {
                 match toml::from_str::<toml::Value>(&content) {
                     Ok(cargo_toml) => {
                         if let Some(primal) = self.extract_primal_info(path, &cargo_toml) {
-                            Ok(SongbirdResponse::success(Some(primal))
+                            Ok(SongbirdResult::success(Some(primal))
                         } else {
-                            Ok(SongbirdResponse::success(None)
+                            Ok(SongbirdResult::success(None)
                         }
                     }
                     Err(e) => {
                         warn!("Failed to parse Cargo.toml at {}: {}", path.display(), e);"
-                        Ok(SongbirdResponse::success(None)
+                        Ok(SongbirdResult::success(None)
                     }
                 }
             }
             Err(e) => {
                 warn!("Failed to read Cargo.toml at {}: {}", path.display(), e);"
-                Ok(SongbirdResponse::success(None)
+                Ok(SongbirdResult::success(None)
             }
         }
     }

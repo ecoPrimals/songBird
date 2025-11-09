@@ -1,55 +1,71 @@
 // Configuration test helpers
 ///
 /// Centralizes common configuration creation patterns used across tests
+///
+/// **MODERNIZED**: Now uses canonical config types from songbird-config
 
 /// Performance configuration test helpers
-#[allow(deprecated)]
+///
+/// **CANONICAL**: Uses modern PerformanceConfig from songbird-config
 pub mod performance {
-    use songbird_config::config::SongbirdConfig;
+    use songbird_config::PerformanceConfig;
 
     /// Create a performance-optimized test configuration
     #[must_use]
-    pub fn create_performance_test_config() -> SongbirdConfig {
-        // Configure performance settings
-        // NOTE: Performance config will be re-enabled in next phase of canonical modernization
-        // config.performance.enable_async_batching = true;
-        // config.performance.batch_size = 100;
-        // config.performance.batch_timeout = Duration::from_millis(50);
-        SongbirdConfig::default()
+    pub fn create_performance_test_config() -> PerformanceConfig {
+        PerformanceConfig {
+            buffer_pool_size: Some(1024),
+            max_memory_mb: Some(256),
+            worker_threads: None, // Auto-detect
+            connection_pool_size: Some(100),
+            request_timeout_ms: Some(30000),
+            enable_zero_copy: Some(true),
+            batch_size: Some(100),
+            custom_params: None,
+        }
     }
 
     /// Create a minimal test configuration for basic functionality
     #[must_use]
-    pub fn create_minimal_test_config() -> SongbirdConfig {
-        // Configure minimal settings
-        // NOTE: Performance config will be re-enabled in next phase of canonical modernization
-        // config.performance.enable_async_batching = false;
-        // config.performance.batch_size = 1;
-        // config.performance.batch_timeout = Duration::from_millis(1);
-        SongbirdConfig::default()
+    pub fn create_minimal_test_config() -> PerformanceConfig {
+        PerformanceConfig {
+            buffer_pool_size: Some(64),
+            max_memory_mb: Some(64),
+            worker_threads: Some(1),
+            connection_pool_size: Some(10),
+            request_timeout_ms: Some(5000),
+            enable_zero_copy: Some(false),
+            batch_size: Some(1),
+            custom_params: None,
+        }
     }
 
     /// Create a high-performance test configuration for load testing
     #[must_use]
-    pub fn create_high_performance_config() -> SongbirdConfig {
-        // Configure high performance settings
-        // NOTE: Performance config will be re-enabled in next phase of canonical modernization
-        // config.performance.enable_async_batching = true;
-        // config.performance.batch_size = 1000;
-        // config.performance.batch_timeout = Duration::from_millis(500);
-        SongbirdConfig::default()
+    pub fn create_high_performance_config() -> PerformanceConfig {
+        PerformanceConfig {
+            buffer_pool_size: Some(4096),
+            max_memory_mb: Some(1024),
+            worker_threads: None, // Auto-detect
+            connection_pool_size: Some(500),
+            request_timeout_ms: Some(60000),
+            enable_zero_copy: Some(true),
+            batch_size: Some(1000),
+            custom_params: None,
+        }
     }
 }
 
 /// Network configuration test helpers
-#[allow(deprecated)]
+///
+/// **CANONICAL**: Uses modern NetworkConfig from canonical module
 pub mod network {
-    use songbird_config::config::SongbirdConfig;
+    use songbird_config::canonical::NetworkConfig;
 
     /// Create a test configuration with custom network settings
     #[must_use]
-    pub fn create_network_test_config() -> SongbirdConfig {
-        SongbirdConfig::default()
+    pub fn create_network_test_config() -> NetworkConfig {
+        NetworkConfig::default()
     }
 }
 

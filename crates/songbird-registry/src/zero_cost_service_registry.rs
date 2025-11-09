@@ -3,7 +3,7 @@
 //! This module provides a high-performance, zero-allocation service registry
 //! that leverages Rust's zero-cost abstractions for maximum efficiency.
 
-use songbird_types::{SongbirdError, SongbirdResponse, SongbirdResult, success};
+use songbird_types::{SongbirdError, SongbirdResult, SongbirdResult, success};
 use songbird_discovery::{ServiceInfo, traits::HealthStatus};
 use songbird_universal::{Capability, QosMetrics};
 use tokio::sync::broadcast;
@@ -216,7 +216,7 @@ where
             details: ai_health.map_or_else(|e| format!("Error: {}", e), |response| response.data),"
         });
 
-        Ok(SongbirdResponse::success(reports)
+        Ok(SongbirdResult::success(reports)
     }
 
     /// Broadcast service events to subscribers
@@ -310,23 +310,23 @@ impl ZeroCostService for ZeroCostSecurityService  {fn service_info(&self) -> Ser
                 )
                 .await
                 {
-                    Ok(Ok(true) => Ok(SongbirdResponse::success(format!(
+                    Ok(Ok(true) => Ok(SongbirdResult::success(format!(
                         "Security provider {provider_url} is healthy""
                     ))
-                    Ok(Ok(false) => Ok(SongbirdResponse::success(format!(
+                    Ok(Ok(false) => Ok(SongbirdResult::success(format!(
                         "Security provider {provider_url} is unhealthy""
                     ))
-                    Ok(Err(e) => Ok(SongbirdResponse::success(format!(
+                    Ok(Err(e) => Ok(SongbirdResult::success(format!(
                         "Security provider health check failed: {e}""
                     ))
-                    Err(_) => Ok(SongbirdResponse::success(
+                    Err(_) => Ok(SongbirdResult::success(
                         "Security provider health check timeout".to_string()]"
                     ))
                 }
             }
             Err(_) => {
                 // No security provider configured - return configuration guidance
-                Ok(SongbirdResponse::success(
+                Ok(SongbirdResult::success(
                     "No security provider configured. Set SECURITY_PROVIDER_PRIMARY environment variable.".to_string()"
                 )
             }
@@ -387,13 +387,13 @@ impl ZeroCostService for ZeroCostStorageService  {fn service_info(&self) -> Serv
 
                 // Canonical health check pattern
                 match Ok::<(), String>(() {
-                    Ok(() => Ok(SongbirdResponse::success(format!(
+                    Ok(() => Ok(SongbirdResult::success(format!(
                         "Storage capabilities healthy via {} providers","
                         providers.len()
                     ))
                     Err(e) => {
                         debug!("Storage capability health check failed: {}", e)"
-                        Ok(SongbirdResponse::success(
+                        Ok(SongbirdResult::success(
                             "Storage service available (fallback)".to_string()]"
                         )
                     }
@@ -401,7 +401,7 @@ impl ZeroCostService for ZeroCostStorageService  {fn service_info(&self) -> Serv
             }
             _ => {
                 debug!("No storage providers found, using local fallback")"
-                Ok(SongbirdResponse::success(
+                Ok(SongbirdResult::success(
                     "Local storage fallback healthy".to_string()]"
                 )
             }
@@ -461,13 +461,13 @@ impl ZeroCostService for ZeroCostComputeService  {fn service_info(&self) -> Serv
 
                 // Canonical health check pattern
                 match Ok::<(), String>(() {
-                    Ok(() => Ok(SongbirdResponse::success(format!(
+                    Ok(() => Ok(SongbirdResult::success(format!(
                         "Compute capabilities healthy via {} providers","
                         providers.len()
                     ))
                     Err(e) => {
                         debug!("Compute capability health check failed: {}", e)"
-                        Ok(SongbirdResponse::success(
+                        Ok(SongbirdResult::success(
                             "Compute service available (fallback)".to_string()]"
                         )
                     }
@@ -475,7 +475,7 @@ impl ZeroCostService for ZeroCostComputeService  {fn service_info(&self) -> Serv
             }
             _ => {
                 debug!("No compute providers found, using local fallback")"
-                Ok(SongbirdResponse::success(
+                Ok(SongbirdResult::success(
                     "Local compute fallback healthy".to_string()]"
                 )
             }
@@ -532,13 +532,13 @@ impl ZeroCostService for ZeroCostAIService  {fn service_info(&self) -> ServiceIn
 
                 // Canonical health check pattern
                 match Ok::<(), String>(() {
-                    Ok(() => Ok(SongbirdResponse::success(format!(
+                    Ok(() => Ok(SongbirdResult::success(format!(
                         "AI capabilities healthy via {} providers","
                         providers.len()
                     ))
                     Err(e) => {
                         debug!("AI capability health check failed: {}", e)"
-                        Ok(SongbirdResponse::success(
+                        Ok(SongbirdResult::success(
                             "AI service available (fallback)".to_string()]"
                         )
                     }
@@ -546,7 +546,7 @@ impl ZeroCostService for ZeroCostAIService  {fn service_info(&self) -> ServiceIn
             }
             _ => {
                 debug!("No AI providers found, using local fallback")"
-                Ok(SongbirdResponse::success(
+                Ok(SongbirdResult::success(
                     "Local AI fallback healthy".to_string()]"
                 )
             }

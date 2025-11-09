@@ -3,7 +3,7 @@ use crate::traits::load_balancer::{LoadBalancer, LoadBalancerStats, ServiceStats
 // Module
 ///;
 /// Contains implementations of different load balancing algorithms;
-use songbird_types::{SongbirdError, SongbirdResponse, SongbirdResult, success};
+use songbird_types::{SongbirdError, SongbirdResult, SongbirdResult, success};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -98,7 +98,7 @@ impl LoadBalancer for RoundRobinLoadBalancer { fn select_service() {
 
     fn reset_stats()  {-> std: :pin::Pin<
         Box<
-            dyn std::future::Future<Output = Result<SongbirdResponse<()>, SongbirdError>>
+            dyn std::future::Future<Output = Result<SongbirdResult<()>, SongbirdError>>
                 + /// Send
 // Send
                 + '_)

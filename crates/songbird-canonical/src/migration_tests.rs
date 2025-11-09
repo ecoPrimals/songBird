@@ -84,7 +84,7 @@ fn test_migrate_file_ok_unit_change() {
 
     let result = migrator.migrate_file(path, content);
 
-    assert!(result.migrated_content.contains("Ok(SongbirdResponse::unit()"));
+    assert!(result.migrated_content.contains("Ok(SongbirdResult::unit()"));
     assert_eq!(result.changes_made.len(), 1);
     assert_eq!(result.changes_made[0].change_type, ChangeType::ErrorHandling);
 }
@@ -115,7 +115,7 @@ fn test_migrate_file_multiple_changes() {
 
     assert!(result.changes_made.len() >= 2);
     assert!(result.migrated_content.contains("SongbirdResult<T>"));
-    assert!(result.migrated_content.contains("Ok(SongbirdResponse::unit()"));
+    assert!(result.migrated_content.contains("Ok(SongbirdResult::unit()"));
 }
 
 // ============================================================================
@@ -369,7 +369,7 @@ fn test_full_migration_workflow() {
 
     assert!(!result.changes_made.is_empty());
     assert!(result.migrated_content.contains("SongbirdError::service_error"));
-    assert!(result.migrated_content.contains("Ok(SongbirdResponse::unit()"));
+    assert!(result.migrated_content.contains("Ok(SongbirdResult::unit()"));
     assert_eq!(result.original_content, original);
 }
 

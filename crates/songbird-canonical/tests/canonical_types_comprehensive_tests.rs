@@ -4,7 +4,7 @@
 
 use songbird_canonical::{
     AIResponseMetadata, CacheStatus, ConfidenceScore, Endpoint, RequestId, ResponsePerformance,
-    ServiceId, SongbirdResponse, SuggestedAction,
+    ServiceId, SongbirdResult, SuggestedAction,
 };
 use songbird_test_utils::{test_bind_address, test_orchestrator_port};
 use std::time::Instant;
@@ -298,19 +298,19 @@ fn test_suggested_action_equality() {
 }
 
 // ============================================================================
-// SongbirdResponse Tests
+// SongbirdResult Tests
 // ============================================================================
 
 #[test]
 fn test_songbird_response_success() {
-    let response = SongbirdResponse::success("test data");
+    let response = SongbirdResult::success("test data");
     assert_eq!(response.data, "test data");
     assert!((response.confidence.value() - 1.0).abs() < f64::EPSILON);
 }
 
 #[test]
 fn test_songbird_response_with_confidence() {
-    let response = SongbirdResponse::success("test data").with_confidence(0.85);
+    let response = SongbirdResult::success("test data").with_confidence(0.85);
 
     assert!((response.confidence.value() - 0.85).abs() < f64::EPSILON);
 }
@@ -318,7 +318,7 @@ fn test_songbird_response_with_confidence() {
 #[test]
 fn test_songbird_response_with_suggestion() {
     let action = SuggestedAction::new("retry", "Retry the operation");
-    let response = SongbirdResponse::success("test data").with_suggestion(action.clone());
+    let response = SongbirdResult::success("test data").with_suggestion(action.clone());
 
     assert_eq!(response.suggested_actions.len(), 1);
     assert_eq!(response.suggested_actions[0], action);
@@ -327,14 +327,14 @@ fn test_songbird_response_with_suggestion() {
 #[test]
 fn test_songbird_response_with_human_context() {
     let response =
-        SongbirdResponse::success("test data").with_human_context("This is a test response");
+        SongbirdResult::success("test data").with_human_context("This is a test response");
 
     assert_eq!(response.human_context, Some("This is a test response".to_string()));
 }
 
 #[test]
 fn test_songbird_response_map() {
-    let response = SongbirdResponse::success(42);
+    let response = SongbirdResult::success(42);
     let mapped = response.map(|x| x * 2);
 
     assert_eq!(mapped.data, 84);
@@ -342,7 +342,7 @@ fn test_songbird_response_map() {
 
 #[test]
 fn test_songbird_response_into_data() {
-    let response = SongbirdResponse::success("test data");
+    let response = SongbirdResult::success("test data");
     let data = response.into_data();
 
     assert_eq!(data, "test data");
@@ -350,19 +350,19 @@ fn test_songbird_response_into_data() {
 
 #[test]
 fn test_songbird_response_data_ref() {
-    let response = SongbirdResponse::success("test data");
+    let response = SongbirdResult::success("test data");
     assert_eq!(response.data(), &"test data");
 }
 
 #[test]
 fn test_songbird_response_from() {
-    let response: SongbirdResponse<_> = "test data".into();
+    let response: SongbirdResult<_> = "test data".into();
     assert_eq!(response.data, "test data");
 }
 
 #[test]
 fn test_songbird_response_unit() {
-    let _response = SongbirdResponse::unit();
+    let _response = SongbirdResult::unit();
     // Verify unit type response (no explicit assertion needed for unit)
 }
 
@@ -370,14 +370,14 @@ fn test_songbird_response_unit() {
 fn test_songbird_response_finish_processing() {
     let start = Instant::now();
     std::thread::sleep(std::time::Duration::from_millis(10));
-    let response = SongbirdResponse::success("test data").finish_processing(start);
+    let response = SongbirdResult::success("test data").finish_processing(start);
 
     assert!(response.performance.processing_time_ms >= 10);
 }
 
 #[test]
 fn test_songbird_response_clone() {
-    let response = SongbirdResponse::success("test data");
+    let response = SongbirdResult::success("test data");
     let cloned = response.clone();
     assert_eq!(response.data, cloned.data);
 }
@@ -462,7 +462,7 @@ fn test_full_response_workflow() {
         .with_parameter("cache", serde_json::json!(true))
         .with_priority(8);
 
-    let response = SongbirdResponse::success(vec![1, 2, 3, 4, 5])
+    let response = SongbirdResult::success(vec![1, 2, 3, 4, 5])
         .with_confidence(0.92)
         .with_suggestion(action)
         .with_human_context("Successfully retrieved 5 items")

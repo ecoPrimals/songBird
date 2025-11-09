@@ -1,0 +1,682 @@
+Songbird Configuration Struct Audit
+Generated: Sun Nov  9 11:26:42 AM EST 2025
+
+========================================
+
+ALL CONFIG STRUCTS:
+-------------------
+crates/songbird-canonical/src/config/adapters.rs:108:pub struct SecurityProviderConfigSecurityConfig {
+crates/songbird-canonical/src/config/adapters.rs:124:pub struct ComputeProviderConfigComputeConfig {
+crates/songbird-canonical/src/config/adapters.rs:12:pub struct UniversalAdapterConfig {
+crates/songbird-canonical/src/config/adapters.rs:140:pub struct StorageProviderConfigStorageConfig {
+crates/songbird-canonical/src/config/adapters.rs:173:pub struct CircuitBreakerConfig {
+crates/songbird-canonical/src/config/adapters.rs:26:pub struct SecurityAdapterConfig {
+crates/songbird-canonical/src/config/adapters.rs:49:pub struct ComputeAdapterConfig {
+crates/songbird-canonical/src/config/adapters.rs:72:pub struct StorageAdapterConfig {
+crates/songbird-canonical/src/config/adapters.rs:95:pub struct StorageProviderConfig {
+crates/songbird-canonical/src/config/ai_first.rs:10:pub struct AIFirstConfig {
+crates/songbird-canonical/src/config/ai_first.rs:31:pub struct ConfidenceScoringConfig {
+crates/songbird-canonical/src/config/ai_first.rs:48:pub struct HumanCollaborationConfig {
+crates/songbird-canonical/src/config/ai_first.rs:65:pub struct WorkloadClassificationConfig {
+crates/songbird-canonical/src/config/ai_first.rs:78:pub struct StreamingInterfaceConfig {
+crates/songbird-canonical/src/config/core.rs:16:pub struct CoreConfig {
+crates/songbird-canonical/src/config/environment.rs:107:pub struct NetworkConfig {
+crates/songbird-canonical/src/config/environment.rs:11:pub struct EnvironmentConfig {
+crates/songbird-canonical/src/config/environment.rs:136:pub struct EnvironmentSecurityConfig {
+crates/songbird-canonical/src/config/environment.rs:45:pub struct PortConfig {
+crates/songbird-canonical/src/config/environment.rs:59:pub struct LoggingConfig {
+crates/songbird-canonical/src/config/environment.rs:82:pub struct ObservabilityConfig {
+crates/songbird-canonical/src/config/orchestration.rs:10:pub struct OrchestrationConfig {
+crates/songbird-canonical/src/config/orchestration.rs:25:pub struct ServiceDiscoveryConfig {
+crates/songbird-canonical/src/config/orchestration.rs:38:pub struct LoadBalancingConfig {
+crates/songbird-canonical/src/config/orchestration.rs:64:pub struct HealthConfig {
+crates/songbird-canonical/src/config/orchestration.rs:81:pub struct ScalingConfig {
+crates/songbird-canonical/src/config/performance.rs:10:pub struct PerformanceConfig {
+crates/songbird-canonical/src/config/performance.rs:26:pub struct MemoryConfig {
+crates/songbird-canonical/src/config/performance.rs:45:pub struct ThroughputConfig {
+crates/songbird-canonical/src/config/performance.rs:62:pub struct LatencyConfig {
+crates/songbird-cli/src/bin/test_runner.rs:26:pub struct TestConfig {
+crates/songbird-cli/src/cli/commands/firewall.rs:19:pub struct FirewallConfig  {pub enabled: bool,
+crates/songbird-cli/src/cli/commands/firewall.rs:33:pub struct SecurityConfig  {pub security_level: String,
+crates/songbird-cli/src/cli/commands/firewall.rs:50:pub struct LoggingConfig  {pub enabled: bool,
+crates/songbird-cli/src/cli/commands/init.rs:59:pub struct InitConfig  {/// Deployment type
+crates/songbird-cli/src/cli/commands/internet.rs:22:struct InternetConnectionConfig  {settings: HashMap<String, String>)
+crates/songbird-cli/src/cli/commands/quick.rs:19:pub struct OrchestratorConfig {
+crates/songbird-cli/src/cli/commands/quick.rs:36:pub struct SecurityConfig {
+crates/songbird-cli/src/cli/commands/share.rs:95:pub struct SharingConfig  {resource_type: ResourceType,
+crates/songbird-cli/src/cli/config.rs:10:pub struct CliConfig {
+crates/songbird-cli/src/cli/core/types.rs:11:pub struct CliConfig {
+crates/songbird-compute-bridge/src/main.rs:104:struct BridgeConfig {
+crates/songbird-config/src/canonical/discovery.rs:157:pub struct CapabilityDiscoveryConfig {
+crates/songbird-config/src/canonical/discovery.rs:216:pub struct NetworkDiscoveryConfig {
+crates/songbird-config/src/canonical/discovery.rs:29:pub struct DiscoveryConfig {
+crates/songbird-config/src/canonical/discovery.rs:98:pub struct ServiceDiscoveryConfig {
+crates/songbird-config/src/canonical/environment.rs:105:pub struct EnvironmentConfig {
+crates/songbird-config/src/canonical/environment.rs:167:pub struct LogConfig {
+crates/songbird-config/src/canonical/network.rs:1151:pub struct TimeoutConfig {
+crates/songbird-config/src/canonical/network.rs:1198:pub struct DomainConfig {
+crates/songbird-config/src/canonical/network.rs:1241:pub struct ProxyConfig {
+crates/songbird-config/src/canonical/network.rs:125:pub struct CanonicalNetworkConfig {
+crates/songbird-config/src/canonical/network.rs:217:pub struct GamingNetworkConfig {
+crates/songbird-config/src/canonical/network.rs:376:pub struct CorsConfig {
+crates/songbird-config/src/canonical/network.rs:608:pub struct LoadBalancingConfig {
+crates/songbird-config/src/canonical/network.rs:632:pub struct RateLimitingConfig {
+crates/songbird-config/src/canonical/network.rs:653:pub struct ConnectionPoolConfig {
+crates/songbird-config/src/canonical/network.rs:680:pub struct TcpConfig {
+crates/songbird-config/src/canonical/network.rs:704:pub struct TcpKeepAliveConfig {
+crates/songbird-config/src/canonical/network.rs:725:pub struct SocketBufferConfig {
+crates/songbird-config/src/canonical/network.rs:743:pub struct UdpConfig {
+crates/songbird-config/src/canonical/network.rs:767:pub struct NetworkInterfaceConfig {
+crates/songbird-config/src/canonical/network.rs:788:pub struct CircuitBreakerConfig {
+crates/songbird-config/src/canonical/network.rs:878:pub struct SelfAwareConfig {
+crates/songbird-config/src/canonical/network.rs:908:pub struct UniversalDiscoveryConfig {
+crates/songbird-config/src/canonical/network.rs:972:pub struct ReverseProxyConfig {
+crates/songbird-config/src/canonical/network.rs:992:pub struct SslConfig {
+crates/songbird-config/src/canonical/observability.rs:104:pub struct TracingConfig {
+crates/songbird-config/src/canonical/observability.rs:10:pub struct UnifiedObservabilityConfig {
+crates/songbird-config/src/canonical/observability.rs:23:pub struct DashboardConfig {
+crates/songbird-config/src/canonical/observability.rs:54:pub struct LoggingConfig {
+crates/songbird-config/src/canonical/observability.rs:81:pub struct LogRotationConfig {
+crates/songbird-config/src/canonical/performance.rs:182:pub struct CacheConfig {
+crates/songbird-config/src/canonical/performance.rs:233:pub struct MetricsConfig {
+crates/songbird-config/src/canonical/performance.rs:284:pub struct BenchmarkConfig {
+crates/songbird-config/src/canonical/performance.rs:30:pub struct PerformanceConfig {
+crates/songbird-config/src/canonical/primals.rs:242:pub struct HealthCheckConfig {
+crates/songbird-config/src/canonical/resilience.rs:191:pub struct RobustnessConfig {
+crates/songbird-config/src/canonical/resilience.rs:226:pub struct RateLimitingConfig {
+crates/songbird-config/src/canonical/resilience.rs:283:pub struct BulkheadConfig {
+crates/songbird-config/src/canonical/resilience.rs:349:pub struct LoadBalancerConfig {
+crates/songbird-config/src/canonical/resilience.rs:34:pub struct RetryConfig {/// Maximum number of retry attempts
+crates/songbird-config/src/canonical/resilience.rs:406:pub struct HealthCheckConfig {
+crates/songbird-config/src/canonical/resilience.rs:444:pub struct ZeroCostRouterConfig {
+crates/songbird-config/src/canonical/resilience.rs:8:pub struct CircuitBreakerConfig {/// Number of consecutive failures before opening the circuit
+crates/songbird-config/src/canonical/security.rs:148:pub struct UniversalSecurityConfig {
+crates/songbird-config/src/canonical/security.rs:209:pub struct AuthenticationConfig {
+crates/songbird-config/src/canonical/security.rs:257:pub struct TokenConfig {
+crates/songbird-config/src/canonical/security.rs:280:pub struct SessionConfig {
+crates/songbird-config/src/canonical/security.rs:303:pub struct EncryptionConfig {
+crates/songbird-config/src/canonical/security.rs:355:pub struct KeyManagementConfig {
+crates/songbird-config/src/canonical/security.rs:411:pub struct TransportEncryptionConfig {
+crates/songbird-config/src/canonical/security.rs:451:pub struct AccessControlConfig {
+crates/songbird-config/src/canonical/security.rs:489:pub struct RbacConfig {
+crates/songbird-config/src/canonical/security.rs:522:pub struct AbacConfig {
+crates/songbird-config/src/canonical/security.rs:575:pub struct ProviderDiscoveryConfig {
+crates/songbird-config/src/canonical/security.rs:622:pub struct FallbackConfig {
+crates/songbird-config/src/canonical/service.rs:11:pub struct ServiceConfig {
+crates/songbird-config/src/canonical/service.rs:36:pub struct HealthCheckConfig {
+crates/songbird-config/src/config/environment.rs:182:pub struct EnvironmentConfig {
+crates/songbird-config/src/config/environment.rs:51:pub struct LogConfig {
+crates/songbird-config/src/config/hardcoded_elimination.rs:15:pub struct HardcodingEliminationConfig {
+crates/songbird-config/src/config/hardcoded_elimination.rs:33:pub struct ServiceConfig {
+crates/songbird-config/src/config/hardcoded_elimination.rs:42:pub struct SecurityConfig {
+crates/songbird-config/src/config/hardcoded_elimination.rs:51:pub struct NetworkConfig {
+crates/songbird-config/src/config/hardcoded_elimination.rs:64:pub struct TimeoutConfig {
+crates/songbird-config/src/config/hardcoded_elimination.rs:73:pub struct PerformanceConfig {
+crates/songbird-config/src/config/hardcoded_elimination.rs:82:pub struct PrimalConfig {
+crates/songbird-config/src/config/hardcoded_elimination.rs:93:pub struct FederationConfig {
+crates/songbird-config/src/config/mod.rs:236:pub struct NetworkConfig {
+crates/songbird-config/src/config/mod.rs:283:pub struct TlsConfig {
+crates/songbird-config/src/config/mod.rs:292:pub struct ProxyConfig {
+crates/songbird-config/src/config/mod.rs:300:pub struct SecurityConfig {
+crates/songbird-config/src/config/mod.rs:334:pub struct AuthConfig {
+crates/songbird-config/src/config/mod.rs:361:pub struct AuthzConfig {
+crates/songbird-config/src/config/mod.rs:385:pub struct EncryptionConfig {
+crates/songbird-config/src/config/mod.rs:411:pub struct RateLimitConfig {
+crates/songbird-config/src/config/mod.rs:430:pub struct AuditConfig {
+crates/songbird-config/src/config/mod.rs:459:pub struct DiscoveryConfig {
+crates/songbird-config/src/config/mod.rs:494:pub struct HealthCheckConfig {
+crates/songbird-config/src/config/mod.rs:515:pub struct RegistrationConfig {
+crates/songbird-config/src/config/mod.rs:535:pub struct ObservabilityConfig {
+crates/songbird-config/src/config/mod.rs:547:pub struct MetricsConfig {
+crates/songbird-config/src/config/mod.rs:574:pub struct TracingConfig {
+crates/songbird-config/src/config/mod.rs:601:pub struct LoggingConfig {
+crates/songbird-config/src/config/mod.rs:83:pub struct SongbirdConfig {
+crates/songbird-config/src/config/network_endpoints.rs:117:pub struct PortConfig {
+crates/songbird-config/src/config/network/mod.rs:202:pub struct TimeoutConfig {
+crates/songbird-config/src/config/network/mod.rs:269:pub struct CorsConfig {
+crates/songbird-config/src/config/network/mod.rs:285:pub struct GamingNetworkConfig {
+crates/songbird-config/src/config/network/mod.rs:56:pub struct NetworkConfig {
+crates/songbird-config/src/config/network/types.rs:152:pub struct CorsConfig {
+crates/songbird-config/src/config/network/types.rs:165:pub struct GamingNetworkConfig {
+crates/songbird-config/src/config/network/types.rs:92:pub struct TimeoutConfig {
+crates/songbird-config/src/config/paths.rs:16:pub struct PathConfig {
+crates/songbird-config/src/config/universal_primals_clean.rs:38:pub struct HealthCheckConfig  {/// Enable health checks
+crates/songbird-config/src/config/universal_primals.rs:186:// pub struct HealthCheckConfig { ... }
+crates/songbird-config/src/config/universal_primals.rs:190:pub struct AutoDiscoveryConfig {
+crates/songbird-config/src/config/universal_primals.rs:329:pub struct ConnectionPoolConfig {
+crates/songbird-config/src/config/universal_primals.rs:346:pub struct TokenRefreshConfig {
+crates/songbird-config/src/environment.rs:30:pub struct EnvironmentConfig  {pub deployment_mode: String,
+crates/songbird-config/src/gaming.rs:110:pub struct LegacyProtocolConfig  {/// Enable IPX protocol support
+crates/songbird-config/src/gaming.rs:124:pub struct TunnelConfig  {/// Enable tunnel creation
+crates/songbird-config/src/gaming.rs:14:pub struct GamingConfig  {/// Gaming bridge configuration
+crates/songbird-config/src/gaming.rs:28:pub struct GamingBridgeConfig  {/// Enable the gaming bridge
+crates/songbird-config/src/gaming.rs:46:pub struct ProtocolDetectionConfig  {/// Enable automatic protocol detection
+crates/songbird-config/src/gaming.rs:62:pub struct SessionManagementConfig  {/// Maximum players per session
+crates/songbird-config/src/gaming.rs:78:pub struct GamingPerformanceConfig  {/// Enable zero-copy packet forwarding
+crates/songbird-config/src/gaming.rs:94:pub struct GamingSecurityConfig  {/// Enable packet filtering
+crates/songbird-config/src/lib.rs:120:pub struct PerformanceConfig {
+crates/songbird-config/src/performance.rs:227:pub struct ServiceConfig  {/// The canonical name identifier for the service
+crates/songbird-config/src/self_discovery.rs:155:pub struct CapabilityDiscoveryConfig  {/// Discovery methods to use
+crates/songbird-config/src/unified/api.rs:101:pub struct MeshConfig  {/// Health monitoring configuration
+crates/songbird-config/src/unified/api.rs:10:pub struct ApiConfig  {/// Session configuration for real-time AI streaming
+crates/songbird-config/src/unified/api.rs:131:pub struct HealthMonitoringConfig  {/// Health check interval
+crates/songbird-config/src/unified/api.rs:161:pub struct PerformanceAnalysisConfig  {/// Enable performance monitoring
+crates/songbird-config/src/unified/api.rs:195:pub struct ServiceRegistrationConfig  {/// Health check configuration
+crates/songbird-config/src/unified/api.rs:255:pub struct CircuitBreakerConfig  {/// Failure threshold to open circuit
+crates/songbird-config/src/unified/api.rs:29:pub struct SessionConfig  {/// Maximum concurrent sessions
+crates/songbird-config/src/unified/api.rs:63:pub struct ConnectionConfig  {/// Maximum connections per client
+crates/songbird-config/src/unified/cli.rs:33:pub struct GamingCliConfig {
+crates/songbird-config/src/unified/cli.rs:8:pub struct UnifiedCliConfig {
+crates/songbird-config/src/unified/core.rs:13:pub struct UnifiedCoreConfig {
+crates/songbird-config/src/unified/core.rs:26:pub struct ServiceConfig {
+crates/songbird-config/src/unified/core.rs:50:pub struct EnvironmentConfig {
+crates/songbird-config/src/unified/core.rs:74:pub struct CanonicalObservabilityConfig {
+crates/songbird-config/src/unified/discovery.rs:116:pub struct NetworkDiscoveryConfig {
+crates/songbird-config/src/unified/discovery.rs:26:pub struct UnifiedDiscoveryConfig {
+crates/songbird-config/src/unified/discovery.rs:60:pub struct ServiceDiscoveryConfig {
+crates/songbird-config/src/unified/discovery.rs:88:pub struct CapabilityDiscoveryConfig {
+crates/songbird-config/src/unified/federation.rs:105:pub struct ClusterConfig {/// Cluster identifier
+crates/songbird-config/src/unified/federation.rs:12:pub struct UnifiedFederationConfig  {/// Enable federation functionality
+crates/songbird-config/src/unified/federation.rs:145:pub struct FederationNetworkConfig  {/// Discovery port for UDP broadcasts
+crates/songbird-config/src/unified/federation.rs:174:pub struct ClusterDiscoveryConfig {/// Enable auto-discovery (from deprecated `FederationConfig`)
+crates/songbird-config/src/unified/federation.rs:211:pub struct ConsensusConfig {
+crates/songbird-config/src/unified/federation.rs:229:pub struct ReplicationConfig {
+crates/songbird-config/src/unified/federation.rs:50:pub struct NodeConfig {/// Node identifier
+crates/songbird-config/src/unified/network.rs:110:pub struct SelfAwareConfig  {/// This primal's unique identifier
+crates/songbird-config/src/unified/network.rs:120:pub struct UniversalDiscoveryConfig {/// Enable universal adapter for capability-based routing
+crates/songbird-config/src/unified/network.rs:191:pub struct UnifiedNetworkConfig {
+crates/songbird-config/src/unified/network.rs:263:pub struct GamingNetworkConfig {
+crates/songbird-config/src/unified/network.rs:296:pub struct ReverseProxyConfig {
+crates/songbird-config/src/unified/network.rs:314:pub struct SslConfig {
+crates/songbird-config/src/unified/network.rs:334:pub struct LoadBalancingConfig {
+crates/songbird-config/src/unified/network.rs:351:pub struct RateLimitingConfig {
+crates/songbird-config/src/unified/network.rs:369:pub struct UnifiedCircuitBreakerConfig {
+crates/songbird-config/src/unified/network.rs:479:pub struct UnifiedDomainConfig {
+crates/songbird-config/src/unified/network.rs:495:pub struct UnifiedSslConfig {
+crates/songbird-config/src/unified/network.rs:513:pub struct UnifiedGamingConfig {
+crates/songbird-config/src/unified/network.rs:594:pub struct ProxyConfig {
+crates/songbird-config/src/unified/network.rs:634:pub struct ConnectionPoolConfig {/// Maximum number of connections
+crates/songbird-config/src/unified/network.rs:688:pub struct NetworkInterfaceConfig  {/// Bind address for services
+crates/songbird-config/src/unified/network.rs:714:pub struct SocketBufferConfig  {/// Receive buffer size
+crates/songbird-config/src/unified/network.rs:737:pub struct TcpConfig  {/// Whether to enable TCP keep-alive
+crates/songbird-config/src/unified/network.rs:761:pub struct TcpKeepAliveConfig {/// Time before sending keep-alive probes (in seconds)
+crates/songbird-config/src/unified/network.rs:790:pub struct UdpConfig  {/// Whether to enable broadcast
+crates/songbird-config/src/unified/observability.rs:113:pub struct TracingConfig {
+crates/songbird-config/src/unified/observability.rs:35:pub struct UnifiedObservabilityConfig  {/// Dashboard configuration
+crates/songbird-config/src/unified/observability.rs:47:pub struct DashboardConfig {
+crates/songbird-config/src/unified/observability.rs:76:pub struct LoggingConfig {
+crates/songbird-config/src/unified/observability.rs:95:pub struct LogRotationConfig {
+crates/songbird-config/src/unified/performance.rs:120:pub struct MetricsConfig {
+crates/songbird-config/src/unified/performance.rs:144:pub struct BenchmarkConfig {
+crates/songbird-config/src/unified/performance.rs:43:pub struct UnifiedPerformanceConfig {
+crates/songbird-config/src/unified/performance.rs:96:pub struct CacheConfig {
+crates/songbird-config/src/unified/primals.rs:107:pub struct PrimalRoutingConfig {
+crates/songbird-config/src/unified/primals.rs:127:pub struct PrimalHealthConfig {
+crates/songbird-config/src/unified/primals.rs:12:pub struct UniversalPrimalsConfig {/// Capability-based primal configurations
+crates/songbird-config/src/unified/primals.rs:147:pub struct PrimalEndpointConfig {
+crates/songbird-config/src/unified/primals.rs:87:pub struct PrimalDiscoveryConfig {
+crates/songbird-config/src/unified/robustness.rs:11:pub struct RobustnessConfig  {/// Circuit breaker configuration
+crates/songbird-config/src/unified/robustness.rs:122:pub struct BulkheadConfig  {/// Enable bulkhead pattern
+crates/songbird-config/src/unified/robustness.rs:163:pub struct RetryConfig  {/// Enable retry mechanism
+crates/songbird-config/src/unified/robustness.rs:217:pub struct LoadBalancerConfig  {/// Load balancing algorithm
+crates/songbird-config/src/unified/robustness.rs:265:pub struct HealthCheckConfig  {/// Enable health checks
+crates/songbird-config/src/unified/robustness.rs:299:pub struct ZeroCostRouterConfig  {/// Enable zero-cost routing
+crates/songbird-config/src/unified/robustness.rs:38:pub struct CircuitBreakerConfig  {/// Enable circuit breaker
+crates/songbird-config/src/unified/robustness.rs:76:pub struct RateLimitingConfig  {/// Enable rate limiting
+crates/songbird-config/src/unified/testing.rs:13:pub struct ExperimentConfig {
+crates/songbird-config/src/unified/testing.rs:28:pub struct NetworkFaultConfig {
+crates/songbird-config/src/unified/testing.rs:41:pub struct ServiceFailureConfig {
+crates/songbird-config/src/unified/testing.rs:52:pub struct ResourceConstraintConfig {
+crates/songbird-config/src/unified/testing.rs:63:pub struct ByzantineFailureConfig {
+crates/songbird-config/src/unified/testing.rs:74:pub struct PerformanceDegradationConfig {
+crates/songbird-config/src/zero_touch_config.rs:122:pub struct DiscoveryConfig {
+crates/songbird-config/src/zero_touch_config.rs:188:pub struct NetworkConfig {
+crates/songbird-config/src/zero_touch_config.rs:226:pub struct BootstrapConfig {
+crates/songbird-config/src/zero_touch_config.rs:27:pub struct ZeroTouchConfig {
+crates/songbird-config/src/zero_touch/deployment.rs:511:pub struct ServiceConfig  {pub name: String,
+crates/songbird-config/src/zero_touch/environment.rs:331:pub struct NetworkConfig  {pub interfaces: Vec<String>,
+crates/songbird-config/src/zero_touch/infant_config.rs:127:pub struct DiscoveryConfig {
+crates/songbird-config/src/zero_touch/infant_config.rs:193:pub struct NetworkConfig {
+crates/songbird-config/src/zero_touch/infant_config.rs:231:pub struct BootstrapConfig {
+crates/songbird-config/src/zero_touch/infant_config.rs:27:pub struct ZeroTouchConfig {
+crates/songbird-config/src/zero_touch/mod.rs:16:pub struct ZeroTouchConfig {
+crates/songbird-discovery/src/agnostic_service_mesh.rs:128:pub struct ServiceMeshConfig  {/// Detection patterns to use
+crates/songbird-discovery/src/discovery/backends/container_orchestration.rs:95:pub struct NamespaceConfig {
+crates/songbird-discovery/src/discovery/backends/service_discovery.rs:68:pub struct CacheConfig {
+crates/songbird-discovery/src/discovery/config/mod.rs:26:pub struct NetworkConfig {
+crates/songbird-discovery/src/discovery/config/mod.rs:40:pub struct MonitoringConfig {
+crates/songbird-discovery/src/discovery/config/mod.rs:51:pub struct TrustConfig {
+crates/songbird-discovery/src/discovery/config/mod.rs:7:pub struct SongbirdDiscoveryConfig {
+crates/songbird-discovery/src/discovery/config/mod.rs:83:pub struct NetworkTimingConfig {
+crates/songbird-discovery/src/discovery/core.rs:12:pub struct CanonicalDiscoveryConfig {
+crates/songbird-discovery/src/discovery/enhanced_discovery.rs:103:pub struct DistributedLockConfig {
+crates/songbird-discovery/src/discovery/enhanced_discovery.rs:114:pub struct SovereigntyConfig {
+crates/songbird-discovery/src/discovery/enhanced_discovery.rs:47:pub struct FederationConfig {
+crates/songbird-discovery/src/discovery/enhanced_discovery.rs:79:pub struct NetworkCoordinationConfig {
+crates/songbird-discovery/src/discovery/enhanced_discovery.rs:92:pub struct LeaderElectionConfig {
+crates/songbird-discovery/src/federation_aware_discovery.rs:37:pub struct FederationDiscoveryConfig {
+crates/songbird-discovery/src/migration.rs:26:pub struct MigrationConfig  {/// Enable verbose migration logging
+crates/songbird-discovery/src/migration.rs:71:pub struct LegacyFederationConfig  {/// Cluster name
+crates/songbird-discovery/src/production/real_service_discovery.rs:35:pub struct ProductionDiscoveryConfig {
+crates/songbird-discovery/src/traits/discovery.rs:252:pub struct DiscoveryConfig {
+crates/songbird-discovery/src/traits/feature_flags.rs:370:pub struct FeatureFlagConfig {
+crates/songbird-discovery/src/traits/feature_flags.rs:385:pub struct ProviderConfig {
+crates/songbird-discovery/src/traits/feature_flags.rs:396:pub struct CacheConfig {
+crates/songbird-discovery/src/traits/feature_flags.rs:406:pub struct EvaluationConfig {
+crates/songbird-discovery/src/traits/feature_flags.rs:416:pub struct FlagMonitoringConfig {
+crates/songbird-discovery/src/traits/health.rs:26:pub struct HealthCheckConfig {
+crates/songbird-discovery/src/traits/hooks.rs:173:pub struct HookConfig  {/// Hook-specific settings
+crates/songbird-discovery/src/traits/hooks.rs:215:pub struct ExecutionConfig  {/// Whether to execute asynchronously
+crates/songbird-discovery/src/traits/hooks.rs:227:pub struct RetryConfig  {/// Enable retries on failure
+crates/songbird-discovery/src/traits/hooks.rs:329:pub struct HookSystemConfig  {/// Whether the hook system is enabled
+crates/songbird-discovery/src/traits/resource_management.rs:232:pub struct ResourceManagementConfig  {/// Resource tracking configuration
+crates/songbird-discovery/src/traits/resource_management.rs:244:pub struct TrackingConfig  {pub enabled: bool,
+crates/songbird-discovery/src/traits/resource_management.rs:337:pub struct CleanupConfig  {pub strategy: String,
+crates/songbird-discovery/src/traits/resource_management.rs:346:pub struct MonitoringConfig  {pub monitoring_interval: Duration,
+crates/songbird-discovery/src/traits/resource_management.rs:354:pub struct LimitsConfig  {pub limit_enforcement: LimitEnforcement,
+crates/songbird-discovery/src/traits/resource_management.rs:72:pub struct ResourceConfig  {/// Maximum memory usage in bytes
+crates/songbird-discovery/src/traits/validation.rs:387:pub struct ValidationConfig  {/// Whether validation is enabled
+crates/songbird-discovery/src/traits/validation.rs:405:pub struct ValidationCacheConfig  {pub enabled: bool,
+crates/songbird-discovery/src/traits/validation.rs:412:pub struct ErrorHandlingConfig  {pub logging_options: LoggingOptions,
+crates/songbird-execution-agent/src/lib.rs:32:pub struct AgentConfig {
+crates/songbird-execution-agent/src/security_sovereign.rs:249:pub struct SecurityConfig {
+crates/songbird-network-federation/src/federation.rs:247:pub struct FederationConfig {
+crates/songbird-network-federation/src/network/gaming.rs:223:pub struct SessionConfig {
+crates/songbird-network-federation/src/network/mod.rs:142:pub struct NetworkConfig {
+crates/songbird-network-federation/src/network/mod.rs:161:pub struct InterfaceConfig {
+crates/songbird-network-federation/src/network/mod.rs:218:pub struct GamingConfig {
+crates/songbird-network-federation/src/network/mod.rs:249:pub struct ProxyConfig {
+crates/songbird-network-federation/src/network/mod.rs:293:pub struct DiscoveryConfig {
+crates/songbird-network-federation/src/network/mod.rs:329:pub struct PerformanceConfig {
+crates/songbird-observability/src/analytics/production_analytics.rs:164:pub struct AnalyticsConfig  {/// Maximum data points per time series
+crates/songbird-observability/src/health/production_health.rs:60:pub struct HealthCheckConfig  {/// Check interval
+crates/songbird-observability/src/observability/advanced_dashboard.rs:63:pub struct DashboardConfig  {/// Dashboard update interval
+crates/songbird-orchestrator/src/cli/config.rs:11:pub struct CliConfig {
+crates/songbird-orchestrator/src/core/api/ai_enhanced_service_mesh.rs:155:pub struct AnalysisConfig {
+crates/songbird-orchestrator/src/core/api/ai_first_response.rs:561:pub struct EscalationConfig {
+crates/songbird-orchestrator/src/core/api/ai_mesh/mesh.rs:120:pub struct HealthMonitoringConfig {
+crates/songbird-orchestrator/src/core/api/ai_mesh/mesh.rs:167:pub struct PerformanceAnalysisConfig {
+crates/songbird-orchestrator/src/core/api/ai_mesh/mesh.rs:68:pub struct RoutingModelConfig {
+crates/songbird-orchestrator/src/core/api/ai_optimized/cache.rs:68:pub struct CacheConfig {
+crates/songbird-orchestrator/src/core/api/ai_optimized/mod.rs:40:pub struct AiOptimizedConfig {
+crates/songbird-orchestrator/src/core/api/core.rs:12:pub struct CoreApiConfig {
+crates/songbird-orchestrator/src/core/api/core/server.rs:24:pub struct ApiServerConfig {
+crates/songbird-orchestrator/src/core/api/real_time_ai_streaming/connection.rs:122:pub struct ConnectionConfig {
+crates/songbird-orchestrator/src/core/api.rs:12:pub struct ApiConfig {
+crates/songbird-orchestrator/src/core/api/universal_service_registration/types.rs:11:pub struct UniversalServiceRegistrationConfig {
+crates/songbird-orchestrator/src/core/api/universal_service_registration/types.rs:364:pub struct CircuitBreakerConfig {
+crates/songbird-orchestrator/src/core/basic_iot/mod.rs:29:pub struct CanonicalDiscoveryConfig {
+crates/songbird-orchestrator/src/core/biome/byob_coordinator/integration.rs:28:pub struct StorageConfig {
+crates/songbird-orchestrator/src/core/biome/modules/lifecycle.rs:86:pub struct HealthMonitoringConfig {
+crates/songbird-orchestrator/src/core/biome/modules/mod.rs:37:pub struct BiomeCoordinatorConfig {
+crates/songbird-orchestrator/src/core/biome/modules/types.rs:149:pub struct AgnosticPrimalConfig {
+crates/songbird-orchestrator/src/core/biome/modules/types.rs:198:pub struct PrimalAuthConfig {
+crates/songbird-orchestrator/src/core/biome/modules/types.rs:220:pub struct MTLSConfig {
+crates/songbird-orchestrator/src/core/biome/modules/types.rs:233:pub struct PrimalConnectionConfig {
+crates/songbird-orchestrator/src/core/biome/modules/types.rs:242:pub struct PrimalHealthConfig {
+crates/songbird-orchestrator/src/core/biome/modules/types.rs:404:pub struct storage_provider_configConfig {
+crates/songbird-orchestrator/src/core/biome/modules/types.rs:626:pub struct OrchestratorConfig {
+crates/songbird-orchestrator/src/core/biome/modules/types.rs:652:pub struct compute_provider_configConfig {
+crates/songbird-orchestrator/src/core/biomeos/types.rs:127:pub struct BiomeOSHealthCheckConfig {
+crates/songbird-orchestrator/src/core/caching/advanced_cache.rs:50:pub struct CacheConfig {
+crates/songbird-orchestrator/src/core/load_balancer/types.rs:52:pub struct LoadBalancerConfig {
+crates/songbird-orchestrator/src/core/mod.rs:114:pub struct ConsolidatedOrchestratorConfig {
+crates/songbird-orchestrator/src/core/mod.rs:136:pub struct LoadBalancingConfig {
+crates/songbird-orchestrator/src/core/mod.rs:154:pub struct PerformanceConfig {
+crates/songbird-orchestrator/src/core/mod.rs:176:pub struct RegistryConfig {
+crates/songbird-orchestrator/src/core/mod.rs:194:pub struct ScalingConfig {
+crates/songbird-orchestrator/src/core/mod.rs:216:pub struct ZeroTouchConfig {
+crates/songbird-orchestrator/src/core/optimization/zero_copy_buffers.rs:28:pub struct BufferPoolConfig {
+crates/songbird-orchestrator/src/core/orchestrator/request_router.rs:19:pub struct RequestRouterConfig {
+crates/songbird-orchestrator/src/core/orchestrator.rs:9:pub struct OrchestratorConfig {
+crates/songbird-orchestrator/src/core/orchestrator/scaling.rs:45:pub struct GamingScalingConfig {
+crates/songbird-orchestrator/src/core/production_benchmarks/types.rs:10:pub struct BenchmarkConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:121:pub struct RateLimitingConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:163:pub struct BulkheadConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:189:pub struct HealthCheckConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:220:pub struct AdaptiveTimeoutConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:268:pub struct SlidingWindowConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:26:pub struct CircuitBreakerConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:285:pub struct ResourcePoolConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:311:pub struct DeepHealthCheckConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:41:pub struct RetryConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:88:pub struct TimeoutConfig {
+crates/songbird-orchestrator/src/core/robustness/config.rs:8:pub struct RobustnessConfig {
+crates/songbird-orchestrator/src/core/scalability/types.rs:111:pub struct CanonicalPerformanceConfig {
+crates/songbird-orchestrator/src/core/scalability/types.rs:11:pub struct ServiceScalingConfig {
+crates/songbird-orchestrator/src/core/scalability/types.rs:131:pub struct ScalabilityConfig {
+crates/songbird-orchestrator/src/core/scalability/types.rs:91:pub struct ResourceConfig {
+crates/songbird-orchestrator/src/core/structural_improvements/config.rs:102:pub struct DataStructureConfig {
+crates/songbird-orchestrator/src/core/structural_improvements/config.rs:62:pub struct ErrorHandlingConfig {
+crates/songbird-orchestrator/src/core/structural_improvements/config.rs:6:pub struct StructuralConfig {
+crates/songbird-orchestrator/src/core/structural_improvements/config.rs:82:pub struct AsyncRuntimeConfig {
+crates/songbird-orchestrator/src/core/traits/discovery.rs:212:pub struct CanonicalDiscoveryConfig {
+crates/songbird-orchestrator/src/core/traits/feature_flags.rs:380:pub struct FeatureFlagConfig {
+crates/songbird-orchestrator/src/core/traits/feature_flags.rs:400:pub struct ProviderConfig {
+crates/songbird-orchestrator/src/core/traits/feature_flags.rs:418:pub struct CacheConfig {
+crates/songbird-orchestrator/src/core/traits/feature_flags.rs:435:pub struct EvaluationConfig {
+crates/songbird-orchestrator/src/core/traits/feature_flags.rs:452:pub struct FlagMonitoringConfig {
+crates/songbird-orchestrator/src/core/traits/health.rs:67:pub struct HealthCheckConfig {
+crates/songbird-orchestrator/src/core/traits/hooks.rs:168:pub struct HookConfig {
+crates/songbird-orchestrator/src/core/traits/hooks.rs:230:pub struct ExecutionConfig {
+crates/songbird-orchestrator/src/core/traits/hooks.rs:247:pub struct RetryConfig {
+crates/songbird-orchestrator/src/core/traits/hooks.rs:371:pub struct HookSystemConfig {
+crates/songbird-orchestrator/src/core/traits/resource_management.rs:316:pub struct ResourceManagementConfig {
+crates/songbird-orchestrator/src/core/traits/resource_management.rs:336:pub struct TrackingConfig {
+crates/songbird-orchestrator/src/core/traits/resource_management.rs:357:pub struct CleanupConfig {
+crates/songbird-orchestrator/src/core/traits/resource_management.rs:374:pub struct MonitoringConfig {
+crates/songbird-orchestrator/src/core/traits/resource_management.rs:389:pub struct LimitsConfig {
+crates/songbird-orchestrator/src/core/traits/resource_management.rs:90:pub struct ResourceConfig {
+crates/songbird-orchestrator/src/core/traits/validation.rs:430:pub struct ValidationConfig {
+crates/songbird-orchestrator/src/core/traits/validation.rs:456:pub struct ValidationCacheConfig {
+crates/songbird-orchestrator/src/core/traits/validation.rs:471:pub struct ErrorHandlingConfig {
+crates/songbird-orchestrator/src/core/zero_cost_request_router.rs:60:pub struct ZeroCostRouterConfig {
+crates/songbird-primal-sdk/src/adaptive_discovery.rs:766:pub struct DiscoveryConfig {
+crates/songbird-primal-sdk/src/ai_capability.rs:42:pub struct AiClientConfig {
+crates/songbird-primal-sdk/src/beardog.rs:44:pub struct BearDogConfig  {/// Primary endpoint URL for BearDog services
+crates/songbird-primal-sdk/src/capability_ai.rs:20:pub struct AiCapabilityConfig {
+crates/songbird-primal-sdk/src/capability_compute.rs:108:pub struct ServiceMeshConfig {
+crates/songbird-primal-sdk/src/capability_compute.rs:20:pub struct ComputeCapabilityConfig {
+crates/songbird-primal-sdk/src/capability_orchestrator.rs:822:pub struct CapabilityOrchestratorConfig  {pub request_timeout_secs: u64,
+crates/songbird-primal-sdk/src/capability_security.rs:20:pub struct SecurityCapabilityConfig {
+crates/songbird-primal-sdk/src/capability_storage.rs:142:pub struct StorageConfig  {/// Discovery timeout
+crates/songbird-primal-sdk/src/capability_storage.rs:89:pub struct StorageAuthConfig  {/// Authentication method
+crates/songbird-primal-sdk/src/compute_capability.rs:114:pub struct NetworkingConfig {
+crates/songbird-primal-sdk/src/compute_capability.rs:43:pub struct ComputeClientConfig {
+crates/songbird-primal-sdk/src/config.rs:105:pub struct PortManagementConfig  {/// Port range for dynamic allocation
+crates/songbird-primal-sdk/src/config.rs:120:pub struct SecurityConfig  {/// Whether to enable TLS
+crates/songbird-primal-sdk/src/config.rs:12:pub struct UniversalPrimalConfig  {/// Whether to enable auto-discovery of primals
+crates/songbird-primal-sdk/src/config.rs:147:pub struct ConnectionPoolConfig  {/// Maximum number of connections
+crates/songbird-primal-sdk/src/config.rs:162:pub struct HealthCheckConfig  {/// Health check endpoint
+crates/songbird-primal-sdk/src/config.rs:198:pub struct FailoverConfig  {/// Whether to enable failover
+crates/songbird-primal-sdk/src/config.rs:213:pub struct ScalingConfig  {/// Whether to enable auto-scaling
+crates/songbird-primal-sdk/src/config.rs:258:pub struct HealthMonitoringConfig  {/// Whether to enable health monitoring
+crates/songbird-primal-sdk/src/config.rs:276:pub struct EncryptionConfig  {/// Whether to enable encryption
+crates/songbird-primal-sdk/src/config.rs:291:pub struct CircuitBreakerConfig  {/// Whether to enable circuit breaker
+crates/songbird-primal-sdk/src/config.rs:306:pub struct TimeoutConfig  {/// Default request timeout
+crates/songbird-primal-sdk/src/config.rs:321:pub struct MonitoringConfig  {/// Whether to enable metrics collection
+crates/songbird-primal-sdk/src/config.rs:336:pub struct TracingConfig  {/// Whether to enable tracing
+crates/songbird-primal-sdk/src/config.rs:39:pub struct PrimalInstanceConfig  {/// Base URL for the primal service
+crates/songbird-primal-sdk/src/config.rs:72:pub struct MultiInstanceConfig  {/// Maximum number of instances per primal type
+crates/songbird-primal-sdk/src/config.rs:90:pub struct InstanceLifecycleConfig  {/// Whether to automatically start instances
+crates/songbird-primal-sdk/src/discovery/ecosystem/config.rs:5:pub struct EcosystemDiscoveryConfig  {/// Base ecosystem directory (typically ../)
+crates/songbird-primal-sdk/src/discovery/types.rs:88:pub struct DiscoveryConfig  {/// Enable network scanning
+crates/songbird-primal-sdk/src/discovery/universal_discovery/types.rs:10:pub struct DiscoveryConfig  {/// Enable automatic discovery
+crates/songbird-primal-sdk/src/modern_api/mod.rs:114:pub struct CircuitBreakerConfig  {/// Failure Threshold field
+crates/songbird-primal-sdk/src/modern_api/mod.rs:121:pub struct RetryConfig  {/// Maximum number of retry attempts
+crates/songbird-primal-sdk/src/modern_api.rs:341:pub struct CircuitBreakerConfig  {/// Failure threshold to open circuit
+crates/songbird-primal-sdk/src/modern_api.rs:356:pub struct RetryConfig  {/// Maximum number of retries
+crates/songbird-primal-sdk/src/modern_api.rs:388:pub struct HealthCheckConfig  {/// Health check endpoint path
+crates/songbird-primal-sdk/src/security_capability_client.rs:43:pub struct SecurityClientConfig {
+crates/songbird-primal-sdk/src/security_provider.rs:89:pub struct SecurityConfig  {/// Discovery refresh interval in seconds
+crates/songbird-primal-sdk/src/storage/cache.rs:55:pub struct CacheConfig  {/// Maximum number of entries in cache
+crates/songbird-primal-sdk/src/toadstool.rs:376:pub struct ServiceMeshConfig  {pub name: String,
+crates/songbird-primal-sdk/src/traits/capabilities.rs:436:pub struct CapabilityConfig  {/// Capability identifier
+crates/songbird-primal-sdk/src/traits/types.rs:254:pub struct PrimalConfig  {/// Instance-specific configuration
+crates/songbird-primal-sdk/src/universal_adapter/adapter_types.rs:236:pub struct AdapterConfig  {pub discovery_interval_secs: u64,
+crates/songbird-primal-sdk/src/universal_adapter/routing.rs:10:pub struct RoutingConfig  {pub enabled: bool,
+crates/songbird-primal-sdk/src/universal_adapter/types.rs:182:pub struct UniversalAdapterConfig  {/// Discovery interval
+crates/songbird-primal-sdk/src/universal_registry/config.rs:28:pub struct HealthCheckConfig  {pub path: String,
+crates/songbird-primal-sdk/src/universal_registry/config.rs:64:pub struct CircuitBreakerConfig  {pub failure_threshold: u32,
+crates/songbird-primal-sdk/src/universal_registry/config.rs:71:pub struct RateLimitConfig  {pub strategy: RateLimitStrategy,
+crates/songbird-registry/src/persistence/production_registry.rs:60:pub struct RegistryConfig  {/// Service TTL before considered stale
+crates/songbird-registry/src/persistence/production_storage.rs:26:pub struct PersistenceConfig  {/// Storage backend
+crates/songbird-registry/src/production/persistent_registry.rs:31:pub struct PersistentRegistryConfig  {/// Storage Path field
+crates/songbird-registry/src/types/health.rs:119:pub struct HealthCheckConfig {
+crates/songbird-squirrel-service/src/config.rs:6:pub struct SquirrelConfig {
+crates/songbird-test-utils/src/chaos_engineering/config.rs:53:pub struct ExperimentConfig {
+crates/songbird-test-utils/src/chaos_engineering/config.rs:62:pub struct NetworkFaultConfig {
+crates/songbird-test-utils/src/chaos_engineering/config.rs:70:pub struct ServiceFailureConfig {
+crates/songbird-test-utils/src/chaos_engineering/config.rs:77:pub struct ResourceConstraintConfig {
+crates/songbird-test-utils/src/chaos_engineering/config.rs:85:pub struct ByzantineFailureConfig {
+crates/songbird-test-utils/src/chaos_engineering/config.rs:92:pub struct PerformanceDegradationConfig {
+crates/songbird-test-utils/src/config/mod.rs:106:pub struct TestEnvironmentConfig  {/// Test environment type (unit, integration, e2e)
+crates/songbird-test-utils/src/config/mod.rs:139:pub struct TestNetworkConfig  {/// Base port for test services
+crates/songbird-test-utils/src/config/mod.rs:13:pub struct TestExecutionConfig  {/// Test timeout duration
+crates/songbird-test-utils/src/config/mod.rs:159:pub struct TestSecurityConfig  {/// Whether to enable security in tests
+crates/songbird-test-utils/src/config/mod.rs:180:pub struct TestDataConfig  {/// Path to test data directory
+crates/songbird-test-utils/src/config/mod.rs:199:pub struct TestConsensusConfig  {/// Consensus algorithm to test
+crates/songbird-test-utils/src/config/mod.rs:216:pub struct TestHealthConfig  {/// Health check interval
+crates/songbird-test-utils/src/config/mod.rs:229:pub struct FailureInjectionConfig  {/// Types of failures to inject
+crates/songbird-test-utils/src/config/mod.rs:262:pub struct RecoveryValidationConfig  {/// Maximum time to wait for recovery
+crates/songbird-test-utils/src/config/mod.rs:285:pub struct MetricsCollectionConfig  {/// Whether to collect metrics during tests
+crates/songbird-test-utils/src/config/mod.rs:331:pub struct TestCleanupConfig  {/// Whether to cleanup after tests
+crates/songbird-test-utils/src/config/mod.rs:366:pub struct TestTimeoutConfig  {/// Connection timeout
+crates/songbird-test-utils/src/config/mod.rs:385:pub struct TestAuthConfig  {/// Test authentication method
+crates/songbird-test-utils/src/config/mod.rs:38:pub struct IntegrationTestConfig  {/// Services to test integration with
+crates/songbird-test-utils/src/config/mod.rs:406:pub struct TestEncryptionConfig  {/// Whether encryption is enabled
+crates/songbird-test-utils/src/config/mod.rs:56:pub struct TestFederationConfig  {/// Number of nodes in test federation
+crates/songbird-test-utils/src/config/mod.rs:80:pub struct ChaosTestConfig  {/// Duration of chaos experiments
+crates/songbird-test-utils/src/constants.rs:176:pub struct TestPrimalConfig  {/// Primal identifier
+crates/songbird-test-utils/src/error_testing.rs:44:pub struct ErrorTestConfig {
+crates/songbird-test-utils/src/integration.rs:27:pub struct IntegrationTestConfig {
+crates/songbird-test-utils/src/performance_testing.rs:22:pub struct PerformanceTestConfig {
+crates/songbird-types/src/adapters/canonical.rs:116:pub struct CanonicalAdapterConfig {
+crates/songbird-types/src/adapters/canonical.rs:135:pub struct CanonicalDiscoveryConfig {
+crates/songbird-types/src/adapters/canonical.rs:148:pub struct CanonicalLoadBalancingConfig {
+crates/songbird-types/src/adapters/canonical.rs:161:pub struct CanonicalCircuitBreakerConfig {
+crates/songbird-types/src/adapters/canonical.rs:174:pub struct CanonicalRetryConfig {
+crates/songbird-types/src/adapters/canonical.rs:190:pub struct CanonicalTimeoutConfig {
+crates/songbird-types/src/adapters/canonical.rs:203:pub struct CanonicalHealthCheckConfig {
+crates/songbird-types/src/adapters/canonical.rs:216:pub struct CanonicalMonitoringConfig {
+crates/songbird-types/src/config/adapters.rs:109:pub struct CanonicalMultiInstanceConfig {
+crates/songbird-types/src/config/adapters.rs:171:pub struct CanonicalInstanceLifecycleConfig {
+crates/songbird-types/src/config/adapters.rs:18:pub struct CanonicalUniversalAdapterConfig {
+crates/songbird-types/src/config/adapters.rs:197:pub struct CanonicalPortManagementConfig {
+crates/songbird-types/src/config/adapters.rs:255:pub struct CanonicalAdapterSecurityConfig {
+crates/songbird-types/src/config/adapters.rs:295:pub struct CanonicalEncryptionConfig {
+crates/songbird-types/src/config/adapters.rs:317:pub struct CanonicalConnectionPoolConfig {
+crates/songbird-types/src/config/adapters.rs:345:pub struct CanonicalFailoverConfig {
+crates/songbird-types/src/config/adapters.rs:371:pub struct CanonicalCircuitBreakerConfig {
+crates/songbird-types/src/config/adapters.rs:394:pub struct CanonicalScalingConfig {
+crates/songbird-types/src/config/adapters.rs:427:pub struct CanonicalTimeoutConfig {
+crates/songbird-types/src/config/adapters.rs:452:pub struct CanonicalAdapterMonitoringConfig {
+crates/songbird-types/src/config/adapters.rs:483:pub struct CanonicalHealthMonitoringConfig {
+crates/songbird-types/src/config/adapters.rs:57:pub struct CanonicalPrimalInstanceConfig {
+crates/songbird-types/src/config/ai_first.rs:8:pub struct CanonicalAIFirstConfig {
+crates/songbird-types/src/config/api.rs:103:pub struct CanonicalMeshConfig {
+crates/songbird-types/src/config/api.rs:12:pub struct CanonicalApiConfig {
+crates/songbird-types/src/config/api.rs:135:pub struct CanonicalHealthMonitoringConfig {
+crates/songbird-types/src/config/api.rs:166:pub struct CanonicalPerformanceAnalysisConfig {
+crates/songbird-types/src/config/api.rs:199:pub struct CanonicalServiceRegistrationConfig {
+crates/songbird-types/src/config/api.rs:230:pub struct CanonicalCircuitBreakerConfig {
+crates/songbird-types/src/config/api.rs:256:pub struct CanonicalMonitoringConfig {
+crates/songbird-types/src/config/api.rs:29:pub struct CanonicalSessionConfig {
+crates/songbird-types/src/config/api.rs:67:pub struct CanonicalConnectionConfig {
+crates/songbird-types/src/config/communication.rs:108:pub struct TlsConfig {
+crates/songbird-types/src/config/communication.rs:125:pub struct WebSocketConfig {
+crates/songbird-types/src/config/communication.rs:12:pub struct CanonicalCommunicationConfig {
+crates/songbird-types/src/config/communication.rs:164:pub struct TarpcConfig {
+crates/songbird-types/src/config/communication.rs:198:pub struct TarpcTransportConfig {
+crates/songbird-types/src/config/communication.rs:244:pub struct JsonRpcConfig {
+crates/songbird-types/src/config/communication.rs:277:pub struct HyperClientConfig {
+crates/songbird-types/src/config/communication.rs:31:pub struct HttpClientConfig {
+crates/songbird-types/src/config/communication.rs:321:pub struct CircuitBreakerConfig {
+crates/songbird-types/src/config/communication.rs:351:pub struct PerformanceConfig {
+crates/songbird-types/src/config/communication.rs:379:pub struct ConnectionPoolingConfig {
+crates/songbird-types/src/config/communication.rs:405:pub struct RequestBatchingConfig {
+crates/songbird-types/src/config/communication.rs:426:pub struct CachingConfig {
+crates/songbird-types/src/config/communication.rs:465:pub struct ConnectionPoolConfig {
+crates/songbird-types/src/config/communication.rs:67:pub struct GrpcConfig {
+crates/songbird-types/src/config/consolidated_canonical/discovery.rs:15:pub struct CanonicalDiscoveryConfig {
+crates/songbird-types/src/config/consolidated_canonical/environment.rs:15:pub struct CanonicalEnvironmentConfig {
+crates/songbird-types/src/config/consolidated_canonical/federation.rs:15:pub struct CanonicalFederationConfig {
+crates/songbird-types/src/config/consolidated_canonical/gaming.rs:15:pub struct CanonicalGamingConfig {
+crates/songbird-types/src/config/consolidated_canonical/mod.rs:58:pub struct CanonicalSongbirdConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:103:pub struct CanonicalKeepAliveConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:119:pub struct CanonicalRetryConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:141:pub struct CanonicalTlsConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:166:pub struct CanonicalProxyConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:182:pub struct CanonicalConnectionPoolConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:18:pub struct CanonicalNetworkConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:204:pub struct CanonicalTimeoutConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:223:pub struct CanonicalRateLimitConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:43:pub struct CanonicalBindConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:62:pub struct CanonicalEndpointConfig {
+crates/songbird-types/src/config/consolidated_canonical/network.rs:81:pub struct CanonicalClientConfig {
+crates/songbird-types/src/config/consolidated_canonical/observability.rs:17:pub struct CanonicalObservabilityConfig {
+crates/songbird-types/src/config/consolidated_canonical/observability.rs:32:pub struct CanonicalHealthCheckConfig {
+crates/songbird-types/src/config/consolidated_canonical/observability.rs:55:pub struct CanonicalMetricsConfig {
+crates/songbird-types/src/config/consolidated_canonical/observability.rs:70:pub struct CanonicalTracingConfig {
+crates/songbird-types/src/config/consolidated_canonical/performance.rs:15:pub struct CanonicalPerformanceConfig {
+crates/songbird-types/src/config/consolidated_canonical/primals.rs:15:pub struct CanonicalPrimalConfig {
+crates/songbird-types/src/config/consolidated_canonical/security.rs:15:pub struct CanonicalSecurityConfig {
+crates/songbird-types/src/config/consolidated_canonical/system.rs:122:pub struct CanonicalShutdownConfig {
+crates/songbird-types/src/config/consolidated_canonical/system.rs:17:pub struct CanonicalSystemConfig {
+crates/songbird-types/src/config/consolidated_canonical/system.rs:42:pub struct CanonicalLoggingConfig {
+crates/songbird-types/src/config/consolidated_canonical/system.rs:87:pub struct CanonicalResourceConfig {
+crates/songbird-types/src/config/discovery_corrupted.rs:11:pub struct CanonicalDiscoveryConfig {
+crates/songbird-types/src/config/discovery_corrupted.rs:155:pub struct NetworkDiscoveryConfig {
+crates/songbird-types/src/config/discovery_corrupted.rs:209:pub struct ServiceDiscoveryConfig {
+crates/songbird-types/src/config/discovery_corrupted.rs:245:pub struct HealthCheckConfig {
+crates/songbird-types/src/config/discovery_corrupted.rs:275:pub struct DiscoveryPerformanceConfig {
+crates/songbird-types/src/config/discovery_corrupted.rs:52:pub struct DiscoveryTimingConfig {
+crates/songbird-types/src/config/discovery_corrupted.rs:84:pub struct DiscoveryMechanismsConfig {
+crates/songbird-types/src/config/discovery.rs:10:pub struct CanonicalDiscoveryConfig {
+crates/songbird-types/src/config/discovery.rs:154:pub struct NetworkDiscoveryConfig {
+crates/songbird-types/src/config/discovery.rs:211:pub struct ServiceDiscoveryConfig {
+crates/songbird-types/src/config/discovery.rs:247:pub struct HealthCheckConfig {
+crates/songbird-types/src/config/discovery.rs:276:pub struct DiscoveryPerformanceConfig {
+crates/songbird-types/src/config/discovery.rs:51:pub struct DiscoveryTimingConfig {
+crates/songbird-types/src/config/discovery.rs:83:pub struct DiscoveryMechanismsConfig {
+crates/songbird-types/src/config/environment_corrupted.rs:12:pub struct CanonicalEnvironmentConfig {
+crates/songbird-types/src/config/environment.rs:104:pub struct EnvironmentHealthCheckConfig {
+crates/songbird-types/src/config/environment.rs:122:pub struct NetworkBindingConfig {
+crates/songbird-types/src/config/environment.rs:13:pub struct CanonicalEnvironmentConfig {
+crates/songbird-types/src/config/environment.rs:172:pub struct LegacyCompatibilityConfig {
+crates/songbird-types/src/config/environment.rs:185:pub struct DeprecationWarningsConfig {
+crates/songbird-types/src/config/environment.rs:71:pub struct MemoryPoolConfig {
+crates/songbird-types/src/config/environment.rs:87:pub struct ServiceDiscoveryConfig {
+crates/songbird-types/src/config/federation.rs:14:pub struct CanonicalFederationConfig {
+crates/songbird-types/src/config/federation.rs:182:pub struct CanonicalFederationDiscoveryConfig {
+crates/songbird-types/src/config/federation.rs:259:pub struct CanonicalFederationSecurityConfig {
+crates/songbird-types/src/config/federation.rs:286:pub struct CanonicalFederationPerformanceConfig {
+crates/songbird-types/src/config/federation.rs:30:pub struct CanonicalLocalNodeConfig {
+crates/songbird-types/src/config/federation.rs:406:pub struct PeerManagementConfig {
+crates/songbird-types/src/config/federation.rs:428:pub struct PeerDiscoveryConfig {
+crates/songbird-types/src/config/federation.rs:449:pub struct PeerConnectionConfig {
+crates/songbird-types/src/config/federation.rs:470:pub struct ConsensusConfig {
+crates/songbird-types/src/config/federation.rs:517:pub struct ResourceManagementConfig {
+crates/songbird-types/src/config/federation.rs:530:pub struct ResourceMonitoringConfig {
+crates/songbird-types/src/config/federation.rs:575:pub struct ResourceAllocationConfig {
+crates/songbird-types/src/config/gaming.rs:112:pub struct GamingPortConfig {
+crates/songbird-types/src/config/gaming.rs:133:pub struct GamingSecurityConfig {
+crates/songbird-types/src/config/gaming.rs:167:pub struct GamingAuthConfig {
+crates/songbird-types/src/config/gaming.rs:190:pub struct GamingPerformanceConfig {
+crates/songbird-types/src/config/gaming.rs:223:pub struct GamingOptimizationConfig {
+crates/songbird-types/src/config/gaming.rs:247:pub struct GamingAutoConfig {
+crates/songbird-types/src/config/gaming.rs:275:pub struct SecurityProviderIntegrationConfig {
+crates/songbird-types/src/config/gaming.rs:296:pub struct SecurityProviderMonitoringConfig {
+crates/songbird-types/src/config/gaming.rs:320:pub struct AutoDetectionConfig {
+crates/songbird-types/src/config/gaming.rs:344:pub struct NetworkOptimizationConfig {
+crates/songbird-types/src/config/gaming.rs:368:pub struct OneTouchConfig {
+crates/songbird-types/src/config/gaming.rs:38:pub struct CanonicalGamingConfig {
+crates/songbird-types/src/config/gaming.rs:427:pub struct EncryptionConfig {
+crates/songbird-types/src/config/gaming.rs:448:pub struct AuthenticationConfig {
+crates/songbird-types/src/config/gaming.rs:471:pub struct PrivilegeConfig {
+crates/songbird-types/src/config/gaming.rs:503:pub struct BenchmarkConfig {
+crates/songbird-types/src/config/gaming.rs:527:pub struct QoSConfig {
+crates/songbird-types/src/config/gaming.rs:549:pub struct ProtocolDetectionConfig {
+crates/songbird-types/src/config/gaming.rs:57:pub struct GamingCoreConfig {
+crates/songbird-types/src/config/gaming.rs:592:pub struct NatTraversalConfig {
+crates/songbird-types/src/config/gaming.rs:623:pub struct StunServerConfig {
+crates/songbird-types/src/config/gaming.rs:633:pub struct TurnServerConfig {
+crates/songbird-types/src/config/gaming.rs:78:pub struct GamingNetworkConfig {
+crates/songbird-types/src/config/gaming.rs:91:pub struct ProtocolConfig {
+crates/songbird-types/src/config/health.rs:8:pub struct CanonicalHealthConfig {
+crates/songbird-types/src/config/migration.rs:13:pub struct CanonicalMigrationConfig {
+crates/songbird-types/src/config/network.rs:104:pub struct NetworkPerformanceConfig {
+crates/songbird-types/src/config/network.rs:132:pub struct BufferSizeConfig {
+crates/songbird-types/src/config/network.rs:151:pub struct NetworkSecurityConfig {
+crates/songbird-types/src/config/network.rs:174:pub struct RateLimitConfig {
+crates/songbird-types/src/config/network.rs:194:pub struct ProductionLanConfig {
+crates/songbird-types/src/config/network.rs:223:pub struct GamingSecurityConfig {
+crates/songbird-types/src/config/network.rs:255:pub struct PlayerManagementConfig {
+crates/songbird-types/src/config/network.rs:26:pub struct GamingNetworkConfig {
+crates/songbird-types/src/config/network.rs:282:pub struct NetworkCoreConfig {
+crates/songbird-types/src/config/network.rs:310:pub struct NetworkPortConfig {
+crates/songbird-types/src/config/network.rs:343:pub struct ConnectionConfig {
+crates/songbird-types/src/config/network.rs:366:pub struct NetworkDiscoveryConfig {
+crates/songbird-types/src/config/network.rs:389:pub struct WebSocketConfig {
+crates/songbird-types/src/config/network.rs:38:pub struct VirtualNetworkConfig {
+crates/songbird-types/src/config/network.rs:62:pub struct GamingBridgeConfig {
+crates/songbird-types/src/config/network.rs:85:pub struct GamingProtocolConfig {
+crates/songbird-types/src/config/network.rs:9:pub struct CanonicalNetworkConfig {
+crates/songbird-types/src/config/orchestration.rs:16:pub struct CanonicalOrchestrationConfig {
+crates/songbird-types/src/config/orchestration.rs:32:pub struct CanonicalOrchestrationFederationConfig {
+crates/songbird-types/src/config/performance.rs:109:pub struct CanonicalThreadingConfig {
+crates/songbird-types/src/config/performance.rs:149:pub struct CpuOptimizationConfig {
+crates/songbird-types/src/config/performance.rs:192:pub struct IoPerformanceConfig {
+crates/songbird-types/src/config/performance.rs:231:pub struct NetworkPerformanceConfig {
+crates/songbird-types/src/config/performance.rs:275:pub struct BufferConfig {
+crates/songbird-types/src/config/performance.rs:29:pub struct CanonicalPerformanceConfig {
+crates/songbird-types/src/config/performance.rs:320:pub struct CachingConfig {
+crates/songbird-types/src/config/performance.rs:375:pub struct CacheLayerConfig {
+crates/songbird-types/src/config/performance.rs:388:pub struct PerformanceMonitoringConfig {
+crates/songbird-types/src/config/performance.rs:422:pub struct SystemMonitoringConfig {
+crates/songbird-types/src/config/performance.rs:432:pub struct ApplicationMonitoringConfig {
+crates/songbird-types/src/config/performance.rs:462:pub struct MetricConfig {
+crates/songbird-types/src/config/performance.rs:489:pub struct ScalabilityConfig {
+crates/songbird-types/src/config/performance.rs:536:pub struct LoadBalancingConfig {
+crates/songbird-types/src/config/performance.rs:573:pub struct HealthCheckConfig {
+crates/songbird-types/src/config/performance.rs:80:pub struct CanonicalMemoryConfig {
+crates/songbird-types/src/config/security.rs:104:pub struct EncryptionConfig {
+crates/songbird-types/src/config/security.rs:125:pub struct SecurityProviderIntegrationConfig {
+crates/songbird-types/src/config/security.rs:134:pub struct SecurityProviderConfig {
+crates/songbird-types/src/config/security.rs:14:pub struct CanonicalSecurityConfig {
+crates/songbird-types/src/config/security.rs:41:pub struct AuthenticationConfig {
+crates/songbird-types/src/config/security.rs:83:pub struct AuthorizationConfig {
+crates/songbird-types/src/config/storage.rs:7:pub struct CanonicalStorageConfig {
+crates/songbird-types/src/config/system.rs:11:pub struct CanonicalSystemConfig {
+crates/songbird-types/src/config/unified.rs:24:pub struct UnifiedSongbirdConfig {
+crates/songbird-types/src/health.rs:123:pub struct CanonicalHealthConfig {
+crates/songbird-types/src/primal.rs:141:pub struct CanonicalPrimalConfig {
+crates/songbird-types/src/service.rs:191:pub struct CanonicalServiceConfig {
+crates/songbird-types/src/traits/canonical.rs:377:pub struct ProviderConfig {
+crates/songbird-types/src/unified.rs:231:pub struct CanonicalNetworkConfig {
+crates/songbird-universal/src/agnostic_service_discovery.rs:124:pub struct DiscoveryConfig  {/// Maximum time to spend on discovery
+crates/songbird-universal/src/capabilities/types.rs:56:pub struct DiscoveryConfig {
+crates/songbird-universal/src/circuit_breaker.rs:23:pub struct CircuitBreakerConfig {
+crates/songbird-universal/src/communication.rs:335:pub struct UniversalServiceConfig  {/// Service identification
+crates/songbird-universal/src/communication.rs:358:pub struct SongbirdIntegrationConfig  {/// Service mesh endpoints
+crates/songbird-universal/src/discovery.rs:46:pub struct DiscoveryConfig {
+crates/songbird-universal/src/infant_discovery_engine.rs:47:pub struct InfantConfig  {/// How long to wait for responses during discovery
+crates/songbird-universal/src/infant_discovery.rs:133:pub struct DiscoveryConfig  {/// Network ranges to scan
+crates/songbird-universal/src/integrated_system.rs:16:pub struct UniversalSystemConfig  {/// Service discovery configuration
+crates/songbird-universal/src/network_effects_decoupling.rs:151:pub struct RetryConfig  {/// Maximum retry attempts
+crates/songbird-universal/src/registry.rs:18:pub struct UniversalRegistryConfig  {pub store_type: StoreType,
+crates/songbird-universal/src/registry.rs:57:pub struct DiscoveryBackendConfig  {pub backend_type: String,
+crates/songbird-universal/src/service_discovery.rs:16:pub struct ServiceDiscoveryConfig  {/// Discovery interval in seconds
+crates/songbird-universal/src/sovereignty/network_optimizer.rs:29:pub struct OptimizationConfig {
+crates/songbird-universal/src/sovereignty/types.rs:15:pub struct SovereigntyAdapterConfig {
+crates/songbird-universal/src/types/config.rs:117:pub struct HealthCheckConfig {
+crates/songbird-universal/src/types/config.rs:16:pub struct SecurityConfig {
+crates/songbird-universal/src/types/config.rs:45:pub struct LoadBalancingConfig {
+crates/songbird-universal/src/types/config.rs:69:pub struct RetryConfig {
+crates/songbird-universal/src/types/config.rs:93:pub struct CircuitBreakerConfig {
+crates/songbird-universal/src/unified_adapter.rs:70:pub struct UnifiedAdapterConfig {
+crates/songbird-universal/src/unified_agnostic_discovery.rs:211:pub struct TrustConfig  {pub initial_trust: f64,
+crates/songbird-universal/src/unified_agnostic_discovery.rs:222:pub struct UnifiedDiscoveryConfig  {/// Discovery intervals
+
+========================================
+
+SUMMARY BY DOMAIN:
+------------------
+
+NETWORK CONFIGURATION:
+  50 structs found
+
+SECURITY CONFIGURATION:
+  37 structs found
+
+DISCOVERY CONFIGURATION:
+  64 structs found
+
+SERVICE CONFIGURATION:
+  39 structs found
+
+GAMING CONFIGURATION:
+  27 structs found
+
+ORCHESTRATION CONFIGURATION:
+  9 structs found

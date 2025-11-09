@@ -3,8 +3,7 @@
 //!
 //! Tests environment configuration loading, validation, and defaults
 
-use songbird_config::config::environment::{EnvironmentConfig, LogConfig};
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_config::canonical::environment::{EnvironmentConfig, LogConfig}; // ✅ Migrated from config::environment
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::env;
 

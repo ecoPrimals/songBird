@@ -1,5 +1,5 @@
 // use songbird_universal::  // TEMPORARILY DISABLED - UniversalHealthStatus;
-// Removed unused SongbirdResponse import
+// Removed unused SongbirdResult import
 // Registry Data Types
 //
 // This module contains all the data structures and types used

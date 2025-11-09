@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-// Note: SongbirdResponse moved to songbird-errors to break circular dependency
-// Import it directly when needed: use songbird_types::responses::SongbirdResponse;
+// Note: SongbirdResult moved to songbird-errors to break circular dependency
+// Import it directly when needed: use songbird_types::responses::SongbirdResult;
 /// Migration tool for converting existing code to canonical patterns
 #[allow(clippy::struct_field_names)]
 #[derive(Debug)]
@@ -27,13 +27,13 @@ impl CanonicalMigrator {
         let _ = return_type_patterns
             .insert("Result<T, SomeError>".to_string(), "SongbirdResult<T>".to_string());
         let _ = return_type_patterns
-            .insert("SongbirdResponse<T>".to_string(), "SongbirdResponse<T>".to_string());
+            .insert("SongbirdResult<T>".to_string(), "SongbirdResult<T>".to_string());
 
         let mut error_patterns = HashMap::new();
         let _ = error_patterns
             .insert("service_error!(".to_string(), "SongbirdError::service_error(".to_string());
         let _ =
-            error_patterns.insert("Ok(()".to_string(), "Ok(SongbirdResponse::unit()".to_string());
+            error_patterns.insert("Ok(()".to_string(), "Ok(SongbirdResult::unit()".to_string());
 
         let mut config_field_patterns = HashMap::new();
         let _ = config_field_patterns

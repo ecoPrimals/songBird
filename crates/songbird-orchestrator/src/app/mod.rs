@@ -6,8 +6,9 @@ use songbird_config::{
     capability_endpoints, // 🍼 NEW: Capability-based discovery
     universal_primals::{
         AuthenticationMethod, LoadBalancingStrategy, PrimalAuthentication, PrimalCapability,
-        PrimalConfiguration, PrimalEndpoint, QosMetrics,
+        PrimalConfiguration, PrimalEndpoint,
     },
+    canonical::primals::QosMetrics, // ✅ Migrated from universal_primals
     SongbirdConfig,
 };
 // use songbird_federation::{//     FederationConfig,

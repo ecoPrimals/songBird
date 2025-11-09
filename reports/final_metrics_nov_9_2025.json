@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-11-09T12:09:10-05:00",
+  "metrics": {
+  "Config Structs": { "count": 715, "target": 50 },
+  "Legacy Patterns (legacy|shim|wrapper|compat)": { "count": 466, "target": 0 },
+  "Deprecated Items (#[deprecated])": { "count": 46, "target": 0 },
+  "Error Enums (pub enum.*Error)": { "count": 26, "target": 3 },
+  "Provider Traits (pub trait.*Provider)": { "count": 27, "target": 10 },
+  "Result Type Aliases": { "count": 12, "target": 1 },
+  "Constants (const [A-Z])": { "count": 334, "target": 50 },
+  "Files Over 2000 Lines": { "count": 0, "target": 0 },
+  }
+}

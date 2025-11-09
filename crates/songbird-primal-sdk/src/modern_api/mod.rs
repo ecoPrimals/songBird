@@ -181,9 +181,9 @@ pub struct UniversalServiceRegistration { /// Service Id field
     pub consistency: ConsistencyLevel
 // ConsistencyLevel,
 }
-// Songbird response type
-    // /// Type alias for `SongbirdResponse`
-pub type SongbirdResponse<T> = SongbirdResult<T>
+// ✅ REMOVED: Redundant SongbirdResult alias (Nov 9, 2025)
+// Use SongbirdResult<T> directly instead
+// pub type SongbirdResult<T> = SongbirdResult<T>;
 
 // Songbird result type
     // /// Type alias for SongbirdResult

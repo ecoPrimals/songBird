@@ -65,25 +65,6 @@ pub use capability_mocks::{
     MockCapabilityServer,
 };
 
-// ⚠️ DEPRECATED: Legacy exports
-#[deprecated(
-    since = "0.5.0",
-    note = "Use MockCapabilityServer::new(CapabilityType::Security) instead"
-)]
-pub use beardog::MockBearDog;
+// ✅ REMOVED: Deprecated legacy exports (Nov 9, 2025)
+// Use MockCapabilityServer::new(CapabilityType::*) instead
 pub use common::{HealthStatus, MockPrimalServer, MockResponse};
-#[deprecated(
-    since = "0.5.0",
-    note = "Use MockCapabilityServer::new(CapabilityType::Storage) instead"
-)]
-pub use nestgate::MockNestGate;
-#[deprecated(
-    since = "0.5.0",
-    note = "Use MockCapabilityServer::new(CapabilityType::Ai) instead"
-)]
-pub use squirrel::MockSquirrel;
-#[deprecated(
-    since = "0.5.0",
-    note = "Use MockCapabilityServer::new(CapabilityType::Compute) instead"
-)]
-pub use toadstool::MockToadStool;

@@ -3,7 +3,7 @@
 //! Provides comprehensive metrics collection, aggregation, and real-time updates
 
 use serde::{Deserialize, Serialize};
-use songbird_types::{SongbirdError, SongbirdResponse, unified::success_result, SongbirdResult};
+use songbird_types::{SongbirdError, SongbirdResult, unified::success_result, SongbirdResult};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -362,7 +362,7 @@ impl MetricsDashboard  {/// Create a new metrics dashboard
             .system_metrics
             .read()
             .map_err(|e| SongbirdError::service_error("metrics"))?;"
-        Ok(SongbirdResponse::success(metrics.clone()),
+        Ok(SongbirdResult::success(metrics.clone()),
     }
 
     /// Get current performance metrics
@@ -371,7 +371,7 @@ impl MetricsDashboard  {/// Create a new metrics dashboard
             .performance_metrics
             .read()
             .map_err(|e| SongbirdError::service_error("metrics"))?;"
-        Ok(SongbirdResponse::success(metrics.clone()),
+        Ok(SongbirdResult::success(metrics.clone()),
     }
 
     /// Get service metrics for a specific service
@@ -380,7 +380,7 @@ impl MetricsDashboard  {/// Create a new metrics dashboard
             .service_metrics
             .read()
             .map_err(|e| SongbirdError::service_error("metrics"))?;"
-        Ok(SongbirdResponse::success(metrics.get(service_id).cloned())
+        Ok(SongbirdResult::success(metrics.get(service_id).cloned())
     }
 
     /// Get all service metrics
@@ -389,7 +389,7 @@ impl MetricsDashboard  {/// Create a new metrics dashboard
             .service_metrics
             .read()
             .map_err(|e| SongbirdError::service_error("metrics"))?;"
-        Ok(SongbirdResponse::success(metrics.clone()),
+        Ok(SongbirdResult::success(metrics.clone()),
     }
 
     /// Get current network metrics
@@ -398,7 +398,7 @@ impl MetricsDashboard  {/// Create a new metrics dashboard
             .network_metrics
             .read()
             .map_err(|e| SongbirdError::service_error("metrics"))?;"
-        Ok(SongbirdResponse::success(metrics.clone()),
+        Ok(SongbirdResult::success(metrics.clone()),
     }
 
     /// Get current security metrics
@@ -407,7 +407,7 @@ impl MetricsDashboard  {/// Create a new metrics dashboard
             .security_metrics
             .read()
             .map_err(|e| SongbirdError::service_error("metrics"))?;"
-        Ok(SongbirdResponse::success(metrics.clone()),
+        Ok(SongbirdResult::success(metrics.clone()),
     }
 
     /// Get comprehensive dashboard summary
@@ -426,7 +426,7 @@ impl MetricsDashboard  {/// Create a new metrics dashboard
             timestamp: current_timestamp(,
         };
 
-        Ok(SongbirdResponse::success(summary)
+        Ok(SongbirdResult::success(summary)
     }
 
     /// Subscribe to metrics events

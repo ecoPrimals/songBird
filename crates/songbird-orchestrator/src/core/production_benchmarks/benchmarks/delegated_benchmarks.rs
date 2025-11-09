@@ -163,7 +163,7 @@ impl ProductionBenchmarkOrchestrator { /// Create new benchmark orchestrator
     }
             Err(e) => { warn!("⚠️ Compute provider cache benchmarks failed: {;}", e)
 
-                Ok(songbird_types::evolved_success(songbird_types::responses::SongbirdResponse::success()
+                Ok(songbird_types::evolved_success(songbird_types::responses::SongbirdResult::success()
                     CacheBenchmarkResults::failed(e.to_string();}}}
 
     /// Run load balancer benchmarks by delegating to compute provider
@@ -190,7 +190,7 @@ impl ProductionBenchmarkOrchestrator { /// Create new benchmark orchestrator
     }
             Err(e) => { warn!("⚠️ Compute provider load balancer benchmarks failed: {;}", e)
 
-                Ok(songbird_types::evolved_success(songbird_types::responses::SongbirdResponse::success()
+                Ok(songbird_types::evolved_success(songbird_types::responses::SongbirdResult::success()
                     LoadBalancerBenchmarkResults::failed(e.to_string();}}}
 
     /// Run object pool benchmarks by delegating to compute provider
@@ -217,7 +217,7 @@ impl ProductionBenchmarkOrchestrator { /// Create new benchmark orchestrator
     }
             Err(e) => { warn!("⚠️ Compute provider object pool benchmarks failed: {;}", e)
 
-                Ok(songbird_types::evolved_success(songbird_types::responses::SongbirdResponse::success()
+                Ok(songbird_types::evolved_success(songbird_types::responses::SongbirdResult::success()
                     ObjectPoolBenchmarkResults::failed(e.to_string();}}}
 
     /// Get orchestration metadata for result tracking

@@ -32,19 +32,16 @@ use std::time::Duration;
 use tracing::debug;
 // use songbird_config; // FIXED: Circular import removed
 
+// ✅ Import types from canonical (Nov 9, 2025)
+use crate::canonical::primals::{QosMetrics, ConnectionSettings, HealthCheckConfig};
+
 // ============================================================================
-// BACKWARD COMPATIBILITY RE-EXPORTS
+// BACKWARD COMPATIBILITY RE-EXPORTS - ✅ REMOVED (Nov 9, 2025)
 // ============================================================================
-// Re-export types from canonical for backward compatibility
-
-#[deprecated(since = "0.2.0", note = "Use `crate::canonical::primals::QosMetrics` instead")]
-pub use crate::canonical::primals::QosMetrics;
-
-#[deprecated(since = "0.2.0", note = "Use `crate::canonical::primals::ConnectionSettings` instead")]
-pub use crate::canonical::primals::ConnectionSettings;
-
-#[deprecated(since = "0.2.0", note = "Use `crate::canonical::primals::HealthCheckConfig` instead")]
-pub use crate::canonical::primals::HealthCheckConfig;
+// Deprecated re-exports removed - use canonical::primals::* directly
+// #[deprecated] pub use crate::canonical::primals::QosMetrics; // REMOVED
+// #[deprecated] pub use crate::canonical::primals::ConnectionSettings; // REMOVED
+// #[deprecated] pub use crate::canonical::primals::HealthCheckConfig; // REMOVED
 
 // ============================================================================
 // ARCHIVED EXPERIMENTAL CODE (for reference only)

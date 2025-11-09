@@ -29,7 +29,7 @@ pub use error_helpers::{OptionElimination, SafeEnv, SafeParse, UnwrapElimination
 // Re-export response types
 pub use response::{
     AIFirstResponse, BoolResponse, JsonResponse, PaginatedResponse, ResponseError,
-    SongbirdResponse, StringResponse,
+    StringResponse, // ✅ REMOVED: SongbirdResult (duplicate import from errors module)
 };
 
 // Re-export health types

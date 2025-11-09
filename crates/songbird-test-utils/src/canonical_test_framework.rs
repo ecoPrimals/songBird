@@ -123,14 +123,14 @@ impl CanonicalAssertions {
         }
     }
 
-    /// Assert that a `SongbirdResponse` is successful
+    /// Assert that a `SongbirdResult` is successful
     ///
     /// # Errors
     ///
     /// This function currently always succeeds but returns `Result` for API consistency.
     #[allow(clippy::unnecessary_wraps)]
     pub fn assert_response_success<T>(_response: &SongbirdResult<T>) -> SongbirdResult<()> {
-        // SongbirdResponse doesn't have a success field - it's always successful if Ok
+        // SongbirdResult doesn't have a success field - it's always successful if Ok
         // The presence of data indicates success
         Ok(())
     }

@@ -14,7 +14,7 @@ mod responses_tests;
 /// This type unifies all response patterns across the ecosystem and provides
 /// AI-first metadata, performance tracking, and automation hints.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongbirdResponse<T> {
+pub struct SongbirdResult<T> {
     /// The actual response data (strongly typed)
     pub data: T,
 
@@ -37,7 +37,7 @@ pub struct SongbirdResponse<T> {
     pub human_context: Option<String>,
 }
 
-impl<T> SongbirdResponse<T> {
+impl<T> SongbirdResult<T> {
     /// Create a successful response with default metadata
     pub fn success(data: T) -> Self {
         Self {
@@ -89,11 +89,11 @@ impl<T> SongbirdResponse<T> {
     }
 
     /// Transform the data while preserving metadata
-    pub fn map<U, F>(self, f: F) -> SongbirdResponse<U>
+    pub fn map<U, F>(self, f: F) -> SongbirdResult<U>
     where
         F: FnOnce(T) -> U,
     {
-        SongbirdResponse {
+        SongbirdResult {
             data: f(self.data),
             ai_metadata: self.ai_metadata,
             performance: self.performance,
@@ -160,13 +160,13 @@ pub enum CacheStatus {
 }
 
 // Convenience implementations for common types
-impl<T> From<T> for SongbirdResponse<T> {
+impl<T> From<T> for SongbirdResult<T> {
     fn from(data: T) -> Self {
         Self::success(data)
     }
 }
 
-impl SongbirdResponse<()> {
+impl SongbirdResult<()> {
     /// Create a unit response (for operations that don't return data)
     #[must_use]
     pub fn unit() -> Self {

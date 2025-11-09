@@ -1,6 +1,6 @@
 //! CLI-specific error handling
 
-use songbird_types::SongbirdError;
+use songbird_types::{SongbirdError, SongbirdResult};
 
 /// CLI-specific error types
 #[derive(Debug, thiserror::Error)]
@@ -17,8 +17,9 @@ pub enum CliError {
     IoError(String),
 }
 
-/// CLI result type
-pub type SongbirdResult<T> = Result<T, CliError>;
+/// CLI result type (uses canonical SongbirdResult, converts via From trait)
+/// For internal CLI operations that need CliError, use Result<T, CliError> directly
+pub type CliResult<T> = Result<T, CliError>;
 
 impl From<CliError> for SongbirdError {
     fn from(cli_error: CliError) -> Self {

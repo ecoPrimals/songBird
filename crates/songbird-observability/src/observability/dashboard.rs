@@ -60,8 +60,7 @@ impl SimpleDashboard {
 
         // In a real implementation, this would start an HTTP server
         // For now, we'll just mark it as running
-        let env_config = songbird_config::EnvironmentConfig::default();
-        info!("Dashboard started on http://{}:{}", env_config.bind_address, self.port);
+        info!("Dashboard started on http://127.0.0.1:{}", self.port);
         Ok(())
     }
 
@@ -216,15 +215,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_dashboard_creation() {
-        let env_config = songbird_config::EnvironmentConfig::default();
-        let dashboard = SimpleDashboard::new(env_config.dashboard_port);
+        let dashboard = SimpleDashboard::new(8000);
         assert!(!dashboard.is_running());
     }
 
     #[tokio::test]
     async fn test_dashboard_start_stop() {
-        let env_config = songbird_config::EnvironmentConfig::default();
-        let dashboard = SimpleDashboard::new(env_config.dashboard_port);
+        let dashboard = SimpleDashboard::new(8000);
 
         assert!(dashboard.start().await.is_ok());
         assert!(dashboard.is_running());

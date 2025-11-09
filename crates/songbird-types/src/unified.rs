@@ -12,7 +12,7 @@ use std::time::{Duration, SystemTime};
 
 // Re-export existing canonical types
 pub use crate::errors::SongbirdError;
-pub use crate::response::SongbirdResponse;
+pub use crate::response::SongbirdResult;
 use songbird_types::unified_constants::*;
 
 // ============================================================================

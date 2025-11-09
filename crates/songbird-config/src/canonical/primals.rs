@@ -12,7 +12,7 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-// Removed unused SongbirdResponse import
+// Removed unused SongbirdResult import
 /// **CANONICAL**: Primal type classification in the ecosystem
 ///
 /// Unified from multiple definitions across:

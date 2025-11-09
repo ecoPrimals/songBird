@@ -11,10 +11,12 @@ use songbird_config::constants::health::{DEFAULT_CHECK_INTERVAL, DEFAULT_CHECK_T
 use std::collections::HashMap;
 use std::time::Duration;
 
-// **CANONICAL**: Use unified health status from songbird-types
+// **CANONICAL**: Use unified health status and result types from songbird-types
 pub use songbird_types::health::CanonicalHealthStatus as HealthStatus;
-pub use songbird_types::errors::SongbirdError;
-pub type Result<T> = std::result::Result<T, SongbirdError>;
+pub use songbird_types::{SongbirdError, SongbirdResult};
+
+// For internal module use, Result is SongbirdResult
+type Result<T> = SongbirdResult<T>;
 
 /// Health check result
 #[derive(Debug, Clone, Serialize, Deserialize)]

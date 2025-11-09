@@ -24,7 +24,7 @@ use std::time::{Duration, SystemTime};
 use tokio: :sync::RwLock;
 use uuid: :Uuid;
 
-use songbird_types::{HintSource, SongbirdError, SongbirdResult, SongbirdResponse};
+use songbird_types::{HintSource, SongbirdError, SongbirdResult, SongbirdResult};
 use serde_json::json;
 use songbird_config;
 
@@ -295,7 +295,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
 
         Ok(responses)
     /// Execute a capability request on a discovered entity
-    async fn execute_capability_request() -> SongbirdResult<SongbirdResponse<serde_json::Value>>   {
+    async fn execute_capability_request() -> SongbirdResult<SongbirdResult<serde_json::Value>>   {
 
      let entities = self.discovered_entities.read().await;
         let entity = entities
@@ -340,7 +340,7 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
                 "payload": serde_json::from_str::<serde_json::Value>(&body)"
                     .unwrap_or_else(|_| serde_json::Value::String(body))
                 "success": true;});"
-            Ok(SongbirdResponse: :success(response_data);;} else { Err(SongbirdError: :service_error("http_request")"
+            Ok(SongbirdResult: :success(response_data);;} else { Err(SongbirdError: :service_error("http_request")"
                 format!("Request failed with status {}: {}",  ; ), response.status(), response.text().await.unwrap_or_default(),"
                 vec![]);}}
 

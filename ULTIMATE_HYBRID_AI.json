@@ -1,0 +1,44 @@
+{
+  "timestamp": "2025-11-09T09:22:35.669945",
+  "infrastructure": {
+    "towers_online": [
+      "Strandgate",
+      "Southgate"
+    ],
+    "gpu": "NVIDIA GeForce RTX 2070 SUPER",
+    "vram_gb": 8.159625216
+  },
+  "results": [
+    {
+      "task": "Math",
+      "source": "Local GPU",
+      "ms": 304.5005798339844,
+      "cost": 0.0
+    },
+    {
+      "task": "Image Prompt",
+      "source": "Claude API",
+      "ms": 3212.1315002441406,
+      "cost": 7.2e-05
+    },
+    {
+      "task": "Image Generation",
+      "source": "Local GPU",
+      "ms": 4413.976192474365,
+      "cost": 0.0
+    },
+    {
+      "task": "Analysis",
+      "source": "Claude API",
+      "ms": 2095.7140922546387,
+      "cost": 7.8e-05
+    }
+  ],
+  "summary": {
+    "total_tasks": 4,
+    "local_tasks": 2,
+    "cloud_tasks": 2,
+    "total_time_ms": 10026.322364807129,
+    "total_cost": 0.00015000000000000001
+  }
+}

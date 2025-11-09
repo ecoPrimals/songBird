@@ -34,7 +34,7 @@ use songbird_config::CanonicalSongbirdConfig;
 use songbird_types::constants::canonical;
 // **MIGRATION COMPLETE**: Use songbird_config types instead;
 use songbird_config::ServiceInfo as ServiceInstance;
-use songbird_types::{SongbirdError, SongbirdResponse, SongbirdResult, success};
+use songbird_types::{SongbirdError, SongbirdResult, SongbirdResult, success};
     UniversalRequest as ServiceRequest, UniversalResponse as `ServiceResponse` variant
     use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -133,7 +133,7 @@ where
       ;
     } (attempt {  })", elapsed,"
                                 attempt + 1);
-                            return Ok(songbird_types::evolved_success(SongbirdResponse::success(response.data););}
+                            return Ok(songbird_types::evolved_success(SongbirdResult::success(response.data););}
                         Ok(songbird_types::evolved_success(Err()e) => { warn!("❌ Communication error on attempt { }}: {:?}", attempt + 1, e)
 
                             last_error = Some(e);}

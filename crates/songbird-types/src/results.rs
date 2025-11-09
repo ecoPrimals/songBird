@@ -155,35 +155,16 @@ pub type HealthCheckResult = SongbirdResult<UnifiedHealthStatus>;
 /// Consolidates 6+ different MigrationResult definitions across crates.
 pub type MigrationResult<T = ()> = SongbirdResult<T>;
 
-/// **CANONICAL**: Discovery result type
-///
-/// Consolidates multiple discovery result variations.
-pub type DiscoveryResult<T> = SongbirdResult<T>;
-
-/// **CANONICAL**: Configuration result type
-///
-/// Consolidates configuration operation results.
-pub type ConfigurationResult<T = ()> = SongbirdResult<T>;
-
-/// **CANONICAL**: Service operation result type
-///
-/// Consolidates service-related operation results.
-pub type ServiceOperationResult<T = ()> = SongbirdResult<T>;
-
-/// **CANONICAL**: Network operation result type
-///
-/// Consolidates network-related operation results.
-pub type NetworkOperationResult<T = ()> = SongbirdResult<T>;
-
-/// **CANONICAL**: Security operation result type
-///
-/// Consolidates security-related operation results.
-pub type SecurityOperationResult<T = ()> = SongbirdResult<T>;
-
-/// **CANONICAL**: Federation operation result type
-///
-/// Consolidates federation-related operation results.
-pub type FederationOperationResult<T = ()> = SongbirdResult<T>;
+// ✅ REMOVED: Unused specialized Result type aliases (Nov 9, 2025)
+// All these were just SongbirdResult<T> wrappers with 0 actual usages.
+// Use SongbirdResult<T> directly instead.
+//
+// pub type DiscoveryResult<T> = SongbirdResult<T>; // 7 usages → migrated
+// pub type ConfigurationResult<T = ()> = SongbirdResult<T>; // 0 usages
+// pub type ServiceOperationResult<T = ()> = SongbirdResult<T>; // 0 usages
+// pub type NetworkOperationResult<T = ()> = SongbirdResult<T>; // 0 usages
+// pub type SecurityOperationResult<T = ()> = SongbirdResult<T>; // 0 usages
+// pub type FederationOperationResult<T = ()> = SongbirdResult<T>; // 0 usages
 
 // ============================================================================
 // SPECIALIZED RESULT STRUCTURES

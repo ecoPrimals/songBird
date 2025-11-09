@@ -13,9 +13,10 @@ use anyhow::Result;
 use songbird_types::SafeEnv;
 use tokio::time::interval;
 
-// Federation API module
+// Server API modules
 pub mod deployment_api;
 pub mod chunked_upload;
+pub mod execution_api;
 pub mod federation_api;
 /// Server management and monitoring functionality
 pub struct ServerManager {

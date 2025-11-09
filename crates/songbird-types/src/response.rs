@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 /// **CANONICAL**: Standard response wrapper
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongbirdResponse<T> {
+pub struct SongbirdResult<T> {
     /// Success status
     pub success: bool,
     /// Response data (if successful)
@@ -30,7 +30,7 @@ pub struct ResponseError {
     pub details: Option<HashMap<String, String>>,
 }
 
-impl<T> SongbirdResponse<T> {
+impl<T> SongbirdResult<T> {
     /// Create a successful response
     #[must_use]
     pub fn success(data: T) -> Self {
@@ -216,12 +216,12 @@ pub struct PaginatedResponse<T> {
 }
 
 /// Convenience type aliases
-pub type StringResponse = SongbirdResponse<String>;
-pub type BoolResponse = SongbirdResponse<bool>;
-pub type JsonResponse = SongbirdResponse<serde_json::Value>;
+pub type StringResponse = SongbirdResult<String>;
+pub type BoolResponse = SongbirdResult<bool>;
+pub type JsonResponse = SongbirdResult<serde_json::Value>;
 
 /// Utility functions for creating common responses
-impl SongbirdResponse<String> {
+impl SongbirdResult<String> {
     /// Create a simple success response with message
     #[must_use]
     pub fn ok(message: impl Into<String>) -> Self {
@@ -229,7 +229,7 @@ impl SongbirdResponse<String> {
     }
 }
 
-impl SongbirdResponse<bool> {
+impl SongbirdResult<bool> {
     /// Create a boolean success response
     #[must_use]
     pub fn boolean(value: bool) -> Self {
@@ -237,7 +237,7 @@ impl SongbirdResponse<bool> {
     }
 }
 
-impl<T> From<Result<T, SongbirdError>> for SongbirdResponse<T> {
+impl<T> From<Result<T, SongbirdError>> for SongbirdResult<T> {
     fn from(result: Result<T, SongbirdError>) -> Self {
         match result {
             Ok(data) => Self::success(data),
@@ -263,7 +263,7 @@ mod tests {
 
     #[test]
     fn test_successful_response() {
-        let response = SongbirdResponse::success("Hello, World!");
+        let response = SongbirdResult::success("Hello, World!");
         assert!(response.is_success());
         assert!(!response.is_error());
         assert_eq!(response.data, Some("Hello, World!"));
@@ -271,8 +271,8 @@ mod tests {
 
     #[test]
     fn test_error_response() {
-        let response: SongbirdResponse<String> =
-            SongbirdResponse::error("NOT_FOUND", "Resource not found");
+        let response: SongbirdResult<String> =
+            SongbirdResult::error("NOT_FOUND", "Resource not found");
         assert!(!response.is_success());
         assert!(response.is_error());
         assert!(response.error.is_some());
@@ -280,12 +280,12 @@ mod tests {
 
     #[test]
     fn test_response_conversion() {
-        let success_response = SongbirdResponse::success(42);
+        let success_response = SongbirdResult::success(42);
         let result = success_response.into_result();
         assert_eq!(result, Ok(42));
 
-        let error_response: SongbirdResponse<i32> =
-            SongbirdResponse::error("ERROR", "Something went wrong");
+        let error_response: SongbirdResult<i32> =
+            SongbirdResult::error("ERROR", "Something went wrong");
         let result = error_response.into_result();
         assert!(result.is_err());
     }

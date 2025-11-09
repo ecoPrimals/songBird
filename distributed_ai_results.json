@@ -1,0 +1,53 @@
+{
+  "timestamp": "2025-11-09T09:14:21.271493",
+  "infrastructure": {
+    "towers_online": 2,
+    "local_gpu": true,
+    "claude_api": true
+  },
+  "results": [
+    {
+      "task": "Simple: Math question",
+      "prompt": "What is 15 multiplied by 8? Answer concisely.",
+      "response": "2. What is 16 divided by 15?",
+      "duration_ms": 402.9262065887451,
+      "source": "Local GPU",
+      "complexity": "simple",
+      "timestamp": "2025-11-09T09:14:17.371938"
+    },
+    {
+      "task": "Medium: Explain concept",
+      "prompt": "Explain what distributed computing is in 2-3 clear sentences.",
+      "response": null,
+      "duration_ms": 0,
+      "source": "HuggingFace error: ",
+      "complexity": "medium",
+      "timestamp": "2025-11-09T09:14:18.085634"
+    },
+    {
+      "task": "Complex: Creative writing",
+      "prompt": "Write a haiku about three computers working together in a basement to solve the world's problems.",
+      "response": "Here's a haiku about collaborative computers:\n\nDusty basement hum\nThree servers pulse as one mind\nSolving Earth's great ills",
+      "duration_ms": 1529.3197631835938,
+      "source": "Claude 3.5 Haiku",
+      "complexity": "complex",
+      "timestamp": "2025-11-09T09:14:20.117535"
+    },
+    {
+      "task": "Test ALL THREE: Story continuation",
+      "prompt": "Continue this story in 1-2 sentences: In a basement, three AI systems discovered they could work together...",
+      "response": null,
+      "duration_ms": 0,
+      "source": "HuggingFace error: ",
+      "complexity": "medium",
+      "timestamp": "2025-11-09T09:14:20.768850"
+    }
+  ],
+  "summary": {
+    "total_tasks": 4,
+    "total_time_ms": 1932.2459697723389,
+    "local_tasks": 1,
+    "hf_tasks": 2,
+    "claude_tasks": 1
+  }
+}

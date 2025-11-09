@@ -1,7 +1,7 @@
 /// # 🌟 Modern Unified API for Universal Primals
 ///
 /// This module implements the unified API standards from the EcoPrimals ecosystem:
-/// - AI-First Citizen API Standard (SongbirdResponse pattern,
+/// - AI-First Citizen API Standard (SongbirdResult pattern,
 /// - Zero-Cost Architecture (no async_trait, no Arc<dyn>)
 /// - Universal Primal Architecture (capability-based discovery)
 /// - Ecosystem API Standardization (universal service registration)
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 // Re-export from songbird-errors for consistency
-pub use songbird_types::{SongbirdError, SongbirdResponse, SongbirdResult, success};
+pub use songbird_types::{SongbirdError, SongbirdResult, SongbirdResult, success};
 
 /// Universal Service Registration - Core of the capability-based system
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -441,7 +441,7 @@ pub trait ZeroCostPrimalProvider  {/// Associated types for zero-cost specializa
         capability: &str,
         operation: &str,
         payload: T,
-    ) -> impl std::future::Future<Output = Result<SongbirdResponse<R>, Self::Error>> + Send
+    ) -> impl std::future::Future<Output = Result<SongbirdResult<R>, Self::Error>> + Send
     where
         T: Serialize + Send + Sync,
         R: for<'de> Deserialize<'de> + Send + Sync;
@@ -508,7 +508,7 @@ impl UniversalCapabilityDiscovery  {/// Create a new capability discovery engine
             .cloned()
             .unwrap_or_default();
 
-        Ok(SongbirdResponse::success(services)
+        Ok(SongbirdResult::success(services)
     }
 
     /// Find best service for a capability based on QoS requirements
@@ -537,7 +537,7 @@ impl UniversalCapabilityDiscovery  {/// Create a new capability discovery engine
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
             .map(|(service, _)| service);
 
-        Ok(SongbirdResponse::success(best_service)
+        Ok(SongbirdResult::success(best_service)
     }
 
     /// Calculate QoS compatibility score

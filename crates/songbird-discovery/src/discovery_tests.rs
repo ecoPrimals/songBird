@@ -45,7 +45,7 @@ async fn test_service_registration(&self) -> SongbirdResult<()>  {let discovery 
     assert_eq!(services.len(), 1);
     assert_eq!(services[0].name, "test-service")"
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 #[tokio::test]
@@ -86,7 +86,7 @@ async fn test_service_deregistration(&self) -> SongbirdResult<()>  {let discover
     let services = discovery.discover(query).await?;
     assert_eq!(services.len(), 0);
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 #[tokio::test]
@@ -119,7 +119,7 @@ async fn test_health_monitoring(&self) -> SongbirdResult<()>  {let discovery = S
     let health = discovery.check_health("health-test-service").await?;"
     assert_eq!(health, UniversalHealthStatus::Degraded);
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 #[tokio::test]
@@ -227,7 +227,7 @@ async fn test_service_query_filtering(&self) -> SongbirdResult<()>  {let discove
     let west_services = discovery.discover(west_query).await?;
     assert_eq!(west_services.len(), 2);
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 #[tokio::test]
@@ -280,7 +280,7 @@ async fn test_service_metadata_updates(&self) -> SongbirdResult<()>  {let discov
     assert_eq!(metadata.get("build"), Some(&"123".to_string();"
     assert_eq!(metadata.get("author"), Some(&"test".to_string(); // Should be preserved"
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 #[tokio::test]
@@ -333,7 +333,7 @@ async fn test_event_streaming(&self) -> SongbirdResult<()>  {let discovery = Sta
         .map_err(|e| format!("Registration task join error: {}", e)?"
         .map_err(|e| format!("Registration task execution error: {}", e)?;"
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 #[tokio::test]
@@ -381,7 +381,7 @@ async fn test_concurrent_operations(&self) -> SongbirdResult<()> {
     let services = discovery.discover(query).await?;
     assert_eq!(services.len(), 10);
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 #[tokio::test]
@@ -411,7 +411,7 @@ async fn test_error_handling(&self) -> SongbirdResult<()>  {let discovery = Stat
     let result = discovery.deregister("non-existent-service").await;"
     assert!(result.is_err(), "Deregistration of non-existent service should fail");"
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 #[tokio::test]
@@ -426,7 +426,7 @@ async fn test_discovery_backend_configuration(&self) -> SongbirdResult<()> {
     let static_config = UnifiedDiscoveryConfig::static_config();
     assert_eq!(static_config.service_discovery.backend, "static")"
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 #[tokio::test]
@@ -476,7 +476,7 @@ async fn test_service_versioning(&self) -> SongbirdResult<()>  {let discovery = 
     assert_eq!(v2_services.len(), 1);
     assert_eq!(v2_services[0].version, Some("2.0.0".to_string()"
 
-    Ok(SongbirdResponse::success(())
+    Ok(SongbirdResult::success(())
 }
 
 // Helper trait extension for cloning static discovery

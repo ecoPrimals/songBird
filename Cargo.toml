@@ -26,7 +26,7 @@ members = [
     
     # 🌐 INTEGRATION (2 crates) - CONSOLIDATED
     # "crates/songbird-primal-sdk",        # ⚠️ DEFERRED: Cascading delimiter errors across multiple files (est. 2-4h systematic fix)
-    "crates/songbird-squirrel-service",    # 🐿️ NEW: AI/MCP Service
+    "crates/songbird-squirrel-service", "crates/songbird-execution-agent",    # 🐿️ NEW: AI/MCP Service
     
     # 🔧 TOOLS
     # "tools/hardcoding-migrator",           # ⚠️ Missing directory
@@ -100,6 +100,9 @@ urlencoding = "2.1"
 hyper = { version = "1.0", features = ["full"] }
 http-body-util = "0.1"
 bytes = "1.0"
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors"] }
 
 # System info (needed by workspace members)
 sys-info = "0.9"

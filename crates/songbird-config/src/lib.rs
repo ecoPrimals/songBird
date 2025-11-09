@@ -78,10 +78,9 @@ pub mod zero_touch;
 )]
 pub mod config;
 
-/// **CLEANUP TARGET**: Environment configuration helper
-/// 
-/// **MIGRATION**: Scheduled for consolidation into `canonical::environment` (Phase 3)
-pub mod environment_config_clean;
+// ✅ REMOVED: Environment config helpers (Nov 9, 2025)
+// Consolidated into canonical::environment
+// pub mod environment_config_clean; // REMOVED
 
 // ============================================================================
 // PUBLIC API - PREFER CANONICAL
@@ -108,12 +107,13 @@ pub use canonical::service::ServiceConfig as CanonicalServiceConfig;
 #[allow(deprecated)]
 pub use config::*;
 
-// Re-export environment configuration from config module (DEPRECATED)
-#[allow(deprecated)]
-pub use config::environment::EnvironmentConfig;
+// ✅ REMOVED: Use canonical::environment::EnvironmentConfig instead (Nov 9, 2025)
+// #[allow(deprecated)]
+// pub use config::environment::EnvironmentConfig;
 
 // Re-export environment configuration helper
-pub use environment_config_clean::EnvironmentConfig as EnvironmentConfigClean;
+// ✅ REMOVED: Use canonical::environment::EnvironmentConfig instead (Nov 9, 2025)
+// pub use environment_config_clean::EnvironmentConfig as EnvironmentConfigClean;
 
 /// Performance configuration for fine-tuning system behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]

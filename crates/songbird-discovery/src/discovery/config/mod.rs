@@ -1,6 +1,6 @@
 use crate::discovery::types::NodeType;
 use serde::{Deserialize, Serialize};
-use songbird_config::EnvironmentConfig;
+use songbird_config::canonical::environment::EnvironmentConfig; // ✅ Migrated from deprecated path
 
 /// Configuration for Songbird Discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,13 +92,11 @@ pub struct NetworkTimingConfig {
 // Default implementations
 impl Default for NetworkConfig {
     fn default() -> Self {
-        let env_config = EnvironmentConfig::default();
-
         Self {
             multicast_address: "224.0.0.251".to_string(),
             federation_port: 8765,
-            service_port: 8080, // Default discovery port since bind_port field doesn't exist
-            bind_address: env_config.bind_address,
+            service_port: 8080, // Default discovery port
+            bind_address: "0.0.0.0".to_string(), // ✅ Updated: EnvironmentConfig no longer has bind_address
             announcement_interval_secs: 60,
             response_timeout_secs: 2,
             ping_timeout_secs: 5,
@@ -174,16 +172,14 @@ impl Default for NetworkTimingConfig {
 
 impl Default for SongbirdDiscoveryConfig {
     fn default() -> Self {
-        let env_config = EnvironmentConfig::default();
-
         Self {
             node_id: None,
             node_type: NodeType::Orchestrator,
             institution: None,
             federation_enabled: false,
             health_check_interval_secs: 30, // Default health check interval
-            node_discovery_interval_secs: env_config.connection_timeout_secs,
-            trust_verification_enabled: env_config.require_tls, // Use TLS requirement as trust verification
+            node_discovery_interval_secs: 60, // ✅ Updated: EnvironmentConfig no longer has connection_timeout_secs
+            trust_verification_enabled: false, // ✅ Updated: EnvironmentConfig no longer has require_tls
             max_federation_nodes: 1000,
             network: NetworkConfig::default(),
             monitoring: MonitoringConfig::default(),

@@ -38,8 +38,9 @@ pub use songbird_types::SongbirdError;
 
 // Re-export mocks for test convenience
 pub use mocks::{
-    HealthStatus, MockBearDog, MockNestGate, MockPrimalServer, MockResponse, MockSquirrel,
-    MockToadStool,
+    HealthStatus, MockPrimalServer, MockResponse,
+    // ✅ REMOVED: Deprecated legacy mock exports (Nov 9, 2025)
+    // Use MockCapabilityServer::new(CapabilityType::*) instead
 };
 
 // Re-export helper modules

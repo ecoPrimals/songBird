@@ -18,7 +18,7 @@ use tracing::{debug, info};
 // futures::future::join_all removed - not used in current implementation
 
 use crate::adaptive_discovery::{AdaptivePrimalDiscovery, DiscoveredPrimal};
-use songbird_types::{SongbirdError, SongbirdResponse, SongbirdResult, success};
+use songbird_types::{SongbirdError, SongbirdResult, SongbirdResult, success};
 
 /// **🌟 CAPABILITY ORCHESTRATOR**: Pure capability-based orchestration
 ///
@@ -74,7 +74,7 @@ impl CapabilityOrchestrator {
         operation: &str,
         payload: T,
         preferences: Option<CapabilityPreferences>,
-    ) -> SongbirdResult<SongbirdResponse<R>>
+    ) -> SongbirdResult<SongbirdResult<R>>
     where
         T: Serialize + Send + Sync,
         R: for<'de> Deserialize<'de> + Send + Sync,

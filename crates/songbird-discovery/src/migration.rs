@@ -1,7 +1,33 @@
 //! Federation Migration Helper
 //!
-//! This module provides utilities for migrating from the old songbird-federation
-//! system to the new discovery-based architecture with enhanced sovereignty awareness.
+//! **PURPOSE**: Temporary migration utilities for transitioning from the legacy
+//! songbird-federation system to the modern discovery-based architecture with 
+//! enhanced sovereignty awareness.
+//!
+//! ## 🕐 Deprecation Timeline
+//!
+//! - **Active Migration Period**: November 2025 - May 2026 (6 months)
+//! - **Deprecation Warning**: March 2026 (after 4 months)
+//! - **Planned Removal**: June 2026 (after full migration window)
+//!
+//! ## ⚠️ Usage Guidelines
+//!
+//! This module should **ONLY** be used during active migration from legacy federation.
+//! New code should use `FederationAwareDiscovery` directly without this migration layer.
+//!
+//! ## 📖 Migration Path
+//!
+//! 1. **Assessment**: Use `FederationMigrationHelper::migrate_with_validation()` 
+//!    to analyze your legacy config
+//! 2. **Testing**: Use `LegacyFederationWrapper` for backwards-compatible testing
+//! 3. **Migration**: Switch to `FederationAwareDiscovery` directly
+//! 4. **Cleanup**: Remove legacy config and migration code after successful transition
+//!
+//! ## 🏗️ Architecture Note
+//!
+//! This module intentionally uses "Legacy" prefixes in type names to clearly distinguish
+//! old federation concepts from modern discovery-based patterns. These names are semantic
+//! and should not be removed as part of technical debt cleanup.
 
 use crate::discovery::{DiscoveryConfig, UniversalDiscoveryFactory};
 use crate::federation_aware_discovery::{FederationAwareDiscovery, FederationAwareServiceInfo, FederationDiscoveryConfig,

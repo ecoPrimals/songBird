@@ -246,7 +246,7 @@ use songbird_config;
         });
 
         let result = wait_task.await;
-        // The result is a Result<SongbirdResponse<Option<ServiceEvent>>, _>
+        // The result is a Result<SongbirdResult<Option<ServiceEvent>>, _>
         assert!(result.is_ok());
         assert!(result
             .map_err(|e| SongbirdError::operation_error(format!(
@@ -282,7 +282,7 @@ use songbird_config;
         });
 
         let result = collect_task.await;
-        // The result is a Result<SongbirdResponse<Vec<ServiceEvent>>, _>
+        // The result is a Result<SongbirdResult<Vec<ServiceEvent>>, _>
         assert!(result.is_ok());
         let events = result
             .map_err(|e| {

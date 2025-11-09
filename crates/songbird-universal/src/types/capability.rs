@@ -143,15 +143,10 @@ pub struct DiscoveredCapability {
     pub health_status: HealthStatus,
 }
 
-/// Type alias for backward compatibility during migration
-///
-/// **Deprecated**: Use `DiscoveredCapability` instead to distinguish from
-/// `capabilities::Capability` (the capability definition type).
-#[deprecated(
-    since = "0.1.0",
-    note = "Use DiscoveredCapability for discovered capabilities with deployment info, or capabilities::Capability for capability definitions"
-)]
-pub type Capability = DiscoveredCapability;
+// ✅ REMOVED: Deprecated type alias (Nov 9, 2025)
+// Use DiscoveredCapability directly for discovered capabilities with deployment info,
+// or capabilities::Capability for capability definitions
+// #[deprecated] pub type Capability = DiscoveredCapability;
 
 /// Discovery filters for primal search
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

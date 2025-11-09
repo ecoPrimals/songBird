@@ -9,6 +9,7 @@
 pub mod api;
 pub mod benchmarks;
 pub mod biome;
+pub mod execution;
 pub mod load_balancer;
 pub mod orchestrator;
 pub mod performance;

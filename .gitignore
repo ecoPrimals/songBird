@@ -136,6 +136,22 @@ __pycache__/
 .Python
 *.so
 
+# ML/AI artifacts and datasets
+experiments/data/
+experiments/imagenet_training/results/
+*.pth
+*.ckpt
+*.h5
+*.pb
+*.onnx
+*.safetensors
+*.JPEG
+*.jpeg
+*.jpg
+*.JPG
+*.png
+*.PNG
+
 # Documentation builds
 docs/_build/
 site/
