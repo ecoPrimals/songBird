@@ -24,8 +24,9 @@ members = [
     "crates/songbird-observability",
     "crates/songbird-test-utils",
     
-    # 🌐 INTEGRATION (1 crate) - CONSOLIDATED
+    # 🌐 INTEGRATION (2 crates) - CONSOLIDATED
     # "crates/songbird-primal-sdk",        # ⚠️ DEFERRED: Cascading delimiter errors across multiple files (est. 2-4h systematic fix)
+    "crates/songbird-squirrel-service",    # 🐿️ NEW: AI/MCP Service
     
     # 🔧 TOOLS
     # "tools/hardcoding-migrator",           # ⚠️ Missing directory

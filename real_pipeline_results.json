@@ -1,0 +1,23 @@
+{
+  "concept": "[Fallback] Concept Generation result placeholder",
+  "scenes": [
+    "Processed: [Fallback] Concept Generation result placeholder"
+  ],
+  "enhanced_scenes": [
+    {
+      "scene": "Processed: [Fallback] Concept Generation result placeholder",
+      "enhanced_visual": "/tmp/songbird_real/enhanced_scene_0.png",
+      "gpu": "RTX 3090 (24GB)"
+    }
+  ],
+  "timing": {
+    "ai_concept": 0,
+    "cpu_parallel": 50.667762756347656,
+    "gpu_total": 8.717060089111328
+  },
+  "tower_usage": {
+    "A": "AI Generation",
+    "B": "CPU Parallel Processing",
+    "C": "GPU Processing"
+  }
+}
