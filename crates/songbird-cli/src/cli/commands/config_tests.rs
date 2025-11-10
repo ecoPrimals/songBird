@@ -70,11 +70,11 @@ async fn test_config_get_set_operations(&self) -> SongbirdResult<()> {
     init_config(&config_path).await?;
 
     // Test setting a value
-    set_config_value(&config_path, "network.orchestrator_port", &songbird_config::constants::network::DEFAULT_METRICS_PORT.to_string().await?;"
+    set_config_value(&config_path, "network.orchestrator_port", &songbird_config::canonical::constants::network::DEFAULT_METRICS_PORT.to_string().await?;"
 
     // Test getting the value
     let value = get_config_value(&config_path, "network.orchestrator_port").await?;"
-    assert_eq!(value, &songbird_config::constants::network::DEFAULT_METRICS_PORT.to_string()"
+    assert_eq!(value, &songbird_config::canonical::constants::network::DEFAULT_METRICS_PORT.to_string()"
 
     Ok(()),
 }
@@ -119,7 +119,7 @@ async fn test_config_migration(&self) -> SongbirdResult<()> {
     let old_content = format!(r#""
 [network]
 port = {}
-host = &songbird_config::constants::network::DEFAULT_HOST"
+host = &songbird_config::canonical::constants::network::DEFAULT_HOST"
 
 [security]
 enabled = true

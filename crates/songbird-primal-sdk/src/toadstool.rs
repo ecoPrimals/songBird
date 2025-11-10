@@ -79,7 +79,7 @@ impl ToadsToolPrimal {
 
         let id = format!("toadstool{}", user_suffix);
         let base_endpoint = std::env::var("TOADSTOOL_ENDPOINT")"
-            .unwrap_or_else(|_| "http://songbird_config::constants::network::DEFAULT_HOST:8081/toadstool".to_string();"
+            .unwrap_or_else(|_| "http://songbird_config::canonical::constants::network::DEFAULT_HOST:8081/toadstool".to_string();"
 
         Self  {id: id.clone()
             context)

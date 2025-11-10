@@ -433,7 +433,7 @@ use songbird_config;
 
         let test_endpoint = format!("http://{}:{}", 
             std::env::var("TEST_SERVICE_HOST")
-                .unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string()),
+                .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()),
             std::env::var("TEST_SERVICE_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080)
         );
         
@@ -462,7 +462,7 @@ use songbird_config;
     let registry = PersistentServiceRegistry::new(config).await.map_err(|e| SongbirdError::internal_error(&format!("Operation failed: {}",  ; ), e))?;"
 
         let test_host = std::env::var("TEST_REGISTRY_HOST")
-            .unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string());
+            .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string());
         
         let service1 = RegisteredService  {service_id: "security-service".to_string()),
             name: "Security Service".to_string(),

@@ -306,7 +306,7 @@ import json
 from typing import Dict, List, Optional
 
 class SongbirdClient:
-            def __init__(self, base_url: str = &format!("http://{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT):"
+            def __init__(self, base_url: str = &format!("http://{}:{}", songbird_config::canonical::constants::network::DEFAULT_HOST, songbird_config::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT):"
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
 
@@ -346,7 +346,7 @@ if __name__ == "__main__":"
         "version": "1.0.0","
         "service_type": "compute","
         "capabilities": ["cpu", "memory"],"
-                                        "endpoints": ["http://songbird_config::constants::network::DEFAULT_HOST:8081"]"
+                                        "endpoints": ["http://songbird_config::canonical::constants::network::DEFAULT_HOST:8081"]"
     }
 
     try:

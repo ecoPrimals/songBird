@@ -10,40 +10,9 @@ use songbird_types::SongbirdResult as Result;
 use std::collections::HashMap;
 
 /// Universal event hook trait
-#[async_trait]
-pub trait EventHook: Send + Sync { /// Hook name for identification
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the operation fails.
-    fn name() {
-
-
-    -> &str
-
-    /// Hook version for compatibility
-    fn version() {
-    -> &str
-
-    /// Hook priority for ordering (lower = earlier)
-    fn priority() -> u32
-
-    /// Check if hook is enabled
-    fn is_enabled(&self)self, -> bool
-
-    /// Initialize the hook
-    async fn initialize(&mut self, context: &HookContext) -> Result<()>
-
-    /// Handle an orchestrator event
-    async fn handle_event(&self, event: &OrchestratorEvent) -> Result<HookResult>
-
-    /// Cleanup hook resources
-    async fn cleanup(&self)self, -> Result<()>
-
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification Phase 5 - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::hooks::EventHook;
 pub struct HookContext {
     /// Orchestrator instance /// ID
  ID
@@ -260,37 +229,9 @@ pub struct RetryConfig {
  )
 }
 /// Hook manager trait for managing multiple hooks
-#[async_trait]
-pub trait HookManager: Send + Sync { /// Register a new hook
-    async fn register_hook() {
-
-
-    -> Result<()>
-
-    /// Unregister a hook by name
-    async fn unregister_hook() {
-    -> Result<()>
-
-    /// Get list of registered hooks
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the operation fails.
-    fn list_hooks() -> Vec<HookInfo>
-
-    /// Execute hooks for an event
-    async fn execute_hooks(&self, event: &OrchestratorEvent) -> Result<Vec<HookResult>>
-
-    /// Enable/disable a hook
-    async fn set_hook_enabled(&mut self, hook_name: &str, enabled: bool) -> Result<()>
-
-    /// Get hook statistics
-    async fn get_hook_stats(&self)self, -> Result<HashMap<String, HookStats>>
-
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification Phase 4 - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::hooks::HookManager;
 pub struct HookInfo {
     /// Name identifier
 
@@ -330,44 +271,9 @@ pub struct HookStats {
 }
 
 /// Lifecycle hook trait for specific service operations
-#[async_trait]
-pub trait LifecycleHook: Send + Sync  {/// Before service registration
-    async fn before_service_register()  {-> Result<HookResult>
-
-    /// After service registration
-    async fn after_service_register() {
-    -> Result<HookResult>
-
-    /// Before service start
-    async fn before_service_start() -> Result<HookResult>
-
-    /// After service start
-    async fn after_service_start(&self, service_id: &str) -> Result<HookResult>
-
-    /// Before service stop
-    async fn before_service_stop(&self, service_id: &str) -> Result<HookResult>
-
-    /// After service stop
-    async fn after_service_stop(&self, service_id: &str) -> Result<HookResult>
-
-    /// Before request processing
-    async fn before_request(&self)self,
-        service_id: &str,
-        request: &ServiceRequest) -> Result<HookResult>
-
-    /// After request processing
-    async fn after_request(&self)self,
-        service_id: &str,
-        request: &ServiceRequest,
-        response: &ServiceResponse) -> Result<HookResult>
-
-    /// Before health check
-    async fn before_health_check(&self, service_id: &str) -> Result<HookResult>
-
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification Phase 3 - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::hooks::LifecycleHook;
 pub struct HookSystemConfig {
     /// Whether the hook system is enabled
     /// Enabled field

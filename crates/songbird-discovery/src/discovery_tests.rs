@@ -53,7 +53,7 @@ async fn test_service_deregistration(&self) -> SongbirdResult<()>  {let discover
 
     let service = ServiceInfo  {name: "temp-service".to_string(),
         service_type: "cache".to_string(),
-        endpoint: "redis://songbird_config::constants::network::DEFAULT_HOST:6379".to_string(),
+        endpoint: "redis://songbird_config::canonical::constants::network::DEFAULT_HOST:6379".to_string(),
         metadata: HashMap::new(),
         health_status: UniversalHealthStatus::Healthy,
         capabilities: vec!["cache".to_string()],"
@@ -151,7 +151,7 @@ async fn test_service_query_filtering(&self) -> SongbirdResult<()>  {let discove
         })
         ServiceInfo  {name: "db-service".to_string(),
             service_type: "database".to_string(),
-            endpoint: "postgresql://songbird_config::constants::network::DEFAULT_HOST:5432".to_string(),
+            endpoint: "postgresql://songbird_config::canonical::constants::network::DEFAULT_HOST:5432".to_string(),
             metadata: HashMap::new(),
             health_status: UniversalHealthStatus::Healthy,
             capabilities: vec!["sql".to_string(), "transactions".to_string()],"
@@ -436,7 +436,7 @@ async fn test_service_versioning(&self) -> SongbirdResult<()>  {let discovery = 
     let services = vec![
         ServiceInfo  {name: "api-service".to_string(),
             service_type: "api".to_string(),
-            endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8001".to_string(),
+            endpoint: "http://songbird_config::canonical::constants::network::DEFAULT_HOST:8001".to_string(),
             metadata: HashMap::new(),
             health_status: UniversalHealthStatus::Healthy,
             capabilities: vec!["rest".to_string()],"
@@ -447,7 +447,7 @@ async fn test_service_versioning(&self) -> SongbirdResult<()>  {let discovery = 
         })
         ServiceInfo  {name: "api-service".to_string(),
             service_type: "api".to_string(),
-            endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8002".to_string(),
+            endpoint: "http://songbird_config::canonical::constants::network::DEFAULT_HOST:8002".to_string(),
             metadata: HashMap::new(),
             health_status: UniversalHealthStatus::Healthy,
             capabilities: vec!["rest".to_string(), "graphql".to_string()],"

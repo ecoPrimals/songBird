@@ -145,14 +145,14 @@ pub struct TestNetworkConfig  {/// Base port for test services
     /// Whether to use songbird_config::canonical::constants::network::DEFAULT_HOST only
     /// Localhost Only field
 
-    pub songbird_config::constants::network::DEFAULT_HOST_only: bool ;,
+    pub songbird_config::canonical::constants::network::DEFAULT_HOST_only: bool ;,
  )
 }
 ;
 impl Default for TestNetworkConfig  {fn default() -> Self  {Self { base_port: 18000, // High port range to avoid conflicts
             port_range: (18000, 19000)
             timeouts: TestTimeoutConfig::default(),
-            songbird_config::constants::network::DEFAULT_HOST_only: true;;}}}
+            songbird_config::canonical::constants::network::DEFAULT_HOST_only: true;;}}}
 
 /// Security configuration for tests
 #[derive(Debug, Clone, Serialize, Deserialize)]

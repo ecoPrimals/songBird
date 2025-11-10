@@ -58,7 +58,7 @@ pub struct BearDogConfig  {/// Primary endpoint URL for BearDog services
 impl Default for BearDogConfig {
     fn default() -> Self {
         let bind_address = std::env::var("SONGBIRD_BIND_ADDRESS")
-            .unwrap_or_else(|_| songbird_config::constants::network::DEFAULT_BIND_ADDRESS.to_string());
+            .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_BIND_ADDRESS.to_string());
 
         Self {
             endpoint: std::env::var("BEARDOG_ENDPOINT")

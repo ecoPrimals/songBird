@@ -5,8 +5,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 // Test constants
-const DEFAULT_BIND_ADDRESS: &str = songbird_config::constants::network::DEFAULT_HOST;
-const DEFAULT_LOCALHOST: &str = songbird_config::constants::network::DEFAULT_HOST;
+const DEFAULT_BIND_ADDRESS: &str = songbird_config::canonical::constants::network::DEFAULT_HOST;
+const DEFAULT_LOCALHOST: &str = songbird_config::canonical::constants::network::DEFAULT_HOST;
 const OPTIMIZATION_PORT: u16 = 8080;
 const OPTIMIZATION_TIMEOUT: u64 = 1_000;
 

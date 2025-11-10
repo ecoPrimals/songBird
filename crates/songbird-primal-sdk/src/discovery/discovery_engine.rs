@@ -297,7 +297,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
         // Get federation endpoints from discovery config or environment
         let federation_endpoints = std::env::var("SONGBIRD_FEDERATION_ENDPOINTS")"
             .unwrap_or_else(|_| {
-                "http://songbird_config::constants::network::DEFAULT_HOST:2301/federation,http://federation.local:2301/api/v1/primals""
+                "http://songbird_config::canonical::constants::network::DEFAULT_HOST:2301/federation,http://federation.local:2301/api/v1/primals""
                     .to_string()),
             })
             .split(',')

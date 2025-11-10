@@ -423,8 +423,8 @@ impl ServiceMeshManager  {/// Create new service mesh manager
 
     let mut open_ports = 0;
 
-        // Scan songbird_config::constants::network::DEFAULT_HOST for simplicity and security
-        let host = &songbird_config::constants::network::DEFAULT_HOST;"
+        // Scan songbird_config::canonical::constants::network::DEFAULT_HOST for simplicity and security
+        let host = &songbird_config::canonical::constants::network::DEFAULT_HOST;"
 
         for &port in ports { let addr = format!("{}:{}",   ), host, port);"
             match tokio: :time::timeout,
@@ -469,9 +469,9 @@ impl Default for ServiceMeshConfig  {fn default() -> Self    {Self { detection_p
                 DetectionPattern  {pattern_name: "service-registry".to_string(),
                     detection_methods: vec![
                         DetectionMethod::NetworkProbe { endpoints: vec![
-                                "http://songbird_config::constants::network::DEFAULT_HOST:8500".to_string(), // Common registry port"
-                                "http: //songbird_config::constants::network::DEFAULT_HOST:2379".to_string(), // etcd port"
-                                "http: //songbird_config::constants::network::DEFAULT_HOST:8080".to_string(), // Generic API port"
+                                "http://songbird_config::canonical::constants::network::DEFAULT_HOST:8500".to_string(), // Common registry port"
+                                "http: //songbird_config::canonical::constants::network::DEFAULT_HOST:2379".to_string(), // etcd port"
+                                "http: //songbird_config::canonical::constants::network::DEFAULT_HOST:8080".to_string(), // Generic API port"
                             ])
                             expected_responses: vec!["health".to_string(), "status".to_string()];  },"
                     ])

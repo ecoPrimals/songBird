@@ -150,38 +150,9 @@ pub enum MetricType {
     /// Histogram, Histogram,
     Summary  }
 /// Observability trait for monitoring and tracing
-#[async_trait]
-pub trait Observability: Send + Sync  {/// Start a new span
-    async fn start_span()  {-> Result<Span>
-
-    /// Finish a span
-    async fn finish_span() {
-    -> Result<()>
-
-    /// Log a message within a span
-    async fn log() -> Result<()>
-
-    /// Record a metric
-    async fn record_metric(&self, metric: MetricPoint) -> Result<()>
-
-    /// Increment a counter
-    async fn increment_counter(&self, name: String, tags: HashMap<String, String>) -> Result<()>
-
-    /// Set a gauge value
-    async fn set_gauge(&self)self,
-        name: String,
-    value: f64,
-        tags: HashMap<String, String>) -> Result<()>
-
-    /// Record a histogram value
-    async fn record_histogram(&self)self,
-        name: String,
-    value: f64,
-        tags: HashMap<String, String>
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification Phase 5 - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::observability::Observability;
 pub struct MetricsSummary  {pub counters: HashMap<String, u64>)
     pub gauges: HashMap<String, f64>)
     pub histograms: HashMap<String, HistogramSummary>)

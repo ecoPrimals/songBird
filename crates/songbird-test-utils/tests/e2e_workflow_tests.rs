@@ -51,8 +51,8 @@ mod e2e_workflow_tests {
         let service_name = "test-service";
         let _service_endpoint = &format!(
             "http://{}:{}",
-            songbird_config::constants::network::DEFAULT_HOST,
-            songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT
+            songbird_config::canonical::constants::network::DEFAULT_HOST,
+            songbird_config::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT
         );
 
         // Basic validation that we can create test contexts

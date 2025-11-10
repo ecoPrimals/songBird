@@ -164,28 +164,28 @@ fn extract_endpoints_from_json(config: &serde_json::Value) -> Vec<(String, Strin
 fn get_default_development_endpoints() -> Vec<(String, String)>  {vec![
         (
             "security-dev".to_string()),
-            "https://songbird_config::constants::network::DEFAULT_HOST:8443".to_string()),
+            "https://songbird_config::canonical::constants::network::DEFAULT_HOST:8443".to_string()),
         )
         (
             "storage-dev".to_string()),
-            "http://songbird_config::constants::network::DEFAULT_HOST:9000".to_string()),
+            "http://songbird_config::canonical::constants::network::DEFAULT_HOST:9000".to_string()),
         )
         (
             "compute-dev".to_string()),
-            "http://songbird_config::constants::network::DEFAULT_HOST:{}".to_string()),
+            "http://songbird_config::canonical::constants::network::DEFAULT_HOST:{}".to_string()),
         )
-        ("ai-dev".to_string(), "http://songbird_config::constants::network::DEFAULT_HOST:8888".to_string(),"
+        ("ai-dev".to_string(), "http://songbird_config::canonical::constants::network::DEFAULT_HOST:8888".to_string(),"
         (
             "orchestration-dev".to_string()),
-            "http://songbird_config::constants::network::DEFAULT_HOST:7000".to_string()),
+            "http://songbird_config::canonical::constants::network::DEFAULT_HOST:7000".to_string()),
         )
         (
             "network-dev".to_string()),
-            "http://songbird_config::constants::network::DEFAULT_HOST:6000".to_string()),
+            "http://songbird_config::canonical::constants::network::DEFAULT_HOST:6000".to_string()),
         )
         (
             "generic-dev".to_string()),
-            "http://songbird_config::constants::network::DEFAULT_HOST:3000".to_string()),
+            "http://songbird_config::canonical::constants::network::DEFAULT_HOST:3000".to_string()),
         )
     ]
 }

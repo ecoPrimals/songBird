@@ -344,7 +344,7 @@ impl LoadMetrics  {/// Create new load metrics
 //             capabilities: vec![PrimalCapability::Storage {
 //                 types: vec!["object".to_string(), "block".to_string()],"
 //             }])
-//             endpoint: "http://songbird_config::constants::network::DEFAULT_HOST:8000".to_string(),
+//             endpoint: "http://songbird_config::canonical::constants::network::DEFAULT_HOST:8000".to_string(),
 //             health_status: "healthy".to_string()),
 //             discovery_method: crate::discovery::types::DiscoveryMethod::Manual,
 //             last_seen: std::time::Instant::now(),

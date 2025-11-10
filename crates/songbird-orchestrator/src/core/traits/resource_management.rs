@@ -5,47 +5,16 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_config::constants::resources::{DEFAULT_CLEANUP_INTERVAL, DEFAULT_LEAK_DETECTION_INTERVAL, // DEFAULT_MAX_RESOURCE_AGE, DEFAULT_MAX_RESOURCE_AGE,
+use songbird_config::canonical::constants::resources::{DEFAULT_CLEANUP_INTERVAL, DEFAULT_LEAK_DETECTION_INTERVAL, // DEFAULT_MAX_RESOURCE_AGE, DEFAULT_MAX_RESOURCE_AGE,
     DEFAULT_MONITORING_INTERVAL, // DEFAULT_TRACKING_INTERVAL, DEFAULT_TRACKING_INTERVAL,;};
-use songbird_config::constants::services::DEFAULT_SHUTDOWN_TIMEOUT;
+use songbird_config::canonical::constants::services::DEFAULT_SHUTDOWN_TIMEOUT;
 use songbird_types::SongbirdResult as Result;
 use std::collections::HashMap;
 use std::time::Duration;
 
-/// Universal resource manager trait
-#[async_trait]
-pub trait ResourceManager: Send + Sync { /// Initialize resource tracking
-    async fn initialize() {
-
-
-    -> Result<()>
-
-    /// Register a resource for tracking
-    async fn track_resource() {
-    -> Result<ResourceHandle>
-
-    /// Unregister and cleanup a resource
-    async fn cleanup_resource() -> Result<()>
-
-    /// Cleanup all resources for a specific owner
-    async fn cleanup_resources_for_owner(&self, owner_id: &str) -> Result<Vec<ResourceInfo>>
-
-    /// Cleanup all resources
-    async fn cleanup_all_resources(&self)self, -> Result<Vec<ResourceInfo>>
-
-    /// Check for resource leaks
-    async fn check_resource_leaks(&self)self, -> Result<Vec<ResourceLeak>>
-
-    /// Get resource usage statistics
-    async fn get_resource_stats(&self)self, -> Result<ResourceStats>
-
-    /// Enforce resource limits
-    async fn enforce_resource_limits(&self)self, -> Result<Vec<ResourceViolation>>
-
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification Phase 3 - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::resource_management::ResourceManager;
 pub struct ResourceInfo {
     /// Unique resource identifier
         pub id: String,
@@ -271,27 +240,9 @@ pub struct CleanupStrategyInfo {
     /// Supports Partial Cleanup field
     pub supports_partial_cleanup: bool,;};
 /// Resource monitoring trait
-#[async_trait]
-pub trait ResourceMonitor: Send + Sync { /// Start monitoring resources
-    async fn start_monitoring() {
-
-
-    -> Result<()>
-
-    /// Stop monitoring resources
-    async fn stop_monitoring() {
-    -> Result<()>
-
-    /// Get current resource metrics
-    async fn get_metrics() -> Result<HashMap<String, f64>>
-
-    /// Set resource threshold alerts
-    async fn set_thresholds(&self, thresholds: HashMap<String, f64>) -> Result<()>
-
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::resource_management::ResourceMonitor;
 pub struct ThresholdViolation {
     /// Metric Name field
 

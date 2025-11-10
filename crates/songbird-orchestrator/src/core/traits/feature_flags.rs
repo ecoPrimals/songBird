@@ -9,34 +9,9 @@ use songbird_types::SongbirdResult as Result;
 use std::collections::HashMap;
 
 /// Universal feature flag provider trait
-#[async_trait]
-pub trait FeatureFlagProvider: Send + Sync { /// Initialize the feature flag provider
-    async fn initialize() {
-
-
-    -> Result<()>
-
-    /// Check if a feature is enabled
-    async fn is_enabled() {
-    -> Result<bool>
-
-    /// Get feature flag value
-    async fn get_flag_value() -> Result<Option<serde_json::Value>>
-
-    /// Set feature flag value (if provider supports updates)
-    async fn set_flag_value(&self, feature_name: &str, value: serde_json::Value) -> Result<()>
-
-    /// Get all feature flags
-    async fn get_all_flags(&self)self, -> Result<HashMap<String, FeatureFlag>>
-
-    /// Register a new feature flag
-    async fn register_flag(&self, flag: &FeatureFlag) -> Result<()>
-
-    /// Remove a feature flag
-    async fn remove_flag(&self, feature_name: &str) -> Result<()>
-
-    /// Get flag evaluation history
-    async fn get_evaluation_history(&self, feature_name: &str) -> Result<Vec<FlagEvaluation>>
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification Phase 4 - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::feature_flags::FeatureFlagProvider;
 
 
 
@@ -326,36 +301,9 @@ pub struct FlagStats {
 }
 
 /// Feature flag manager trait
-#[async_trait]
-pub trait FeatureFlagManager: Send + Sync  {/// Initialize the manager
-    async fn initialize()  {-> Result<()>
-
-    /// Register a feature flag provider
-    async fn register_provider() {
-    -> Result<()>
-
-    /// Evaluate a feature flag
-    async fn evaluate_flag() -> Result<FlagEvaluation>
-
-    /// Evaluate multiple flags at once
-    async fn evaluate_flags(&self)self,
-        feature_names: &[&str],
-        context: Option<&EvaluationContext>) -> Result<HashMap<String, FlagEvaluation>>
-
-    /// Get all flags and their current states
-    async fn get_all_flags_state(&self)self,
-        context: Option<&EvaluationContext>) -> Result<HashMap<String, serde_json::Value>>
-
-    /// Get flag statistics
-    async fn get_flag_stats(&self, feature_name: &str) -> Result<FlagStats>
-
-    /// Refresh flags from provider
-    async fn refresh_flags(&self)self, -> Result<()>
-
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification Phase 4 - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::feature_flags::FeatureFlagManager;
 pub struct ManagerStatus {
     /// Providers Count field
 

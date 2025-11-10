@@ -415,7 +415,7 @@ impl UniversalContainerOrchestration {
         let potential_endpoints = vec![
             std::env::var("DOCKER_HOST").unwrap_or_default(),
             "unix:///var/run/docker.sock".to_string(),
-            "tcp://songbird_config::constants::network::DEFAULT_HOST:2376".to_string(), // Docker daemon default
+            "tcp://songbird_config::canonical::constants::network::DEFAULT_HOST:2376".to_string(), // Docker daemon default
         ];
 
         for endpoint in potential_endpoints {
@@ -664,7 +664,7 @@ impl UniversalContainerOrchestration {
             created_at: Utc::now(),
             updated_at: Utc::now(),
             instance_id: format!("{name}-instance"),
-            host: songbird_config::constants::network::DEFAULT_HOST.to_string(),
+            host: songbird_config::canonical::constants::network::DEFAULT_HOST.to_string(),
             port: 8080,
         }
     }

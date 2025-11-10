@@ -499,7 +499,7 @@ impl UniversalServiceDiscovery {
             created_at: Utc::now(),
             updated_at: Utc::now(),
             instance_id: format!("{name}-instance"),
-            host: songbird_config::constants::network::DEFAULT_HOST.to_string(),
+            host: songbird_config::canonical::constants::network::DEFAULT_HOST.to_string(),
             port: 8080,
         }
     }

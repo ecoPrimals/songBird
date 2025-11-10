@@ -120,7 +120,7 @@ pub enum Commands {
         #[arg(short, long, default_value_t = songbird_config::defaults::ports::orchestrator_port())]
         port: u16,
         /// Bind address
-        #[arg(short, long, default_value = songbird_config::config::constants::network::DEFAULT_BIND_ADDRESS)]
+        #[arg(short, long, default_value = songbird_config::canonical::constants::network::DEFAULT_BIND_ADDRESS)]
         bind_address: String,
     },
 }

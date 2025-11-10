@@ -1,5 +1,5 @@
 use crate::zero_cost_discovery::{DiscoveryMetrics, ServiceType, ZeroCostDiscovery};
-use songbird_config::constants::discovery;
+use songbird_config::canonical::constants::discovery;
 
 use songbird_types::{SafeEnv, SafeParse, SongbirdError, SongbirdResult, success};
 

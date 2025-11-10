@@ -6,9 +6,9 @@ use std::time::Duration;
 use tokio::time::{sleep, timeout};
 
 /// Default timeout for async operations in tests
-// MOVED: Use songbird_config::constants::testing::testing::ASYNC_TEST_TIMEOUT
+// MOVED: Use songbird_config::canonical::constants::testing::testing::ASYNC_TEST_TIMEOUT
 /// Default delay for async operations that need time to propagate
-// MOVED: Use songbird_config::constants::testing::ASYNC_DELAY
+// MOVED: Use songbird_config::canonical::constants::testing::ASYNC_DELAY
 /// Create a test timeout with custom duration
 ///
 /// # Errors

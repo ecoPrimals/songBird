@@ -124,7 +124,7 @@ async fn scan_network_for_capabilities() -> Result<Vec<DiscoveredPrimal>, Primal
 
     // Common service ports for scanning
     let scan_ports = vec![8080, 8081, 8082, 8083, 8084, 8085, 8443, 3000, 5000];
-    let scan_hosts = vec![&songbird_config::constants::network::DEFAULT_HOST, &songbird_config::constants::network::DEFAULT_HOST];"
+    let scan_hosts = vec![&songbird_config::canonical::constants::network::DEFAULT_HOST, &songbird_config::canonical::constants::network::DEFAULT_HOST];"
 
     for host in scan_hosts {
         for port in &scan_ports {
@@ -242,7 +242,7 @@ async fn probe_service_capabilities(endpoint: &str) -> Result<Vec<PrimalCapabili
 /// Get songbird's own endpoint
 fn get_self_endpoint() -> String {
     env::var("SONGBIRD_ENDPOINT")"
-        .unwrap_or_else(|_| format!("http://songbird_config::constants::network::DEFAULT_HOST:{}", get_default_http_port())"
+        .unwrap_or_else(|_| format!("http://songbird_config::canonical::constants::network::DEFAULT_HOST:{}", get_default_http_port())"
 }
 
 /// Get default HTTP port for songbird
@@ -253,8 +253,8 @@ fn get_default_http_port() -> u16 {
 /// Test endpoint connectivity
 async fn test_endpoint_connectivity(endpoint: &str) -> Result<bool, PrimalError> {
     // Implementation would use HTTP client to test connectivity
-    // For now, return true for songbird_config::constants::network::DEFAULT_HOST endpoints during development
-    Ok(endpoint.contains(&songbird_config::constants::network::DEFAULT_HOST) || endpoint.contains(&songbird_config::constants::network::DEFAULT_HOST)"
+    // For now, return true for songbird_config::canonical::constants::network::DEFAULT_HOST endpoints during development
+    Ok(endpoint.contains(&songbird_config::canonical::constants::network::DEFAULT_HOST) || endpoint.contains(&songbird_config::canonical::constants::network::DEFAULT_HOST)"
 }
 
 /// Make HTTP request (placeholder)

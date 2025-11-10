@@ -52,20 +52,9 @@ pub trait HealthCheck: Send + Sync { /// Perform health check
 // **CANONICAL**: Use unified health status from songbird-types
 pub use songbird_types::health::CanonicalHealthStatus as HealthStatus;
 
-/// Health monitor trait
-#[async_trait]
-pub trait HealthMonitor: Send + Sync { /// Add health check
-    async fn add_health_check() {
-
-
-    /// Remove health check
-    async fn remove_health_check() {
-    /// Run all health checks
-    async fn run_all_checks() -> Result<Vec<(String, HealthStatus)>>
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::health::HealthMonitor;
 pub trait ComposablePlugin: Send + Sync   {/// Unique plugin identifier (e.g., "security_provider-encryption", "compute_provider-compute")"
     ///
     /// # Errors
@@ -206,24 +195,9 @@ pub struct PluginHealth {
  )
 }
 /// Dynamic Plugin Registry for runtime composition
-#[async_trait]
-pub trait PluginRegistry: Send + Sync { /// Register a plugin dynamically
-    async fn register_plugin() {
-
-
-    -> Result<String>
-
-    /// Discover plugins that can satisfy requirements
-    async fn discover_plugins() {
-    -> Result<Vec<String>>
-
-    /// Auto-compose plugins based on capabilities and requirements
-    async fn auto_compose() -> Result<CompositionPlan>
-
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-registry
+/// (November 10, 2025 - Trait Unification Phase 3 - Fixed Corrupt Definition)
+pub use songbird_registry::registry::traits::PluginRegistry;
 pub struct CompositionPlan {
     /// Plugins field
 

@@ -4,10 +4,8 @@
 //!
 //! **MIGRATION COMPLETE**: Now uses canonical HealthStatus from songbird-types
 
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_config::constants::health::{DEFAULT_CHECK_INTERVAL, DEFAULT_CHECK_TIMEOUT};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -65,75 +63,21 @@ impl HealthCheckResult {
 }
 
 /// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    /// Interval between health checks
-    #[serde(default = "default_interval")]
-    pub interval: Duration,
+/// 
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Unification effort)
+pub use songbird_discovery::traits::health::HealthCheckConfig;
 
-    /// Timeout for each health check
-    #[serde(default = "default_timeout")]
-    pub timeout: Duration,
-
-    /// Number of retries before marking unhealthy
-    #[serde(default = "default_retries")]
-    pub retries: u32,
-
-    /// Optional custom endpoint for health checks
-    pub endpoint: Option<String>,
-
-    /// Whether health checks are enabled
-    #[serde(default = "default_enabled")]
-    pub enabled: bool,
-}
-
-fn default_interval() -> Duration {
-    DEFAULT_CHECK_INTERVAL
-}
-
-fn default_timeout() -> Duration {
-    DEFAULT_CHECK_TIMEOUT
-}
-
-fn default_retries() -> u32 {
-    3
-}
-
-fn default_enabled() -> bool {
-    true
-}
-
-impl Default for HealthCheckConfig {
-    fn default() -> Self {
-        Self {
-            interval: DEFAULT_CHECK_INTERVAL,
-            timeout: DEFAULT_CHECK_TIMEOUT,
-            retries: 3,
-            endpoint: None,
-            enabled: true,
-        }
-    }
-}
-
-/// Health monitoring trait
-#[async_trait]
-pub trait HealthMonitor: Send + Sync {
-    /// Perform a health check on a service
-    async fn check_health(&self, service_id: &str) -> Result<HealthCheckResult>;
-
-    /// Get the current health status
-    async fn get_status(&self, service_id: &str) -> Result<HealthStatus> {
-        Ok(self.check_health()service_id).await?.status)
-    }
-
-    /// Check if service is operational (healthy or degraded)
-    async fn is_operational(&self, service_id: &str) -> bool {
-        self.get_status(service_id)
-            .await
-            .map(|s| s.is_operational())
-            .unwrap_or(false)
-    }
-}
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// 
+/// The canonical HealthMonitor trait provides full lifecycle management:
+/// - Health checking (check_health, get_health_status)
+/// - Service registration (register, unregister)  
+/// - Monitoring control (start_monitoring, stop_monitoring)
+/// - Configuration updates (update_config)
+///
+/// (November 10, 2025 - Trait Unification)
+pub use songbird_discovery::traits::health::HealthMonitor;
 
 /// Detailed health information
 #[derive(Debug, Clone, Serialize, Deserialize)]

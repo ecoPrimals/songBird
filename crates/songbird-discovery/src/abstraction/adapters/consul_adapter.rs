@@ -179,7 +179,7 @@ impl ConsulProviderAdapter {
         use songbird_config;
 
         let ip: IpAddr = service.host.parse().unwrap_or_else(|_| {
-            songbird_config::constants::network::DEFAULT_HOST
+            songbird_config::canonical::constants::network::DEFAULT_HOST
                 .parse()
                 .unwrap_or_else(|_| {
                     // Final fallback to localhost if constant parsing fails

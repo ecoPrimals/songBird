@@ -287,19 +287,10 @@ pub struct EncryptionConfig  {/// Whether to enable encryption
 }
 
 /// Circuit breaker configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig  {/// Whether to enable circuit breaker
-    pub enabled: bool,
-
-    /// Failure threshold
-    pub failure_threshold: u32,
-
-    /// Success threshold
-    pub success_threshold: u32,
-
-    /// Timeout duration
-    pub timeout_seconds: u64,
-}
+///
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-canonical
+/// (November 10, 2025 - Unification effort)
+pub use songbird_canonical::config::adapters::CircuitBreakerConfig;
 
 /// Timeout configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

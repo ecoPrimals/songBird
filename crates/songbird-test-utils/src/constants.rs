@@ -21,33 +21,33 @@ pub mod network {
     /// These are now helper functions instead of constants to allow environment configuration
     pub fn test_service_1_url() -> String {
         format!("http://{}:18081", 
-            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string()))
+            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()))
     }
     pub fn test_service_2_url() -> String {
         format!("http://{}:18082", 
-            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string()))
+            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()))
     }
     pub fn test_service_3_url() -> String {
         format!("http://{}:18083", 
-            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string()))
+            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()))
     }
 
     /// Universal capability-based test endpoints (vendor-agnostic)
     pub fn security_capability_test_endpoint() -> String {
         format!("http://{}:18443/universal-adapter",
-            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string()))
+            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()))
     }
     pub fn storage_capability_test_endpoint() -> String {
         format!("http://{}:18444/universal-adapter",
-            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string()))
+            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()))
     }
     pub fn compute_capability_test_endpoint() -> String {
         format!("http://{}:18445/universal-adapter",
-            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string()))
+            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()))
     }
     pub fn ai_capability_test_endpoint() -> String {
         format!("http://{}:18446/universal-adapter",
-            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string()))
+            std::env::var("TEST_HOST").unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()))
     }
 
     /// Test port calculation functions
@@ -193,7 +193,7 @@ use songbird_config;
     /// Build test endpoint URL
     pub fn build_test_endpoint(service: &str, port: u16) -> String {
         let host = std::env::var("TEST_HOST")
-            .unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string());
+            .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string());
         format!("http://{}:{}/{}", host, port, service)
     }
 
@@ -210,7 +210,7 @@ use songbird_config;
     /// Get capability-based test endpoint (modern approach)
     pub fn get_capability_test_endpoint(capability: &str) -> String {
         let host = std::env::var("TEST_HOST")
-            .unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string());
+            .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string());
         let port = network::get_capability_test_port(capability);
         format!("http://{}:{}/universal-adapter", host, port)
     }
@@ -230,7 +230,7 @@ use songbird_config;
         port: u16,
     ) -> TestPrimalConfig  {
         let host = std::env::var("TEST_HOST")
-            .unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string());
+            .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string());
         
         TestPrimalConfig  {primal_id: primal_id.to_string()),
             capabilities: capabilities.into_iter().map(|s| s.to_string().collect(,

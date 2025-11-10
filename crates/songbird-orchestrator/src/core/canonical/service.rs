@@ -164,8 +164,8 @@ impl Default for ServiceInfo  {fn default() -> Self    {Self { service_id: Strin
     service_type: "unknown".to_string(),
             version: "0.0.0".to_string(),
             description: None,
-    host: songbird_config::constants::network::DEFAULT_LOCALHOST.to_string(),
-            port: songbird_config::constants::DEFAULT_PORT,
+    host: songbird_config::canonical::constants::network::DEFAULT_LOCALHOST.to_string(),
+            port: songbird_config::canonical::constants::DEFAULT_PORT,
             health_check_endpoint: Some(format!("http://{}:{}/health",  ;"
  ;
 )"

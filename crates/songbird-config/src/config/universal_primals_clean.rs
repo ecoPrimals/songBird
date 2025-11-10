@@ -34,31 +34,10 @@ impl Default for AuthenticationMethod {
 }
 
 /// **PEDANTIC**: Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig  {/// Enable health checks
-    pub enabled: bool,
-    /// Health check interval
-    pub interval: Duration,
-    /// Health check endpoint path
-    pub endpoint_path: String,
-    /// Expected HTTP status codes for healthy response
-    pub expected_status_codes: Vec<u16>,
-    /// Health check timeout
-    pub timeout: Duration,
-    /// Number of consecutive failures before marking unhealthy
-    pub failure_threshold: u32,
-}
-
-impl Default for HealthCheckConfig  {fn default() -> Self  {Self {
-            enabled: true,
-            interval: Duration::from_secs(30)
-            endpoint_path: String::from("/health",
-            expected_status_codes: vec![200],
-            timeout: Duration::from_secs(10)
-            failure_threshold: 3,
-        }
-    }
-}
+///
+/// **CONSOLIDATED**: Now uses canonical definition from crate::canonical::primals
+/// (November 10, 2025 - Unification effort)
+pub use crate::canonical::primals::HealthCheckConfig;
 
 /// **PEDANTIC**: Quality of service metrics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

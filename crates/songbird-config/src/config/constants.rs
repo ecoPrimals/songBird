@@ -8,9 +8,9 @@
 //! ## Migration Path (Required for v0.3.0)
 //! ```rust,ignore
 //! // ❌ OLD (deprecated - 92+ uses to migrate):
-//! use songbird_config::config::constants::get_bind_address;
-//! use songbird_config::config::constants::network::DEFAULT_HOST;
-//! use songbird_config::config::constants::get_log_level;
+//! use songbird_config::canonical::constants::get_bind_address;
+//! use songbird_config::canonical::constants::network::DEFAULT_HOST;
+//! use songbird_config::canonical::constants::get_log_level;
 //!
 //! // ✅ NEW (use this):
 //! use songbird_config::canonical::constants::get_bind_address;

@@ -237,19 +237,19 @@ impl UniversalPrimalRegistry  {/// Create new universal primal registry
         // Network scanning for universal adapter endpoints
         // This would scan common ports for /universal-adapter endpoints
         let common_ports = vec![
-            songbird_config::constants::DEFAULT_ORCHESTRATOR_PORT)
-            songbird_config::constants::DEFAULT_DISCOVERY_PORT)
-            songbird_config::constants::DEFAULT_FEDERATION_PORT)
+            songbird_config::canonical::constants::DEFAULT_ORCHESTRATOR_PORT)
+            songbird_config::canonical::constants::DEFAULT_DISCOVERY_PORT)
+            songbird_config::canonical::constants::DEFAULT_FEDERATION_PORT)
             8500, // Consul
             6443, // Kubernetes API
             2379, // etcd client
             2380, // etcd peer
         ];
-        let songbird_config::constants::network::DEFAULT_HOST_base = std::env::var("SONGBIRD_DISCOVERY_HOST")"
-            .unwrap_or_else(|_| "http://songbird_config::constants::network::DEFAULT_HOST".to_string();"
+        let songbird_config::canonical::constants::network::DEFAULT_HOST_base = std::env::var("SONGBIRD_DISCOVERY_HOST")"
+            .unwrap_or_else(|_| "http://songbird_config::canonical::constants::network::DEFAULT_HOST".to_string();"
 
         for port in common_ports {
-            endpoints.push(format!("{}:{}", songbird_config::constants::network::DEFAULT_HOST_base, port));
+            endpoints.push(format!("{}:{}", songbird_config::canonical::constants::network::DEFAULT_HOST_base, port));
         }
 
         // Ok

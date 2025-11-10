@@ -368,7 +368,7 @@ mod tests {
 
         // Use configurable test endpoint
         let test_host = std::env::var("TEST_SERVICE_HOST")
-            .unwrap_or_else(|_| songbird_config::constants::network::DEFAULT_HOST.to_string());
+            .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string());
         let test_port = std::env::var("TEST_SERVICE_PORT")
             .ok()
             .and_then(|p| p.parse().ok())

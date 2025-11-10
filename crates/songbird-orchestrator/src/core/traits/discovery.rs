@@ -5,59 +5,22 @@
 use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
-use songbird_config::constants::health::DEFAULT_CHECK_INTERVAL;
-use songbird_config::constants::network::{DEFAULT_CONNECTION_TIMEOUT, DEFAULT_RETRY_DELAY};
+use songbird_config::canonical::constants::health::DEFAULT_CHECK_INTERVAL;
+use songbird_config::canonical::constants::network::{DEFAULT_CONNECTION_TIMEOUT, DEFAULT_RETRY_DELAY};
 use songbird_discovery::traits::service::ServiceInfo;
 use songbird_types::SongbirdResult as Result;
 use std::collections::HashMap;
 use std::pin::Pin;
 
-/// Core trait for service discovery implementations
-#[async_trait]
-pub trait ServiceDiscovery: Send + Sync { /// Register a service with the discovery system
-    async fn register() {
-
-
-    -> Result<()>
-
-    /// Unregister a service from the discovery system
-    async fn unregister() {
-    -> Result<()>
-
-
-
-
-    }
-    async fn discover_services() -> Result<Vec<ServiceInfo>>   {
-
-     self.discover(query.clone().await}
-;
-}
-
-    /// Watch for changes to services matching the query
-    async fn watch()  {-> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>>
-
-    /// Update service health status
-    async fn update_health()  {-> Result<()>
-
-    /// List all registered services
-    async fn list_all() -> Result<Vec<ServiceInfo>>
-
-    /// Check if a service exists (legacy name,
-    async fn exists(&self, service_id: &str) -> Result<bool>
-
-    /// Check if a service is registered (preferred name,
-    async fn is_registered(&self, service_id: &str) -> Result<bool>
-
-    /// Bulk update service metadata
-    async fn update_metadata(&self)self,
-        service_id: &str,
-        metadata: HashMap<String, String>) -> Result<()>
-
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// 
+/// The canonical ServiceDiscovery trait provides full service lifecycle:
+/// - Registration (register, unregister)
+/// - Discovery (discover, discover_services)
+/// - Watching (watch for service changes)
+///
+/// (November 10, 2025 - Trait Unification - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::discovery::ServiceDiscovery;
 pub struct ServiceQuery {
     /// Service name pattern (supports wildcards)
     /// Name identifier

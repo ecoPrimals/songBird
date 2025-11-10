@@ -203,7 +203,7 @@ impl UniversalPrimalDiscovery {
 
         for primal_name in primal_names {
             let discovery_host = SafeEnv::get_or_default("UNIVERSAL_DISCOVERY_HOST",
-                songbird_config::constants::network::DEFAULT_HOST);
+                songbird_config::canonical::constants::network::DEFAULT_HOST);
             let discovery_port = SafeEnv::get_port("UNIVERSAL_DISCOVERY_PORT",
                 songbird_config::defaults::ports::orchestrator_port());
             let endpoint = format!("http://{discovery_host}:{discovery_port}/{primal_name}");

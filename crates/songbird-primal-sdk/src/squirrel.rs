@@ -92,7 +92,7 @@ impl SquirrelPrimal {
                 })
             ])
             endpoints: vec![std::env::var("SQUIRREL_ENDPOINT")"
-                .unwrap_or_else(|_| "http://songbird_config::constants::network::DEFAULT_HOST:8080/squirrel".to_string()],"
+                .unwrap_or_else(|_| "http://songbird_config::canonical::constants::network::DEFAULT_HOST:8080/squirrel".to_string()],"
             http_client: Client::builder,
                 .timeout(Duration::from_secs(30)
                 .build()

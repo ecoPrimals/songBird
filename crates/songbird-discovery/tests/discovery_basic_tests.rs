@@ -94,7 +94,7 @@ fn test_service_info_creation() {
         created_at: now,
         updated_at: now,
         instance_id: "instance-1".to_string(),
-        host: songbird_config::constants::network::DEFAULT_HOST.to_string(),
+        host: songbird_config::canonical::constants::network::DEFAULT_HOST.to_string(),
         port: 8080,
     };
 
@@ -190,7 +190,7 @@ fn test_service_info_serialization() -> Result<(), Box<dyn std::error::Error>> {
         created_at: now,
         updated_at: now,
         instance_id: "test-instance".to_string(),
-        host: songbird_config::constants::network::DEFAULT_HOST.to_string(),
+        host: songbird_config::canonical::constants::network::DEFAULT_HOST.to_string(),
         port: 8080,
     };
 
@@ -266,7 +266,7 @@ fn test_metadata_value_types() {
         created_at: now,
         updated_at: now,
         instance_id: "db-instance-1".to_string(),
-        host: songbird_config::constants::network::DEFAULT_HOST.to_string(),
+        host: songbird_config::canonical::constants::network::DEFAULT_HOST.to_string(),
         port: 3000,
     };
 

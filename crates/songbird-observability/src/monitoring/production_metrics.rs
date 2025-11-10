@@ -149,7 +149,7 @@ impl ProductionMetricsCollector  {/// Create new production metrics collector
         let mut total_metrics = NetworkIOMetrics::default();
 
         for (interface_name, data) in system.networks() {
-            if interface_name != "lo" && interface_name != &songbird_config::constants::network::DEFAULT_HOST {"
+            if interface_name != "lo" && interface_name != &songbird_config::canonical::constants::network::DEFAULT_HOST {"
                 total_metrics.bytes_received += data.received();
                 total_metrics.bytes_transmitted += data.transmitted();
                 total_metrics.packets_received += data.packets_received();

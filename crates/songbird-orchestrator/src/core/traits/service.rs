@@ -8,45 +8,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
-/// Universal service trait for all service types
-#[async_trait]
-pub trait UniversalService: Send + Sync + 'static  {type Error: std::error::Error + Send + Sync + 'static;
-
-    /// Start the service
-    async fn start() {
-
-
-    -> std::result::Result<(), Self::Error>
-
-    /// Stop the service gracefully
-    async fn stop() {
-    -> std::result::Result<(), Self::Error>
-
-    /// Check if the service is running
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the operation fails.
-    fn is_running(&self)self, -> bool
-
-    /// Get service information
-    fn service_info(&self)self, -> ServiceInfo
-
-    /// Handle a service request
-    async fn handle_request(&self)self,
-        request: ServiceRequest) -> std::result::Result<ServiceResponse, Self::Error>
-
-    /// Get service health status
-    async fn health_check(&self)self, -> std::result::Result<HealthStatus, Self::Error>
-
-    /// Get service metrics
-    async fn get_metrics(&self)self, -> std::result::Result<ServiceMetrics, Self::Error>
-
-
-
-
-    }
-    async fn shutdown(&mut self) -> std: :result::Result<(), Self::Error> { self.stop().await;}}
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// 
+/// The canonical UniversalService trait provides full service lifecycle:
+/// - Lifecycle (start, stop, shutdown)
+/// - Status (is_running, health_check)
+/// - Operations (handle_request, get_metrics)
+/// - Configuration (update_config)
+///
+/// (November 10, 2025 - Trait Unification - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::service::UniversalService;
 
 /// Service request structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

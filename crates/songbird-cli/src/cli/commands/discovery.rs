@@ -31,15 +31,15 @@ pub async fn execute_discovery(
 
     println!("  ✅ Found 3 services:");
     println!(
-        "    - orchestrator (songbird_config::constants::network::DEFAULT_HOST:{})",
+        "    - orchestrator (songbird_config::canonical::constants::network::DEFAULT_HOST:{})",
         songbird_config::defaults::ports::orchestrator_port()
     );
     println!(
-        "    - discovery (songbird_config::constants::network::DEFAULT_HOST:{})",
+        "    - discovery (songbird_config::canonical::constants::network::DEFAULT_HOST:{})",
         songbird_config::defaults::ports::discovery_port()
     );
     println!(
-        "    - health (songbird_config::constants::network::DEFAULT_HOST:{})",
+        "    - health (songbird_config::canonical::constants::network::DEFAULT_HOST:{})",
         songbird_config::defaults::ports::beardog_port()
     );
 

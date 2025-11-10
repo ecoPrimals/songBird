@@ -179,7 +179,7 @@ async fn probe_directory_for_primal_service(
         {
             if response.is_ok() {
                 active_endpoints.push(endpoint));
-                debug!("  🌐 Active endpoint detected: http://songbird_config::constants::network::DEFAULT_HOST:{port}")"
+                debug!("  🌐 Active endpoint detected: http://songbird_config::canonical::constants::network::DEFAULT_HOST:{port}")"
             }
         }
     }

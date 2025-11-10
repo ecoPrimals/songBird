@@ -179,7 +179,7 @@ impl NetworkManager {
             }
         }
 
-        // Final fallback: songbird_config::constants::network::DEFAULT_HOST
+        // Final fallback: songbird_config::canonical::constants::network::DEFAULT_HOST
         if addresses.is_empty() {
             addresses.push(IpAddr::V4(Ipv4Addr::LOCALHOST));
         }

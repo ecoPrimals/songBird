@@ -126,7 +126,7 @@ async fn determine_default_scan_range(config: &CanonicalSongbirdConfig) -> Songb
 
     // If no local subnets found, use configuration defaults
     if scan_addresses.is_empty() {
-        // Use configurable default range instead of hardcoded songbird_config::constants::network::DEFAULT_HOST
+        // Use configurable default range instead of hardcoded songbird_config::canonical::constants::network::DEFAULT_HOST
         let default_range = config.network.bind_address.parse::<IpAddr>()
             .map(|addr| vec![addr])
             .unwrap_or_else(|| {
@@ -384,7 +384,7 @@ async fn get_local_network_interfaces() -> SongbirdResult<Vec<NetworkInterface>,
 fn generate_subnet_addresses(subnet: &str, limit: usize) -> SongbirdResult<Vec<IpAddr>, Box<dyn std::error::Error>> {
     // Implementation would generate addresses from subnet
     // For now, return single address
-    Ok(vec![subnet.split('/').next().unwrap_or(&songbird_config::constants::network::DEFAULT_HOST).parse()?])"
+    Ok(vec![subnet.split('/').next().unwrap_or(&songbird_config::canonical::constants::network::DEFAULT_HOST).parse()?])"
 }
 
 fn generate_cidr_addresses(base_addr: IpAddr, prefix_len: u8) -> SongbirdResult<Vec<IpAddr>, Box<dyn std::error::Error>> {

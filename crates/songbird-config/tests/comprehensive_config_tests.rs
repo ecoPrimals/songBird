@@ -20,7 +20,7 @@
 use songbird_config::canonical::constants::{DEFAULT_BIND_ADDRESS, DEFAULT_LOCALHOST, LOCALHOST_IPV4};
 use songbird_config::canonical::primals::QosMetrics; // ✅ Migrated from config::universal_primals
 use songbird_types::{SongbirdError, SongbirdResult};
-// use songbird_config::constants::network::*; // Unused import removed
+// use songbird_config::canonical::constants::network::*; // Unused import removed
 use songbird_config::{
     canonical::constants::*,
     config::{hardcoded_elimination::*, universal_primals::*},

@@ -444,7 +444,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
 
         for endpoint in endpoints {
             // Try to extract network from endpoint
-            if endpoint.starts_with("127.") || endpoint.contains(&songbird_config::constants::network::DEFAULT_HOST) {"
+            if endpoint.starts_with("127.") || endpoint.contains(&songbird_config::canonical::constants::network::DEFAULT_HOST) {"
                 networks.push("127.0.0.0/8".to_string();"
             } else if endpoint.starts_with("192.168.") {"
                 networks.push("192.168.0.0/16".to_string();"
@@ -620,7 +620,7 @@ mod tests  {use super::*;
     fn test_config_migration()  {let legacy_config = LegacyFederationConfig {
             cluster_name: Some("test-cluster".to_string(),"
             peer_discovery_enabled: true,
-            discovery_endpoints: vec![&format!("{}:{}", songbird_config::constants::network::DEFAULT_HOST, songbird_config::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string()],"
+            discovery_endpoints: vec![&format!("{}:{}", songbird_config::canonical::constants::network::DEFAULT_HOST, songbird_config::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT).to_string()],"
             heartbeat_interval: Duration::from_secs(30)
             sovereignty_level: Some(LegacySovereigntyLevel::High)
             enable_network_effects: true,

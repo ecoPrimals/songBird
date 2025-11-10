@@ -134,7 +134,7 @@ impl SecurityAdapter {
 
                 // Fallback 2: Construct from host + port
                 let endpoint = SafeEnv::get_or_default("SONGBIRD_HOST", 
-                    &format!("http://{}", songbird_config::constants::network::DEFAULT_HOST));
+                    &format!("http://{}", songbird_config::canonical::constants::network::DEFAULT_HOST));
                 let port = SafeEnv::get_port("SONGBIRD_SECURITY_PORT", 8081).to_string();
                 let discovered_endpoint = format!("{endpoint}:{port}");
 

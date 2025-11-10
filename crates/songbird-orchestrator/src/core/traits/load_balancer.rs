@@ -51,24 +51,9 @@ pub struct ServiceStats {
  )
 }
 /// Load balancer trait
-#[async_trait]
-pub trait LoadBalancer: Send + Sync { /// Select a service instance for the given request
-    async fn select_service() {
-
-
-    -> Result<ServiceInfo>
-
-    /// Update service health/availability
-    async fn update_service_health() {
-    -> Result<()>
-
-    /// Get load balancer statistics
-    async fn get_stats() -> Result<LoadBalancerStats>
-
-
-
-
-    }
+/// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
+/// (November 10, 2025 - Trait Unification - Fixed Corrupt Definition)
+pub use songbird_discovery::traits::load_balancer::LoadBalancer;
 pub struct RoundRobinLoadBalancer  {counter: AtomicUsize,
     stats: LoadBalancerStats ;
 ,

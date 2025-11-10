@@ -4,11 +4,9 @@ use super::core::{RegistryConfig, biome::ServiceRegistry};
 use anyhow::Result;
 use songbird_config::{
     capability_endpoints, // 🍼 NEW: Capability-based discovery
-    universal_primals::{
-        AuthenticationMethod, LoadBalancingStrategy, PrimalAuthentication, PrimalCapability,
-        PrimalConfiguration, PrimalEndpoint,
+    canonical::primals::{
+        PrimalCapability, PrimalConfiguration, PrimalEndpoint, QosMetrics, // ✅ All migrated to canonical
     },
-    canonical::primals::QosMetrics, // ✅ Migrated from universal_primals
 };
 use songbird_types::config::CanonicalSongbirdConfig;
 // use songbird_federation::{//     FederationConfig,
@@ -237,7 +235,7 @@ impl SongbirdOrchestrator {
                         format!(
                             "http://{}:{}",
                             SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS",
-                                songbird_config::constants::network::DEFAULT_HOST.to_string()
+                                songbird_config::canonical::constants::network::DEFAULT_HOST.to_string()
                         ),
                         SafeEnv::get_or_default("CAPABILITY_SECURITY_PORT",
                             SafeEnv::get_or_default("SONGBIRD_SECURITY_PORT",
@@ -250,37 +248,23 @@ impl SongbirdOrchestrator {
 
             info!("🔐 Using security capability at: {}", security_endpoint);
 
-            // Create capability-based configuration (maintaining compatibility)
-            let mut security_primal =
+            // Create capability-based configuration (simplified to canonical types)
+            let mut _security_primal =
                 PrimalConfiguration::new_template("security", "Security Capability Provider");
-            security_primal.enabled = true;
-            security_primal.endpoint = PrimalEndpoint {
+            _security_primal.enabled = true;
+            _security_primal.endpoint = PrimalEndpoint {
                 primary_url: security_endpoint,
-                fallback_urls: vec![],
                 use_tls: true,
-                custom_headers: HashMap::new(),
-                load_balancing: LoadBalancingStrategy::RoundRobin,
             };
-            security_primal.authentication = PrimalAuthentication {
-                method: AuthenticationMethod::ApiKey,
-                credentials: {
-                    let mut creds = HashMap::new();
-                    let api_key = SafeEnv::get_required("CAPABILITY_SECURITY_API_KEY")
-                        .or_else(|_| SafeEnv::get_required("BEARDOG_API_KEY")) // Backward compatibility
-                        .unwrap_or_else(|_| "development_key".to_string());
-                    creds.insert("api_key".to_string(), serde_json::Value::String(api_key));
-                    creds
-                },
-                token_refresh: None,
-            };
-            security_primal.capabilities = vec![PrimalCapability {
+            _security_primal.capabilities = vec![PrimalCapability {
                 capability_type: "security".to_string(),
                 version: "1.0".to_string(),
                 parameters: HashMap::new(),
                 qos_metrics: QosMetrics::default(),
             }];
 
-            // Arc::new(UniversalSecurityIntegration::new(security_primal).await?) // Temporarily disabled
+            // Security integration temporarily disabled - using placeholder
+            // TODO: Re-enable when UniversalSecurityIntegration is available
             Arc::new(()) // Placeholder for security integration
         };
 
@@ -649,7 +633,7 @@ impl SongbirdOrchestrator {
         info!("🌐 Starting web dashboard...");
         info!(
             "✅ Web dashboard would start on http://{}:{}",
-            songbird_config::constants::default_bind_address(),
+            songbird_config::canonical::constants::default_bind_address(),
             songbird_config::defaults::ports::orchestrator_port()
         );
         info!("   (Dashboard implementation available but disabled for now)");

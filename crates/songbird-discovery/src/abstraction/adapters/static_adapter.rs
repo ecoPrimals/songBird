@@ -61,7 +61,7 @@ impl ProviderFactory for StaticProviderFactory {
 
         // Example predefined services with configurable defaults
         let example_host = std::env::var("EXAMPLE_SERVICE_HOST")
-            .unwrap_or_else(|_| songbird_config::config::constants::network::DEFAULT_HOST.to_string());
+            .unwrap_or_else(|_| songbird_config::canonical::constants::network::DEFAULT_HOST.to_string());
         let example_port = std::env::var("EXAMPLE_SERVICE_PORT")
             .ok()
             .and_then(|p| p.parse::<u16>().ok())

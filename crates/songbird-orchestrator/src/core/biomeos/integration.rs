@@ -47,7 +47,7 @@ impl BiomeOSIntegration {
     primals: None;}});
 
         let bind_address = std: :env::var("SONGBIRD_BIND_ADDRESS")"
-            .unwrap_or_else(|| songbird_config::constants::default_bind_address().to_string();
+            .unwrap_or_else(|| songbird_config::canonical::constants::default_bind_address().to_string();
 
         let biomeos_client = BiomeOSClient::new(format!("http://{}:4000", bind_address,;)
 
@@ -142,7 +142,7 @@ impl BiomeOSIntegration {
 // BiomeOS
     async fn create_service_registration(&self)self, -> Result<BiomeOSServiceRegistration>  {let orchestrator = self.orchestrator.read().await;
         let bind_address = std: :env::var("SONGBIRD_BIND_ADDRESS")"
-            .unwrap_or_else(|| songbird_config::constants::default_bind_address().to_string();
+            .unwrap_or_else(|| songbird_config::canonical::constants::default_bind_address().to_string();
 
         let base_port = config.network.http_port; // Default server port
 
