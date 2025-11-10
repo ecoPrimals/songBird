@@ -7,21 +7,36 @@ use songbird_types::SongbirdResult;
 
 /// Discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveryConfig  {/// Enable automatic discovery
+/// Discovery configuration for universal discovery
+///
+/// **LOCAL DEFINITION**: Network-focused with comprehensive field alignment.
+/// **MODERN RUST**: Detailed network discovery configuration.
+/// Field mappings to canonical:
+/// - `enable_auto_discovery` → auto_discovery (top-level)
+/// - `discovery_interval` (Duration) → service_discovery.discovery_interval_secs (u64, convert)
+/// - `enable_network_scanning` → network_discovery.scan_local_network
+/// - `network_scan_ranges` → Part of network_discovery scope
+/// - `discovery_ports` → common_ports
+/// - `enable_dns_discovery` → network_discovery.enabled (DNS as protocol)
+/// - `dns_discovery_domains` → network_discovery.discovery_protocols
+/// - `enable_multicast_discovery` → network_discovery.enabled (multicast as protocol)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveryConfig {
+    /// Enable automatic discovery (→ auto_discovery)
     pub enable_auto_discovery: bool,
-    /// Discovery interval
+    /// Discovery interval (→ service_discovery.discovery_interval_secs)
     pub discovery_interval: Duration,
-    /// Enable network scanning
+    /// Enable network scanning (→ network_discovery.scan_local_network)
     pub enable_network_scanning: bool,
-    /// Network scan ranges
+    /// Network scan ranges (part of network_discovery scope)
     pub network_scan_ranges: Vec<String>,
-    /// Discovery ports to scan
+    /// Discovery ports to scan (→ common_ports)
     pub discovery_ports: Vec<u16>,
-    /// Enable DNS discovery
+    /// Enable DNS discovery (→ network_discovery.discovery_protocols: "dns")
     pub enable_dns_discovery: bool,
-    /// DNS discovery domains
+    /// DNS discovery domains (→ network_discovery.discovery_protocols)
     pub dns_discovery_domains: Vec<String>,
-    /// Enable multicast discovery
+    /// Enable multicast discovery (→ network_discovery.discovery_protocols: "multicast")
     pub enable_multicast_discovery: bool,
     /// Multicast addresses
     pub multicast_addresses: Vec<String>,

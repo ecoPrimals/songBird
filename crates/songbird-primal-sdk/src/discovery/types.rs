@@ -85,22 +85,38 @@ pub struct DiscoveryResult  {/// List of discovered primals
 
 /// Discovery configuration settings
 #[derive(Debug, Clone)]
-pub struct DiscoveryConfig  {/// Enable network scanning
+/// Discovery configuration for service discovery
+///
+/// **LOCAL DEFINITION**: Comprehensive discovery types with field alignment.
+/// **MODERN RUST**: Flag-based pattern for different discovery mechanisms.
+/// **ECOSYSTEM INTEGRATION**: Includes unique `enable_ecosystem_discovery` for beardog/toadstool!
+/// Field mappings to canonical:
+/// - `enable_network_scan` → network_discovery.scan_local_network
+/// - `enable_service_registry` → service_discovery.enabled
+/// - `enable_broadcast` → network_discovery.discovery_protocols: "broadcast"
+/// - `enable_federation` → service_discovery.enabled (federation-aware)
+/// - `enable_ecosystem_discovery` → **UNIQUE** - ecoPrimals integration (beardog, toadstool)
+/// - `discovery_timeout_secs` → service_discovery.discovery_timeout_secs
+/// - `max_concurrent_operations` → service_discovery.max_concurrent_discoveries
+/// - `network_scan_port_ranges` → Expansion of common_ports concept
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveryConfig {
+    /// Enable network scanning (→ network_discovery.scan_local_network)
     pub enable_network_scan: bool,
-    /// Enable service registry discovery
+    /// Enable service registry discovery (→ service_discovery.enabled)
     pub enable_service_registry: bool,
-    /// Enable broadcast discovery
+    /// Enable broadcast discovery (→ network_discovery.discovery_protocols: "broadcast")
     pub enable_broadcast: bool,
-    /// Enable federation discovery
+    /// Enable federation discovery (→ service_discovery.enabled, federation-aware)
     pub enable_federation: bool,
-    /// Enable ecosystem discovery (connects to real primals at ../beardog, etc.)
+    /// Enable ecosystem discovery - **UNIQUE FEATURE** for beardog/toadstool integration!
     pub enable_ecosystem_discovery: bool,
-    /// Maximum discovery timeout in seconds
+    /// Maximum discovery timeout in seconds (→ service_discovery.discovery_timeout_secs)
     pub discovery_timeout_secs: u64,
-    /// Maximum number of concurrent discovery operations
+    /// Maximum concurrent operations (→ service_discovery.max_concurrent_discoveries)
     pub max_concurrent_operations: usize,
-    /// Network scan port ranges
-    pub network_scan_port_ranges: Vec<(u16, u16)>)
+    /// Network scan port ranges (expanded common_ports concept with ranges)
+    pub network_scan_port_ranges: Vec<(u16, u16)>,
 }
 
 /// Statistics about discovery operations
