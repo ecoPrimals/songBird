@@ -19,25 +19,11 @@ pub enum CircuitState {
 }
 
 /// Circuit breaker configuration
-#[derive(Debug, Clone)]
-pub struct CircuitBreakerConfig {
-    /// Number of failures before opening circuit
-    pub failure_threshold: u32,
-    /// Duration to wait before entering half-open state
-    pub timeout: Duration,
-    /// Number of successful requests needed to close circuit from half-open
-    pub success_threshold: u32,
-}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
-            failure_threshold: 5,
-            timeout: Duration::from_secs(60),
-            success_threshold: 2,
-        }
-    }
-}
+// OLD implementation removed - now using canonical default
 
 /// Circuit breaker for protecting against cascading failures
 pub struct CircuitBreaker {

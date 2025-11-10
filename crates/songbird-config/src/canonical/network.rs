@@ -783,29 +783,13 @@ impl Default for NetworkInterfaceConfig {
     }
 }
 
-/// Circuit breaker configuration for fault tolerance
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    /// Enable circuit breaker
-    pub enabled: bool,
-    /// Failure threshold before opening circuit
-    pub failure_threshold: u32,
-    /// Success threshold to close circuit
-    pub success_threshold: u32,
-    /// Timeout before attempting reset (seconds)
-    pub timeout_secs: u64,
-}
+/// Circuit breaker configuration
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Field mapping: timeout_secs (u64) → timeout (Duration)
+pub use super::resilience::CircuitBreakerConfig;
 
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            failure_threshold: 5,
-            success_threshold: 2,
-            timeout_secs: 60,
-        }
-    }
-}
+// Default implementation now provided by canonical/resilience
 
 // ============================================================================
 // ADVANCED FEATURES - Merged from unified/network.rs

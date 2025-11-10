@@ -169,19 +169,10 @@ pub struct AdapterSettings {
 }
 
 /// Circuit breaker configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    /// Enable circuit breaker
-    /// Enabled field
-    pub enabled: bool,
-    /// Failure threshold before opening circuit
-    pub failure_threshold: u32,
-    /// Timeout before attempting to close circuit (seconds)
-    /// Timeout Seconds field
-    pub timeout_seconds: u64,
-    /// Success threshold for closing circuit
-    pub success_threshold: u32,
-}
+///
+/// **CONSOLIDATED**: Re-export from songbird-config canonical (Week 2, Nov 10 2025).
+/// Field mapping: timeout_seconds (u64) → timeout (Duration)
+pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 
 impl Default for SecurityAdapterConfig {
     fn default() -> Self {
@@ -269,13 +260,4 @@ impl Default for AdapterSettings {
     }
 }
 
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            failure_threshold: 5,
-            timeout_seconds: 60,
-            success_threshold: 3,
-        }
-    }
-}
+// Default implementation now provided by songbird_config::canonical::resilience
