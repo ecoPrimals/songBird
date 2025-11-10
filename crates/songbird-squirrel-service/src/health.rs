@@ -3,10 +3,12 @@
 use serde::Serialize;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::{Instant};
 
 pub struct HealthMonitor {
     total_requests: Arc<AtomicU64>,
     successful_requests: Arc<AtomicU64>,
+    start_time: Instant,
 }
 
 impl HealthMonitor {
@@ -14,6 +16,7 @@ impl HealthMonitor {
         Self {
             total_requests: Arc::new(AtomicU64::new(0)),
             successful_requests: Arc::new(AtomicU64::new(0)),
+            start_time: Instant::now(),
         }
     }
 
@@ -21,7 +24,7 @@ impl HealthMonitor {
         HealthMetrics {
             total_requests: self.total_requests.load(Ordering::Relaxed),
             successful_requests: self.successful_requests.load(Ordering::Relaxed),
-            uptime_seconds: 0, // TODO: Track actual uptime
+            uptime_seconds: self.start_time.elapsed().as_secs(),
         }
     }
 }

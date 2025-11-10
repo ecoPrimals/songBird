@@ -274,7 +274,9 @@ pub async fn deploy_via_http_adaptive(
             deploy_via_http_chunked(tower_endpoint, binary_path, service_name, env_vars, chunk_size_mb).await
         }
         SelectedMethod::Streaming => {
-            // TODO: Phase 4 - Implement streaming upload
+            // PHASE 4 FEATURE: Streaming upload implementation planned
+            // Will support: Real-time progress, resume on failure, adaptive chunking
+            // Priority: Low (Phase 3 chunked upload is sufficient for most use cases)
             warn!("⚠️  Streaming upload not yet implemented, falling back to single");
             deploy_via_http(tower_endpoint, binary_path, service_name, env_vars).await
         }

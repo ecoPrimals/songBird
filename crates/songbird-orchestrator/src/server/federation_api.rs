@@ -579,7 +579,8 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // TODO: Re-enable once FederationState API is stable
+    #[ignore] // DISABLED: FederationState API refactoring in progress
+    // Re-enable after: Federation API stabilization (tracked in COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md)
     async fn test_federation_app_state_creation() {
         let _state = create_test_state();
         // Temporarily disabled - API under refactoring
@@ -587,7 +588,8 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // TODO: Re-enable once FederationState API is stable
+    #[ignore] // DISABLED: FederationState API refactoring in progress
+    // Re-enable after: Federation API stabilization (tracked in COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md)
     async fn test_federation_app_state_clone() {
         let state = create_test_state();
         let _cloned = state.clone();

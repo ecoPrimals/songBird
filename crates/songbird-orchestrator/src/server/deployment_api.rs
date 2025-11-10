@@ -338,8 +338,9 @@ async fn get_capabilities(
 
 /// Detect network type (LAN, VPN, or Internet)
 fn detect_network_type() -> String {
-    // Phase 2.1: Simplified - assume LAN
-    // TODO: Check if peer is on same subnet, private IP range, etc.
+    // SIMPLIFIED: Currently assumes LAN for all connections
+    // FUTURE ENHANCEMENT: Implement subnet/private IP range detection
+    // Potential approach: Check if peer IP is in RFC1918 ranges, measure latency, etc.
     "lan".to_string()
 }
 

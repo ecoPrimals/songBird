@@ -350,13 +350,15 @@ impl CapabilityRouter {
     
     /// Check if local Songbird instance has capacity
     ///
-    /// TODO: Implement actual capacity checking based on:
-    /// - Current CPU usage
-    /// - Available memory
-    /// - Active task count
-    /// - Load average
+    /// FUTURE ENHANCEMENT: Implement resource-aware capacity checking
+    /// Planned metrics:
+    /// - Current CPU usage (via sysinfo crate)
+    /// - Available memory (RAM check)
+    /// - Active task count (from job manager)
+    /// - Load average (system load)
+    /// Priority: Medium (Week 4-5 optimization phase)
     async fn has_local_capacity(&self) -> bool {
-        // For now, assume we always have capacity for lightweight tasks
+        // SIMPLIFIED: Currently assumes capacity is always available
         // In production, this would check actual system resources
         true
     }

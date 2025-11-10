@@ -183,17 +183,20 @@ async fn submit_compute_task(
     // Execute the task based on routing decision
     match &routing_decision {
         RoutingDecision::ExecuteLocally => {
-            // TODO: Execute locally
+            // STUB: Local execution implementation pending
+            // Will integrate with songbird-execution-agent for actual execution
             info!("Executing task {} locally", job_id);
         }
         
         RoutingDecision::RouteToSongbird { endpoint, .. } => {
-            // TODO: Forward to peer Songbird
+            // STUB: Peer forwarding implementation pending
+            // Will use federation API for peer-to-peer task forwarding
             info!("Forwarding task {} to Songbird at {}", job_id, endpoint);
         }
         
         RoutingDecision::RouteToCapability { provider_endpoint, .. } => {
-            // TODO: Forward to capability provider
+            // STUB: Capability provider forwarding implementation pending
+            // Will use universal adapter for capability-based execution
             info!("Forwarding task {} to capability at {}", job_id, provider_endpoint);
         }
         

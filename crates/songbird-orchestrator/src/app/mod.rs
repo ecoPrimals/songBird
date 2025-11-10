@@ -213,8 +213,10 @@ impl SongbirdOrchestrator {
 
         // Initialize universal security integration using primal registry
         #[allow(clippy::branches_sharing_code)]
-        // Temporary: Placeholder until security integration is re-enabled with CanonicalSongbirdConfig
-        // TODO: Migrate to use config.primals (CanonicalPrimalConfig) instead of old primal_registry
+        // MIGRATION IN PROGRESS: Security integration being migrated to CanonicalSongbirdConfig
+        // Tracked in: COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md (Priority 2, Config Consolidation)
+        // Timeline: Week 2-3 (Config consolidation phase)
+        // Current: Using capability-based discovery as interim solution
         let security_integration = if let Some(_security_primal) = None::<String> {
             // This branch is temporarily disabled during config migration
             info!("🔐 Security integration placeholder");
@@ -264,7 +266,8 @@ impl SongbirdOrchestrator {
             }];
 
             // Security integration temporarily disabled - using placeholder
-            // TODO: Re-enable when UniversalSecurityIntegration is available
+            // FUTURE WORK: Re-enable when UniversalSecurityIntegration is available
+            // Tracked in: COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md (Week 2-3)
             Arc::new(()) // Placeholder for security integration
         };
 
