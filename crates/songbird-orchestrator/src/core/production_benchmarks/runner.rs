@@ -4,7 +4,7 @@
 //! while delegating AI-specific benchmarking to specialized primals.
 
 use serde::{Deserialize, Serialize};
-use songbird_config::CanonicalSongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::SongbirdResult as Result;
 use std::time::Instant;
 use tracing::info;

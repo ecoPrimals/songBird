@@ -149,8 +149,8 @@ async fn test_route_with_load_balancing() {
 #[test]
 fn test_service_discovery_configuration() {
     // Arrange: Create default config
-    use songbird_config::SongbirdConfig;
-    let config = SongbirdConfig::default();
+    use songbird_types::config::CanonicalSongbirdConfig;
+    let config = CanonicalSongbirdConfig::default();
 
     // Assert: Discovery config is valid
     assert!(!config.network.bind_address.is_empty());

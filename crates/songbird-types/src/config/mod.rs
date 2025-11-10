@@ -21,6 +21,31 @@ pub mod storage;
 pub mod system;
 pub mod unified;
 
+// ============================================================================
+// PRIMARY CANONICAL CONFIGURATION EXPORT
+// ============================================================================
+
+/// **THE ONE TRUE CONFIG** - Export the canonical unified configuration
+pub use consolidated_canonical::{
+    CanonicalSongbirdConfig,
+    CanonicalConfigBuilder,
+    // All sub-configs from consolidated_canonical
+    CanonicalSystemConfig as CanonicalSystemConfigNew,
+    CanonicalNetworkConfig as CanonicalNetworkConfigNew,
+    CanonicalSecurityConfig as CanonicalSecurityConfigNew,
+    CanonicalPerformanceConfig as CanonicalPerformanceConfigNew,
+    CanonicalDiscoveryConfig,
+    CanonicalObservabilityConfig as CanonicalObservabilityConfigNew,
+    CanonicalGamingConfig as CanonicalGamingConfigNew,
+    CanonicalPrimalConfig,
+    CanonicalFederationConfig as CanonicalFederationConfigNew,
+    CanonicalEnvironmentConfig as CanonicalEnvironmentConfigNew,
+};
+
+// ============================================================================
+// LEGACY CONFIG EXPORTS (for backward compatibility)
+// ============================================================================
+
 // Re-export all canonical config types;
 pub use adapters::CanonicalUniversalAdapterConfig;
 pub use ai_first::CanonicalAIFirstConfig;
@@ -46,8 +71,10 @@ pub use storage::CanonicalStorageConfig;
 pub use system::CanonicalSystemConfig;
 pub use unified::UnifiedSongbirdConfig;
 
-// Discovery and observability configs;
+// Discovery and observability configs from service module
+// Note: CanonicalDiscoveryConfig and CanonicalObservabilityConfig now come from consolidated_canonical
+// These legacy aliases are kept for backward compatibility only
 pub use crate::service::{
-    CanonicalServiceInfo as CanonicalDiscoveryConfig,
-    ServiceMetrics as CanonicalObservabilityConfig,
+    CanonicalServiceInfo,
+    ServiceMetrics,
 };

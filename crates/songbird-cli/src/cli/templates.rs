@@ -7,11 +7,11 @@ impl ConfigTemplate {
     /// Generate a basic service template
     #[must_use]
     pub fn service_template() -> String {
-        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
+        let cfg = songbird_types::config::CanonicalSongbirdConfig::default();
         let mut config = String::new();
         config.push_str("[orchestrator]\n");
-        config.push_str(&format!("bind_address = \"{}\"\n", env_config.bind_address));
-        config.push_str(&format!("port = {}\n", env_config.bind_port));
+        config.push_str(&format!("bind_address = \"{}\"\n", cfg.network.bind_host));
+        config.push_str(&format!("port = {}\n", cfg.network.base_port));
         config.push_str("log_level = \"info\"\n\n");
         config.push_str("[network]\n");
         config.push_str("enable_tls = false\n");
@@ -28,11 +28,11 @@ impl ConfigTemplate {
     /// Generate a development configuration
     #[must_use]
     pub fn development_config_template() -> String {
-        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
+        let cfg = songbird_types::config::CanonicalSongbirdConfig::default();
         let mut config = String::new();
         config.push_str("[orchestrator]\n");
-        config.push_str(&format!("bind_address = \"{}\"\n", env_config.bind_address));
-        config.push_str(&format!("port = {}\n", env_config.bind_port));
+        config.push_str(&format!("bind_address = \"{}\"\n", cfg.network.bind_host));
+        config.push_str(&format!("port = {}\n", cfg.network.base_port));
         config.push_str("log_level = \"debug\"\n");
         config.push_str("enable_metrics = true\n\n");
         config.push_str("[network]\n");
@@ -50,11 +50,11 @@ impl ConfigTemplate {
     /// Generate a production configuration
     #[must_use]
     pub fn production_config_template() -> String {
-        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
+        let cfg = songbird_types::config::CanonicalSongbirdConfig::default();
         let mut config = String::new();
         config.push_str("[orchestrator]\n");
-        config.push_str(&format!("bind_address = \"{}\"\n", env_config.bind_address));
-        config.push_str(&format!("port = {}\n", env_config.bind_port));
+        config.push_str(&format!("bind_address = \"{}\"\n", cfg.network.bind_host));
+        config.push_str(&format!("port = {}\n", cfg.network.base_port));
         config.push_str("log_level = \"warn\"\n");
         config.push_str("enable_metrics = true\n\n");
         config.push_str("[network]\n");
@@ -72,11 +72,11 @@ impl ConfigTemplate {
     /// Generate a home network configuration
     #[must_use]
     pub fn home_network_config_template() -> String {
-        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
+        let cfg = songbird_types::config::CanonicalSongbirdConfig::default();
         let mut config = String::new();
         config.push_str("[orchestrator]\n");
-        config.push_str(&format!("bind_address = \"{}\"\n", env_config.bind_address));
-        config.push_str(&format!("port = {}\n", env_config.bind_port));
+        config.push_str(&format!("bind_address = \"{}\"\n", cfg.network.bind_host));
+        config.push_str(&format!("port = {}\n", cfg.network.base_port));
         config.push_str("log_level = \"info\"\n\n");
         config.push_str("[network]\n");
         config.push_str("enable_discovery = true\n");
@@ -92,7 +92,7 @@ impl ConfigTemplate {
     /// Generate a simple Dockerfile template
     #[must_use]
     pub fn dockerfile_template() -> String {
-        let env_config = songbird_config::config::environment::EnvironmentConfig::default();
+        let cfg = songbird_types::config::CanonicalSongbirdConfig::default();
         let mut dockerfile = String::new();
         dockerfile.push_str("FROM rust:1.75-slim as builder\n\n");
         dockerfile.push_str("RUN apt-get update && apt-get install -y pkg-config libssl-dev\n\n");
@@ -104,7 +104,7 @@ impl ConfigTemplate {
         dockerfile.push_str(
             "COPY --from=builder /app/target/release/songbird /usr/local/bin/songbird\n\n",
         );
-        dockerfile.push_str(&format!("EXPOSE {}\n\n", env_config.bind_port));
+        dockerfile.push_str(&format!("EXPOSE {}\n\n", cfg.network.base_port));
         dockerfile.push_str("CMD [\"songbird\", \"start\"]\n");
         dockerfile
     }

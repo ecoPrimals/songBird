@@ -8,7 +8,7 @@ use super::channels::{DiscoveryChannel, NetworkScanChannel, DnsDiscoveryChannel,
     MulticastDiscoveryChannel, KubernetesDiscoveryChannel, ConsulDiscoveryChannel};
 use super::stats::DiscoveryStats;
 
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult, success};
 use std::collections::HashMap;
 use std::sync::Arc;

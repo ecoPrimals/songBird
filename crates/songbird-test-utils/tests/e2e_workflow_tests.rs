@@ -26,18 +26,18 @@
 
 #[cfg(test)]
 mod e2e_workflow_tests {
-    use songbird_config::SongbirdConfig;
+    use songbird_types::config::CanonicalSongbirdConfig;
     use songbird_types::SongbirdResult;
     use std::time::Duration;
 
     #[tokio::test]
     async fn test_basic_system_initialization() -> SongbirdResult<()> {
         // Test that the system can initialize with default configuration
-        let _config = SongbirdConfig::default();
+        let _config = CanonicalSongbirdConfig::default();
         // Test that config is created successfully - no assertion needed for successful creation
 
         // Verify configuration loading works
-        let _loaded_config = SongbirdConfig::default();
+        let _loaded_config = CanonicalSongbirdConfig::default();
         // Test that loaded config is valid
         // Configuration loaded successfully - no assertion needed
 
@@ -134,7 +134,7 @@ mod e2e_workflow_tests {
     #[tokio::test]
     async fn test_complete_orchestration_workflow() -> SongbirdResult<()> {
         // Test a complete orchestration workflow from start to finish
-        let _config = SongbirdConfig::default();
+        let _config = CanonicalSongbirdConfig::default();
 
         // Simulate orchestrator initialization
         // Test that orchestrator can be initialized

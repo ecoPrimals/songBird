@@ -14,8 +14,14 @@ use std::time::Duration;
 // ============================================================================
 
 /// **CANONICAL**: Network and communication configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalNetworkConfig {
+    /// Bind host (for backward compatibility)
+    pub bind_host: String,
+
+    /// Base port (for backward compatibility)
+    pub base_port: u16,
+
     /// Server binding configuration
     pub bind: CanonicalBindConfig,
 
@@ -36,6 +42,22 @@ pub struct CanonicalNetworkConfig {
 
     /// Rate limiting
     pub rate_limiting: CanonicalRateLimitConfig,
+}
+
+impl Default for CanonicalNetworkConfig {
+    fn default() -> Self {
+        Self {
+            bind_host: "127.0.0.1".to_string(),
+            base_port: 8080,
+            bind: CanonicalBindConfig::default(),
+            client: CanonicalClientConfig::default(),
+            tls: None,
+            proxy: None,
+            connection_pool: CanonicalConnectionPoolConfig::default(),
+            timeouts: CanonicalTimeoutConfig::default(),
+            rate_limiting: CanonicalRateLimitConfig::default(),
+        }
+    }
 }
 
 /// **CANONICAL**: Server binding configuration

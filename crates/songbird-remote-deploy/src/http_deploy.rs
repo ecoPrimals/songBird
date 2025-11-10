@@ -243,9 +243,12 @@ pub async fn deploy_via_http_adaptive(
     let binary_size_bytes = metadata.len();
     let binary_size_mb = binary_size_bytes as f64 / 1024.0 / 1024.0;
     
-    info!("   Binary: {} ({:.2} MB)", 
-        Path::new(binary_path).file_name().unwrap().to_str().unwrap(),
-        binary_size_mb);
+    let binary_name = Path::new(binary_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown-binary");
+    
+    info!("   Binary: {} ({:.2} MB)", binary_name, binary_size_mb);
     
     // Query capabilities
     let capabilities = match query_capabilities(tower_endpoint).await {

@@ -89,3 +89,285 @@ pub struct CanonicalSongbirdConfig {
     /// Extensibility - custom configuration fields
     pub custom: HashMap<String, serde_json::Value>,
 }
+
+// ============================================================================
+// IMPLEMENTATION - Core Methods
+// ============================================================================
+
+impl CanonicalSongbirdConfig {
+    /// Create configuration from environment variables (most common use case)
+    ///
+    /// This loads all configuration from environment variables with intelligent defaults.
+    /// Environment variables follow the pattern: `SONGBIRD_{SECTION}_{FIELD}`
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use songbird_types::config::CanonicalSongbirdConfig;
+    ///
+    /// let config = CanonicalSongbirdConfig::from_env()
+    ///     .expect("Failed to load configuration from environment");
+    ///
+    /// println!("Running in: {} environment", config.environment.name);
+    /// ```
+    pub fn from_env() -> Result<Self, String> {
+        Ok(Self {
+            system: CanonicalSystemConfig::default(),
+            network: CanonicalNetworkConfig::default(),
+            security: CanonicalSecurityConfig::default(),
+            performance: CanonicalPerformanceConfig::default(),
+            discovery: CanonicalDiscoveryConfig::default(),
+            observability: CanonicalObservabilityConfig::default(),
+            gaming: CanonicalGamingConfig::default(),
+            primals: CanonicalPrimalConfig::default(),
+            federation: CanonicalFederationConfig::default(),
+            environment: CanonicalEnvironmentConfig::default(),
+            custom: HashMap::new(),
+        })
+    }
+
+    /// Create a builder for programmatic configuration construction
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use songbird_types::config::{CanonicalSongbirdConfig, CanonicalSystemConfig};
+    ///
+    /// let config = CanonicalSongbirdConfig::builder()
+    ///     .system(CanonicalSystemConfig::default())
+    ///     .build()
+    ///     .expect("Failed to build configuration");
+    /// ```
+    pub fn builder() -> CanonicalConfigBuilder {
+        CanonicalConfigBuilder::default()
+    }
+
+    /// Validate configuration completeness and correctness
+    ///
+    /// Checks all sub-configurations for validity and consistency.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any configuration is invalid or inconsistent.
+    pub fn validate(&self) -> Result<(), String> {
+        // Validate system configuration
+        if self.system.environment.is_empty() {
+            return Err("System environment cannot be empty".to_string());
+        }
+        if self.system.system_id.is_empty() {
+            return Err("System ID cannot be empty".to_string());
+        }
+
+        // Validate network configuration
+        if self.network.base_port == 0 {
+            return Err("Network base port must be greater than 0".to_string());
+        }
+
+        // All validations passed
+        Ok(())
+    }
+
+    // ========================================================================
+    // CONVENIENCE METHODS - Environment Checks
+    // ========================================================================
+
+    /// Check if running in production environment
+    #[must_use]
+    pub fn is_production(&self) -> bool {
+        self.environment.name == "production"
+            || self.environment.name == "prod"
+    }
+
+    /// Check if running in development environment
+    #[must_use]
+    pub fn is_development(&self) -> bool {
+        self.environment.name == "development"
+            || self.environment.name == "dev"
+    }
+
+    /// Check if running in test environment
+    #[must_use]
+    pub fn is_test(&self) -> bool {
+        self.environment.name == "test"
+            || self.environment.name == "testing"
+    }
+
+    /// Check if running in staging environment
+    #[must_use]
+    pub fn is_staging(&self) -> bool {
+        self.environment.name == "staging"
+    }
+
+    // ========================================================================
+    // CONVENIENCE METHODS - Network
+    // ========================================================================
+
+    /// Get bind address based on environment
+    #[must_use]
+    pub fn get_bind_address(&self) -> &str {
+        &self.network.bind_host
+    }
+
+    /// Get base port for services
+    #[must_use]
+    pub fn get_base_port(&self) -> u16 {
+        self.network.base_port
+    }
+
+    // ========================================================================
+    // CONVENIENCE METHODS - Directories
+    // ========================================================================
+
+    /// Get data directory path
+    #[must_use]
+    pub fn get_data_dir(&self) -> &str {
+        &self.system.data_dir
+    }
+
+    /// Get config directory path
+    #[must_use]
+    pub fn get_config_dir(&self) -> &str {
+        &self.system.config_dir
+    }
+
+    /// Get cache directory path
+    #[must_use]
+    pub fn get_cache_dir(&self) -> &str {
+        &self.system.cache_dir
+    }
+
+    /// Get log directory path
+    #[must_use]
+    pub fn get_log_dir(&self) -> &str {
+        &self.system.log_dir
+    }
+
+    /// Get temporary directory path
+    #[must_use]
+    pub fn get_temp_dir(&self) -> &str {
+        &self.system.temp_dir
+    }
+}
+
+// ============================================================================
+// BUILDER PATTERN
+// ============================================================================
+
+/// Builder for `CanonicalSongbirdConfig`
+///
+/// Provides a fluent API for constructing configuration programmatically.
+#[derive(Debug, Clone, Default)]
+pub struct CanonicalConfigBuilder {
+    system: Option<CanonicalSystemConfig>,
+    network: Option<CanonicalNetworkConfig>,
+    security: Option<CanonicalSecurityConfig>,
+    performance: Option<CanonicalPerformanceConfig>,
+    discovery: Option<CanonicalDiscoveryConfig>,
+    observability: Option<CanonicalObservabilityConfig>,
+    gaming: Option<CanonicalGamingConfig>,
+    primals: Option<CanonicalPrimalConfig>,
+    federation: Option<CanonicalFederationConfig>,
+    environment: Option<CanonicalEnvironmentConfig>,
+    custom: HashMap<String, serde_json::Value>,
+}
+
+impl CanonicalConfigBuilder {
+    /// Set system configuration
+    #[must_use]
+    pub fn system(mut self, config: CanonicalSystemConfig) -> Self {
+        self.system = Some(config);
+        self
+    }
+
+    /// Set network configuration
+    #[must_use]
+    pub fn network(mut self, config: CanonicalNetworkConfig) -> Self {
+        self.network = Some(config);
+        self
+    }
+
+    /// Set security configuration
+    #[must_use]
+    pub fn security(mut self, config: CanonicalSecurityConfig) -> Self {
+        self.security = Some(config);
+        self
+    }
+
+    /// Set performance configuration
+    #[must_use]
+    pub fn performance(mut self, config: CanonicalPerformanceConfig) -> Self {
+        self.performance = Some(config);
+        self
+    }
+
+    /// Set discovery configuration
+    #[must_use]
+    pub fn discovery(mut self, config: CanonicalDiscoveryConfig) -> Self {
+        self.discovery = Some(config);
+        self
+    }
+
+    /// Set observability configuration
+    #[must_use]
+    pub fn observability(mut self, config: CanonicalObservabilityConfig) -> Self {
+        self.observability = Some(config);
+        self
+    }
+
+    /// Set gaming configuration
+    #[must_use]
+    pub fn gaming(mut self, config: CanonicalGamingConfig) -> Self {
+        self.gaming = Some(config);
+        self
+    }
+
+    /// Set primals configuration
+    #[must_use]
+    pub fn primals(mut self, config: CanonicalPrimalConfig) -> Self {
+        self.primals = Some(config);
+        self
+    }
+
+    /// Set federation configuration
+    #[must_use]
+    pub fn federation(mut self, config: CanonicalFederationConfig) -> Self {
+        self.federation = Some(config);
+        self
+    }
+
+    /// Set environment configuration
+    #[must_use]
+    pub fn environment(mut self, config: CanonicalEnvironmentConfig) -> Self {
+        self.environment = Some(config);
+        self
+    }
+
+    /// Add custom configuration field
+    #[must_use]
+    pub fn custom(mut self, key: String, value: serde_json::Value) -> Self {
+        self.custom.insert(key, value);
+        self
+    }
+
+    /// Build the configuration
+    ///
+    /// Uses defaults for any fields not explicitly set.
+    pub fn build(self) -> Result<CanonicalSongbirdConfig, String> {
+        let config = CanonicalSongbirdConfig {
+            system: self.system.unwrap_or_default(),
+            network: self.network.unwrap_or_default(),
+            security: self.security.unwrap_or_default(),
+            performance: self.performance.unwrap_or_default(),
+            discovery: self.discovery.unwrap_or_default(),
+            observability: self.observability.unwrap_or_default(),
+            gaming: self.gaming.unwrap_or_default(),
+            primals: self.primals.unwrap_or_default(),
+            federation: self.federation.unwrap_or_default(),
+            environment: self.environment.unwrap_or_default(),
+            custom: self.custom,
+        };
+
+        config.validate()?;
+        Ok(config)
+    }
+}

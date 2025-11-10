@@ -1,6 +1,6 @@
 pub mod cli;
 pub mod constants;
-pub mod errors;
+// NOTE: errors module removed - use crate::errors::CliError instead
 pub mod types;
 
 // ============================================================================

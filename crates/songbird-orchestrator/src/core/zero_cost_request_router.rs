@@ -30,7 +30,7 @@
 /// // Direct method calls - no virtual dispatch overhead
 /// let response = router.route_request(&instances, request).await?
 /// ```
-use songbird_config::CanonicalSongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::constants::canonical;
 // **MIGRATION COMPLETE**: Use songbird_config types instead;
 use songbird_config::ServiceInfo as ServiceInstance;

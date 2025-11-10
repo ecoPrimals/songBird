@@ -21,8 +21,12 @@ pub use primal::{
     CanonicalPrimalConfig, CanonicalPrimalId, CanonicalPrimalResponse, CanonicalPrimalType,
 };
 
+// NOTE: types module declared later in the file (line ~73)
+// Re-export canonical types
+pub use types::{ErrorSeverity, HookErrorHandling, WarningSeverity};
+
 // Re-export error types
-pub use errors::{SecurityError, SongbirdError, SongbirdResult};
+pub use errors::{AutomationHint, SecurityError, SongbirdError, SongbirdResult, Urgency};
 // Re-export error helper traits for unwrap elimination
 pub use error_helpers::{OptionElimination, SafeEnv, SafeParse, UnwrapElimination};
 

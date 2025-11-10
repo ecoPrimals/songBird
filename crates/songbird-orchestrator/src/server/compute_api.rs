@@ -1,0 +1,391 @@
+//! Compute API - Unified endpoint for intelligent task routing
+//!
+//! This API provides a single entry point for submitting compute tasks.
+//! Tasks are intelligently routed based on complexity:
+//! - Lightweight → Local or peer Songbird
+//! - Moderate → Peer Songbird (with fallback)
+//! - Heavy → Specialized capability (Toadstool, etc.)
+//! - External providers → Registered capability providers
+
+use crate::core::registry::CapabilityRegistry;
+use crate::core::routing::{CapabilityRouter, Task, RoutingDecision};
+use axum::{
+    extract::{Json, Path, State},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::{get, post},
+    Router,
+};
+use serde::{Deserialize, Serialize};
+use songbird_network_federation::service_registry::FederatedServiceRegistry;
+use songbird_network_federation::state::FederationState;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use tracing::{debug, info, warn};
+use uuid::Uuid;
+
+/// State for compute API
+#[derive(Clone)]
+pub struct ComputeApiState {
+    /// Capability router for intelligent task routing
+    router: Arc<CapabilityRouter>,
+    /// Active job tracking
+    active_jobs: Arc<RwLock<HashMap<Uuid, JobStatus>>>,
+}
+
+impl ComputeApiState {
+    /// Create new compute API state
+    pub fn new(
+        federation_state: Arc<FederationState>,
+        service_registry: Arc<FederatedServiceRegistry>,
+    ) -> Self {
+        let router = Arc::new(CapabilityRouter::new(federation_state, service_registry));
+        Self {
+            router,
+            active_jobs: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+    
+    /// Create new compute API state with capability registry
+    pub fn with_capability_registry(
+        federation_state: Arc<FederationState>,
+        service_registry: Arc<FederatedServiceRegistry>,
+        capability_registry: Arc<CapabilityRegistry>,
+    ) -> Self {
+        let router = Arc::new(CapabilityRouter::with_capability_registry(
+            federation_state,
+            service_registry,
+            capability_registry,
+        ));
+        Self {
+            router,
+            active_jobs: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
+/// Create compute API routes
+pub fn compute_routes() -> Router<ComputeApiState> {
+    Router::new()
+        .route("/task", post(submit_compute_task))
+        .route("/task/:job_id", get(get_task_status))
+}
+
+/// Request to submit a compute task
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ComputeTaskRequest {
+    /// Task to execute
+    pub task: Task,
+    /// Priority (0-10, higher is more important)
+    pub priority: Option<u8>,
+    /// Timeout in seconds
+    pub timeout_secs: Option<u64>,
+}
+
+/// Response from task submission
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ComputeTaskResponse {
+    /// Unique job identifier
+    pub job_id: Uuid,
+    /// Where the task was routed to
+    pub routed_to: String,
+    /// Current job status
+    pub status: String,
+    /// Estimated completion time (if known)
+    pub estimated_completion: Option<String>,
+}
+
+/// Job status information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JobStatus {
+    /// Job identifier
+    pub job_id: Uuid,
+    /// Current status
+    pub status: JobStatusType,
+    /// Where the job was routed
+    pub routed_to: String,
+    /// Progress percentage (0.0 - 1.0)
+    pub progress: Option<f64>,
+    /// When the job started
+    pub started_at: chrono::DateTime<chrono::Utc>,
+    /// When the job completed (if finished)
+    pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Error message (if failed)
+    pub error: Option<String>,
+}
+
+/// Job status types
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum JobStatusType {
+    /// Job is queued
+    Queued,
+    /// Job is routing to executor
+    Routing,
+    /// Job is currently running
+    Running,
+    /// Job completed successfully
+    Completed,
+    /// Job failed with an error
+    Failed,
+    /// Job was cancelled
+    Cancelled,
+}
+
+/// Submit a compute task for intelligent routing
+#[tracing::instrument(skip(state, req), fields(task_type = %req.task.task_type))]
+async fn submit_compute_task(
+    State(state): State<ComputeApiState>,
+    Json(req): Json<ComputeTaskRequest>,
+) -> Result<Json<ComputeTaskResponse>, ApiError> {
+    info!("Received compute task: {}", req.task.task_type);
+    
+    // Generate unique job ID
+    let job_id = Uuid::new_v4();
+    
+    // Route the task intelligently
+    let routing_decision = state.router
+        .route_task(&req.task)
+        .await
+        .map_err(|e| ApiError::Routing(e.to_string()))?;
+    
+    debug!("Routing decision for job {}: {:?}", job_id, routing_decision);
+    
+    // Determine where the task was routed
+    let routed_to = match &routing_decision {
+        RoutingDecision::ExecuteLocally => "local".to_string(),
+        RoutingDecision::RouteToSongbird { node_id, .. } => format!("songbird:{}", node_id),
+        RoutingDecision::RouteToCapability { capability_type, provider_endpoint } => {
+            format!("{:?}:{}", capability_type, provider_endpoint)
+        }
+        RoutingDecision::RouteToExternalProvider { provider_id, .. } => {
+            format!("external:{}", provider_id)
+        }
+    };
+    
+    // Create job status
+    let job_status = JobStatus {
+        job_id,
+        status: JobStatusType::Routing,
+        routed_to: routed_to.clone(),
+        progress: None,
+        started_at: chrono::Utc::now(),
+        completed_at: None,
+        error: None,
+    };
+    
+    // Store job status
+    state.active_jobs.write().await.insert(job_id, job_status.clone());
+    
+    info!("Task {} routed to: {}", job_id, routed_to);
+    
+    // Execute the task based on routing decision
+    match &routing_decision {
+        RoutingDecision::ExecuteLocally => {
+            // TODO: Execute locally
+            info!("Executing task {} locally", job_id);
+        }
+        
+        RoutingDecision::RouteToSongbird { endpoint, .. } => {
+            // TODO: Forward to peer Songbird
+            info!("Forwarding task {} to Songbird at {}", job_id, endpoint);
+        }
+        
+        RoutingDecision::RouteToCapability { provider_endpoint, .. } => {
+            // TODO: Forward to capability provider
+            info!("Forwarding task {} to capability at {}", job_id, provider_endpoint);
+        }
+        
+        RoutingDecision::RouteToExternalProvider { execution_endpoint, provider_id, .. } => {
+            // Execute on external provider (new flow!)
+            info!("Executing task {} on external provider {} at {}", 
+                  job_id, provider_id, execution_endpoint);
+            
+            // Update status to running
+            let mut jobs = state.active_jobs.write().await;
+            if let Some(status) = jobs.get_mut(&job_id) {
+                status.status = JobStatusType::Running;
+            }
+            drop(jobs); // Release lock
+            
+            // Spawn async task to execute on external provider
+            let router_clone = state.router.clone();
+            let active_jobs_clone = state.active_jobs.clone();
+            let task_clone = req.task.clone();
+            let endpoint_clone = execution_endpoint.clone();
+            
+            tokio::spawn(async move {
+                let result = router_clone
+                    .execute_on_external_provider(&endpoint_clone, &task_clone)
+                    .await;
+                
+                // Update job status with result
+                let mut jobs = active_jobs_clone.write().await;
+                if let Some(status) = jobs.get_mut(&job_id) {
+                    match result {
+                        Ok(_data) => {
+                            status.status = JobStatusType::Completed;
+                            status.completed_at = Some(chrono::Utc::now());
+                            info!("Task {} completed successfully", job_id);
+                        }
+                        Err(e) => {
+                            status.status = JobStatusType::Failed;
+                            status.error = Some(e.to_string());
+                            status.completed_at = Some(chrono::Utc::now());
+                            warn!("Task {} failed: {}", job_id, e);
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    Ok(Json(ComputeTaskResponse {
+        job_id,
+        routed_to,
+        status: "routing".to_string(),
+        estimated_completion: None,
+    }))
+}
+
+/// Get the status of a compute task
+#[tracing::instrument(skip(state))]
+async fn get_task_status(
+    State(state): State<ComputeApiState>,
+    Path(job_id): Path<Uuid>,
+) -> Result<Json<JobStatus>, ApiError> {
+    debug!("Querying status for job: {}", job_id);
+    
+    let jobs = state.active_jobs.read().await;
+    let job_status = jobs
+        .get(&job_id)
+        .ok_or_else(|| ApiError::NotFound(format!("Job {} not found", job_id)))?
+        .clone();
+    
+    Ok(Json(job_status))
+}
+
+/// API errors
+#[derive(Debug)]
+pub enum ApiError {
+    /// Task routing failed
+    Routing(String),
+    /// Task execution failed
+    Execution(String),
+    /// Invalid request
+    InvalidRequest(String),
+    /// Resource not found
+    NotFound(String),
+}
+
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Routing(msg) => write!(f, "Routing error: {}", msg),
+            Self::Execution(msg) => write!(f, "Execution error: {}", msg),
+            Self::InvalidRequest(msg) => write!(f, "Invalid request: {}", msg),
+            Self::NotFound(msg) => write!(f, "Not found: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for ApiError {}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        let (status, message) = match self {
+            Self::Routing(msg) | Self::Execution(msg) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, msg)
+            }
+            Self::InvalidRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+            Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+        };
+        
+        let body = Json(serde_json::json!({
+            "error": message,
+        }));
+        
+        (status, body).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::routing::types::TaskBuilder;
+
+    fn create_test_state() -> ComputeApiState {
+        let federation_state = Arc::new(FederationState::new());
+        let service_registry = Arc::new(FederatedServiceRegistry::new());
+        ComputeApiState::new(federation_state, service_registry)
+    }
+
+    #[tokio::test]
+    async fn test_submit_lightweight_task() {
+        let state = create_test_state();
+        
+        let req = ComputeTaskRequest {
+            task: Task::new("health_check"),
+            priority: Some(5),
+            timeout_secs: Some(30),
+        };
+        
+        let response = submit_compute_task(State(state.clone()), Json(req))
+            .await
+            .expect("Task submission should succeed");
+        
+        assert_eq!(response.status, "routing");
+        assert_eq!(response.routed_to, "local");
+        
+        // Verify job was stored
+        let jobs = state.active_jobs.read().await;
+        assert!(jobs.contains_key(&response.job_id));
+    }
+
+    #[tokio::test]
+    async fn test_submit_heavy_task() {
+        // Set compute capability endpoint for test
+        std::env::set_var("CAPABILITY_COMPUTE_ENDPOINT", "http://localhost:9000");
+        
+        let state = create_test_state();
+        
+        let req = ComputeTaskRequest {
+            task: Task::builder("ml_training")
+                .with_gpu()
+                .with_cpu(8.0)
+                .with_memory(16384)
+                .with_duration(600)
+                .build(),
+            priority: Some(10),
+            timeout_secs: Some(1800),
+        };
+        
+        let response = submit_compute_task(State(state.clone()), Json(req))
+            .await
+            .expect("Task submission should succeed");
+        
+        assert_eq!(response.status, "routing");
+        // Should route to capability (Compute)
+        assert!(response.routed_to.starts_with("Compute:"));
+        
+        // Cleanup
+        std::env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_get_task_status_not_found() {
+        let state = create_test_state();
+        let non_existent_id = Uuid::new_v4();
+        
+        let result = get_task_status(State(state), Path(non_existent_id)).await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_api_error_display() {
+        let err = ApiError::Routing("Test error".to_string());
+        assert_eq!(err.to_string(), "Routing error: Test error");
+    }
+}
+

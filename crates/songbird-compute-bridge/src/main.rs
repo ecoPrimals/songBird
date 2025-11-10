@@ -175,7 +175,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .tower_id
         .clone()
         .or_else(|| std::env::var("SERVICE_ID").ok())
-        .unwrap_or_else(|| format!("tower-{}", hostname::get().unwrap().to_string_lossy()));
+        .unwrap_or_else(|| {
+            hostname::get()
+                .map(|h| format!("tower-{}", h.to_string_lossy()))
+                .unwrap_or_else(|_| format!("tower-unknown-{}", Uuid::new_v4()))
+        });
 
     let capabilities = args
         .capabilities
@@ -438,7 +442,11 @@ async fn submit_workload_handler(
             Ok(response) => {
                 let status = response.status();
                 match response.json().await {
-                    Ok(body) => (StatusCode::from_u16(status.as_u16()).unwrap(), Json(body)),
+                    Ok(body) => {
+                        let status_code = StatusCode::from_u16(status.as_u16())
+                            .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+                        (status_code, Json(body))
+                    },
                     Err(_) => (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(serde_json::json!({"error": "Backend response parsing failed"})),

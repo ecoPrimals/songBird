@@ -9,7 +9,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use songbird_types::UnifiedSongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult, SongbirdResult};
 use std::sync::Arc;
 use tokio::sync::RwLock;

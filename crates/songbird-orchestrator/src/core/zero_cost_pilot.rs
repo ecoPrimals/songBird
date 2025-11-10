@@ -16,7 +16,7 @@
 /// - 40-60% throughput improvement
 /// - 70-80% latency reduction
 /// - 95% memory overhead elimination
-        use songbird_config::CanonicalSongbirdConfig;
+        use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult, success};
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};

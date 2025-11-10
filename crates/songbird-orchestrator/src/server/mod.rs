@@ -14,8 +14,9 @@ use songbird_types::SafeEnv;
 use tokio::time::interval;
 
 // Server API modules
-pub mod deployment_api;
 pub mod chunked_upload;
+pub mod compute_api; // ✅ NEW: Intelligent capability routing API (Nov 9, 2025)
+pub mod deployment_api;
 pub mod execution_api;
 pub mod federation_api;
 /// Server management and monitoring functionality
@@ -110,7 +111,7 @@ impl ServerManager {
         let service_registry = orchestrator.service_registry();
 
         // Check if we can retrieve service count (basic functionality test)
-        let service_count = service_registry.get_services().len();
+        let service_count = service_registry.get_all_services().await.len();
         if service_count > 0 {
             tracing::debug!(
                 "Service registry responding to health check, {} services",

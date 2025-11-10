@@ -18,6 +18,9 @@ pub struct CanonicalSystemConfig {
     /// Environment (development, staging, production,
     pub environment: String,
 
+    /// System identifier
+    pub system_id: String,
+
     /// Application name
     pub app_name: String,
 
@@ -26,6 +29,21 @@ pub struct CanonicalSystemConfig {
 
     /// Instance identifier
     pub instance_id: String,
+
+    /// Data directory
+    pub data_dir: String,
+
+    /// Config directory
+    pub config_dir: String,
+
+    /// Cache directory
+    pub cache_dir: String,
+
+    /// Log directory
+    pub log_dir: String,
+
+    /// Temporary directory
+    pub temp_dir: String,
 
     /// Logging configuration
     pub logging: CanonicalLoggingConfig,
@@ -136,11 +154,18 @@ pub struct CanonicalShutdownConfig {
 
 impl Default for CanonicalSystemConfig {
     fn default() -> Self {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         Self {
             environment: "development".to_string(),
+            system_id: "songbird-1".to_string(),
             app_name: "songbird".to_string(),
             version: "0.1.0".to_string(),
-            instance_id: "songbird-1".to_string(),
+            instance_id: format!("songbird-{}", std::process::id()),
+            data_dir: format!("{}/.local/share/songbird", home),
+            config_dir: format!("{}/.config/songbird", home),
+            cache_dir: format!("{}/.cache/songbird", home),
+            log_dir: format!("{}/.local/share/songbird/logs", home),
+            temp_dir: "/tmp/songbird".to_string(),
             logging: CanonicalLoggingConfig::default(),
             resources: CanonicalResourceConfig::default(),
             shutdown: CanonicalShutdownConfig::default(),

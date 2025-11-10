@@ -3,7 +3,7 @@
 //! Main entry point for the modular gaming network bridge
 
 use anyhow::Result;
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::app;
 
 /// Main entry point for the Songbird Orchestrator
@@ -14,8 +14,9 @@ async fn main() -> Result<()> {
 
     tracing::info!("🚀 Starting Songbird Orchestrator...");
 
-    // Load configuration
-    let config = SongbirdConfig::default();
+    // Load configuration from environment
+    let config = CanonicalSongbirdConfig::from_env()
+        .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {}. Check environment variables and config files.", e))?;
 
     // Start the orchestrator
     app::start_orchestrator(config).await?;

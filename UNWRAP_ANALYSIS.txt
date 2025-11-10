@@ -1,0 +1,133 @@
+crates/songbird-canonical/src/config/environment_tests.rs:321:    assert_eq!(config.audit_log_path.unwrap(), "/var/log/audit.log");
+crates/songbird-canonical/src/config/adapters_tests.rs:69:    assert_eq!(config.endpoint.unwrap(), "http://security-service:8080");
+crates/songbird-canonical/src/responses_tests.rs:29:        assert_eq!(response.human_context.unwrap(), "This is a test");
+crates/songbird-canonical/src/metadata_tests.rs:118:    assert!(context.reasoning.as_ref().unwrap().contains("performance"));
+crates/songbird-canonical/src/metadata_tests.rs:315:    assert!((metrics.overall_quality.unwrap() - expected).abs() < 0.001);
+crates/songbird-canonical/src/metadata_tests.rs:325:    assert!((metrics.overall_quality.unwrap() - expected).abs() < 0.001);
+crates/songbird-canonical/src/metadata_tests.rs:354:    assert!((metrics.overall_quality.unwrap() - expected).abs() < 0.001);
+crates/songbird-compute-bridge/src/main.rs:178:        .unwrap_or_else(|| format!("tower-{}", hostname::get().unwrap().to_string_lossy()));
+crates/songbird-compute-bridge/src/main.rs:441:                    Ok(body) => (StatusCode::from_u16(status.as_u16()).unwrap(), Json(body)),
+crates/songbird-config/src/zero_touch_config.rs:674:        let identity = ZeroTouchConfig::discover_self_identity().unwrap();
+crates/songbird-config/src/capability_endpoints.rs:518:        let endpoint = get_capability_endpoint("security").await.unwrap();
+crates/songbird-config/src/capability_endpoints.rs:536:        assert_eq!("security".parse::<CapabilityType>().unwrap(), CapabilityType::Security);
+crates/songbird-config/src/capability_endpoints.rs:537:        assert_eq!("AUTH".parse::<CapabilityType>().unwrap(), CapabilityType::Security);
+crates/songbird-config/src/capability_endpoints.rs:538:        assert_eq!("Storage".parse::<CapabilityType>().unwrap(), CapabilityType::Storage);
+crates/songbird-config/src/capability_endpoints.rs:540:        if let CapabilityType::Custom(name) = "my_custom".parse::<CapabilityType>().unwrap() {
+crates/songbird-config/src/capability_endpoints.rs:562:        let endpoints = get_multiple_endpoints(&["security", "storage"]).await.unwrap();
+crates/songbird-config/src/capability_endpoints.rs:577:        let endpoint1 = get_capability_endpoint("security").await.unwrap();
+crates/songbird-config/src/capability_endpoints.rs:580:        let endpoint2 = get_capability_endpoint("security").await.unwrap();
+crates/songbird-config/src/capability_endpoints.rs:588:        let endpoint3 = get_capability_endpoint("security").await.unwrap();
+crates/songbird-config/src/canonical/testing.rs:53:        bind_address: "127.0.0.1".parse().unwrap(),
+crates/songbird-config/src/canonical/testing.rs:54:        production_bind_address: "127.0.0.1".parse().unwrap(),
+crates/songbird-config/src/canonical/testing.rs:64:        bind_address: "127.0.0.1".parse().unwrap(),
+crates/songbird-config/src/canonical/testing.rs:65:        production_bind_address: "127.0.0.1".parse().unwrap(),
+crates/songbird-config/src/canonical/testing.rs:77:        bind_address: "0.0.0.0".parse().unwrap(),
+crates/songbird-config/src/canonical/testing.rs:78:        production_bind_address: "0.0.0.0".parse().unwrap(),
+crates/songbird-config/src/canonical/network.rs:82:        let serialized = serde_json::to_string(&peer_type).expect(
+crates/songbird-config/src/canonical/network.rs:86:            .expect("Serialized PeerType should deserialize successfully - this indicates a serde implementation issue");
+crates/songbird-config/src/canonical/network.rs:99:        assert_eq!("client".parse::<PeerType>().unwrap(), PeerType::Client);
+crates/songbird-config/src/canonical/network.rs:100:        assert_eq!("SERVER".parse::<PeerType>().unwrap(), PeerType::Server);
+crates/songbird-config/src/canonical/network.rs:101:        assert_eq!("Gateway".parse::<PeerType>().unwrap(), PeerType::Gateway);
+crates/songbird-config/src/canonical/performance.rs:393:        let json = serde_json::to_string(&cache).unwrap();
+crates/songbird-config/src/canonical/performance.rs:394:        let deserialized: CacheConfig = serde_json::from_str(&json).unwrap();
+crates/songbird-config/src/canonical/environment.rs:306:                serde_json::to_string(&env).expect("JSON serialization should succeed");
+crates/songbird-config/src/canonical/environment.rs:308:                serde_json::from_str(&serialized).expect("JSON deserialization should succeed");
+crates/songbird-config/src/canonical/environment.rs:323:        assert_eq!("development".parse::<Environment>().unwrap(), Environment::Development);
+crates/songbird-config/src/canonical/environment.rs:324:        assert_eq!("prod".parse::<Environment>().unwrap(), Environment::Production);
+crates/songbird-config/src/canonical/environment.rs:325:        assert_eq!("staging".parse::<Environment>().unwrap(), Environment::Staging);
+crates/songbird-config/src/canonical/load_balancing.rs:310:            let json = serde_json::to_string(&strategy).expect("Failed to serialize");
+crates/songbird-config/src/canonical/load_balancing.rs:312:                serde_json::from_str(&json).expect("Failed to deserialize");
+crates/songbird-config/src/canonical/load_balancing.rs:322:        let json = serde_json::to_string(&weighted).expect("Failed to serialize");
+crates/songbird-config/src/canonical/load_balancing.rs:324:            serde_json::from_str(&json).expect("Failed to deserialize");
+crates/songbird-config/src/canonical/load_balancing.rs:334:        let json = serde_json::to_string(&custom).expect("Failed to serialize");
+crates/songbird-config/src/canonical/load_balancing.rs:336:            serde_json::from_str(&json).expect("Failed to deserialize");
+crates/songbird-config/src/canonical/discovery.rs:318:        let json = serde_json::to_string(&config).unwrap();
+crates/songbird-config/src/canonical/discovery.rs:319:        let deserialized: DiscoveryConfig = serde_json::from_str(&json).unwrap();
+crates/songbird-config/src/canonical/discovery.rs:350:        let json = serde_json::to_string(&config).unwrap();
+crates/songbird-config/src/canonical/discovery.rs:351:        let deserialized: CapabilityDiscoveryConfig = serde_json::from_str(&json).unwrap();
+crates/songbird-config/src/lib_tests.rs:69:        let params = config.custom_params.unwrap();
+crates/songbird-config/src/lib_tests.rs:99:        let config = config.unwrap();
+crates/songbird-config/src/lib_tests.rs:123:        let config = config.unwrap();
+crates/songbird-config/src/lib_tests.rs:135:        let config = config.unwrap();
+crates/songbird-config/src/lib_tests.rs:210:        assert!(config.buffer_pool_size.unwrap() > 1_000_000);
+crates/songbird-config/src/lib_tests.rs:211:        assert!(config.max_memory_mb.unwrap() > 1_000_000);
+crates/songbird-config/src/lib_tests.rs:280:        let json = serde_json::to_string(&original).unwrap();
+crates/songbird-config/src/lib_tests.rs:281:        let deserialized: PerformanceConfig = serde_json::from_str(&json).unwrap();
+crates/songbird-config/src/lib_tests.rs:308:        let params = config.custom_params.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:43:            adapter.register_service(service).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:55:        adapter.register_service(service).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:76:        adapter.register_service(service.clone()).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:78:        let retrieved = adapter.get_service("test-service").await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:80:        assert_eq!(retrieved.unwrap().name, "test-service");
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:86:        let result = adapter.get_service("nonexistent").await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:99:            adapter.register_service(service).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:102:        let all_services = adapter.list_services().await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:133:            registry.register(service).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:136:        let discovered = registry.discover().await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:145:        registry.register(service).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:158:        registry.register(service).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:160:        let found = registry.find("findme").await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:162:        assert_eq!(found.unwrap().name, "findme");
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:168:        let found = registry.find("nonexistent").await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:181:            registry.register(service).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:185:        registry.clear().await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:208:            assert!(result.unwrap().is_ok());
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:219:        registry.register(service.clone()).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:223:        registry.register(service).await.unwrap();
+crates/songbird-discovery/src/abstraction/adapters_tests.rs:225:        let found = registry.find("test-service").await.unwrap().unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:260:        manager.add_job(job.clone()).await.unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:262:        let retrieved = manager.get_job("test-1").await.unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:271:        manager.add_job(create_test_job("test-1", ExecutionStatus::Running)).await.unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:272:        manager.add_job(create_test_job("test-2", ExecutionStatus::Running)).await.unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:283:        manager.add_job(job).await.unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:284:        manager.complete_job("test-1", 0, "output".to_string(), String::new()).await.unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:286:        let updated = manager.get_job("test-1").await.unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:295:        manager.add_job(create_test_job("test-1", ExecutionStatus::Running)).await.unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:296:        manager.add_job(create_test_job("test-2", ExecutionStatus::Completed)).await.unwrap();
+crates/songbird-execution-agent/src/job_manager.rs:297:        manager.add_job(create_test_job("test-3", ExecutionStatus::Failed)).await.unwrap();
+crates/songbird-execution-agent/src/security_beardog.rs:395:        let decision = validator.validate_execution_request(&request).await.unwrap();
+crates/songbird-execution-agent/src/security_beardog.rs:412:        let decision = validator.validate_execution_request(&request).await.unwrap();
+crates/songbird-execution-agent/src/security_beardog.rs:429:        let decision = validator.validate_execution_request(&request).await.unwrap();
+crates/songbird-execution-agent/src/security_sovereign.rs:322:        let decision = validator.validate_request(&request).await.unwrap();
+crates/songbird-execution-agent/src/security_sovereign.rs:343:        let decision = validator.validate_request(&request).await.unwrap();
+crates/songbird-execution-agent/src/security_sovereign.rs:366:        let decision = validator.validate_request(&request).await.unwrap();
+crates/songbird-execution-agent/src/security_sovereign.rs:377:        let decision = validator.validate_request(&request).await.unwrap();
+crates/songbird-execution-agent/src/executor.rs:280:        let response = executor.execute(request).await.unwrap();
+crates/songbird-execution-agent/src/executor.rs:293:        let response = executor.execute(request).await.unwrap();
+crates/songbird-execution-agent/src/executor.rs:304:        let response = executor.execute(request).await.unwrap();
+crates/songbird-execution-agent/src/executor.rs:314:        let (cmd, args) = executor.parse_command("ls -la /tmp").unwrap();
+crates/songbird-network-federation/src/service_registry.rs:285:        assert_eq!(found.unwrap().service_name, "Test Service");
+crates/songbird-network-federation/src/state.rs:265:        let node = nodes.get("test-node").unwrap();
+crates/songbird-orchestrator/src/server/compute_api.rs:336:            .expect("Task submission should succeed");
+crates/songbird-orchestrator/src/server/compute_api.rs:366:            .expect("Task submission should succeed");
+crates/songbird-orchestrator/src/core/routing/types.rs:166:        assert!(task.resource_requirements.as_ref().unwrap().gpu_required);
+crates/songbird-orchestrator/src/core/routing/types.rs:167:        assert_eq!(task.resource_requirements.as_ref().unwrap().cpu_cores, Some(4.0));
+crates/songbird-orchestrator/src/core/registry/mod.rs:418:        let registration_id = result.unwrap();
+crates/songbird-orchestrator/src/core/registry/mod.rs:440:        registry.register(request).await.unwrap();
+crates/songbird-orchestrator/src/core/registry/mod.rs:445:            .unwrap();
+crates/songbird-orchestrator/src/core/registry/mod.rs:451:            .unwrap();
+crates/songbird-orchestrator/src/core/registry/mod.rs:460:        let registration_id = registry.register(request.clone()).await.unwrap();
+crates/songbird-orchestrator/src/core/registry/mod.rs:480:        registry.register(request.clone()).await.unwrap();
+crates/songbird-orchestrator/src/core/registry/mod.rs:501:        registry.register(request).await.unwrap();
+crates/songbird-orchestrator/src/core/api/byob.rs:303:        let server = TestServer::new(app).expect("Test operation should succeed: Failed to create test serve" );
+crates/songbird-orchestrator/src/main.rs:19:        .expect("Failed to load configuration from environment");
+crates/songbird-primal-sdk/src/ai_capability.rs:335:        let json = serde_json::to_string(&request).unwrap();
+crates/songbird-registry/src/types/event.rs:122:        assert_eq!(event.plugin_id().expect("Test: plugin_id should be present").as_str(), "test");
+crates/songbird-registry/src/types/event.rs:144:        assert_eq!(event.plugin_id().unwrap().as_str(), "test-plugin", "Plugin ID should match");
+crates/songbird-registry/src/types/event.rs:155:        assert_eq!(event.plugin_id().unwrap(), &plugin_id);
+crates/songbird-registry/src/types/event.rs:167:        assert_eq!(event.plugin_id().unwrap(), &plugin_id);
+crates/songbird-registry/src/types/event.rs:180:        assert_eq!(event.plugin_id().unwrap(), &plugin_id);
+crates/songbird-registry/src/types/event.rs:192:        assert_eq!(event.plugin_id().unwrap(), &plugin_id);
+crates/songbird-registry/src/types/event.rs:230:        let context = event.context.unwrap();
+crates/songbird-registry/src/types/event.rs:244:        let json_str = serialized.unwrap();
+crates/songbird-registry/src/types/event.rs:255:        let event = result.unwrap();
+crates/songbird-remote-deploy/src/http_deploy.rs:247:        Path::new(binary_path).file_name().unwrap().to_str().unwrap(),
+crates/songbird-squirrel-service/src/main.rs:302:                    Ok(response) => Ok(Json(serde_json::to_value(response).unwrap())),
+crates/songbird-squirrel-service/src/main.rs:313:                    Ok(response) => Ok(Json(serde_json::to_value(response).unwrap())),
+crates/songbird-types/src/config/consolidated_canonical/mod.rs:109:    ///     .expect("Failed to load configuration from environment");
+crates/songbird-types/src/config/consolidated_canonical/mod.rs:139:    ///     .expect("Failed to build configuration");
+crates/songbird-types/src/error_helpers.rs:3://! This module provides extension traits to eliminate `.unwrap()` and `.expect()` calls
+crates/songbird-types/src/error_helpers.rs:143:/// Safe parsing utilities to replace parse().unwrap()
+crates/songbird-types/src/error_helpers.rs:291:        let port = SafeParse::port("8080", "test").unwrap();
+crates/songbird-types/src/error_helpers.rs:309:        let duration = SafeParse::duration_from_millis(5000, "timeout").unwrap();
+crates/songbird-types/src/error_helpers.rs:312:        let duration_secs = SafeParse::duration_from_secs(30).unwrap();

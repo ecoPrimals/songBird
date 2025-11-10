@@ -5,7 +5,7 @@
 
 use crate::cli::output::OutputFormat;
 use clap::Args;
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_network::management::NetworkManager;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
@@ -41,7 +41,7 @@ pub struct NetworkScanArgs  {/// Target network range (CIDR notation,
     pub custom_ports: Vec<u16>,
 }
 
-pub async fn execute(args: NetworkScanArgs, config: &SongbirdConfig) -> SongbirdResult<(), Box<dyn std::error::Error>> {
+pub async fn execute(args: NetworkScanArgs, config: &CanonicalSongbirdConfig) -> SongbirdResult<(), Box<dyn std::error::Error>> {
     info!("🌐 Starting network scan");
 
     let network_manager = NetworkManager::new(config.clone().await?;
@@ -109,7 +109,7 @@ pub async fn execute(args: NetworkScanArgs, config: &SongbirdConfig) -> Songbird
 }
 
 /// Determine default scan range based on local network configuration
-async fn determine_default_scan_range(config: &SongbirdConfig) -> SongbirdResult<Vec<IpAddr>, Box<dyn std::error::Error>> {
+async fn determine_default_scan_range(config: &CanonicalSongbirdConfig) -> SongbirdResult<Vec<IpAddr>, Box<dyn std::error::Error>> {
     debug!("🔍 Determining default scan range from network configuration");
 
     // Get local network interfaces and determine appropriate scan ranges
@@ -141,7 +141,7 @@ async fn determine_default_scan_range(config: &SongbirdConfig) -> SongbirdResult
 
 /// Determine default ports based on configuration and known Songbird services
 async fn determine_default_ports(
-    config: &SongbirdConfig,
+    config: &CanonicalSongbirdConfig,
     network_manager: &NetworkManager
 ) -> SongbirdResult<Vec<u16>, Box<dyn std::error::Error>> {
     debug!("🔍 Determining default ports from configuration");

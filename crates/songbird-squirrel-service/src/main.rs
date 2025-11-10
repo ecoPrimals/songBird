@@ -137,25 +137,25 @@ async fn metrics_handler(State(state): State<AppState>) -> impl IntoResponse {
 // ============================================================================
 
 #[derive(Debug, Deserialize)]
-struct ChatRequest {
-    model: Option<String>,
-    messages: Vec<ChatMessage>,
-    max_tokens: Option<u32>,
-    temperature: Option<f32>,
+pub struct ChatRequest {
+    pub model: Option<String>,
+    pub messages: Vec<ChatMessage>,
+    pub max_tokens: Option<u32>,
+    pub temperature: Option<f32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct ChatMessage {
-    role: String,
-    content: String,
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
 }
 
 #[derive(Debug, Serialize)]
-struct ChatResponse {
-    response: String,
-    model: String,
-    tokens_used: u32,
-    latency_ms: f64,
+pub struct ChatResponse {
+    pub response: String,
+    pub model: String,
+    pub tokens_used: u32,
+    pub latency_ms: f64,
 }
 
 /// AI chat handler
@@ -178,17 +178,17 @@ async fn chat_handler(
 }
 
 #[derive(Debug, Deserialize)]
-struct InferenceRequest {
-    model: Option<String>,
-    prompt: String,
-    max_tokens: Option<u32>,
+pub struct InferenceRequest {
+    pub model: Option<String>,
+    pub prompt: String,
+    pub max_tokens: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
-struct InferenceResponse {
-    response: String,
-    model: String,
-    tokens: u32,
+pub struct InferenceResponse {
+    pub response: String,
+    pub model: String,
+    pub tokens: u32,
 }
 
 /// AI inference handler
@@ -234,8 +234,8 @@ struct McpInitResponse {
 
 /// MCP initialization handler
 async fn mcp_init_handler(
-    State(state): State<AppState>,
-    Json(req): Json<McpInitRequest>,
+    State(_state): State<AppState>,
+    Json(_req): Json<McpInitRequest>,
 ) -> Result<Json<McpInitResponse>, StatusCode> {
     info!("🔌 MCP init request");
 
@@ -299,7 +299,11 @@ async fn mcp_execute_handler(
             // Parse and execute chat
             if let Ok(chat_req) = serde_json::from_value::<ChatRequest>(req.arguments) {
                 match state.ai_client.chat(chat_req).await {
-                    Ok(response) => Ok(Json(serde_json::to_value(response).unwrap())),
+                    Ok(response) => {
+                        serde_json::to_value(response)
+                            .map(Json)
+                            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+                    },
                     Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
                 }
             } else {
@@ -310,7 +314,11 @@ async fn mcp_execute_handler(
             // Parse and execute inference
             if let Ok(inf_req) = serde_json::from_value::<InferenceRequest>(req.arguments) {
                 match state.ai_client.inference(inf_req).await {
-                    Ok(response) => Ok(Json(serde_json::to_value(response).unwrap())),
+                    Ok(response) => {
+                        serde_json::to_value(response)
+                            .map(Json)
+                            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+                    },
                     Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
                 }
             } else {

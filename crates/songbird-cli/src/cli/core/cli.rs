@@ -65,48 +65,8 @@ pub async fn run_cli() -> SongbirdResult<()> {
     }
 }
 
-/// CLI Error types for better error handling
-#[derive(Debug, thiserror::Error)]
-#[must_use = "This type represents an outcome that must be handled"]
-pub enum CliError {
-    #[error("Command error in {command}: {message}")]
-    CommandError {
-        command: String,
-        message: String,
-    },
-
-    #[error("Configuration error: {0}")]
-    ConfigError(String),
-
-    #[error("Network error: {0}")]
-    NetworkError(String),
-
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-}
-
-impl CliError {
-    pub fn command_error(command: &str, message: &str) -> Self {
-        Self::CommandError {
-            command: command.to_string(),
-            message: message.to_string(),
-        }
-    }
-}
-
-impl From<CliError> for SongbirdError {
-    fn from(error: CliError) -> Self {
-        match error {
-            CliError::CommandError {
-                command,
-                message,
-            } => Self::service("cli", format!("{command}: {message}")),
-            CliError::ConfigError(msg) => Self::configuration(&msg),
-            CliError::NetworkError(msg) => Self::network(&msg),
-            CliError::IoError(e) => Self::configuration(format!("IO error: {e}")),
-        }
-    }
-}
+// NOTE: CliError moved to crate::errors for canonical definition
+// Use: use crate::errors::CliError;
 
 #[cfg(test)]
 mod tests {

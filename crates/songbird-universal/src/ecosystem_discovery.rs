@@ -7,7 +7,7 @@ use tracing::{debug, info, warn, error};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::ai_first::SongbirdResult;
 use songbird_types::EvolvedResult;
 
@@ -19,14 +19,14 @@ pub struct EcosystemPrimalDiscovery  {/// HTTP client for health checks
     #[allow(dead_code)]
     client: reqwest::Client,
     /// Unified configuration
-    config: SongbirdConfig,
+    config: CanonicalSongbirdConfig,
     /// Discovered primal providers - restored for functionality
     discovered_primals: HashMap<String, EcosystemPrimal>)
 }
 
 impl EcosystemPrimalDiscovery {
     /// Create new ecosystem discovery with unified configuration
-    pub fn new(config: SongbirdConfig) -> SongbirdResult<Self>> {
+    pub fn new(config: CanonicalSongbirdConfig) -> SongbirdResult<Self>> {
         // health_check_interval_secs is u64, not Option<u64>
         let timeout =
             Duration::from_secs(config.discovery.service_discovery.discovery_timeout_secs);

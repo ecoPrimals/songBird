@@ -30,7 +30,7 @@
 
 #[cfg(test)]
 mod fault_recovery_tests {
-    use songbird_config::SongbirdConfig;
+    use songbird_types::config::CanonicalSongbirdConfig;
     use songbird_types::{SongbirdError, SongbirdResult};
     use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
     use std::sync::Arc;
@@ -198,7 +198,7 @@ mod fault_recovery_tests {
         // Phase 2: Fallback to default configuration
         let config = config_load_result.unwrap_or_else(|e| {
             tracing::warn!("   ⚠️  Config load failed: {}, using defaults", e);
-            SongbirdConfig::default()
+            CanonicalSongbirdConfig::default()
         });
 
         // Phase 3: Verify defaults are valid

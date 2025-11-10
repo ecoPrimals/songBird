@@ -2,7 +2,7 @@
 //!
 //! Tests error scenarios, recovery mechanisms, and fault tolerance
 
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::app::SongbirdOrchestrator;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
@@ -11,7 +11,7 @@ use tokio::time::timeout;
 #[tokio::test]
 async fn test_orchestrator_creation_with_default_config() -> SongbirdResult<()> {
     // Test that orchestrator creates successfully with default config
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     let result = SongbirdOrchestrator::new(config).await;
 
@@ -32,7 +32,7 @@ async fn test_orchestrator_creation_with_default_config() -> SongbirdResult<()> 
 
 #[tokio::test]
 async fn test_orchestrator_start_timeout() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config).await.map_err(|e| {
         SongbirdError::configuration(format!("Failed to create orchestrator: {}", e))
     })?;
@@ -59,7 +59,7 @@ async fn test_orchestrator_start_timeout() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_orchestrator_shutdown() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config).await.map_err(|e| {
         SongbirdError::configuration(format!("Failed to create orchestrator: {}", e))
     })?;
@@ -77,7 +77,7 @@ async fn test_orchestrator_shutdown() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_orchestrator_double_start_prevention() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config).await.map_err(|e| {
         SongbirdError::configuration(format!("Failed to create orchestrator: {}", e))
     })?;
@@ -107,7 +107,7 @@ async fn test_orchestrator_double_start_prevention() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_orchestrator_service_registry_access() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await.map_err(|e| {
         SongbirdError::configuration(format!("Failed to create orchestrator: {}", e))
     })?;
@@ -122,7 +122,7 @@ async fn test_orchestrator_service_registry_access() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_orchestrator_concurrent_operations() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Create multiple orchestrators concurrently
     let handles: Vec<_> = (0..3)
@@ -151,7 +151,7 @@ async fn test_orchestrator_concurrent_operations() {
 
 #[tokio::test]
 async fn test_orchestrator_memory_cleanup() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     {
         let _orchestrator = SongbirdOrchestrator::new(config.clone()).await.map_err(|e| {
@@ -169,7 +169,7 @@ async fn test_orchestrator_memory_cleanup() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_orchestrator_federation_state_initialization() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await.map_err(|e| {
         SongbirdError::configuration(format!("Failed to create orchestrator: {}", e))
     })?;
@@ -183,7 +183,7 @@ async fn test_orchestrator_federation_state_initialization() -> SongbirdResult<(
 
 #[tokio::test]
 async fn test_orchestrator_components_initialized() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await.map_err(|e| {
         SongbirdError::configuration(format!("Failed to create orchestrator: {}", e))
     })?;
@@ -199,7 +199,7 @@ async fn test_orchestrator_components_initialized() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_orchestrator_with_config() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     let orchestrator = SongbirdOrchestrator::new(config.clone()).await.map_err(|e| {
         SongbirdError::configuration(format!("Failed to create orchestrator: {}", e))

@@ -250,12 +250,12 @@ impl NetworkScanner {
         for i in 1..=node_count {
             let host_ip = format!("{}.{}", subnet, 100 + i);
             if let Ok(address) = host_ip.parse::<IpAddr>() {
-                // Use environment configuration - NO MORE HARDCODING!
-                let env_config = songbird_config::config::environment::EnvironmentConfig::default();
+                // Use canonical configuration - NO MORE HARDCODING!
+                let config = songbird_types::config::CanonicalSongbirdConfig::default();
                 nodes.push(DiscoveredNode {
                     name: format!("🎭 [SIM] Songbird-Node-{i}"),
                     address,
-                    port: env_config.bind_port + (i as u16 % 10),
+                    port: config.network.base_port + (i as u16 % 10),
                     version: Some(format!("1.0.{i}-sim")),
                     node_type: if i == 1 {
                         NodeType::Orchestrator

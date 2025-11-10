@@ -2,20 +2,20 @@
 
 use crate::app::{start_orchestrator, SongbirdOrchestrator};
 use anyhow::Result;
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use tokio::time::Duration;
 use tracing::{error, info, warn};
 
 /// Integration manager for coordinating service startup and shutdown
 pub struct IntegrationManager {
-    config: SongbirdConfig,
+    config: CanonicalSongbirdConfig,
     startup_timeout: Duration,
     shutdown_timeout: Duration,
 }
 
 impl IntegrationManager {
     /// Create new integration manager
-    pub fn new(config: SongbirdConfig) -> Self {
+    pub fn new(config: CanonicalSongbirdConfig) -> Self {
         Self {
             config,
             startup_timeout: Duration::from_secs(60),

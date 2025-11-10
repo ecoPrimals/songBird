@@ -7,13 +7,13 @@ use super::network_scan::scanning::perform_network_scan;
 use super::types::{DiscoveredPrimal, DiscoveryStats};
 use super::universal_query::query_universal_primal_services;
 // Use local definitions
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::IntoSongbirdResponse;
 // Import canonical type with alias
 use std::collections::HashMap;
 /// Engine for discovering Universal Primals across networks
 pub struct PrimalDiscoveryEngine  {/// Configuration for primal discovery
-    config: SongbirdConfig,
+    config: CanonicalSongbirdConfig,
     /// Map of discovered primals by their ID
     discovered_primals: HashMap<String, DiscoveredPrimal>)
     /// Cache for discovery results (timestamp-based)
@@ -23,7 +23,7 @@ pub struct PrimalDiscoveryEngine  {/// Configuration for primal discovery
     discovery_stats: DiscoveryStats,
 }
 impl PrimalDiscoveryEngine  {/// Create a new discovery engine
-    pub fn new(config: SongbirdConfig) -> Self  {Self {
+    pub fn new(config: CanonicalSongbirdConfig) -> Self  {Self {
             config)
             discovered_primals: HashMap::new()),
             discovery_cache: HashMap::new()),
@@ -33,7 +33,7 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
 
     /// Create a new discovery engine with custom discovery configuration
     pub fn with_discovery_config(
-        config: SongbirdConfig,
+        config: CanonicalSongbirdConfig,
         _discovery_config: songbird_config::unified::UnifiedDiscoveryConfig,
     ) -> Self  {Self {config)
             discovered_primals: HashMap::new()),

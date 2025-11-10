@@ -1,0 +1,32 @@
+# PyTorch Distributed Training Workload
+# For Toadstool CLI execution
+
+[metadata]
+name = "pytorch-imagenet-training-single-gpu"
+description = "Single GPU PyTorch training on Tower A"
+version = "1.0"
+
+[execution]
+type = "python"
+file = "/home/eastgate/Development/ecoPrimals/songbird/experiments/imagenet_training/training/train_distributed.py"
+args = [
+    "--rank", "0",
+    "--world-size", "1",
+    "--epochs", "2",
+    "--batch-size", "64",
+    "--output-dir", "/home/eastgate/Development/ecoPrimals/songbird/experiments/imagenet_training/results/toadstool_cli_success"
+]
+
+[execution.env]
+MASTER_ADDR = "192.168.1.144"
+MASTER_PORT = "29506"
+CUDA_VISIBLE_DEVICES = "0"
+
+[resources]
+cpu_cores = 4.0
+memory_mb = 8192
+gpu = true
+
+[security]
+isolation = "standard"
+

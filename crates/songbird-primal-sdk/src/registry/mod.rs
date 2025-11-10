@@ -1,4 +1,4 @@
-use songbird_config::SongbirdConfig as UniversalPrimalConfig;
+use songbird_types::config::CanonicalSongbirdConfig as UniversalPrimalConfig;
 // Universal Primal Registry Module
 //
 // This module provides comprehensive registry functionality broken down into focused submodules:

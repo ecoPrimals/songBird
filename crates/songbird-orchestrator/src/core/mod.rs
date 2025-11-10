@@ -15,15 +15,18 @@ pub mod orchestrator;
 pub mod performance;
 pub mod registry;
 pub mod robustness;
+pub mod routing; // ✅ NEW: Intelligent capability routing (Nov 9, 2025)
 pub mod scaling;
 pub mod zero_touch;
 
 // Re-export key functionality for convenience
 pub use api::{ApiConfig, ApiHandler, CoreApi};
+// Legacy ServiceRegistry from biome - keeping for backward compatibility
+pub use biome::ServiceRegistry;
 pub use load_balancer::{LoadBalancer, LoadBalancingStrategy};
 pub use orchestrator::{CoreOrchestrator, OrchestratorConfig};
 pub use performance::{PerformanceMetrics, PerformanceMonitor};
-pub use registry::{ServiceInfo, ServiceRegistry};
+pub use registry::{CapabilityRegistry, HeartbeatConfig};
 pub use robustness::{CircuitBreaker, RetryPolicy};
 pub use scaling::{AutoScaler, ScalingPolicy};
 

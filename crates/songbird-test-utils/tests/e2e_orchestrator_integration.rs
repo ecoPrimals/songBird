@@ -27,7 +27,7 @@
 
 #![cfg(test)]
 
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::SongbirdOrchestrator;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -35,7 +35,7 @@ use tokio::time::timeout;
 #[tokio::test]
 async fn test_orchestrator_initialization() -> Result<(), Box<dyn std::error::Error>> {
     // Test that we can actually create and initialize the orchestrator
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Verify orchestrator was created
@@ -47,7 +47,7 @@ async fn test_orchestrator_initialization() -> Result<(), Box<dyn std::error::Er
 #[tokio::test]
 async fn test_orchestrator_start_stop_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
     // Test complete lifecycle: create → start → stop
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Start orchestrator
@@ -67,7 +67,7 @@ async fn test_orchestrator_start_stop_lifecycle() -> Result<(), Box<dyn std::err
 #[tokio::test]
 async fn test_configuration_loading_and_defaults() -> Result<(), Box<dyn std::error::Error>> {
     // Test that configuration loads correctly with defaults
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Verify config has expected structure
     assert!(config.network.port_range.start > 0, "Port range start should be configured");
@@ -82,7 +82,7 @@ async fn test_configuration_loading_and_defaults() -> Result<(), Box<dyn std::er
 #[tokio::test]
 async fn test_orchestrator_observability_integration() -> Result<(), Box<dyn std::error::Error>> {
     // Test that observability components are properly integrated
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Start orchestrator (which should initialize observability)
@@ -113,7 +113,7 @@ async fn test_orchestrator_service_registry_integration() -> Result<(), Box<dyn 
     assert!(std::mem::size_of_val(&*registry) > 0);
 
     // Create orchestrator (which should also have its own registry)
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let _orchestrator = SongbirdOrchestrator::new(config).await?;
 
     Ok(())
@@ -122,8 +122,8 @@ async fn test_orchestrator_service_registry_integration() -> Result<(), Box<dyn 
 #[tokio::test]
 async fn test_multiple_orchestrator_instances() -> Result<(), Box<dyn std::error::Error>> {
     // Test that we can create multiple orchestrator instances
-    let config1 = SongbirdConfig::default();
-    let config2 = SongbirdConfig::default();
+    let config1 = CanonicalSongbirdConfig::default();
+    let config2 = CanonicalSongbirdConfig::default();
 
     let orch1 = SongbirdOrchestrator::new(config1).await?;
     let orch2 = SongbirdOrchestrator::new(config2).await?;
@@ -138,7 +138,7 @@ async fn test_multiple_orchestrator_instances() -> Result<(), Box<dyn std::error
 #[tokio::test]
 async fn test_orchestrator_timeout_handling() -> Result<(), Box<dyn std::error::Error>> {
     // Test that orchestrator operations don't hang
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Create with timeout
     let result = timeout(Duration::from_secs(5), SongbirdOrchestrator::new(config)).await;
@@ -152,7 +152,7 @@ async fn test_orchestrator_timeout_handling() -> Result<(), Box<dyn std::error::
 #[tokio::test]
 async fn test_orchestrator_with_custom_network_config() -> Result<(), Box<dyn std::error::Error>> {
     // Test orchestrator with custom network configuration
-    let mut config = SongbirdConfig::default();
+    let mut config = CanonicalSongbirdConfig::default();
 
     // Customize network settings
     config.network.port_range.start = songbird_config::defaults::ports::federation_port();
@@ -168,7 +168,7 @@ async fn test_orchestrator_with_custom_network_config() -> Result<(), Box<dyn st
 async fn test_orchestrator_error_handling_on_invalid_config(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Test that orchestrator handles invalid configuration gracefully
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Even with default config, orchestrator should handle edge cases
     let result = SongbirdOrchestrator::new(config).await;
@@ -182,7 +182,7 @@ async fn test_orchestrator_error_handling_on_invalid_config(
 #[tokio::test]
 async fn test_orchestrator_rapid_start_stop() -> Result<(), Box<dyn std::error::Error>> {
     // Test rapid start/stop cycles
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 
     for _ in 0..3 {

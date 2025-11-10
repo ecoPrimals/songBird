@@ -1,12 +1,62 @@
 //! Error Types and Handling
 //!
 //! **CANONICAL**: Centralized error handling for the entire Songbird ecosystem
+//! **AI-FIRST**: Enhanced with automation hints and rich context for AI agents
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// **CANONICAL**: Result type for all Songbird operations
 pub type SongbirdResult<T> = Result<T, SongbirdError>;
+
+/// Automation hint for AI agents to handle errors automatically
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AutomationHint {
+    /// Retry with exponential backoff
+    RetryExponential {
+        /// Maximum number of retry attempts
+        max_attempts: u32,
+        /// Base delay in milliseconds (doubles each retry)
+        base_delay_ms: u64,
+    },
+    /// Retry with fixed interval
+    RetryFixed {
+        /// Maximum number of retry attempts
+        max_attempts: u32,
+        /// Fixed interval between retries in milliseconds
+        interval_ms: u64,
+    },
+    /// Fallback to alternative service
+    FallbackService {
+        /// List of alternative service endpoints
+        alternatives: Vec<String>,
+    },
+    /// Escalate to human intervention
+    EscalateHuman {
+        /// Urgency level
+        urgency: Urgency,
+    },
+    /// Safe to ignore (non-critical error)
+    Ignore,
+    /// Circuit breaker open - stop retrying temporarily
+    CircuitOpen {
+        /// Seconds to wait before retrying
+        retry_after_secs: u64,
+    },
+}
+
+/// Error urgency level for human escalation
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Urgency {
+    /// Critical - immediate attention required
+    Critical,
+    /// High priority
+    High,
+    /// Medium priority
+    Medium,
+    /// Low priority
+    Low,
+}
 
 /// **CANONICAL**: Main error type for Songbird operations
 #[derive(Debug, Clone, Serialize, Deserialize, thiserror::Error)]

@@ -3,7 +3,7 @@
 //! Tests orchestrator initialization, startup, shutdown, and state transitions
 
 use serial_test::serial;
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::SongbirdOrchestrator;
 use songbird_test_utils::network_fixtures::*;
 use songbird_test_utils::test_orchestrator_port;
@@ -15,7 +15,7 @@ use std::env;
 #[serial]
 async fn test_orchestrator_creation_with_default_config() {
     // Create orchestrator with default config
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let result = SongbirdOrchestrator::new(config).await;
 
     assert!(result.is_ok(), "Orchestrator should be created with default config");
@@ -27,7 +27,7 @@ async fn test_orchestrator_federation_disabled_by_default() {
     // Federation should be disabled by default
     env::remove_var("SONGBIRD_FEDERATION_ENABLED");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     assert!(orchestrator.is_ok());
@@ -42,7 +42,7 @@ async fn test_orchestrator_federation_enabled() {
     env::set_var("SONGBIRD_NODE_ID", "test-node-1");
     env::set_var("SONGBIRD_NODE_NAME", "test-orchestrator");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     // Cleanup
@@ -59,7 +59,7 @@ async fn test_orchestrator_with_custom_node_id() {
     env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
     env::set_var("SONGBIRD_NODE_ID", "custom-node-123");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let result = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("SONGBIRD_FEDERATION_ENABLED");
@@ -78,7 +78,7 @@ async fn test_orchestrator_with_bootstrap_address() {
         format!("http://bootstrap:{}", test_orchestrator_port()),
     );
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let result = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("SONGBIRD_FEDERATION_ENABLED");
@@ -91,7 +91,7 @@ async fn test_orchestrator_with_bootstrap_address() {
 #[tokio::test]
 #[serial]
 async fn test_orchestrator_service_registry_initialization() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     assert!(orchestrator.is_ok());
@@ -110,7 +110,7 @@ async fn test_orchestrator_service_registry_initialization() {
 async fn test_orchestrator_federation_state_initialization() {
     env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("SONGBIRD_FEDERATION_ENABLED");
@@ -132,7 +132,7 @@ async fn test_orchestrator_federation_state_initialization() {
 async fn test_orchestrator_federated_service_registry() {
     env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("SONGBIRD_FEDERATION_ENABLED");
@@ -151,7 +151,7 @@ async fn test_orchestrator_federated_service_registry() {
 #[tokio::test]
 #[serial]
 async fn test_orchestrator_config_access() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config.clone()).await;
 
     assert!(orchestrator.is_ok());
@@ -169,7 +169,7 @@ async fn test_orchestrator_config_access() {
 async fn test_orchestrator_custom_port_configuration() {
     env::set_var("SONGBIRD_PORT", "9090");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("SONGBIRD_PORT");
@@ -183,7 +183,7 @@ async fn test_orchestrator_custom_port_configuration() {
 async fn test_orchestrator_custom_bind_address() {
     env::set_var("SONGBIRD_BIND_ADDRESS", "0.0.0.0");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("SONGBIRD_BIND_ADDRESS");
@@ -195,7 +195,7 @@ async fn test_orchestrator_custom_bind_address() {
 #[tokio::test]
 #[serial]
 async fn test_orchestrator_resource_detection() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     assert!(orchestrator.is_ok());
@@ -212,7 +212,7 @@ async fn test_orchestrator_with_environment_overrides() {
     env::set_var("SONGBIRD_PORT", "8888");
     env::set_var("SONGBIRD_NODE_NAME", "production-node");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("SONGBIRD_NODE_ADDRESS");
@@ -228,7 +228,7 @@ async fn test_orchestrator_with_environment_overrides() {
 async fn test_orchestrator_gpu_detection_override() {
     env::set_var("GPU_MODEL", "Tesla T4");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("GPU_MODEL");
@@ -242,7 +242,7 @@ async fn test_orchestrator_gpu_detection_override() {
 async fn test_orchestrator_storage_detection_override() {
     env::set_var("STORAGE_GB", "1000");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("STORAGE_GB");
@@ -257,7 +257,7 @@ async fn test_orchestrator_heartbeat_interval_configuration() {
     env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
     // Heartbeat interval should be configurable
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("SONGBIRD_FEDERATION_ENABLED");
@@ -271,7 +271,7 @@ async fn test_orchestrator_heartbeat_interval_configuration() {
 async fn test_orchestrator_multiple_capabilities() {
     env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     env::remove_var("SONGBIRD_FEDERATION_ENABLED");
@@ -286,7 +286,7 @@ async fn test_orchestrator_standalone_mode_default() {
     // By default, federation should be disabled
     env::remove_var("SONGBIRD_FEDERATION_ENABLED");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     assert!(orchestrator.is_ok());
@@ -296,7 +296,7 @@ async fn test_orchestrator_standalone_mode_default() {
 #[tokio::test]
 #[serial]
 async fn test_orchestrator_observability_initialization() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     assert!(orchestrator.is_ok());
@@ -307,8 +307,8 @@ async fn test_orchestrator_observability_initialization() {
 #[serial]
 async fn test_orchestrator_concurrent_initialization() {
     // Test that multiple orchestrators can be created concurrently
-    let config1 = SongbirdConfig::default();
-    let config2 = SongbirdConfig::default();
+    let config1 = CanonicalSongbirdConfig::default();
+    let config2 = CanonicalSongbirdConfig::default();
 
     let (result1, result2) =
         tokio::join!(SongbirdOrchestrator::new(config1), SongbirdOrchestrator::new(config2));
@@ -321,7 +321,7 @@ async fn test_orchestrator_concurrent_initialization() {
 #[serial]
 async fn test_orchestrator_memory_efficiency() {
     // Test that orchestrator initialization is memory efficient
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await;
 
     assert!(orchestrator.is_ok());

@@ -86,6 +86,22 @@ pub mod config;
 // PUBLIC API - PREFER CANONICAL
 // ============================================================================
 
+// ============================================================================
+// PRIMARY EXPORT - The ONE TRUE Configuration
+// ============================================================================
+
+/// **PRIMARY**: Re-export the canonical configuration from songbird-types
+///
+/// All new code should use this configuration system.
+pub use songbird_types::config::CanonicalSongbirdConfig;
+
+/// Convenience alias for the canonical configuration
+pub type Config = CanonicalSongbirdConfig;
+
+// ============================================================================
+// CANONICAL MODULE EXPORTS
+// ============================================================================
+
 // Re-export canonical types for convenience (PREFERRED)
 // Note: Only export types that exist in canonical module
 pub use canonical::{
@@ -100,8 +116,27 @@ pub use canonical::environment::EnvironmentConfig as CanonicalEnvironmentConfig;
 pub use canonical::network::NetworkConfig as CanonicalNetworkConfig;
 pub use canonical::service::ServiceConfig as CanonicalServiceConfig;
 
-// Security config will be added in Phase 5 of consolidation
-// pub use canonical::security::SecurityConfig as CanonicalSecurityConfig;
+// ============================================================================
+// DEPRECATED - Backward Compatibility Only
+// ============================================================================
+
+/// **DEPRECATED**: Use `CanonicalSongbirdConfig` from songbird-types instead
+///
+/// # Migration
+/// ```
+/// // OLD
+/// use songbird_config::SongbirdConfig;
+///
+/// // NEW  
+/// use songbird_types::config::CanonicalSongbirdConfig;
+/// // or use songbird_config::Config;
+/// ```
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use songbird_types::config::CanonicalSongbirdConfig instead"
+)]
+pub type SongbirdConfig = songbird_types::config::CanonicalSongbirdConfig;
 
 // Legacy re-exports (DEPRECATED - maintained for backward compatibility)
 #[allow(deprecated)]

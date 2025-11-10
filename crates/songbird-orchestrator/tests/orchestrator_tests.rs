@@ -25,13 +25,13 @@
 //! Testing orchestrator functionality beyond main function.
 
 use anyhow::Result;
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::app::SongbirdOrchestrator;
 
 #[tokio::test]
 async fn test_orchestrator_initialization() -> Result<()> {
     // Test orchestrator initialization with default config
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Verify orchestrator is created with valid configuration
@@ -47,7 +47,7 @@ async fn test_orchestrator_initialization() -> Result<()> {
 #[tokio::test]
 async fn test_service_coordination() -> Result<()> {
     // Test service coordination through orchestrator
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Verify service registry is accessible
@@ -63,7 +63,7 @@ async fn test_service_coordination() -> Result<()> {
 #[tokio::test]
 async fn test_lifecycle_management() -> Result<()> {
     // Test orchestrator lifecycle management
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Start orchestrator
@@ -82,7 +82,7 @@ async fn test_lifecycle_management() -> Result<()> {
 #[tokio::test]
 async fn test_graceful_shutdown() -> Result<()> {
     // Test graceful shutdown
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Start and immediately stop
@@ -98,7 +98,7 @@ async fn test_graceful_shutdown() -> Result<()> {
 #[tokio::test]
 async fn test_error_recovery() -> Result<()> {
     // Test error recovery mechanisms
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Test handling unknown command (should not panic)
@@ -116,7 +116,7 @@ async fn test_error_recovery() -> Result<()> {
 #[tokio::test]
 async fn test_health_monitoring() -> Result<()> {
     // Test health monitoring functionality
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Execute health check command
@@ -131,7 +131,7 @@ async fn test_health_monitoring() -> Result<()> {
 #[tokio::test]
 async fn test_configuration_reload() -> Result<()> {
     // Test configuration reload capability
-    let config1 = SongbirdConfig::default();
+    let config1 = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config1).await?;
 
     // Start with initial config
@@ -144,7 +144,7 @@ async fn test_configuration_reload() -> Result<()> {
     orchestrator.stop().await?;
 
     // Create new orchestrator with updated config
-    let config2 = SongbirdConfig::default();
+    let config2 = CanonicalSongbirdConfig::default();
     let orchestrator2 = SongbirdOrchestrator::new(config2).await?;
 
     // Verify new config loaded
@@ -156,7 +156,7 @@ async fn test_configuration_reload() -> Result<()> {
 #[tokio::test]
 async fn test_service_discovery_integration() -> Result<()> {
     // Test service discovery integration
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Verify discovery config is present
@@ -173,7 +173,7 @@ async fn test_service_discovery_integration() -> Result<()> {
 #[tokio::test]
 async fn test_concurrent_operations() -> Result<()> {
     // Test concurrent operations
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Execute multiple status checks sequentially (simulating concurrent access)
@@ -188,7 +188,7 @@ async fn test_concurrent_operations() -> Result<()> {
 #[tokio::test]
 async fn test_resource_management() -> Result<()> {
     // Test resource management
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Verify resource limits are configured
@@ -206,7 +206,7 @@ async fn test_resource_management() -> Result<()> {
 #[tokio::test]
 async fn test_sovereignty_enforcement() -> Result<()> {
     // Test sovereignty boundary enforcement
-    let mut config = SongbirdConfig::default();
+    let mut config = CanonicalSongbirdConfig::default();
 
     // Configure sovereignty boundaries via primals
     config.enable_primal("test_primal", "http://test.example.com");
@@ -222,7 +222,7 @@ async fn test_sovereignty_enforcement() -> Result<()> {
 #[tokio::test]
 async fn test_metrics_collection() -> Result<()> {
     // Test metrics collection
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Verify observability is configured
@@ -241,7 +241,7 @@ async fn test_metrics_collection() -> Result<()> {
 #[tokio::test]
 async fn test_event_handling() -> Result<()> {
     // Test event handling
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Test command events
@@ -257,7 +257,7 @@ async fn test_event_handling() -> Result<()> {
 #[tokio::test]
 async fn test_primal_coordination() -> Result<()> {
     // Test primal coordination
-    let mut config = SongbirdConfig::default();
+    let mut config = CanonicalSongbirdConfig::default();
 
     // Enable multiple primals
     config.enable_primal("primal1", "http://primal1.example.com");
@@ -275,7 +275,7 @@ async fn test_primal_coordination() -> Result<()> {
 #[tokio::test]
 async fn test_fault_tolerance() -> Result<()> {
     // Test fault tolerance
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Start orchestrator

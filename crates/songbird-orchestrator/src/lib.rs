@@ -25,12 +25,12 @@
 //!
 //! ```rust,no_run
 //! use songbird_orchestrator::SongbirdOrchestrator;
-//! use songbird_config::SongbirdConfig;
+//! use songbird_types::config::CanonicalSongbirdConfig;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Config reads from environment variables via Default
-//!     let config = SongbirdConfig::default();
+//!     // Load configuration from environment variables
+//!     let config = CanonicalSongbirdConfig::from_env()?;
 //!     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 //!
 //!     // Start the orchestrator

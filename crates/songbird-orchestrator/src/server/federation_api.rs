@@ -1,12 +1,12 @@
 //! Federation API Endpoints
 //!
-//! HTTP/REST API for federation coordination
+//! HTTP/REST API for federation coordination and capability registration
 
 use axum::{
-    extract::{Json, State},
+    extract::{Json, Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use chrono::Utc;
@@ -20,11 +20,21 @@ use songbird_network_federation::state::{
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
+// Import capability registry types
+use crate::core::registry::{CapabilityRegistry, HeartbeatConfig};
+use crate::core::registry::types::{
+    CapabilityRegistrationRequest, CapabilityRegistrationResponse,
+    HeartbeatRequest as CapabilityHeartbeatRequest, HeartbeatResponse,
+    ProviderListResponse, RegistrationData, HeartbeatData,
+    ProviderListData, ProviderSummary,
+};
+
 /// Shared application state for federation
 #[derive(Debug, Clone)]
 pub struct FederationAppState {
     pub federation_state: Arc<FederationState>,
     pub service_registry: Arc<FederatedServiceRegistry>,
+    pub capability_registry: Option<Arc<CapabilityRegistry>>,
 }
 
 /// Create federation routes
@@ -35,6 +45,7 @@ pub fn federation_routes(
     let app_state = Arc::new(FederationAppState {
         federation_state,
         service_registry,
+        capability_registry: None,
     });
 
     Router::new()
@@ -49,6 +60,38 @@ pub fn federation_routes(
         .route("/services/:service_id", get(get_service))
         .route("/services/type/:service_type", get(find_services_by_type))
         .route("/services/stats", get(service_stats))
+        .with_state(app_state)
+}
+
+/// Create federation routes with capability registry
+pub fn federation_routes_with_capabilities(
+    federation_state: Arc<FederationState>,
+    service_registry: Arc<FederatedServiceRegistry>,
+    capability_registry: Arc<CapabilityRegistry>,
+) -> Router {
+    let app_state = Arc::new(FederationAppState {
+        federation_state,
+        service_registry,
+        capability_registry: Some(capability_registry.clone()),
+    });
+
+    Router::new()
+        // Node management
+        .route("/join", post(federation_join))
+        .route("/status", get(federation_status))
+        .route("/nodes", get(federation_nodes))
+        .route("/heartbeat", post(federation_heartbeat))
+        // Service management
+        .route("/services", get(list_services))
+        .route("/services", post(register_service))
+        .route("/services/:service_id", get(get_service))
+        .route("/services/type/:service_type", get(find_services_by_type))
+        .route("/services/stats", get(service_stats))
+        // Capability registration (NEW)
+        .route("/register", post(register_capability_provider))
+        .route("/capability/heartbeat", post(capability_provider_heartbeat))
+        .route("/register/:provider_id", delete(unregister_capability_provider))
+        .route("/providers", get(list_capability_providers))
         .with_state(app_state)
 }
 
@@ -107,7 +150,7 @@ struct HeartbeatRequest {
 }
 
 #[derive(Debug, Serialize)]
-struct HeartbeatResponse {
+struct FederationHeartbeatResponse {
     acknowledged: bool,
     federation_status: String,
 }
@@ -130,7 +173,7 @@ async fn federation_heartbeat(
         warn!("⚠️  Heartbeat from unknown node: {}", heartbeat.node_id);
         return (
             StatusCode::NOT_FOUND,
-            Json(HeartbeatResponse {
+            Json(FederationHeartbeatResponse {
                 acknowledged: false,
                 federation_status: "node_not_registered".to_string(),
             }),
@@ -139,12 +182,273 @@ async fn federation_heartbeat(
 
     (
         StatusCode::OK,
-        Json(HeartbeatResponse {
+        Json(FederationHeartbeatResponse {
             acknowledged: true,
             federation_status: heartbeat.status.unwrap_or_else(|| "active".to_string()),
         }),
     )
 }
+
+// ========================================================================
+// CAPABILITY REGISTRATION ENDPOINTS (NEW)
+// ========================================================================
+
+/// POST /api/v1/federation/register - Register a capability provider
+async fn register_capability_provider(
+    State(state): State<Arc<FederationAppState>>,
+    Json(request): Json<CapabilityRegistrationRequest>,
+) -> impl IntoResponse {
+    info!(
+        "🔌 Capability provider '{}' ({}) registering with {} capabilities",
+        request.provider_name,
+        request.provider_id,
+        request.capabilities.len()
+    );
+
+    let capability_registry = match &state.capability_registry {
+        Some(registry) => registry,
+        None => {
+            warn!("Capability registry not initialized");
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(CapabilityRegistrationResponse {
+                    success: false,
+                    data: None,
+                    error: Some("Capability registry not available".to_string()),
+                    timestamp: Utc::now(),
+                }),
+            );
+        }
+    };
+
+    match capability_registry.register(request.clone()).await {
+        Ok(registration_id) => {
+            info!(
+                "✅ Provider '{}' registered successfully with ID: {}",
+                request.provider_id, registration_id
+            );
+
+            (
+                StatusCode::OK,
+                Json(CapabilityRegistrationResponse {
+                    success: true,
+                    data: Some(RegistrationData {
+                        provider_id: request.provider_id.clone(),
+                        registration_id,
+                        status: "registered".to_string(),
+                        heartbeat_interval_ms: capability_registry.config().interval_ms,
+                        heartbeat_endpoint: "/api/v1/federation/capability/heartbeat".to_string(),
+                    }),
+                    error: None,
+                    timestamp: Utc::now(),
+                }),
+            )
+        }
+        Err(e) => {
+            warn!(
+                "❌ Failed to register provider '{}': {}",
+                request.provider_id, e
+            );
+
+            (
+                StatusCode::BAD_REQUEST,
+                Json(CapabilityRegistrationResponse {
+                    success: false,
+                    data: None,
+                    error: Some(format!("{}", e)),
+                    timestamp: Utc::now(),
+                }),
+            )
+        }
+    }
+}
+
+/// POST /api/v1/federation/capability/heartbeat - Update provider heartbeat
+async fn capability_provider_heartbeat(
+    State(state): State<Arc<FederationAppState>>,
+    Json(request): Json<CapabilityHeartbeatRequest>,
+) -> impl IntoResponse {
+    debug!(
+        "💓 Heartbeat from provider '{}'",
+        request.provider_id
+    );
+
+    let capability_registry = match &state.capability_registry {
+        Some(registry) => registry,
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(crate::core::registry::types::HeartbeatResponse {
+                    success: false,
+                    data: None,
+                    error: Some("Capability registry not available".to_string()),
+                    timestamp: Utc::now(),
+                }),
+            );
+        }
+    };
+
+    // Convert heartbeat status to ProviderHealth if provided
+    let health = request.health_status.map(|status| {
+        use crate::core::registry::types::{ProviderHealth, HealthStatus, ResourceUsage};
+        
+        ProviderHealth {
+            status: match status.status.as_str() {
+                "healthy" => HealthStatus::Healthy,
+                "degraded" => HealthStatus::Degraded,
+                "unhealthy" => HealthStatus::Unhealthy,
+                _ => HealthStatus::Healthy,
+            },
+            available_capacity: status.available_capacity,
+            resource_usage: ResourceUsage {
+                cpu_percent: status.resource_usage.cpu_percent,
+                memory_percent: status.resource_usage.memory_percent,
+                gpu_utilization: status.resource_usage.gpu_utilization,
+            },
+        }
+    });
+
+    match capability_registry
+        .update_heartbeat(&request.provider_id, &request.registration_id, health)
+        .await
+    {
+        Ok(()) => {
+            debug!(
+                "✅ Heartbeat acknowledged from '{}'",
+                request.provider_id
+            );
+
+            (
+                StatusCode::OK,
+                Json(crate::core::registry::types::HeartbeatResponse {
+                    success: true,
+                    data: Some(HeartbeatData {
+                        acknowledged: true,
+                        next_heartbeat_ms: capability_registry.config().interval_ms,
+                    }),
+                    error: None,
+                    timestamp: Utc::now(),
+                }),
+            )
+        }
+        Err(e) => {
+            warn!(
+                "❌ Heartbeat failed from '{}': {}",
+                request.provider_id, e
+            );
+
+            (
+                StatusCode::BAD_REQUEST,
+                Json(crate::core::registry::types::HeartbeatResponse {
+                    success: false,
+                    data: None,
+                    error: Some(format!("{}", e)),
+                    timestamp: Utc::now(),
+                }),
+            )
+        }
+    }
+}
+
+/// DELETE /api/v1/federation/register/:provider_id - Unregister a provider
+async fn unregister_capability_provider(
+    State(state): State<Arc<FederationAppState>>,
+    Path(provider_id): Path<String>,
+) -> impl IntoResponse {
+    info!("🔌 Provider '{}' unregistering", provider_id);
+
+    let capability_registry = match &state.capability_registry {
+        Some(registry) => registry,
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(CapabilityRegistrationResponse {
+                    success: false,
+                    data: None,
+                    error: Some("Capability registry not available".to_string()),
+                    timestamp: Utc::now(),
+                }),
+            );
+        }
+    };
+
+    match capability_registry.unregister(&provider_id).await {
+        Ok(()) => {
+            info!("✅ Provider '{}' unregistered successfully", provider_id);
+
+            (
+                StatusCode::OK,
+                Json(CapabilityRegistrationResponse {
+                    success: true,
+                    data: Some(RegistrationData {
+                        provider_id: provider_id.clone(),
+                        registration_id: String::new(),
+                        status: "unregistered".to_string(),
+                        heartbeat_interval_ms: 0,
+                        heartbeat_endpoint: String::new(),
+                    }),
+                    error: None,
+                    timestamp: Utc::now(),
+                }),
+            )
+        }
+        Err(e) => {
+            warn!("❌ Failed to unregister provider '{}': {}", provider_id, e);
+
+            (
+                StatusCode::NOT_FOUND,
+                Json(CapabilityRegistrationResponse {
+                    success: false,
+                    data: None,
+                    error: Some(format!("{}", e)),
+                    timestamp: Utc::now(),
+                }),
+            )
+        }
+    }
+}
+
+/// GET /api/v1/federation/providers - List all registered capability providers
+async fn list_capability_providers(
+    State(state): State<Arc<FederationAppState>>,
+) -> impl IntoResponse {
+    debug!("📋 Listing all capability providers");
+
+    let capability_registry = match &state.capability_registry {
+        Some(registry) => registry,
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(ProviderListResponse {
+                    success: false,
+                    data: None,
+                    error: Some("Capability registry not available".to_string()),
+                    timestamp: Utc::now(),
+                }),
+            );
+        }
+    };
+
+    let providers = capability_registry.list_providers().await;
+    let summaries: Vec<ProviderSummary> = providers.iter().map(ProviderSummary::from).collect();
+
+    (
+        StatusCode::OK,
+        Json(ProviderListResponse {
+            success: true,
+            data: Some(ProviderListData {
+                total_count: summaries.len(),
+                providers: summaries,
+            }),
+            error: None,
+            timestamp: Utc::now(),
+        }),
+    )
+}
+
+// ========================================================================
+// HELPER FUNCTIONS
+// ========================================================================
 
 /// Helper: Get federation status
 #[allow(clippy::similar_names)] // `state` and `stats` are semantically different despite similar names
@@ -254,6 +558,7 @@ mod tests {
         Arc::new(FederationAppState {
             federation_state: Arc::new(FederationState::new()),
             service_registry: Arc::new(FederatedServiceRegistry::new()),
+            capability_registry: None,
         })
     }
 
@@ -343,7 +648,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_heartbeat_response_serialization() -> Result<(), Box<dyn std::error::Error>> {
-        let response = HeartbeatResponse {
+        let response = FederationHeartbeatResponse {
             acknowledged: true,
             federation_status: "active".to_string(),
         };
@@ -426,7 +731,7 @@ mod tests {
 
     #[test]
     fn test_heartbeat_response_debug() {
-        let response = HeartbeatResponse {
+        let response = FederationHeartbeatResponse {
             acknowledged: true,
             federation_status: "active".to_string(),
         };
@@ -440,6 +745,7 @@ mod tests {
         let state = Arc::new(FederationAppState {
             federation_state: Arc::new(FederationState::new()),
             service_registry: Arc::new(FederatedServiceRegistry::new()),
+            capability_registry: None,
         });
 
         let debug_str = format!("{:?}", state);

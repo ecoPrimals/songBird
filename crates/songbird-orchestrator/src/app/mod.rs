@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use super::core::{RegistryConfig, ServiceRegistry};
+use super::core::{RegistryConfig, biome::ServiceRegistry};
 use anyhow::Result;
 use songbird_config::{
     capability_endpoints, // 🍼 NEW: Capability-based discovery
@@ -9,8 +9,8 @@ use songbird_config::{
         PrimalConfiguration, PrimalEndpoint,
     },
     canonical::primals::QosMetrics, // ✅ Migrated from universal_primals
-    SongbirdConfig,
 };
+use songbird_types::config::CanonicalSongbirdConfig;
 // use songbird_federation::{//     FederationConfig,
 //     canonical_federation::CanonicalFederation)
 // }; // Temporarily disabled - complex type mismatches need resolution
@@ -29,8 +29,8 @@ use tracing::{error, info, warn};
 /// Main orchestrator application
 #[allow(dead_code)]
 pub struct SongbirdOrchestrator {
-    _config: SongbirdConfig,
-    _service_registry: Arc<ServiceRegistry>,
+    _config: CanonicalSongbirdConfig,
+    _service_registry: Arc<FederatedServiceRegistry>,
     // gaming_manager: Arc<GamingManager>, // Temporarily disabled - gaming module not available
     // federation_manager: Arc<CanonicalFederation>, // Temporarily disabled
     federation_coordinator: Option<Arc<FederationCoordinator>>,
@@ -109,11 +109,11 @@ impl SongbirdOrchestrator {
     }
 
     /// Create new orchestrator instance
-    pub async fn new(config: SongbirdConfig) -> Result<Self> {
+    pub async fn new(config: CanonicalSongbirdConfig) -> Result<Self> {
         let (shutdown_sender, shutdown_signal) = tokio::sync::broadcast::channel(1);
 
-        // Initialize service registry
-        let service_registry = Arc::new(ServiceRegistry::new(RegistryConfig::default()));
+        // Initialize service registry (using FederatedServiceRegistry)
+        let service_registry = Arc::new(FederatedServiceRegistry::new());
 
         // // Initialize gaming manager (no parameters) - Temporarily disabled
         // let gaming_manager = Arc::new(GamingManager::new().await?);
@@ -215,19 +215,11 @@ impl SongbirdOrchestrator {
 
         // Initialize universal security integration using primal registry
         #[allow(clippy::branches_sharing_code)]
-        // Temporary: both branches return placeholder until security integration is re-enabled
-        let security_integration = if let Some(security_primal) =
-            config.primal_registry.as_ref().and_then(|registry| {
-                registry
-                    .primals
-                    .values()
-                    .find(|p| p.capabilities.iter().any(|cap| cap.capability_type == "security"))
-            }) {
-            info!(
-                "🔐 Initializing universal security integration with {}",
-                security_primal.display_name
-            );
-            // Arc::new(UniversalSecurityIntegration::new(security_primal.clone().await?) // Temporarily disabled
+        // Temporary: Placeholder until security integration is re-enabled with CanonicalSongbirdConfig
+        // TODO: Migrate to use config.primals (CanonicalPrimalConfig) instead of old primal_registry
+        let security_integration = if let Some(_security_primal) = None::<String> {
+            // This branch is temporarily disabled during config migration
+            info!("🔐 Security integration placeholder");
             Arc::new(())
         } else {
             // 🍼 MIGRATED: Capability-based security discovery (was hardcoded "beardog")
@@ -322,13 +314,13 @@ impl SongbirdOrchestrator {
 
     /// Get configuration reference
     #[must_use]
-    pub fn config(&self) -> &SongbirdConfig {
+    pub fn config(&self) -> &CanonicalSongbirdConfig {
         &self._config
     }
 
     /// Get service registry reference
     #[must_use]
-    pub fn service_registry(&self) -> &Arc<ServiceRegistry> {
+    pub fn service_registry(&self) -> &Arc<FederatedServiceRegistry> {
         &self._service_registry
     }
 
@@ -390,6 +382,16 @@ impl SongbirdOrchestrator {
         // Build the app with federation and deployment routes
         let deployment_state = crate::server::deployment_api::DeploymentState::new();
         
+        // Create compute API state for intelligent routing
+        let compute_state = crate::server::compute_api::ComputeApiState::new(
+            Arc::clone(&self.federation_state),
+            Arc::clone(&self.federated_service_registry),
+        );
+        
+        // Create compute API router with state
+        let compute_router = crate::server::compute_api::compute_routes()
+            .with_state(compute_state);
+
         let app = Router::new()
             .nest(
                 "/api/federation",
@@ -397,6 +399,10 @@ impl SongbirdOrchestrator {
                     Arc::clone(&self.federation_state),
                     Arc::clone(&self.federated_service_registry),
                 ),
+            )
+            .nest(
+                "/api/compute",  // ✅ NEW: Intelligent capability routing API (Nov 9, 2025)
+                compute_router,
             )
             .nest(
                 "/api/deployment",
@@ -760,7 +766,7 @@ pub async fn run_health_check(orchestrator: &SongbirdOrchestrator) -> Result<()>
 }
 
 /// Start the orchestrator with configuration
-pub async fn start_orchestrator(config: SongbirdConfig) -> Result<()> {
+pub async fn start_orchestrator(config: CanonicalSongbirdConfig) -> Result<()> {
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
     orchestrator.start().await?;
 
@@ -773,12 +779,12 @@ pub async fn start_orchestrator(config: SongbirdConfig) -> Result<()> {
 
 /// Simple orchestrator wrapper
 pub struct Orchestrator {
-    _config: SongbirdConfig,
+    _config: CanonicalSongbirdConfig,
 }
 
 impl Orchestrator {
     #[must_use]
-    pub fn new(config: SongbirdConfig) -> Self {
+    pub fn new(config: CanonicalSongbirdConfig) -> Self {
         Self {
             _config: config,
         }

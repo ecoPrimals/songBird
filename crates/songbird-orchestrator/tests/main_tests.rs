@@ -15,7 +15,7 @@
 
 use anyhow::Result;
 use serial_test::serial;
-use songbird_config::SongbirdConfig;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::SongbirdOrchestrator;
 use songbird_test_utils::network_fixtures::*;
 use songbird_test_utils::test_bind_address;
@@ -30,7 +30,7 @@ use std::env;
 #[tokio::test]
 async fn test_configuration_default_creation() {
     // Modern: Config creates sensible defaults
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Verify core fields exist
     assert!(!config.environment.is_empty());
@@ -46,7 +46,7 @@ async fn test_configuration_default_creation() {
 #[tokio::test]
 async fn test_configuration_test_defaults() {
     // Modern: Use dedicated test_defaults() method
-    let config = SongbirdConfig::test_defaults();
+    let config = CanonicalSongbirdConfig::test_defaults();
 
     assert_eq!(config.environment, "test");
     assert!(!config.security.enabled); // Test mode: security off
@@ -58,19 +58,19 @@ async fn test_configuration_test_defaults() {
 fn test_environment_configuration() {
     // Test environment variable handling
     env::set_var("SONGBIRD_ENV", "staging");
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     assert_eq!(config.environment, "staging");
     env::remove_var("SONGBIRD_ENV");
 
     // Test default environment
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     assert_eq!(config.environment, "development");
 }
 
 #[tokio::test]
 async fn test_configuration_validation() -> SongbirdResult<()> {
     // Modern: Config validation through construction
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Valid config should have reasonable values
     assert!(config.network.port_range.start > 0);
@@ -87,7 +87,7 @@ async fn test_configuration_validation() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_orchestrator_creation() -> Result<()> {
     // Modern: Create orchestrator with test config
-    let config = SongbirdConfig::test_defaults();
+    let config = CanonicalSongbirdConfig::test_defaults();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Verify orchestrator was created - config should be accessible
@@ -99,7 +99,7 @@ async fn test_orchestrator_creation() -> Result<()> {
 #[tokio::test]
 async fn test_orchestrator_lifecycle() -> Result<()> {
     // Modern: Test start/stop lifecycle
-    let config = SongbirdConfig::test_defaults();
+    let config = CanonicalSongbirdConfig::test_defaults();
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 
     // Start should succeed
@@ -117,7 +117,7 @@ async fn test_orchestrator_lifecycle() -> Result<()> {
 
 #[test]
 fn test_network_configuration_structure() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let network = &config.network;
 
     // Modern: Verify NetworkConfig fields
@@ -130,7 +130,7 @@ fn test_network_configuration_structure() {
 
 #[test]
 fn test_network_port_range_validation() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Port range should be valid (u16 is always in range)
     let start = config.network.port_range.start;
@@ -142,7 +142,7 @@ fn test_network_port_range_validation() {
 
 #[test]
 fn test_network_bind_address() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Bind address should be valid
     let addr = &config.network.bind_address;
@@ -163,7 +163,7 @@ fn test_network_bind_address() {
 
 #[test]
 fn test_security_configuration_structure() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let security = &config.security;
 
     // Modern: Verify SecurityConfig structure
@@ -174,13 +174,13 @@ fn test_security_configuration_structure() {
 
 #[test]
 fn test_security_defaults() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Development should have security enabled
     assert!(config.security.enabled || config.environment == "test");
 
     // Test config should have security disabled
-    let test_config = SongbirdConfig::test_defaults();
+    let test_config = CanonicalSongbirdConfig::test_defaults();
     assert!(!test_config.security.enabled);
 }
 
@@ -190,7 +190,7 @@ fn test_security_defaults() {
 
 #[test]
 fn test_discovery_configuration_structure() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let discovery = &config.discovery;
 
     // Modern: Verify DiscoveryConfig fields
@@ -200,7 +200,7 @@ fn test_discovery_configuration_structure() {
 
 #[test]
 fn test_discovery_health_check_config() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Health check should have reasonable defaults
     assert!(config.discovery.health_check.interval_seconds > 0);
@@ -214,7 +214,7 @@ fn test_discovery_health_check_config() {
 
 #[test]
 fn test_observability_configuration_structure() {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let observability = &config.observability;
 
     // Modern: Verify ObservabilityConfig fields
@@ -226,7 +226,7 @@ fn test_observability_configuration_structure() {
 
 #[test]
 fn test_observability_defaults() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Metrics should be enabled by default
     assert!(config.observability.metrics.enabled);
@@ -242,7 +242,7 @@ fn test_observability_defaults() -> SongbirdResult<()> {
 
 #[test]
 fn test_performance_configuration() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Modern: Verify PerformanceConfig
     let perf = config.performance.ok_or_else(|| {
@@ -255,7 +255,7 @@ fn test_performance_configuration() -> SongbirdResult<()> {
 
 #[test]
 fn test_performance_tuning_options() -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let perf = config.performance.ok_or_else(|| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
@@ -275,7 +275,7 @@ fn test_performance_tuning_options() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_error_handling_invalid_config() {
     // Modern: Test with edge case config (start == end)
-    let mut config = SongbirdConfig::test_defaults();
+    let mut config = CanonicalSongbirdConfig::test_defaults();
     config.network.port_range.start = 8000;
     config.network.port_range.end = 8000; // Edge case: no range
 
@@ -294,7 +294,7 @@ async fn test_error_handling_invalid_config() {
 #[tokio::test]
 async fn test_async_runtime_compatibility() {
     // Modern: Verify async operations work correctly
-    let config = SongbirdConfig::test_defaults();
+    let config = CanonicalSongbirdConfig::test_defaults();
 
     // Should be able to create orchestrator in async context
     let result = SongbirdOrchestrator::new(config).await;
@@ -304,7 +304,7 @@ async fn test_async_runtime_compatibility() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_multi_thread_compatibility() {
     // Modern: Test with multi-threaded runtime
-    let config = SongbirdConfig::test_defaults();
+    let config = CanonicalSongbirdConfig::test_defaults();
     let orchestrator = SongbirdOrchestrator::new(config).await;
     assert!(orchestrator.is_ok());
 }
@@ -320,7 +320,7 @@ fn test_environment_variable_integration() {
     env::set_var("SONGBIRD_ENV", "production");
     env::set_var("SONGBIRD_BIND_ADDRESS", "0.0.0.0");
 
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     assert_eq!(config.environment, "production");
 
     env::remove_var("SONGBIRD_ENV");
@@ -334,7 +334,7 @@ fn test_environment_variable_integration() {
 #[tokio::test]
 async fn test_comprehensive_configuration_validation() {
     // Modern: Comprehensive validation of all config components
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     // Environment
     assert!(!config.environment.is_empty());
@@ -360,7 +360,7 @@ async fn test_comprehensive_configuration_validation() {
 #[tokio::test]
 async fn test_full_orchestrator_workflow() -> Result<()> {
     // Modern: End-to-end test of orchestrator lifecycle
-    let config = SongbirdConfig::test_defaults();
+    let config = CanonicalSongbirdConfig::test_defaults();
 
     // Create
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
@@ -385,7 +385,7 @@ async fn test_full_orchestrator_workflow() -> Result<()> {
 #[test]
 fn test_config_is_clonable() -> SongbirdResult<()> {
     // Modern: Config should implement Clone for flexibility
-    let config1 = SongbirdConfig::default();
+    let config1 = CanonicalSongbirdConfig::default();
     let config2 = config1.clone();
 
     assert_eq!(config1.environment, config2.environment);
@@ -395,7 +395,7 @@ fn test_config_is_clonable() -> SongbirdResult<()> {
 #[test]
 fn test_config_is_debug_printable() -> SongbirdResult<()> {
     // Modern: Config should implement Debug
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
     let debug_str = format!("{:?}", config);
 
     assert!(!debug_str.is_empty());
@@ -428,7 +428,7 @@ fn test_builder_pattern_compatibility() {
 fn test_production_configuration() {
     // Modern: Test production-specific config
     env::set_var("SONGBIRD_ENV", "production");
-    let config = SongbirdConfig::default();
+    let config = CanonicalSongbirdConfig::default();
 
     assert_eq!(config.environment, "production");
     assert!(config.security.enabled);
@@ -439,7 +439,7 @@ fn test_production_configuration() {
 #[tokio::test]
 async fn test_graceful_shutdown() -> Result<()> {
     // Modern: Test graceful shutdown behavior
-    let config = SongbirdConfig::test_defaults();
+    let config = CanonicalSongbirdConfig::test_defaults();
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
 
     orchestrator.start().await?;
