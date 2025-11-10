@@ -431,21 +431,8 @@ pub struct CacheConfig {
 }
 
 /// Evaluation configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EvaluationConfig {
-    /// Default Timeout Ms field
-
-    pub default_timeout_ms: u64,
-    /// Enable Analytics field
-    pub enable_analytics: bool,
-    /// Enable Debugging field
-    pub enable_debugging: bool,
-    /// Max Rule Depth field
-    pub max_rule_depth: u32,
-    /// Enable Context Enrichment field
-    pub enable_context_enrichment: bool ,
- )
-}
+// ✅ CONSOLIDATED: Re-export from songbird-discovery
+pub use songbird_discovery::traits::feature_flags::EvaluationConfig;
 
 /// Monitoring configuration for feature flags
 #[derive(Debug, Clone, Serialize, Deserialize)]

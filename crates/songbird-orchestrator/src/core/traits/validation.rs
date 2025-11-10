@@ -426,43 +426,12 @@ pub struct ValidationStats {
 }
 
 /// Validation configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationConfig {
-    /// Whether validation is enabled
-    /// Enabled field
-
-    pub enabled: bool,
-    /// Validation timeout in milliseconds
-        pub timeout_ms: u64,
-    /// Whether to fail fast on first error
-        pub fail_fast: bool,
-    /// Maximum number of errors to collect
-        pub max_errors: u32,
-    /// Whether to collect warnings
-    /// Collect Warnings field
-
-    pub collect_warnings: bool,
-    /// Cache configuration
-        pub cache: ValidationCacheConfig,
-    /// Error handling configuration
-    /// Error Handling field
-
-    pub error_handling: ErrorHandlingConfig ,
- )
-}
+// ✅ CONSOLIDATED: Re-export from songbird-discovery
+pub use songbird_discovery::traits::validation::ValidationConfig;
 
 /// Cache configuration for validation
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidationCacheConfig {
-    /// Enabled field
-
-    pub enabled: bool,
-    /// Ttl Seconds field
-    pub ttl_seconds: u64,
-    /// Max Entries field
-    pub max_entries: u32 ,
- )
-}
+// ✅ CONSOLIDATED: Re-export from songbird-discovery
+pub use songbird_discovery::traits::validation::ValidationCacheConfig;
 
 /// Error handling configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

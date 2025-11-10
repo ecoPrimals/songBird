@@ -353,21 +353,8 @@ pub struct TrackingConfig {
 }
 
 /// Resource cleanup configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CleanupConfig {
-    /// Custom retry strategy configuration
-
-    pub strategy: String,
-    /// Cleanup Interval field
-    pub cleanup_interval: Duration,
-    /// Max Resource Age field
-    pub max_resource_age: Duration,
-    /// Cleanup On Shutdown field
-    pub cleanup_on_shutdown: bool,
-    /// Force Cleanup Timeout field
-    pub force_cleanup_timeout: Duration ,
- )
-}
+// ✅ CONSOLIDATED: Re-export from songbird-discovery
+pub use songbird_discovery::traits::resource_management::CleanupConfig;
 
 /// Resource monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

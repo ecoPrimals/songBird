@@ -47,26 +47,8 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogConfig {
-    pub level: String,
-    pub format: String,
-    pub output: String,
-    pub file_rotation: bool,
-    pub max_file_size_mb: u32,
-}
-
-impl Default for LogConfig {
-    fn default() -> Self {
-        Self {
-            level: get_log_level(),
-            format: "json".to_string(),
-            output: "stdout".to_string(),
-            file_rotation: true,
-            max_file_size_mb: 100,
-        }
-    }
-}
+// ✅ CONSOLIDATED: Re-export from canonical location
+pub use crate::canonical::environment::LogConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::struct_field_names)] // Endpoint suffix is intentional and clear

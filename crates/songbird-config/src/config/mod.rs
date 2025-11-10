@@ -232,15 +232,50 @@ impl SongbirdConfig {
     }
 }
 
-/// Network configuration - Re-export of canonical version
-/// 
-/// **CONSOLIDATED**: This struct has been migrated to canonical location.
-/// Using canonical::network::CanonicalNetworkConfig via type alias for backward compatibility.
-/// 
-/// **Migration**: Update imports to use `songbird_config::canonical::network::CanonicalNetworkConfig`
-pub use crate::canonical::network::CanonicalNetworkConfig as NetworkConfig;
+/// Network configuration - domain-specific variant for config module
+/// (Different fields from CanonicalNetworkConfig - both are valid for their contexts)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkConfig {
+    /// Bind address (configurable, no hardcoded defaults)
+    pub bind_address: String,
 
-// Supporting types for NetworkConfig (keep these as they may be used elsewhere)
+    /// Port range for dynamic allocation
+    pub port_range: PortRange,
+
+    /// Connection timeout in milliseconds
+    pub connection_timeout_ms: u64,
+
+    /// Maximum concurrent connections
+    pub max_connections: usize,
+
+    /// Enable IPv6 support
+    pub enable_ipv6: bool,
+
+    /// TLS configuration
+    pub tls: Option<TlsConfig>,
+
+    /// Proxy configuration
+    pub proxy: Option<ProxyConfig>,
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self {
+            bind_address: SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0"),
+            port_range: PortRange {
+                start: SafeEnv::get_port("SONGBIRD_PORT_START", 8000),
+                end: SafeEnv::get_port("SONGBIRD_PORT_END", 9000),
+            },
+            connection_timeout_ms: SafeEnv::get_usize("SONGBIRD_CONNECTION_TIMEOUT_MS", 30000) as u64,
+            max_connections: SafeEnv::get_usize("SONGBIRD_MAX_CONNECTIONS", 1000),
+            enable_ipv6: SafeEnv::get_bool("SONGBIRD_ENABLE_IPV6", true),
+            tls: None,   // Configured separately if needed
+            proxy: None, // Configured separately if needed
+        }
+    }
+}
+
+/// Port range configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortRange {
     pub start: u16,

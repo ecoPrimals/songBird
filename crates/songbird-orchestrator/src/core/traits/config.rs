@@ -49,19 +49,8 @@ pub struct ConfigProviderInfo {
 )
 }
 /// Configuration metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigMetadata {
-    /// Source field
-
-    pub source: String,
-    /// Last Modified field
-    pub last_modified: chrono::DateTime<chrono::Utc>,
-    /// Checksum field
-    pub checksum: String,
-    /// Version string
-    pub version: u64 ,
- )
-}
+// ✅ CONSOLIDATED: Re-export from songbird-discovery
+pub use songbird_discovery::traits::config::ConfigMetadata;
 /// Configuration format enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConfigFormat {

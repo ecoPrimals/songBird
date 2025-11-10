@@ -9,19 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// Unified experiment configuration - **MIGRATED FROM CHAOS ENGINEERING**
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ExperimentConfig {
-    /// Network fault configuration
-    pub network_fault: Option<NetworkFaultConfig>,
-    /// Service failure configuration
-    pub service_failure: Option<ServiceFailureConfig>,
-    /// Resource constraint configuration
-    pub resource_constraint: Option<ResourceConstraintConfig>,
-    /// Byzantine failure configuration
-    pub byzantine_failure: Option<ByzantineFailureConfig>,
-    /// Performance degradation configuration
-    pub performance_degradation: Option<PerformanceDegradationConfig>,
-}
+// ✅ CONSOLIDATED: Re-export from songbird-test-utils
+pub use songbird_test_utils::chaos_engineering::config::ExperimentConfig;
 
 /// Unified network fault injection configuration - **MIGRATED**
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

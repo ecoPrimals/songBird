@@ -91,22 +91,8 @@ impl Default for LoggingConfig  {fn default() -> Self {
 }
 
 /// Log rotation configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogRotationConfig {
-    pub enabled: bool,
-    pub max_size_mb: u64,
-    pub max_files: u32,
-}
-
-impl Default for LogRotationConfig {
-    fn default() -> Self {
-        Self {
-            enabled: env::var("SONGBIRD_LOG_ROTATION_ENABLED").is_ok(),
-            max_size_mb: 100,
-            max_files: 10,
-        }
-    }
-}
+// ✅ CONSOLIDATED: Re-export from canonical location
+pub use crate::canonical::observability::LogRotationConfig;
 
 /// Tracing configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
