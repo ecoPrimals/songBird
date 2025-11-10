@@ -24,13 +24,10 @@ pub struct ServiceEndpoint  {pub name: String,
 }
 
 /// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig  {pub path: String,
-    pub interval_seconds: u64,
-    pub timeout_seconds: u64,
-    pub failure_threshold: u32,
-    pub success_threshold: u32,
-}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Field mappings: success_threshold→recovery_threshold, interval_seconds→interval_secs
+pub use songbird_config::canonical::resilience::HealthCheckConfig;
 
 /// Integration preferences
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -158,22 +158,11 @@ pub struct ConnectionPoolConfig  {/// Maximum number of connections
 }
 
 /// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig  {/// Health check endpoint
-    pub endpoint: String,
-
-    /// Health check interval
-    pub interval_seconds: u64,
-
-    /// Health check timeout
-    pub timeout_seconds: u64,
-
-    /// Number of retries before marking unhealthy
-    pub retry_count: u32,
-
-    /// Whether to enable health checks
-    pub enabled: bool,
-}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// **Field mappings**: endpoint→path, interval_seconds→interval_secs, 
+/// timeout_seconds→timeout_secs, retry_count→max_retries
+pub use songbird_config::canonical::resilience::HealthCheckConfig;
 
 /// Load balancing strategy
 #[derive(Debug, Clone, Serialize, Deserialize)]

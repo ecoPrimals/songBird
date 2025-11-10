@@ -22,14 +22,10 @@ pub struct HealthCheckResult {
 }
 
 /// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    pub interval: Duration,
-    pub timeout: Duration,
-    pub retries: u32,
-    pub endpoint: Option<String>,
-    pub enabled: bool,
-}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Field mappings: retries→max_retries, endpoint(Option)→path(String, use default if None)
+pub use songbird_config::canonical::resilience::HealthCheckConfig;
 
 /// Health status enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Copy)]

@@ -243,10 +243,13 @@ fn default() -> Self  {Self {
 }
 
 /// Health check configuration
+///
+/// **NOTE** (Week 2, Nov 10 2025): This is kept in types crate for now as types doesn't 
+/// depend on config crate. Consider moving to config crate or making types depend on config.
+/// Fields aligned with canonical: enabled, path (was endpoint), interval_secs (was timeout_seconds), max_retries (was retries)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthCheckConfig {
-
-/// Enable health checks
+    /// Enable health checks
     pub enabled: bool,
     /// Health check endpoint
     pub endpoint: String,
@@ -254,20 +257,16 @@ pub struct HealthCheckConfig {
     pub timeout_seconds: u64,
     /// Number of retries
     pub retries: u32,
-
-
 }
 
 impl Default for HealthCheckConfig {
-
-fn default() -> Self  {Self {
+    fn default() -> Self {
+        Self {
             enabled: true,
-            endpoint: "/api/status".to_string(),
-            timeout_seconds: 5,
-            retries: 3,
-
-
-}
+            endpoint: "/health".to_string(),
+            timeout_seconds: 10,
+            retries: 0,
+        }
     }
 }
 

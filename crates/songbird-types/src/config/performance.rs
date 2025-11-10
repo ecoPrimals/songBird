@@ -569,31 +569,31 @@ pub enum LoadBalancingAlgorithm {
     IpHash,
 }
 /// Health check configuration
+///
+/// **NOTE** (Week 2, Nov 10 2025): Kept in types crate (doesn't depend on config).
+/// Fields aligned with canonical naming where possible.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthCheckConfig {
     /// Enable health checks
-    /// Enabled field
     pub enabled: bool,
     /// Health check interval
-    /// Interval field
     pub interval: Duration,
     /// Health check timeout
     pub timeout: Duration,
-    /// Unhealthy threshold (consecutive failures)
-    /// Unhealthy Threshold field
-    pub unhealthy_threshold: u32,
-    /// Healthy threshold (consecutive successes)
-    /// Healthy Threshold field
-    pub healthy_threshold: u32,
+    /// Failure threshold (consecutive failures)
+    pub failure_threshold: u32,
+    /// Recovery threshold (consecutive successes)
+    pub recovery_threshold: u32,
 }
+
 impl Default for HealthCheckConfig {
     fn default() -> Self {
         Self {
             enabled: true,
             interval: Duration::from_secs(30),
-            timeout: Duration::from_secs(5),
-            unhealthy_threshold: 3,
-            healthy_threshold: 2,
+            timeout: Duration::from_secs(10),
+            failure_threshold: 3,
+            recovery_threshold: 2,
         }
     }
 }

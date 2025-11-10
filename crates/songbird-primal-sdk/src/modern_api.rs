@@ -384,25 +384,12 @@ pub enum RetryStrategy  {/// Fixed delay between retries
 }
 
 /// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig  {/// Health check endpoint path
-    pub endpoint: String,
-
-    /// Health check interval in seconds
-    pub interval_secs: u64,
-
-    /// Health check timeout in seconds
-    pub timeout_secs: u64,
-
-    /// Number of consecutive failures before marking unhealthy
-    pub unhealthy_threshold: u32,
-
-    /// Number of consecutive successes before marking healthy
-    pub healthy_threshold: u32,
-
-    /// Expected response codes for healthy status
-    pub expected_codes: Vec<u16>,
-}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// **Note**: This variant had extra fields (unhealthy_threshold→failure_threshold, 
+/// healthy_threshold→recovery_threshold, expected_codes not in canonical).
+/// Consider adding expected_codes to canonical if needed.
+pub use songbird_config::canonical::resilience::HealthCheckConfig;
 
 /// Contact information
 #[derive(Debug, Clone, Serialize, Deserialize)]
