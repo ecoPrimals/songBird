@@ -2,31 +2,31 @@
 //!
 //! **MODERN LOAD BALANCING** ✅
 
-use super::{ComponentHealth, HealthStatus, LoadBalancingConfig};
+use super::{ComponentHealth, HealthStatus};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
 
-/// Load balancing strategies
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum LoadBalancingStrategy {
-    RoundRobin,
-    LeastConnections,
-    WeightedRoundRobin,
-    HealthAware,
-}
+// Import comprehensive LoadBalancerConfig (Nov 10, 2025 consolidation)
+pub use songbird_config::unified::robustness::{
+    LoadBalancerConfig as CanonicalLoadBalancerConfig,
+    LoadBalancingAlgorithm,
+};
+
+/// Load balancing strategies (re-exported from canonical for compatibility)
+pub use LoadBalancingAlgorithm as LoadBalancingStrategy;
 
 /// Load balancer implementation
 #[derive(Debug)]
 pub struct LoadBalancer {
-    config: LoadBalancingConfig,
-    strategy: LoadBalancingStrategy,
+    config: CanonicalLoadBalancerConfig,
+    strategy: LoadBalancingAlgorithm,
 }
 
 impl LoadBalancer {
     #[must_use]
-    pub fn new(config: LoadBalancingConfig) -> Self {
+    pub fn new(config: CanonicalLoadBalancerConfig) -> Self {
         Self {
-            strategy: config.strategy.clone(),
+            strategy: config.algorithm.clone(),
             config,
         }
     }
@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_load_balancer_new() {
-        let config = LoadBalancingConfig::default();
+        let config = CanonicalLoadBalancerConfig::default();
         let lb = LoadBalancer::new(config);
 
         assert!(format!("{:?}", lb).contains("LoadBalancer"));
@@ -86,10 +86,17 @@ mod tests {
 
     #[test]
     fn test_load_balancer_new_with_custom_strategy() {
-        let config = LoadBalancingConfig {
-            strategy: LoadBalancingStrategy::LeastConnections,
-            health_check_interval: 60,
-            max_retries: 5,
+        use songbird_config::unified::robustness::HealthCheckConfig;
+        use std::time::Duration;
+        
+        let config = CanonicalLoadBalancerConfig {
+            algorithm: LoadBalancingAlgorithm::LeastConnections,
+            health_check: HealthCheckConfig::default(),
+            sticky_sessions: false,
+            session_timeout: Duration::from_secs(300),
+            max_connections_per_backend: 100,
+            connection_timeout: Duration::from_secs(60),
+            fail_fast: false,
         };
 
         let lb = LoadBalancer::new(config);
@@ -100,7 +107,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_balancer_initialize() {
-        let config = LoadBalancingConfig::default();
+        let config = CanonicalLoadBalancerConfig::default();
         let mut lb = LoadBalancer::new(config);
 
         let result = lb.initialize().await;
@@ -109,7 +116,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_balancer_start() -> SongbirdResult<()> {
-        let config = LoadBalancingConfig::default();
+        let config = CanonicalLoadBalancerConfig::default();
         let mut lb = LoadBalancer::new(config);
 
         lb.initialize().await?;
@@ -121,7 +128,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_balancer_stop() -> SongbirdResult<()> {
-        let config = LoadBalancingConfig::default();
+        let config = CanonicalLoadBalancerConfig::default();
         let mut lb = LoadBalancer::new(config);
 
         lb.initialize().await?;
@@ -134,7 +141,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_balancer_health_check() -> SongbirdResult<()> {
-        let config = LoadBalancingConfig::default();
+        let config = CanonicalLoadBalancerConfig::default();
         let lb = LoadBalancer::new(config);
 
         let health = lb.health_check().await?;
@@ -146,7 +153,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_balancer_full_lifecycle() -> SongbirdResult<()> {
-        let config = LoadBalancingConfig::default();
+        let config = CanonicalLoadBalancerConfig::default();
         let mut lb = LoadBalancer::new(config);
 
         lb.initialize().await?;
@@ -165,7 +172,7 @@ mod tests {
             LoadBalancingStrategy::RoundRobin,
             LoadBalancingStrategy::LeastConnections,
             LoadBalancingStrategy::WeightedRoundRobin,
-            LoadBalancingStrategy::HealthAware,
+            LoadBalancingStrategy::HealthBased,
         ];
 
         assert_eq!(strategies.len(), 4);
@@ -179,7 +186,7 @@ mod tests {
             LoadBalancingStrategy::LeastConnections,
             LoadBalancingStrategy::WeightedRoundRobin
         );
-        assert_ne!(LoadBalancingStrategy::WeightedRoundRobin, LoadBalancingStrategy::HealthAware);
+        assert_ne!(LoadBalancingStrategy::WeightedRoundRobin, LoadBalancingStrategy::HealthBased);
     }
 
     #[test]
@@ -192,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_load_balancing_strategy_serialization() -> Result<(), Box<dyn std::error::Error>> {
-        let strategy = LoadBalancingStrategy::HealthAware;
+        let strategy = LoadBalancingStrategy::HealthBased;
         let json = serde_json::to_string(&strategy).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
             message: format!("Serialization failed: {}", e),
@@ -211,18 +218,25 @@ mod tests {
 
     #[test]
     fn test_load_balancing_config_with_different_strategies() {
+        use songbird_config::unified::robustness::HealthCheckConfig;
+        use std::time::Duration;
+        
         let strategies = vec![
-            LoadBalancingStrategy::RoundRobin,
-            LoadBalancingStrategy::LeastConnections,
-            LoadBalancingStrategy::WeightedRoundRobin,
-            LoadBalancingStrategy::HealthAware,
+            LoadBalancingAlgorithm::RoundRobin,
+            LoadBalancingAlgorithm::LeastConnections,
+            LoadBalancingAlgorithm::WeightedRoundRobin,
+            LoadBalancingAlgorithm::HealthBased,
         ];
 
-        for strategy in strategies {
-            let config = LoadBalancingConfig {
-                strategy: strategy.clone(),
-                health_check_interval: 30,
-                max_retries: 3,
+        for algorithm in strategies {
+            let config = CanonicalLoadBalancerConfig {
+                algorithm: algorithm.clone(),
+                health_check: HealthCheckConfig::default(),
+                sticky_sessions: false,
+                session_timeout: Duration::from_secs(300),
+                max_connections_per_backend: 100,
+                connection_timeout: Duration::from_secs(30),
+                fail_fast: false,
             };
 
             let lb = LoadBalancer::new(config);
@@ -232,7 +246,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_balancer_health_check_message_format() -> SongbirdResult<()> {
-        let config = LoadBalancingConfig::default();
+        let config = CanonicalLoadBalancerConfig::default();
         let lb = LoadBalancer::new(config);
 
         let health = lb.health_check().await?;
@@ -249,7 +263,7 @@ mod tests {
 
     #[test]
     fn test_load_balancer_debug_format() {
-        let config = LoadBalancingConfig::default();
+        let config = CanonicalLoadBalancerConfig::default();
         let lb = LoadBalancer::new(config);
 
         let debug_string = format!("{:?}", lb);

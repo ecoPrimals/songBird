@@ -61,8 +61,8 @@ fn test_load_balancing_config_custom() {
 fn test_retry_config_default() {
     let config = RetryConfig::default();
     assert_eq!(config.max_attempts, 3);
-    assert_eq!(config.base_delay, Duration::from_millis(100));
-    assert_eq!(config.max_delay, Duration::from_secs(10));
+    assert_eq!(config.initial_delay, Duration::from_millis(100));
+    assert_eq!(config.max_delay, Duration::from_secs(30));
     assert_eq!(config.backoff_multiplier, 2.0);
 }
 
@@ -70,9 +70,11 @@ fn test_retry_config_default() {
 fn test_retry_config_custom() {
     let config = RetryConfig {
         max_attempts: 5,
-        base_delay: Duration::from_millis(200),
+        initial_delay: Duration::from_millis(200),
         max_delay: Duration::from_secs(30),
         backoff_multiplier: 1.5,
+        jitter: true,
+        enabled: true,
     };
 
     assert_eq!(config.max_attempts, 5);
@@ -83,18 +85,20 @@ fn test_retry_config_custom() {
 fn test_circuit_breaker_config_default() {
     let config = CircuitBreakerConfig::default();
     assert_eq!(config.failure_threshold, 5);
-    assert_eq!(config.failure_window, Duration::from_secs(60));
-    assert_eq!(config.recovery_timeout, Duration::from_secs(30));
-    assert_eq!(config.success_threshold, 2);
+    assert_eq!(config.timeout, Duration::from_secs(60));
+    assert_eq!(config.success_threshold, 3);
+    assert_eq!(config.half_open_max_requests, 10);
+    assert!(config.enabled);
 }
 
 #[test]
 fn test_circuit_breaker_config_custom() {
     let config = CircuitBreakerConfig {
         failure_threshold: 10,
-        failure_window: Duration::from_secs(120),
-        recovery_timeout: Duration::from_secs(60),
+        timeout: Duration::from_secs(120),
         success_threshold: 3,
+        half_open_max_requests: 5,
+        enabled: true,
     };
 
     assert_eq!(config.failure_threshold, 10);
@@ -104,23 +108,27 @@ fn test_circuit_breaker_config_custom() {
 #[test]
 fn test_health_check_config_default() {
     let config = HealthCheckConfig::default();
-    assert_eq!(config.interval, Duration::from_secs(30));
-    assert_eq!(config.timeout, Duration::from_secs(5));
-    assert_eq!(config.healthy_threshold, 2);
-    assert_eq!(config.unhealthy_threshold, 3);
+    assert_eq!(config.interval_secs, 30);
+    assert_eq!(config.timeout_secs, 10);
+    assert_eq!(config.recovery_threshold, 2);
+    assert_eq!(config.failure_threshold, 3);
+    assert!(config.enabled);
 }
 
 #[test]
 fn test_health_check_config_custom() {
     let config = HealthCheckConfig {
-        interval: Duration::from_secs(60),
-        timeout: Duration::from_secs(10),
-        healthy_threshold: 3,
-        unhealthy_threshold: 5,
+        enabled: true,
+        interval_secs: 60,
+        timeout_secs: 10,
+        failure_threshold: 5,
+        recovery_threshold: 3,
+        path: "/health".to_string(),
+        max_retries: 3,
     };
 
-    assert_eq!(config.interval, Duration::from_secs(60));
-    assert_eq!(config.unhealthy_threshold, 5);
+    assert_eq!(config.interval_secs, 60);
+    assert_eq!(config.failure_threshold, 5);
 }
 
 #[test]
@@ -165,7 +173,7 @@ fn test_circuit_breaker_config_clone() {
 fn test_health_check_config_clone() {
     let config = HealthCheckConfig::default();
     let cloned = config.clone();
-    assert_eq!(config.interval, cloned.interval);
+    assert_eq!(config.interval_secs, cloned.interval_secs);
 }
 
 #[test]

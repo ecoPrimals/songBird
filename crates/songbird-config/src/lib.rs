@@ -49,6 +49,9 @@ use std::collections::HashMap;
 /// **PRIMARY**: Canonical configuration types - use these for all new code
 pub mod canonical;
 
+/// **UNIFIED**: Unified configuration types consolidating various config patterns
+pub mod unified;
+
 // ============================================================================
 // STABLE MODULES - KEEP
 // ============================================================================

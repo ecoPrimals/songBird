@@ -146,15 +146,18 @@ pub struct WorkflowStep  {/// Step identifier
  )
 }
 
-/// Retry configuration for workflow steps
+/// **Workflow-Specific Retry Configuration**
+/// 
+/// This is intentionally kept separate from canonical RetryConfig because:
+/// 1. Workflow-specific backoff strategies (Fixed, Exponential, Linear)
+/// 2. Custom retry conditions based on workflow semantics
+/// 3. Different from standard operation retries
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig  {/// Maximum retry attempts
-        pub backoff_strategy: BackoffStrategy,
+pub struct WorkflowRetryConfig {
+    /// Backoff strategy for retries
+    pub backoff_strategy: BackoffStrategy,
     /// Retry conditions
-    /// Retry Conditions field
-
-    pub retry_conditions: Vec<RetryCondition> ;,
- )
+    pub retry_conditions: Vec<RetryCondition>,
 }
 
 /// Backoff strategy for retries

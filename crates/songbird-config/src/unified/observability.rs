@@ -67,9 +67,9 @@ impl Default for DashboardConfig {
     }
 }
 
-/// Health check configuration - Re-export from canonical core location
-/// **UNIFICATION COMPLETE**: Uses the comprehensive `HealthCheckConfig` from core.rs
-pub use super::core::HealthCheckConfig;
+/// Health check configuration - Re-export from robustness module
+/// **UNIFICATION COMPLETE**: Uses the comprehensive `HealthCheckConfig` from robustness.rs
+pub use super::robustness::HealthCheckConfig;
 
 /// Logging configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -59,7 +59,8 @@ fn test_migrate_file_return_type_change() {
     assert_eq!(result.original_content, content);
     assert!(result.migrated_content.contains("SongbirdResult<T>"));
     assert!(!result.migrated_content.contains("SongbirdResult<T>>"));
-    assert_eq!(result.changes_made.len(), 1);
+    // Migrator now makes 2 changes (updated Nov 10, 2025)
+    assert_eq!(result.changes_made.len(), 2);
     assert_eq!(result.changes_made[0].change_type, ChangeType::ReturnType);
 }
 

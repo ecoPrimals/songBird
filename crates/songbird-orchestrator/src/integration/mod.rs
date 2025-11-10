@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_integration_manager_creation() {
-        let config = SongbirdConfig::default();
+        let config = CanonicalSongbirdConfig::default();
         let manager = IntegrationManager::new(config);
         assert_eq!(manager.startup_timeout, Duration::from_secs(60));
         assert_eq!(manager.shutdown_timeout, Duration::from_secs(30));
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_timeout_configuration() {
-        let config = SongbirdConfig::default();
+        let config = CanonicalSongbirdConfig::default();
         let manager = IntegrationManager::new(config)
             .with_startup_timeout(Duration::from_secs(120))
             .with_shutdown_timeout(Duration::from_secs(60));

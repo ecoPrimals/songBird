@@ -30,52 +30,15 @@ pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 
 // Default implementation now provided by canonical
 
-/// Retry configuration with exponential backoff
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig {
-    /// Maximum number of retries
-        pub max_retries: u32,
-
-    /// Base delay between retries in milliseconds
-    /// Base delay in milliseconds for exponential backoff
-
-    pub base_delay_ms: u64,
-
-    /// Maximum delay between retries in milliseconds
-        pub max_delay_ms: u64,
-
-    /// Backoff multiplier for exponential backoff
-        pub backoff_multiplier: f64,
-
-    /// Enable jitter to prevent thundering herd
-    /// Enable Jitter field
-
-    pub enable_jitter: bool,
-
-    /// Maximum jitter percentage (0.0 to 1.0)
-    /// Jitter Percentage field
-
-    pub jitter_percentage: f64,
-
-    /// Retry only on specific error types
-    /// Retry On Errors field
-
-    pub retry_on_errors: Vec<super::error_types::RetryableError> ,
- )
-}
-
-impl Default for RetryConfig  {fn default() -> Self  {use super::error_types::RetryableError;
-        Self { max_retries: 3,
-            base_delay_ms: 100,
-            max_delay_ms: 30000,
-            backoff_multiplier: 2.0,
-            enable_jitter: true,
-            jitter_percentage: 0.1,
-            retry_on_errors: vec![
-                RetryableError::NetworkTimeout,
-                RetryableError::ServiceUnavailable,
-                RetryableError::InternalServerError,
-            ]}}}
+/// **CONSOLIDATED**: Re-export of canonical RetryConfig (Nov 10, 2025)
+/// 
+/// Field mapping: max_retries → max_attempts,
+///                base_delay_ms → initial_delay (convert to Duration),
+///                max_delay_ms → max_delay (convert to Duration)
+/// Note: `enable_jitter`, `jitter_percentage`, `retry_on_errors` were orchestrator-specific
+///       These are now handled at usage site or via builder patterns
+/// Default implementation provided by canonical::resilience::RetryConfig
+pub use songbird_config::canonical::resilience::RetryConfig;
 
 /// Timeout configuration with adaptive capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]

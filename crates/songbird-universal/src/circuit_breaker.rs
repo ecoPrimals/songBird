@@ -230,6 +230,8 @@ mod tests {
             failure_threshold: 1,
             timeout: Duration::from_millis(50),
             success_threshold: 2,
+            half_open_max_requests: 10,
+            enabled: true,
         };
         let cb = CircuitBreaker::with_config(config);
 

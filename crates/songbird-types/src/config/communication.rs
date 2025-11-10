@@ -7,6 +7,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 
+// Import canonical configs (Nov 10, 2025 consolidation)
+use crate::config::consolidated_canonical::network::{
+    CanonicalConnectionPoolConfig,
+    CanonicalTlsConfig,
+};
+
 /// **CANONICAL**: Communication Configuration - Single Source of Truth
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CanonicalCommunicationConfig {
@@ -78,8 +84,8 @@ pub struct GrpcConfig {
     /// Tls Enabled field
     pub tls_enabled: bool,
     /// TLS configuration
-    /// Tls Config field
-    pub tls_config: Option<TlsConfig>,
+    /// **CONSOLIDATED**: Now uses CanonicalTlsConfig from consolidated_canonical/network
+    pub tls_config: Option<CanonicalTlsConfig>,
     /// Compression algorithm
     /// Compression field
     pub compression: Option<String>,
@@ -103,22 +109,25 @@ impl Default for GrpcConfig {
     }
 }
 
-/// TLS configuration for secure connections
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct TlsConfig {
-    /// Certificate file path
-    pub cert_file: Option<String>,
-    /// Private key file path
-    pub key_file: Option<String>,
-    /// CA certificate file path
-    pub ca_file: Option<String>,
-    /// Verify peer certificates
-    #[serde(default)]
-    /// Verify Peer field
-    pub verify_peer: bool,
-    /// Server name for
-    pub server_name: Option<String>,
-}
+// ============================================================================
+// NOTE: TlsConfig has been CONSOLIDATED
+// ============================================================================
+//
+// TlsConfig was removed and replaced with CanonicalTlsConfig
+// from crate::config::consolidated_canonical::network
+//
+// Migration: Use CanonicalTlsConfig instead
+// - cert_file (Option<String>) → cert_file (Option<PathBuf>) - use PathBuf::from()
+// - key_file (Option<String>) → key_file (Option<PathBuf>) - use PathBuf::from()
+// - ca_file (Option<String>) → ca_file (Option<PathBuf>) - use PathBuf::from()
+// - verify_peer → verify_peer (same)
+// - server_name → server_name (same)
+// - NEW: enabled, version, cipher_suites, verify_client_cert (for server-side)
+//
+// CanonicalTlsConfig now supports BOTH server and client TLS configurations!
+//
+// Date: November 10, 2025
+// ============================================================================
 
 /// WebSocket configuration - consolidates `WebSocketConfig`s
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -351,8 +360,8 @@ pub struct PerformanceConfig {
     /// Enabled field
     pub enabled: bool,
     /// Connection pooling settings
-    /// Connection Pooling field
-    pub connection_pooling: ConnectionPoolingConfig,
+    /// **CONSOLIDATED**: Now uses CanonicalConnectionPoolConfig from consolidated_canonical/network
+    pub connection_pooling: CanonicalConnectionPoolConfig,
     /// Request batching settings
     /// Request Batching field
     pub request_batching: RequestBatchingConfig,
@@ -365,38 +374,29 @@ impl Default for PerformanceConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            connection_pooling: ConnectionPoolingConfig::default(),
+            connection_pooling: CanonicalConnectionPoolConfig::default(),
             request_batching: RequestBatchingConfig::default(),
             caching: CachingConfig::default(),
         }
     }
 }
 
-/// Connection pooling configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConnectionPoolingConfig {
-    /// Enable connection pooling
-    /// Enabled field
-    pub enabled: bool,
-    /// Maximum pool size
-    pub max_pool_size: usize,
-    /// Minimum pool size
-    /// Min Pool Size field
-    pub min_pool_size: usize,
-    /// Connection idle timeout
-    pub idle_timeout: Duration,
-}
-
-impl Default for ConnectionPoolingConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            max_pool_size: 50,
-            min_pool_size: 5,
-            idle_timeout: Duration::from_secs(300),
-        }
-    }
-}
+// ============================================================================
+// NOTE: ConnectionPoolingConfig has been CONSOLIDATED
+// ============================================================================
+// 
+// ConnectionPoolingConfig was removed and replaced with CanonicalConnectionPoolConfig
+// from crate::config::consolidated_canonical::network
+//
+// Migration: Use CanonicalConnectionPoolConfig instead
+// - enabled field → check if max_size > 0
+// - max_pool_size → max_size
+// - min_pool_size → min_size  
+// - idle_timeout → idle_timeout (same)
+// - NEW: connect_timeout, max_lifetime, health_check_query (use defaults)
+//
+// Date: November 10, 2025
+// ============================================================================
 
 /// Request batching configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

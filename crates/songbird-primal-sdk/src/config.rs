@@ -281,20 +281,11 @@ pub struct EncryptionConfig  {/// Whether to enable encryption
 /// (November 10, 2025 - Unification effort)
 pub use songbird_canonical::config::adapters::CircuitBreakerConfig;
 
-/// Timeout configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TimeoutConfig  {/// Default request timeout
-    pub default_request_timeout_seconds: u64,
-
-    /// Connection timeout
-    pub connection_timeout_seconds: u64,
-
-    /// Read timeout
-    pub read_timeout_seconds: u64,
-
-    /// Write timeout
-    pub write_timeout_seconds: u64,
-}
+/// **CONSOLIDATED**: Timeout configuration - Re-export canonical (Nov 10, 2025)
+/// 
+/// Field mapping: All timeout fields now use Duration from canonical::network::TimeoutConfig
+/// Note: _seconds suffix removed in canonical version
+pub use songbird_config::canonical::network::TimeoutConfig;
 
 /// Monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

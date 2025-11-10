@@ -13,6 +13,7 @@ pub use observability::*;
 // Core modules
 pub mod core;
 pub mod federation;
+pub mod robustness; // Robustness configs (circuit breakers, load balancers, etc.)
 // pub mod network; // ✅ REMOVED: Fully consolidated into canonical::network (Nov 9, 2025)
 // pub mod security; // ARCHIVED: November 8, 2025 - Use canonical::security instead
 // pub mod discovery; // ✅ REMOVED: Fully consolidated into canonical::discovery (Nov 9, 2025)

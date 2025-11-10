@@ -222,9 +222,15 @@ pub struct ExecutionConfig  {/// Whether to execute asynchronously
     pub measure_performance: bool,
 }
 
-/// Hook retry configuration
+/// **Hook-Specific Retry Configuration**
+/// 
+/// This is intentionally kept separate from canonical RetryConfig because:
+/// 1. Simpler model for hooks (no max_delay, jitter, etc.)
+/// 2. Hook-specific `enabled` toggle
+/// 3. Different semantics (hook failure vs operation retry)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig  {/// Enable retries on failure
+pub struct HookRetryConfig {
+    /// Enable retries on failure
     pub enabled: bool,
     /// Maximum retry attempts
     pub max_attempts: u32,

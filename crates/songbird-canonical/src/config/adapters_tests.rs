@@ -5,6 +5,7 @@
 use super::*;
 use songbird_types::config::consolidated_canonical::CanonicalHealthCheckConfig as HealthCheckConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
+use std::time::Duration;
 
 // ============================================================================
 // UniversalAdapterConfig Tests
@@ -250,7 +251,7 @@ fn test_circuit_breaker_default() {
 
     assert!(config.enabled);
     assert_eq!(config.failure_threshold, 5);
-    assert_eq!(config.timeout_seconds, 60);
+    assert_eq!(config.timeout, Duration::from_secs(60));
     assert_eq!(config.success_threshold, 3);
 }
 
@@ -267,9 +268,9 @@ fn test_circuit_breaker_custom_thresholds() {
 #[test]
 fn test_circuit_breaker_timeout() -> SongbirdResult<()> {
     let mut config = CircuitBreakerConfig::default();
-    config.timeout_seconds = 120;
+    config.timeout = Duration::from_secs(120);
 
-    assert_eq!(config.timeout_seconds, 120);
+    assert_eq!(config.timeout, Duration::from_secs(120));
     Ok(())
 }
 
@@ -291,7 +292,7 @@ fn test_circuit_breaker_serialization() -> SongbirdResult<()> {
         .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
 
     assert_eq!(config.failure_threshold, deserialized.failure_threshold);
-    assert_eq!(config.timeout_seconds, deserialized.timeout_seconds);
+    assert_eq!(config.timeout, deserialized.timeout);
     Ok(())
 }
 
@@ -319,8 +320,9 @@ fn test_full_adapter_config_integration() {
             circuit_breaker: CircuitBreakerConfig {
                 enabled: true,
                 failure_threshold: 8,
-                timeout_seconds: 90,
+                timeout: Duration::from_secs(90),
                 success_threshold: 4,
+                half_open_max_requests: 10,
             },
             enable_standalone_failover: true,
         },

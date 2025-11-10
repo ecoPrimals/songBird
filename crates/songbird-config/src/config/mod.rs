@@ -57,6 +57,12 @@ use songbird_types::SafeEnv;
 use std::collections::HashMap;
 // use songbird_config; // FIXED: Circular import removed
 
+// Import canonical configs for consolidation (Nov 10, 2025)
+use songbird_types::config::consolidated_canonical::network::{
+    CanonicalRateLimitConfig,
+    CanonicalTlsConfig,
+};
+
 // Archived modules (moved to _archived_q2_2026/ on November 8, 2025):
 // pub mod agnostic_primals; // Use canonical::primals instead
 
@@ -252,7 +258,8 @@ pub struct NetworkConfig {
     pub enable_ipv6: bool,
 
     /// TLS configuration
-    pub tls: Option<TlsConfig>,
+    /// **CONSOLIDATED**: Now uses CanonicalTlsConfig from songbird-types
+    pub tls: Option<CanonicalTlsConfig>,
 
     /// Proxy configuration
     pub proxy: Option<ProxyConfig>,
@@ -269,7 +276,7 @@ impl Default for NetworkConfig {
             connection_timeout_ms: SafeEnv::get_usize("SONGBIRD_CONNECTION_TIMEOUT_MS", 30000) as u64,
             max_connections: SafeEnv::get_usize("SONGBIRD_MAX_CONNECTIONS", 1000),
             enable_ipv6: SafeEnv::get_bool("SONGBIRD_ENABLE_IPV6", true),
-            tls: None,   // Configured separately if needed
+            tls: None,   // Configured separately if needed (now uses CanonicalTlsConfig)
             proxy: None, // Configured separately if needed
         }
     }
@@ -282,14 +289,25 @@ pub struct PortRange {
     pub end: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TlsConfig {
-    pub enabled: bool,
-    pub cert_path: String,
-    pub key_path: String,
-    pub ca_path: Option<String>,
-    pub verify_client: bool,
-}
+// ============================================================================
+// NOTE: TlsConfig has been CONSOLIDATED
+// ============================================================================
+//
+// TlsConfig was removed and replaced with CanonicalTlsConfig
+// from songbird_types::config::consolidated_canonical::network::CanonicalTlsConfig
+//
+// Migration: Use CanonicalTlsConfig from songbird-types instead
+// - enabled → enabled (same)
+// - cert_path (String) → cert_file (Option<PathBuf>) - use PathBuf::from()
+// - key_path (String) → key_file (Option<PathBuf>) - use PathBuf::from()
+// - ca_path (Option<String>) → ca_file (Option<PathBuf>)
+// - verify_client → verify_client_cert
+// - NEW: version, cipher_suites, verify_peer, server_name (for comprehensive TLS)
+//
+// CanonicalTlsConfig supports BOTH server and client TLS configurations!
+//
+// Date: November 10, 2025
+// ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProxyConfig {
@@ -314,7 +332,8 @@ pub struct SecurityConfig {
     pub encryption: EncryptionConfig,
 
     /// Rate limiting configuration
-    pub rate_limiting: RateLimitConfig,
+    /// **CONSOLIDATED**: Uses CanonicalRateLimitConfig from songbird-types
+    pub rate_limiting: CanonicalRateLimitConfig,
 
     /// Audit logging configuration
     pub audit_logging: AuditConfig,
@@ -327,7 +346,7 @@ impl Default for SecurityConfig {
             authentication: AuthConfig::default(),
             authorization: AuthzConfig::default(),
             encryption: EncryptionConfig::default(),
-            rate_limiting: RateLimitConfig::default(),
+            rate_limiting: CanonicalRateLimitConfig::default(),
             audit_logging: AuditConfig::default(),
         }
     }
@@ -410,24 +429,30 @@ pub enum EncryptionAlgorithm {
     AES128GCM,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RateLimitConfig {
-    pub enabled: bool,
-    pub requests_per_minute: u32,
-    pub burst_size: u32,
-    pub window_seconds: u32,
-}
-
-impl Default for RateLimitConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            requests_per_minute: 1000,
-            burst_size: 100,
-            window_seconds: 60,
-        }
-    }
-}
+// ============================================================================
+// NOTE: RateLimitConfig has been CONSOLIDATED
+// ============================================================================
+//
+// RateLimitConfig was removed and replaced with canonical version
+// from songbird_types::config::consolidated_canonical::network::CanonicalRateLimitConfig
+//
+// Migration: Use CanonicalRateLimitConfig from songbird-types instead
+// - enabled → enabled (same)
+// - requests_per_minute (u32) → requests_per_second (f64) * 60.0
+// - burst_size → burst_capacity
+// - window_seconds → window (Duration::from_secs(window_seconds))
+// - NEW: strategy field (use "token_bucket", "sliding_window", or "fixed_window")
+//
+// Date: November 10, 2025
+// ============================================================================
+//
+// NOTE: If you need the sophisticated RateLimitStrategy enum with Adaptive support,
+// use songbird_primal_sdk::universal_registry::config::RateLimitConfig instead.
+// That version is specialized for registry rate limiting with advanced algorithms.
+//
+// Use CanonicalRateLimitConfig for: General network rate limiting
+// Use Registry RateLimitConfig for: Service registry-specific rate limiting with adaptive algorithms
+// ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditConfig {

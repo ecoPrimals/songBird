@@ -34,6 +34,9 @@ use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
 use std::collections::HashMap;
 
+// Import comprehensive LoadBalancerConfig (Nov 10, 2025 consolidation)
+use songbird_config::unified::robustness::LoadBalancerConfig as CanonicalLoadBalancerConfig;
+
 /// Consolidated orchestrator engine
 #[derive(Debug)]
 pub struct ConsolidatedOrchestrator {
@@ -116,7 +119,8 @@ impl ConsolidatedOrchestrator {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConsolidatedOrchestratorConfig {
     /// Load balancing configuration
-    pub load_balancing: LoadBalancingConfig,
+    /// **CONSOLIDATED**: Now uses CanonicalLoadBalancerConfig from songbird-config
+    pub load_balancing: CanonicalLoadBalancerConfig,
 
     /// Performance monitoring configuration
     pub performance: PerformanceConfig,
@@ -134,23 +138,27 @@ pub struct ConsolidatedOrchestratorConfig {
     pub zero_touch: ZeroTouchConfig,
 }
 
-/// Load balancing configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoadBalancingConfig {
-    pub strategy: LoadBalancingStrategy,
-    pub health_check_interval: u64,
-    pub max_retries: u32,
-}
-
-impl Default for LoadBalancingConfig {
-    fn default() -> Self {
-        Self {
-            strategy: LoadBalancingStrategy::RoundRobin,
-            health_check_interval: 30,
-            max_retries: 3,
-        }
-    }
-}
+// ============================================================================
+// NOTE: LoadBalancingConfig has been CONSOLIDATED
+// ============================================================================
+//
+// LoadBalancingConfig was removed and replaced with CanonicalLoadBalancerConfig
+// from songbird_config::unified::robustness::LoadBalancerConfig
+//
+// Migration: Use CanonicalLoadBalancerConfig instead
+// - strategy (LoadBalancingStrategy) → algorithm (LoadBalancingAlgorithm)
+// - health_check_interval (u64) → health_check.interval (HealthCheckConfig field)
+// - max_retries → handled at usage site or via RetryConfig
+//
+// NEW comprehensive fields available:
+// - sticky_sessions: bool - Enable session affinity (default: false)
+// - session_timeout: Duration - Session timeout (default: 300s)
+// - max_connections_per_backend: usize - Connection pooling (default: 100)
+// - connection_timeout: Duration - Connection timeout (default: 30s)
+// - fail_fast: bool - Enable fail-fast mode (default: false)
+//
+// Date: November 10, 2025
+// ============================================================================
 
 /// Performance monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -274,18 +282,20 @@ mod tests {
 
     #[test]
     fn test_consolidated_orchestrator_config_default() {
+        use songbird_config::unified::robustness::LoadBalancingAlgorithm;
         let config = ConsolidatedOrchestratorConfig::default();
-        assert_eq!(config.load_balancing.strategy, LoadBalancingStrategy::RoundRobin);
-        assert_eq!(config.load_balancing.health_check_interval, 30);
-        assert_eq!(config.load_balancing.max_retries, 3);
+        assert_eq!(config.load_balancing.algorithm, LoadBalancingAlgorithm::RoundRobin);
+        assert!(!config.load_balancing.sticky_sessions);
+        assert_eq!(config.load_balancing.max_connections_per_backend, 100);
     }
 
     #[test]
     fn test_load_balancing_config_default() {
-        let config = LoadBalancingConfig::default();
-        assert_eq!(config.strategy, LoadBalancingStrategy::RoundRobin);
-        assert_eq!(config.health_check_interval, 30);
-        assert_eq!(config.max_retries, 3);
+        let config = CanonicalLoadBalancerConfig::default();
+        use songbird_config::unified::robustness::LoadBalancingAlgorithm;
+        assert_eq!(config.algorithm, LoadBalancingAlgorithm::RoundRobin);
+        assert!(!config.sticky_sessions); // New field
+        assert_eq!(config.max_connections_per_backend, 100); // New field
     }
 
     #[test]
@@ -444,8 +454,9 @@ mod tests {
 
     #[test]
     fn test_consolidated_orchestrator_new_with_custom_config() {
+        use songbird_config::unified::robustness::LoadBalancingAlgorithm;
         let mut config = ConsolidatedOrchestratorConfig::default();
-        config.load_balancing.strategy = LoadBalancingStrategy::LeastConnections;
+        config.load_balancing.algorithm = LoadBalancingAlgorithm::LeastConnections;
         config.scaling.min_instances = 2;
         config.scaling.max_instances = 20;
 
@@ -541,7 +552,7 @@ mod tests {
         let config = ConsolidatedOrchestratorConfig::default();
         let cloned = config.clone();
 
-        assert_eq!(config.load_balancing.strategy, cloned.load_balancing.strategy);
+        assert_eq!(config.load_balancing.algorithm, cloned.load_balancing.algorithm);
         assert_eq!(config.scaling.enable_auto_scaling, cloned.scaling.enable_auto_scaling);
     }
 
@@ -561,22 +572,30 @@ mod tests {
                 debug_info: None,
             })?;
 
-        assert_eq!(config.load_balancing.strategy, deserialized.load_balancing.strategy);
+        assert_eq!(config.load_balancing.algorithm, deserialized.load_balancing.algorithm);
         assert_eq!(config.scaling.min_instances, deserialized.scaling.min_instances);
         Ok(())
     }
 
     #[test]
     fn test_load_balancing_config_custom() {
-        let config = LoadBalancingConfig {
-            strategy: LoadBalancingStrategy::HealthAware,
-            health_check_interval: 60,
-            max_retries: 5,
+        use songbird_config::unified::robustness::{LoadBalancingAlgorithm, HealthCheckConfig};
+        use std::time::Duration;
+        
+        let config = CanonicalLoadBalancerConfig {
+            algorithm: LoadBalancingAlgorithm::HealthBased,
+            health_check: HealthCheckConfig::default(),
+            sticky_sessions: true,
+            session_timeout: Duration::from_secs(600),
+            max_connections_per_backend: 200,
+            connection_timeout: Duration::from_secs(60),
+            fail_fast: true,
         };
 
-        assert_eq!(config.strategy, LoadBalancingStrategy::HealthAware);
-        assert_eq!(config.health_check_interval, 60);
-        assert_eq!(config.max_retries, 5);
+        assert_eq!(config.algorithm, LoadBalancingAlgorithm::HealthBased);
+        assert!(config.sticky_sessions);
+        assert_eq!(config.max_connections_per_backend, 200);
+        assert!(config.fail_fast);
     }
 
     #[test]

@@ -114,19 +114,10 @@ pub enum LoadBalancingAlgorithm  {RoundRobin)
 /// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
 /// **FIXED CORRUPTION**: Original had syntax error "pub recovery_pub half_open_max_calls"
 pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
-/// Retry configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig  {/// Maximum number of retry attempts
-
-    pub max_attempts: u32,
-    /// Base Delay field
-    pub base_delay: Duration,
-    /// Max Delay field
-    pub max_delay: Duration,
-    /// Custom retry strategy configuration
-    pub strategy: RetryStrategy
-// RetryStrategy,
-}
+/// **CONSOLIDATED**: Re-export of canonical RetryConfig (Nov 10, 2025)
+/// 
+/// Note: `strategy` field was modern_api-specific, now handled via builder patterns
+pub use songbird_config::canonical::resilience::RetryConfig;
 /// Retry strategies
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RetryStrategy { /// Fixed

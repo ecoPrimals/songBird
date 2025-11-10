@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::time::Duration;
 
+// Import canonical rate limit config
+use crate::config::consolidated_canonical::network::CanonicalRateLimitConfig;
+
 /// **CANONICAL**: Network Configuration - Single Source of Truth
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CanonicalNetworkConfig {
@@ -155,8 +158,8 @@ pub struct NetworkSecurityConfig {
     /// Allowed IP addresses
     pub allowed_ips: Vec<String>,
     /// Rate limiting configuration
-    /// Rate Limiting field
-    pub rate_limiting: RateLimitConfig,
+    /// **CONSOLIDATED**: Now uses CanonicalRateLimitConfig from consolidated_canonical/network
+    pub rate_limiting: CanonicalRateLimitConfig,
 }
 
 impl Default for NetworkSecurityConfig {
@@ -164,31 +167,26 @@ impl Default for NetworkSecurityConfig {
         Self {
             tls_enabled: true,
             allowed_ips: vec!["127.0.0.1".to_string(), "::1".to_string()],
-            rate_limiting: RateLimitConfig::default(),
+            rate_limiting: CanonicalRateLimitConfig::default(),
         }
     }
 }
 
-/// Rate limiting configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RateLimitConfig {
-    /// Enable rate limiting
-    pub enabled: bool,
-    /// Requests per second limit
-    pub requests_per_second: u32,
-    /// Burst size
-    pub burst_size: u32,
-}
-
-impl Default for RateLimitConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            requests_per_second: 100,
-            burst_size: 10,
-        }
-    }
-}
+// ============================================================================
+// NOTE: RateLimitConfig has been CONSOLIDATED
+// ============================================================================
+//
+// RateLimitConfig was removed and replaced with CanonicalRateLimitConfig
+// from crate::config::consolidated_canonical::network
+//
+// Migration: Use CanonicalRateLimitConfig instead
+// - enabled → enabled (same)
+// - requests_per_second (u32) → requests_per_second (f64) - more flexible
+// - burst_size → burst_capacity
+// - NEW: window (Duration), strategy (String) - use defaults
+//
+// Date: November 10, 2025
+// ============================================================================
 
 /// Production LAN configuration for gaming
 pub struct ProductionLanConfig {

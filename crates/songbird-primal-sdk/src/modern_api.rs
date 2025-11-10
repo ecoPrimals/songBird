@@ -344,23 +344,12 @@ pub enum LoadBalancingAlgorithm  {/// Round robin
 /// Field mappings: timeout_duration_secs (u64) → timeout (Duration), retry_delay_secs not in canonical
 pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 
-/// Retry configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig  {/// Maximum number of retries
-    pub max_retries: u32,
-
-    /// Base delay between retries in milliseconds
-    pub base_delay_ms: u64,
-
-    /// Maximum delay between retries in milliseconds
-    pub max_delay_ms: u64,
-
-    /// Retry strategy
-    pub strategy: RetryStrategy,
-
-    /// Retryable error conditions
-    pub retryable_errors: Vec<String>,
-}
+/// **CONSOLIDATED**: Re-export of canonical RetryConfig (Nov 10, 2025)
+/// 
+/// Field mapping: max_retries → max_attempts,
+///                base_delay_ms → initial_delay (convert to Duration)
+/// Note: `strategy`, `retryable_errors` were modern_api-specific, now handled at usage site
+pub use songbird_config::canonical::resilience::RetryConfig;
 
 /// Retry strategies
 #[derive(Debug, Clone, Serialize, Deserialize)]

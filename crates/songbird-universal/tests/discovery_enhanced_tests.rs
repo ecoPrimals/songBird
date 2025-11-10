@@ -78,17 +78,13 @@ fn test_discovered_primal_with_metadata() -> SongbirdResult<()> {
 
     assert_eq!(metadata.len(), 3);
     assert_eq!(
-        metadata.get("version").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        metadata.get("version")
+            .ok_or_else(|| SongbirdError::configuration("Missing version".to_string()))?,
         "1.0.0"
     );
     assert_eq!(
-        metadata.get("region").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        metadata.get("region")
+            .ok_or_else(|| SongbirdError::configuration("Missing region".to_string()))?,
         "us-west"
     );
     Ok(())
@@ -140,10 +136,7 @@ fn test_discovery_cache_lookup() -> SongbirdResult<()> {
     assert!(endpoint.is_some());
     assert_eq!(
         endpoint
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration("Missing compute-service".to_string()))?
             .as_str(),
         format!("http://compute:{}", test_orchestrator_port())
     );
@@ -161,10 +154,7 @@ fn test_discovery_cache_update() -> SongbirdResult<()> {
     assert_eq!(
         cache
             .get("service")
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration("Missing service".to_string()))?
             .as_str(),
         format!("http://old:{}", test_orchestrator_port())
     );
@@ -173,10 +163,7 @@ fn test_discovery_cache_update() -> SongbirdResult<()> {
     assert_eq!(
         cache
             .get("service")
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration("Missing service".to_string()))?
             .as_str(),
         format!("http://new:{}", test_orchestrator_port())
     );
@@ -575,10 +562,7 @@ fn test_capability_based_selection() -> SongbirdResult<()> {
     assert!(compute_service.is_some());
     assert_eq!(
         compute_service
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration("Missing compute service".to_string()))?
             .name,
         "compute-service"
     );

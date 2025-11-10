@@ -170,21 +170,26 @@ pub struct CanonicalCircuitBreakerConfig {
 }
 
 /// **CANONICAL**: Retry configuration
+/// 
+/// This is a foundation definition in songbird-types.
+/// The authoritative canonical is in songbird_config::canonical::resilience::RetryConfig
+/// This definition matches the canonical for compatibility.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalRetryConfig {
     /// Maximum retry attempts
     pub max_attempts: u32,
-    /// Base delay between retries
-    pub base_delay: Duration,
+    /// Initial delay between retries
+    pub initial_delay: Duration,
     /// Maximum delay between retries
     pub max_delay: Duration,
     /// Backoff multiplier
     pub backoff_multiplier: f64,
-    /// Jitter factor (0.0-1.0)
-    pub jitter_factor: f64,
 }
 
 /// **CANONICAL**: Timeout configuration
+/// 
+/// This is a foundation definition in songbird-types.
+/// Matches the network timeout configuration from songbird_config::canonical::network::NetworkTimeouts
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::struct_field_names)] // "timeout" suffix is intentionally descriptive
 pub struct CanonicalTimeoutConfig {
@@ -767,10 +772,9 @@ impl Default for CanonicalRetryConfig {
     fn default() -> Self {
         Self {
             max_attempts: 3,
-            base_delay: Duration::from_millis(100),
+            initial_delay: Duration::from_millis(100),
             max_delay: Duration::from_secs(30),
             backoff_multiplier: 2.0,
-            jitter_factor: 0.1,
         }
     }
 }

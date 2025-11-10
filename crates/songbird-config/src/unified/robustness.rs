@@ -71,7 +71,7 @@ impl Default for RateLimitingConfig {
             enabled: true,
             max_requests_per_second: 1000,
             burst_capacity: 2000,
-            window_size: Duration::from_secs(60)
+            window_size: Duration::from_secs(60),
             algorithm: RateLimitAlgorithm::TokenBucket,
             per_client_enabled: true,
             per_client_max_requests: 100,
@@ -81,7 +81,8 @@ impl Default for RateLimitingConfig {
 
 /// Rate limiting algorithms
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum RateLimitAlgorithm {TokenBucket}
+pub enum RateLimitAlgorithm {
+    TokenBucket,
     LeakyBucket,
     FixedWindow,
     SlidingWindow,
@@ -114,7 +115,7 @@ impl Default for BulkheadConfig {
             enabled: true,
             max_concurrent_operations: 100,
             queue_size: 1000,
-            operation_timeout: Duration::from_secs(30)
+            operation_timeout: Duration::from_secs(30),
             thread_pool_size: 10,
             isolation_strategy: IsolationStrategy::ThreadPool,
         }
@@ -123,60 +124,23 @@ impl Default for BulkheadConfig {
 
 /// Isolation strategies for bulkhead pattern
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum IsolationStrategy {ThreadPool}
+pub enum IsolationStrategy {
+    ThreadPool,
     Semaphore,
     Queue,
 }
 
-/// Retry configuration (consolidated from `RetryConfig` structs)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig  {/// Enable retry mechanism
-    pub enabled: bool,
-
-    /// Maximum retry attempts
-    pub max_attempts: u32,
-
-    /// Initial retry delay
-    pub initial_delay: Duration,
-
-    /// Maximum retry delay
-    pub max_delay: Duration,
-
-    /// Backoff multiplier
-    pub backoff_multiplier: f64,
-
-    /// Backoff strategy
-    pub backoff_strategy: BackoffStrategy,
-
-    /// Jitter enabled
-    pub jitter_enabled: bool,
-
-    /// Retryable errors
-    pub retryable_errors: Vec<String>,
-}
-
-impl Default for RetryConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            max_attempts: 3,
-            initial_delay: Duration::from_millis(100),
-            max_delay: Duration::from_secs(30)
-            backoff_multiplier: 2.0,
-            backoff_strategy: BackoffStrategy::Exponential,
-            jitter_enabled: true,
-            retryable_errors: vec![
-                "network_error".to_string(),
-                "timeout".to_string(),
-                "service_unavailable".to_string(),
-            ],
-        }
-    }
-}
+/// **CONSOLIDATED**: Re-export of canonical RetryConfig (Nov 10, 2025)
+/// 
+/// Note: `enabled`, `backoff_strategy`, `jitter_enabled`, `retryable_errors` were unified-specific
+///       These are now handled at usage site or via builder patterns
+/// Default implementation provided by canonical::resilience::RetryConfig
+pub use crate::canonical::resilience::RetryConfig;
 
 /// Backoff strategies for retry mechanism
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum BackoffStrategy {Fixed}
+pub enum BackoffStrategy {
+    Fixed,
     Linear,
     Exponential,
     ExponentialWithJitter,
@@ -214,20 +178,22 @@ impl Default for LoadBalancerConfig {
             sticky_sessions: false,
             session_timeout: Duration::from_secs(300),
             max_connections_per_backend: 100,
-            connection_timeout: Duration::from_secs(30)
+            connection_timeout: Duration::from_secs(30),
             fail_fast: true,
         }
     }
 }
 
 /// Load balancing algorithms
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LoadBalancingAlgorithm {RoundRobin}
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum LoadBalancingAlgorithm {
+    RoundRobin,
     LeastConnections,
     WeightedRoundRobin,
     Random,
     IpHash,
     CapabilityBased,
+    HealthBased,
 }
 
 /// Health check configuration for load balancer

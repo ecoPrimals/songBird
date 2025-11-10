@@ -1,10 +1,12 @@
-/// Load Balancer Types /// Module
-// Module
-///
+/// Load Balancer Types Module
+//
 /// Contains all data structures, enums, and basic implementations for load balancing
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
+
+// Import comprehensive LoadBalancerConfig (Nov 10, 2025 consolidation)
+pub use songbird_config::unified::robustness::LoadBalancerConfig as CanonicalLoadBalancerConfig;
 
 // Create a basic ServiceRequest type for compatibility;
 #[derive(Debug, Clone, serde: :Serialize, serde: :Deserialize)]
@@ -47,25 +49,28 @@ pub enum LoadBalancerStrategy {
     /// HealthBased, HealthBased)
     LatencyOptimized  }
 
-/// Load balancer configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoadBalancerConfig {
-    /// Custom retry strategy configuration
-
-    pub strategy: LoadBalancerStrategy,
-    /// Health Check Interval Secs field
-    pub health_check_interval_secs: u64,
-    /// Max Retries field
-    pub max_retries: u32,
-    /// Timeout Seconds field
-    pub timeout_seconds: u64 ,
- )
-}
-
-impl Default for LoadBalancerConfig  {fn default() -> Self  {Self { strategy: LoadBalancerStrategy::RoundRobin,
-            health_check_interval_secs: 30,
-            max_retries: 3,
-            timeout_seconds: 30;}}}
+// ============================================================================
+// NOTE: LoadBalancerConfig has been CONSOLIDATED
+// ============================================================================
+//
+// LoadBalancerConfig was removed and replaced with CanonicalLoadBalancerConfig
+// from songbird_config::unified::robustness::LoadBalancerConfig
+//
+// Migration: Use CanonicalLoadBalancerConfig instead
+// - strategy (LoadBalancerStrategy) → algorithm (LoadBalancingAlgorithm)
+// - health_check_interval_secs (u64) → health_check.interval (HealthCheckConfig field)
+// - max_retries → handled at usage site or via RetryConfig
+// - timeout_seconds → connection_timeout (Duration::from_secs(timeout_seconds))
+//
+// NEW comprehensive fields available:
+// - health_check: HealthCheckConfig - Full health check configuration
+// - sticky_sessions: bool - Enable session affinity (default: false)
+// - session_timeout: Duration - Session timeout (default: 300s)
+// - max_connections_per_backend: usize - Connection pooling (default: 100)
+// - fail_fast: bool - Enable fail-fast mode (default: false)
+//
+// Date: November 10, 2025
+// ============================================================================
 
 /// Performance metrics for load balancer monitoring
 #[derive(Debug, Clone, serde: :Serialize, serde: :Deserialize)]

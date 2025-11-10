@@ -155,7 +155,7 @@ fn test_encryption_config() -> security::EncryptionConfig {
         },
         transport: security::TransportEncryptionConfig {
             require_tls: false,
-            min_tls_version: "1.2".to_string(),
+            min_tls_version: security::TlsVersion::Tls12,
         },
     }
 }
@@ -170,7 +170,7 @@ fn production_encryption_config() -> security::EncryptionConfig {
         },
         transport: security::TransportEncryptionConfig {
             require_tls: true,
-            min_tls_version: "1.3".to_string(),
+            min_tls_version: security::TlsVersion::Tls13,
         },
     }
 }

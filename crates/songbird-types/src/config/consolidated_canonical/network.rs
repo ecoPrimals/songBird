@@ -137,50 +137,57 @@ pub struct CanonicalKeepAliveConfig {
 }
 
 /// **CANONICAL**: Retry configuration
+/// 
+/// This is a foundation definition in songbird-types.
+/// The authoritative canonical is in songbird_config::canonical::resilience::RetryConfig
+/// This definition matches the canonical for compatibility.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalRetryConfig {
     /// Maximum retry attempts
     pub max_attempts: u32,
-
-    /// Base retry delay
-    pub base_delay: Duration,
-
-    /// Maximum retry delay
+    /// Initial delay between retries
+    pub initial_delay: Duration,
+    /// Maximum delay between retries
     pub max_delay: Duration,
-
     /// Backoff multiplier
     pub backoff_multiplier: f64,
-
-    /// Jitter factor (0.0-1.0,
-    pub jitter_factor: f64,
-
-    /// Retryable status codes
-    pub retryable_status_codes: Vec<u16>,
 }
 
 /// **CANONICAL**: TLS/SSL configuration
+///
+/// **UNIFIED** (Nov 10, 2025): Supports both server and client TLS configurations
+/// 
+/// For server TLS: Use cert_file, key_file, verify_client_cert
+/// For client TLS: Use ca_file, verify_peer, server_name
+/// For mutual TLS: Use all fields
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalTlsConfig {
     /// Enable TLS
     pub enabled: bool,
 
-    /// Certificate file path
-    pub cert_file: PathBuf,
+    /// Certificate file path (for server or client cert)
+    pub cert_file: Option<PathBuf>,
 
-    /// Private key file path
-    pub key_file: PathBuf,
+    /// Private key file path (for server or client key)
+    pub key_file: Option<PathBuf>,
 
-    /// CA certificate file path
+    /// CA certificate file path (for client verification or custom CA)
     pub ca_file: Option<PathBuf>,
 
-    /// TLS version (1.2, 1.3,
+    /// TLS version (1.2, 1.3, etc.)
     pub version: String,
 
-    /// Cipher suites
+    /// Cipher suites (for server configuration)
     pub cipher_suites: Vec<String>,
 
-    /// Client certificate verification
+    /// Client certificate verification (server-side)
     pub verify_client_cert: bool,
+
+    /// Verify peer certificates (client-side)
+    pub verify_peer: bool,
+
+    /// Server name for SNI (client-side)
+    pub server_name: Option<String>,
 }
 
 /// **CANONICAL**: Proxy configuration
@@ -303,11 +310,9 @@ impl Default for CanonicalRetryConfig {
     fn default() -> Self {
         Self {
             max_attempts: 3,
-            base_delay: Duration::from_millis(100),
+            initial_delay: Duration::from_millis(100),
             max_delay: Duration::from_secs(10),
             backoff_multiplier: 2.0,
-            jitter_factor: 0.1,
-            retryable_status_codes: vec![500, 502, 503, 504],
         }
     }
 }

@@ -64,29 +64,11 @@ impl Default for LoadBalancingConfig {
     }
 }
 
-/// Retry configuration for resilient operations
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig {
-    /// Maximum number of retry attempts
-    pub max_attempts: u32,
-    /// Base delay between retries
-    pub base_delay: Duration,
-    /// Maximum delay between retries (for exponential backoff)
-    pub max_delay: Duration,
-    /// Multiplier for exponential backoff
-    pub backoff_multiplier: f64,
-}
-
-impl Default for RetryConfig {
-    fn default() -> Self {
-        Self {
-            max_attempts: 3,
-            base_delay: Duration::from_millis(100),
-            max_delay: Duration::from_secs(10),
-            backoff_multiplier: 2.0,
-        }
-    }
-}
+/// **CONSOLIDATED**: Re-export of canonical RetryConfig (Nov 10, 2025)
+/// 
+/// Field mapping: All fields match canonical 1:1
+/// Default implementation provided by canonical::resilience::RetryConfig
+pub use songbird_config::canonical::resilience::RetryConfig;
 
 /// Circuit breaker configuration for fault tolerance
 ///

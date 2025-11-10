@@ -211,22 +211,22 @@ pub struct ExecutionConfig {
     /// Measure Performance field
 
     pub measure_performance: bool,;};
-/// Hook retry configuration
+/// **Hook-Specific Retry Configuration**
+/// 
+/// This is intentionally kept separate from canonical RetryConfig because:
+/// 1. Simpler model for hooks (no max_delay, jitter, etc.)
+/// 2. Hook-specific `enabled` toggle
+/// 3. Different semantics (hook failure vs operation retry)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig {
+pub struct HookRetryConfig {
     /// Enable retries on failure
-    /// Enabled field
-
     pub enabled: bool,
     /// Maximum retry attempts
-    /// Maximum number of retry attempts
-
     pub max_attempts: u32,
     /// Delay between retries
-        pub retry_delay_ms: u64,
+    pub retry_delay_ms: u64,
     /// Exponential backoff multiplier
-        pub backoff_multiplier: f64 ,
- )
+    pub backoff_multiplier: f64,
 }
 /// Hook manager trait for managing multiple hooks
 /// **CONSOLIDATED**: Now uses canonical definition from songbird-discovery
