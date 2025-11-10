@@ -763,22 +763,44 @@ pub struct RoutingPreferences {
 
 /// **⚙️ ADAPTIVE DISCOVERY CONFIG**: Configuration for adaptive discovery
 #[derive(Debug, Clone)]
+/// Discovery configuration for adaptive discovery
+///
+/// **LOCAL DEFINITION**: Flag-based with comprehensive field alignment.
+/// **MODERN RUST**: Clean flag-based pattern for multiple discovery types.
+/// Field mappings to canonical:
+/// - `discovery_interval_secs` → service_discovery.discovery_interval_secs
+/// - `health_check_interval_secs` → Not in canonical (health checks are per-service)
+/// - `max_discovery_timeout_secs` → service_discovery.discovery_timeout_secs
+/// - `enable_network_discovery` → network_discovery.enabled
+/// - `enable_registry_discovery` → service_discovery.enabled
+/// - `enable_filesystem_discovery` → capability_discovery.enabled (FS as capability)
+/// - `enable_community_discovery` → service_discovery.enabled (community services)
+/// - `enable_environment_discovery` → capability_discovery.enabled (env vars)
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryConfig {
+    /// Discovery interval in seconds (→ service_discovery.discovery_interval_secs)
     pub discovery_interval_secs: u64,
+    /// Health check interval in seconds (specialized, not in canonical)
     pub health_check_interval_secs: u64,
+    /// Maximum discovery timeout in seconds (→ service_discovery.discovery_timeout_secs)
     pub max_discovery_timeout_secs: u64,
+    /// Enable network discovery (→ network_discovery.enabled)
     pub enable_network_discovery: bool,
+    /// Enable registry discovery (→ service_discovery.enabled)
     pub enable_registry_discovery: bool,
+    /// Enable filesystem discovery (→ capability_discovery.enabled)
     pub enable_filesystem_discovery: bool,
+    /// Enable community discovery (→ service_discovery.enabled for community services)
     pub enable_community_discovery: bool,
+    /// Enable environment discovery (→ capability_discovery.enabled for env vars)
     pub enable_environment_discovery: bool,
 }
 
 impl Default for DiscoveryConfig {
     fn default() -> Self {
         Self {
-            discovery_interval_secs: 300,   // 5 minutes
-            health_check_interval_secs: 60, // 1 minute
+            discovery_interval_secs: 300,   // 5 minutes (canonical: 30s)
+            health_check_interval_secs: 60, // 1 minute (specialized)
             max_discovery_timeout_secs: 30,
             enable_network_discovery: true,
             enable_registry_discovery: true,
