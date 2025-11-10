@@ -119,34 +119,50 @@ pub enum HealthStatus  {/// Healthy, Healthy,
     /// Unhealthy, Unhealthy,
     Unknown  }
 
-/// Configuration for agnostic discovery behavior
-#[derive(Debug, Clone)]
-pub struct DiscoveryConfig  {/// Maximum time to spend on discovery
+/// Discovery configuration for agnostic service discovery
+///
+/// **LOCAL DEFINITION**: Network scanning + caching focused.
+/// **SYNTAX FIXED**: Removed malformed `;};` and fixed Default impl formatting
+/// **MODERN RUST**: Proper struct and impl formatting
+/// Field mappings:
+/// - `discovery_timeout_ms` (u64 ms) → scan_timeout_secs (u64 secs) - **UNIT CONVERSION**
+/// - `enable_network_scanning` → network_discovery.scan_local_network
+/// - `probe_ports` → common_ports
+/// - `scan_ranges` → Part of network_discovery scope
+/// - `enable_caching` → capability_discovery.enabled
+/// - `cache_expiry_seconds` → capability_discovery.cache_ttl_secs
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveryConfig {
+    /// Maximum time to spend on discovery in milliseconds (→ scan_timeout_secs with conversion)
     pub discovery_timeout_ms: u64,
-    /// Whether to enable network scanning
-    /// Enable Network Scanning field
+    /// Whether to enable network scanning (→ network_discovery.scan_local_network)
     pub enable_network_scanning: bool,
-    /// Network ranges to scan
-    /// Scan Ranges field
+    /// Network ranges to scan (part of network_discovery scope)
     pub scan_ranges: Vec<String>,
-    /// Ports to probe during network scanning
+    /// Ports to probe during network scanning (→ common_ports)
     pub probe_ports: Vec<u16>,
-    /// Whether to cache discovery results
-    /// Enable Caching field
+    /// Whether to cache discovery results (→ capability_discovery.enabled)
     pub enable_caching: bool,
-    /// Cache expiry time
-    /// Cache Expiry Seconds field
-    pub cache_expiry_seconds: u64;};
-impl Default for DiscoveryConfig  {fn default() -> Self  {Self { discovery_timeout_ms: 30000,
+    /// Cache expiry time in seconds (→ capability_discovery.cache_ttl_secs)
+    pub cache_expiry_seconds: u64,
+}
+
+impl Default for DiscoveryConfig {
+    fn default() -> Self {
+        Self {
+            discovery_timeout_ms: 30000, // 30 seconds (canonical: 5s)
             enable_network_scanning: true,
             scan_ranges: vec![
-                "192.168.0.0/16".to_string()),
-                "10.0.0.0/8".to_string()),
-                "172.16.0.0/12".to_string()),
-            ])
-            probe_ports: vec![8080, 8443, 8500, 6443, 2379, 5000, 9000])
+                "192.168.0.0/16".to_string(),
+                "10.0.0.0/8".to_string(),
+                "172.16.0.0/12".to_string(),
+            ],
+            probe_ports: vec![8080, 8443, 8500, 6443, 2379, 5000, 9000],
             enable_caching: true,
-            cache_expiry_seconds: 300;;}}}
+            cache_expiry_seconds: 300, // 5 minutes (canonical: 300s)
+        }
+    }
+}
 
 impl AgnosticServiceDiscovery  {/// Create new agnostic service discovery manager
     #[must_use]

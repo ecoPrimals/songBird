@@ -40,24 +40,34 @@ pub struct UniversalPrimalDiscovery {
     discovered_cache: HashMap<String, DiscoveredPrimal>,
 }
 
-// DiscoveryConfig is now re-exported from canonical types
-/// Configuration for service discovery mechanisms
+/// Discovery configuration for universal adapters
+///
+/// **LOCAL DEFINITION**: Nested structure similar to canonical pattern!
+/// This is one of the better-aligned instances with canonical's nested approach.
+/// Fields align with canonical discovery configs:
+/// - `enable_environment_scan` → capability_discovery.enabled
+/// - `enable_network_scanning` → network_discovery.scan_local_network
+/// - `enable_container_discovery` → service_discovery.enabled
+/// - `timeout` → scan_timeout_secs (Duration vs u64)
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
-    /// Discovery mechanisms to enable
+    /// Discovery mechanisms to enable (aligns with canonical nested configs)
     pub mechanisms: DiscoveryMechanisms,
-    /// Timeout for discovery operations
+    /// Timeout for discovery operations (aligns with canonical scan_timeout_secs)
     pub timeout: Duration,
 }
 
 /// Discovery mechanisms configuration
+///
+/// **ARCHITECTURAL ALIGNMENT**: This nested approach mirrors canonical design!
+/// Each boolean maps to a specific canonical config's `enabled` field.
 #[derive(Debug, Clone)]
 pub struct DiscoveryMechanisms {
-    /// Enable environment variable scanning
+    /// Enable environment variable scanning (→ capability_discovery.enabled)
     pub enable_environment_scan: bool,
-    /// Enable network scanning for services
+    /// Enable network scanning for services (→ network_discovery.scan_local_network)
     pub enable_network_scanning: bool,
-    /// Enable container/orchestration discovery
+    /// Enable container/orchestration discovery (→ service_discovery.enabled)
     pub enable_container_discovery: bool,
 }
 
@@ -65,11 +75,11 @@ impl Default for DiscoveryConfig {
     fn default() -> Self {
         Self {
             mechanisms: DiscoveryMechanisms {
-                enable_environment_scan: true,
-                enable_network_scanning: true,
-                enable_container_discovery: true,
+                enable_environment_scan: true,  // Aligns with canonical default
+                enable_network_scanning: true,  // More permissive than canonical (false)
+                enable_container_discovery: true, // Aligns with canonical default
             },
-            timeout: Duration::from_secs(30),
+            timeout: Duration::from_secs(30), // Reasonable default (canonical: 5s)
         }
     }
 }

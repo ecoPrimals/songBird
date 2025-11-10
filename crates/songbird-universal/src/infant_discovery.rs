@@ -128,21 +128,28 @@ pub enum LearningPhase  {/// Phase 1: Scanning environment for hints
     /// Learning process complete
     Complete  }
 
-/// Discovery configuration
-#[derive(Debug, Clone)]
-pub struct DiscoveryConfig  {/// Network ranges to scan
-    /// Network Ranges field
+/// Discovery configuration for infant discovery (zero-touch)
+///
+/// **LOCAL DEFINITION**: Network-focused with field alignment to canonical.
+/// **SYNTAX FIXED**: Removed malformed `;,` and extra `)`
+/// Field mappings:
+/// - `probe_ports` → common_ports
+/// - `discovery_timeout` → scan_timeout_secs (Duration vs u64)
+/// - `max_concurrent_discoveries` → service_discovery.max_concurrent_discoveries
+/// - `network_ranges` → Could be part of network_discovery config
+/// - `aggressive_discovery` → Higher concurrency mode (not in canonical)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveryConfig {
+    /// Network ranges to scan (aligns with network_discovery scope)
     pub network_ranges: Vec<String>,
-    /// Ports to probe
+    /// Ports to probe (→ common_ports)
     pub probe_ports: Vec<u16>,
-    /// Timeout for discovery operations
+    /// Timeout for discovery operations (→ scan_timeout_secs)
     pub discovery_timeout: Duration,
-    /// Maximum concurrent discovery operations
-    /// Max Concurrent Discoveries field
+    /// Maximum concurrent discovery operations (→ service_discovery.max_concurrent_discoveries)
     pub max_concurrent_discoveries: usize,
-    /// Enable aggressive discovery
-    pub aggressive_discovery: bool ;,
- )
+    /// Enable aggressive discovery (maps to higher concurrency/shorter timeouts)
+    pub aggressive_discovery: bool,
 }
 
 /// Entity health status
