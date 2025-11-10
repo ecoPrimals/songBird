@@ -317,31 +317,29 @@ pub enum HttpVersion {
 }
 
 /// Circuit breaker configuration - consolidates `CircuitBreakerConfig`s
+///
+/// **LOCAL COPY**: songbird-types is a foundational crate and does not depend on songbird-config.
+/// Fields are aligned with canonical version in songbird-config/src/canonical/resilience.rs
+/// Canonical fields: enabled, failure_threshold (u32), timeout, half_open_max_requests (u32)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CircuitBreakerConfig {
-    /// Failure threshold to open circuit
-    pub failure_threshold: usize,
-    /// Success threshold to close circuit
-    pub success_threshold: usize,
-    /// Timeout duration in open state
-    pub timeout: Duration,
-    /// Half-open state timeout
-    pub half_open_timeout: Duration,
     /// Enable circuit breaker
     pub enabled: bool,
-    /// Reset timeout multiplier
-    pub reset_timeout_multiplier: f64,
+    /// Failure threshold to open circuit
+    pub failure_threshold: u32,
+    /// Timeout duration in open state
+    pub timeout: Duration,
+    /// Maximum requests in half-open state
+    pub half_open_max_requests: u32,
 }
 
 impl Default for CircuitBreakerConfig {
     fn default() -> Self {
         Self {
-            failure_threshold: 5,
-            success_threshold: 3,
-            timeout: Duration::from_secs(30),
-            half_open_timeout: Duration::from_secs(10),
             enabled: true,
-            reset_timeout_multiplier: 2.0,
+            failure_threshold: 5,
+            timeout: Duration::from_secs(60),
+            half_open_max_requests: 3,
         }
     }
 }

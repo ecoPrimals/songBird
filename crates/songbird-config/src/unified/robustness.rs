@@ -33,43 +33,13 @@ pub struct RobustnessConfig  {/// Circuit breaker configuration
     pub zero_cost_router: ZeroCostRouterConfig,
 }
 
-/// Circuit breaker configuration (consolidated from multiple `CircuitBreakerConfig` structs)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig  {/// Enable circuit breaker
-    pub enabled: bool,
+/// Circuit breaker configuration
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Note: Original had min_throughput_threshold which is not in canonical
+pub use crate::canonical::resilience::CircuitBreakerConfig;
 
-    /// Failure threshold to open circuit
-    pub failure_threshold: u32,
-
-    /// Timeout before attempting recovery
-    pub timeout: Duration,
-
-    /// Recovery timeout
-    pub recovery_timeout: Duration,
-
-    /// Success threshold to close circuit
-    pub success_threshold: u32,
-
-    /// Half-open max calls
-    pub half_open_max_calls: u32,
-
-    /// Minimum throughput threshold
-    pub min_throughput_threshold: u32,
-}
-
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            failure_threshold: 5,
-            timeout: Duration::from_secs(60)
-            recovery_timeout: Duration::from_secs(30)
-            success_threshold: 3,
-            half_open_max_calls: 10,
-            min_throughput_threshold: 20,
-        }
-    }
-}
+// Default implementation now provided by canonical
 
 /// Rate limiting configuration (consolidated from `RateLimitingConfig` structs)
 #[derive(Debug, Clone, Serialize, Deserialize)]

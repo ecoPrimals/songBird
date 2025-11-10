@@ -360,27 +360,11 @@ pub struct RoutingRule {
     pub actions: Vec<String> ,
  )
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    /// Failure threshold percentage
-    /// Failure Threshold Percentage field
-
-    pub failure_threshold_percentage: f64,
-
-    /// Minimum request threshold
-    /// Minimum Request Threshold field
-
-    pub minimum_request_threshold: u32,
-
-    /// Sleep window in seconds
-    /// Sleep Window Seconds field
-
-    pub sleep_window_seconds: u64,
-
-    /// Request volume threshold
-        pub request_volume_threshold: u32 ,
- )
-}
+/// Circuit breaker configuration
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Note: Original was specialized for service registration (percentage-based, request volumes)
+pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServicePriority {
     /// Critical, Critical,

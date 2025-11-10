@@ -89,28 +89,12 @@ impl Default for RetryConfig {
 }
 
 /// Circuit breaker configuration for fault tolerance
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    /// Number of failures before opening circuit
-    pub failure_threshold: u32,
-    /// Time window for counting failures
-    pub failure_window: Duration,
-    /// Duration to wait before attempting to close circuit
-    pub recovery_timeout: Duration,
-    /// Number of successful requests needed to close circuit
-    pub success_threshold: u32,
-}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Field mappings: failure_window not in canonical; success_threshold → half_open_max_requests
+pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
-            failure_threshold: 5,
-            failure_window: Duration::from_secs(60),
-            recovery_timeout: Duration::from_secs(30),
-            success_threshold: 2,
-        }
-    }
-}
+// Default implementation now provided by canonical
 
 /// Health check configuration
 ///

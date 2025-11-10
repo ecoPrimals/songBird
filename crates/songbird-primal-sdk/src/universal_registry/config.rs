@@ -57,11 +57,10 @@ pub enum LoadBalancingStrategy  {RoundRobin)
 }
 
 /// Circuit breaker configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig  {pub failure_threshold: u32,
-    pub timeout_duration: Duration,
-    pub half_open_max_calls: u32,
-}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Field mappings: timeout_duration → timeout; half_open_max_calls → half_open_max_requests
+pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 
 /// Rate limiting configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -22,19 +22,13 @@ pub struct RobustnessConfig {
 }
 
 /// Circuit breaker configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {
-    /// Service name
-        pub service_name: String,
-    /// Failure threshold before opening circuit
-        pub failure_threshold: u32,
-    /// Timeout before allowing test calls in half-open state
-        pub timeout: Duration,
-    /// Success threshold to close circuit from half-open state
-        impl Default for CircuitBreakerConfig  {fn default() -> Self { Self { service_name: "default_service".to_string(),
-            failure_threshold: 5,
-            timeout: Duration::from_secs(30)
-            success_threshold: 3;}}}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// **FIXED CORRUPTION**: Original had malformed struct with inline Default impl
+/// Note: Original had service_name field which is not in canonical
+pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
+
+// Default implementation now provided by canonical
 
 /// Retry configuration with exponential backoff
 #[derive(Debug, Clone, Serialize, Deserialize)]
