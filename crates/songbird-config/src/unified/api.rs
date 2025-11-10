@@ -250,31 +250,13 @@ impl Default for HealthCheckConfiguration {
     }
 }
 
-/// Circuit breaker configuration (consolidated from `CircuitBreakerConfig`)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig  {/// Failure threshold to open circuit
-    pub failure_threshold: u32,
+/// Circuit breaker configuration
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Note: Canonical has half_open_max_requests; recovery_timeout ≈ timeout in half-open state
+pub use crate::canonical::resilience::CircuitBreakerConfig;
 
-    /// Timeout before attempting recovery
-    pub timeout: Duration,
-
-    /// Recovery timeout
-    pub recovery_timeout: Duration,
-
-    /// Enable circuit breaker
-    pub enabled: bool,
-}
-
-impl Default for CircuitBreakerConfig {
-    fn default() -> Self {
-        Self {
-            failure_threshold: 5,
-            timeout: Duration::from_secs(60)
-            recovery_timeout: Duration::from_secs(30)
-            enabled: true,
-        }
-    }
-}
+// Default implementation now provided by canonical
 
 /// Monitoring configuration (consolidated from `MonitoringConfiguration`)
 #[derive(Debug, Clone, Serialize, Deserialize)]

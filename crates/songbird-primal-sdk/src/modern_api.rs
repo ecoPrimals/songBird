@@ -338,18 +338,11 @@ pub enum LoadBalancingAlgorithm  {/// Round robin
 
 /// Circuit breaker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig  {/// Failure threshold to open circuit
-    pub failure_threshold: u32,
-
-    /// Success threshold to close circuit
-    pub success_threshold: u32,
-
-    /// Timeout duration in seconds
-    pub timeout_duration_secs: u64,
-
-    /// Half-open retry delay in seconds
-    pub retry_delay_secs: u64,
-}
+/// Circuit breaker configuration
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Field mappings: timeout_duration_secs (u64) → timeout (Duration), retry_delay_secs not in canonical
+pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 
 /// Retry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

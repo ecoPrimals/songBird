@@ -110,12 +110,10 @@ pub enum LoadBalancingAlgorithm  {RoundRobin)
     /// Random
     Random  }
 /// Circuit breaker configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig  {/// Failure Threshold field
-
-    pub failure_threshold: u32,
-    pub recovery_pub half_open_max_calls: u32,
-}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// **FIXED CORRUPTION**: Original had syntax error "pub recovery_pub half_open_max_calls"
+pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 /// Retry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetryConfig  {/// Maximum number of retry attempts
