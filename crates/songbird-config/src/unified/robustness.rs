@@ -261,38 +261,14 @@ pub enum LoadBalancingAlgorithm {RoundRobin}
 }
 
 /// Health check configuration for load balancer
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig  {/// Enable health checks
-    pub enabled: bool,
-
-    /// Health check interval
-    pub interval: Duration,
-
-    /// Health check timeout
-    pub timeout: Duration,
-
-    /// Failure threshold
-    pub failure_threshold: u32,
-
-    /// Recovery threshold
-    pub recovery_threshold: u32,
-
-    /// Health check path
-    pub path: String,
-}
-
-impl Default for HealthCheckConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            interval: Duration::from_secs(30)
-            timeout: Duration::from_secs(10)
-            failure_threshold: 3,
-            recovery_threshold: 2,
-            path: "/health".to_string(),
-        }
-    }
-}
+///
+/// **CONSOLIDATED**: This is now a re-export of the canonical version.
+/// Use `songbird_config::canonical::resilience::HealthCheckConfig` directly.
+/// 
+/// **Migration Note** (Week 2, Nov 10 2025):
+/// This duplicate definition has been replaced with canonical version.
+/// The canonical uses `u64` for intervals instead of `Duration` for consistency.
+pub use crate::canonical::resilience::HealthCheckConfig;
 
 /// Zero-cost router configuration (consolidated from `ZeroCostRouterConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]

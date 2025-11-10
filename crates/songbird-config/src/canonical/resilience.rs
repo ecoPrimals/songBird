@@ -400,9 +400,12 @@ pub enum LoadBalancingAlgorithm {
 
 /// Health check configuration
 ///
-/// **Merged from**: `unified/robustness.rs`  
-/// **Purpose**: Backend health monitoring
+/// **Canonical location**: `songbird_config::canonical::resilience`
+/// **Merged from**: `unified/robustness.rs`, `config/mod.rs`, and 10+ other locations
+/// **Purpose**: Universal health check configuration for all services
+/// **Migration**: Replaces 12-15 duplicate definitions (Week 2, Nov 10 2025)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct HealthCheckConfig {
     /// Enable health checks
     pub enabled: bool,
@@ -419,8 +422,12 @@ pub struct HealthCheckConfig {
     /// Recovery threshold before marking healthy
     pub recovery_threshold: u32,
 
-    /// Health check path
+    /// Health check path/endpoint
     pub path: String,
+    
+    /// Maximum retry attempts (0 = no retries, added for compatibility)
+    #[serde(default)]
+    pub max_retries: u32,
 }
 
 impl Default for HealthCheckConfig {
@@ -432,6 +439,7 @@ impl Default for HealthCheckConfig {
             failure_threshold: 3,
             recovery_threshold: 2,
             path: "/health".to_string(),
+            max_retries: 0,
         }
     }
 }

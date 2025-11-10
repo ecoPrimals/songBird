@@ -493,26 +493,17 @@ pub enum DiscoveryMechanism {
     Static,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    pub enabled: bool,
-    pub endpoint: String,
-    pub interval_seconds: u64,
-    pub timeout_seconds: u64,
-    pub retries: u32,
-}
-
-impl Default for HealthCheckConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            endpoint: "/health".to_string(),
-            interval_seconds: 10,
-            timeout_seconds: 5,
-            retries: 3,
-        }
-    }
-}
+/// Health check configuration
+///
+/// **CONSOLIDATED**: Re-export of canonical version.
+/// **Migration** (Week 2, Nov 10 2025): This duplicate replaced with canonical.
+/// 
+/// **Field Mappings**:
+/// - `endpoint` → `path` (renamed for consistency)
+/// - `interval_seconds` → `interval_secs`
+/// - `timeout_seconds` → `timeout_secs`
+/// - `retries` → `max_retries`
+pub use crate::canonical::resilience::HealthCheckConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistrationConfig {
