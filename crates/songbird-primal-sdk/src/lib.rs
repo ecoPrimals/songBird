@@ -69,11 +69,14 @@ pub mod capability_storage;
 // DEPRECATED: Primal-Specific Modules (Use capability_* instead)
 // ============================================================================
 
-// ✅ REMOVED: Deprecated hardcoded primal modules (Nov 9, 2025)
-// Use capability_security, capability_compute, capability_ai instead
-// #[deprecated(since = "0.4.0")]
-// pub mod beardog; // Use capability_security instead
-// pub mod toadstool; // Use capability_compute instead
+// ============================================================================
+// REMOVED: Deprecated hardcoded primal modules (Nov 9, 2025)
+// ============================================================================
+// Historical note: Previously had hardcoded vendor-specific modules
+// Now removed in favor of capability-based approach (since v0.4.0)
+// - beardog → capability_security (capability-based security)
+// - toadstool → capability_compute (capability-based compute)
+// - squirrel → capability_ai (capability-based AI)
 // pub mod squirrel; // Use capability_ai instead
 pub mod config;
 pub mod discovery;

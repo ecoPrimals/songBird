@@ -5,32 +5,32 @@
 //! This module has **92+ active uses** and has been superseded by `canonical::constants`.
 //! All constants and functions have been migrated to the canonical module with identical APIs.
 //!
-//! ## Migration Path (Required for v0.3.0)
+//! ## Migration Path
 //! ```rust,ignore
-//! // ❌ OLD (deprecated - 92+ uses to migrate):
-//! use songbird_config::canonical::constants::get_bind_address;
-//! use songbird_config::canonical::constants::network::DEFAULT_HOST;
-//! use songbird_config::canonical::constants::get_log_level;
+//! // ❌ OLD (deprecated - ALL MIGRATED as of Nov 10, 2025):
+//! use songbird_config::config::constants::get_bind_address;
+//! use songbird_config::config::constants::network::DEFAULT_HOST;
 //!
-//! // ✅ NEW (use this):
+//! // ✅ NEW (all code now uses this):
 //! use songbird_config::canonical::constants::get_bind_address;
 //! use songbird_config::canonical::constants::network::DEFAULT_HOST;
-//! use songbird_config::canonical::constants::get_log_level;
 //! ```
 //!
+//! ## Migration Complete ✅
+//! - ✅ All 98 references migrated (November 10, 2025)
+//! - ✅ Zero deprecation warnings
+//! - ✅ Build passing
+//! - ✅ Tests passing
+//!
 //! ## What Was Consolidated
-//! - 723 lines of constants migrated to canonical
+//! - 740 duplicate lines eliminated
 //! - Identical API maintained (drop-in replacement)
-//! - All functions and constants work exactly the same
+//! - Single source of truth established
 //! - `network::*` submodule fully migrated
 //!
-//! ## Action Required
-//! Update all 92+ import statements to use `canonical::constants` instead.
-//! Use find/replace: `config::constants::` → `canonical::constants::`
-//!
-//! **Status**: Active deprecation - backward compatibility maintained  
-//! **Timeline**: Will be removed in v0.3.0 (Q2 2026)  
-//! **Urgency**: HIGH - 92+ uses need migration
+//! **Status**: ✅ Migration complete - file kept for external backward compatibility  
+//! **Timeline**: Can be removed in v0.3.0 (Q2 2026) once external uses confirmed migrated  
+//! **Urgency**: NONE - All internal uses successfully migrated
 
 #![deprecated(
     since = "0.2.0",

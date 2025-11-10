@@ -36,12 +36,14 @@ use tracing::debug;
 use crate::canonical::primals::{QosMetrics, ConnectionSettings, HealthCheckConfig};
 
 // ============================================================================
+// ============================================================================
 // BACKWARD COMPATIBILITY RE-EXPORTS - ✅ REMOVED (Nov 9, 2025)
 // ============================================================================
-// Deprecated re-exports removed - use canonical::primals::* directly
-// #[deprecated] pub use crate::canonical::primals::QosMetrics; // REMOVED
-// #[deprecated] pub use crate::canonical::primals::ConnectionSettings; // REMOVED
-// #[deprecated] pub use crate::canonical::primals::HealthCheckConfig; // REMOVED
+// Historical note: Previously re-exported types from canonical::primals
+// Now removed - use canonical::primals::* directly
+// - QosMetrics → crate::canonical::primals::QosMetrics
+// - ConnectionSettings → crate::canonical::primals::ConnectionSettings
+// - HealthCheckConfig → crate::canonical::primals::HealthCheckConfig
 
 // ============================================================================
 // ARCHIVED EXPERIMENTAL CODE (for reference only)

@@ -146,7 +146,7 @@ pub struct DiscoveredCapability {
 // ✅ REMOVED: Deprecated type alias (Nov 9, 2025)
 // Use DiscoveredCapability directly for discovered capabilities with deployment info,
 // or capabilities::Capability for capability definitions
-// #[deprecated] pub type Capability = DiscoveredCapability;
+// Historical note: Previously aliased Capability = DiscoveredCapability (removed Nov 2025)
 
 /// Discovery filters for primal search
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
