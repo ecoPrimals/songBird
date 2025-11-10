@@ -19,8 +19,8 @@
 ### **🎉 Recent Achievements**
 → **Week 2 Complete**: **[WEEK_2_FINAL_STATUS.md](WEEK_2_FINAL_STATUS.md)** - 28 configs, Grade 99/100 🌟  
 → **Week 2 Day 1**: **[WEEK_2_DAY_1_COMPLETE.md](WEEK_2_DAY_1_COMPLETE.md)** - Config consolidation (20 configs)  
-→ **Week 1**: **[docs/archive/WEEK_1_COMPLETE_NOV_10.md](docs/archive/WEEK_1_COMPLETE_NOV_10.md)** - Foundation (Grade 95/100)  
-→ Metrics: **[docs/archive/WEEK_1_VICTORY.md](docs/archive/WEEK_1_VICTORY.md)** - Detailed report
+→ **Week 1**: Foundation complete (Grade 95/100) - archived to parent directory  
+→ **Fossil Records**: Week 1 archives moved to `../archive/songbird-fossils/`
 
 ### **🏗️ Understanding the Architecture?**
 → Read **[docs/strategy/ARCHITECTURE_OVERVIEW.md](docs/strategy/ARCHITECTURE_OVERVIEW.md)** - System design
