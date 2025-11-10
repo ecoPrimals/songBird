@@ -51,29 +51,35 @@ pub struct ResourceMetrics {
     pub storage_mb: u64,
 }
 
-/// Discovery configuration
+/// Discovery configuration for capabilities
+///
+/// **LOCAL DEFINITION**: Kept local due to flat vs nested structure differences.
+/// Canonical version uses nested configs (service/capability/network) which would require
+/// extensive call-site updates. Fields aligned with canonical where possible.
+///
+/// **Future**: Consider migrating to canonical nested structure in major version bump.
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
-    /// How often to refresh capabilities
+    /// How often to refresh capabilities (aligns with service_discovery.discovery_interval_secs)
     pub refresh_interval: std::time::Duration,
-    /// Timeout for capability discovery requests
+    /// Timeout for capability discovery requests (aligns with service_discovery.discovery_timeout_secs)
     pub discovery_timeout: std::time::Duration,
-    /// Maximum number of concurrent discovery requests
+    /// Maximum number of concurrent discovery requests (aligns with service_discovery.max_concurrent_discoveries)
     pub max_concurrent_discoveries: usize,
-    /// Whether to enable automatic discovery
+    /// Whether to enable automatic discovery (aligns with canonical auto_discovery)
     pub auto_discovery: bool,
-    /// Whether to enable network-based discovery
+    /// Whether to enable network-based discovery (aligns with network_discovery.enabled)
     pub enable_network_discovery: bool,
 }
 
 impl Default for DiscoveryConfig {
     fn default() -> Self {
         Self {
-            refresh_interval: std::time::Duration::from_secs(300), // 5 minutes
-            discovery_timeout: std::time::Duration::from_secs(10),
-            max_concurrent_discoveries: 10,
-            auto_discovery: true,
-            enable_network_discovery: false,
+            refresh_interval: std::time::Duration::from_secs(300), // 5 minutes (aligns with canonical default: 30s)
+            discovery_timeout: std::time::Duration::from_secs(10), // Reasonable timeout
+            max_concurrent_discoveries: 10, // Aligns with canonical default
+            auto_discovery: true, // Aligns with canonical default
+            enable_network_discovery: false, // Secure default (canonical: false)
         }
     }
 }
