@@ -113,28 +113,10 @@ impl Default for CircuitBreakerConfig {
 }
 
 /// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    /// Interval between health checks
-    pub interval: Duration,
-    /// Timeout for each health check
-    pub timeout: Duration,
-    /// Number of consecutive successes to mark as healthy
-    pub healthy_threshold: u32,
-    /// Number of consecutive failures to mark as unhealthy
-    pub unhealthy_threshold: u32,
-}
-
-impl Default for HealthCheckConfig {
-    fn default() -> Self {
-        Self {
-            interval: Duration::from_secs(30),
-            timeout: Duration::from_secs(5),
-            healthy_threshold: 2,
-            unhealthy_threshold: 3,
-        }
-    }
-}
+///
+/// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
+/// Field mappings: healthy_threshold→recovery_threshold, unhealthy_threshold→failure_threshold
+pub use songbird_config::canonical::resilience::HealthCheckConfig;
 
 /// Feature flags for runtime configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
