@@ -122,22 +122,36 @@ pub enum FallbackBehavior {
     LocalFallback,
 }
 
-/// Discovery configuration - HOW to find services, not WHAT to find
+/// Discovery configuration for zero-touch infant discovery
+///
+/// **LOCAL DEFINITION**: Methods-based with caching support.
+/// **ZERO-TOUCH**: Designed for automatic bootstrapping and infant mode.
+/// Field mappings to canonical:
+/// - `methods` (Vec<Enum>) → Can derive from enabled flags in canonical configs
+/// - `timeout` (Duration) → scan_timeout_secs (u64, convert)
+/// - `refresh_interval` (Duration) → service_discovery.discovery_interval_secs (u64, convert)
+/// - `enable_cache` → capability_discovery.enabled (caching feature)
+/// - `cache_ttl` (Duration) → capability_discovery.cache_ttl_secs (u64, convert)
+///
+/// **ARCHITECTURAL NOTE**: Methods-based pattern (Vec<DiscoveryMethod>) is an
+/// alternative to flag-based. Both are valid approaches. Canonical uses nested
+/// configs with individual enable flags for finer control.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryConfig {
     /// Discovery methods to try (in order of preference)
+    /// Maps to: Multiple canonical flags based on method enum variants
     pub methods: Vec<DiscoveryMethod>,
 
-    /// Discovery timeout
+    /// Discovery timeout (→ scan_timeout_secs)
     pub timeout: Duration,
 
-    /// How often to refresh discovered services
+    /// How often to refresh discovered services (→ service_discovery.discovery_interval_secs)
     pub refresh_interval: Duration,
 
-    /// Cache discovered services
+    /// Cache discovered services (→ capability_discovery.enabled for caching)
     pub enable_cache: bool,
 
-    /// Cache TTL
+    /// Cache TTL (→ capability_discovery.cache_ttl_secs)
     pub cache_ttl: Duration,
 }
 

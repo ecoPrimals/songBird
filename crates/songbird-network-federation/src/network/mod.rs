@@ -288,19 +288,31 @@ pub enum LoadBalancingStrategy {
     IpHash,
 }
 
-/// Network discovery configuration
+/// Discovery configuration for network federation
+///
+/// **SPECIALIZED VARIANT**: Network federation-specific discovery config.
+/// **KEEP AS-IS**: This is a federation-specific config that should remain local.
+/// Field semantic alignment to canonical (for reference):
+/// - `enabled` → network_discovery.enabled
+/// - `methods` (Vec<DiscoveryMethod>) → network_discovery.discovery_protocols
+/// - `interval` (Duration) → service_discovery.discovery_interval_secs (u64, convert)
+/// - `timeout` (Duration) → scan_timeout_secs (u64, convert)
+///
+/// **WHY SPECIALIZED**: Federation discovery has different requirements than
+/// general service discovery. It's focused on peer federation nodes, not services.
+/// Methods are federation-specific (peer broadcast, gossip, DHT, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryConfig {
-    /// Enable network discovery
+    /// Enable network discovery (semantically aligns with network_discovery.enabled)
     pub enabled: bool,
 
-    /// Discovery methods
+    /// Discovery methods (federation-specific: peer broadcast, gossip, DHT)
     pub methods: Vec<DiscoveryMethod>,
 
-    /// Discovery interval
+    /// Discovery interval (aligns with service_discovery.discovery_interval_secs)
     pub interval: Duration,
 
-    /// Discovery timeout
+    /// Discovery timeout (aligns with scan_timeout_secs)
     pub timeout: Duration,
 }
 
