@@ -28,8 +28,8 @@
 //! - Single source of truth established
 //! - `network::*` submodule fully migrated
 //!
-//! **Status**: ✅ Migration complete - file kept for external backward compatibility  
-//! **Timeline**: Can be removed in v0.3.0 (Q2 2026) once external uses confirmed migrated  
+//! **Status**: ✅ Migration complete - file kept for external backward compatibility\
+//! **Timeline**: Can be removed in v0.3.0 (Q2 2026) once external uses confirmed migrated\
 //! **Urgency**: NONE - All internal uses successfully migrated
 
 #![deprecated(
@@ -150,13 +150,13 @@ fn get_expected_service_count() -> u16 {
         if SafeEnv::get_bool("SONGBIRD_ENABLE_SQUIRREL", false) {
             count += 1;
         }
-        if !SafeEnv::get_bool("SONGBIRD_ENABLE_DISCOVERY", true) == false {
+        if !!SafeEnv::get_bool("SONGBIRD_ENABLE_DISCOVERY", true) {
             count += 1;
         }
-        if !SafeEnv::get_bool("SONGBIRD_ENABLE_METRICS", true) == false {
+        if !!SafeEnv::get_bool("SONGBIRD_ENABLE_METRICS", true) {
             count += 1;
         }
-        if !SafeEnv::get_bool("SONGBIRD_ENABLE_HEALTH_CHECK", true) == false {
+        if !!SafeEnv::get_bool("SONGBIRD_ENABLE_HEALTH_CHECK", true) {
             count += 1;
         }
 

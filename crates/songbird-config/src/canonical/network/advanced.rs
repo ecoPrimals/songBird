@@ -1,7 +1,7 @@
 //! Advanced Network Features
 //!
 //! Advanced networking features including service discovery, SSL/TLS,
-//! proxy configuration, TURN relays, UPnP, and network measurements.
+//! proxy configuration, TURN relays, `UPnP`, and network measurements.
 
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 /// Service endpoint configuration for service discovery
 ///
-/// **Merged from**: `unified/network.rs`  
+/// **Merged from**: `unified/network.rs`\
 /// **Purpose**: Detailed service endpoint information for discovery and routing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceEndpoint {
@@ -265,7 +265,7 @@ impl TURNRelay {
     }
 }
 
-/// UPnP device configuration for local network discovery
+/// `UPnP` device configuration for local network discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UPnPDevice {
     pub device_id: String,
@@ -275,7 +275,7 @@ pub struct UPnPDevice {
 }
 
 impl UPnPDevice {
-    /// Create a new UPnP device configuration
+    /// Create a new `UPnP` device configuration
     #[must_use]
     pub fn new(device_id: String, friendly_name: String, device_type: String) -> Self {
         Self {

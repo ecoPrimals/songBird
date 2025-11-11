@@ -72,7 +72,7 @@ pub fn federation_routes_with_capabilities(
     let app_state = Arc::new(FederationAppState {
         federation_state,
         service_registry,
-        capability_registry: Some(capability_registry.clone()),
+        capability_registry: Some(capability_registry),
     });
 
     Router::new()
@@ -205,20 +205,17 @@ async fn register_capability_provider(
         request.capabilities.len()
     );
 
-    let capability_registry = match &state.capability_registry {
-        Some(registry) => registry,
-        None => {
-            warn!("Capability registry not initialized");
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(CapabilityRegistrationResponse {
-                    success: false,
-                    data: None,
-                    error: Some("Capability registry not available".to_string()),
-                    timestamp: Utc::now(),
-                }),
-            );
-        }
+    let capability_registry = if let Some(registry) = &state.capability_registry { registry } else {
+        warn!("Capability registry not initialized");
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(CapabilityRegistrationResponse {
+                success: false,
+                data: None,
+                error: Some("Capability registry not available".to_string()),
+                timestamp: Utc::now(),
+            }),
+        );
     };
 
     match capability_registry.register(request.clone()).await {

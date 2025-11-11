@@ -171,7 +171,7 @@ pub struct AdapterSettings {
 /// Circuit breaker configuration
 ///
 /// **CONSOLIDATED**: Re-export from songbird-config canonical (Week 2, Nov 10 2025).
-/// Field mapping: timeout_seconds (u64) → timeout (Duration)
+/// Field mapping: `timeout_seconds` (u64) → timeout (Duration)
 pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 
 impl Default for SecurityAdapterConfig {

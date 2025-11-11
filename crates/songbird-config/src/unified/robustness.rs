@@ -36,7 +36,7 @@ pub struct RobustnessConfig  {/// Circuit breaker configuration
 /// Circuit breaker configuration
 ///
 /// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
-/// Note: Original had min_throughput_threshold which is not in canonical
+/// Note: Original had `min_throughput_threshold` which is not in canonical
 pub use crate::canonical::resilience::CircuitBreakerConfig;
 
 // Default implementation now provided by canonical
@@ -130,11 +130,11 @@ pub enum IsolationStrategy {
     Queue,
 }
 
-/// **CONSOLIDATED**: Re-export of canonical RetryConfig (Nov 10, 2025)
+/// **CONSOLIDATED**: Re-export of canonical `RetryConfig` (Nov 10, 2025)
 /// 
 /// Note: `enabled`, `backoff_strategy`, `jitter_enabled`, `retryable_errors` were unified-specific
 ///       These are now handled at usage site or via builder patterns
-/// Default implementation provided by canonical::resilience::RetryConfig
+/// Default implementation provided by `canonical::resilience::RetryConfig`
 pub use crate::canonical::resilience::RetryConfig;
 
 /// Backoff strategies for retry mechanism

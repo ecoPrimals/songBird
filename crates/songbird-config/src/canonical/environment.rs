@@ -185,7 +185,7 @@ impl Default for LogConfig {
             format: SafeEnv::get_or_default("LOG_FORMAT", "json"),
             output: SafeEnv::get_or_default("LOG_OUTPUT", "stdout"),
             file_rotation: SafeEnv::get_bool("LOG_FILE_ROTATION", true),
-            max_file_size_mb: SafeEnv::get_port("LOG_MAX_FILE_SIZE_MB", 100) as u32,
+            max_file_size_mb: u32::from(SafeEnv::get_port("LOG_MAX_FILE_SIZE_MB", 100)),
         }
     }
 }
@@ -248,7 +248,7 @@ impl Default for PerformanceParameters {
             batch_size: SafeEnv::get_port("BATCH_SIZE", 100) as usize,
             enable_zero_copy: SafeEnv::get_bool("ENABLE_ZERO_COPY", true),
             connection_pool_size: SafeEnv::get_port("CONNECTION_POOL_SIZE", 10) as usize,
-            request_timeout_ms: SafeEnv::get_port("REQUEST_TIMEOUT_MS", 30000) as u64,
+            request_timeout_ms: u64::from(SafeEnv::get_port("REQUEST_TIMEOUT_MS", 30000)),
         }
     }
 }

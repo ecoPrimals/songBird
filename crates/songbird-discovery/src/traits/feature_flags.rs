@@ -252,7 +252,7 @@ pub enum ProviderCapability {
     PercentageRollout,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProviderCapabilities {
     pub capabilities: Vec<ProviderCapability>,
 }

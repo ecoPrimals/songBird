@@ -267,7 +267,7 @@ impl CapabilityEndpointResolver {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
-            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
         
         // Try Consul-style query first
         let consul_url = format!("{}/v1/catalog/service/{}", _registry_endpoint, capability.as_str());
@@ -279,12 +279,12 @@ impl CapabilityEndpointResolver {
                         // Extract service endpoint
                         if let (Some(address), Some(port)) = (
                             service.get("ServiceAddress").and_then(|v| v.as_str()).or_else(|| service.get("Address").and_then(|v| v.as_str())),
-                            service.get("ServicePort").and_then(|v| v.as_u64()).or_else(|| service.get("Port").and_then(|v| v.as_u64()))
+                            service.get("ServicePort").and_then(serde_json::Value::as_u64).or_else(|| service.get("Port").and_then(serde_json::Value::as_u64))
                         ) {
                             let endpoint = if address.contains("://") {
-                                format!("{}:{}", address, port)
+                                format!("{address}:{port}")
                             } else {
-                                format!("http://{}:{}", address, port)
+                                format!("http://{address}:{port}")
                             };
                             
                             debug!("Found {} capability at {} via registry", capability.as_str(), endpoint);
@@ -329,11 +329,11 @@ impl CapabilityEndpointResolver {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
-            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
         
         // Try Kubernetes service discovery
         let service_name = format!("{}-service", capability.as_str().to_lowercase());
-        let k8s_url = format!("{}/api/v1/services/{}", _metadata_api, service_name);
+        let k8s_url = format!("{_metadata_api}/api/v1/services/{service_name}");
         
         match client.get(&k8s_url).send().await {
             Ok(response) if response.status().is_success() => {
@@ -344,8 +344,8 @@ impl CapabilityEndpointResolver {
                         service.get("spec").and_then(|s| s.get("clusterIP")).and_then(|v| v.as_str()),
                         service.get("spec").and_then(|s| s.get("ports")).and_then(|v| v.as_array())
                     ) {
-                        if let Some(first_port) = ports.first().and_then(|p| p.get("port")).and_then(|v| v.as_u64()) {
-                            let endpoint = format!("http://{}:{}", cluster_ip, first_port);
+                        if let Some(first_port) = ports.first().and_then(|p| p.get("port")).and_then(serde_json::Value::as_u64) {
+                            let endpoint = format!("http://{cluster_ip}:{first_port}");
                             
                             debug!("Found {} capability at {} via container metadata", capability.as_str(), endpoint);
                             
@@ -390,7 +390,7 @@ impl CapabilityEndpointResolver {
         match tokio::net::lookup_host(service_name.as_str()).await {
             Ok(mut addrs) => {
                 if let Some(addr) = addrs.next() {
-                    let endpoint = format!("http://{}", addr);
+                    let endpoint = format!("http://{addr}");
                     
                     debug!("Found {} capability at {} via DNS SRV", capability.as_str(), endpoint);
                     

@@ -363,7 +363,7 @@ fn calculate_primal_port_offset(primal_name: &str) -> u16 {
     (hash % 1000) as u16
 }
 
-/// Get port offset for specific primal types (legacy, prefer calculate_primal_port_offset)
+/// Get port offset for specific primal types (legacy, prefer `calculate_primal_port_offset`)
 fn get_primal_port_offset(primal_type: &str) -> u16 {
     match primal_type.to_lowercase().as_str() {
         "beardog" => 10,

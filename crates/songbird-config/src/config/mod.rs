@@ -239,7 +239,7 @@ impl SongbirdConfig {
 }
 
 /// Network configuration - domain-specific variant for config module
-/// (Different fields from CanonicalNetworkConfig - both are valid for their contexts)
+/// (Different fields from `CanonicalNetworkConfig` - both are valid for their contexts)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {
     /// Bind address (configurable, no hardcoded defaults)
@@ -258,7 +258,7 @@ pub struct NetworkConfig {
     pub enable_ipv6: bool,
 
     /// TLS configuration
-    /// **CONSOLIDATED**: Now uses CanonicalTlsConfig from songbird-types
+    /// **CONSOLIDATED**: Now uses `CanonicalTlsConfig` from songbird-types
     pub tls: Option<CanonicalTlsConfig>,
 
     /// Proxy configuration
@@ -332,7 +332,7 @@ pub struct SecurityConfig {
     pub encryption: EncryptionConfig,
 
     /// Rate limiting configuration
-    /// **CONSOLIDATED**: Uses CanonicalRateLimitConfig from songbird-types
+    /// **CONSOLIDATED**: Uses `CanonicalRateLimitConfig` from songbird-types
     pub rate_limiting: CanonicalRateLimitConfig,
 
     /// Audit logging configuration

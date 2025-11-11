@@ -244,7 +244,7 @@ pub enum AuthenticationMethod {
     ApiKey,
     /// Certificate-based authentication
     Certificate,
-    /// OAuth2 authentication
+    /// `OAuth2` authentication
     OAuth2,
     /// SAML authentication
     Saml,

@@ -106,7 +106,7 @@ impl TaskComplexityAnalyzer {
         if let Some(reqs) = &task.resource_requirements {
             // Moderate if 1-4 CPU cores
             if let Some(cpu_cores) = reqs.cpu_cores {
-                if cpu_cores >= 1.0 && cpu_cores <= 4.0 {
+                if (1.0..=4.0).contains(&cpu_cores) {
                     debug!("Task requires {} CPU cores → Moderate", cpu_cores);
                     return TaskComplexity::Moderate;
                 }
@@ -114,7 +114,7 @@ impl TaskComplexityAnalyzer {
             
             // Moderate if 512MB - 4GB memory
             if let Some(memory_mb) = reqs.memory_mb {
-                if memory_mb >= 512 && memory_mb <= 4096 {
+                if (512..=4096).contains(&memory_mb) {
                     debug!("Task requires {}MB memory → Moderate", memory_mb);
                     return TaskComplexity::Moderate;
                 }

@@ -128,10 +128,10 @@ pub enum FallbackBehavior {
 /// **ZERO-TOUCH**: Designed for automatic bootstrapping and infant mode.
 /// Field mappings to canonical:
 /// - `methods` (Vec<Enum>) → Can derive from enabled flags in canonical configs
-/// - `timeout` (Duration) → scan_timeout_secs (u64, convert)
-/// - `refresh_interval` (Duration) → service_discovery.discovery_interval_secs (u64, convert)
-/// - `enable_cache` → capability_discovery.enabled (caching feature)
-/// - `cache_ttl` (Duration) → capability_discovery.cache_ttl_secs (u64, convert)
+/// - `timeout` (Duration) → `scan_timeout_secs` (u64, convert)
+/// - `refresh_interval` (Duration) → `service_discovery.discovery_interval_secs` (u64, convert)
+/// - `enable_cache` → `capability_discovery.enabled` (caching feature)
+/// - `cache_ttl` (Duration) → `capability_discovery.cache_ttl_secs` (u64, convert)
 ///
 /// **ARCHITECTURAL NOTE**: Methods-based pattern (Vec<DiscoveryMethod>) is an
 /// alternative to flag-based. Both are valid approaches. Canonical uses nested
@@ -142,16 +142,16 @@ pub struct DiscoveryConfig {
     /// Maps to: Multiple canonical flags based on method enum variants
     pub methods: Vec<DiscoveryMethod>,
 
-    /// Discovery timeout (→ scan_timeout_secs)
+    /// Discovery timeout (→ `scan_timeout_secs`)
     pub timeout: Duration,
 
-    /// How often to refresh discovered services (→ service_discovery.discovery_interval_secs)
+    /// How often to refresh discovered services (→ `service_discovery.discovery_interval_secs`)
     pub refresh_interval: Duration,
 
-    /// Cache discovered services (→ capability_discovery.enabled for caching)
+    /// Cache discovered services (→ `capability_discovery.enabled` for caching)
     pub enable_cache: bool,
 
-    /// Cache TTL (→ capability_discovery.cache_ttl_secs)
+    /// Cache TTL (→ `capability_discovery.cache_ttl_secs`)
     pub cache_ttl: Duration,
 }
 
@@ -234,9 +234,9 @@ pub struct ConnectionLimits {
 
 /// **SPECIALIZED**: Network timeouts for infant/zero-touch config
 /// 
-/// This is intentionally kept separate from canonical::network::NetworkTimeouts because:
-/// 1. Different field names (connection_timeout vs connection)
-/// 2. Different semantics (idle_timeout vs health_check)
+/// This is intentionally kept separate from `canonical::network::NetworkTimeouts` because:
+/// 1. Different field names (`connection_timeout` vs connection)
+/// 2. Different semantics (`idle_timeout` vs `health_check`)
 /// 3. Zero-touch bootstrap has specific timeout requirements
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkTimeouts {

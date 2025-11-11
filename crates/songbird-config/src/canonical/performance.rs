@@ -12,8 +12,8 @@ use std::env;
 
 /// Unified performance configuration
 ///
-/// **Canonical Source**: This is the definitive performance configuration  
-/// **Migrated from**: `unified/performance.rs`  
+/// **Canonical Source**: This is the definitive performance configuration\
+/// **Migrated from**: `unified/performance.rs`\
 /// **Purpose**: Thread pool, caching, and runtime performance settings
 ///
 /// # Examples
@@ -83,7 +83,7 @@ impl Default for PerformanceConfig {
                 .unwrap_or_else(|| {
                     // Default to number of CPU cores
                     std::thread::available_parallelism()
-                        .map(|n| n.get())
+                        .map(std::num::NonZero::get)
                         .unwrap_or(4)
                 }),
             max_concurrent_requests: env::var("SONGBIRD_MAX_CONCURRENT_REQUESTS")
@@ -113,7 +113,7 @@ impl Default for PerformanceConfig {
 
 /// Object pool size configuration
 ///
-/// **Migrated from**: `unified/performance.rs`  
+/// **Migrated from**: `unified/performance.rs`\
 /// **Purpose**: Configure object pooling for memory efficiency
 ///
 /// # Examples
@@ -164,7 +164,7 @@ impl Default for ObjectPoolSizes {
 
 /// Cache configuration
 ///
-/// **Migrated from**: `unified/performance.rs`  
+/// **Migrated from**: `unified/performance.rs`\
 /// **Purpose**: Configure caching behavior for performance optimization
 ///
 /// # Examples
@@ -215,7 +215,7 @@ impl Default for CacheConfig {
 
 /// Metrics configuration
 ///
-/// **Migrated from**: `unified/performance.rs`  
+/// **Migrated from**: `unified/performance.rs`\
 /// **Purpose**: Configure metrics collection and export
 ///
 /// # Examples
@@ -263,7 +263,7 @@ impl Default for MetricsConfig {
 
 /// Benchmark configuration for performance testing
 ///
-/// **Migrated from**: `unified/performance.rs`  
+/// **Migrated from**: `unified/performance.rs`\
 /// **Purpose**: Configure performance benchmarking and load testing
 ///
 /// # Examples
@@ -328,7 +328,7 @@ impl Default for BenchmarkConfig {
 // BACKWARD COMPATIBILITY ALIASES
 // ============================================================================
 
-/// Backward compatibility alias for UnifiedPerformanceConfig
+/// Backward compatibility alias for `UnifiedPerformanceConfig`
 pub type UnifiedPerformanceConfig = PerformanceConfig;
 
 // ============================================================================

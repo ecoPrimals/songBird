@@ -275,7 +275,7 @@ async fn detect_resources() -> ServiceInfo {
 
     // Detect GPU (NVIDIA)
     let (gpu_count, gpu_model) = if let Ok(output) = Command::new("nvidia-smi")
-        .args(&["--query-gpu=name,count", "--format=csv,noheader"])
+        .args(["--query-gpu=name,count", "--format=csv,noheader"])
         .output()
     {
         if output.status.success() {

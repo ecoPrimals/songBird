@@ -1,7 +1,7 @@
 //! Core Network Configuration
 //!
-//! Core network structures including the main CanonicalNetworkConfig,
-//! PeerType, and fundamental network settings.
+//! Core network structures including the main `CanonicalNetworkConfig`,
+//! `PeerType`, and fundamental network settings.
 
 use serde::{Deserialize, Serialize};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
@@ -14,7 +14,7 @@ use super::timeouts::NetworkTimeouts;
 use super::cors::CorsConfig;
 use super::limits::ConnectionLimits;
 use super::ports::PortRange;
-use super::advanced::*;
+use super::advanced::{SelfAwareConfig, UniversalDiscoveryConfig, ReverseProxyConfig, SslConfig, TURNRelay, UPnPDevice, DiscoveryNetworkTopology, NetworkMeasurement};
 
 /// **CANONICAL**: Peer type in network topology
 ///

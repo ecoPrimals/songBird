@@ -48,6 +48,12 @@ pub struct DeploymentState {
     pub negotiations: Arc<RwLock<HashMap<String, NegotiationState>>>,
 }
 
+impl Default for DeploymentState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeploymentState {
     pub fn new() -> Self {
         Self {
@@ -125,7 +131,7 @@ pub struct DeploymentInfo {
 }
 
 /// Deployment status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum DeploymentStatus {
     Deploying,
@@ -270,8 +276,7 @@ async fn get_capabilities(
     let disks = Disks::new_with_refreshed_list();
     let available_storage = disks.list()
         .first()
-        .map(|d| d.available_space() / 1024 / 1024 / 1024) // GB
-        .unwrap_or(0);
+        .map_or(0, |d| d.available_space() / 1024 / 1024 / 1024);
     
     // Count current deployments
     let current_deployments = state.deployments.read().await.len();
@@ -371,8 +376,8 @@ fn estimate_bandwidth(network_type: &str) -> BandwidthEstimate {
 /// Calculate max concurrent deployments based on available memory
 fn calculate_max_concurrent(available_memory_gb: u64) -> usize {
     // Assume each deployment needs ~1GB
-    let max = (available_memory_gb as usize).max(1).min(10);
-    max
+    
+    (available_memory_gb as usize).max(1).min(10)
 }
 
 // ============================================================================

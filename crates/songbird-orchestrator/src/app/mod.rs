@@ -445,10 +445,10 @@ impl SongbirdOrchestrator {
         let (listener, actual_addr) = Self::bind_with_fallback(&addr).await?;
         let actual_port = actual_addr.port();
         
-        if actual_port != port {
-            warn!("⚠️  Configured port {} busy, using port {} instead", port, actual_port);
-        } else {
+        if actual_port == port {
             info!("✅ Bound to configured port {}", port);
+        } else {
+            warn!("⚠️  Configured port {} busy, using port {} instead", port, actual_port);
         }
 
         info!("🌐 HTTP server listening on {}", actual_addr);

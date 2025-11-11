@@ -116,7 +116,7 @@ pub struct JobStatus {
 }
 
 /// Job status types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum JobStatusType {
     /// Job is queued

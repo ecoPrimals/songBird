@@ -39,12 +39,9 @@ impl BroadcastExecutor {
         let mut tasks = Vec::new();
         
         for tower_id in tower_ids {
-            let endpoint = match self.tower_registry.get(&tower_id) {
-                Some(ep) => ep.clone(),
-                None => {
-                    warn!("Tower not found in registry: {}", tower_id);
-                    continue;
-                }
+            let endpoint = if let Some(ep) = self.tower_registry.get(&tower_id) { ep.clone() } else {
+                warn!("Tower not found in registry: {}", tower_id);
+                continue;
             };
             
             let client = self.client.clone();
@@ -117,7 +114,7 @@ impl BroadcastExecutor {
         }
         
         // Check minimum success threshold
-        let success_rate = success_count as f64 / (success_count + failure_count) as f64;
+        let success_rate = f64::from(success_count) / f64::from(success_count + failure_count);
         if success_rate < options.min_success_rate {
             return BroadcastResult {
                 broadcast_id,

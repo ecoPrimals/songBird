@@ -4,7 +4,7 @@
 //! 
 //! This module consolidates primal-related types from:
 //! - `config/agnostic_primals.rs` (archived - experimental, unused)
-//! - `config/universal_primals.rs` (archived - 1 type extracted: QosMetrics)
+//! - `config/universal_primals.rs` (archived - 1 type extracted: `QosMetrics`)
 //! 
 //! The simpler canonical approach proved more practical than the experimental
 //! universal registry systems.
@@ -75,28 +75,28 @@ impl Default for PrimalType {
 impl std::fmt::Display for PrimalType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PrimalType::Compute => write!(f, "compute"),
-            PrimalType::Storage => write!(f, "storage"),
-            PrimalType::Security => write!(f, "security"),
-            PrimalType::AI => write!(f, "ai"),
-            PrimalType::Orchestration => write!(f, "orchestration"),
-            PrimalType::Gaming => write!(f, "gaming"),
-            PrimalType::Communication => write!(f, "communication"),
-            PrimalType::Media => write!(f, "media"),
-            PrimalType::Database => write!(f, "database"),
-            PrimalType::Analytics => write!(f, "analytics"),
-            PrimalType::Development => write!(f, "development"),
-            PrimalType::IoT => write!(f, "iot"),
-            PrimalType::Blockchain => write!(f, "blockchain"),
-            PrimalType::Financial => write!(f, "financial"),
-            PrimalType::Identity => write!(f, "identity"),
-            PrimalType::Cdn => write!(f, "cdn"),
-            PrimalType::Email => write!(f, "email"),
-            PrimalType::Search => write!(f, "search"),
-            PrimalType::Backup => write!(f, "backup"),
-            PrimalType::Compliance => write!(f, "compliance"),
-            PrimalType::Custom(name) => write!(f, "custom-{name}"),
-            PrimalType::Unknown => write!(f, "unknown"),
+            Self::Compute => write!(f, "compute"),
+            Self::Storage => write!(f, "storage"),
+            Self::Security => write!(f, "security"),
+            Self::AI => write!(f, "ai"),
+            Self::Orchestration => write!(f, "orchestration"),
+            Self::Gaming => write!(f, "gaming"),
+            Self::Communication => write!(f, "communication"),
+            Self::Media => write!(f, "media"),
+            Self::Database => write!(f, "database"),
+            Self::Analytics => write!(f, "analytics"),
+            Self::Development => write!(f, "development"),
+            Self::IoT => write!(f, "iot"),
+            Self::Blockchain => write!(f, "blockchain"),
+            Self::Financial => write!(f, "financial"),
+            Self::Identity => write!(f, "identity"),
+            Self::Cdn => write!(f, "cdn"),
+            Self::Email => write!(f, "email"),
+            Self::Search => write!(f, "search"),
+            Self::Backup => write!(f, "backup"),
+            Self::Compliance => write!(f, "compliance"),
+            Self::Custom(name) => write!(f, "custom-{name}"),
+            Self::Unknown => write!(f, "unknown"),
         }
     }
 }
@@ -105,35 +105,35 @@ impl std::str::FromStr for PrimalType  {type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "compute" => Ok(PrimalType::Compute),
-            "storage" => Ok(PrimalType::Storage),
-            "security" => Ok(PrimalType::Security),
-            "ai" => Ok(PrimalType::AI),
-            "orchestration" => Ok(PrimalType::Orchestration),
-            "gaming" => Ok(PrimalType::Gaming),
-            "communication" => Ok(PrimalType::Communication),
-            "media" => Ok(PrimalType::Media),
-            "database" => Ok(PrimalType::Database),
-            "analytics" => Ok(PrimalType::Analytics),
-            "development" => Ok(PrimalType::Development),
-            "iot" => Ok(PrimalType::IoT),
-            "blockchain" => Ok(PrimalType::Blockchain),
-            "financial" => Ok(PrimalType::Financial),
-            "identity" => Ok(PrimalType::Identity),
-            "cdn" => Ok(PrimalType::Cdn),
-            "email" => Ok(PrimalType::Email),
-            "search" => Ok(PrimalType::Search),
-            "backup" => Ok(PrimalType::Backup),
-            "compliance" => Ok(PrimalType::Compliance),
-            "unknown" => Ok(PrimalType::Unknown),
+            "compute" => Ok(Self::Compute),
+            "storage" => Ok(Self::Storage),
+            "security" => Ok(Self::Security),
+            "ai" => Ok(Self::AI),
+            "orchestration" => Ok(Self::Orchestration),
+            "gaming" => Ok(Self::Gaming),
+            "communication" => Ok(Self::Communication),
+            "media" => Ok(Self::Media),
+            "database" => Ok(Self::Database),
+            "analytics" => Ok(Self::Analytics),
+            "development" => Ok(Self::Development),
+            "iot" => Ok(Self::IoT),
+            "blockchain" => Ok(Self::Blockchain),
+            "financial" => Ok(Self::Financial),
+            "identity" => Ok(Self::Identity),
+            "cdn" => Ok(Self::Cdn),
+            "email" => Ok(Self::Email),
+            "search" => Ok(Self::Search),
+            "backup" => Ok(Self::Backup),
+            "compliance" => Ok(Self::Compliance),
+            "unknown" => Ok(Self::Unknown),
             custom if custom.starts_with("custom-") => {
                 let custom_name = custom
                     .strip_prefix("custom-")
                     .unwrap_or(custom) // Safe fallback - if prefix removal fails, use original
                     .to_string();
-                Ok(PrimalType::Custom(custom_name))
+                Ok(Self::Custom(custom_name))
             }
-            _ => Ok(PrimalType::Custom(s.to_string())),
+            _ => Ok(Self::Custom(s.to_string())),
         }
     }
 }
@@ -173,17 +173,17 @@ impl Default for ServiceCategory {
 impl std::fmt::Display for ServiceCategory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ServiceCategory::Infrastructure => write!(f, "infrastructure"),
-            ServiceCategory::Application => write!(f, "application"),
-            ServiceCategory::Data => write!(f, "data"),
-            ServiceCategory::UI => write!(f, "ui"),
-            ServiceCategory::Integration => write!(f, "integration"),
-            ServiceCategory::Monitoring => write!(f, "monitoring"),
-            ServiceCategory::Security => write!(f, "security"),
-            ServiceCategory::Development => write!(f, "development"),
-            ServiceCategory::Analytics => write!(f, "analytics"),
-            ServiceCategory::Communication => write!(f, "communication"),
-            ServiceCategory::Custom(name) => write!(f, "custom-{name}"),
+            Self::Infrastructure => write!(f, "infrastructure"),
+            Self::Application => write!(f, "application"),
+            Self::Data => write!(f, "data"),
+            Self::UI => write!(f, "ui"),
+            Self::Integration => write!(f, "integration"),
+            Self::Monitoring => write!(f, "monitoring"),
+            Self::Security => write!(f, "security"),
+            Self::Development => write!(f, "development"),
+            Self::Analytics => write!(f, "analytics"),
+            Self::Communication => write!(f, "communication"),
+            Self::Custom(name) => write!(f, "custom-{name}"),
         }
     }
 }
@@ -208,7 +208,7 @@ pub struct QosMetrics {
 
 /// **CANONICAL**: Connection settings for primal communication
 /// 
-/// Simplified from experimental universal_primals.rs patterns
+/// Simplified from experimental `universal_primals.rs` patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionSettings {
     /// Connection timeout
@@ -292,6 +292,7 @@ pub struct PrimalRegistry {
 
 impl PrimalRegistry {
     /// Create a new empty registry
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             primals: HashMap::new(),
@@ -304,11 +305,13 @@ impl PrimalRegistry {
     }
 
     /// Get a primal configuration by type
+    #[must_use] 
     pub fn get_primal(&self, primal_type: &str) -> Option<&PrimalConfiguration> {
         self.primals.get(primal_type)
     }
 
     /// Get all enabled primals
+    #[must_use] 
     pub fn get_enabled_primals(&self) -> Vec<&PrimalConfiguration> {
         self.primals
             .values()
@@ -317,6 +320,7 @@ impl PrimalRegistry {
     }
 
     /// Check if a primal is registered
+    #[must_use] 
     pub fn is_registered(&self, primal_type: &str) -> bool {
         self.primals.contains_key(primal_type)
     }
@@ -324,7 +328,7 @@ impl PrimalRegistry {
 
 /// **CANONICAL**: Universal configuration for any primal type
 /// 
-/// Simplified from experimental universal_primals patterns
+/// Simplified from experimental `universal_primals` patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalConfiguration {
     /// Primal type identifier (e.g., "beardog", "nestgate", "toadstool", "squirrel")
@@ -351,6 +355,7 @@ pub struct PrimalConfiguration {
 
 impl PrimalConfiguration {
     /// Create a new primal configuration template
+    #[must_use] 
     pub fn new_template(primal_type: &str, display_name: &str) -> Self {
         Self {
             primal_type: primal_type.to_string(),

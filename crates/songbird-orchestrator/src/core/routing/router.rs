@@ -315,8 +315,7 @@ impl CapabilityRouter {
         // GPU required → Compute (Toadstool)
         if task.resource_requirements
             .as_ref()
-            .map(|r| r.gpu_required)
-            .unwrap_or(false) 
+            .is_some_and(|r| r.gpu_required) 
         {
             return CapabilityType::Compute;
         }

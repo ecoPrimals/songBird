@@ -78,7 +78,7 @@ impl Default for NodeConfig {
                 .unwrap_or_else(|_| format!("node_{}", std::process::id())),
             name: env::var("SONGBIRD_NODE_NAME").unwrap_or_else(|_| "songbird-node".to_string()),
             node_type: NodeType::Standard,
-            listen_addresses: vec![format!("0.0.0.0:{}", default_port)
+            listen_addresses: vec![format!("0.0.0.0:{default_port}")
                 .parse()
                 .or_else(|_| "0.0.0.0:7000".parse())
                 .unwrap_or_else(|_| std::net::SocketAddr::from(([0, 0, 0, 0], 7000)))],
@@ -89,7 +89,7 @@ impl Default for NodeConfig {
 }
 
 /// Node type enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NodeType  {/// Standard federation node
     Standard,
     /// Leader/coordinator node

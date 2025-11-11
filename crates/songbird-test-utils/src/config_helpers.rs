@@ -6,7 +6,7 @@
 
 /// Performance configuration test helpers
 ///
-/// **CANONICAL**: Uses modern PerformanceConfig from songbird-config
+/// **CANONICAL**: Uses modern `PerformanceConfig` from songbird-config
 pub mod performance {
     use songbird_config::PerformanceConfig;
 
@@ -58,7 +58,7 @@ pub mod performance {
 
 /// Network configuration test helpers
 ///
-/// **CANONICAL**: Uses modern NetworkConfig from canonical module
+/// **CANONICAL**: Uses modern `NetworkConfig` from canonical module
 pub mod network {
     use songbird_config::canonical::NetworkConfig;
 

@@ -5,7 +5,7 @@
 //!
 //! ## Module Organization
 //!
-//! - `core` - Core network configuration and PeerType
+//! - `core` - Core network configuration and `PeerType`
 //! - `gaming` - Gaming-specific configuration and scales
 //! - `timeouts` - Timeout configurations
 //! - `cors` - CORS configuration

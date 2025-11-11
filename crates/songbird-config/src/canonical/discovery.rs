@@ -12,8 +12,8 @@ use std::env;
 
 /// Unified discovery configuration
 ///
-/// **Canonical Source**: This is the definitive discovery configuration  
-/// **Migrated from**: `unified/discovery.rs`  
+/// **Canonical Source**: This is the definitive discovery configuration\
+/// **Migrated from**: `unified/discovery.rs`\
 /// **Purpose**: Configure all discovery mechanisms (service, capability, network)
 ///
 /// # Examples
@@ -79,7 +79,7 @@ impl Default for DiscoveryConfig {
 
 /// Service discovery configuration
 ///
-/// **Migrated from**: `unified/discovery.rs`  
+/// **Migrated from**: `unified/discovery.rs`\
 /// **Purpose**: Configure automatic service discovery and registration
 ///
 /// # Examples
@@ -138,7 +138,7 @@ impl Default for ServiceDiscoveryConfig {
 
 /// Capability discovery configuration
 ///
-/// **Migrated from**: `unified/discovery.rs`  
+/// **Migrated from**: `unified/discovery.rs`\
 /// **Purpose**: Configure capability-based service discovery
 ///
 /// # Examples
@@ -197,7 +197,7 @@ impl Default for CapabilityDiscoveryConfig {
 
 /// Network discovery configuration
 ///
-/// **Migrated from**: `unified/discovery.rs`  
+/// **Migrated from**: `unified/discovery.rs`\
 /// **Purpose**: Configure network scanning and protocol discovery
 ///
 /// # Examples
@@ -263,7 +263,7 @@ impl Default for NetworkDiscoveryConfig {
 // BACKWARD COMPATIBILITY ALIASES
 // ============================================================================
 
-/// Backward compatibility alias for UnifiedDiscoveryConfig
+/// Backward compatibility alias for `UnifiedDiscoveryConfig`
 pub type UnifiedDiscoveryConfig = DiscoveryConfig;
 
 // ============================================================================

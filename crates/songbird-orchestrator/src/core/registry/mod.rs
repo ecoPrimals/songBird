@@ -125,7 +125,7 @@ impl CapabilityRegistry {
                 available_capacity: request
                     .metadata
                     .get("max_concurrent_tasks")
-                    .and_then(|v| v.as_u64())
+                    .and_then(serde_json::Value::as_u64)
                     .unwrap_or(10) as usize,
                 resource_usage: ResourceUsage {
                     cpu_percent: 0.0,
@@ -336,8 +336,8 @@ impl CapabilityRegistry {
             let elapsed = now - provider.last_heartbeat;
 
             // Check if provider should be marked unhealthy
-            if elapsed > ChronoDuration::seconds(self.config.unhealthy_threshold_secs) {
-                if provider.health.status != HealthStatus::Unhealthy
+            if elapsed > ChronoDuration::seconds(self.config.unhealthy_threshold_secs)
+                && provider.health.status != HealthStatus::Unhealthy
                     && provider.health.status != HealthStatus::Offline
                 {
                     warn!(
@@ -347,7 +347,6 @@ impl CapabilityRegistry {
                     );
                     provider.health.status = HealthStatus::Unhealthy;
                 }
-            }
 
             // Check if provider should be removed
             if elapsed > ChronoDuration::seconds(self.config.removal_threshold_secs) {

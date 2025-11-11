@@ -28,7 +28,7 @@ impl Default for NetworkTimeouts {
 
 /// Network timeout configuration (alternative structure)
 ///
-/// **Merged from**: `config/network/mod.rs`  
+/// **Merged from**: `config/network/mod.rs`\
 /// **Purpose**: Centralized timeout configuration for all network operations
 ///
 /// # Examples

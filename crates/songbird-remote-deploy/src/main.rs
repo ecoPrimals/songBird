@@ -252,8 +252,7 @@ async fn deploy_service(
         if let Some(port) = env_vars
             .iter()
             .find(|(k, _)| k.ends_with("PORT"))
-            .map(|(_, v)| v.parse::<u16>().ok())
-            .flatten()
+            .and_then(|(_, v)| v.parse::<u16>().ok())
         {
             info!("🔍 Verifying service health...");
             if let Err(e) = verify_service_health(&tower_address, port).await {

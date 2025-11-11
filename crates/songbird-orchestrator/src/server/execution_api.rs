@@ -20,6 +20,12 @@ pub struct ExecutionApiState {
     manager: Arc<RwLock<ExecutionManager>>,
 }
 
+impl Default for ExecutionApiState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExecutionApiState {
     /// Create new execution API state
     pub fn new() -> Self {

@@ -15,7 +15,7 @@ pub struct FederationState {
     /// Unique federation identifier
     pub federation_id: Uuid,
     
-    /// Map of node_id to node registration
+    /// Map of `node_id` to node registration
     pub nodes: Arc<RwLock<HashMap<String, NodeRegistration>>>,
     
     /// When this federation was created

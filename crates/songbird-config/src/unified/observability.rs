@@ -12,11 +12,11 @@
 //! ```
 //!
 //! **All 5 observability types** are now available in `canonical::observability`:
-//! - UnifiedObservabilityConfig
-//! - DashboardConfig
-//! - LoggingConfig
-//! - LogRotationConfig
-//! - TracingConfig
+//! - `UnifiedObservabilityConfig`
+//! - `DashboardConfig`
+//! - `LoggingConfig`
+//! - `LogRotationConfig`
+//! - `TracingConfig`
 //!
 //! **Removal Timeline**: This module will be removed in Q2 2026.
 //!

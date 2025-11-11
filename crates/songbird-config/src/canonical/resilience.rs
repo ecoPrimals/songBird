@@ -75,7 +75,7 @@ impl Default for CircuitBreakerState {
 }
 
 /// Retry strategy
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RetryStrategy {
     /// Fixed delay between retries
     Fixed,
@@ -185,7 +185,7 @@ impl RetryConfig {
 
 /// Unified robustness configuration wrapper
 ///
-/// **Merged from**: `unified/robustness.rs`  
+/// **Merged from**: `unified/robustness.rs`\
 /// **Purpose**: Comprehensive fault tolerance configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RobustnessConfig {
@@ -220,7 +220,7 @@ pub struct RobustnessConfig {
 
 /// Rate limiting configuration
 ///
-/// **Merged from**: `unified/robustness.rs`  
+/// **Merged from**: `unified/robustness.rs`\
 /// **Purpose**: API rate limiting and throttling
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RateLimitingConfig {
@@ -277,7 +277,7 @@ pub enum RateLimitAlgorithm {
 
 /// Bulkhead configuration for resource isolation
 ///
-/// **Merged from**: `unified/robustness.rs`  
+/// **Merged from**: `unified/robustness.rs`\
 /// **Purpose**: Isolate resources to prevent cascade failures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkheadConfig {
@@ -343,7 +343,7 @@ pub enum BackoffStrategy {
 
 /// Load balancer configuration
 ///
-/// **Merged from**: `unified/robustness.rs`  
+/// **Merged from**: `unified/robustness.rs`\
 /// **Purpose**: Load balancing and traffic distribution
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoadBalancerConfig {
@@ -446,7 +446,7 @@ impl Default for HealthCheckConfig {
 
 /// Zero-cost router configuration
 ///
-/// **Merged from**: `unified/robustness.rs`  
+/// **Merged from**: `unified/robustness.rs`\
 /// **Purpose**: Compile-time route optimization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZeroCostRouterConfig {

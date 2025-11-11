@@ -211,11 +211,10 @@ impl BearDogSecurityValidator {
         }
         
         // Privilege escalation attempts
-        if command.starts_with("sudo ") || command.contains("| sudo ") {
-            if !self.policy.allow_privilege_escalation {
+        if (command.starts_with("sudo ") || command.contains("| sudo "))
+            && !self.policy.allow_privilege_escalation {
                 return Ok(Some("privilege_escalation".to_string()));
             }
-        }
         
         Ok(None)
     }

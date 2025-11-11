@@ -30,7 +30,7 @@ impl Default for ConnectionLimits {
 pub struct LoadBalancingConfig {
     /// Enable load balancing
     pub enabled: bool,
-    /// Load balancing strategy (round_robin, least_connections, random)
+    /// Load balancing strategy (`round_robin`, `least_connections`, random)
     pub strategy: String,
     /// Health check interval in seconds
     pub health_check_interval_secs: u64,

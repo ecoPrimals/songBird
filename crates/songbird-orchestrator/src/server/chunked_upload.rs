@@ -27,7 +27,7 @@ pub async fn negotiate_chunked_upload(
     
     // Calculate chunks
     let chunk_size_mb = 10u32; // 10MB chunks
-    let total_chunks = ((request.binary_size_mb / chunk_size_mb as f64).ceil() as usize).max(1);
+    let total_chunks = ((request.binary_size_mb / f64::from(chunk_size_mb)).ceil() as usize).max(1);
     
     // Create temp directory
     let temp_dir = format!("/tmp/songbird-chunks/{}", negotiation_id);

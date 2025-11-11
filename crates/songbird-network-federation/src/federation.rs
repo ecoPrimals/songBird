@@ -98,7 +98,7 @@ impl FederationCoordinator {
         })?;
         
         // POST to bootstrap node's join endpoint
-        let url = format!("http://{}/api/federation/join", bootstrap_address);
+        let url = format!("http://{bootstrap_address}/api/federation/join");
         
         debug!("📡 Sending join request to: {}", url);
         
@@ -110,7 +110,7 @@ impl FederationCoordinator {
             .send()
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Failed to connect to bootstrap node: {}", e),
+                message: format!("Failed to connect to bootstrap node: {e}"),
                 interface: Some(bootstrap_address.to_string()),
                 suggestion: Some("Check bootstrap node is running and accessible".to_string()),
             })?;
@@ -118,7 +118,7 @@ impl FederationCoordinator {
         if !response.status().is_success() {
             let status = response.status();
             return Err(SongbirdError::Network {
-                message: format!("Bootstrap node rejected join request: {}", status),
+                message: format!("Bootstrap node rejected join request: {status}"),
                 interface: Some(bootstrap_address.to_string()),
                 suggestion: Some("Check bootstrap node is accepting new members".to_string()),
             });
@@ -127,7 +127,7 @@ impl FederationCoordinator {
         // Parse response
         let federation_status: serde_json::Value = response.json().await.map_err(|e| {
             SongbirdError::Network {
-                message: format!("Failed to parse federation status: {}", e),
+                message: format!("Failed to parse federation status: {e}"),
                 interface: Some(bootstrap_address.to_string()),
                 suggestion: Some("Check response format from bootstrap node".to_string()),
             }

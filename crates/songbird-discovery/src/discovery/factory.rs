@@ -47,12 +47,12 @@ impl UniversalDiscoveryFactory {
         match Self::create_universal_adapter().await {
             Ok(adapter) => {
                 info!("✅ Created universal capability adapter");
-                return Ok(adapter);
+                Ok(adapter)
             }
             Err(e) => {
                 warn!("Universal adapter creation failed: {}", e);
                 // Fallback to basic adapter
-                return Self::create_universal_adapter().await;
+                Self::create_universal_adapter().await
             }
         }
     }

@@ -9,7 +9,7 @@
 //! This module uses native async fn in traits for zero-cost abstraction:
 //! - No `Box<dyn Future>` boxing overhead
 //! - Better compiler optimization and inlining  
-//! - 20-30% performance improvement over async_trait macro
+//! - 20-30% performance improvement over `async_trait` macro
 //! - Cleaner, more idiomatic Rust code
 
 #![allow(async_fn_in_trait)]
