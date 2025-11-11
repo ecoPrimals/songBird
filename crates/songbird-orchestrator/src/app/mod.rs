@@ -41,6 +41,50 @@ pub struct SongbirdOrchestrator {
     shutdown_sender: tokio::sync::broadcast::Sender<()>,
 }
 
+/// Parse bind address with support for IPv4, IPv6, and dual-stack
+/// 
+/// Supports multiple formats:
+/// - `[::]` - IPv6 wildcard (dual-stack, recommended)
+/// - `[::1]` - IPv6 localhost
+/// - `0.0.0.0` - IPv4 wildcard (legacy)
+/// - `127.0.0.1` - IPv4 localhost
+/// - Custom IPv4 or IPv6 addresses
+fn parse_bind_address(addr: &str, port: u16) -> Result<std::net::SocketAddr> {
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+    
+    match addr {
+        "[::]" => {
+            // Dual-stack: IPv6 wildcard (automatically handles IPv4 via IPv4-mapped addresses)
+            Ok(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port))
+        }
+        "[::1]" => {
+            // IPv6 localhost
+            Ok(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port))
+        }
+        "0.0.0.0" => {
+            // IPv4 wildcard (legacy mode)
+            Ok(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port))
+        }
+        "127.0.0.1" => {
+            // IPv4 localhost
+            Ok(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port))
+        }
+        _ => {
+            // Try to parse as IPv6 format: [addr] or custom address
+            if addr.starts_with('[') && addr.ends_with(']') {
+                let ip_part = addr.trim_start_matches('[').trim_end_matches(']');
+                let ip: IpAddr = ip_part.parse()
+                    .map_err(|e| anyhow::anyhow!("Invalid IPv6 address '{}': {}", ip_part, e))?;
+                Ok(SocketAddr::new(ip, port))
+            } else {
+                // Try as IPv4 address or parse full socket address
+                format!("{addr}:{port}").parse()
+                    .map_err(|e| anyhow::anyhow!("Invalid bind address '{}': {}", addr, e))
+            }
+        }
+    }
+}
+
 impl SongbirdOrchestrator {
     /// Detect primary network interface IP address
     fn detect_primary_ip() -> Option<String> {
@@ -357,14 +401,14 @@ impl SongbirdOrchestrator {
     /// Start HTTP server with federation API
     async fn start_http_server(&self) -> Result<()> {
         use axum::Router;
-        use std::net::SocketAddr;
+        use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
         let bind_address =
-            SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0");
+            SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "[::]");
         let port = SafeEnv::get_port("SONGBIRD_PORT",
             songbird_config::defaults::ports::orchestrator_port());
 
-        let addr: SocketAddr = format!("{bind_address}:{port}").parse()?;
+        let addr: SocketAddr = parse_bind_address(&bind_address, port)?;
 
         // Build the app with federation and deployment routes
         let deployment_state = crate::server::deployment_api::DeploymentState::new();
