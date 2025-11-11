@@ -31,6 +31,8 @@ use tracing::{error, info, warn};
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
 
+use crate::server::events::EventBroadcaster;
+
 /// WebSocket API state
 #[derive(Clone)]
 pub struct WebSocketApiState {
@@ -39,6 +41,9 @@ pub struct WebSocketApiState {
     
     /// Service registry for discovery
     pub service_registry: Arc<FederatedServiceRegistry>,
+    
+    /// Event broadcaster for real-time events
+    pub event_broadcaster: Arc<EventBroadcaster>,
 }
 
 impl WebSocketApiState {
@@ -46,10 +51,12 @@ impl WebSocketApiState {
     pub fn new(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
+        event_broadcaster: Arc<EventBroadcaster>,
     ) -> Self {
         Self {
             federation_state,
             service_registry,
+            event_broadcaster,
         }
     }
 }

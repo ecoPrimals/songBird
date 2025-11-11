@@ -442,10 +442,14 @@ impl SongbirdOrchestrator {
         let jsonrpc_router = crate::server::jsonrpc_api::jsonrpc_routes()
             .with_state(jsonrpc_state);
         
+        // Create event broadcaster for real-time events
+        let event_broadcaster = Arc::new(crate::server::events::EventBroadcaster::new());
+        
         // Create WebSocket API state for real-time communication
         let websocket_state = crate::server::websocket_api::WebSocketApiState::new(
             Arc::clone(&self.federation_state),
             Arc::clone(&self.federated_service_registry),
+            Arc::clone(&event_broadcaster),
         );
         
         // Create WebSocket router with state

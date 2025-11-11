@@ -17,6 +17,7 @@ use tokio::time::interval;
 pub mod chunked_upload;
 pub mod compute_api; // ✅ NEW: Intelligent capability routing API (Nov 9, 2025)
 pub mod deployment_api;
+pub mod events; // ✅ NEW: Real-Time Event Broadcasting (Nov 11, 2025 - Phase 4)
 pub mod execution_api;
 pub mod federation_api;
 pub mod jsonrpc_api; // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
