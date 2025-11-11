@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
 
+# Exclude standalone example projects
+exclude = [
+    "examples/clients/rust",  # Standalone tarpc client example
+]
+
 members = [
     "crates/songbird-remote-deploy",
     "crates/songbird-compute-bridge",

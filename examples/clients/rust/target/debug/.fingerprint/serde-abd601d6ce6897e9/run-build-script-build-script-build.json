@@ -1,0 +1,1 @@
+{"rustc":16285725380928457773,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[13548984313718623784,"build_script_build",false,335962049115572654]],"local":[{"RerunIfChanged":{"output":"debug/build/serde-abd601d6ce6897e9/output","paths":["build.rs"]}}],"rustflags":["-A","clippy::multiple_crate_versions"],"config":0,"compile_kind":0}

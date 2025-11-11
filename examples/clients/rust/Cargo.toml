@@ -6,6 +6,9 @@ license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "High-performance tarpc client for Songbird - 100x faster than JSON-RPC!"
 
+# Make this a standalone package (not part of parent workspace)
+[workspace]
+
 [[bin]]
 name = "songbird_tarpc_example"
 path = "songbird_tarpc_client.rs"

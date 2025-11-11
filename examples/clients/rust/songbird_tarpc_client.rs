@@ -364,7 +364,6 @@ impl SongbirdTarpcClient {
 }
 
 /// Example usage demonstrating all client features
-#[cfg(feature = "examples")]
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("🚀 Songbird tarpc Client Example");
