@@ -115,6 +115,9 @@ dirs = "5.0"
 # Performance testing
 criterion = { version = "0.5", features = ["html_reports"] }
 
+# tarpc for high-performance native RPC (Phase 3)
+tarpc = { version = "0.34", features = ["full"] }
+
 # === ANTI-MONOLITH WORKSPACE COMPLETE ===
 
 [profile.bench]

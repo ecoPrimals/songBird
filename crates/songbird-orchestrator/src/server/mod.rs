@@ -21,6 +21,7 @@ pub mod execution_api;
 pub mod federation_api;
 pub mod jsonrpc_api; // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
 pub mod protocol_api; // ✅ NEW: Progressive Protocol Enhancement API (Nov 11, 2025)
+pub mod tarpc_server; // ✅ NEW: tarpc High-Performance Native RPC (Nov 11, 2025 - Phase 3)
 /// Server management and monitoring functionality
 pub struct ServerManager {
     health_check_interval: Duration,

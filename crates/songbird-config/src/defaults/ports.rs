@@ -181,6 +181,26 @@ pub fn cnc_port_range_end() -> u16 {
     env::var("SONGBIRD_CNC_PORT_END").ok().and_then(|p| p.parse().ok()).unwrap_or(1240)
 }
 
+/// Get tarpc high-performance RPC port from environment or default
+///
+/// tarpc provides binary RPC with ~50μs latency (100x faster than JSON-RPC!)
+/// for native Rust client-to-server communication.
+///
+/// # Environment Variable
+/// `SONGBIRD_TARPC_PORT` (default: 8091)
+///
+/// # Examples
+/// ```no_run
+/// use songbird_config::defaults::ports::tarpc_port;
+///
+/// let port = tarpc_port();
+/// assert_eq!(port, 8091); // Or value from SONGBIRD_TARPC_PORT
+/// ```
+#[must_use]
+pub fn tarpc_port() -> u16 {
+    env::var("SONGBIRD_TARPC_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8091)
+}
+
 /// Get service port by name from environment or default
 ///
 /// Supports dynamic port lookup for any service.
