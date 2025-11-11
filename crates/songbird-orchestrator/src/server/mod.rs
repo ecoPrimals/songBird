@@ -19,6 +19,8 @@ pub mod compute_api; // ✅ NEW: Intelligent capability routing API (Nov 9, 2025
 pub mod deployment_api;
 pub mod execution_api;
 pub mod federation_api;
+pub mod jsonrpc_api; // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
+pub mod protocol_api; // ✅ NEW: Progressive Protocol Enhancement API (Nov 11, 2025)
 /// Server management and monitoring functionality
 pub struct ServerManager {
     health_check_interval: Duration,

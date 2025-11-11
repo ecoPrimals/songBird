@@ -2,7 +2,7 @@
 ## Complete Technical Documentation Library
 
 **Last Updated**: November 11, 2025  
-**Total Specifications**: 60  
+**Total Specifications**: 62  
 **Status**: ⭐⭐⭐⭐⭐ Production-Ready Architecture
 
 ---
@@ -30,6 +30,12 @@
   - **Impact**: Unblocked NestGate integration
   - **Summary**: IPv6 dual-stack binding fix for modern system compatibility
 
+- **[ECOPRIMALS_ARCHITECTURE_CLARITY.md](./ECOPRIMALS_ARCHITECTURE_CLARITY.md)** ⭐⭐⭐ NEW!
+  - **Status**: ✅ FOUNDATIONAL DOCUMENTATION
+  - **Priority**: P0 - CRITICAL (Architectural Foundation)
+  - **Key Principle**: 100% Rust Core + Universal Compatibility
+  - **Summary**: Complete architectural clarity - Songbird (100% Rust), Universal Gateways (Rust), Toadstool (Multi-Language Compute)
+
 ### **Protocol Strategy (Nov 11, 2025)**
 - **[TARPC_JSON_RPC_PROTOCOL_SPEC.md](./TARPC_JSON_RPC_PROTOCOL_SPEC.md)** ⭐⭐⭐
   - **Status**: 📋 IMPLEMENTATION SPECIFICATION (692 lines)
@@ -41,6 +47,12 @@
   - **Status**: 📋 ROADMAP
   - **Priority**: P1 - HIGH
   - **Summary**: Vision for protocol-agnostic service mesh (HTTP, tarpc, JSON-RPC, WebSocket, QUIC)
+
+- **[PROGRESSIVE_PROTOCOL_ENHANCEMENT_SPEC.md](./PROGRESSIVE_PROTOCOL_ENHANCEMENT_SPEC.md)** ⭐⭐⭐ NEW!
+  - **Status**: 🎯 DESIGN PHASE (Strategic Architecture)
+  - **Priority**: P1 - HIGH
+  - **Key Innovation**: Start with HTTP/REST → Automatically upgrade to tarpc (10-100x faster)
+  - **Summary**: Progressive protocol enhancement - universal connectivity + automatic optimization + multi-protocol reinforcement
 
 ### **Integration Discovery (Nov 11, 2025)**
 - **[NESTGATE_DISCOVERY_WALKTHROUGH.md](./NESTGATE_DISCOVERY_WALKTHROUGH.md)**

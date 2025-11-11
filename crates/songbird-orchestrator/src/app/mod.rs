@@ -421,6 +421,23 @@ impl SongbirdOrchestrator {
         // Create compute API router with state
         let compute_router = crate::server::compute_api::compute_routes()
             .with_state(compute_state);
+        
+        // Create protocol API state for progressive enhancement
+        let protocol_state = crate::server::protocol_api::ProtocolApiState::new();
+        
+        // Create protocol API router with state
+        let protocol_router = crate::server::protocol_api::protocol_routes()
+            .with_state(protocol_state);
+        
+        // Create JSON-RPC API state for universal gateway
+        let jsonrpc_state = crate::server::jsonrpc_api::JsonRpcState::new(
+            Arc::clone(&self.federation_state),
+            Arc::clone(&self.federated_service_registry),
+        );
+        
+        // Create JSON-RPC router with state
+        let jsonrpc_router = crate::server::jsonrpc_api::jsonrpc_routes()
+            .with_state(jsonrpc_state);
 
         let app = Router::new()
             .nest(
@@ -433,6 +450,14 @@ impl SongbirdOrchestrator {
             .nest(
                 "/api/compute",  // ✅ NEW: Intelligent capability routing API (Nov 9, 2025)
                 compute_router,
+            )
+            .nest(
+                "/api/protocol",  // ✅ NEW: Progressive Protocol Enhancement API (Nov 11, 2025)
+                protocol_router,
+            )
+            .nest(
+                "/jsonrpc",  // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
+                jsonrpc_router,
             )
             .nest(
                 "/api/deployment",
