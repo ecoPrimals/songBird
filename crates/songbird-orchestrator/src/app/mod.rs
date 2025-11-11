@@ -441,6 +441,16 @@ impl SongbirdOrchestrator {
         // Create JSON-RPC router with state
         let jsonrpc_router = crate::server::jsonrpc_api::jsonrpc_routes()
             .with_state(jsonrpc_state);
+        
+        // Create WebSocket API state for real-time communication
+        let websocket_state = crate::server::websocket_api::WebSocketApiState::new(
+            Arc::clone(&self.federation_state),
+            Arc::clone(&self.federated_service_registry),
+        );
+        
+        // Create WebSocket router with state
+        let websocket_router = crate::server::websocket_api::websocket_routes()
+            .with_state(websocket_state);
 
         let app = Router::new()
             .nest(
@@ -461,6 +471,10 @@ impl SongbirdOrchestrator {
             .nest(
                 "/jsonrpc",  // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
                 jsonrpc_router,
+            )
+            .nest(
+                "/api/ws",  // ✅ NEW: WebSocket Real-Time API (Nov 11, 2025 - Phase 4)
+                websocket_router,
             )
             .nest(
                 "/api/deployment",
