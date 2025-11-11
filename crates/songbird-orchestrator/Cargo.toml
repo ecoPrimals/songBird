@@ -71,4 +71,6 @@ bincode = { workspace = true }
 [dev-dependencies]
 songbird-test-utils = { path = "../songbird-test-utils" }
 serial_test = "3.0"
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
 
