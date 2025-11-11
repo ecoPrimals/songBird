@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use super::core::{RegistryConfig, biome::ServiceRegistry};
 use anyhow::Result;
 use songbird_config::{
     capability_endpoints, // 🍼 NEW: Capability-based discovery
@@ -401,7 +400,7 @@ impl SongbirdOrchestrator {
     /// Start HTTP server with federation API
     async fn start_http_server(&self) -> Result<()> {
         use axum::Router;
-        use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+        use std::net::SocketAddr;
 
         let bind_address =
             SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "[::]");

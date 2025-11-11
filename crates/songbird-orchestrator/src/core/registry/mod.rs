@@ -9,7 +9,7 @@ use crate::core::registry::types::{
     CapabilityRegistrationRequest, HealthStatus, ProviderHealth, RegisteredProvider,
     ResourceUsage,
 };
-use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use chrono::{Duration as ChronoDuration, Utc};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::sync::Arc;

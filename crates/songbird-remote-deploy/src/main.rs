@@ -26,7 +26,7 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use tracing::{debug, info, warn};

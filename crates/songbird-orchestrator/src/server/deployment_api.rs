@@ -39,7 +39,7 @@ use std::sync::Arc;
 use sysinfo::{System, Disks};
 use tokio::fs;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 /// Deployment state
 #[derive(Clone)]

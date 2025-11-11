@@ -2,7 +2,6 @@
 
 use super::broadcast::{BroadcastExecutor, BroadcastOptions, BroadcastResult};
 use super::client::{ExecutionClient, ExecutionRequest, ExecutionResponse};
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::info;

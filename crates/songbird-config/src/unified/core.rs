@@ -6,7 +6,6 @@
 use serde::{Deserialize, Serialize};
 use songbird_types::SafeEnv;
 use std::collections::HashMap;
-use tracing::{debug, warn};
 
 /// Core unified configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

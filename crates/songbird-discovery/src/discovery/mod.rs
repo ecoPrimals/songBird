@@ -79,7 +79,7 @@ pub use factory::UniversalDiscoveryFactory;
 
 /// Migration examples for updating to canonical Provider traits
 pub mod migration_examples {
-    use super::{Result, UniversalDiscoveryFactory};
+    use super::Result;
 
     /// Example: Migrating to canonical Provider-based discovery
     ///

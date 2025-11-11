@@ -1,6 +1,6 @@
 use crate::discovery::types::NodeType;
 use serde::{Deserialize, Serialize};
-use songbird_config::canonical::environment::EnvironmentConfig; // ✅ Migrated from deprecated path
+ // ✅ Migrated from deprecated path
 
 /// Configuration for Songbird Discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]

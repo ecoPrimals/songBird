@@ -1,6 +1,6 @@
 //! Multi-tower broadcast execution
 
-use super::client::{ExecutionClient, ExecutionError, ExecutionRequest, ExecutionStatus};
+use super::client::{ExecutionClient, ExecutionRequest, ExecutionStatus};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tracing::{error, info, warn};

@@ -5,7 +5,6 @@
 
 use super::capability::SecurityLevel;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 #[cfg(test)]
 #[path = "config_tests.rs"]

@@ -464,7 +464,7 @@ pub async fn deploy_via_http(
     info!("   Environment vars: {}", env_vars.len());
 
     // Build multipart form
-    let mut form = multipart::Form::new()
+    let form = multipart::Form::new()
         .text("service_name", service_name.to_string())
         .text("env_vars", serde_json::to_string(&env_vars)?)
         .text("auto_start", "true")

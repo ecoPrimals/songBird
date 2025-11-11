@@ -3,7 +3,6 @@
 //! **MODERN LOAD BALANCING** ✅
 
 use super::{ComponentHealth, HealthStatus};
-use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
 
 // Import comprehensive LoadBalancerConfig (Nov 10, 2025 consolidation)

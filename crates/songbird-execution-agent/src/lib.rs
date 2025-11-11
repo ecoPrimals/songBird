@@ -25,7 +25,6 @@ pub use job_manager::JobManager;
 pub use security_sovereign::{SovereignSecurityValidator, SecurityConfig, SecurityRequest, SecurityDecision};
 
 use songbird_types::SongbirdResult;
-use std::sync::Arc;
 
 /// Agent configuration
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

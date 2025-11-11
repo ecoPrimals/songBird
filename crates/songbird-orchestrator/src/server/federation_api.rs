@@ -21,10 +21,10 @@ use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 // Import capability registry types
-use crate::core::registry::{CapabilityRegistry, HeartbeatConfig};
+use crate::core::registry::CapabilityRegistry;
 use crate::core::registry::types::{
     CapabilityRegistrationRequest, CapabilityRegistrationResponse,
-    HeartbeatRequest as CapabilityHeartbeatRequest, HeartbeatResponse,
+    HeartbeatRequest as CapabilityHeartbeatRequest,
     ProviderListResponse, RegistrationData, HeartbeatData,
     ProviderListData, ProviderSummary,
 };
