@@ -248,12 +248,7 @@ fn test_service_info_clone_independence() -> SongbirdResult<()> {
 fn test_service_info_serialization() -> SongbirdResult<()> {
     let service = ServiceInfo::new("test-service".to_string(), "192.168.1.1".to_string(), 8080);
 
-    let serialized = serde_json::to_string(&service);
-    assert!(serialized.is_ok());
-
-    let json_str = serialized.ok_or_else(|| {
-        SongbirdError::configuration("Missing performance configuration".to_string())
-    })?;
+    let json_str = serde_json::to_string(&service)?;
     assert!(json_str.contains("test-service"));
     assert!(json_str.contains("192.168.1.1"));
     assert!(json_str.contains("8080"));
@@ -265,12 +260,7 @@ fn test_service_info_serialization_with_metadata() -> SongbirdResult<()> {
     let service = ServiceInfo::new("service".to_string(), "host".to_string(), 8080)
         .with_metadata("version".to_string(), "1.0.0".to_string());
 
-    let serialized = serde_json::to_string(&service);
-    assert!(serialized.is_ok());
-
-    let json_str = serialized.ok_or_else(|| {
-        SongbirdError::configuration("Missing performance configuration".to_string())
-    })?;
+    let json_str = serde_json::to_string(&service)?;
     assert!(json_str.contains("version"));
     assert!(json_str.contains("1.0.0"));
     Ok(())
