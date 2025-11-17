@@ -136,10 +136,7 @@ async fn test_find_capability_providers_empty_registry() -> SongbirdResult<()> {
 
     // ASSERT: Should return empty list, not error
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
-        0
-    );
+    assert_eq!(result?.len(), 0);
     Ok(())
 }
 
@@ -367,10 +364,7 @@ async fn test_discovery_with_empty_endpoints() -> SongbirdResult<()> {
 
     // ASSERT: Should return empty list, not error
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
-        0
-    );
+    assert_eq!(result?.len(), 0);
     Ok(())
 }
 
@@ -425,10 +419,7 @@ async fn test_very_long_capability_name() -> SongbirdResult<()> {
 
     // ASSERT: Handles gracefully
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
-        0
-    );
+    assert_eq!(result?.len(), 0);
     Ok(())
 }
 
@@ -491,10 +482,7 @@ async fn test_find_providers_with_empty_string() -> SongbirdResult<()> {
 
     // ASSERT: Should handle gracefully
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
-        0
-    );
+    assert_eq!(result?.len(), 0);
     Ok(())
 }
 

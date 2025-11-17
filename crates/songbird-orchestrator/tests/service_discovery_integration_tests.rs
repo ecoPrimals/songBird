@@ -36,10 +36,7 @@ async fn test_service_discovery_by_id() -> SongbirdResult<()> {
     let found = services.get(&service_id);
 
     assert!(found.is_some(), "Should find service by ID");
-    assert_eq!(
-        found.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.name,
-        "Discoverable Service"
-    );
+    assert_eq!(found?.name, "Discoverable Service");
     Ok(())
 }
 

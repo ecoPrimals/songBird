@@ -223,10 +223,7 @@ async fn test_service_lifecycle() -> SongbirdResult<()> {
     // Health check
     let health = registry.health_check().await;
     assert!(health.is_ok());
-    assert_eq!(
-        health.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.status,
-        HealthStatus::Healthy
-    );
+    assert_eq!(health?.status, HealthStatus::Healthy);
 
     // Stop
     assert!(registry.stop().await.is_ok());

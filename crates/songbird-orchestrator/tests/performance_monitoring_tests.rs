@@ -168,10 +168,7 @@ async fn test_performance_monitor_lifecycle() -> SongbirdResult<()> {
     // Health check
     let health = monitor.health_check().await;
     assert!(health.is_ok());
-    assert_eq!(
-        health.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.status,
-        HealthStatus::Healthy
-    );
+    assert_eq!(health?.status, HealthStatus::Healthy);
 
     // Stop
     assert!(monitor.stop().await.is_ok());
@@ -221,24 +218,13 @@ fn test_performance_config_thresholds() -> SongbirdResult<()> {
     // Check default thresholds are reasonable
     let cpu_threshold = config.alert_thresholds.get("cpu_usage");
     assert!(cpu_threshold.is_some());
-    assert!(
-        *cpu_threshold.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))? > 0.0
-    );
-    assert!(
-        *cpu_threshold.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
-            <= 100.0
-    );
+    assert!(*cpu_threshold? > 0.0);
+    assert!(*cpu_threshold? <= 100.0);
 
     let memory_threshold = config.alert_thresholds.get("memory_usage");
     assert!(memory_threshold.is_some());
-    assert!(
-        *memory_threshold.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
-            > 0.0
-    );
-    assert!(
-        *memory_threshold.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
-            <= 100.0
-    );
+    assert!(*memory_threshold? > 0.0);
+    assert!(*memory_threshold? <= 100.0);
     Ok(())
 }
 

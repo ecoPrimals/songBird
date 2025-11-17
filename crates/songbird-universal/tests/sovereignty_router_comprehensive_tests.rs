@@ -42,12 +42,7 @@ fn create_test_request() -> UniversalRequest {
         source: "test-client".to_string(),
         target: "test-service".to_string(),
         action: "execute".to_string(),
-        parameters: json!({})
-            .as_object()
-            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect(),
+        parameters: json!({}).as_object()?.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
         security_context: None,
     }
 }

@@ -440,10 +440,7 @@ async fn test_ai_check_health_healthy() -> SongbirdResult<()> {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
-        AIHealth::Healthy
-    );
+    assert_eq!(result?, AIHealth::Healthy);
     Ok(())
 }
 
@@ -477,10 +474,7 @@ async fn test_ai_check_health_degraded() -> SongbirdResult<()> {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
-        AIHealth::Degraded
-    );
+    assert_eq!(result?, AIHealth::Degraded);
     Ok(())
 }
 
@@ -514,10 +508,7 @@ async fn test_ai_check_health_overloaded() -> SongbirdResult<()> {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
-        AIHealth::Overloaded
-    );
+    assert_eq!(result?, AIHealth::Overloaded);
     Ok(())
 }
 

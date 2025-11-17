@@ -495,10 +495,7 @@ async fn test_storage_check_health_healthy() -> SongbirdResult<()> {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
-        StorageHealth::Healthy
-    );
+    assert_eq!(result?, StorageHealth::Healthy);
     Ok(())
 }
 
@@ -533,10 +530,7 @@ async fn test_storage_check_health_warning() -> SongbirdResult<()> {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
-        StorageHealth::Warning
-    );
+    assert_eq!(result?, StorageHealth::Warning);
     Ok(())
 }
 
@@ -571,10 +565,7 @@ async fn test_storage_check_health_critical() -> SongbirdResult<()> {
     // Assert
     mock.assert_async().await;
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
-        StorageHealth::Critical
-    );
+    assert_eq!(result?, StorageHealth::Critical);
     Ok(())
 }
 
