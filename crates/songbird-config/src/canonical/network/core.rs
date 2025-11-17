@@ -312,7 +312,7 @@ impl Default for CanonicalNetworkConfig {
             bind_address,
             production_bind_address: "0.0.0.0"
                 .parse()
-                .unwrap_or({ std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED) }),
+                .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
             orchestrator_port: 8080,
             discovery_port: 8001,
             health_port: 8002,

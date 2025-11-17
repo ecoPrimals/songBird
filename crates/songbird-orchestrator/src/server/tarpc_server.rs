@@ -22,7 +22,6 @@ use tarpc::{
     context::Context,
     server::{self, Channel},
 };
-use thiserror::Error;
 use tokio::sync::RwLock;
 
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
