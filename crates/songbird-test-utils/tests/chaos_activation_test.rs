@@ -1,5 +1,4 @@
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 #[cfg(test)]
 #[allow(clippy::all)]
 #[allow(unused)]

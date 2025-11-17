@@ -3,7 +3,6 @@
 use songbird_orchestrator::core::performance::{PerformanceMetrics, PerformanceMonitor};
 use songbird_orchestrator::core::{HealthStatus, PerformanceConfig};
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
 #[tokio::test]

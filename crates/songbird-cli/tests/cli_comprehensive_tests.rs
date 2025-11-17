@@ -24,7 +24,6 @@ use songbird_cli::cli::{
     Cli,
 };
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 /// Test CLI argument parsing for version command
 #[test]

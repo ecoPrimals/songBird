@@ -5,7 +5,6 @@
 
 use songbird_config::defaults::hosts::*;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // GLOBAL CONFIGURATION TESTS

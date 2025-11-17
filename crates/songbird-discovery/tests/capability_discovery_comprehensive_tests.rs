@@ -10,7 +10,6 @@ use songbird_discovery::{CapabilityDiscovery, DiscoveryConfig, ServiceRegistrati
 use songbird_test_utils::network_fixtures::*;
 use songbird_test_utils::test_orchestrator_port;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
 #[tokio::test]

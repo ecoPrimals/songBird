@@ -12,7 +12,6 @@
 
 use songbird_test_utils::network_fixtures::*;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::capabilities::{DiscoveryConfig, UniversalCapabilityAdapter};
 use std::sync::Arc;
 

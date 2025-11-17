@@ -25,7 +25,6 @@
 // Tests for integration testing helpers and utilities
 
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 
 #[tokio::test]

@@ -15,7 +15,6 @@
 //!
 //! Expanding test coverage for error handling, config, and performance types.
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_error_display_formatting() {

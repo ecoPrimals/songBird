@@ -19,7 +19,6 @@
 //! Tests for load balancing algorithms, strategies, and health-aware routing.
 
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
 // ========== Load Balancing Strategy Tests ==========

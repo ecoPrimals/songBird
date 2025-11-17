@@ -8,7 +8,6 @@
 
 use songbird_types::adapters::canonical::*;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 
 // ============================================================================

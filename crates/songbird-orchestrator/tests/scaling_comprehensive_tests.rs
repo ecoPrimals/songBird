@@ -3,7 +3,6 @@
 use songbird_orchestrator::core::scaling::{AutoScaler, ScalingPolicy};
 use songbird_orchestrator::core::{HealthStatus, ScalingConfig};
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 #[tokio::test]
 async fn test_auto_scaler_creation() -> SongbirdResult<()> {

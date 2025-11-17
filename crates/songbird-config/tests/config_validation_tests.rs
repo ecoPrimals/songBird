@@ -4,7 +4,6 @@
 
 use songbird_config::{NetworkConfig, SecurityConfig, SongbirdConfig};
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_default_config_creation() {

@@ -6,7 +6,6 @@
 use chrono::Utc;
 use songbird_network_federation::state::{FederationState, NodeRegistration, NodeStatus};
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 fn create_test_node(id: &str, name: &str) -> NodeRegistration {
     NodeRegistration {

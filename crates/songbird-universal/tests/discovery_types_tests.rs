@@ -17,7 +17,6 @@
 
 use songbird_test_utils::test_orchestrator_port;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::discovery::*;
 use std::collections::HashMap;
 

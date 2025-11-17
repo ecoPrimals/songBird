@@ -14,7 +14,6 @@ use songbird_types::config::environment::{
     NetworkBindingConfig, PortRange, ResourceLimits, ServiceDiscoveryConfig,
 };
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;

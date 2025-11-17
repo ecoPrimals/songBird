@@ -3,7 +3,6 @@
 //! Tests health monitoring, status tracking, and health state management
 
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::time::SystemTime;
 

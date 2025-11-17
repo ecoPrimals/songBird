@@ -5,7 +5,6 @@
 
 use songbird_config::canonical::load_balancing::*;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 // ========== LoadBalancingStrategy Tests ==========
 

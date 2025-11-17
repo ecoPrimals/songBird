@@ -4,7 +4,6 @@ use songbird_registry::registry::core::Registry;
 use songbird_registry::registry::traits::PluginRegistry;
 use songbird_registry::types::{Plugin, PluginId};
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 fn create_test_plugin(id: &str, name: &str) -> Plugin {
     Plugin::new(id, name, "1.0.0")

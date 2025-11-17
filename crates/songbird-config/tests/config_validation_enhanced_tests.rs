@@ -3,7 +3,6 @@
 //! Additional configuration validation and edge case tests
 
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 
 // ============================================================================

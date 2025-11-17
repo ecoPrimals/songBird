@@ -6,7 +6,6 @@
 use songbird_orchestrator::integration::IntegrationManager;
 use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use tokio::time::Duration;
 
 // ==================== Construction Tests ====================

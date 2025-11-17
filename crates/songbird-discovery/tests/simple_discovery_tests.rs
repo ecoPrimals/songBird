@@ -8,7 +8,6 @@
 
 use songbird_discovery::traits::ServiceStatus;
 use songbird_test_utils::test_orchestrator_port;
-use songbird_types::SongbirdResult;
 use songbird_types::{SongbirdError, SongbirdResult};
 
 #[tokio::test]

@@ -8,7 +8,6 @@ use songbird_canonical::metadata::{
     AIResponseMetadata, AutomationCapability, DecisionContext, QualityMetrics, RiskLevel,
 };
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 // ========== AIResponseMetadata Tests ==========
 

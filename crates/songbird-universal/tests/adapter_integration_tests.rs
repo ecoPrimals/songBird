@@ -20,7 +20,6 @@
 //! This validates the complete adapter system for `ToadStool`, `BearDog`, `NestGate`, and Squirrel.
 
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
 
 #[cfg(test)]

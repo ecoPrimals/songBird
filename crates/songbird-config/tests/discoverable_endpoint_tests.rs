@@ -18,7 +18,6 @@
 use songbird_config::discoverable_endpoint::*;
 use songbird_test_utils::test_bind_address;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // ENDPOINT SPEC TESTS

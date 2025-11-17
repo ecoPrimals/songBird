@@ -6,7 +6,6 @@
 use chrono::Utc;
 use songbird_test_utils::test_federation_port;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::ai::{AIAdapter, AIHealth, AIMetrics, ModelType};
 use std::time::Duration;
 

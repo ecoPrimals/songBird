@@ -27,7 +27,6 @@
 use songbird_test_utils::test_orchestrator_port;
 use songbird_types::service::*;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // SERVICE INFO TESTS

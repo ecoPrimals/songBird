@@ -4,7 +4,6 @@
 //! recovery scenarios, and concurrent access patterns.
 
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig, CircuitState};
 use std::sync::Arc;
 use std::time::Duration;

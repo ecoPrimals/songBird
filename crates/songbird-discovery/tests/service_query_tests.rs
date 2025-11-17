@@ -4,7 +4,6 @@
 
 use songbird_discovery::traits::discovery::{HealthStatus, ServiceQuery, SortBy};
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // ServiceQuery Tests

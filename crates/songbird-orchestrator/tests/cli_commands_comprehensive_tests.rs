@@ -4,7 +4,6 @@
 
 use songbird_orchestrator::cli::commands::{ServiceCommands, StatusCommands};
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_status_commands_variants() -> SongbirdResult<()> {
