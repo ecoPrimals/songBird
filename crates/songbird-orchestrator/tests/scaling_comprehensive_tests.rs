@@ -38,11 +38,7 @@ async fn test_auto_scaler_health_check() -> SongbirdResult<()> {
     let config = ScalingConfig::default();
     let scaler = AutoScaler::new(config);
 
-    let health = scaler.health_check().await;
-    assert!(health.is_ok());
-
-    let health_status =
-        health.ok_or_else(|| SongbirdError::configuration("Failed health check".to_string()))?;
+    let health_status = scaler.health_check().await?;
     assert_eq!(health_status.status, HealthStatus::Healthy);
     assert!(health_status.message.is_some());
     assert!(health_status.last_check.is_some());

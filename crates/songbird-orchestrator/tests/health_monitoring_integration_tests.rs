@@ -17,11 +17,7 @@ async fn test_registry_health_check_basic() -> SongbirdResult<()> {
     let config = RegistryConfig::default();
     let registry = ServiceRegistry::new(config);
 
-    let health = registry.health_check().await;
-    assert!(health.is_ok(), "Health check should succeed");
-
-    let component_health =
-        health.ok_or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
+    let component_health = registry.health_check().await?;
     assert_eq!(component_health.status, HealthStatus::Healthy);
     assert!(component_health.message.is_some());
     Ok(())
