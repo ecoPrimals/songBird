@@ -153,7 +153,7 @@ async fn test_find_capability_providers_special_characters() -> SongbirdResult<(
         let result = adapter.find_capability_providers(name).await;
         assert!(result.is_ok(), "Should handle special characters gracefully");
         assert_eq!(
-            result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
+            result.ok_or_else(|| SongbirdError::configuration("Error"))?.len(),
             0
         );
     }

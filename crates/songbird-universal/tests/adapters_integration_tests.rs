@@ -102,7 +102,7 @@ async fn test_adapter_timeout_configuration() -> SongbirdResult<()> {
 
     let adapter = ComputeAdapter::new_from_discovery()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        ?;
 
     // Verify adapter can be configured with custom timeout
     let custom_adapter = adapter.with_timeout(std::time::Duration::from_secs(30));
@@ -123,7 +123,7 @@ async fn test_discovery_priority_order() -> SongbirdResult<()> {
     env::set_var("BEARDOG_ENDPOINT", "http://old-legacy:8443");
 
     let adapter = SecurityAdapter::from_discovery().await.map_err(|e| {
-        SongbirdError::configuration(format!("Failed to discover security adapter: {}", e))
+        SongbirdError::configuration("Failed to discover security adapter")
     })?;
 
     // Verify it uses the CAPABILITY_* endpoint (higher priority)
@@ -192,10 +192,10 @@ async fn test_multiple_adapter_instances() -> SongbirdResult<()> {
     // Create multiple instances of the same adapter type
     let storage1 = StorageAdapter::from_discovery()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create storage1: {}", e)))?;
+        ?;
     let storage2 = StorageAdapter::from_discovery()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create storage2: {}", e)))?;
+        ?;
 
     // Both should be independent instances
     drop(storage1);
@@ -234,17 +234,17 @@ async fn test_capability_type_boundaries() -> SongbirdResult<()> {
     // Each adapter should use ONLY its capability endpoint
     let compute = ComputeAdapter::new_from_discovery()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Compute failed: {}", e)))?;
+        ?;
 
     let security = SecurityAdapter::from_discovery()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Security failed: {}", e)))?;
+        ?;
     let storage = StorageAdapter::from_discovery()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Storage failed: {}", e)))?;
+        ?;
     let ai = AIAdapter::from_discovery()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("AI failed: {}", e)))?;
+        ?;
 
     // Verify adapters were created (actual endpoint usage tested by other tests)
     drop(compute);

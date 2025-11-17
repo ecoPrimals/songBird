@@ -195,8 +195,8 @@ async fn test_find_providers_returns_consistent_results() -> SongbirdResult<()> 
     assert!(result3.is_ok());
 
     assert_eq!(
-        result1.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
-        result2.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len()
+        result1.ok_or_else(|| SongbirdError::configuration("Error"))?.len(),
+        result2.ok_or_else(|| SongbirdError::configuration("Error"))?.len()
     );
     Ok(())
 }
@@ -288,7 +288,7 @@ async fn test_adapter_gracefully_handles_empty_capability_search() -> SongbirdRe
         assert!(result.is_ok());
         // Should return empty list, not error
         assert!(result
-            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+            .ok_or_else(|| SongbirdError::configuration("Error"))?
             .is_empty());
     }
     Ok(())

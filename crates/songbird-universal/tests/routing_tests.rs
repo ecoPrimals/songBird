@@ -40,7 +40,7 @@ async fn test_route_to_single_provider_by_capability() {
     // Test Objective: Single provider should be selected for its capability
     // In a real orchestrator, we would:
     // let request = Request::for_capability("compute");
-    // let response = orchestrator.route(request).await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    // let response = orchestrator.route(request).await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     // assert_eq!(response.service_id, compute.id());
 
     env.cleanup().await;
@@ -67,7 +67,7 @@ async fn test_route_distributes_across_multiple_providers() {
     // let mut routes = HashMap::new();
     // for _ in 0..20 {
     //     let request = Request::for_capability("compute");
-    //     let response = orchestrator.route(request).await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    //     let response = orchestrator.route(request).await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     //     *routes.entry(response.service_id).or_insert(0) += 1;
     // }
     // assert_eq!(routes.len(), 2, "Should use both providers");
@@ -103,7 +103,7 @@ async fn test_route_respects_health_status() {
     // orchestrator.register_services(vec![healthy, degraded, unhealthy]);
     //
     // for _ in 0..50 {
-    //     let response = orchestrator.route("compute").await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    //     let response = orchestrator.route("compute").await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     //     assert_ne!(response.service_id, unhealthy.id);
     // }
 
@@ -168,7 +168,7 @@ async fn test_route_selects_best_multi_capability_provider() {
     //
     // let mut selected = HashMap::new();
     // for _ in 0..100 {
-    //     let response = orchestrator.route("compute").await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    //     let response = orchestrator.route("compute").await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     //     *selected.entry(response.service_id).or_insert(0) += 1;
     // }
     //
@@ -223,8 +223,8 @@ async fn test_routing_with_all_primal_types() {
     // ];
     //
     // for (capability, expected_primal_type) in test_cases {
-    //     let response = orchestrator.route(capability).await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
-    //     let service_type = response.metadata.get("type").or_else(|_| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    //     let response = orchestrator.route(capability).await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
+    //     let service_type = response.metadata.get("type").or_else(|_| SongbirdError::configuration("Test operation failed"))?;
     //     assert_eq!(service_type, expected_primal_type);
     // }
 

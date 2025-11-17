@@ -48,11 +48,11 @@ async fn test_toadstool_collect_metrics_success() -> SongbirdResult<()> {
         .await;
 
     let adapter = ComputeAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let metrics = adapter
         .collect_metrics()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
+        ?;
 
     assert_eq!(metrics.cpu_usage_percent, 45.5);
     assert_eq!(metrics.active_containers, 5);
@@ -69,7 +69,7 @@ async fn test_toadstool_collect_metrics_network_error() -> SongbirdResult<()> {
         "http://nonexistent-host-12345.invalid:{}",
         test_orchestrator_port()
     ))
-    .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+    .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
 
     let result = adapter.collect_metrics().await;
 
@@ -102,11 +102,11 @@ async fn test_toadstool_check_health() -> SongbirdResult<()> {
         .await;
 
     let adapter = ComputeAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let health = adapter
         .check_health()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
+        ?;
 
     // Should be healthy (CPU < 80%, Memory usage = 62.5%)
     assert_eq!(health, songbird_universal::adapters::compute::HealthStatus::Healthy);
@@ -136,13 +136,13 @@ async fn test_toadstool_adapter_with_custom_timeout() -> SongbirdResult<()> {
         .await;
 
     let adapter = ComputeAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?
         .with_timeout(Duration::from_secs(2));
 
     let metrics = adapter
         .collect_metrics()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
+        ?;
     assert_eq!(metrics.cpu_usage_percent, 30.0);
     Ok(())
 }
@@ -172,11 +172,11 @@ async fn test_beardog_collect_metrics_success() -> SongbirdResult<()> {
         .await;
 
     let adapter = SecurityAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let metrics = adapter
         .collect_metrics()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
+        ?;
 
     assert_eq!(metrics.active_sessions, 50);
     assert_eq!(metrics.failed_auth_attempts, 10);
@@ -198,11 +198,11 @@ async fn test_beardog_verify_auth_success() -> SongbirdResult<()> {
         .await;
 
     let adapter = SecurityAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let result = adapter
         .verify_auth("valid_token")
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to verify auth: {}", e)))?;
+        ?;
 
     assert_eq!(result, songbird_universal::adapters::security::AuthResult::Authorized);
     Ok(())
@@ -215,11 +215,11 @@ async fn test_beardog_verify_auth_unauthorized() -> SongbirdResult<()> {
     let _mock = server.mock("POST", "/auth/verify").with_status(401).create_async().await;
 
     let adapter = SecurityAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let result = adapter
         .verify_auth("invalid_token")
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to verify auth: {}", e)))?;
+        ?;
 
     assert_eq!(result, songbird_universal::adapters::security::AuthResult::Unauthorized);
     Ok(())
@@ -246,11 +246,11 @@ async fn test_beardog_check_health() -> SongbirdResult<()> {
         .await;
 
     let adapter = SecurityAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let health = adapter
         .check_health()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
+        ?;
 
     assert_eq!(health, songbird_universal::adapters::security::SecurityHealth::Healthy);
     Ok(())
@@ -283,11 +283,11 @@ async fn test_nestgate_collect_metrics_success() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let metrics = adapter
         .collect_metrics()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
+        ?;
 
     assert_eq!(metrics.total_capacity_bytes, 1_000_000_000_000);
     assert_eq!(metrics.used_bytes, 250_000_000_000);
@@ -320,11 +320,11 @@ async fn test_nestgate_check_health() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let health = adapter
         .check_health()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
+        ?;
 
     // 50% usage should be healthy
     assert_eq!(health, songbird_universal::adapters::storage::StorageHealth::Healthy);
@@ -354,11 +354,11 @@ async fn test_nestgate_high_latency_detection() -> SongbirdResult<()> {
         .await;
 
     let adapter = StorageAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let health = adapter
         .check_health()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
+        ?;
 
     // 90% usage + high latency should be warning or critical
     assert_ne!(health, songbird_universal::adapters::storage::StorageHealth::Healthy);
@@ -391,11 +391,11 @@ async fn test_squirrel_collect_metrics_success() -> SongbirdResult<()> {
         .await;
 
     let adapter = AIAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let metrics = adapter
         .collect_metrics()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to collect metrics: {}", e)))?;
+        ?;
 
     assert_eq!(metrics.active_models, 3);
     assert_eq!(metrics.total_requests, 1000);
@@ -427,11 +427,11 @@ async fn test_squirrel_check_health() -> SongbirdResult<()> {
         .await;
 
     let adapter = AIAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let health = adapter
         .check_health()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
+        ?;
 
     // 60% GPU, 500ms latency should be healthy
     assert_eq!(health, songbird_universal::adapters::ai::AIHealth::Healthy);
@@ -460,11 +460,11 @@ async fn test_squirrel_high_gpu_load() -> SongbirdResult<()> {
         .await;
 
     let adapter = AIAdapter::new(server.url())
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to create adapter: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Failed to create adapter"))?;
     let health = adapter
         .check_health()
         .await
-        .ok_or_else(|| SongbirdError::configuration(format!("Failed to check health: {}", e)))?;
+        ?;
 
     // 99% GPU + high latency should be overloaded
     assert_eq!(health, songbird_universal::adapters::ai::AIHealth::Overloaded);
@@ -487,16 +487,16 @@ async fn test_all_adapters_handle_500_error() -> SongbirdResult<()> {
         .await;
 
     let toadstool = ComputeAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create ToadStool adapter: {}", e))
+        SongbirdError::configuration("Failed to create ToadStool adapter")
     })?;
     let beardog = SecurityAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create BearDog adapter: {}", e))
+        SongbirdError::configuration("Failed to create BearDog adapter")
     })?;
     let nestgate = StorageAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create NestGate adapter: {}", e))
+        SongbirdError::configuration("Failed to create NestGate adapter")
     })?;
     let squirrel = AIAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create Squirrel adapter: {}", e))
+        SongbirdError::configuration("Failed to create Squirrel adapter")
     })?;
 
     // All should return errors
@@ -520,16 +520,16 @@ async fn test_all_adapters_handle_invalid_json() -> SongbirdResult<()> {
         .await;
 
     let toadstool = ComputeAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create ToadStool adapter: {}", e))
+        SongbirdError::configuration("Failed to create ToadStool adapter")
     })?;
     let beardog = SecurityAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create BearDog adapter: {}", e))
+        SongbirdError::configuration("Failed to create BearDog adapter")
     })?;
     let nestgate = StorageAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create NestGate adapter: {}", e))
+        SongbirdError::configuration("Failed to create NestGate adapter")
     })?;
     let squirrel = AIAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create Squirrel adapter: {}", e))
+        SongbirdError::configuration("Failed to create Squirrel adapter")
     })?;
 
     // All should return parse errors
@@ -583,10 +583,10 @@ async fn test_concurrent_adapter_operations() -> SongbirdResult<()> {
         .await;
 
     let toadstool = ComputeAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create ToadStool adapter: {}", e))
+        SongbirdError::configuration("Failed to create ToadStool adapter")
     })?;
     let beardog = SecurityAdapter::new(server.url()).map_err(|e| {
-        SongbirdError::configuration(format!("Failed to create BearDog adapter: {}", e))
+        SongbirdError::configuration("Failed to create BearDog adapter")
     })?;
 
     // Run both adapters concurrently

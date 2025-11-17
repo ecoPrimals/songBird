@@ -25,7 +25,7 @@ async fn test_round_robin_cycles_correctly() -> SongbirdResult<()> {
             let result = lb
                 .get_next_endpoint()
                 .await
-                .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?;
+                .map_err(|e| SongbirdError::configuration("Error"))?;
             assert_eq!(&result, expected);
         }
     }
@@ -258,7 +258,7 @@ async fn test_equal_health_scores_selectable() -> SongbirdResult<()> {
     let result = lb.get_next_endpoint().await;
     assert!(result.is_ok());
     assert!(endpoints
-        .contains(&result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?));
+        .contains(&result.ok_or_else(|| SongbirdError::configuration("Error"))?));
     Ok(())
 }
 

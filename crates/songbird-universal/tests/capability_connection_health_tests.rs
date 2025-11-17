@@ -611,9 +611,9 @@ fn test_service_connections_with_metrics() -> SongbirdResult<()> {
         conn1
             .metrics
             .get("latency_ms")
-            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?
+            .or_else(|_| SongbirdError::configuration("Error"))?
             < conn2.metrics.get("latency_ms").or_else(|_| SongbirdError::configuration(
-                format!("Missing performance configuration: {}", e)
+                "Missing performance configuration"
             ))?
     );
     Ok(())

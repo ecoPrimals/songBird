@@ -290,7 +290,7 @@ async fn test_concurrent_reads_and_writes() -> SongbirdResult<()> {
 
     // All should complete successfully
     for handle in handles {
-        assert!(handle.await.map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?);
+        assert!(handle.await.map_err(|e| SongbirdError::configuration("Error"))?);
     }
     Ok(())
 }
@@ -789,25 +789,25 @@ async fn test_round_robin_predictable_sequence() -> SongbirdResult<()> {
     assert_eq!(
         lb.get_next_endpoint()
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?,
+            .map_err(|e| SongbirdError::configuration("Error"))?,
         endpoints[0]
     );
     assert_eq!(
         lb.get_next_endpoint()
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?,
+            .map_err(|e| SongbirdError::configuration("Error"))?,
         endpoints[1]
     );
     assert_eq!(
         lb.get_next_endpoint()
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?,
+            .map_err(|e| SongbirdError::configuration("Error"))?,
         endpoints[2]
     );
     assert_eq!(
         lb.get_next_endpoint()
             .await
-            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?,
+            .map_err(|e| SongbirdError::configuration("Error"))?,
         endpoints[0]
     );
     Ok(())

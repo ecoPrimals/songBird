@@ -404,14 +404,14 @@ fn test_path_segment_with_metadata() -> SongbirdResult<()> {
         segment
             .metadata
             .get("region")
-            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
+            .or_else(|_| SongbirdError::configuration("Error"))?,
         "us-west-1"
     );
     assert_eq!(
         segment
             .metadata
             .get("compliance")
-            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
+            .or_else(|_| SongbirdError::configuration("Error"))?,
         "gdpr"
     );
     assert_eq!(segment.security_capabilities.len(), 2);

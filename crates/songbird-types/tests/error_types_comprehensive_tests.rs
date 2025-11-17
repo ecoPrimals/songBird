@@ -22,7 +22,6 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use songbird_types::{SecurityError, SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // SONGBIRD ERROR CREATION TESTS

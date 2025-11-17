@@ -154,18 +154,18 @@ async fn test_multiple_adapter_discovery_independence() {
     assert!(storage_result.is_ok());
 
     assert_eq!(
-        ai_result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.endpoint(),
+        ai_result.ok_or_else(|| SongbirdError::configuration("Error"))?.endpoint(),
         format!("http://ai:{}", test_orchestrator_port())
     );
     assert_eq!(
         compute_result
-            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+            .ok_or_else(|| SongbirdError::configuration("Error"))?
             .endpoint(),
         format!("http://compute:{}", test_metrics_port())
     );
     assert_eq!(
         storage_result
-            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+            .ok_or_else(|| SongbirdError::configuration("Error"))?
             .endpoint(),
         "http://storage:9000"
     );
@@ -203,7 +203,7 @@ async fn test_adapter_discovery_priority_order() {
     assert!(result.is_ok());
     // Environment variable should take priority
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.endpoint(),
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?.endpoint(),
         format!("http://env-endpoint:{}", test_orchestrator_port())
     );
 }
@@ -239,7 +239,7 @@ async fn test_adapter_endpoint_formats() {
 
         assert!(result.is_ok(), "Failed for endpoint: {}", endpoint);
         assert_eq!(
-            result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.endpoint(),
+            result.ok_or_else(|| SongbirdError::configuration("Error"))?.endpoint(),
             endpoint
         );
     }

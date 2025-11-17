@@ -322,7 +322,7 @@ async fn test_beardog_verify_auth_authorized() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         AuthResult::Authorized
     );
     mock.assert_async().await;
@@ -345,7 +345,7 @@ async fn test_beardog_verify_auth_unauthorized() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         AuthResult::Unauthorized
     );
     mock.assert_async().await;
@@ -374,7 +374,7 @@ async fn test_beardog_verify_auth_expired() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         AuthResult::Expired
     );
     mock.assert_async().await;
@@ -403,7 +403,7 @@ async fn test_beardog_verify_auth_invalid() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         AuthResult::Invalid
     );
     mock.assert_async().await;
@@ -462,7 +462,7 @@ async fn test_beardog_check_health_healthy() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         SecurityHealth::Healthy
     );
     mock.assert_async().await;
@@ -498,7 +498,7 @@ async fn test_beardog_check_health_warning() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         SecurityHealth::Warning
     );
     mock.assert_async().await;
@@ -534,7 +534,7 @@ async fn test_beardog_check_health_critical() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         SecurityHealth::Critical
     );
     mock.assert_async().await;

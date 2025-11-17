@@ -340,9 +340,9 @@ fn test_discovered_primal_serialization() -> SongbirdResult<()> {
     };
 
     let json = serde_json::to_string(&primal)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration("Failed to serialize"))?;
     let deserialized: DiscoveredPrimal = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration("Failed to deserialize"))?;
 
     assert_eq!(deserialized.name, primal.name);
     assert_eq!(deserialized.endpoint, primal.endpoint);
@@ -353,9 +353,9 @@ fn test_discovered_primal_serialization() -> SongbirdResult<()> {
 fn test_discovery_method_serialization() -> SongbirdResult<()> {
     let method = DiscoveryMethod::Kubernetes;
     let json = serde_json::to_string(&method)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration("Failed to serialize"))?;
     let deserialized: DiscoveryMethod = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration("Failed to deserialize"))?;
 
     assert_eq!(deserialized, method);
     Ok(())
@@ -365,9 +365,9 @@ fn test_discovery_method_serialization() -> SongbirdResult<()> {
 fn test_primal_health_serialization() -> SongbirdResult<()> {
     let health = PrimalHealth::Healthy;
     let json = serde_json::to_string(&health)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration("Failed to serialize"))?;
     let deserialized: PrimalHealth = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration("Failed to deserialize"))?;
 
     assert_eq!(deserialized, health);
     Ok(())

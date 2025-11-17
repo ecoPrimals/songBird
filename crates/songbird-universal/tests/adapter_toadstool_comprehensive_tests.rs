@@ -340,7 +340,7 @@ async fn test_toadstool_check_health_healthy() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         HealthStatus::Healthy
     );
     mock.assert_async().await;
@@ -378,7 +378,7 @@ async fn test_toadstool_check_health_degraded() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         HealthStatus::Degraded
     );
     mock.assert_async().await;
@@ -416,7 +416,7 @@ async fn test_toadstool_check_health_unhealthy() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+        result.ok_or_else(|| SongbirdError::configuration("Error"))?,
         HealthStatus::Unhealthy
     );
     mock.assert_async().await;

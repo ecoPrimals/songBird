@@ -39,10 +39,10 @@ async fn test_all_adapters_collect_metrics() {
     // 4. No port conflicts or resource contention
 
     // In a real implementation, we would:
-    // let compute_metrics = toadstool.collect_metrics().await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
-    // let security_metrics = beardog.collect_metrics().await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
-    // let storage_metrics = nestgate.collect_metrics().await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
-    // let ai_metrics = squirrel.collect_metrics().await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    // let compute_metrics = toadstool.collect_metrics().await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
+    // let security_metrics = beardog.collect_metrics().await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
+    // let storage_metrics = nestgate.collect_metrics().await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
+    // let ai_metrics = squirrel.collect_metrics().await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     //
     // assert!(compute_metrics.cpu_usage_percent < 100.0);
     // assert!(security_metrics.security_score > 0.0);
@@ -81,7 +81,7 @@ async fn test_orchestrator_health_aggregation() {
     // 4. Report critical if majority are critical
     //
     // Implementation:
-    // let orchestrator_health = orchestrator.aggregate_health().await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    // let orchestrator_health = orchestrator.aggregate_health().await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     // assert_eq!(orchestrator_health, SystemHealth::Degraded);
 
     env.cleanup().await;
@@ -151,7 +151,7 @@ async fn test_multi_primal_orchestration_workflow() {
     //     .step(|ctx| nestgate.store_object(&ctx.result_id, &ctx.result).await)
     //     .step(|ctx| toadstool.log_metrics(&ctx.metrics).await);
     //
-    // let result = workflow.execute().await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    // let result = workflow.execute().await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     // assert!(result.success);
 
     env.cleanup().await;
@@ -176,7 +176,7 @@ async fn test_adapter_failover_handling() {
     // 4. Continue monitoring for recovery
     //
     // Implementation:
-    // let compute_services = orchestrator.get_healthy_services("compute").await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    // let compute_services = orchestrator.get_healthy_services("compute").await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     // assert_eq!(compute_services.len(), 0); // No healthy compute services
     //
     // let result = orchestrator.route_request("compute", request).await;
@@ -209,7 +209,7 @@ async fn test_load_distribution_across_adapters() {
     //
     // let mut distribution = HashMap::new();
     // for _ in 0..30 {
-    //     let selected = orchestrator.select_adapter("compute").await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    //     let selected = orchestrator.select_adapter("compute").await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     //     *distribution.entry(selected.id()).or_insert(0) += 1;
     // }
     //
@@ -246,7 +246,7 @@ async fn test_metrics_aggregation_across_ecosystem() {
     // - Resource utilization percentage
     //
     // Implementation:
-    // let aggregated = orchestrator.aggregate_metrics().await.map_err(|e| SongbirdError::configuration(format!("Test operation failed: {}", e)))?;
+    // let aggregated = orchestrator.aggregate_metrics().await.map_err(|e| SongbirdError::configuration("Test operation failed"))?;
     // assert_eq!(aggregated.total_cpu_usage, 45.0);
     // assert_eq!(aggregated.total_active_sessions, 50);
     // assert!(aggregated.overall_health_score > 0.9);

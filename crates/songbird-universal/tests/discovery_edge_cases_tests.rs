@@ -350,7 +350,7 @@ fn test_qos_metrics_with_infinity() -> SongbirdResult<()> {
     // ASSERT: Should allow infinity
     assert!(qos
         .latency_ms
-        .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+        .ok_or_else(|| SongbirdError::configuration("Error"))?
         .is_infinite());
     Ok(())
 }
@@ -368,7 +368,7 @@ fn test_qos_metrics_with_nan() -> SongbirdResult<()> {
     // ASSERT: Should allow NaN
     assert!(qos
         .latency_ms
-        .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+        .ok_or_else(|| SongbirdError::configuration("Error"))?
         .is_nan());
     Ok(())
 }

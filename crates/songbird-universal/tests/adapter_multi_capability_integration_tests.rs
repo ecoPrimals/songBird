@@ -28,19 +28,19 @@ mod multi_capability_tests {
         let compute = ComputeAdapter::new(
             format!("http://localhost:{}", test_orchestrator_port()).to_string(),
         )
-        .ok_or_else(|| SongbirdError::configuration(format!("Compute adapter creation: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Compute adapter creation"))?;
         let security =
             SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()).to_string())
                 .ok_or_else(|| {
-                    SongbirdError::configuration(format!("Security adapter creation: {}", e))
+                    SongbirdError::configuration("Security adapter creation")
                 })?;
         let storage =
             StorageAdapter::new(format!("http://localhost:{}", test_health_port()).to_string())
                 .ok_or_else(|| {
-                    SongbirdError::configuration(format!("Storage adapter creation: {}", e))
+                    SongbirdError::configuration("Storage adapter creation")
                 })?;
         let ai = AIAdapter::new(format!("http://localhost:{}", test_federation_port()).to_string())
-            .ok_or_else(|| SongbirdError::configuration(format!("AI adapter creation: {}", e)))?;
+            .ok_or_else(|| SongbirdError::configuration("AI adapter creation"))?;
 
         // Verify endpoints
         assert_eq!(compute.endpoint(), format!("http://localhost:{}", test_orchestrator_port()));
@@ -64,16 +64,16 @@ mod multi_capability_tests {
 
         let security =
             SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()).to_string())
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .with_timeout(Duration::from_secs(10));
 
         let storage =
             StorageAdapter::new(format!("http://localhost:{}", test_health_port()).to_string())
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .with_timeout(Duration::from_secs(15));
 
         let ai = AIAdapter::new(format!("http://localhost:{}", test_federation_port()).to_string())
-            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+            .ok_or_else(|| SongbirdError::configuration("Error"))?
             .with_timeout(Duration::from_secs(30)); // AI needs longer timeout
 
         // Verify they all work independently
@@ -91,21 +91,21 @@ mod multi_capability_tests {
         let compute_provider_a = ComputeAdapter::new(
             format!("http://provider-a:{}", test_orchestrator_port()).to_string(),
         )
-        .ok_or_else(|| SongbirdError::configuration(format!("Compute provider A: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Compute provider A"))?;
         let compute_provider_b = ComputeAdapter::new(
             format!("http://provider-b:{}", test_orchestrator_port()).to_string(),
         )
-        .ok_or_else(|| SongbirdError::configuration(format!("Compute provider B: {}", e)))?;
+        .ok_or_else(|| SongbirdError::configuration("Compute provider B"))?;
 
         let storage_provider_a =
             StorageAdapter::new(format!("http://provider-a:{}", test_health_port()).to_string())
                 .ok_or_else(|| {
-                    SongbirdError::configuration(format!("Storage provider A: {}", e))
+                    SongbirdError::configuration("Storage provider A")
                 })?;
         let storage_provider_b =
             StorageAdapter::new(format!("http://provider-b:{}", test_health_port()).to_string())
                 .ok_or_else(|| {
-                    SongbirdError::configuration(format!("Storage provider B: {}", e))
+                    SongbirdError::configuration("Storage provider B")
                 })?;
 
         // Verify adapters don't care about provider identity - only capabilities
@@ -246,25 +246,25 @@ mod multi_capability_tests {
 
         assert_eq!(
             compute_metrics
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .health_status(),
             HealthStatus::Healthy
         );
         assert_eq!(
             security_metrics
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .health_status(),
             SecurityHealth::Healthy
         );
         assert_eq!(
             storage_metrics
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .health_status(),
             StorageHealth::Healthy
         );
         assert_eq!(
             ai_metrics
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .health_status(),
             AIHealth::Healthy
         );
@@ -597,19 +597,19 @@ mod multi_capability_tests {
 
         // Assert - Different health statuses
         assert_eq!(
-            compute_health.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+            compute_health.ok_or_else(|| SongbirdError::configuration("Error"))?,
             HealthStatus::Healthy
         );
         assert_eq!(
-            security_health.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+            security_health.ok_or_else(|| SongbirdError::configuration("Error"))?,
             SecurityHealth::Warning
         );
         assert_eq!(
-            storage_health.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+            storage_health.ok_or_else(|| SongbirdError::configuration("Error"))?,
             StorageHealth::Warning
         );
         assert_eq!(
-            ai_health.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
+            ai_health.ok_or_else(|| SongbirdError::configuration("Error"))?,
             AIHealth::Degraded
         );
 
@@ -649,25 +649,25 @@ mod multi_capability_tests {
         // Verify sovereignty: adapters work with ANY provider
         assert_eq!(
             compute_capability
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://capability-provider-1:{}", test_orchestrator_port())
         );
         assert_eq!(
             security_capability
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://capability-provider-2:{}", test_discovery_port())
         );
         assert_eq!(
             storage_capability
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://capability-provider-3:{}", test_health_port())
         );
         assert_eq!(
             ai_capability
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://capability-provider-4:{}", test_federation_port())
         );
@@ -696,19 +696,19 @@ mod multi_capability_tests {
         // Verify we can failover between providers
         assert_eq!(
             compute_primary
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://primary-compute:{}", test_orchestrator_port())
         );
         assert_eq!(
             compute_secondary
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://secondary-compute:{}", test_orchestrator_port())
         );
         assert_eq!(
             compute_tertiary
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://tertiary-compute:{}", test_orchestrator_port())
         );
@@ -747,24 +747,24 @@ mod multi_capability_tests {
         // Verify endpoints are provider-agnostic
         assert_eq!(
             compute
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://unknown-provider-a:{}", test_orchestrator_port())
         );
         assert_eq!(
             security
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://unknown-provider-b:{}", test_discovery_port())
         );
         assert_eq!(
             storage
-                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+                .ok_or_else(|| SongbirdError::configuration("Error"))?
                 .endpoint(),
             format!("http://unknown-provider-c:{}", test_health_port())
         );
         assert_eq!(
-            ai.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.endpoint(),
+            ai.ok_or_else(|| SongbirdError::configuration("Error"))?.endpoint(),
             format!("http://unknown-provider-d:{}", test_federation_port())
         );
     }
