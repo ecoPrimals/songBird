@@ -591,9 +591,7 @@ async fn test_find_providers_multiple_times() -> SongbirdResult<()> {
         let result = adapter.find_capability_providers("any-capability").await;
         assert!(result.is_ok());
         // Should return empty list since no services registered
-        assert!(result
-            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
-            .is_empty());
+        assert!(result?.is_empty());
     }
     Ok(())
 }
@@ -612,10 +610,7 @@ async fn test_discover_services_with_short_timeout() -> SongbirdResult<()> {
     // Should complete quickly and return empty (graceful failure)
     let result = adapter.discover_services().await;
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
-        0
-    );
+    assert_eq!(result?.len(), 0);
     Ok(())
 }
 
@@ -773,10 +768,7 @@ async fn test_discover_services_all_endpoints_fail() -> SongbirdResult<()> {
     // Should gracefully handle all endpoints failing
     let result = adapter.discover_services().await;
     assert!(result.is_ok());
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
-        0
-    );
+    assert_eq!(result?.len(), 0);
     Ok(())
 }
 
@@ -865,9 +857,7 @@ async fn test_find_capability_providers_with_special_characters() -> SongbirdRes
     for name in special_names {
         let result = adapter.find_capability_providers(name).await;
         assert!(result.is_ok());
-        assert!(result
-            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
-            .is_empty());
+        assert!(result?.is_empty());
     }
     Ok(())
 }

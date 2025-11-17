@@ -37,9 +37,9 @@ fn test_initialize_performance_monitoring_thread_safe() -> SongbirdResult<()> {
         .collect();
 
     for handle in handles {
-        handle.join().or_else(|_| {
-            SongbirdError::configuration(format!("Thread should complete successfully: {}", e))
-        })?;
+        handle
+            .join()
+            .map_err(|_| SongbirdError::configuration("Thread should complete successfully"))?;
     }
     Ok(())
 }
