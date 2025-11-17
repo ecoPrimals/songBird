@@ -14,7 +14,6 @@
 
 use songbird_canonical::validation::*;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 // ============================================================================
 // ValidationResult Tests
@@ -86,12 +85,7 @@ fn test_validation_result_deserialization() -> Result<(), Box<dyn std::error::Er
 
     assert!(deserialized.is_ok());
     assert!(
-        deserialized
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .is_valid
+        deserialized.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.is_valid
     );
     Ok(())
 }

@@ -233,7 +233,7 @@ pub struct ConnectionLimits {
 }
 
 /// **SPECIALIZED**: Network timeouts for infant/zero-touch config
-/// 
+///
 /// This is intentionally kept separate from `canonical::network::NetworkTimeouts` because:
 /// 1. Different field names (`connection_timeout` vs connection)
 /// 2. Different semantics (`idle_timeout` vs `health_check`)
@@ -728,7 +728,7 @@ mod tests {
         // NOTE: File reference updated - zero_touch_config.rs doesn't exist
         // Use scripts/eliminate_all_hardcoding.py for accurate hardcoding detection
         let _source = include_str!("infant_config.rs"); // Self-reference instead
-        // Comments and docs are OK, but not in actual code logic
-        // The word kubernetes/consul/docker can appear in comments explaining the system works with them
+                                                        // Comments and docs are OK, but not in actual code logic
+                                                        // The word kubernetes/consul/docker can appear in comments explaining the system works with them
     }
 }

@@ -1,8 +1,8 @@
 //! Execution API endpoints for orchestrator
 
-use crate::core::execution::manager::ExecutionManager;
-use crate::core::execution::client::{ExecutionRequest, ExecutionResponse};
 use crate::core::execution::broadcast::{BroadcastOptions, BroadcastResult};
+use crate::core::execution::client::{ExecutionRequest, ExecutionResponse};
+use crate::core::execution::manager::ExecutionManager;
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -33,7 +33,7 @@ impl ExecutionApiState {
             manager: Arc::new(RwLock::new(ExecutionManager::new())),
         }
     }
-    
+
     /// Get the execution manager
     pub fn manager(&self) -> Arc<RwLock<ExecutionManager>> {
         self.manager.clone()
@@ -53,12 +53,12 @@ async fn execute_command(
     Json(req): Json<SingleTowerRequest>,
 ) -> Result<Json<ExecutionResponse>, ApiError> {
     let manager = state.manager.read().await;
-    
+
     let response = manager
         .execute_on_tower(&req.tower_endpoint, req.request)
         .await
         .map_err(|e| ApiError::Execution(e.to_string()))?;
-    
+
     Ok(Json(response))
 }
 
@@ -68,17 +68,15 @@ async fn broadcast_command(
     Json(req): Json<BroadcastRequest>,
 ) -> Result<Json<BroadcastResult>, ApiError> {
     let manager = state.manager.read().await;
-    
+
     let options = BroadcastOptions {
         fail_fast: req.fail_fast.unwrap_or(false),
         min_success_rate: req.min_success_rate.unwrap_or(1.0),
         wait_for_completion: req.wait_for_completion.unwrap_or(true),
     };
-    
-    let result = manager
-        .execute_broadcast(req.tower_ids, req.request, Some(options))
-        .await;
-    
+
+    let result = manager.execute_broadcast(req.tower_ids, req.request, Some(options)).await;
+
     Ok(Json(result))
 }
 
@@ -123,11 +121,11 @@ impl IntoResponse for ApiError {
             Self::Execution(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             Self::InvalidRequest(msg) => (StatusCode::BAD_REQUEST, msg),
         };
-        
+
         let body = Json(serde_json::json!({
             "error": message,
         }));
-        
+
         (status, body).into_response()
     }
 }
@@ -142,4 +140,3 @@ mod tests {
         assert!(true); // Just verify construction
     }
 }
-

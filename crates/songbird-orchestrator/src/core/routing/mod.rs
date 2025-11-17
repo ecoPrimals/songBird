@@ -30,4 +30,3 @@ pub mod types;
 pub use analyzer::{TaskComplexity, TaskComplexityAnalyzer};
 pub use router::{CapabilityRouter, RoutingDecision};
 pub use types::{ResourceRequirements, Task, TaskBuilder};
-

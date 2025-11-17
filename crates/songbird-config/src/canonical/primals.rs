@@ -1,11 +1,11 @@
 //! Primal ecosystem type definitions
-//! 
+//!
 //! **CANONICAL MODULE**: Single source of truth for primal configuration types
-//! 
+//!
 //! This module consolidates primal-related types from:
 //! - `config/agnostic_primals.rs` (archived - experimental, unused)
 //! - `config/universal_primals.rs` (archived - 1 type extracted: `QosMetrics`)
-//! 
+//!
 //! The simpler canonical approach proved more practical than the experimental
 //! universal registry systems.
 
@@ -20,7 +20,8 @@ use std::time::Duration;
 /// - `songbird-universal-primals/src/types.rs`
 /// - Various other locations
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PrimalType {/// Compute and container orchestration providers
+pub enum PrimalType {
+    /// Compute and container orchestration providers
     Compute,
     /// Storage and file management providers
     Storage,
@@ -101,7 +102,8 @@ impl std::fmt::Display for PrimalType {
     }
 }
 
-impl std::str::FromStr for PrimalType  {type Err = String;
+impl std::str::FromStr for PrimalType {
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
@@ -140,7 +142,8 @@ impl std::str::FromStr for PrimalType  {type Err = String;
 
 /// **CANONICAL**: Service category classification
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ServiceCategory {/// Core infrastructure services
+pub enum ServiceCategory {
+    /// Core infrastructure services
     Infrastructure,
     /// Application-level services
     Application,
@@ -161,7 +164,7 @@ pub enum ServiceCategory {/// Core infrastructure services
     /// Communication services
     Communication,
     /// Custom service category
-    Custom(String)
+    Custom(String),
 }
 
 impl Default for ServiceCategory {
@@ -189,7 +192,7 @@ impl std::fmt::Display for ServiceCategory {
 }
 
 /// **CANONICAL**: Quality of service metrics for capabilities
-/// 
+///
 /// Extracted from `config/universal_primals.rs` (was the only actively used type)
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct QosMetrics {
@@ -207,7 +210,7 @@ pub struct QosMetrics {
 }
 
 /// **CANONICAL**: Connection settings for primal communication
-/// 
+///
 /// Simplified from experimental `universal_primals.rs` patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionSettings {
@@ -236,7 +239,7 @@ impl Default for ConnectionSettings {
 }
 
 /// **CANONICAL**: Health check configuration
-/// 
+///
 /// Simplified from experimental patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthCheckConfig {
@@ -280,7 +283,7 @@ impl Default for HealthCheckConfig {
 use std::collections::HashMap;
 
 /// **CANONICAL**: Universal primal registry for dynamic primal management
-/// 
+///
 /// Simplified registry system consolidating experimental patterns from:
 /// - `config/universal_primals.rs` (archived)
 /// - `unified/primals.rs` (archived)
@@ -292,7 +295,7 @@ pub struct PrimalRegistry {
 
 impl PrimalRegistry {
     /// Create a new empty registry
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             primals: HashMap::new(),
@@ -305,29 +308,26 @@ impl PrimalRegistry {
     }
 
     /// Get a primal configuration by type
-    #[must_use] 
+    #[must_use]
     pub fn get_primal(&self, primal_type: &str) -> Option<&PrimalConfiguration> {
         self.primals.get(primal_type)
     }
 
     /// Get all enabled primals
-    #[must_use] 
+    #[must_use]
     pub fn get_enabled_primals(&self) -> Vec<&PrimalConfiguration> {
-        self.primals
-            .values()
-            .filter(|p| p.enabled)
-            .collect()
+        self.primals.values().filter(|p| p.enabled).collect()
     }
 
     /// Check if a primal is registered
-    #[must_use] 
+    #[must_use]
     pub fn is_registered(&self, primal_type: &str) -> bool {
         self.primals.contains_key(primal_type)
     }
 }
 
 /// **CANONICAL**: Universal configuration for any primal type
-/// 
+///
 /// Simplified from experimental `universal_primals` patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalConfiguration {
@@ -355,7 +355,7 @@ pub struct PrimalConfiguration {
 
 impl PrimalConfiguration {
     /// Create a new primal configuration template
-    #[must_use] 
+    #[must_use]
     pub fn new_template(primal_type: &str, display_name: &str) -> Self {
         Self {
             primal_type: primal_type.to_string(),
@@ -411,18 +411,9 @@ mod tests {
 
     #[test]
     fn test_primal_type_parsing() -> SongbirdResult<()> {
-        assert_eq!(
-            "compute".parse::<PrimalType>()?,
-            PrimalType::Compute
-        );
-        assert_eq!(
-            "AI".parse::<PrimalType>()?,
-            PrimalType::AI
-        );
-        assert_eq!(
-            "custom-test".parse::<PrimalType>()?,
-            PrimalType::Custom("test".to_string())
-        );
+        assert_eq!("compute".parse::<PrimalType>()?, PrimalType::Compute);
+        assert_eq!("AI".parse::<PrimalType>()?, PrimalType::AI);
+        assert_eq!("custom-test".parse::<PrimalType>()?, PrimalType::Custom("test".to_string()));
         Ok(())
     }
 
@@ -430,23 +421,14 @@ mod tests {
     fn test_primal_type_display() {
         assert_eq!(PrimalType::Compute.to_string(), "compute");
         assert_eq!(PrimalType::Gaming.to_string(), "gaming");
-        assert_eq!(
-            PrimalType::Custom("test".to_string()).to_string(),
-            "custom-test"
-        );
+        assert_eq!(PrimalType::Custom("test".to_string()).to_string(), "custom-test");
     }
 
     #[test]
     fn test_service_category_display() {
-        assert_eq!(
-            ServiceCategory::Infrastructure.to_string(),
-            "infrastructure"
-        );
+        assert_eq!(ServiceCategory::Infrastructure.to_string(), "infrastructure");
         assert_eq!(ServiceCategory::Application.to_string(), "application");
-        assert_eq!(
-            ServiceCategory::Custom("test".to_string()).to_string(),
-            "custom-test"
-        );
+        assert_eq!(ServiceCategory::Custom("test".to_string()).to_string(), "custom-test");
     }
 
     #[test]

@@ -401,17 +401,17 @@ fn test_path_segment_with_metadata() -> SongbirdResult<()> {
 
     assert_eq!(segment.metadata.len(), 3);
     assert_eq!(
-        segment.metadata.get("region").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        segment
+            .metadata
+            .get("region")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         "us-west-1"
     );
     assert_eq!(
-        segment.metadata.get("compliance").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        segment
+            .metadata
+            .get("compliance")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         "gdpr"
     );
     assert_eq!(segment.security_capabilities.len(), 2);

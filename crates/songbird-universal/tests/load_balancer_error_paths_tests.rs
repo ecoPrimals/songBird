@@ -290,10 +290,7 @@ async fn test_concurrent_reads_and_writes() -> SongbirdResult<()> {
 
     // All should complete successfully
     for handle in handles {
-        assert!(handle.await.map_err(|e| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?);
+        assert!(handle.await.map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?);
     }
     Ok(())
 }
@@ -453,9 +450,10 @@ async fn test_https_endpoints() -> SongbirdResult<()> {
 
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
-    let result = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("Failed to start orchestrator".to_string())
-    })?;
+    let result = lb
+        .get_next_endpoint()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
     assert!(result.starts_with("https://"));
     Ok(())
 }
@@ -470,9 +468,10 @@ async fn test_mixed_http_https_endpoints() -> SongbirdResult<()> {
     let r1 = lb.get_next_endpoint().await.map_err(|e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    let r2 = lb.get_next_endpoint().await.map_err(|e| {
-        SongbirdError::configuration("Failed to start orchestrator".to_string())
-    })?;
+    let r2 = lb
+        .get_next_endpoint()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
 
     assert!(r1.starts_with("http"));
     assert!(r2.starts_with("http"));
@@ -788,31 +787,27 @@ async fn test_round_robin_predictable_sequence() -> SongbirdResult<()> {
 
     // Should cycle through in order
     assert_eq!(
-        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        lb.get_next_endpoint()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?,
         endpoints[0]
     );
     assert_eq!(
-        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        lb.get_next_endpoint()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?,
         endpoints[1]
     );
     assert_eq!(
-        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        lb.get_next_endpoint()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?,
         endpoints[2]
     );
     assert_eq!(
-        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        lb.get_next_endpoint()
+            .await
+            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?,
         endpoints[0]
     );
     Ok(())

@@ -32,10 +32,7 @@
 //! **Timeline**: Can be removed in v0.3.0 (Q2 2026) once external uses confirmed migrated\
 //! **Urgency**: NONE - All internal uses successfully migrated
 
-#![deprecated(
-    since = "0.2.0",
-    note = "Use songbird_config::canonical::constants instead"
-)]
+#![deprecated(since = "0.2.0", note = "Use songbird_config::canonical::constants instead")]
 
 use songbird_types::error_helpers::SafeEnv;
 use std::time::Duration;
@@ -345,9 +342,9 @@ pub fn get_common_primal_ports() -> Vec<u16> {
 
         ports.into_iter().map(|p| p.to_string()).collect::<Vec<_>>().join(",")
     })
-        .split(',')
-        .filter_map(|s| s.trim().parse().ok())
-        .collect()
+    .split(',')
+    .filter_map(|s| s.trim().parse().ok())
+    .collect()
 }
 
 /// Get log directory from environment or calculate default
@@ -396,10 +393,7 @@ pub fn get_data_dir() -> String {
                 SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!(
-                "{}/.local/share/songbird",
-                SafeEnv::get_or_default("HOME", "/tmp".to_string()),
-            )
+            format!("{}/.local/share/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
         }
     })
 }
@@ -423,8 +417,7 @@ pub fn get_config_dir() -> String {
 /// Get temporary directory from environment or use system default
 #[must_use]
 pub fn get_temp_dir() -> String {
-    SafeEnv::get_or_default("SONGBIRD_TEMP_DIR",
-        std::env::temp_dir().to_string_lossy().to_string())
+    SafeEnv::get_or_default("SONGBIRD_TEMP_DIR", std::env::temp_dir().to_string_lossy().to_string())
 }
 
 /// Universal primal endpoint discovery - works with any primal name
@@ -567,8 +560,10 @@ pub fn protocol_port_mappings() -> std::collections::HashMap<String, u16> {
 /// Get external address for network configuration
 #[must_use]
 pub fn external_address() -> String {
-    SafeEnv::get_or_default("SONGBIRD_EXTERNAL_ADDRESS",
-        crate::constants::network::DEFAULT_HOST.to_string())
+    SafeEnv::get_or_default(
+        "SONGBIRD_EXTERNAL_ADDRESS",
+        crate::constants::network::DEFAULT_HOST.to_string(),
+    )
 }
 
 /// Get default subnet configuration

@@ -7,8 +7,7 @@ use songbird_types::SongbirdResult;
 
 // Import comprehensive LoadBalancerConfig (Nov 10, 2025 consolidation)
 pub use songbird_config::unified::robustness::{
-    LoadBalancerConfig as CanonicalLoadBalancerConfig,
-    LoadBalancingAlgorithm,
+    LoadBalancerConfig as CanonicalLoadBalancerConfig, LoadBalancingAlgorithm,
 };
 
 /// Load balancing strategies (re-exported from canonical for compatibility)
@@ -87,7 +86,7 @@ mod tests {
     fn test_load_balancer_new_with_custom_strategy() {
         use songbird_config::unified::robustness::HealthCheckConfig;
         use std::time::Duration;
-        
+
         let config = CanonicalLoadBalancerConfig {
             algorithm: LoadBalancingAlgorithm::LeastConnections,
             health_check: HealthCheckConfig::default(),
@@ -219,7 +218,7 @@ mod tests {
     fn test_load_balancing_config_with_different_strategies() {
         use songbird_config::unified::robustness::HealthCheckConfig;
         use std::time::Duration;
-        
+
         let strategies = vec![
             LoadBalancingAlgorithm::RoundRobin,
             LoadBalancingAlgorithm::LeastConnections,
@@ -253,9 +252,7 @@ mod tests {
         assert!(health.message.is_some());
         assert!(health
             .message
-            .ok_or_else(|| SongbirdError::configuration(
-                "Failed to select service".to_string()
-            ))?
+            .ok_or_else(|| SongbirdError::configuration("Failed to select service".to_string()))?
             .contains("operational"));
         Ok(())
     }

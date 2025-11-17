@@ -49,52 +49,38 @@ fn test_security_level_display() -> SongbirdResult<()> {
 #[test]
 fn test_security_level_from_str() -> SongbirdResult<()> {
     assert_eq!(
-        SecurityLevel::from_str("none").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("none")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::None
     );
     assert_eq!(
-        SecurityLevel::from_str("minimal").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("minimal")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::Minimal
     );
     assert_eq!(
-        SecurityLevel::from_str("basic").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("basic")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::Basic
     );
     assert_eq!(
-        SecurityLevel::from_str("low").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("low")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::Low
     );
     assert_eq!(
-        SecurityLevel::from_str("medium").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("medium")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::Medium
     );
     assert_eq!(
-        SecurityLevel::from_str("high").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("high")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::High
     );
     assert_eq!(
-        SecurityLevel::from_str("maximum").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("maximum")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::Maximum
     );
     Ok(())
@@ -103,24 +89,18 @@ fn test_security_level_from_str() -> SongbirdResult<()> {
 #[test]
 fn test_security_level_from_str_case_insensitive() -> SongbirdResult<()> {
     assert_eq!(
-        SecurityLevel::from_str("NONE").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("NONE")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::None
     );
     assert_eq!(
-        SecurityLevel::from_str("Medium").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("Medium")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::Medium
     );
     assert_eq!(
-        SecurityLevel::from_str("HIGH").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        SecurityLevel::from_str("HIGH")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityLevel::High
     );
     Ok(())

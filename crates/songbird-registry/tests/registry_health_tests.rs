@@ -47,10 +47,9 @@ fn test_health_metadata() -> SongbirdResult<()> {
     metadata.insert("last_check".to_string(), "2025-10-31".to_string());
 
     assert_eq!(
-        metadata.get("last_check").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        metadata
+            .get("last_check")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         "2025-10-31"
     );
     Ok(())

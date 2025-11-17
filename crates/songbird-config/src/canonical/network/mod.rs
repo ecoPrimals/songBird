@@ -19,13 +19,13 @@
 //! Existing code using `use songbird_config::canonical::network::*` will continue to work.
 
 // Module declarations
+pub mod advanced;
 pub mod core;
-pub mod gaming;
-pub mod timeouts;
 pub mod cors;
+pub mod gaming;
 pub mod limits;
 pub mod ports;
-pub mod advanced;
+pub mod timeouts;
 
 // ============================================================================
 // RE-EXPORTS FOR BACKWARD COMPATIBILITY
@@ -39,60 +39,49 @@ pub use core::{
 };
 
 // Gaming types
-pub use gaming::{
-    GamingNetworkConfig,
-    GamingScale,
-};
+pub use gaming::{GamingNetworkConfig, GamingScale};
 
 // Timeout types
-pub use timeouts::{
-    NetworkTimeouts,
-    TimeoutConfig,
-};
+pub use timeouts::{NetworkTimeouts, TimeoutConfig};
 
 // CORS types
 pub use cors::CorsConfig;
 
 // Limits and pooling
-pub use limits::{
-    ConnectionLimits,
-    LoadBalancingConfig,
-    RateLimitingConfig,
-    ConnectionPoolConfig,
-};
+pub use limits::{ConnectionLimits, ConnectionPoolConfig, LoadBalancingConfig, RateLimitingConfig};
 
 // Port types
 pub use ports::PortRange;
 
 // Advanced features
 pub use advanced::{
-    // Service endpoints and discovery
-    ServiceEndpoint,
-    SelfAwareConfig,
-    UniversalDiscoveryConfig,
-    ServiceDiscoveryEndpoints,
-    
-    // Proxy and SSL
-    ReverseProxyConfig,
-    SslConfig,
-    ProxyConfig,
-    DomainConfig,
-    
-    // NAT traversal and local discovery
-    TURNRelay,
-    UPnPDevice,
-    
     // Topology and measurements
     DiscoveryNetworkTopology,
+    DomainConfig,
+
     NetworkConnection,
+    NetworkInterfaceConfig,
     NetworkMeasurement,
-    
+
+    ProxyConfig,
+    // Proxy and SSL
+    ReverseProxyConfig,
+    SelfAwareConfig,
+    ServiceDiscoveryEndpoints,
+
+    // Service endpoints and discovery
+    ServiceEndpoint,
+    SocketBufferConfig,
+    SslConfig,
+    // NAT traversal and local discovery
+    TURNRelay,
     // TCP/UDP configuration
     TcpConfig,
     TcpKeepAliveConfig,
-    SocketBufferConfig,
+    UPnPDevice,
+
     UdpConfig,
-    NetworkInterfaceConfig,
+    UniversalDiscoveryConfig,
 };
 
 // Circuit breaker is defined in resilience module
@@ -163,4 +152,3 @@ mod tests {
         assert_eq!(config.gaming.starcraft_port, 6112);
     }
 }
-

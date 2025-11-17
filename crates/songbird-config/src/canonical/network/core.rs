@@ -9,12 +9,15 @@ use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 use tracing::warn;
 
-use super::gaming::GamingNetworkConfig;
-use super::timeouts::NetworkTimeouts;
+use super::advanced::{
+    DiscoveryNetworkTopology, NetworkMeasurement, ReverseProxyConfig, SelfAwareConfig, SslConfig,
+    TURNRelay, UPnPDevice, UniversalDiscoveryConfig,
+};
 use super::cors::CorsConfig;
+use super::gaming::GamingNetworkConfig;
 use super::limits::ConnectionLimits;
 use super::ports::PortRange;
-use super::advanced::{SelfAwareConfig, UniversalDiscoveryConfig, ReverseProxyConfig, SslConfig, TURNRelay, UPnPDevice, DiscoveryNetworkTopology, NetworkMeasurement};
+use super::timeouts::NetworkTimeouts;
 
 /// **CANONICAL**: Peer type in network topology
 ///
@@ -170,14 +173,19 @@ impl CanonicalNetworkConfig {
 
         let config = Self {
             bind_address,
-            production_bind_address: SafeEnv::get_or_default("SONGBIRD_PRODUCTION_BIND_ADDRESS", "0.0.0.0")
-                .parse()
-                .unwrap_or_else(|e| {
-                    warn!("Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}", e);
-                    std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
-                }),
-            orchestrator_port: SafeEnv::get_port("SONGBIRD_ORCHESTRATOR_PORT",
-                SafeEnv::get_port("DEFAULT_HTTP_PORT", 8080)),
+            production_bind_address: SafeEnv::get_or_default(
+                "SONGBIRD_PRODUCTION_BIND_ADDRESS",
+                "0.0.0.0",
+            )
+            .parse()
+            .unwrap_or_else(|e| {
+                warn!("Invalid SONGBIRD_PRODUCTION_BIND_ADDRESS, using default 0.0.0.0: {}", e);
+                std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
+            }),
+            orchestrator_port: SafeEnv::get_port(
+                "SONGBIRD_ORCHESTRATOR_PORT",
+                SafeEnv::get_port("DEFAULT_HTTP_PORT", 8080),
+            ),
             discovery_port: 8001,
             health_port: 8002,
             dashboard_port: 3000,
@@ -201,7 +209,7 @@ impl CanonicalNetworkConfig {
             connection_limits: ConnectionLimits::default(),
             metrics_bind_address: bind_address,
             federation_bind_address: bind_address,
-            
+
             // Phase 2B: Advanced features (optional, None by default for backward compatibility)
             self_config: None,
             universal_discovery: None,
@@ -302,9 +310,9 @@ impl Default for CanonicalNetworkConfig {
 
         Self {
             bind_address,
-            production_bind_address: "0.0.0.0".parse().unwrap_or({
-                std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)
-            }),
+            production_bind_address: "0.0.0.0"
+                .parse()
+                .unwrap_or({ std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED) }),
             orchestrator_port: 8080,
             discovery_port: 8001,
             health_port: 8002,
@@ -343,7 +351,7 @@ impl Default for CanonicalNetworkConfig {
             connection_limits: ConnectionLimits::default(),
             metrics_bind_address: bind_address,
             federation_bind_address: bind_address,
-            
+
             // Phase 2B: Advanced features (optional, None by default for backward compatibility)
             self_config: None,
             universal_discovery: None,
@@ -394,4 +402,3 @@ mod tests {
         assert_eq!(PeerType::default(), PeerType::Unknown);
     }
 }
-

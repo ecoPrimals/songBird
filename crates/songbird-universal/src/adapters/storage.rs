@@ -150,8 +150,11 @@ impl StorageAdapter {
 
                 // Fallback 2: Construct from host + port
                 let endpoint = SafeEnv::get_or_default("SONGBIRD_HOST", "http://localhost");
-                let port = SafeEnv::get_port("SONGBIRD_STORAGE_PORT",
-                    songbird_config::defaults::ports::service_port("STORAGE", 8082)).to_string();
+                let port = SafeEnv::get_port(
+                    "SONGBIRD_STORAGE_PORT",
+                    songbird_config::defaults::ports::service_port("STORAGE", 8082),
+                )
+                .to_string();
                 let discovered_endpoint = format!("{endpoint}:{port}");
 
                 debug!("🔄 Using fallback storage endpoint: {}", discovered_endpoint);

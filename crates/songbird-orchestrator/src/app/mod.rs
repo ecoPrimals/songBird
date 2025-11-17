@@ -2,10 +2,13 @@
 
 use anyhow::Result;
 use songbird_config::{
-    capability_endpoints, // 🍼 NEW: Capability-based discovery
     canonical::primals::{
-        PrimalCapability, PrimalConfiguration, PrimalEndpoint, QosMetrics, // ✅ All migrated to canonical
+        PrimalCapability,
+        PrimalConfiguration,
+        PrimalEndpoint,
+        QosMetrics, // ✅ All migrated to canonical
     },
+    capability_endpoints, // 🍼 NEW: Capability-based discovery
 };
 use songbird_types::config::CanonicalSongbirdConfig;
 // use songbird_federation::{//     FederationConfig,
@@ -41,7 +44,7 @@ pub struct SongbirdOrchestrator {
 }
 
 /// Parse bind address with support for IPv4, IPv6, and dual-stack
-/// 
+///
 /// Supports multiple formats:
 /// - `[::]` - IPv6 wildcard (dual-stack, recommended)
 /// - `[::1]` - IPv6 localhost
@@ -50,7 +53,7 @@ pub struct SongbirdOrchestrator {
 /// - Custom IPv4 or IPv6 addresses
 fn parse_bind_address(addr: &str, port: u16) -> Result<std::net::SocketAddr> {
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
-    
+
     match addr {
         "[::]" => {
             // Dual-stack: IPv6 wildcard (automatically handles IPv4 via IPv4-mapped addresses)
@@ -72,12 +75,14 @@ fn parse_bind_address(addr: &str, port: u16) -> Result<std::net::SocketAddr> {
             // Try to parse as IPv6 format: [addr] or custom address
             if addr.starts_with('[') && addr.ends_with(']') {
                 let ip_part = addr.trim_start_matches('[').trim_end_matches(']');
-                let ip: IpAddr = ip_part.parse()
+                let ip: IpAddr = ip_part
+                    .parse()
                     .map_err(|e| anyhow::anyhow!("Invalid IPv6 address '{}': {}", ip_part, e))?;
                 Ok(SocketAddr::new(ip, port))
             } else {
                 // Try as IPv4 address or parse full socket address
-                format!("{addr}:{port}").parse()
+                format!("{addr}:{port}")
+                    .parse()
                     .map_err(|e| anyhow::anyhow!("Invalid bind address '{}': {}", addr, e))
             }
         }
@@ -185,15 +190,14 @@ impl SongbirdOrchestrator {
         let federation_state = Arc::new(FederationState::new());
         let federated_service_registry = Arc::new(FederatedServiceRegistry::new());
         let (federation_coordinator, federation_config) =
-            if SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false)
-            {
+            if SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false) {
                 info!("🌐 Federation mode enabled");
 
                 // Build self registration
                 let self_registration = NodeRegistration {
                     node_id: SafeEnv::get_or_default(
                         "SONGBIRD_NODE_ID",
-                        uuid::Uuid::new_v4().to_string()
+                        uuid::Uuid::new_v4().to_string(),
                     ),
                     node_name: SafeEnv::get_or_default("SONGBIRD_NODE_NAME", {
                         hostname::get()
@@ -203,10 +207,12 @@ impl SongbirdOrchestrator {
                     }),
                     node_address: format!(
                         "{}:{}",
-                        SafeEnv::get_or_default("SONGBIRD_NODE_ADDRESS", 
-                            Self::detect_primary_ip()
-                                .unwrap_or_else(|| "127.0.0.1".to_string())),
-                        SafeEnv::get_or_default("SONGBIRD_PORT",
+                        SafeEnv::get_or_default(
+                            "SONGBIRD_NODE_ADDRESS",
+                            Self::detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string())
+                        ),
+                        SafeEnv::get_or_default(
+                            "SONGBIRD_PORT",
                             songbird_config::defaults::ports::orchestrator_port().to_string()
                         )
                     ),
@@ -392,7 +398,7 @@ impl SongbirdOrchestrator {
 
         // Start HTTP server with federation API
         self.start_http_server().await?;
-        
+
         // Start tarpc server for high-performance native RPC (Phase 3)
         self.start_tarpc_server().await?;
 
@@ -405,56 +411,55 @@ impl SongbirdOrchestrator {
         use axum::Router;
         use std::net::SocketAddr;
 
-        let bind_address =
-            SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "[::]");
-        let port = SafeEnv::get_port("SONGBIRD_PORT",
-            songbird_config::defaults::ports::orchestrator_port());
+        let bind_address = SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "[::]");
+        let port = SafeEnv::get_port(
+            "SONGBIRD_PORT",
+            songbird_config::defaults::ports::orchestrator_port(),
+        );
 
         let addr: SocketAddr = parse_bind_address(&bind_address, port)?;
 
         // Build the app with federation and deployment routes
         let deployment_state = crate::server::deployment_api::DeploymentState::new();
-        
+
         // Create compute API state for intelligent routing
         let compute_state = crate::server::compute_api::ComputeApiState::new(
             Arc::clone(&self.federation_state),
             Arc::clone(&self.federated_service_registry),
         );
-        
+
         // Create compute API router with state
-        let compute_router = crate::server::compute_api::compute_routes()
-            .with_state(compute_state);
-        
+        let compute_router = crate::server::compute_api::compute_routes().with_state(compute_state);
+
         // Create protocol API state for progressive enhancement
         let protocol_state = crate::server::protocol_api::ProtocolApiState::new();
-        
+
         // Create protocol API router with state
-        let protocol_router = crate::server::protocol_api::protocol_routes()
-            .with_state(protocol_state);
-        
+        let protocol_router =
+            crate::server::protocol_api::protocol_routes().with_state(protocol_state);
+
         // Create JSON-RPC API state for universal gateway
         let jsonrpc_state = crate::server::jsonrpc_api::JsonRpcState::new(
             Arc::clone(&self.federation_state),
             Arc::clone(&self.federated_service_registry),
         );
-        
+
         // Create JSON-RPC router with state
-        let jsonrpc_router = crate::server::jsonrpc_api::jsonrpc_routes()
-            .with_state(jsonrpc_state);
-        
+        let jsonrpc_router = crate::server::jsonrpc_api::jsonrpc_routes().with_state(jsonrpc_state);
+
         // Create event broadcaster for real-time events
         let event_broadcaster = Arc::new(crate::server::events::EventBroadcaster::new());
-        
+
         // Create WebSocket API state for real-time communication
         let websocket_state = crate::server::websocket_api::WebSocketApiState::new(
             Arc::clone(&self.federation_state),
             Arc::clone(&self.federated_service_registry),
             Arc::clone(&event_broadcaster),
         );
-        
+
         // Create WebSocket router with state
-        let websocket_router = crate::server::websocket_api::websocket_routes()
-            .with_state(websocket_state);
+        let websocket_router =
+            crate::server::websocket_api::websocket_routes().with_state(websocket_state);
 
         let app = Router::new()
             .nest(
@@ -465,19 +470,19 @@ impl SongbirdOrchestrator {
                 ),
             )
             .nest(
-                "/api/compute",  // ✅ NEW: Intelligent capability routing API (Nov 9, 2025)
+                "/api/compute", // ✅ NEW: Intelligent capability routing API (Nov 9, 2025)
                 compute_router,
             )
             .nest(
-                "/api/protocol",  // ✅ NEW: Progressive Protocol Enhancement API (Nov 11, 2025)
+                "/api/protocol", // ✅ NEW: Progressive Protocol Enhancement API (Nov 11, 2025)
                 protocol_router,
             )
             .nest(
-                "/jsonrpc",  // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
+                "/jsonrpc", // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
                 jsonrpc_router,
             )
             .nest(
-                "/api/ws",  // ✅ NEW: WebSocket Real-Time API (Nov 11, 2025 - Phase 4)
+                "/api/ws", // ✅ NEW: WebSocket Real-Time API (Nov 11, 2025 - Phase 4)
                 websocket_router,
             )
             .nest(
@@ -490,7 +495,7 @@ impl SongbirdOrchestrator {
         // Smart port management: Try configured port, auto-increment if busy
         let (listener, actual_addr) = Self::bind_with_fallback(&addr).await?;
         let actual_port = actual_addr.port();
-        
+
         if actual_port == port {
             info!("✅ Bound to configured port {}", port);
         } else {
@@ -501,7 +506,6 @@ impl SongbirdOrchestrator {
 
         // Spawn server in background
         tokio::spawn(async move {
-
             if let Err(e) = axum::serve(listener, app).await {
                 error!("❌ HTTP server error: {}", e);
             }
@@ -511,17 +515,19 @@ impl SongbirdOrchestrator {
     }
 
     /// Smart port binding with automatic fallback
-    /// 
+    ///
     /// Tries the requested port first, then auto-increments until it finds an available port.
     /// Maximum 10 attempts before giving up.
-    async fn bind_with_fallback(addr: &std::net::SocketAddr) -> Result<(tokio::net::TcpListener, std::net::SocketAddr)> {
+    async fn bind_with_fallback(
+        addr: &std::net::SocketAddr,
+    ) -> Result<(tokio::net::TcpListener, std::net::SocketAddr)> {
         let host = addr.ip();
         let mut port = addr.port();
         let max_attempts = 10;
-        
+
         for attempt in 1..=max_attempts {
             let try_addr = std::net::SocketAddr::new(host, port);
-            
+
             match tokio::net::TcpListener::bind(try_addr).await {
                 Ok(listener) => {
                     let actual_addr = listener.local_addr()?;
@@ -531,23 +537,32 @@ impl SongbirdOrchestrator {
                     return Ok((listener, actual_addr));
                 }
                 Err(_e) if attempt < max_attempts => {
-                    tracing::debug!("Port {} busy, trying {} (attempt {}/{})", port, port + 1, attempt, max_attempts);
+                    tracing::debug!(
+                        "Port {} busy, trying {} (attempt {}/{})",
+                        port,
+                        port + 1,
+                        attempt,
+                        max_attempts
+                    );
                     port += 1;
                 }
                 Err(e) => {
                     return Err(anyhow::anyhow!(
                         "Failed to bind after {} attempts. Last error: {}. Tried ports {}-{}",
-                        max_attempts, e, addr.port(), port
+                        max_attempts,
+                        e,
+                        addr.port(),
+                        port
                     ));
                 }
             }
         }
-        
+
         unreachable!("Loop should have returned or errored");
     }
-    
+
     /// Start tarpc server for high-performance native RPC
-    /// 
+    ///
     /// tarpc provides binary RPC with ~50μs latency (100x faster than JSON-RPC!)
     /// for native Rust client-to-server communication.
     async fn start_tarpc_server(&self) -> Result<()> {
@@ -556,15 +571,15 @@ impl SongbirdOrchestrator {
             "SONGBIRD_TARPC_PORT",
             songbird_config::defaults::ports::tarpc_port(),
         );
-        
+
         let addr: std::net::SocketAddr = parse_bind_address(&bind_address, port)?;
-        
+
         info!("🚀 Starting tarpc server on {}", addr);
-        
+
         // Clone necessary state for the tarpc server
         let federation_state = Arc::clone(&self.federation_state);
         let service_registry = Arc::clone(&self.federated_service_registry);
-        
+
         // Spawn tarpc server in background
         tokio::spawn(async move {
             if let Err(e) = crate::server::tarpc_server::start_tarpc_server(
@@ -577,7 +592,7 @@ impl SongbirdOrchestrator {
                 error!("❌ tarpc server error: {}", e);
             }
         });
-        
+
         Ok(())
     }
 

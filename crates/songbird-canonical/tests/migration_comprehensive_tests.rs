@@ -5,7 +5,6 @@
 
 use songbird_canonical::migration::*;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::path::Path;
 
 // ========== CanonicalMigrator Tests ==========

@@ -44,8 +44,8 @@ pub mod service;
 // Capability types
 // ✅ REMOVED: Deprecated Capability type alias (Nov 9, 2025) - use DiscoveredCapability instead
 pub use capability::{
-    CapabilityRequirement, DiscoveredCapability, DiscoveryFilters, HealthStatus,
-    PrimalCapability, PrimalType, QosMetrics, SecurityLevel, ServiceCapability,
+    CapabilityRequirement, DiscoveredCapability, DiscoveryFilters, HealthStatus, PrimalCapability,
+    PrimalType, QosMetrics, SecurityLevel, ServiceCapability,
 };
 
 // Service types

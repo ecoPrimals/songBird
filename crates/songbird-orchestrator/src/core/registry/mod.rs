@@ -6,8 +6,7 @@
 pub mod types;
 
 use crate::core::registry::types::{
-    CapabilityRegistrationRequest, HealthStatus, ProviderHealth, RegisteredProvider,
-    ResourceUsage,
+    CapabilityRegistrationRequest, HealthStatus, ProviderHealth, RegisteredProvider, ResourceUsage,
 };
 use chrono::{Duration as ChronoDuration, Utc};
 use songbird_types::{SongbirdError, SongbirdResult};
@@ -72,10 +71,7 @@ impl CapabilityRegistry {
     /// # Returns
     /// * `Ok(registration_id)` - Unique registration ID on success
     /// * `Err(SongbirdError)` - If provider already registered or validation fails
-    pub async fn register(
-        &self,
-        request: CapabilityRegistrationRequest,
-    ) -> SongbirdResult<String> {
+    pub async fn register(&self, request: CapabilityRegistrationRequest) -> SongbirdResult<String> {
         let mut providers = self.providers.write().await;
 
         // Check for duplicate provider ID
@@ -168,28 +164,25 @@ impl CapabilityRegistry {
     ) -> SongbirdResult<()> {
         let mut providers = self.providers.write().await;
 
-        let provider = providers.get_mut(provider_id).ok_or_else(|| {
-            SongbirdError::Registry {
-                message: format!("Provider '{}' not found", provider_id),
-                service_name: Some(provider_id.to_string()),
-                operation: "heartbeat".to_string(),
-            }
+        let provider = providers.get_mut(provider_id).ok_or_else(|| SongbirdError::Registry {
+            message: format!("Provider '{}' not found", provider_id),
+            service_name: Some(provider_id.to_string()),
+            operation: "heartbeat".to_string(),
         })?;
 
         // Verify registration ID
         if provider.registration_id != registration_id {
             return Err(SongbirdError::Security(songbird_types::SecurityError {
-                message: format!(
-                    "Registration ID mismatch for provider '{}'",
-                    provider_id
-                ),
+                message: format!("Registration ID mismatch for provider '{}'", provider_id),
                 operation: Some("heartbeat".to_string()),
                 required_permission: Some(format!(
                     "Valid registration_id for provider '{}'",
                     provider_id
                 )),
                 context: Some("capability_provider_heartbeat".to_string()),
-                remediation: Some("Use the registration_id returned during registration".to_string()),
+                remediation: Some(
+                    "Use the registration_id returned during registration".to_string(),
+                ),
             }));
         }
 
@@ -229,12 +222,10 @@ impl CapabilityRegistry {
     pub async fn unregister(&self, provider_id: &str) -> SongbirdResult<()> {
         let mut providers = self.providers.write().await;
 
-        providers.remove(provider_id).ok_or_else(|| {
-            SongbirdError::Registry {
-                message: format!("Provider '{}' not found", provider_id),
-                service_name: Some(provider_id.to_string()),
-                operation: "unregister".to_string(),
-            }
+        providers.remove(provider_id).ok_or_else(|| SongbirdError::Registry {
+            message: format!("Provider '{}' not found", provider_id),
+            service_name: Some(provider_id.to_string()),
+            operation: "unregister".to_string(),
         })?;
 
         info!(
@@ -262,14 +253,8 @@ impl CapabilityRegistry {
             .values()
             .filter(|p| {
                 // Only include healthy or degraded providers
-                matches!(
-                    p.health.status,
-                    HealthStatus::Healthy | HealthStatus::Degraded
-                ) && p
-                    .registration
-                    .capabilities
-                    .iter()
-                    .any(|c| c.name == capability)
+                matches!(p.health.status, HealthStatus::Healthy | HealthStatus::Degraded)
+                    && p.registration.capabilities.iter().any(|c| c.name == capability)
             })
             .cloned()
             .collect();
@@ -287,14 +272,11 @@ impl CapabilityRegistry {
     pub async fn get_provider(&self, provider_id: &str) -> SongbirdResult<RegisteredProvider> {
         let providers = self.providers.read().await;
 
-        providers
-            .get(provider_id)
-            .cloned()
-            .ok_or_else(|| SongbirdError::Registry {
-                message: format!("Provider '{}' not found", provider_id),
-                service_name: Some(provider_id.to_string()),
-                operation: "get".to_string(),
-            })
+        providers.get(provider_id).cloned().ok_or_else(|| SongbirdError::Registry {
+            message: format!("Provider '{}' not found", provider_id),
+            service_name: Some(provider_id.to_string()),
+            operation: "get".to_string(),
+        })
     }
 
     /// List all registered providers
@@ -338,15 +320,15 @@ impl CapabilityRegistry {
             // Check if provider should be marked unhealthy
             if elapsed > ChronoDuration::seconds(self.config.unhealthy_threshold_secs)
                 && provider.health.status != HealthStatus::Unhealthy
-                    && provider.health.status != HealthStatus::Offline
-                {
-                    warn!(
-                        provider_id = %provider_id,
-                        elapsed_seconds = elapsed.num_seconds(),
-                        "Provider unhealthy - missing heartbeats"
-                    );
-                    provider.health.status = HealthStatus::Unhealthy;
-                }
+                && provider.health.status != HealthStatus::Offline
+            {
+                warn!(
+                    provider_id = %provider_id,
+                    elapsed_seconds = elapsed.num_seconds(),
+                    "Provider unhealthy - missing heartbeats"
+                );
+                provider.health.status = HealthStatus::Unhealthy;
+            }
 
             // Check if provider should be removed
             if elapsed > ChronoDuration::seconds(self.config.removal_threshold_secs) {
@@ -438,16 +420,10 @@ mod tests {
 
         registry.register(request).await.unwrap();
 
-        let providers = registry
-            .find_providers_with_capability("compute_gpu")
-            .await
-            .unwrap();
+        let providers = registry.find_providers_with_capability("compute_gpu").await.unwrap();
         assert_eq!(providers.len(), 1);
 
-        let no_providers = registry
-            .find_providers_with_capability("nonexistent")
-            .await
-            .unwrap();
+        let no_providers = registry.find_providers_with_capability("nonexistent").await.unwrap();
         assert_eq!(no_providers.len(), 0);
     }
 
@@ -459,15 +435,11 @@ mod tests {
         let registration_id = registry.register(request.clone()).await.unwrap();
 
         // Update heartbeat
-        let result = registry
-            .update_heartbeat(&request.provider_id, &registration_id, None)
-            .await;
+        let result = registry.update_heartbeat(&request.provider_id, &registration_id, None).await;
         assert!(result.is_ok());
 
         // Wrong registration_id should fail
-        let result = registry
-            .update_heartbeat(&request.provider_id, "wrong-id", None)
-            .await;
+        let result = registry.update_heartbeat(&request.provider_id, "wrong-id", None).await;
         assert!(result.is_err());
     }
 
@@ -504,4 +476,3 @@ mod tests {
         assert_eq!(providers.len(), 1);
     }
 }
-

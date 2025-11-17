@@ -331,9 +331,8 @@ async fn test_toadstool_check_health_healthy() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = ComputeAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -341,10 +340,7 @@ async fn test_toadstool_check_health_healthy() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         HealthStatus::Healthy
     );
     mock.assert_async().await;
@@ -373,9 +369,8 @@ async fn test_toadstool_check_health_degraded() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = ComputeAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -383,10 +378,7 @@ async fn test_toadstool_check_health_degraded() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         HealthStatus::Degraded
     );
     mock.assert_async().await;
@@ -415,9 +407,8 @@ async fn test_toadstool_check_health_unhealthy() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = ComputeAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -425,10 +416,7 @@ async fn test_toadstool_check_health_unhealthy() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         HealthStatus::Unhealthy
     );
     mock.assert_async().await;

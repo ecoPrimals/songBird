@@ -225,7 +225,10 @@ async fn monitor_gaming_network(
     Ok(())
 }
 
-async fn diagnose_gaming_network(comprehensive: bool, export: Option<String>) -> SongbirdResult<()> {
+async fn diagnose_gaming_network(
+    comprehensive: bool,
+    export: Option<String>,
+) -> SongbirdResult<()> {
     println!("🔍 Diagnosing gaming network...");
 
     if comprehensive {

@@ -1,6 +1,6 @@
 use crate::discovery::types::NodeType;
 use serde::{Deserialize, Serialize};
- // ✅ Migrated from deprecated path
+// ✅ Migrated from deprecated path
 
 /// Configuration for Songbird Discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,7 +95,7 @@ impl Default for NetworkConfig {
         Self {
             multicast_address: "224.0.0.251".to_string(),
             federation_port: 8765,
-            service_port: 8080, // Default discovery port
+            service_port: 8080,                  // Default discovery port
             bind_address: "0.0.0.0".to_string(), // ✅ Updated: EnvironmentConfig no longer has bind_address
             announcement_interval_secs: 60,
             response_timeout_secs: 2,

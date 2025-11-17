@@ -110,7 +110,10 @@ impl Default for SecurityConfig {
             ),
             oauth_redirect_uri: env_or_default(
                 "SONGBIRD_OAUTH_REDIRECT",
-                &format!("http://{}:8080/auth/callback", crate::canonical::constants::network::DEFAULT_HOST),
+                &format!(
+                    "http://{}:8080/auth/callback",
+                    crate::canonical::constants::network::DEFAULT_HOST
+                ),
             ),
             tls_cert_path: env_or_default("SONGBIRD_TLS_CERT", "/etc/ssl/certs/songbird.crt"),
         }
@@ -139,8 +142,10 @@ impl Default for ServiceConfig {
 
 impl Default for NetworkConfig {
     fn default() -> Self {
-        let bind_ip =
-            env_or_default("SONGBIRD_BIND_ADDRESS", crate::canonical::constants::network::DEFAULT_HOST);
+        let bind_ip = env_or_default(
+            "SONGBIRD_BIND_ADDRESS",
+            crate::canonical::constants::network::DEFAULT_HOST,
+        );
         let orchestrator_port = env_or_default(
             "SONGBIRD_ORCHESTRATOR_PORT",
             &crate::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
@@ -242,8 +247,10 @@ impl Default for PerformanceConfig {
 
 impl Default for PrimalConfig {
     fn default() -> Self {
-        let base_ip =
-            env_or_default("SONGBIRD_PRIMAL_BASE_IP", crate::canonical::constants::network::DEFAULT_HOST);
+        let base_ip = env_or_default(
+            "SONGBIRD_PRIMAL_BASE_IP",
+            crate::canonical::constants::network::DEFAULT_HOST,
+        );
         let base_port: u16 = env_or_default(
             "SONGBIRD_PRIMAL_BASE_PORT",
             &crate::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
@@ -294,8 +301,10 @@ impl Default for PrimalConfig {
 
 impl Default for FederationConfig {
     fn default() -> Self {
-        let base_ip =
-            env_or_default("SONGBIRD_FEDERATION_BASE_IP", crate::canonical::constants::network::DEFAULT_HOST);
+        let base_ip = env_or_default(
+            "SONGBIRD_FEDERATION_BASE_IP",
+            crate::canonical::constants::network::DEFAULT_HOST,
+        );
         let base_port = env_or_default(
             "SONGBIRD_FEDERATION_BASE_PORT",
             &crate::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),

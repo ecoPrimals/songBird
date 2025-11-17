@@ -77,8 +77,8 @@ impl Default for DiscoveryConfig {
         Self {
             refresh_interval: std::time::Duration::from_secs(300), // 5 minutes (aligns with canonical default: 30s)
             discovery_timeout: std::time::Duration::from_secs(10), // Reasonable timeout
-            max_concurrent_discoveries: 10, // Aligns with canonical default
-            auto_discovery: true, // Aligns with canonical default
+            max_concurrent_discoveries: 10,                        // Aligns with canonical default
+            auto_discovery: true,                                  // Aligns with canonical default
             enable_network_discovery: false, // Secure default (canonical: false)
         }
     }

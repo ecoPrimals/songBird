@@ -28,7 +28,7 @@ fn test_config_test_defaults() {
 #[test]
 fn test_config_has_all_sections() {
     let config = CanonicalSongbirdConfig::default();
-    
+
     // Verify all config sections are accessible
     let _ = &config.environment;
     let _ = &config.network;
@@ -44,7 +44,7 @@ fn test_config_has_all_sections() {
 fn test_config_can_be_cloned() {
     let config = CanonicalSongbirdConfig::default();
     let cloned = config.clone();
-    
+
     // Cloned config should match original
     assert_eq!(config.environment, cloned.environment);
     assert_eq!(config.network.bind_address, cloned.network.bind_address);
@@ -53,7 +53,7 @@ fn test_config_can_be_cloned() {
 #[test]
 fn test_config_network_has_connections_limit() {
     let config = CanonicalSongbirdConfig::default();
-    
+
     // Network should have a reasonable connection limit
     assert!(config.network.max_connections > 0);
     assert!(config.network.max_connections < 1_000_000);
@@ -63,10 +63,10 @@ fn test_config_network_has_connections_limit() {
 fn test_config_test_vs_default_environments() {
     let default_config = CanonicalSongbirdConfig::default();
     let test_config = CanonicalSongbirdConfig::test_defaults();
-    
+
     // Test config should explicitly be "test"
     assert_eq!(test_config.environment, "test");
-    
+
     // Default environment should be set
     assert!(!default_config.environment.is_empty());
 }
@@ -74,7 +74,7 @@ fn test_config_test_vs_default_environments() {
 #[test]
 fn test_config_performance_in_test_mode() {
     let config = CanonicalSongbirdConfig::test_defaults();
-    
+
     // Test config should have performance settings
     assert!(config.performance.is_some());
 }
@@ -82,7 +82,7 @@ fn test_config_performance_in_test_mode() {
 #[test]
 fn test_config_primal_registry_optional() {
     let config = CanonicalSongbirdConfig::default();
-    
+
     // Primal registry is optional - both Some and None are valid
     let _ = config.primal_registry.is_some() || config.primal_registry.is_none();
 }
@@ -90,7 +90,7 @@ fn test_config_primal_registry_optional() {
 #[test]
 fn test_config_custom_params_optional() {
     let config = CanonicalSongbirdConfig::default();
-    
+
     // Custom params are optional
     let _ = config.custom.is_some() || config.custom.is_none();
 }
@@ -98,15 +98,18 @@ fn test_config_custom_params_optional() {
 #[test]
 fn test_config_environment_field() {
     let config = CanonicalSongbirdConfig::default();
-    
+
     // Environment field should be accessible and non-empty
     assert!(!config.environment.is_empty());
-    
+
     // Should be a valid environment name
     let env = &config.environment;
     assert!(
-        env == "development" || env == "test" || env == "staging" 
-        || env == "production" || !env.is_empty(),
+        env == "development"
+            || env == "test"
+            || env == "staging"
+            || env == "production"
+            || !env.is_empty(),
         "Environment should be a valid value"
     );
 }

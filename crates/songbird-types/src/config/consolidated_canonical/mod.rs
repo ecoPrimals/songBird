@@ -174,22 +174,19 @@ impl CanonicalSongbirdConfig {
     /// Check if running in production environment
     #[must_use]
     pub fn is_production(&self) -> bool {
-        self.environment.name == "production"
-            || self.environment.name == "prod"
+        self.environment.name == "production" || self.environment.name == "prod"
     }
 
     /// Check if running in development environment
     #[must_use]
     pub fn is_development(&self) -> bool {
-        self.environment.name == "development"
-            || self.environment.name == "dev"
+        self.environment.name == "development" || self.environment.name == "dev"
     }
 
     /// Check if running in test environment
     #[must_use]
     pub fn is_test(&self) -> bool {
-        self.environment.name == "test"
-            || self.environment.name == "testing"
+        self.environment.name == "test" || self.environment.name == "testing"
     }
 
     /// Check if running in staging environment

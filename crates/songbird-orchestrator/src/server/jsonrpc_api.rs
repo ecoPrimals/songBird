@@ -9,12 +9,7 @@
 // Part of: Progressive Protocol Enhancement - Week 2
 // Created: November 11, 2025
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    routing::post,
-    Json, Router,
-};
+use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
@@ -27,8 +22,8 @@ pub fn jsonrpc_routes() -> Router<JsonRpcState> {
         .route("/rpc", post(handle_jsonrpc_request))
 }
 
-use songbird_network_federation::state::FederationState;
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
+use songbird_network_federation::state::FederationState;
 
 /// Shared state for JSON-RPC API
 #[derive(Clone)]
@@ -57,14 +52,14 @@ impl JsonRpcState {
 pub struct JsonRpcRequest {
     /// JSON-RPC version (must be "2.0")
     pub jsonrpc: String,
-    
+
     /// Method name to call
     pub method: String,
-    
+
     /// Parameters (can be array or object)
     #[serde(default)]
     pub params: Option<Value>,
-    
+
     /// Request ID (for responses, null for notifications)
     pub id: Option<Value>,
 }
@@ -75,15 +70,15 @@ pub struct JsonRpcRequest {
 pub struct JsonRpcResponse {
     /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
-    
+
     /// Result (on success)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,
-    
+
     /// Error (on failure)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<JsonRpcError>,
-    
+
     /// Request ID (same as request, or null)
     pub id: Value,
 }
@@ -94,10 +89,10 @@ pub struct JsonRpcResponse {
 pub struct JsonRpcError {
     /// Error code
     pub code: i32,
-    
+
     /// Error message
     pub message: String,
-    
+
     /// Additional error data
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
@@ -111,7 +106,7 @@ impl JsonRpcError {
     pub const METHOD_NOT_FOUND: i32 = -32601;
     pub const INVALID_PARAMS: i32 = -32602;
     pub const INTERNAL_ERROR: i32 = -32603;
-    
+
     pub fn parse_error() -> Self {
         Self {
             code: Self::PARSE_ERROR,
@@ -119,7 +114,7 @@ impl JsonRpcError {
             data: None,
         }
     }
-    
+
     pub fn invalid_request(message: impl Into<String>) -> Self {
         Self {
             code: Self::INVALID_REQUEST,
@@ -127,7 +122,7 @@ impl JsonRpcError {
             data: None,
         }
     }
-    
+
     pub fn method_not_found(method: impl Into<String>) -> Self {
         Self {
             code: Self::METHOD_NOT_FOUND,
@@ -135,7 +130,7 @@ impl JsonRpcError {
             data: None,
         }
     }
-    
+
     pub fn invalid_params(message: impl Into<String>) -> Self {
         Self {
             code: Self::INVALID_PARAMS,
@@ -143,7 +138,7 @@ impl JsonRpcError {
             data: None,
         }
     }
-    
+
     pub fn internal_error(message: impl Into<String>) -> Self {
         Self {
             code: Self::INTERNAL_ERROR,
@@ -154,7 +149,7 @@ impl JsonRpcError {
 }
 
 /// POST /jsonrpc or POST /jsonrpc/rpc
-/// 
+///
 /// Handles JSON-RPC 2.0 requests.
 /// Provides universal language-agnostic access to Songbird functionality.
 async fn handle_jsonrpc_request(
@@ -170,38 +165,38 @@ async fn handle_jsonrpc_request(
             id: request.id.unwrap_or(Value::Null),
         }));
     }
-    
+
     info!("📞 JSON-RPC request: method={}", request.method);
-    
+
     // Route to appropriate handler based on method
     let result = match request.method.as_str() {
         // Service discovery methods
         "songbird.services.list" => handle_services_list(&state).await,
         "songbird.services.get" => handle_service_get(&state, request.params).await,
         "songbird.services.register" => handle_service_register(&state, request.params).await,
-        
+
         // Compute methods
         "songbird.compute.schedule" => handle_compute_schedule(&state, request.params).await,
         "songbird.compute.status" => handle_compute_status(&state, request.params).await,
-        
+
         // Federation methods
         "songbird.federation.peers" => handle_federation_peers(&state).await,
         "songbird.federation.join" => handle_federation_join(&state, request.params).await,
-        
+
         // Protocol methods
         "songbird.protocol.capabilities" => handle_protocol_capabilities().await,
-        
+
         // Health check
         "songbird.health" => handle_health().await,
         "songbird.version" => handle_version().await,
-        
+
         // Unknown method
         _ => {
             warn!("⚠️  Unknown JSON-RPC method: {}", request.method);
             Err(JsonRpcError::method_not_found(&request.method))
         }
     };
-    
+
     // Build response
     let response = match result {
         Ok(value) => JsonRpcResponse {
@@ -217,7 +212,7 @@ async fn handle_jsonrpc_request(
             id: request.id.unwrap_or(Value::Null),
         },
     };
-    
+
     Ok(Json(response))
 }
 
@@ -239,23 +234,24 @@ async fn handle_services_list(_state: &JsonRpcState) -> Result<Value, JsonRpcErr
 
 /// songbird.services.get
 /// Get information about a specific service
-async fn handle_service_get(_state: &JsonRpcState, params: Option<Value>) -> Result<Value, JsonRpcError> {
+async fn handle_service_get(
+    _state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
     // Extract service_id from params
     let service_id = match &params {
-        Some(Value::Object(map)) => {
-            map.get("service_id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| JsonRpcError::invalid_params("Missing 'service_id' parameter"))?
-                .to_string()
-        }
-        Some(Value::Array(arr)) if !arr.is_empty() => {
-            arr[0].as_str()
-                .ok_or_else(|| JsonRpcError::invalid_params("First parameter must be string"))?
-                .to_string()
-        }
+        Some(Value::Object(map)) => map
+            .get("service_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'service_id' parameter"))?
+            .to_string(),
+        Some(Value::Array(arr)) if !arr.is_empty() => arr[0]
+            .as_str()
+            .ok_or_else(|| JsonRpcError::invalid_params("First parameter must be string"))?
+            .to_string(),
         _ => return Err(JsonRpcError::invalid_params("Missing service_id parameter")),
     };
-    
+
     // Phase 2: Return placeholder
     Ok(serde_json::json!({
         "service_id": service_id,
@@ -266,7 +262,10 @@ async fn handle_service_get(_state: &JsonRpcState, params: Option<Value>) -> Res
 
 /// songbird.services.register
 /// Register a new service (Phase 2: Foundation only)
-async fn handle_service_register(_state: &JsonRpcState, _params: Option<Value>) -> Result<Value, JsonRpcError> {
+async fn handle_service_register(
+    _state: &JsonRpcState,
+    _params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
     // Phase 2: Return placeholder
     // Full implementation in later phase
     Ok(serde_json::json!({
@@ -277,9 +276,13 @@ async fn handle_service_register(_state: &JsonRpcState, _params: Option<Value>) 
 
 /// songbird.compute.schedule
 /// Schedule a compute task
-async fn handle_compute_schedule(_state: &JsonRpcState, params: Option<Value>) -> Result<Value, JsonRpcError> {
-    let _task_params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing task parameters"))?;
-    
+async fn handle_compute_schedule(
+    _state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let _task_params =
+        params.ok_or_else(|| JsonRpcError::invalid_params("Missing task parameters"))?;
+
     // Phase 2: Return placeholder
     // This will integrate with Toadstool in later phase
     Ok(serde_json::json!({
@@ -291,17 +294,19 @@ async fn handle_compute_schedule(_state: &JsonRpcState, params: Option<Value>) -
 
 /// songbird.compute.status
 /// Get status of a compute task
-async fn handle_compute_status(_state: &JsonRpcState, params: Option<Value>) -> Result<Value, JsonRpcError> {
+async fn handle_compute_status(
+    _state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
     let _task_id = match &params {
-        Some(Value::Object(map)) => {
-            map.get("task_id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| JsonRpcError::invalid_params("Missing 'task_id' parameter"))?
-                .to_string()
-        }
+        Some(Value::Object(map)) => map
+            .get("task_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'task_id' parameter"))?
+            .to_string(),
         _ => return Err(JsonRpcError::invalid_params("Missing task_id parameter")),
     };
-    
+
     // Phase 2: Return placeholder
     Ok(serde_json::json!({
         "status": "not_implemented",
@@ -322,7 +327,10 @@ async fn handle_federation_peers(_state: &JsonRpcState) -> Result<Value, JsonRpc
 
 /// songbird.federation.join
 /// Join federation network
-async fn handle_federation_join(_state: &JsonRpcState, _params: Option<Value>) -> Result<Value, JsonRpcError> {
+async fn handle_federation_join(
+    _state: &JsonRpcState,
+    _params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
     // Phase 2: Return placeholder
     Ok(serde_json::json!({
         "status": "not_implemented",
@@ -378,7 +386,7 @@ async fn handle_version() -> Result<Value, JsonRpcError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_jsonrpc_error_codes() {
         assert_eq!(JsonRpcError::PARSE_ERROR, -32700);
@@ -387,14 +395,14 @@ mod tests {
         assert_eq!(JsonRpcError::INVALID_PARAMS, -32602);
         assert_eq!(JsonRpcError::INTERNAL_ERROR, -32603);
     }
-    
+
     #[test]
     fn test_jsonrpc_error_creation() {
         let error = JsonRpcError::method_not_found("test.method");
         assert_eq!(error.code, JsonRpcError::METHOD_NOT_FOUND);
         assert!(error.message.contains("test.method"));
     }
-    
+
     #[test]
     fn test_jsonrpc_request_deserialization() {
         let json = r#"{
@@ -402,13 +410,13 @@ mod tests {
             "method": "songbird.health",
             "id": 1
         }"#;
-        
+
         let request: JsonRpcRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.jsonrpc, "2.0");
         assert_eq!(request.method, "songbird.health");
         assert!(request.id.is_some());
     }
-    
+
     #[test]
     fn test_jsonrpc_response_serialization() {
         let response = JsonRpcResponse {
@@ -417,11 +425,10 @@ mod tests {
             error: None,
             id: Value::Number(1.into()),
         };
-        
+
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("\"jsonrpc\":\"2.0\""));
         assert!(json.contains("\"result\""));
         assert!(!json.contains("\"error\""));
     }
 }
-

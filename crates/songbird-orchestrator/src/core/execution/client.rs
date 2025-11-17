@@ -18,7 +18,7 @@ impl ExecutionClient {
             http_client: reqwest::Client::new(),
         }
     }
-    
+
     /// Execute a command on a remote tower
     pub async fn execute_command(
         &self,
@@ -26,24 +26,23 @@ impl ExecutionClient {
         request: ExecutionRequest,
     ) -> Result<ExecutionResponse, ExecutionError> {
         let url = format!("{}/api/v1/execution/command", tower_endpoint);
-        
-        let response = self.http_client
+
+        let response = self
+            .http_client
             .post(&url)
             .json(&request)
             .send()
             .await
             .map_err(|e| ExecutionError::Network(e.to_string()))?;
-        
+
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             return Err(ExecutionError::Remote(error_text));
         }
-        
-        response.json()
-            .await
-            .map_err(|e| ExecutionError::Deserialization(e.to_string()))
+
+        response.json().await.map_err(|e| ExecutionError::Deserialization(e.to_string()))
     }
-    
+
     /// Get job status from a remote tower
     pub async fn get_job_status(
         &self,
@@ -51,23 +50,22 @@ impl ExecutionClient {
         job_id: &str,
     ) -> Result<JobInfo, ExecutionError> {
         let url = format!("{}/api/v1/execution/jobs/{}", tower_endpoint, job_id);
-        
-        let response = self.http_client
+
+        let response = self
+            .http_client
             .get(&url)
             .send()
             .await
             .map_err(|e| ExecutionError::Network(e.to_string()))?;
-        
+
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             return Err(ExecutionError::Remote(error_text));
         }
-        
-        response.json()
-            .await
-            .map_err(|e| ExecutionError::Deserialization(e.to_string()))
+
+        response.json().await.map_err(|e| ExecutionError::Deserialization(e.to_string()))
     }
-    
+
     /// Stop a running job on a remote tower
     pub async fn stop_job(
         &self,
@@ -76,24 +74,25 @@ impl ExecutionClient {
         signal: Option<String>,
     ) -> Result<StopJobResponse, ExecutionError> {
         let url = format!("{}/api/v1/execution/jobs/{}/stop", tower_endpoint, job_id);
-        
-        let request = StopJobRequest { signal };
-        
-        let response = self.http_client
+
+        let request = StopJobRequest {
+            signal,
+        };
+
+        let response = self
+            .http_client
             .post(&url)
             .json(&request)
             .send()
             .await
             .map_err(|e| ExecutionError::Network(e.to_string()))?;
-        
+
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             return Err(ExecutionError::Remote(error_text));
         }
-        
-        response.json()
-            .await
-            .map_err(|e| ExecutionError::Deserialization(e.to_string()))
+
+        response.json().await.map_err(|e| ExecutionError::Deserialization(e.to_string()))
     }
 }
 
@@ -198,4 +197,3 @@ mod tests {
         assert!(true); // Just ensure it constructs
     }
 }
-

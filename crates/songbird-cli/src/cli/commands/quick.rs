@@ -182,7 +182,9 @@ pub struct EndpointPreferences {
 }
 
 /// Main headless quick setup API
-pub async fn execute_quick_setup_api(request: QuickSetupRequest) -> SongbirdResult<QuickSetupResponse> {
+pub async fn execute_quick_setup_api(
+    request: QuickSetupRequest,
+) -> SongbirdResult<QuickSetupResponse> {
     // Step 1: Detect system resources
     let _resources = resources::detect_system_resources_api().await?;
 

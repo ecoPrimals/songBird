@@ -2,8 +2,8 @@
 //!
 //! Tests error scenarios, recovery mechanisms, and fault tolerance
 
-use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::app::SongbirdOrchestrator;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tokio::time::timeout;
@@ -88,12 +88,7 @@ async fn test_orchestrator_double_start_prevention() -> SongbirdResult<()> {
     if first_start.is_ok()
         && first_start
             .as_ref()
-            .ok_or_else(|| {
-                SongbirdError::configuration(format!(
-                    "Error: {}",
-                    e
-                ))
-            })?
+            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
             .is_ok()
     {
         // If first start succeeded, second start should fail or be no-op

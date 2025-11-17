@@ -432,9 +432,8 @@ async fn test_ai_check_health_healthy() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = AIAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -443,10 +442,7 @@ async fn test_ai_check_health_healthy() -> SongbirdResult<()> {
     mock.assert_async().await;
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         AIHealth::Healthy
     );
     Ok(())
@@ -473,9 +469,8 @@ async fn test_ai_check_health_degraded() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = AIAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -484,10 +479,7 @@ async fn test_ai_check_health_degraded() -> SongbirdResult<()> {
     mock.assert_async().await;
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         AIHealth::Degraded
     );
     Ok(())
@@ -514,9 +506,8 @@ async fn test_ai_check_health_overloaded() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = AIAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -525,10 +516,7 @@ async fn test_ai_check_health_overloaded() -> SongbirdResult<()> {
     mock.assert_async().await;
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         AIHealth::Overloaded
     );
     Ok(())

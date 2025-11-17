@@ -1,8 +1,8 @@
 //! Integration tests for Songbird Execution Agent
 
 use songbird_execution_agent::{
-    AgentConfig, CommandExecutor, ExecutionRequest, JobManager, ResourceLimits,
-    SecurityConfig, SovereignSecurityValidator, SecurityRequest,
+    AgentConfig, CommandExecutor, ExecutionRequest, JobManager, ResourceLimits, SecurityConfig,
+    SecurityRequest, SovereignSecurityValidator,
 };
 use std::sync::Arc;
 
@@ -19,12 +19,11 @@ fn test_resource_limits() -> ResourceLimits {
 #[tokio::test]
 async fn test_command_execution_foreground() {
     let executor = CommandExecutor::new(test_resource_limits());
-    
-    let request = ExecutionRequest::new("echo 'Hello, Songbird!'")
-        .with_timeout(60);
-    
+
+    let request = ExecutionRequest::new("echo 'Hello, Songbird!'").with_timeout(60);
+
     let response = executor.execute(request).await.unwrap();
-    
+
     assert_eq!(response.exit_code, Some(0));
     assert!(response.stdout.contains("Hello, Songbird!"));
     assert!(response.stderr.is_empty());
@@ -35,14 +34,14 @@ async fn test_command_execution_foreground() {
 #[tokio::test]
 async fn test_command_with_env_vars() {
     let executor = CommandExecutor::new(test_resource_limits());
-    
+
     // Use printenv which should work more reliably
     let request = ExecutionRequest::new("printenv TEST_VAR")
         .with_env("TEST_VAR", "test_value")
         .with_timeout(60);
-    
+
     let response = executor.execute(request).await.unwrap();
-    
+
     assert_eq!(response.exit_code, Some(0));
     assert!(response.stdout.trim().contains("test_value"));
 }
@@ -51,13 +50,11 @@ async fn test_command_with_env_vars() {
 #[tokio::test]
 async fn test_command_with_working_dir() {
     let executor = CommandExecutor::new(test_resource_limits());
-    
-    let request = ExecutionRequest::new("pwd")
-        .with_working_dir("/tmp")
-        .with_timeout(60);
-    
+
+    let request = ExecutionRequest::new("pwd").with_working_dir("/tmp").with_timeout(60);
+
     let response = executor.execute(request).await.unwrap();
-    
+
     assert_eq!(response.exit_code, Some(0));
     assert!(response.stdout.contains("/tmp"));
 }
@@ -66,13 +63,12 @@ async fn test_command_with_working_dir() {
 #[tokio::test]
 async fn test_command_with_error_exit_code() {
     let executor = CommandExecutor::new(test_resource_limits());
-    
+
     // Use false command which always returns exit code 1
-    let request = ExecutionRequest::new("false")
-        .with_timeout(60);
-    
+    let request = ExecutionRequest::new("false").with_timeout(60);
+
     let response = executor.execute(request).await.unwrap();
-    
+
     assert_eq!(response.exit_code, Some(1));
 }
 
@@ -80,13 +76,11 @@ async fn test_command_with_error_exit_code() {
 #[tokio::test]
 async fn test_background_job_execution() {
     let executor = CommandExecutor::new(test_resource_limits());
-    
-    let request = ExecutionRequest::new("sleep 2")
-        .with_background(true)
-        .with_timeout(60);
-    
+
+    let request = ExecutionRequest::new("sleep 2").with_background(true).with_timeout(60);
+
     let job = executor.execute_background(request).await.unwrap();
-    
+
     assert!(!job.id.is_empty());
     assert!(job.pid.is_some());
     assert!(job.started_at.elapsed().unwrap().as_secs() < 1);
@@ -97,16 +91,15 @@ async fn test_background_job_execution() {
 async fn test_job_manager_add_retrieve() {
     let job_manager = Arc::new(JobManager::new(10, 3600));
     let executor = CommandExecutor::new(test_resource_limits());
-    
-    let request = ExecutionRequest::new("echo 'background job'")
-        .with_background(true)
-        .with_timeout(60);
-    
+
+    let request =
+        ExecutionRequest::new("echo 'background job'").with_background(true).with_timeout(60);
+
     let job = executor.execute_background(request).await.unwrap();
     let job_id = job.id.clone();
-    
+
     job_manager.add_job(job).await.unwrap();
-    
+
     let retrieved = job_manager.get_job(&job_id).await.unwrap();
     assert_eq!(retrieved.id, job_id);
 }
@@ -116,17 +109,17 @@ async fn test_job_manager_add_retrieve() {
 async fn test_job_manager_list_jobs() {
     let job_manager = Arc::new(JobManager::new(10, 3600));
     let executor = CommandExecutor::new(test_resource_limits());
-    
+
     // Create multiple jobs
     for i in 0..3 {
         let request = ExecutionRequest::new(format!("echo 'job {}'", i))
             .with_background(true)
             .with_timeout(60);
-        
+
         let job = executor.execute_background(request).await.unwrap();
         job_manager.add_job(job).await.unwrap();
     }
-    
+
     let jobs = job_manager.list_jobs().await;
     assert!(jobs.len() >= 3);
 }
@@ -136,25 +129,23 @@ async fn test_job_manager_list_jobs() {
 async fn test_job_manager_concurrent_limit() {
     let job_manager = Arc::new(JobManager::new(2, 3600)); // Max 2 concurrent
     let executor = CommandExecutor::new(test_resource_limits());
-    
+
     // Add 2 jobs (should succeed)
     for i in 0..2 {
         let request = ExecutionRequest::new(format!("sleep 10 && echo '{}'", i))
             .with_background(true)
             .with_timeout(60);
-        
+
         let job = executor.execute_background(request).await.unwrap();
         job_manager.add_job(job).await.unwrap();
     }
-    
+
     // Try to add 3rd job (should fail due to limit)
-    let request = ExecutionRequest::new("echo 'third job'")
-        .with_background(true)
-        .with_timeout(60);
-    
+    let request = ExecutionRequest::new("echo 'third job'").with_background(true).with_timeout(60);
+
     let job = executor.execute_background(request).await.unwrap();
     let result = job_manager.add_job(job).await;
-    
+
     assert!(result.is_err());
 }
 
@@ -167,16 +158,16 @@ async fn test_security_auth_success() {
         max_timeout_seconds: 3600,
         enable_beardog_discovery: false,
     };
-    
+
     let validator = SovereignSecurityValidator::new(config);
-    
+
     let request = SecurityRequest {
         command: "echo hello".to_string(),
         auth_token: Some("secret123".to_string()),
         timeout_seconds: Some(60),
         requester: Some("test".to_string()),
     };
-    
+
     let decision = validator.validate_request(&request).await.unwrap();
     assert!(decision.allowed);
 }
@@ -190,16 +181,16 @@ async fn test_security_auth_failure() {
         max_timeout_seconds: 3600,
         enable_beardog_discovery: false,
     };
-    
+
     let validator = SovereignSecurityValidator::new(config);
-    
+
     let request = SecurityRequest {
         command: "echo hello".to_string(),
         auth_token: Some("wrong_token".to_string()),
         timeout_seconds: Some(60),
         requester: Some("test".to_string()),
     };
-    
+
     let decision = validator.validate_request(&request).await.unwrap();
     assert!(!decision.allowed);
 }
@@ -213,16 +204,12 @@ async fn test_security_dangerous_command_blocked() {
         max_timeout_seconds: 3600,
         enable_beardog_discovery: false,
     };
-    
+
     let validator = SovereignSecurityValidator::new(config);
-    
-    let dangerous_commands = vec![
-        "rm -rf /",
-        ":(){ :|:& };:",
-        "mkfs.ext4 /dev/sda",
-        "dd if=/dev/zero of=/dev/sda",
-    ];
-    
+
+    let dangerous_commands =
+        vec!["rm -rf /", ":(){ :|:& };:", "mkfs.ext4 /dev/sda", "dd if=/dev/zero of=/dev/sda"];
+
     for cmd in dangerous_commands {
         let request = SecurityRequest {
             command: cmd.to_string(),
@@ -230,7 +217,7 @@ async fn test_security_dangerous_command_blocked() {
             timeout_seconds: Some(60),
             requester: Some("test".to_string()),
         };
-        
+
         let decision = validator.validate_request(&request).await.unwrap();
         assert!(!decision.allowed, "Command '{}' should be blocked", cmd);
     }
@@ -245,9 +232,9 @@ async fn test_security_timeout_limit() {
         max_timeout_seconds: 3600, // 1 hour
         enable_beardog_discovery: false,
     };
-    
+
     let validator = SovereignSecurityValidator::new(config);
-    
+
     // Request with excessive timeout
     let request = SecurityRequest {
         command: "echo hello".to_string(),
@@ -255,7 +242,7 @@ async fn test_security_timeout_limit() {
         timeout_seconds: Some(7200), // 2 hours
         requester: Some("test".to_string()),
     };
-    
+
     let decision = validator.validate_request(&request).await.unwrap();
     assert!(!decision.allowed);
 }
@@ -269,18 +256,12 @@ async fn test_security_safe_commands_allowed() {
         max_timeout_seconds: 3600,
         enable_beardog_discovery: false,
     };
-    
+
     let validator = SovereignSecurityValidator::new(config);
-    
-    let safe_commands = vec![
-        "echo hello",
-        "ls -la",
-        "pwd",
-        "date",
-        "python train.py",
-        "cargo build",
-    ];
-    
+
+    let safe_commands =
+        vec!["echo hello", "ls -la", "pwd", "date", "python train.py", "cargo build"];
+
     for cmd in safe_commands {
         let request = SecurityRequest {
             command: cmd.to_string(),
@@ -288,7 +269,7 @@ async fn test_security_safe_commands_allowed() {
             timeout_seconds: Some(60),
             requester: Some("test".to_string()),
         };
-        
+
         let decision = validator.validate_request(&request).await.unwrap();
         assert!(decision.allowed, "Command '{}' should be allowed", cmd);
     }
@@ -298,7 +279,7 @@ async fn test_security_safe_commands_allowed() {
 #[test]
 fn test_agent_config_defaults() {
     let config = AgentConfig::default();
-    
+
     assert_eq!(config.port, 9020);
     assert_eq!(config.bind_address, "0.0.0.0");
     assert_eq!(config.max_concurrent_jobs, 100);
@@ -310,13 +291,12 @@ fn test_agent_config_defaults() {
 #[tokio::test]
 async fn test_command_with_stderr() {
     let executor = CommandExecutor::new(test_resource_limits());
-    
+
     // Use ls with invalid directory to generate stderr
-    let request = ExecutionRequest::new("ls /nonexistent_directory_12345")
-        .with_timeout(60);
-    
+    let request = ExecutionRequest::new("ls /nonexistent_directory_12345").with_timeout(60);
+
     let response = executor.execute(request).await.unwrap();
-    
+
     // ls with invalid directory returns non-zero
     assert_ne!(response.exit_code, Some(0));
     // Should have error message in stderr
@@ -328,17 +308,13 @@ async fn test_command_with_stderr() {
 async fn test_security_multiple_tokens() {
     let config = SecurityConfig {
         enable_auth: true,
-        auth_tokens: vec![
-            "token1".to_string(),
-            "token2".to_string(),
-            "token3".to_string(),
-        ],
+        auth_tokens: vec!["token1".to_string(), "token2".to_string(), "token3".to_string()],
         max_timeout_seconds: 3600,
         enable_beardog_discovery: false,
     };
-    
+
     let validator = SovereignSecurityValidator::new(config);
-    
+
     // Test all tokens
     for token in &["token1", "token2", "token3"] {
         let request = SecurityRequest {
@@ -347,9 +323,8 @@ async fn test_security_multiple_tokens() {
             timeout_seconds: Some(60),
             requester: Some("test".to_string()),
         };
-        
+
         let decision = validator.validate_request(&request).await.unwrap();
         assert!(decision.allowed, "Token {} should be valid", token);
     }
 }
-

@@ -88,12 +88,20 @@ impl Default for UnifiedAdapterConfig {
             max_concurrent_requests: 100,
             auto_discovery: true,
             discovery_endpoints: {
-                let host = SafeEnv::get_or_default("ADAPTER_DISCOVERY_HOST",
-                    songbird_config::canonical::constants::network::DEFAULT_HOST);
-                let capabilities_port = SafeEnv::get_port("ADAPTER_CAPABILITIES_PORT",
-                    songbird_config::canonical::constants::network::DEFAULT_DEV_PORT).to_string();
-                let services_port = SafeEnv::get_port("ADAPTER_SERVICES_PORT",
-                    songbird_config::defaults::ports::discovery_port()).to_string();
+                let host = SafeEnv::get_or_default(
+                    "ADAPTER_DISCOVERY_HOST",
+                    songbird_config::canonical::constants::network::DEFAULT_HOST,
+                );
+                let capabilities_port = SafeEnv::get_port(
+                    "ADAPTER_CAPABILITIES_PORT",
+                    songbird_config::canonical::constants::network::DEFAULT_DEV_PORT,
+                )
+                .to_string();
+                let services_port = SafeEnv::get_port(
+                    "ADAPTER_SERVICES_PORT",
+                    songbird_config::defaults::ports::discovery_port(),
+                )
+                .to_string();
                 vec![
                     format!("http://{}:{}/capabilities", host, capabilities_port),
                     format!("http://{}:{}/services", host, services_port),

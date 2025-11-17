@@ -27,8 +27,8 @@
 //! - LAN users can interact without BearDog (though BearDog adds security)
 //! - Internet/public: utilize network effect of multiple primals
 
-use songbird_types::SongbirdResult;
 use serde::{Deserialize, Serialize};
+use songbird_types::SongbirdResult;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
@@ -37,10 +37,10 @@ use tracing::{debug, info, warn};
 pub struct SovereignSecurityValidator {
     /// Songbird's sovereign security (always available)
     sovereign: Arc<RwLock<SovereignSecurity>>,
-    
+
     /// Optional BearDog integration (discovered via capability)
     beardog: Arc<RwLock<Option<BearDogIntegration>>>,
-    
+
     /// Configuration
     config: SecurityConfig,
 }
@@ -51,25 +51,25 @@ impl SovereignSecurityValidator {
         info!("🎯 Initializing Songbird sovereign security");
         info!("   Mode: Sovereign (Songbird-native)");
         info!("   BearDog integration: Optional via discovery");
-        
+
         Self {
             sovereign: Arc::new(RwLock::new(SovereignSecurity::new(config.clone()))),
             beardog: Arc::new(RwLock::new(None)),
             config,
         }
     }
-    
+
     /// Attempt to discover and integrate with BearDog (network effect)
     pub async fn discover_beardog(&self) -> SongbirdResult<bool> {
         info!("🔍 Attempting BearDog capability discovery...");
-        
+
         // In production, this would use Songbird's discovery system:
         // let songbird_discovery = UniversalAdapter::new("songbird")?;
         // let beardog_services = songbird_discovery.discover_capability("enhanced_security").await?;
-        
+
         // For now, check environment or config
         let beardog_available = std::env::var("BEARDOG_SECURITY_ENDPOINT").is_ok();
-        
+
         if beardog_available {
             info!("✅ BearDog discovered - enabling enhanced security network effect");
             let mut beardog = self.beardog.write().await;
@@ -80,21 +80,24 @@ impl SovereignSecurityValidator {
             Ok(false)
         }
     }
-    
+
     /// Validate execution request
     ///
     /// **Primal sovereignty pattern**:
     /// 1. Try enhanced security if BearDog available (network effect)
     /// 2. Fallback to sovereign security if BearDog unavailable
     /// 3. Always functional - never blocks on other primals
-    pub async fn validate_request(&self, request: &SecurityRequest) -> SongbirdResult<SecurityDecision> {
+    pub async fn validate_request(
+        &self,
+        request: &SecurityRequest,
+    ) -> SongbirdResult<SecurityDecision> {
         // Check if BearDog is available (network effect)
         let beardog = self.beardog.read().await;
-        
+
         if let Some(ref integration) = *beardog {
             // Network effect: Enhanced security via BearDog
             debug!("🔒 Using BearDog enhanced security (network effect)");
-            
+
             match integration.validate(request).await {
                 Ok(decision) => {
                     info!("✅ BearDog validation: {:?}", decision.allowed);
@@ -110,12 +113,12 @@ impl SovereignSecurityValidator {
                 }
             }
         }
-        
+
         // Sovereign security (always available)
         debug!("🏛️ Using Songbird sovereign security");
         let sovereign = self.sovereign.read().await;
         let decision = sovereign.validate(request).await?;
-        
+
         info!("✅ Sovereign validation: {:?}", decision.allowed);
         Ok(decision)
     }
@@ -134,7 +137,7 @@ impl SovereignSecurity {
             config,
         }
     }
-    
+
     /// Validate using Songbird's sovereign security
     async fn validate(&self, request: &SecurityRequest) -> SongbirdResult<SecurityDecision> {
         // 1. Check authentication if enabled
@@ -157,7 +160,7 @@ impl SovereignSecurity {
                 });
             }
         }
-        
+
         // 2. Validate command safety
         if let Some(violation) = check_dangerous_patterns(&request.command) {
             return Ok(SecurityDecision {
@@ -167,7 +170,7 @@ impl SovereignSecurity {
                 mode: SecurityMode::Sovereign,
             });
         }
-        
+
         // 3. Check basic resource limits
         if let Some(timeout) = request.timeout_seconds {
             if timeout > self.config.max_timeout_seconds {
@@ -182,7 +185,7 @@ impl SovereignSecurity {
                 });
             }
         }
-        
+
         // Allow with sovereign security
         Ok(SecurityDecision {
             allowed: true,
@@ -203,44 +206,43 @@ impl BearDogIntegration {
     async fn connect() -> SongbirdResult<Self> {
         let endpoint = std::env::var("BEARDOG_SECURITY_ENDPOINT")
             .unwrap_or_else(|_| "http://localhost:8443".to_string());
-        
+
         // In production: verify BearDog is reachable
         info!("🔗 Connected to BearDog at {}", endpoint);
-        
-        Ok(Self { endpoint })
+
+        Ok(Self {
+            endpoint,
+        })
     }
-    
+
     async fn validate(&self, request: &SecurityRequest) -> SongbirdResult<SecurityDecision> {
         // In production: call BearDog's security validation API
         // For now, simulate enhanced validation
-        
+
         info!("🛡️ Delegating to BearDog for enhanced security");
-        
+
         // Simulate BearDog's enhanced checks
         Ok(SecurityDecision {
             allowed: true,
             reason: None,
             confidence: 0.95, // Higher confidence with BearDog
-            mode: SecurityMode::NetworkEffect { primal: "beardog".to_string() },
+            mode: SecurityMode::NetworkEffect {
+                primal: "beardog".to_string(),
+            },
         })
     }
 }
 
 /// Check for dangerous command patterns (Songbird sovereign check)
 fn check_dangerous_patterns(command: &str) -> Option<String> {
-    let patterns = [
-        "rm -rf /",
-        ":(){ :|:& };:",
-        "mkfs",
-        "dd if=/dev/zero",
-    ];
-    
+    let patterns = ["rm -rf /", ":(){ :|:& };:", "mkfs", "dd if=/dev/zero"];
+
     for pattern in &patterns {
         if command.contains(pattern) {
             return Some(pattern.to_string());
         }
     }
-    
+
     None
 }
 
@@ -249,13 +251,13 @@ fn check_dangerous_patterns(command: &str) -> Option<String> {
 pub struct SecurityConfig {
     /// Enable authentication
     pub enable_auth: bool,
-    
+
     /// Auth tokens (sovereign security)
     pub auth_tokens: Vec<String>,
-    
+
     /// Maximum timeout (seconds)
     pub max_timeout_seconds: u64,
-    
+
     /// Enable BearDog discovery
     pub enable_beardog_discovery: bool,
 }
@@ -264,7 +266,7 @@ impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
             enable_auth: true,
-            auth_tokens: vec![], // Empty = reject all until configured
+            auth_tokens: vec![],       // Empty = reject all until configured
             max_timeout_seconds: 7200, // 2 hours
             enable_beardog_discovery: true,
         }
@@ -294,9 +296,11 @@ pub struct SecurityDecision {
 pub enum SecurityMode {
     /// Songbird's sovereign security (always available)
     Sovereign,
-    
+
     /// Enhanced via network effect with another primal
-    NetworkEffect { primal: String },
+    NetworkEffect {
+        primal: String,
+    },
 }
 
 #[cfg(test)]
@@ -309,42 +313,42 @@ mod tests {
             enable_auth: false, // Disable for test
             ..Default::default()
         };
-        
+
         let validator = SovereignSecurityValidator::new(config);
-        
+
         let request = SecurityRequest {
             command: "echo hello".to_string(),
             auth_token: None,
             timeout_seconds: Some(60),
             requester: Some("test".to_string()),
         };
-        
+
         let decision = validator.validate_request(&request).await.unwrap();
         assert!(decision.allowed);
         assert!(matches!(decision.mode, SecurityMode::Sovereign));
     }
-    
+
     #[tokio::test]
     async fn test_dangerous_command_blocked() {
         let config = SecurityConfig {
             enable_auth: false,
             ..Default::default()
         };
-        
+
         let validator = SovereignSecurityValidator::new(config);
-        
+
         let request = SecurityRequest {
             command: "rm -rf /".to_string(),
             auth_token: None,
             timeout_seconds: Some(60),
             requester: Some("test".to_string()),
         };
-        
+
         let decision = validator.validate_request(&request).await.unwrap();
         assert!(!decision.allowed);
         assert!(decision.reason.is_some());
     }
-    
+
     #[tokio::test]
     async fn test_auth_enforcement() {
         let config = SecurityConfig {
@@ -352,9 +356,9 @@ mod tests {
             auth_tokens: vec!["secret123".to_string()],
             ..Default::default()
         };
-        
+
         let validator = SovereignSecurityValidator::new(config);
-        
+
         // Valid token
         let request = SecurityRequest {
             command: "echo hello".to_string(),
@@ -362,10 +366,10 @@ mod tests {
             timeout_seconds: Some(60),
             requester: Some("test".to_string()),
         };
-        
+
         let decision = validator.validate_request(&request).await.unwrap();
         assert!(decision.allowed);
-        
+
         // Invalid token
         let request = SecurityRequest {
             command: "echo hello".to_string(),
@@ -373,9 +377,8 @@ mod tests {
             timeout_seconds: Some(60),
             requester: Some("test".to_string()),
         };
-        
+
         let decision = validator.validate_request(&request).await.unwrap();
         assert!(!decision.allowed);
     }
 }
-

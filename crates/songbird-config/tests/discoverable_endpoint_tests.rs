@@ -534,9 +534,9 @@ fn test_complete_discovery_workflow() {
     assert!(endpoint.dev_fallback.is_some());
 
     // Verify dev fallback
-    let dev_fb = endpoint.dev_fallback.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let dev_fb = endpoint
+        .dev_fallback
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(dev_fb.host, test_bind_address());
     assert_eq!(dev_fb.port, 8080);
 }

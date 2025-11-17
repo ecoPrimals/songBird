@@ -8,19 +8,19 @@ use std::collections::HashMap;
 pub struct Task {
     /// Type of task (e.g., "ml_training", "data_processing", "health_check")
     pub task_type: String,
-    
+
     /// Task payload (arbitrary JSON)
     #[serde(default)]
     pub payload: serde_json::Value,
-    
+
     /// Resource requirements for this task
     #[serde(default)]
     pub resource_requirements: Option<ResourceRequirements>,
-    
+
     /// Estimated duration in seconds (for routing optimization)
     #[serde(default)]
     pub estimated_duration_secs: Option<u64>,
-    
+
     /// Additional metadata
     #[serde(default)]
     pub metadata: HashMap<String, String>,
@@ -31,16 +31,16 @@ pub struct Task {
 pub struct ResourceRequirements {
     /// CPU cores required (e.g., 2.0 for 2 cores)
     pub cpu_cores: Option<f64>,
-    
+
     /// Memory required in MB
     pub memory_mb: Option<u64>,
-    
+
     /// Whether GPU is required
     pub gpu_required: bool,
-    
+
     /// Storage space required in MB
     pub storage_mb: Option<u64>,
-    
+
     /// Network bandwidth required in Mbps
     pub network_mbps: Option<f64>,
 }
@@ -75,19 +75,19 @@ impl TaskBuilder {
             },
         }
     }
-    
+
     /// Set task payload
     pub fn with_payload(mut self, payload: serde_json::Value) -> Self {
         self.task.payload = payload;
         self
     }
-    
+
     /// Set resource requirements
     pub fn with_resources(mut self, requirements: ResourceRequirements) -> Self {
         self.task.resource_requirements = Some(requirements);
         self
     }
-    
+
     /// Require GPU for this task
     pub fn with_gpu(mut self) -> Self {
         let mut reqs = self.task.resource_requirements.unwrap_or_default();
@@ -95,7 +95,7 @@ impl TaskBuilder {
         self.task.resource_requirements = Some(reqs);
         self
     }
-    
+
     /// Set CPU requirements
     pub fn with_cpu(mut self, cores: f64) -> Self {
         let mut reqs = self.task.resource_requirements.unwrap_or_default();
@@ -103,7 +103,7 @@ impl TaskBuilder {
         self.task.resource_requirements = Some(reqs);
         self
     }
-    
+
     /// Set memory requirements
     pub fn with_memory(mut self, memory_mb: u64) -> Self {
         let mut reqs = self.task.resource_requirements.unwrap_or_default();
@@ -111,19 +111,19 @@ impl TaskBuilder {
         self.task.resource_requirements = Some(reqs);
         self
     }
-    
+
     /// Set estimated duration
     pub fn with_duration(mut self, duration_secs: u64) -> Self {
         self.task.estimated_duration_secs = Some(duration_secs);
         self
     }
-    
+
     /// Add metadata
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.task.metadata.insert(key.into(), value.into());
         self
     }
-    
+
     /// Build the task
     pub fn build(self) -> Task {
         self.task
@@ -135,7 +135,7 @@ impl Task {
     pub fn builder(task_type: impl Into<String>) -> TaskBuilder {
         TaskBuilder::new(task_type)
     }
-    
+
     /// Quick constructor for simple tasks
     pub fn new(task_type: impl Into<String>) -> Self {
         Self {
@@ -176,4 +176,3 @@ mod tests {
         assert!(task.resource_requirements.is_none());
     }
 }
-

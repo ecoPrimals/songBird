@@ -141,7 +141,9 @@ impl UniversalDiscoveryFactory {
     }
 
     /// Create service discovery based on configuration (returns concrete type for zero-cost)
-    pub async fn create_for_config(config: &DiscoveryConfig) -> Result<UniversalServiceDiscoveryAdapter> {
+    pub async fn create_for_config(
+        config: &DiscoveryConfig,
+    ) -> Result<UniversalServiceDiscoveryAdapter> {
         match &config.backend {
             DiscoveryBackend::Songbird {
                 ..

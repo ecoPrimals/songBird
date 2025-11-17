@@ -17,7 +17,6 @@
 //! Testing configuration loading, validation, and defaults.
 
 use songbird_config::config::hardcoded_elimination::HardcodingEliminationConfig;
-use songbird_types::SongbirdError;
 use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]

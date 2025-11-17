@@ -31,7 +31,7 @@ impl FederationCoordinator {
             client: reqwest::Client::new(),
         }
     }
-    
+
     /// Create coordinator with existing state
     #[must_use]
     pub fn with_state(state: Arc<FederationState>) -> Self {
@@ -40,7 +40,7 @@ impl FederationCoordinator {
             client: reqwest::Client::new(),
         }
     }
-    
+
     /// Get the federation state
     #[must_use]
     pub fn state(&self) -> Arc<FederationState> {
@@ -53,15 +53,15 @@ impl FederationCoordinator {
             debug!("Federation disabled, skipping coordination");
             return Ok(());
         }
-        
+
         info!("🌐 Starting federation coordination");
-        
+
         // Register self if we have node info
         if let Some(node_info) = &config.self_registration {
             info!("📍 Registering self as node: {}", node_info.node_name);
             self.state.register_node(node_info.clone()).await;
         }
-        
+
         // Join federation if bootstrap provided
         if let Some(bootstrap) = &config.bootstrap_address {
             info!("🤝 Joining federation via bootstrap: {}", bootstrap);
@@ -73,15 +73,15 @@ impl FederationCoordinator {
                 }
             }
         }
-        
+
         // Start background tasks
         self.start_heartbeat_loop(config).await?;
         self.start_health_monitor(config).await?;
-        
+
         info!("✅ Federation coordination started");
         Ok(())
     }
-    
+
     /// Join an existing federation
     pub async fn join_federation(
         &self,
@@ -89,19 +89,18 @@ impl FederationCoordinator {
         config: &FederationConfig,
     ) -> SongbirdResult<()> {
         // Get our node registration
-        let registration = config.self_registration.as_ref().ok_or_else(|| {
-            SongbirdError::Configuration {
+        let registration =
+            config.self_registration.as_ref().ok_or_else(|| SongbirdError::Configuration {
                 message: "Cannot join federation without self registration info".to_string(),
                 field: Some("self_registration".to_string()),
                 suggestion: Some("Provide node registration information".to_string()),
-            }
-        })?;
-        
+            })?;
+
         // POST to bootstrap node's join endpoint
         let url = format!("http://{bootstrap_address}/api/federation/join");
-        
+
         debug!("📡 Sending join request to: {}", url);
-        
+
         let response = self
             .client
             .post(&url)
@@ -114,7 +113,7 @@ impl FederationCoordinator {
                 interface: Some(bootstrap_address.to_string()),
                 suggestion: Some("Check bootstrap node is running and accessible".to_string()),
             })?;
-        
+
         if !response.status().is_success() {
             let status = response.status();
             return Err(SongbirdError::Network {
@@ -123,19 +122,18 @@ impl FederationCoordinator {
                 suggestion: Some("Check bootstrap node is accepting new members".to_string()),
             });
         }
-        
+
         // Parse response
-        let federation_status: serde_json::Value = response.json().await.map_err(|e| {
-            SongbirdError::Network {
+        let federation_status: serde_json::Value =
+            response.json().await.map_err(|e| SongbirdError::Network {
                 message: format!("Failed to parse federation status: {e}"),
                 interface: Some(bootstrap_address.to_string()),
                 suggestion: Some("Check response format from bootstrap node".to_string()),
-            }
-        })?;
-        
+            })?;
+
         info!("✅ Joined federation successfully");
         debug!("Federation status: {:?}", federation_status);
-        
+
         // Extract and register peer nodes
         if let Some(nodes) = federation_status.get("nodes").and_then(|n| n.as_array()) {
             for node_value in nodes {
@@ -148,39 +146,36 @@ impl FederationCoordinator {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Start heartbeat loop
     async fn start_heartbeat_loop(&self, config: &FederationConfig) -> SongbirdResult<()> {
         let state = Arc::clone(&self.state);
         let client = self.client.clone();
         let interval_secs = config.heartbeat_interval_secs;
-        let self_node_id = config
-            .self_registration
-            .as_ref()
-            .map(|r| r.node_id.clone());
-        
+        let self_node_id = config.self_registration.as_ref().map(|r| r.node_id.clone());
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(interval_secs));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Get all active nodes
                 let nodes = state.active_nodes().await;
-                
+
                 if let Some(node_id) = &self_node_id {
                     debug!("💓 Sending heartbeats to {} nodes", nodes.len());
-                    
+
                     // Send heartbeat to each node
                     for node in &nodes {
                         // Don't send heartbeat to ourselves
                         if &node.node_id == node_id {
                             continue;
                         }
-                        
+
                         let url = format!("http://{}/api/federation/heartbeat", node.node_address);
                         let heartbeat = serde_json::json!({
                             "node_id": node_id,
@@ -188,7 +183,7 @@ impl FederationCoordinator {
                             "status": "active",
                             "metrics": {}
                         });
-                        
+
                         match client
                             .post(&url)
                             .json(&heartbeat)
@@ -200,7 +195,11 @@ impl FederationCoordinator {
                                 debug!("💓 Heartbeat sent to {}", node.node_name);
                             }
                             Ok(resp) => {
-                                warn!("⚠️  Heartbeat failed to {}: {}", node.node_name, resp.status());
+                                warn!(
+                                    "⚠️  Heartbeat failed to {}: {}",
+                                    node.node_name,
+                                    resp.status()
+                                );
                             }
                             Err(e) => {
                                 warn!("⚠️  Heartbeat error to {}: {}", node.node_name, e);
@@ -210,24 +209,24 @@ impl FederationCoordinator {
                 }
             }
         });
-        
+
         Ok(())
     }
-    
+
     /// Start health monitor
     async fn start_health_monitor(&self, config: &FederationConfig) -> SongbirdResult<()> {
         let state = Arc::clone(&self.state);
         let timeout_secs = config.node_timeout_secs;
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(30));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 debug!("🏥 Checking node health");
                 state.check_node_health(timeout_secs).await;
-                
+
                 let stats = state.get_stats().await;
                 if stats.active_nodes != stats.total_nodes {
                     warn!(
@@ -237,7 +236,7 @@ impl FederationCoordinator {
                 }
             }
         });
-        
+
         Ok(())
     }
 }
@@ -247,17 +246,17 @@ impl FederationCoordinator {
 pub struct FederationConfig {
     /// Whether federation is enabled
     pub enabled: bool,
-    
+
     /// Bootstrap node address (IP:PORT or hostname:PORT)
     pub bootstrap_address: Option<String>,
-    
+
     /// Self registration info (for joining federation)
     pub self_registration: Option<NodeRegistration>,
-    
+
     /// Heartbeat interval in seconds
     #[serde(default = "default_heartbeat_interval")]
     pub heartbeat_interval_secs: u64,
-    
+
     /// Node timeout in seconds (mark as inactive after this)
     #[serde(default = "default_node_timeout")]
     pub node_timeout_secs: i64,

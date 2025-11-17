@@ -592,10 +592,7 @@ async fn test_find_providers_multiple_times() -> SongbirdResult<()> {
         assert!(result.is_ok());
         // Should return empty list since no services registered
         assert!(result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
             .is_empty());
     }
     Ok(())
@@ -616,12 +613,7 @@ async fn test_discover_services_with_short_timeout() -> SongbirdResult<()> {
     let result = adapter.discover_services().await;
     assert!(result.is_ok());
     assert_eq!(
-        result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .len(),
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
         0
     );
     Ok(())
@@ -655,15 +647,15 @@ async fn test_concurrent_discover_operations() -> SongbirdResult<()> {
     let task3 = tokio::spawn(async move { adapter3.discover_services().await });
 
     // All should complete without deadlock
-    let result1 = task1.await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
-    let result2 = task2.await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
-    let result3 = task3.await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let result1 = task1
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let result2 = task2
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let result3 = task3
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
 
     // All results should be Ok (empty is fine)
     assert!(result1.is_ok());
@@ -782,12 +774,7 @@ async fn test_discover_services_all_endpoints_fail() -> SongbirdResult<()> {
     let result = adapter.discover_services().await;
     assert!(result.is_ok());
     assert_eq!(
-        result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .len(),
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
         0
     );
     Ok(())
@@ -879,10 +866,7 @@ async fn test_find_capability_providers_with_special_characters() -> SongbirdRes
         let result = adapter.find_capability_providers(name).await;
         assert!(result.is_ok());
         assert!(result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
             .is_empty());
     }
     Ok(())
@@ -978,12 +962,12 @@ async fn test_mixed_concurrent_operations() -> SongbirdResult<()> {
     let task4 = tokio::spawn(async move { adapter4.get_registry_stats().await });
 
     // All should complete successfully
-    let stats1 = task1.await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
-    let providers = task2.await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let stats1 = task1
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let providers = task2
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     let services = task3.await.map_err(|e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
@@ -1107,9 +1091,9 @@ async fn test_concurrent_discovery_operations_high_load() -> SongbirdResult<()> 
 
     // All should complete
     for task in tasks {
-        let result = task.await.map_err(|e| {
-            SongbirdError::configuration("Failed to discover services".to_string())
-        })?;
+        let result = task
+            .await
+            .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
         assert!(result.is_ok());
     }
     Ok(())

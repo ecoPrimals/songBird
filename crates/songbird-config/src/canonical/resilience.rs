@@ -5,7 +5,8 @@ use std::time::Duration;
 
 /// **CANONICAL**: Circuit breaker configuration
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CircuitBreakerConfig {/// Number of consecutive failures before opening the circuit
+pub struct CircuitBreakerConfig {
+    /// Number of consecutive failures before opening the circuit
     pub failure_threshold: u32,
     /// Time to wait before attempting to close the circuit
     pub timeout: Duration,
@@ -31,7 +32,8 @@ impl Default for CircuitBreakerConfig {
 
 /// **CANONICAL**: Retry configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RetryConfig {/// Maximum number of retry attempts
+pub struct RetryConfig {
+    /// Maximum number of retry attempts
     pub max_attempts: u32,
     /// Initial delay between retries
     pub initial_delay: Duration,
@@ -60,7 +62,8 @@ impl Default for RetryConfig {
 
 /// Circuit breaker state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CircuitBreakerState {/// Circuit is closed, requests are allowed
+pub enum CircuitBreakerState {
+    /// Circuit is closed, requests are allowed
     Closed,
     /// Circuit is open, requests are rejected
     Open,
@@ -80,20 +83,27 @@ pub enum RetryStrategy {
     /// Fixed delay between retries
     Fixed,
     /// Exponential backoff with optional jitter
-    ExponentialBackoff { jitter: bool },
+    ExponentialBackoff {
+        jitter: bool,
+    },
     /// Linear backoff
     LinearBackoff,
     /// Custom retry strategy
-    Custom { name: String },
+    Custom {
+        name: String,
+    },
 }
 
 impl Default for RetryStrategy {
     fn default() -> Self {
-        Self::ExponentialBackoff { jitter: true }
+        Self::ExponentialBackoff {
+            jitter: true,
+        }
     }
 }
 
-impl CircuitBreakerConfig {/// Create a new circuit breaker configuration with custom settings
+impl CircuitBreakerConfig {
+    /// Create a new circuit breaker configuration with custom settings
     #[must_use]
     pub fn new(
         failure_threshold: u32,
@@ -112,7 +122,8 @@ impl CircuitBreakerConfig {/// Create a new circuit breaker configuration with c
 
     /// Create a disabled circuit breaker configuration
     #[must_use]
-    pub fn disabled() -> Self  {Self {
+    pub fn disabled() -> Self {
+        Self {
             enabled: false,
             ..Default::default()
         }
@@ -144,7 +155,8 @@ impl RetryConfig {
 
     /// Create a disabled retry configuration
     #[must_use]
-    pub fn disabled() -> Self  {Self {
+    pub fn disabled() -> Self {
+        Self {
             enabled: false,
             ..Default::default()
         }
@@ -424,7 +436,7 @@ pub struct HealthCheckConfig {
 
     /// Health check path/endpoint
     pub path: String,
-    
+
     /// Maximum retry attempts (0 = no retries, added for compatibility)
     #[serde(default)]
     pub max_retries: u32,
@@ -538,7 +550,9 @@ mod tests {
         assert_eq!(CircuitBreakerState::default(), CircuitBreakerState::Closed);
         assert_eq!(
             RetryStrategy::default(),
-            RetryStrategy::ExponentialBackoff { jitter: true }
+            RetryStrategy::ExponentialBackoff {
+                jitter: true
+            }
         );
     }
 }

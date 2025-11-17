@@ -166,8 +166,11 @@ impl ComputeAdapter {
 
                 // Fallback 2: Construct from host + port
                 let host = SafeEnv::get_or_default("SONGBIRD_HOST", "http://localhost");
-                let port = SafeEnv::get_port("SONGBIRD_COMPUTE_PORT",
-                    songbird_config::defaults::ports::service_port("COMPUTE", 8080)).to_string();
+                let port = SafeEnv::get_port(
+                    "SONGBIRD_COMPUTE_PORT",
+                    songbird_config::defaults::ports::service_port("COMPUTE", 8080),
+                )
+                .to_string();
                 let endpoint = format!("{host}:{port}");
 
                 debug!("🔄 Using fallback compute endpoint: {}", endpoint);

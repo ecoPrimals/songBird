@@ -196,9 +196,8 @@ async fn test_find_sovereignty_aware_paths_multiple_services() {
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let _paths = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let _paths = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     // Note: May be empty if services don't meet sovereignty requirements
 }
 
@@ -226,9 +225,8 @@ async fn test_paths_sorted_by_score() -> SongbirdResult<()> {
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let paths = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
 
     // Paths should be sorted by combined score (descending)
     for i in 1..paths.len() {

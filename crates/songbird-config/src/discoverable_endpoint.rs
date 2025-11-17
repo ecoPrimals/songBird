@@ -229,11 +229,12 @@ impl DiscoverableEndpoint {
                 var_name,
                 parser,
             } => {
-                let value = SafeEnv::get_required(var_name).map_err(|_| SongbirdError::Configuration {
-                    message: format!("Environment variable {var_name} not found"),
-                    field: Some(var_name.clone()),
-                    suggestion: Some(format!("Set {var_name} environment variable")),
-                })?;
+                let value =
+                    SafeEnv::get_required(var_name).map_err(|_| SongbirdError::Configuration {
+                        message: format!("Environment variable {var_name} not found"),
+                        field: Some(var_name.clone()),
+                        suggestion: Some(format!("Set {var_name} environment variable")),
+                    })?;
 
                 parse_endpoint(&value, parser)
             }
@@ -277,9 +278,7 @@ impl DiscoverableEndpoint {
                     let port_num = match port {
                         PortSpec::Number(n) => *n,
                         PortSpec::Named(name) => resolve_named_port(name)?,
-                        PortSpec::Environment(var) => {
-                            SafeEnv::get_port(var, 8080)
-                        }
+                        PortSpec::Environment(var) => SafeEnv::get_port(var, 8080),
                     };
 
                     Ok(EndpointSpec {

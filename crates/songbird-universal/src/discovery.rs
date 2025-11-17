@@ -75,8 +75,8 @@ impl Default for DiscoveryConfig {
     fn default() -> Self {
         Self {
             mechanisms: DiscoveryMechanisms {
-                enable_environment_scan: true,  // Aligns with canonical default
-                enable_network_scanning: true,  // More permissive than canonical (false)
+                enable_environment_scan: true,    // Aligns with canonical default
+                enable_network_scanning: true,    // More permissive than canonical (false)
                 enable_container_discovery: true, // Aligns with canonical default
             },
             timeout: Duration::from_secs(30), // Reasonable default (canonical: 5s)
@@ -212,10 +212,14 @@ impl UniversalPrimalDiscovery {
         let primal_names = vec!["toadstool".to_string(), "squirrel".to_string()]; // TEMPORARY FALLBACK
 
         for primal_name in primal_names {
-            let discovery_host = SafeEnv::get_or_default("UNIVERSAL_DISCOVERY_HOST",
-                songbird_config::canonical::constants::network::DEFAULT_HOST);
-            let discovery_port = SafeEnv::get_port("UNIVERSAL_DISCOVERY_PORT",
-                songbird_config::defaults::ports::orchestrator_port());
+            let discovery_host = SafeEnv::get_or_default(
+                "UNIVERSAL_DISCOVERY_HOST",
+                songbird_config::canonical::constants::network::DEFAULT_HOST,
+            );
+            let discovery_port = SafeEnv::get_port(
+                "UNIVERSAL_DISCOVERY_PORT",
+                songbird_config::defaults::ports::orchestrator_port(),
+            );
             let endpoint = format!("http://{discovery_host}:{discovery_port}/{primal_name}");
 
             // Test connectivity and discover capabilities

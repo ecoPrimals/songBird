@@ -300,15 +300,17 @@ pub trait ProtocolHandler: Send + Sync {
 }
 
 /// Create a protocol handler for the given protocol type (returns enum for zero-cost dispatch)
-pub fn create_protocol_handler(
-    protocol: GameProtocolType,
-) -> SongbirdResult<ProtocolHandlerImpl> {
+pub fn create_protocol_handler(protocol: GameProtocolType) -> SongbirdResult<ProtocolHandlerImpl> {
     match protocol {
         GameProtocolType::UDP => Ok(ProtocolHandlerImpl::Udp(UdpProtocolHandler::new())),
         GameProtocolType::TCP => Ok(ProtocolHandlerImpl::Tcp(TcpProtocolHandler::new())),
         GameProtocolType::IPX => Ok(ProtocolHandlerImpl::Ipx(IpxProtocolHandler::new())),
-        GameProtocolType::DirectPlay => Ok(ProtocolHandlerImpl::DirectPlay(DirectPlayProtocolHandler::new())),
-        GameProtocolType::NetBIOS => Ok(ProtocolHandlerImpl::NetBios(NetBiosProtocolHandler::new())),
+        GameProtocolType::DirectPlay => {
+            Ok(ProtocolHandlerImpl::DirectPlay(DirectPlayProtocolHandler::new()))
+        }
+        GameProtocolType::NetBIOS => {
+            Ok(ProtocolHandlerImpl::NetBios(NetBiosProtocolHandler::new()))
+        }
         GameProtocolType::Custom(name) => Err(SongbirdError::Network {
             message: format!("Custom protocol '{name}' not supported"),
             interface: None,

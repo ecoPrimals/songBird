@@ -25,8 +25,8 @@
 //! Testing orchestrator functionality beyond main function.
 
 use anyhow::Result;
-use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::app::SongbirdOrchestrator;
+use songbird_types::config::CanonicalSongbirdConfig;
 
 #[tokio::test]
 async fn test_orchestrator_initialization() -> Result<()> {

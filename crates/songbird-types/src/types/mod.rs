@@ -4,8 +4,8 @@
 //! and ensure consistency across all crates.
 
 pub mod canonical;
-pub mod severity;
 pub mod hooks;
+pub mod severity;
 
 // Re-export canonical types
 pub use canonical::{
@@ -13,6 +13,5 @@ pub use canonical::{
 };
 
 // Re-export unified types for convenience
-pub use severity::{ErrorSeverity, WarningSeverity};
 pub use hooks::HookErrorHandling;
-
+pub use severity::{ErrorSeverity, WarningSeverity};

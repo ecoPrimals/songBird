@@ -501,17 +501,10 @@ impl Default for RbacConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            default_roles: vec![
-                "user".to_string(),
-                "admin".to_string(),
-                "system".to_string(),
-            ],
+            default_roles: vec!["user".to_string(), "admin".to_string(), "system".to_string()],
             role_hierarchy: HashMap::from([
                 ("admin".to_string(), vec!["user".to_string()]),
-                (
-                    "system".to_string(),
-                    vec!["admin".to_string(), "user".to_string()],
-                ),
+                ("system".to_string(), vec!["admin".to_string(), "user".to_string()]),
             ]),
         }
     }

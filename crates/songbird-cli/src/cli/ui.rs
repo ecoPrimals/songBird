@@ -45,7 +45,11 @@ pub fn confirm(message: &str, default: bool) -> SongbirdResult<bool> {
 }
 
 /// Show a selection prompt with enhanced options
-pub fn select<T: Display>(message: &str, items: &[T], default: Option<usize>) -> SongbirdResult<usize> {
+pub fn select<T: Display>(
+    message: &str,
+    items: &[T],
+    default: Option<usize>,
+) -> SongbirdResult<usize> {
     let theme = ColorfulTheme::default();
     let mut select = Select::with_theme(&theme).with_prompt(message).items(items);
 

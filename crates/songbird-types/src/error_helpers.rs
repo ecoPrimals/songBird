@@ -153,9 +153,7 @@ impl SafeParse {
 
     /// Parse a port number safely
     pub fn port(input: &str, context: &str) -> SongbirdResult<u16> {
-        input
-            .parse::<u16>()
-            .or_config_error(&format!("Invalid port number in {}", context))
+        input.parse::<u16>().or_config_error(&format!("Invalid port number in {}", context))
     }
 
     /// Parse a duration from milliseconds safely
@@ -166,7 +164,9 @@ impl SafeParse {
             Err(SongbirdError::Configuration {
                 message: format!("Invalid duration: {} ms in {}", ms, context),
                 field: Some(context.to_string()),
-                suggestion: Some("Use a reasonable timeout value (e.g., 30000 for 30 seconds)".to_string()),
+                suggestion: Some(
+                    "Use a reasonable timeout value (e.g., 30000 for 30 seconds)".to_string(),
+                ),
             })
         }
     }
@@ -190,9 +190,7 @@ impl SafeParse {
         T: FromStr,
         T::Err: std::fmt::Display,
     {
-        input
-            .parse::<T>()
-            .or_config_error(&format!("Failed to parse {} from '{}'", context, input))
+        input.parse::<T>().or_config_error(&format!("Failed to parse {} from '{}'", context, input))
     }
 }
 
@@ -248,10 +246,7 @@ impl SafeEnv {
     where
         T: FromStr,
     {
-        env::var(key)
-            .ok()
-            .and_then(|v| v.parse::<T>().ok())
-            .unwrap_or(default)
+        env::var(key).ok().and_then(|v| v.parse::<T>().ok()).unwrap_or(default)
     }
 }
 
@@ -265,7 +260,10 @@ mod tests {
         let err = result.or_config_error("test_field").unwrap_err();
 
         match err {
-            SongbirdError::Configuration { field, .. } => {
+            SongbirdError::Configuration {
+                field,
+                ..
+            } => {
                 assert_eq!(field, Some("test_field".to_string()));
             }
             _ => panic!("Expected Configuration error"),
@@ -278,7 +276,10 @@ mod tests {
         let err = opt.or_config_missing("test_field").unwrap_err();
 
         match err {
-            SongbirdError::Configuration { message, .. } => {
+            SongbirdError::Configuration {
+                message,
+                ..
+            } => {
                 assert!(message.contains("test_field"));
                 assert!(message.contains("missing"));
             }
@@ -319,11 +320,13 @@ mod tests {
         let err = opt.or_service_not_found("test-service").unwrap_err();
 
         match err {
-            SongbirdError::Service { service, .. } => {
+            SongbirdError::Service {
+                service,
+                ..
+            } => {
                 assert_eq!(service, "test-service");
             }
             _ => panic!("Expected Service error"),
         }
     }
 }
-

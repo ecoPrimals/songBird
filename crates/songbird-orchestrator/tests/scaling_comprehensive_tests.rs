@@ -42,9 +42,8 @@ async fn test_auto_scaler_health_check() -> SongbirdResult<()> {
     let health = scaler.health_check().await;
     assert!(health.is_ok());
 
-    let health_status = health.ok_or_else(|| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let health_status =
+        health.ok_or_else(|| SongbirdError::configuration("Failed health check".to_string()))?;
     assert_eq!(health_status.status, HealthStatus::Healthy);
     assert!(health_status.message.is_some());
     assert!(health_status.last_check.is_some());
@@ -172,12 +171,7 @@ async fn test_auto_scaler_lifecycle() -> SongbirdResult<()> {
     let health = scaler.health_check().await;
     assert!(health.is_ok());
     assert_eq!(
-        health
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .status,
+        health.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.status,
         HealthStatus::Healthy
     );
 
@@ -207,12 +201,13 @@ async fn test_auto_scaler_health_message() -> SongbirdResult<()> {
     let config = ScalingConfig::default();
     let scaler = AutoScaler::new(config);
 
-    let health = scaler.health_check().await.map_err(|e| {
-        SongbirdError::configuration("Failed to start orchestrator".to_string())
-    })?;
-    let message = health.message.ok_or_else(|| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let health = scaler
+        .health_check()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
+    let message = health
+        .message
+        .ok_or_else(|| SongbirdError::configuration("Failed health check".to_string()))?;
     assert!(message.contains("Auto-scaler") || message.contains("instances"));
     Ok(())
 }

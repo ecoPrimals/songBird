@@ -5,7 +5,8 @@
 //! This module provides infrastructure for services to start with ZERO hardcoded
 //! knowledge and discover everything dynamically at runtime.
 
-#[allow(deprecated)] use crate::config::SongbirdConfig;
+#[allow(deprecated)]
+use crate::config::SongbirdConfig;
 use serde::{Deserialize, Serialize};
 
 // Export the comprehensive zero-touch infant configuration

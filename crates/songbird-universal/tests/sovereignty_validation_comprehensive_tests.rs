@@ -6,7 +6,6 @@
 #![allow(clippy::float_cmp)]
 #![allow(clippy::uninlined_format_args)]
 
-use songbird_types::SongbirdResult;
 use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::sovereignty::types::*;
 use std::time::Duration;

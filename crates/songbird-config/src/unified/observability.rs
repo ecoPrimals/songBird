@@ -32,7 +32,8 @@ use std::env;
 
 /// Unified configuration for observability features
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct UnifiedObservabilityConfig  {/// Dashboard configuration
+pub struct UnifiedObservabilityConfig {
+    /// Dashboard configuration
     pub dashboard: DashboardConfig,
     /// Health check configuration
     pub health_checks: HealthCheckConfig,
@@ -80,7 +81,8 @@ pub struct LoggingConfig {
     pub rotation: LogRotationConfig,
 }
 
-impl Default for LoggingConfig  {fn default() -> Self {
+impl Default for LoggingConfig {
+    fn default() -> Self {
         Self {
             level: env::var("SONGBIRD_LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
             format: env::var("SONGBIRD_LOG_FORMAT").unwrap_or_else(|_| "json".to_string()),
@@ -102,7 +104,8 @@ pub struct TracingConfig {
     pub sample_rate: f64,
 }
 
-impl Default for TracingConfig  {fn default() -> Self {
+impl Default for TracingConfig {
+    fn default() -> Self {
         Self {
             enabled: env::var("SONGBIRD_TRACING_ENABLED").is_ok(),
             endpoint: env::var("SONGBIRD_TRACING_ENDPOINT").ok(),

@@ -122,4 +122,3 @@ mod tests {
         assert!(WarningSeverity::Medium > WarningSeverity::Low);
     }
 }
-

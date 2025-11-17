@@ -17,7 +17,9 @@
 //! This test suite provides extensive coverage for the songbird-config crate
 //! to achieve the target 90% test coverage for production readiness.
 
-use songbird_config::canonical::constants::{DEFAULT_BIND_ADDRESS, DEFAULT_LOCALHOST, LOCALHOST_IPV4};
+use songbird_config::canonical::constants::{
+    DEFAULT_BIND_ADDRESS, DEFAULT_LOCALHOST, LOCALHOST_IPV4,
+};
 use songbird_config::canonical::primals::QosMetrics; // ✅ Migrated from config::universal_primals
 use songbird_types::{SongbirdError, SongbirdResult};
 // use songbird_config::canonical::constants::network::*; // Unused import removed
@@ -27,7 +29,6 @@ use songbird_config::{
     EnvironmentConfig,
 };
 use songbird_test_utils::test_bind_address;
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::time::Duration;
 

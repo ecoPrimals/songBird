@@ -315,7 +315,7 @@ pub trait FeatureFlagManager: Send + Sync {
     async fn initialize(&mut self, config: &FeatureFlagConfig) -> Result<()>;
 
     /// Register a feature flag provider
-    /// 
+    ///
     /// Note: Uses concrete type parameter for zero-cost abstraction.
     /// Pass the provider directly, not boxed.
     async fn register_provider<P: FeatureFlagProvider + 'static>(

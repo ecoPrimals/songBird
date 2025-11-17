@@ -487,9 +487,8 @@ async fn test_storage_check_health_healthy() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = StorageAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -498,10 +497,7 @@ async fn test_storage_check_health_healthy() -> SongbirdResult<()> {
     mock.assert_async().await;
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         StorageHealth::Healthy
     );
     Ok(())
@@ -529,9 +525,8 @@ async fn test_storage_check_health_warning() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = StorageAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -540,10 +535,7 @@ async fn test_storage_check_health_warning() -> SongbirdResult<()> {
     mock.assert_async().await;
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         StorageHealth::Warning
     );
     Ok(())
@@ -571,9 +563,8 @@ async fn test_storage_check_health_critical() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = StorageAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -582,10 +573,7 @@ async fn test_storage_check_health_critical() -> SongbirdResult<()> {
     mock.assert_async().await;
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         StorageHealth::Critical
     );
     Ok(())

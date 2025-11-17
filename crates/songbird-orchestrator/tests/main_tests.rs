@@ -15,10 +15,10 @@
 
 use anyhow::Result;
 use serial_test::serial;
-use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::SongbirdOrchestrator;
 use songbird_test_utils::network_fixtures::*;
 use songbird_test_utils::test_bind_address;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::env;

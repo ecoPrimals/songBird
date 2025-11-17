@@ -8,7 +8,7 @@
 //! - External providers → Registered capability providers
 
 use crate::core::registry::CapabilityRegistry;
-use crate::core::routing::{CapabilityRouter, Task, RoutingDecision};
+use crate::core::routing::{CapabilityRouter, RoutingDecision, Task};
 use axum::{
     extract::{Json, Path, State},
     http::StatusCode,
@@ -46,7 +46,7 @@ impl ComputeApiState {
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
         }
     }
-    
+
     /// Create new compute API state with capability registry
     pub fn with_capability_registry(
         federation_state: Arc<FederationState>,
@@ -140,30 +140,37 @@ async fn submit_compute_task(
     Json(req): Json<ComputeTaskRequest>,
 ) -> Result<Json<ComputeTaskResponse>, ApiError> {
     info!("Received compute task: {}", req.task.task_type);
-    
+
     // Generate unique job ID
     let job_id = Uuid::new_v4();
-    
+
     // Route the task intelligently
-    let routing_decision = state.router
-        .route_task(&req.task)
-        .await
-        .map_err(|e| ApiError::Routing(e.to_string()))?;
-    
+    let routing_decision =
+        state.router.route_task(&req.task).await.map_err(|e| ApiError::Routing(e.to_string()))?;
+
     debug!("Routing decision for job {}: {:?}", job_id, routing_decision);
-    
+
     // Determine where the task was routed
     let routed_to = match &routing_decision {
         RoutingDecision::ExecuteLocally => "local".to_string(),
-        RoutingDecision::RouteToSongbird { node_id, .. } => format!("songbird:{}", node_id),
-        RoutingDecision::RouteToCapability { capability_type, provider_endpoint } => {
+        RoutingDecision::RouteToSongbird {
+            node_id,
+            ..
+        } => format!("songbird:{}", node_id),
+        RoutingDecision::RouteToCapability {
+            capability_type,
+            provider_endpoint,
+        } => {
             format!("{:?}:{}", capability_type, provider_endpoint)
         }
-        RoutingDecision::RouteToExternalProvider { provider_id, .. } => {
+        RoutingDecision::RouteToExternalProvider {
+            provider_id,
+            ..
+        } => {
             format!("external:{}", provider_id)
         }
     };
-    
+
     // Create job status
     let job_status = JobStatus {
         job_id,
@@ -174,12 +181,12 @@ async fn submit_compute_task(
         completed_at: None,
         error: None,
     };
-    
+
     // Store job status
     state.active_jobs.write().await.insert(job_id, job_status.clone());
-    
+
     info!("Task {} routed to: {}", job_id, routed_to);
-    
+
     // Execute the task based on routing decision
     match &routing_decision {
         RoutingDecision::ExecuteLocally => {
@@ -187,42 +194,53 @@ async fn submit_compute_task(
             // Will integrate with songbird-execution-agent for actual execution
             info!("Executing task {} locally", job_id);
         }
-        
-        RoutingDecision::RouteToSongbird { endpoint, .. } => {
+
+        RoutingDecision::RouteToSongbird {
+            endpoint,
+            ..
+        } => {
             // STUB: Peer forwarding implementation pending
             // Will use federation API for peer-to-peer task forwarding
             info!("Forwarding task {} to Songbird at {}", job_id, endpoint);
         }
-        
-        RoutingDecision::RouteToCapability { provider_endpoint, .. } => {
+
+        RoutingDecision::RouteToCapability {
+            provider_endpoint,
+            ..
+        } => {
             // STUB: Capability provider forwarding implementation pending
             // Will use universal adapter for capability-based execution
             info!("Forwarding task {} to capability at {}", job_id, provider_endpoint);
         }
-        
-        RoutingDecision::RouteToExternalProvider { execution_endpoint, provider_id, .. } => {
+
+        RoutingDecision::RouteToExternalProvider {
+            execution_endpoint,
+            provider_id,
+            ..
+        } => {
             // Execute on external provider (new flow!)
-            info!("Executing task {} on external provider {} at {}", 
-                  job_id, provider_id, execution_endpoint);
-            
+            info!(
+                "Executing task {} on external provider {} at {}",
+                job_id, provider_id, execution_endpoint
+            );
+
             // Update status to running
             let mut jobs = state.active_jobs.write().await;
             if let Some(status) = jobs.get_mut(&job_id) {
                 status.status = JobStatusType::Running;
             }
             drop(jobs); // Release lock
-            
+
             // Spawn async task to execute on external provider
             let router_clone = state.router.clone();
             let active_jobs_clone = state.active_jobs.clone();
             let task_clone = req.task.clone();
             let endpoint_clone = execution_endpoint.clone();
-            
+
             tokio::spawn(async move {
-                let result = router_clone
-                    .execute_on_external_provider(&endpoint_clone, &task_clone)
-                    .await;
-                
+                let result =
+                    router_clone.execute_on_external_provider(&endpoint_clone, &task_clone).await;
+
                 // Update job status with result
                 let mut jobs = active_jobs_clone.write().await;
                 if let Some(status) = jobs.get_mut(&job_id) {
@@ -243,7 +261,7 @@ async fn submit_compute_task(
             });
         }
     }
-    
+
     Ok(Json(ComputeTaskResponse {
         job_id,
         routed_to,
@@ -259,13 +277,13 @@ async fn get_task_status(
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<JobStatus>, ApiError> {
     debug!("Querying status for job: {}", job_id);
-    
+
     let jobs = state.active_jobs.read().await;
     let job_status = jobs
         .get(&job_id)
         .ok_or_else(|| ApiError::NotFound(format!("Job {} not found", job_id)))?
         .clone();
-    
+
     Ok(Json(job_status))
 }
 
@@ -298,17 +316,15 @@ impl std::error::Error for ApiError {}
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
-            Self::Routing(msg) | Self::Execution(msg) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, msg)
-            }
+            Self::Routing(msg) | Self::Execution(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             Self::InvalidRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
         };
-        
+
         let body = Json(serde_json::json!({
             "error": message,
         }));
-        
+
         (status, body).into_response()
     }
 }
@@ -327,20 +343,20 @@ mod tests {
     #[tokio::test]
     async fn test_submit_lightweight_task() {
         let state = create_test_state();
-        
+
         let req = ComputeTaskRequest {
             task: Task::new("health_check"),
             priority: Some(5),
             timeout_secs: Some(30),
         };
-        
+
         let response = submit_compute_task(State(state.clone()), Json(req))
             .await
             .expect("Task submission should succeed");
-        
+
         assert_eq!(response.status, "routing");
         assert_eq!(response.routed_to, "local");
-        
+
         // Verify job was stored
         let jobs = state.active_jobs.read().await;
         assert!(jobs.contains_key(&response.job_id));
@@ -350,9 +366,9 @@ mod tests {
     async fn test_submit_heavy_task() {
         // Set compute capability endpoint for test
         std::env::set_var("CAPABILITY_COMPUTE_ENDPOINT", "http://localhost:9000");
-        
+
         let state = create_test_state();
-        
+
         let req = ComputeTaskRequest {
             task: Task::builder("ml_training")
                 .with_gpu()
@@ -363,15 +379,15 @@ mod tests {
             priority: Some(10),
             timeout_secs: Some(1800),
         };
-        
+
         let response = submit_compute_task(State(state.clone()), Json(req))
             .await
             .expect("Task submission should succeed");
-        
+
         assert_eq!(response.status, "routing");
         // Should route to capability (Compute)
         assert!(response.routed_to.starts_with("Compute:"));
-        
+
         // Cleanup
         std::env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
     }
@@ -380,7 +396,7 @@ mod tests {
     async fn test_get_task_status_not_found() {
         let state = create_test_state();
         let non_existent_id = Uuid::new_v4();
-        
+
         let result = get_task_status(State(state), Path(non_existent_id)).await;
         assert!(result.is_err());
     }
@@ -391,4 +407,3 @@ mod tests {
         assert_eq!(err.to_string(), "Routing error: Test error");
     }
 }
-

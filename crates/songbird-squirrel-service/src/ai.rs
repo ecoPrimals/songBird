@@ -12,7 +12,7 @@ use tracing::{info, warn};
 pub use crate::{ChatRequest, ChatResponse, InferenceRequest, InferenceResponse};
 
 // Temp type placeholder until anthropic integration is fixed
-type Anthropic = ();  // Placeholder
+type Anthropic = (); // Placeholder
 
 pub struct AIClient {
     anthropic_client: Option<Anthropic>,
@@ -22,7 +22,9 @@ pub struct AIClient {
 impl AIClient {
     pub fn new(config: &SquirrelConfig) -> anyhow::Result<Self> {
         if config.anthropic_api_key.is_some() {
-            info!("✅ Anthropic client initialized (integration pending anthropic v0.0.8 resolution)");
+            info!(
+                "✅ Anthropic client initialized (integration pending anthropic v0.0.8 resolution)"
+            );
         } else {
             warn!("⚠️  No Anthropic API key - Claude unavailable");
         }
@@ -34,7 +36,7 @@ impl AIClient {
         };
 
         Ok(Self {
-            anthropic_client: None,  // Disabled pending anthropic SDK compatibility resolution
+            anthropic_client: None, // Disabled pending anthropic SDK compatibility resolution
             default_model,
         })
     }
@@ -45,7 +47,7 @@ impl AIClient {
 
         // KNOWN ISSUE: Claude integration disabled pending anthropic v0.0.8 API resolution
         // Using fallback mock response until SDK compatibility is resolved
-        let _ = self.anthropic_client;  // Silence unused field warning
+        let _ = self.anthropic_client; // Silence unused field warning
 
         // Fallback to mock response
         Ok(ChatResponse {
@@ -102,4 +104,3 @@ impl AIClient {
         models
     }
 }
-

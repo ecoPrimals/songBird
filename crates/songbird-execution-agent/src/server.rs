@@ -53,7 +53,7 @@ impl ExecutionServer {
             security: Arc::new(SecurityValidator::new(auth_token.is_some(), auth_token)),
         }
     }
-    
+
     /// Start the server
     pub async fn serve(self) -> Result<(), Box<dyn std::error::Error>> {
         let state = ServerState {
@@ -61,7 +61,7 @@ impl ExecutionServer {
             executor: self.executor.clone(),
             security: self.security.clone(),
         };
-        
+
         let app = Router::new()
             .route("/health", get(health_check))
             .route("/api/v1/execution/command", post(execute_command))
@@ -71,13 +71,13 @@ impl ExecutionServer {
             .route("/api/v1/execution/stats", get(get_stats))
             .with_state(state)
             .layer(TraceLayer::new_for_http());
-        
+
         let addr = format!("{}:{}", self.bind_address, self.port);
         info!("Starting execution agent on {}", addr);
-        
+
         let listener = TcpListener::bind(&addr).await?;
         axum::serve(listener, app).await?;
-        
+
         Ok(())
     }
 }
@@ -98,12 +98,12 @@ async fn execute_command(
 ) -> Result<Json<ExecutionResponse>, AppError> {
     // Validate command
     state.security.validate_command(&request.command)?;
-    
+
     if request.background {
         // Background execution
         let job = state.executor.execute_background(request).await?;
         state.job_manager.add_job(job.clone()).await?;
-        
+
         // Spawn task to monitor the job
         let job_id = job.id.clone();
         tokio::spawn(async move {
@@ -111,7 +111,7 @@ async fn execute_command(
             // For now, this is a placeholder
             info!("Background job {} is running", job_id);
         });
-        
+
         Ok(Json(ExecutionResponse {
             job_id: job.id,
             status: job.status,
@@ -140,9 +140,7 @@ async fn get_job(
 }
 
 /// List all jobs
-async fn list_jobs(
-    State(state): State<ServerState>,
-) -> Result<Json<Vec<JobInfo>>, AppError> {
+async fn list_jobs(State(state): State<ServerState>) -> Result<Json<Vec<JobInfo>>, AppError> {
     let jobs = state.job_manager.list_jobs().await;
     Ok(Json(jobs))
 }
@@ -154,7 +152,7 @@ async fn stop_job(
     Json(request): Json<StopJobRequest>,
 ) -> Result<Json<StopJobResponse>, AppError> {
     let _pid = state.job_manager.stop_job(&job_id).await?;
-    
+
     Ok(Json(StopJobResponse {
         job_id,
         status: ExecutionStatus::Stopped,
@@ -163,9 +161,7 @@ async fn stop_job(
 }
 
 /// Get statistics
-async fn get_stats(
-    State(state): State<ServerState>,
-) -> Result<Json<JobStats>, AppError> {
+async fn get_stats(State(state): State<ServerState>) -> Result<Json<JobStats>, AppError> {
     let stats = state.job_manager.get_stats().await;
     Ok(Json(stats))
 }
@@ -176,28 +172,31 @@ struct AppError(SongbirdError);
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self.0 {
-            SongbirdError::Validation { ref message, .. } => {
-                (StatusCode::BAD_REQUEST, message.clone())
-            }
+            SongbirdError::Validation {
+                ref message,
+                ..
+            } => (StatusCode::BAD_REQUEST, message.clone()),
             SongbirdError::Security(ref sec_err) => {
                 (StatusCode::UNAUTHORIZED, sec_err.message.clone())
             }
-            SongbirdError::Registry { ref message, .. } => {
-                (StatusCode::NOT_FOUND, message.clone())
-            }
-            SongbirdError::Configuration { ref message, .. } => {
-                (StatusCode::TOO_MANY_REQUESTS, message.clone())
-            }
+            SongbirdError::Registry {
+                ref message,
+                ..
+            } => (StatusCode::NOT_FOUND, message.clone()),
+            SongbirdError::Configuration {
+                ref message,
+                ..
+            } => (StatusCode::TOO_MANY_REQUESTS, message.clone()),
             _ => {
                 error!("Internal error: {:?}", self.0);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
             }
         };
-        
+
         let body = Json(serde_json::json!({
             "error": error_message,
         }));
-        
+
         (status, body).into_response()
     }
 }
@@ -222,4 +221,3 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 }
-

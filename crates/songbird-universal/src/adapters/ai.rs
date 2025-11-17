@@ -150,10 +150,18 @@ impl AIAdapter {
                 }
 
                 // Fallback 2: Construct from host + port
-                let endpoint = SafeEnv::get_or_default("SONGBIRD_HOST",
-                    format!("http://{}", songbird_config::canonical::constants::network::DEFAULT_HOST));
-                let port = SafeEnv::get_port("SONGBIRD_AI_PORT",
-                    songbird_config::defaults::ports::service_port("AI", 8083)).to_string();
+                let endpoint = SafeEnv::get_or_default(
+                    "SONGBIRD_HOST",
+                    format!(
+                        "http://{}",
+                        songbird_config::canonical::constants::network::DEFAULT_HOST
+                    ),
+                );
+                let port = SafeEnv::get_port(
+                    "SONGBIRD_AI_PORT",
+                    songbird_config::defaults::ports::service_port("AI", 8083),
+                )
+                .to_string();
                 let discovered_endpoint = format!("{endpoint}:{port}");
 
                 debug!("🔄 Using fallback AI endpoint: {}", discovered_endpoint);

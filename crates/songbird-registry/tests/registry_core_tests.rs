@@ -149,10 +149,7 @@ fn test_registry_result_type() -> SongbirdResult<()> {
     let result: SongbirdResult<String> = Ok("test-service".to_string());
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         "test-service"
     );
     Ok(())

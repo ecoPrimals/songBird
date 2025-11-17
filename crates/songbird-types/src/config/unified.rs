@@ -90,10 +90,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/lib/songbird".to_string()
             } else {
-                format!(
-                    "{}/.local/share/songbird",
-                    SafeEnv::get_or_default("HOME", "/tmp")
-                )
+                format!("{}/.local/share/songbird", SafeEnv::get_or_default("HOME", "/tmp"))
             }
         })
     }
@@ -105,10 +102,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/etc/songbird".to_string()
             } else {
-                format!(
-                    "{}/.config/songbird",
-                    SafeEnv::get_or_default("HOME", "/tmp")
-                )
+                format!("{}/.config/songbird", SafeEnv::get_or_default("HOME", "/tmp"))
             }
         })
     }
@@ -120,10 +114,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/cache/songbird".to_string()
             } else {
-                format!(
-                    "{}/.cache/songbird",
-                    SafeEnv::get_or_default("HOME", "/tmp")
-                )
+                format!("{}/.cache/songbird", SafeEnv::get_or_default("HOME", "/tmp"))
             }
         })
     }
@@ -135,10 +126,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/log/songbird".to_string()
             } else {
-                format!(
-                    "{}/.local/share/songbird/logs",
-                    SafeEnv::get_or_default("HOME", "/tmp")
-                )
+                format!("{}/.local/share/songbird/logs", SafeEnv::get_or_default("HOME", "/tmp"))
             }
         })
     }

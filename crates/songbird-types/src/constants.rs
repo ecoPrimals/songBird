@@ -176,7 +176,7 @@ pub const ENV_PRODUCTION: &str = "production";
 /// Backward compatibility module for legacy code
 pub mod legacy {
     pub use super::*;
-    
+
     // Additional legacy aliases if needed
     pub const DEFAULT_BIND_ADDRESS: &str = super::DEVELOPMENT_BIND_ADDRESS;
     pub const DEFAULT_LOCALHOST: &str = super::LOCALHOST;

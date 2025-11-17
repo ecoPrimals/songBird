@@ -176,14 +176,9 @@ async fn main() -> Result<()> {
             env_vars,
         } => {
             let env_map: HashMap<String, String> = env_vars.into_iter().collect();
-            let response = http_deploy::deploy_via_http_adaptive(
-                &tower,
-                &binary,
-                &service,
-                env_map,
-            )
-            .await?;
-            
+            let response =
+                http_deploy::deploy_via_http_adaptive(&tower, &binary, &service, env_map).await?;
+
             info!("✅ Deployment successful!");
             info!("   Deployment ID: {}", response.deployment_id);
             info!("   Status: {}", response.status);
@@ -192,10 +187,15 @@ async fn main() -> Result<()> {
                 info!("   Service URL: {}", url);
             }
         }
-        Commands::List { detailed } => {
+        Commands::List {
+            detailed,
+        } => {
             list_towers(&args.songbird_endpoint, detailed).await?;
         }
-        Commands::Status { tower, port } => {
+        Commands::Status {
+            tower,
+            port,
+        } => {
             check_status(&args.songbird_endpoint, &tower, port).await?;
         }
     }
@@ -231,12 +231,7 @@ async fn deploy_service(
 
     // Step 2: Make it executable
     info!("🔧 Making binary executable...");
-    ssh_exec(
-        &tower_address,
-        &format!("chmod +x {}", remote_path),
-        ssh_user,
-        ssh_key,
-    )?;
+    ssh_exec(&tower_address, &format!("chmod +x {}", remote_path), ssh_user, ssh_key)?;
     info!("✅ Binary is executable");
 
     // Step 3: Start service if requested
@@ -270,7 +265,14 @@ async fn deploy_service(
     info!("");
     info!("Tower: {} ({})", tower_info.node_name, tower_address);
     info!("Service: {}", remote_path);
-    info!("Status: {}", if auto_start { "Running" } else { "Deployed (not started)" });
+    info!(
+        "Status: {}",
+        if auto_start {
+            "Running"
+        } else {
+            "Deployed (not started)"
+        }
+    );
 
     Ok(())
 }
@@ -292,7 +294,9 @@ async fn get_tower_info(songbird_endpoint: &str, tower_id: &str) -> Result<NodeI
 
     nodes
         .into_iter()
-        .find(|n| n.node_id == tower_id || n.node_name.to_lowercase().contains(&tower_id.to_lowercase()))
+        .find(|n| {
+            n.node_id == tower_id || n.node_name.to_lowercase().contains(&tower_id.to_lowercase())
+        })
         .ok_or_else(|| anyhow::anyhow!("Tower '{}' not found in federation", tower_id))
 }
 
@@ -311,11 +315,11 @@ fn scp_copy(
     ssh_key: Option<&str>,
 ) -> Result<()> {
     let mut cmd = Command::new("scp");
-    
+
     if let Some(key) = ssh_key {
         cmd.arg("-i").arg(key);
     }
-    
+
     cmd.arg(local_path)
         .arg(format!("{}@{}:{}", ssh_user, remote_host, remote_path))
         .stdout(Stdio::inherit())
@@ -333,18 +337,13 @@ fn scp_copy(
 }
 
 /// Execute command via SSH
-fn ssh_exec(
-    remote_host: &str,
-    command: &str,
-    ssh_user: &str,
-    ssh_key: Option<&str>,
-) -> Result<()> {
+fn ssh_exec(remote_host: &str, command: &str, ssh_user: &str, ssh_key: Option<&str>) -> Result<()> {
     let mut cmd = Command::new("ssh");
-    
+
     if let Some(key) = ssh_key {
         cmd.arg("-i").arg(key);
     }
-    
+
     cmd.arg(format!("{}@{}", ssh_user, remote_host))
         .arg(command)
         .stdout(Stdio::inherit())
@@ -370,17 +369,11 @@ fn start_remote_service(
     ssh_key: Option<&str>,
 ) -> Result<()> {
     // Build environment variable string
-    let env_string = env_vars
-        .iter()
-        .map(|(k, v)| format!("{}=\"{}\"", k, v))
-        .collect::<Vec<_>>()
-        .join(" ");
+    let env_string =
+        env_vars.iter().map(|(k, v)| format!("{}=\"{}\"", k, v)).collect::<Vec<_>>().join(" ");
 
     // Build command to run service in background with nohup
-    let command = format!(
-        "nohup {} {} > /tmp/service.log 2>&1 &",
-        env_string, remote_path
-    );
+    let command = format!("nohup {} {} > /tmp/service.log 2>&1 &", env_string, remote_path);
 
     ssh_exec(remote_host, &command, ssh_user, ssh_key)?;
 
@@ -410,7 +403,7 @@ async fn verify_service_health(host: &str, port: u16) -> Result<()> {
 /// List towers in federation
 async fn list_towers(songbird_endpoint: &str, detailed: bool) -> Result<()> {
     let url = format!("{}/api/federation/nodes", songbird_endpoint);
-    
+
     let client = reqwest::Client::new();
     let nodes: Vec<NodeInfo> = client
         .get(&url)
@@ -428,13 +421,13 @@ async fn list_towers(songbird_endpoint: &str, detailed: bool) -> Result<()> {
     for node in nodes {
         info!("🏗️  {} ({})", node.node_name, node.node_id);
         info!("   Address: {}", node.node_address);
-        
+
         if detailed {
             info!("   CPU Cores: {}", node.cpu_cores);
             info!("   Memory: {}GB", node.memory_gb);
             info!("   Capabilities: {}", node.capabilities.join(", "));
         }
-        
+
         info!("");
     }
 
@@ -442,11 +435,7 @@ async fn list_towers(songbird_endpoint: &str, detailed: bool) -> Result<()> {
 }
 
 /// Check status of services on a tower
-async fn check_status(
-    songbird_endpoint: &str,
-    tower_id: &str,
-    port: Option<u16>,
-) -> Result<()> {
+async fn check_status(songbird_endpoint: &str, tower_id: &str, port: Option<u16>) -> Result<()> {
     let tower_info = get_tower_info(songbird_endpoint, tower_id).await?;
     let tower_address = parse_tower_address(&tower_info.node_address)?;
 
@@ -462,7 +451,7 @@ async fn check_status(
         // Query federation for services on this tower
         let url = format!("{}/api/federation/services", songbird_endpoint);
         let client = reqwest::Client::new();
-        
+
         #[derive(Deserialize)]
         struct ServiceInfo {
             service_name: String,
@@ -470,18 +459,11 @@ async fn check_status(
             endpoint: String,
             health_status: String,
         }
-        
-        let services: Vec<ServiceInfo> = client
-            .get(&url)
-            .send()
-            .await?
-            .json()
-            .await?;
 
-        let tower_services: Vec<_> = services
-            .into_iter()
-            .filter(|s| s.endpoint.contains(&tower_address))
-            .collect();
+        let services: Vec<ServiceInfo> = client.get(&url).send().await?.json().await?;
+
+        let tower_services: Vec<_> =
+            services.into_iter().filter(|s| s.endpoint.contains(&tower_address)).collect();
 
         if tower_services.is_empty() {
             info!("ℹ️  No services registered for this tower");
@@ -497,4 +479,3 @@ async fn check_status(
 
     Ok(())
 }
-

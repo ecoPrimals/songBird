@@ -167,15 +167,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Build configuration
-    let node_id = args
-        .node_id
-        .unwrap_or_else(|| format!("compute-{}", Uuid::new_v4()));
-    
-    let tower_id = args
-        .tower_id
-        .clone()
-        .or_else(|| std::env::var("SERVICE_ID").ok())
-        .unwrap_or_else(|| {
+    let node_id = args.node_id.unwrap_or_else(|| format!("compute-{}", Uuid::new_v4()));
+
+    let tower_id =
+        args.tower_id.clone().or_else(|| std::env::var("SERVICE_ID").ok()).unwrap_or_else(|| {
             hostname::get()
                 .map(|h| format!("tower-{}", h.to_string_lossy()))
                 .unwrap_or_else(|_| format!("tower-unknown-{}", Uuid::new_v4()))
@@ -359,12 +354,7 @@ async fn register_with_songbird(
     let url = format!("{}/api/federation/services", songbird_endpoint);
     debug!("📡 Registering with Songbird: POST {}", url);
 
-    let response = state
-        .http_client
-        .post(&url)
-        .json(&registration)
-        .send()
-        .await?;
+    let response = state.http_client.post(&url).json(&registration).send().await?;
 
     if response.status().is_success() {
         info!("✅ Successfully registered with Songbird");
@@ -446,7 +436,7 @@ async fn submit_workload_handler(
                         let status_code = StatusCode::from_u16(status.as_u16())
                             .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
                         (status_code, Json(body))
-                    },
+                    }
                     Err(_) => (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(serde_json::json!({"error": "Backend response parsing failed"})),
@@ -481,4 +471,3 @@ async fn get_workload_handler() -> (StatusCode, Json<serde_json::Value>) {
         Json(serde_json::json!({"error": "Workload status not implemented"})),
     )
 }
-

@@ -78,12 +78,14 @@ fn test_discovered_primal_with_metadata() -> SongbirdResult<()> {
 
     assert_eq!(metadata.len(), 3);
     assert_eq!(
-        metadata.get("version")
+        metadata
+            .get("version")
             .ok_or_else(|| SongbirdError::configuration("Missing version".to_string()))?,
         "1.0.0"
     );
     assert_eq!(
-        metadata.get("region")
+        metadata
+            .get("region")
             .ok_or_else(|| SongbirdError::configuration("Missing region".to_string()))?,
         "us-west"
     );

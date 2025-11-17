@@ -27,8 +27,8 @@
 
 #![cfg(test)]
 
-use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::SongbirdOrchestrator;
+use songbird_types::config::CanonicalSongbirdConfig;
 use std::time::Duration;
 use tokio::time::timeout;
 

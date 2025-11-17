@@ -9,7 +9,8 @@ use std::net::SocketAddr;
 /// This replaces the deprecated `FederationConfig` and integrates `LocalNodeConfig` functionality.
 /// All federation-related configuration is now centralized here.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnifiedFederationConfig  {/// Enable federation functionality
+pub struct UnifiedFederationConfig {
+    /// Enable federation functionality
     pub enabled: bool,
 
     /// Node configuration
@@ -47,7 +48,8 @@ impl Default for UnifiedFederationConfig {
 
 /// Node configuration (replaces `LocalNodeConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NodeConfig {/// Node identifier
+pub struct NodeConfig {
+    /// Node identifier
     pub node_id: String,
 
     /// Node name
@@ -68,10 +70,8 @@ pub struct NodeConfig {/// Node identifier
 
 impl Default for NodeConfig {
     fn default() -> Self {
-        let default_port = env::var("SONGBIRD_FEDERATION_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(7000);
+        let default_port =
+            env::var("SONGBIRD_FEDERATION_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(7000);
 
         Self {
             node_id: env::var("SONGBIRD_NODE_ID")
@@ -90,7 +90,8 @@ impl Default for NodeConfig {
 
 /// Node type enumeration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum NodeType  {/// Standard federation node
+pub enum NodeType {
+    /// Standard federation node
     Standard,
     /// Leader/coordinator node
     Leader,
@@ -102,7 +103,8 @@ pub enum NodeType  {/// Standard federation node
 
 /// Cluster configuration (enhanced from deprecated `FederationConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClusterConfig {/// Cluster identifier
+pub struct ClusterConfig {
+    /// Cluster identifier
     pub cluster_id: String,
 
     /// Cluster name
@@ -142,7 +144,8 @@ impl Default for ClusterConfig {
 
 /// Network configuration for federation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FederationNetworkConfig  {/// Discovery port for UDP broadcasts
+pub struct FederationNetworkConfig {
+    /// Discovery port for UDP broadcasts
     pub discovery_port: u16,
 
     /// Main service port
@@ -171,7 +174,8 @@ impl Default for FederationNetworkConfig {
 
 /// Cluster discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClusterDiscoveryConfig {/// Enable auto-discovery (from deprecated `FederationConfig`)
+pub struct ClusterDiscoveryConfig {
+    /// Enable auto-discovery (from deprecated `FederationConfig`)
     pub auto_discovery: bool,
 
     /// Discovery interval in seconds

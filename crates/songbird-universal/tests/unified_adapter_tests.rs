@@ -195,18 +195,8 @@ async fn test_find_providers_returns_consistent_results() -> SongbirdResult<()> 
     assert!(result3.is_ok());
 
     assert_eq!(
-        result1
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .len(),
-        result2
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .len()
+        result1.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
+        result2.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len()
     );
     Ok(())
 }
@@ -234,9 +224,8 @@ async fn test_discover_services_returns_empty_gracefully() -> SongbirdResult<()>
     let result = adapter.discover_services().await;
 
     assert!(result.is_ok());
-    let services = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let services = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert!(services.is_empty());
     Ok(())
 }
@@ -299,10 +288,7 @@ async fn test_adapter_gracefully_handles_empty_capability_search() -> SongbirdRe
         assert!(result.is_ok());
         // Should return empty list, not error
         assert!(result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
             .is_empty());
     }
     Ok(())

@@ -16,10 +16,12 @@
 ///
 /// Version: 0.2.1
 /// Last Updated: November 11, 2025
-
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tarpc::{context::Context, server::{self, Channel}};
+use tarpc::{
+    context::Context,
+    server::{self, Channel},
+};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -31,16 +33,16 @@ use songbird_network_federation::state::FederationState;
 pub struct ServiceInfo {
     /// Service name
     pub name: String,
-    
+
     /// Service endpoint address
     pub address: String,
-    
+
     /// Service port
     pub port: u16,
-    
+
     /// Service capabilities
     pub capabilities: Vec<String>,
-    
+
     /// Optional metadata
     #[serde(default)]
     pub metadata: std::collections::HashMap<String, String>,
@@ -51,7 +53,7 @@ pub struct ServiceInfo {
 pub struct DiscoveryQuery {
     /// Required capabilities (AND logic)
     pub capabilities: Vec<String>,
-    
+
     /// Optional metadata filters
     #[serde(default)]
     pub filters: std::collections::HashMap<String, String>,
@@ -62,13 +64,13 @@ pub struct DiscoveryQuery {
 pub struct FederationStatus {
     /// Total number of registered services
     pub total_services: usize,
-    
+
     /// Total number of federation peers
     pub total_peers: usize,
-    
+
     /// Orchestrator uptime in seconds
     pub uptime_seconds: u64,
-    
+
     /// Orchestrator version
     pub version: String,
 }
@@ -78,10 +80,10 @@ pub struct FederationStatus {
 pub struct ServiceUpdate {
     /// Update type
     pub update_type: ServiceUpdateType,
-    
+
     /// Service information
     pub service: ServiceInfo,
-    
+
     /// Timestamp of the update
     pub timestamp: i64,
 }
@@ -91,10 +93,10 @@ pub struct ServiceUpdate {
 pub enum ServiceUpdateType {
     /// Service registered
     Registered,
-    
+
     /// Service updated
     Updated,
-    
+
     /// Service unregistered
     Unregistered,
 }
@@ -105,19 +107,19 @@ pub enum ServiceError {
     /// Service registration failed
     #[error("Service registration failed: {0}")]
     RegistrationFailed(String),
-    
+
     /// Service discovery failed
     #[error("Service discovery failed: {0}")]
     DiscoveryFailed(String),
-    
+
     /// Failed to get federation status
     #[error("Failed to get federation status: {0}")]
     StatusFailed(String),
-    
+
     /// Stream setup failed
     #[error("Stream setup failed: {0}")]
     StreamFailed(String),
-    
+
     /// Internal error
     #[error("Internal error: {0}")]
     InternalError(String),
@@ -138,7 +140,7 @@ pub trait SongbirdFederation {
     /// * `Ok(String)` - Service ID on success
     /// * `Err(ServiceError)` - Error if registration fails
     async fn register_service(service: ServiceInfo) -> Result<String, ServiceError>;
-    
+
     /// Discover services by capability
     ///
     /// # Arguments
@@ -148,14 +150,14 @@ pub trait SongbirdFederation {
     /// * `Ok(Vec<ServiceInfo>)` - List of matching services
     /// * `Err(ServiceError)` - Error if discovery fails
     async fn discover_services(query: DiscoveryQuery) -> Result<Vec<ServiceInfo>, ServiceError>;
-    
+
     /// Get federation status
     ///
     /// # Returns
     /// * `Ok(FederationStatus)` - Current federation status
     /// * `Err(ServiceError)` - Error if status retrieval fails
     async fn get_federation_status() -> Result<FederationStatus, ServiceError>;
-    
+
     /// Health check
     ///
     /// # Returns
@@ -168,10 +170,10 @@ pub trait SongbirdFederation {
 pub struct TarpcServer {
     /// Federation state
     federation_state: Arc<FederationState>,
-    
+
     /// Service registry
     service_registry: Arc<FederatedServiceRegistry>,
-    
+
     /// Server start time (for uptime calculation)
     start_time: Arc<RwLock<std::time::Instant>>,
 }
@@ -203,11 +205,11 @@ impl SongbirdFederation for TarpcServer {
             service_port = service.port,
             "tarpc: Received service registration request"
         );
-        
+
         let service_id = uuid::Uuid::new_v4().to_string();
         Ok(service_id)
     }
-    
+
     async fn discover_services(
         self,
         _ctx: Context,
@@ -218,18 +220,15 @@ impl SongbirdFederation for TarpcServer {
             capabilities = ?query.capabilities,
             "tarpc: Received service discovery request"
         );
-        
+
         // For now, return empty list
         Ok(Vec::new())
     }
-    
-    async fn get_federation_status(
-        self,
-        _ctx: Context,
-    ) -> Result<FederationStatus, ServiceError> {
+
+    async fn get_federation_status(self, _ctx: Context) -> Result<FederationStatus, ServiceError> {
         let start_time = self.start_time.read().await;
         let uptime = start_time.elapsed().as_secs();
-        
+
         Ok(FederationStatus {
             total_services: 0, // TODO: Get from registry
             total_peers: 0,    // TODO: Get from federation state
@@ -237,7 +236,7 @@ impl SongbirdFederation for TarpcServer {
             version: env!("CARGO_PKG_VERSION").to_string(),
         })
     }
-    
+
     async fn health_check(self, _ctx: Context) -> Result<bool, ServiceError> {
         Ok(true)
     }
@@ -259,23 +258,21 @@ pub async fn start_tarpc_server(
     service_registry: Arc<FederatedServiceRegistry>,
 ) -> anyhow::Result<()> {
     use futures_util::stream::StreamExt;
-    
+
     // Create server instance
     let server = TarpcServer::new(federation_state, service_registry);
-    
+
     // Bind TCP listener with bincode serialization
-    let listener = tarpc::serde_transport::tcp::listen(
-        &addr,
-        tarpc::tokio_serde::formats::Bincode::default,
-    )
-    .await
-    .map_err(|e| anyhow::anyhow!("Failed to bind tarpc listener: {}", e))?;
-    
+    let listener =
+        tarpc::serde_transport::tcp::listen(&addr, tarpc::tokio_serde::formats::Bincode::default)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to bind tarpc listener: {}", e))?;
+
     tracing::info!("🚀 tarpc server listening on {}", addr);
     tracing::info!("   Protocol: Binary RPC (tarpc + bincode)");
     tracing::info!("   Performance: ~50μs latency, 10 GB/s throughput");
     tracing::info!("   Use case: High-performance primal-to-primal communication");
-    
+
     // Serve connections
     listener
         .filter_map(|r| async move {
@@ -308,7 +305,6 @@ pub async fn start_tarpc_server(
             }
         })
         .await;
-    
+
     Ok(())
 }
-

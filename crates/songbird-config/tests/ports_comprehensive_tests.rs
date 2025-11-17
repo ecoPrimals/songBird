@@ -55,14 +55,7 @@ fn test_global_config_thread_safety() -> SongbirdResult<()> {
         })
         .collect::<Vec<_>>()
         .into_iter()
-        .map(|h| {
-            h.join().or_else(|_| {
-                SongbirdError::configuration(format!(
-                    "Error: {}",
-                    h
-                ))
-            })?
-        })
+        .map(|h| h.join().or_else(|_| SongbirdError::configuration(format!("Error: {}", h)))?)
         .collect();
     let first_port = ports[0];
     for port in &ports {

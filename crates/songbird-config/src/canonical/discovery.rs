@@ -59,10 +59,7 @@ impl Default for DiscoveryConfig {
             common_ports: env::var("SONGBIRD_COMMON_PORTS")
                 .ok()
                 .and_then(|s| {
-                    s.split(',')
-                        .filter_map(|p| p.trim().parse().ok())
-                        .collect::<Vec<u16>>()
-                        .into()
+                    s.split(',').filter_map(|p| p.trim().parse().ok()).collect::<Vec<u16>>().into()
                 })
                 .unwrap_or_else(|| vec![22, 80, 443, 8080, 8443, 3000, 5000, 9090]),
             scan_timeout_secs: env::var("SONGBIRD_SCAN_TIMEOUT_SECS")
@@ -241,19 +238,12 @@ impl Default for NetworkDiscoveryConfig {
             scan_ports: env::var("SONGBIRD_SCAN_PORTS")
                 .ok()
                 .and_then(|s| {
-                    s.split(',')
-                        .filter_map(|p| p.trim().parse().ok())
-                        .collect::<Vec<u16>>()
-                        .into()
+                    s.split(',').filter_map(|p| p.trim().parse().ok()).collect::<Vec<u16>>().into()
                 })
                 .unwrap_or_else(|| vec![8080, 8443, 9090, 3000]),
             discovery_protocols: env::var("SONGBIRD_DISCOVERY_PROTOCOLS")
                 .ok()
-                .map(|s| {
-                    s.split(',')
-                        .map(|p| p.trim().to_string())
-                        .collect()
-                })
+                .map(|s| s.split(',').map(|p| p.trim().to_string()).collect())
                 .unwrap_or_else(|| vec!["http".to_string(), "https".to_string()]),
         }
     }
@@ -318,10 +308,7 @@ mod tests {
         let json = serde_json::to_string(&config).unwrap();
         let deserialized: DiscoveryConfig = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(
-            config.service_discovery.enabled,
-            deserialized.service_discovery.enabled
-        );
+        assert_eq!(config.service_discovery.enabled, deserialized.service_discovery.enabled);
         assert_eq!(config.auto_discovery, deserialized.auto_discovery);
     }
 
@@ -375,4 +362,3 @@ mod tests {
         assert!(config.common_ports.contains(&8080));
     }
 }
-

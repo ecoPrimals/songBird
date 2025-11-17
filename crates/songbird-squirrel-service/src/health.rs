@@ -3,7 +3,7 @@
 use serde::Serialize;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{Instant};
+use std::time::Instant;
 
 pub struct HealthMonitor {
     total_requests: Arc<AtomicU64>,
@@ -35,4 +35,3 @@ pub struct HealthMetrics {
     pub successful_requests: u64,
     pub uptime_seconds: u64,
 }
-

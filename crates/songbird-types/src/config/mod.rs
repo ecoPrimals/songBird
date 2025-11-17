@@ -27,19 +27,19 @@ pub mod unified;
 
 /// **THE ONE TRUE CONFIG** - Export the canonical unified configuration
 pub use consolidated_canonical::{
-    CanonicalSongbirdConfig,
     CanonicalConfigBuilder,
+    CanonicalDiscoveryConfig,
+    CanonicalEnvironmentConfig as CanonicalEnvironmentConfigNew,
+    CanonicalFederationConfig as CanonicalFederationConfigNew,
+    CanonicalGamingConfig as CanonicalGamingConfigNew,
+    CanonicalNetworkConfig as CanonicalNetworkConfigNew,
+    CanonicalObservabilityConfig as CanonicalObservabilityConfigNew,
+    CanonicalPerformanceConfig as CanonicalPerformanceConfigNew,
+    CanonicalPrimalConfig,
+    CanonicalSecurityConfig as CanonicalSecurityConfigNew,
+    CanonicalSongbirdConfig,
     // All sub-configs from consolidated_canonical
     CanonicalSystemConfig as CanonicalSystemConfigNew,
-    CanonicalNetworkConfig as CanonicalNetworkConfigNew,
-    CanonicalSecurityConfig as CanonicalSecurityConfigNew,
-    CanonicalPerformanceConfig as CanonicalPerformanceConfigNew,
-    CanonicalDiscoveryConfig,
-    CanonicalObservabilityConfig as CanonicalObservabilityConfigNew,
-    CanonicalGamingConfig as CanonicalGamingConfigNew,
-    CanonicalPrimalConfig,
-    CanonicalFederationConfig as CanonicalFederationConfigNew,
-    CanonicalEnvironmentConfig as CanonicalEnvironmentConfigNew,
 };
 
 // ============================================================================
@@ -74,7 +74,4 @@ pub use unified::UnifiedSongbirdConfig;
 // Discovery and observability configs from service module
 // Note: CanonicalDiscoveryConfig and CanonicalObservabilityConfig now come from consolidated_canonical
 // These legacy aliases are kept for backward compatibility only
-pub use crate::service::{
-    CanonicalServiceInfo,
-    ServiceMetrics,
-};
+pub use crate::service::{CanonicalServiceInfo, ServiceMetrics};

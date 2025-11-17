@@ -71,7 +71,7 @@ pub mod zero_touch;
 // LEGACY MODULES - BEING CONSOLIDATED
 // ============================================================================
 /// **DEPRECATED**: Use `canonical::` instead - being consolidated into canonical
-/// 
+///
 /// This module contains fragmented configuration that is being migrated to `canonical/`.
 /// For new code, use `songbird_config::canonical::*` instead.
 #[deprecated(
@@ -107,12 +107,7 @@ pub type Config = CanonicalSongbirdConfig;
 
 // Re-export canonical types for convenience (PREFERRED)
 // Note: Only export types that exist in canonical module
-pub use canonical::{
-    CanonicalNetworkDefaults,
-    HealthStatus,
-    ServiceHealth,
-    UniversalHealthStatus,
-};
+pub use canonical::{CanonicalNetworkDefaults, HealthStatus, ServiceHealth, UniversalHealthStatus};
 
 // Individual module re-exports for convenience
 pub use canonical::environment::EnvironmentConfig as CanonicalEnvironmentConfig;
@@ -135,10 +130,7 @@ pub use canonical::service::ServiceConfig as CanonicalServiceConfig;
 /// // or use songbird_config::Config;
 /// ```
 #[allow(deprecated)]
-#[deprecated(
-    since = "0.2.0",
-    note = "Use songbird_types::config::CanonicalSongbirdConfig instead"
-)]
+#[deprecated(since = "0.2.0", note = "Use songbird_types::config::CanonicalSongbirdConfig instead")]
 pub type SongbirdConfig = songbird_types::config::CanonicalSongbirdConfig;
 
 // Legacy re-exports (DEPRECATED - maintained for backward compatibility)

@@ -275,9 +275,8 @@ mod tests {
         let response = dashboard.serve_dashboard().await;
         assert!(response.is_ok());
 
-        let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("Operation failed: {e}"))
-        })?;
+        let resp =
+            response.map_err(|e| SongbirdError::configuration(format!("Operation failed: {e}")))?;
         assert_eq!(resp.status(), hyper::StatusCode::OK);
 
         let content_type = resp
@@ -285,11 +284,7 @@ mod tests {
             .get("content-type")
             .ok_or_else(|| SongbirdError::configuration("Missing content-type header".to_string()))?
             .to_str()
-            .map_err(|e| {
-                SongbirdError::configuration(format!(
-                    "Invalid HTTP header value: {e}"
-                ))
-            })?;
+            .map_err(|e| SongbirdError::configuration(format!("Invalid HTTP header value: {e}")))?;
         assert!(content_type.contains("text/html"));
         Ok(())
     }
@@ -300,9 +295,8 @@ mod tests {
         let response = dashboard.serve_metrics().await;
         assert!(response.is_ok());
 
-        let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("Operation failed: {e}"))
-        })?;
+        let resp =
+            response.map_err(|e| SongbirdError::configuration(format!("Operation failed: {e}")))?;
         assert_eq!(resp.status(), hyper::StatusCode::OK);
 
         let content_type = resp
@@ -310,11 +304,7 @@ mod tests {
             .get("content-type")
             .ok_or_else(|| SongbirdError::configuration("Missing content-type header".to_string()))?
             .to_str()
-            .map_err(|e| {
-                SongbirdError::configuration(format!(
-                    "Invalid HTTP header value: {e}"
-                ))
-            })?;
+            .map_err(|e| SongbirdError::configuration(format!("Invalid HTTP header value: {e}")))?;
         assert!(content_type.contains("application/json"));
         Ok(())
     }
@@ -325,9 +315,8 @@ mod tests {
         let response = dashboard.serve_health().await;
         assert!(response.is_ok());
 
-        let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("Operation failed: {e}"))
-        })?;
+        let resp =
+            response.map_err(|e| SongbirdError::configuration(format!("Operation failed: {e}")))?;
         assert_eq!(resp.status(), hyper::StatusCode::OK);
 
         let content_type = resp
@@ -335,11 +324,7 @@ mod tests {
             .get("content-type")
             .ok_or_else(|| SongbirdError::configuration("Missing content-type header".to_string()))?
             .to_str()
-            .map_err(|e| {
-                SongbirdError::configuration(format!(
-                    "Invalid HTTP header value: {e}"
-                ))
-            })?;
+            .map_err(|e| SongbirdError::configuration(format!("Invalid HTTP header value: {e}")))?;
         assert!(content_type.contains("application/json"));
         Ok(())
     }
@@ -350,9 +335,8 @@ mod tests {
         let response = dashboard.serve_status().await;
         assert!(response.is_ok());
 
-        let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("Operation failed: {e}"))
-        })?;
+        let resp =
+            response.map_err(|e| SongbirdError::configuration(format!("Operation failed: {e}")))?;
         assert_eq!(resp.status(), hyper::StatusCode::OK);
 
         let content_type = resp
@@ -360,11 +344,7 @@ mod tests {
             .get("content-type")
             .ok_or_else(|| SongbirdError::configuration("Missing content-type header".to_string()))?
             .to_str()
-            .map_err(|e| {
-                SongbirdError::configuration(format!(
-                    "Invalid HTTP header value: {e}"
-                ))
-            })?;
+            .map_err(|e| SongbirdError::configuration(format!("Invalid HTTP header value: {e}")))?;
         assert!(content_type.contains("application/json"));
         Ok(())
     }
@@ -375,9 +355,8 @@ mod tests {
         let response = dashboard.serve_not_found().await;
         assert!(response.is_ok());
 
-        let resp = response.map_err(|e| {
-            SongbirdError::configuration(format!("Operation failed: {e}"))
-        })?;
+        let resp =
+            response.map_err(|e| SongbirdError::configuration(format!("Operation failed: {e}")))?;
         assert_eq!(resp.status(), hyper::StatusCode::NOT_FOUND);
         Ok(())
     }

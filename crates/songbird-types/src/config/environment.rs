@@ -256,9 +256,10 @@ impl Default for ServiceDiscoveryConfig {
     fn default() -> Self {
         Self {
             auto_discovery: SafeEnv::get_bool("SONGBIRD_AUTO_DISCOVERY", true),
-            refresh_interval: Duration::from_secs(
-                SafeEnv::get_usize("SONGBIRD_DISCOVERY_REFRESH_INTERVAL", 30) as u64,
-            ),
+            refresh_interval: Duration::from_secs(SafeEnv::get_usize(
+                "SONGBIRD_DISCOVERY_REFRESH_INTERVAL",
+                30,
+            ) as u64),
             discovery_timeout: Duration::from_secs(10),
             fallback_endpoints: HashMap::new(),
             health_checks: EnvironmentHealthCheckConfig::default(),
@@ -284,9 +285,12 @@ impl Default for NetworkBindingConfig {
             bind_address: SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0")
                 .parse()
                 .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
-            production_bind_address: SafeEnv::get_or_default("SONGBIRD_PRODUCTION_BIND_ADDRESS", "127.0.0.1")
-                .parse()
-                .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)),
+            production_bind_address: SafeEnv::get_or_default(
+                "SONGBIRD_PRODUCTION_BIND_ADDRESS",
+                "127.0.0.1",
+            )
+            .parse()
+            .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)),
             bind_port: SafeEnv::get_port("SONGBIRD_BIND_PORT", crate::constants::DEFAULT_PORT),
             port_range: PortRange::default(),
             interface_preferences: vec!["eth0".to_string(), "en0".to_string()],

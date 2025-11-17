@@ -37,10 +37,7 @@ fn test_service_query_default() -> SongbirdResult<()> {
 fn test_service_query_with_service_id() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_service_id("test-service-123");
     assert_eq!(
-        query.service_id.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.service_id.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         "test-service-123"
     );
     Ok(())
@@ -50,10 +47,7 @@ fn test_service_query_with_service_id() -> SongbirdResult<()> {
 fn test_service_query_with_service_type() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_service_type("http-api");
     assert_eq!(
-        query.service_type.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.service_type.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         "http-api"
     );
     Ok(())
@@ -63,10 +57,7 @@ fn test_service_query_with_service_type() -> SongbirdResult<()> {
 fn test_service_query_with_version() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_version("1.0.0");
     assert_eq!(
-        query.version.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.version.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         "1.0.0"
     );
     Ok(())
@@ -99,17 +90,17 @@ fn test_service_query_with_metadata() -> SongbirdResult<()> {
 
     assert_eq!(query.metadata.len(), 2);
     assert_eq!(
-        query.metadata.get("region").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query
+            .metadata
+            .get("region")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         &serde_json::json!("us-west")
     );
     assert_eq!(
-        query.metadata.get("tier").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query
+            .metadata
+            .get("tier")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         &serde_json::json!("premium")
     );
     Ok(())
@@ -126,10 +117,7 @@ fn test_service_query_with_health_status() -> SongbirdResult<()> {
 fn test_service_query_with_limit() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_limit(50);
     assert_eq!(
-        query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.limit.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         50
     );
     Ok(())
@@ -154,26 +142,17 @@ fn test_service_query_builder_chain() -> SongbirdResult<()> {
         .sort_by(SortBy::Health);
 
     assert_eq!(
-        query.service_type.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.service_type.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         "api"
     );
     assert_eq!(
-        query.version.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.version.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         ">=1.0.0"
     );
     assert_eq!(query.tags.len(), 2);
     assert!(matches!(query.health_status, Some(HealthStatus::Healthy)));
     assert_eq!(
-        query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.limit.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         100
     );
     assert!(matches!(query.sort_by, Some(SortBy::Health)));
@@ -190,17 +169,17 @@ fn test_service_query_complex_metadata() -> SongbirdResult<()> {
 
     assert_eq!(query.metadata.len(), 4);
     assert_eq!(
-        query.metadata.get("env").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query
+            .metadata
+            .get("env")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         &serde_json::json!("production")
     );
     assert_eq!(
-        query.metadata.get("az").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query
+            .metadata
+            .get("az")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         &serde_json::json!("us-east-1a")
     );
     Ok(())
@@ -353,18 +332,12 @@ fn test_service_query_deserialization() -> SongbirdResult<()> {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(
-        query.service_id.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.service_id.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         "test-123"
     );
     assert_eq!(query.tags.len(), 1);
     assert_eq!(
-        query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.limit.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         10
     );
     Ok(())
@@ -376,10 +349,7 @@ fn test_health_status_serialization() -> SongbirdResult<()> {
     let json = serde_json::to_string(&status);
     assert!(json.is_ok());
     assert!(json
-        .ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?
+        .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
         .contains("Healthy"));
     Ok(())
 }
@@ -390,10 +360,7 @@ fn test_sort_by_serialization() -> SongbirdResult<()> {
     let json = serde_json::to_string(&sort);
     assert!(json.is_ok());
     assert!(json
-        .ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?
+        .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
         .contains("Name"));
     Ok(())
 }
@@ -416,10 +383,7 @@ fn test_empty_query() -> SongbirdResult<()> {
 fn test_query_with_wildcard_version() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_version("*");
     assert_eq!(
-        query.version.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.version.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         "*"
     );
     Ok(())
@@ -440,10 +404,7 @@ fn test_query_with_complex_version_constraint() -> SongbirdResult<()> {
 fn test_query_with_zero_limit() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_limit(0);
     assert_eq!(
-        query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.limit.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         0
     );
     Ok(())
@@ -453,10 +414,7 @@ fn test_query_with_zero_limit() -> SongbirdResult<()> {
 fn test_query_with_large_limit() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_limit(10000);
     assert_eq!(
-        query.limit.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.limit.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         10000
     );
     Ok(())
@@ -467,17 +425,11 @@ fn test_query_with_empty_string_values() -> SongbirdResult<()> {
     let query = ServiceQuery::new().with_service_id("").with_service_type("");
 
     assert_eq!(
-        query.service_id.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.service_id.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         ""
     );
     assert_eq!(
-        query.service_type.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.service_type.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         ""
     );
     Ok(())
@@ -489,10 +441,7 @@ fn test_query_with_special_characters() -> SongbirdResult<()> {
         ServiceQuery::new().with_service_id("test-service-123_v2.0").with_tag("env:production");
 
     assert_eq!(
-        query.service_id.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.service_id.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         "test-service-123_v2.0"
     );
     assert_eq!(query.tags[0], "env:production");
@@ -511,10 +460,10 @@ fn test_metadata_with_complex_json() -> SongbirdResult<()> {
 
     let query = ServiceQuery::new().with_metadata("complex", complex_value.clone());
     assert_eq!(
-        query.metadata.get("complex").or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query
+            .metadata
+            .get("complex")
+            .or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         &complex_value
     );
     Ok(())
@@ -547,10 +496,7 @@ fn test_production_service_query() -> SongbirdResult<()> {
         .sort_by(SortBy::Health);
 
     assert_eq!(
-        query.service_type.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        query.service_type.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         "http-api"
     );
     assert_eq!(query.tags.len(), 2);

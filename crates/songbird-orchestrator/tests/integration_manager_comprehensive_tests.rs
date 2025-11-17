@@ -3,8 +3,8 @@
 //! Tests service coordination, startup/shutdown, timeout handling,
 //! configuration validation, and service availability checking.
 
-use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::integration::IntegrationManager;
+use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_types::{SongbirdError, SongbirdResult};
 use tokio::time::Duration;
@@ -96,10 +96,7 @@ async fn test_check_service_availability_success() -> SongbirdResult<()> {
     let result = manager.check_service_availability().await;
     assert!(result.is_ok(), "Service availability check should succeed");
     assert!(
-        result.ok_or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         "Services should be available"
     );
     Ok(())
@@ -115,10 +112,7 @@ async fn test_check_service_availability_with_custom_config() -> SongbirdResult<
     let result = manager.check_service_availability().await;
 
     assert!(result.is_ok());
-    assert!(result.ok_or_else(|_| SongbirdError::configuration(format!(
-        "Error: {}",
-        e
-    )))?);
+    assert!(result.ok_or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?);
 
     // Cleanup
     std::env::remove_var("GAMING_PORT");
@@ -205,25 +199,13 @@ async fn test_concurrent_service_availability_checks() -> SongbirdResult<()> {
     let r3 = manager.check_service_availability().await;
 
     assert!(
-        r1.is_ok()
-            && r1.ok_or_else(|_| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+        r1.is_ok() && r1.ok_or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?
     );
     assert!(
-        r2.is_ok()
-            && r2.ok_or_else(|_| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+        r2.is_ok() && r2.ok_or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?
     );
     assert!(
-        r3.is_ok()
-            && r3.ok_or_else(|_| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+        r3.is_ok() && r3.ok_or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?
     );
     Ok(())
 }

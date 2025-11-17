@@ -21,9 +21,8 @@ async fn test_registry_health_check_basic() -> SongbirdResult<()> {
     let health = registry.health_check().await;
     assert!(health.is_ok(), "Health check should succeed");
 
-    let component_health = health.ok_or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let component_health =
+        health.ok_or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
     assert_eq!(component_health.status, HealthStatus::Healthy);
     assert!(component_health.message.is_some());
     Ok(())
@@ -45,14 +44,16 @@ async fn test_registry_health_with_services() -> SongbirdResult<()> {
             health: HealthStatus::Healthy,
             metadata: HashMap::new(),
         };
-        registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("Failed to register service".to_string())
-        })?;
+        registry
+            .register_service(service)
+            .await
+            .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
     }
 
-    let health = registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    let health = registry
+        .health_check()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
     assert_eq!(health.status, HealthStatus::Healthy);
 
     // Health message should mention service count
@@ -80,15 +81,16 @@ async fn test_service_status_transitions() -> SongbirdResult<()> {
         metadata: HashMap::new(),
     };
 
-    registry.register_service(service).await.map_err(|e| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    registry
+        .register_service(service)
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
 
     // Verify initial status
     let services = registry.get_services();
-    let service = services.get(&service_id).or_else(|_| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    let service = services
+        .get(&service_id)
+        .or_else(|_| SongbirdError::configuration("Failed to register service".to_string()))?;
     assert_eq!(service.status, ServiceStatus::Starting);
     assert_eq!(service.health, HealthStatus::Unknown);
     Ok(())
@@ -116,9 +118,10 @@ async fn test_health_status_variations() -> SongbirdResult<()> {
             health,
             metadata: HashMap::new(),
         };
-        registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("Failed to register service".to_string())
-        })?;
+        registry
+            .register_service(service)
+            .await
+            .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
     }
 
     assert_eq!(
@@ -134,9 +137,10 @@ async fn test_component_health_timestamp() -> SongbirdResult<()> {
     let config = RegistryConfig::default();
     let registry = ServiceRegistry::new(config);
 
-    let health = registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let health = registry
+        .health_check()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Verify timestamp is present and reasonable
     assert!(health.last_check.is_some(), "Health check should have timestamp");
@@ -159,9 +163,8 @@ async fn test_health_check_repeatability() -> SongbirdResult<()> {
         let health = registry.health_check().await;
         assert!(health.is_ok(), "Health check should always succeed");
 
-        let component_health = health.ok_or_else(|_| {
-            SongbirdError::configuration("Failed health check".to_string())
-        })?;
+        let component_health = health
+            .ok_or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
         assert_eq!(component_health.status, HealthStatus::Healthy);
     }
     Ok(())
@@ -173,9 +176,10 @@ async fn test_registry_lifecycle_health() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new(config);
 
     // Health before initialization
-    let health1 = registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let health1 = registry
+        .health_check()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed health check".to_string()))?;
     assert_eq!(health1.status, HealthStatus::Healthy);
 
     // Initialize
@@ -190,25 +194,29 @@ async fn test_registry_lifecycle_health() -> SongbirdResult<()> {
     assert_eq!(health2.status, HealthStatus::Healthy);
 
     // Start
-    registry.start().await.map_err(|e| {
-        SongbirdError::configuration("Failed to start orchestrator".to_string())
-    })?;
+    registry
+        .start()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
 
     // Health after start
-    let health3 = registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("Failed to start orchestrator".to_string())
-    })?;
+    let health3 = registry
+        .health_check()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
     assert_eq!(health3.status, HealthStatus::Healthy);
 
     // Stop
-    registry.stop().await.map_err(|e| {
-        SongbirdError::configuration("Failed to start orchestrator".to_string())
-    })?;
+    registry
+        .stop()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
 
     // Health after stop should still work
-    let health4 = registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("Failed to stop orchestrator".to_string())
-    })?;
+    let health4 = registry
+        .health_check()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to stop orchestrator".to_string()))?;
     assert_eq!(health4.status, HealthStatus::Healthy);
     Ok(())
 }
@@ -233,12 +241,10 @@ async fn test_service_health_distribution() -> SongbirdResult<()> {
                 health: health.clone(),
                 metadata: HashMap::new(),
             };
-            registry.register_service(service).await.map_err(|e| {
-                SongbirdError::configuration(format!(
-                    "Error: {}",
-                    e
-                ))
-            })?;
+            registry
+                .register_service(service)
+                .await
+                .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?;
         }
     }
 
@@ -255,9 +261,10 @@ async fn test_service_health_distribution() -> SongbirdResult<()> {
     assert_eq!(unhealthy, 2);
 
     // Registry overall health should still be healthy
-    let registry_health = registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let registry_health = registry
+        .health_check()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed health check".to_string()))?;
     assert_eq!(registry_health.status, HealthStatus::Healthy);
     Ok(())
 }
@@ -283,15 +290,16 @@ async fn test_health_monitoring_metadata() -> SongbirdResult<()> {
     };
 
     let service_id = service.id;
-    registry.register_service(service).await.map_err(|e| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    registry
+        .register_service(service)
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
 
     // Retrieve and verify metadata
     let services = registry.get_services();
-    let service = services.get(&service_id).or_else(|_| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    let service = services
+        .get(&service_id)
+        .or_else(|_| SongbirdError::configuration("Failed to register service".to_string()))?;
 
     assert_eq!(service.metadata.get("health_score"), Some(&"95".to_string()));
     assert!(service.metadata.contains_key("last_health_check"));
@@ -304,9 +312,10 @@ async fn test_component_health_message_content() -> SongbirdResult<()> {
     let mut registry = ServiceRegistry::new(config);
 
     // Empty registry
-    let health_empty = registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let health_empty = registry
+        .health_check()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed health check".to_string()))?;
     assert!(health_empty.message.is_some());
     if let Some(msg) = &health_empty.message {
         assert!(msg.contains("0"), "Should mention 0 services");
@@ -323,15 +332,17 @@ async fn test_component_health_message_content() -> SongbirdResult<()> {
             health: HealthStatus::Healthy,
             metadata: HashMap::new(),
         };
-        registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("Failed to register service".to_string())
-        })?;
+        registry
+            .register_service(service)
+            .await
+            .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
     }
 
     // With services
-    let health_with_services = registry.health_check().await.map_err(|e| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    let health_with_services = registry
+        .health_check()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
     assert!(health_with_services.message.is_some());
     if let Some(msg) = &health_with_services.message {
         assert!(msg.contains("3"), "Should mention 3 services");

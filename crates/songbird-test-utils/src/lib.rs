@@ -25,9 +25,7 @@ pub mod performance_testing;
 pub mod service_fixtures;
 
 // Re-export core testing types (canonical pattern)
-pub use canonical_test_framework::{
-    MockService, TestEnvironment,
-};
+pub use canonical_test_framework::{MockService, TestEnvironment};
 pub use chaos_engineering::ChaosEngineeringManager;
 pub use error_testing::ErrorTestingFramework;
 pub use fixtures::*;
@@ -38,7 +36,9 @@ pub use songbird_types::SongbirdError;
 
 // Re-export mocks for test convenience
 pub use mocks::{
-    HealthStatus, MockPrimalServer, MockResponse,
+    HealthStatus,
+    MockPrimalServer,
+    MockResponse,
     // ✅ REMOVED: Deprecated legacy mock exports (Nov 9, 2025)
     // Use MockCapabilityServer::new(CapabilityType::*) instead
 };

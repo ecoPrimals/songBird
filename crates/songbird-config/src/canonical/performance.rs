@@ -82,9 +82,7 @@ impl Default for PerformanceConfig {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or_else(|| {
                     // Default to number of CPU cores
-                    std::thread::available_parallelism()
-                        .map(std::num::NonZero::get)
-                        .unwrap_or(4)
+                    std::thread::available_parallelism().map(std::num::NonZero::get).unwrap_or(4)
                 }),
             max_concurrent_requests: env::var("SONGBIRD_MAX_CONCURRENT_REQUESTS")
                 .ok()
@@ -403,4 +401,3 @@ mod tests {
         assert!(config.thread_pool_size >= 1);
     }
 }
-

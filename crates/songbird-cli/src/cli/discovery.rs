@@ -53,9 +53,15 @@ impl NetworkScanner {
         let mut discovered_nodes = Vec::new();
         // Common service ports - should be discovered via capability endpoints
         let common_ports = [
-            SafeEnv::get_port("DISCOVERY_PORT_1", songbird_config::defaults::ports::orchestrator_port()),
+            SafeEnv::get_port(
+                "DISCOVERY_PORT_1",
+                songbird_config::defaults::ports::orchestrator_port(),
+            ),
             SafeEnv::get_port("DISCOVERY_PORT_2", songbird_config::defaults::ports::metrics_port()),
-            SafeEnv::get_port("DISCOVERY_PORT_3", songbird_config::defaults::ports::dashboard_port()),
+            SafeEnv::get_port(
+                "DISCOVERY_PORT_3",
+                songbird_config::defaults::ports::dashboard_port(),
+            ),
             4000, // External service port
             5000, // External service port
             8000, // External service port

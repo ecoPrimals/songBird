@@ -36,9 +36,7 @@ pub struct AppState {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_env_filter("squirrel=info,tower_http=debug")
-        .init();
+    tracing_subscriber::fmt().with_env_filter("squirrel=info,tower_http=debug").init();
 
     info!("🐿️  Squirrel AI/MCP Service Starting...");
 
@@ -122,7 +120,7 @@ async fn info_handler(State(state): State<AppState>) -> impl IntoResponse {
         "ai_provider": state.config.ai_provider,
         "status": "operational"
     });
-    
+
     Json(info)
 }
 
@@ -241,11 +239,7 @@ async fn mcp_init_handler(
 
     let response = McpInitResponse {
         protocol_version: "1.0".to_string(),
-        capabilities: vec![
-            "tools".to_string(),
-            "prompts".to_string(),
-            "resources".to_string(),
-        ],
+        capabilities: vec!["tools".to_string(), "prompts".to_string(), "resources".to_string()],
         server_info: serde_json::json!({
             "name": "squirrel",
             "version": env!("CARGO_PKG_VERSION")
@@ -299,11 +293,9 @@ async fn mcp_execute_handler(
             // Parse and execute chat
             if let Ok(chat_req) = serde_json::from_value::<ChatRequest>(req.arguments) {
                 match state.ai_client.chat(chat_req).await {
-                    Ok(response) => {
-                        serde_json::to_value(response)
-                            .map(Json)
-                            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
-                    },
+                    Ok(response) => serde_json::to_value(response)
+                        .map(Json)
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR),
                     Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
                 }
             } else {
@@ -314,11 +306,9 @@ async fn mcp_execute_handler(
             // Parse and execute inference
             if let Ok(inf_req) = serde_json::from_value::<InferenceRequest>(req.arguments) {
                 match state.ai_client.inference(inf_req).await {
-                    Ok(response) => {
-                        serde_json::to_value(response)
-                            .map(Json)
-                            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
-                    },
+                    Ok(response) => serde_json::to_value(response)
+                        .map(Json)
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR),
                     Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
                 }
             } else {
@@ -331,4 +321,3 @@ async fn mcp_execute_handler(
         }
     }
 }
-

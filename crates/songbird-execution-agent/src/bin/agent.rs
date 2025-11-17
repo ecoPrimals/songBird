@@ -14,16 +14,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-    
+
     info!("Songbird Execution Agent starting...");
-    
+
     // Load configuration (for now, use defaults - can add config file support later)
     let config = AgentConfig::default();
-    
+
     // Initialize and start the agent
     let server = init_agent(config).await?;
     server.serve().await?;
-    
+
     Ok(())
 }
-

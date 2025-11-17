@@ -194,10 +194,7 @@ async fn test_capability_result_handling() -> SongbirdResult<()> {
 
     assert!(ok_cap.is_ok());
     assert_eq!(
-        ok_cap.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        ok_cap.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         CapabilityType::Security
     );
     Ok(())

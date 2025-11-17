@@ -29,14 +29,12 @@ use axum::{
 };
 
 // Re-export chunked upload handlers
-pub use super::chunked_upload::{
-    negotiate_chunked_upload, upload_chunk, finalize_chunked_upload,
-};
+pub use super::chunked_upload::{finalize_chunked_upload, negotiate_chunked_upload, upload_chunk};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
-use sysinfo::{System, Disks};
+use sysinfo::{Disks, System};
 use tokio::fs;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info};
@@ -252,38 +250,35 @@ pub fn deployment_routes(state: DeploymentState) -> Router {
 }
 
 /// GET /api/deployment/capabilities - Discover node capabilities
-async fn get_capabilities(
-    State(state): State<DeploymentState>,
-) -> Json<DeploymentCapabilities> {
+async fn get_capabilities(State(state): State<DeploymentState>) -> Json<DeploymentCapabilities> {
     info!("📊 Capability discovery request received");
-    
+
     // Detect network type (simplified - assume LAN for now)
     let network_type = detect_network_type();
-    
+
     // Estimate bandwidth based on network type
     let bandwidth = estimate_bandwidth(&network_type);
-    
+
     // Detect resources
     let mut sys = System::new_all();
     sys.refresh_all();
-    
+
     let total_memory = sys.total_memory() / 1024 / 1024 / 1024; // GB
     let available_memory = sys.available_memory() / 1024 / 1024 / 1024; // GB
     let cpu_cores = num_cpus::get();
     let cpu_load = sys.global_cpu_info().cpu_usage();
-    
+
     // Get available storage (first disk)
     let disks = Disks::new_with_refreshed_list();
-    let available_storage = disks.list()
-        .first()
-        .map_or(0, |d| d.available_space() / 1024 / 1024 / 1024);
-    
+    let available_storage =
+        disks.list().first().map_or(0, |d| d.available_space() / 1024 / 1024 / 1024);
+
     // Count current deployments
     let current_deployments = state.deployments.read().await.len();
-    
+
     // Calculate max concurrent deployments based on available memory
     let max_concurrent = calculate_max_concurrent(available_memory);
-    
+
     // Build capabilities response
     let capabilities = DeploymentCapabilities {
         node_id: hostname::get()
@@ -326,18 +321,24 @@ async fn get_capabilities(
             current_deployments,
         },
         preferences: DeploymentPreferences {
-            preferred_compression: if network_type == "lan" { "gzip" } else { "zstd" }.to_string(),
+            preferred_compression: if network_type == "lan" {
+                "gzip"
+            } else {
+                "zstd"
+            }
+            .to_string(),
             preferred_method: "single".to_string(), // Will be "chunked" in Phase 3
             encryption_required: false,
         },
     };
-    
-    info!("✅ Capabilities: {} network, {}MB up/down, {}GB available storage",
+
+    info!(
+        "✅ Capabilities: {} network, {}MB up/down, {}GB available storage",
         capabilities.network.network_type,
         capabilities.network.bandwidth_estimate.upload_mbps,
         capabilities.resources.available_storage_gb
     );
-    
+
     Json(capabilities)
 }
 
@@ -376,7 +377,7 @@ fn estimate_bandwidth(network_type: &str) -> BandwidthEstimate {
 /// Calculate max concurrent deployments based on available memory
 fn calculate_max_concurrent(available_memory_gb: u64) -> usize {
     // Assume each deployment needs ~1GB
-    
+
     (available_memory_gb as usize).max(1).min(10)
 }
 
@@ -408,12 +409,10 @@ async fn deploy_binary(
         match name.as_str() {
             "binary" => {
                 debug!("📥 Receiving binary data...");
-                binary_data = Some(
-                    field
-                        .bytes()
-                        .await
-                        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Binary read error: {}", e)))?,
-                );
+                binary_data =
+                    Some(field.bytes().await.map_err(|e| {
+                        (StatusCode::BAD_REQUEST, format!("Binary read error: {}", e))
+                    })?);
             }
             "service_name" => {
                 service_name = field
@@ -442,7 +441,8 @@ async fn deploy_binary(
         }
     }
 
-    let binary_data = binary_data.ok_or((StatusCode::BAD_REQUEST, "No binary provided".to_string()))?;
+    let binary_data =
+        binary_data.ok_or((StatusCode::BAD_REQUEST, "No binary provided".to_string()))?;
 
     info!("📦 Deploying service: {}", service_name);
     debug!("   Deployment ID: {}", deployment_id);
@@ -451,9 +451,9 @@ async fn deploy_binary(
 
     // Create deployment directory
     let deploy_dir = format!("/tmp/songbird-deployments/{}", deployment_id);
-    fs::create_dir_all(&deploy_dir)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Directory creation failed: {}", e)))?;
+    fs::create_dir_all(&deploy_dir).await.map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("Directory creation failed: {}", e))
+    })?;
 
     // Write binary
     let binary_path = format!("{}/service", deploy_dir);
@@ -467,7 +467,9 @@ async fn deploy_binary(
         use std::os::unix::fs::PermissionsExt;
         let mut perms = fs::metadata(&binary_path)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Metadata read failed: {}", e)))?
+            .map_err(|e| {
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("Metadata read failed: {}", e))
+            })?
             .permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&binary_path, perms)
@@ -506,7 +508,10 @@ async fn deploy_binary(
             Err(e) => {
                 error!("❌ Service start failed: {}", e);
                 deployment.status = DeploymentStatus::Failed;
-                return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Service start failed: {}", e)));
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Service start failed: {}", e),
+                ));
             }
         }
     }
@@ -515,10 +520,9 @@ async fn deploy_binary(
     state.deployments.write().await.insert(deployment_id.clone(), deployment.clone());
 
     // Build service URL
-    let service_url = if let (Some(host), Some(port)) = (
-        env_vars.get("COMPUTE_HOST").or(env_vars.get("SERVICE_HOST")),
-        port,
-    ) {
+    let service_url = if let (Some(host), Some(port)) =
+        (env_vars.get("COMPUTE_HOST").or(env_vars.get("SERVICE_HOST")), port)
+    {
         Some(format!("http://{}:{}", host, port))
     } else {
         None
@@ -537,7 +541,10 @@ async fn deploy_binary(
 }
 
 /// Start a service with environment variables
-pub async fn start_service(binary_path: &str, env_vars: &HashMap<String, String>) -> Result<u32, String> {
+pub async fn start_service(
+    binary_path: &str,
+    env_vars: &HashMap<String, String>,
+) -> Result<u32, String> {
     debug!("🎬 Starting service: {}", binary_path);
 
     let mut command = Command::new(binary_path);
@@ -548,15 +555,10 @@ pub async fn start_service(binary_path: &str, env_vars: &HashMap<String, String>
     }
 
     // Run in background with nohup
-    command
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .stdin(Stdio::null());
+    command.stdout(Stdio::null()).stderr(Stdio::null()).stdin(Stdio::null());
 
     // Spawn the process
-    let child = command
-        .spawn()
-        .map_err(|e| format!("Failed to spawn process: {}", e))?;
+    let child = command.spawn().map_err(|e| format!("Failed to spawn process: {}", e))?;
 
     let pid = child.id();
     debug!("✅ Service started with PID: {}", pid);
@@ -570,7 +572,7 @@ async fn get_deployment_status(
     Path(deployment_id): Path<String>,
 ) -> Result<Json<DeploymentInfo>, (StatusCode, String)> {
     let deployments = state.deployments.read().await;
-    
+
     deployments
         .get(&deployment_id)
         .cloned()
@@ -586,7 +588,7 @@ async fn stop_deployment(
     info!("🛑 Stopping deployment: {}", deployment_id);
 
     let mut deployments = state.deployments.write().await;
-    
+
     let deployment = deployments
         .get_mut(&deployment_id)
         .ok_or((StatusCode::NOT_FOUND, format!("Deployment '{}' not found", deployment_id)))?;
@@ -594,17 +596,14 @@ async fn stop_deployment(
     // Stop process if running
     if let Some(pid) = deployment.pid {
         debug!("Stopping process PID: {}", pid);
-        
+
         // Try to stop the process (best effort)
         #[cfg(unix)]
         {
             // Use kill command as fallback
-            let _ = std::process::Command::new("kill")
-                .arg("-TERM")
-                .arg(pid.to_string())
-                .output();
+            let _ = std::process::Command::new("kill").arg("-TERM").arg(pid.to_string()).output();
         }
-        
+
         #[cfg(windows)]
         {
             let _ = std::process::Command::new("taskkill")
@@ -629,9 +628,7 @@ async fn stop_deployment(
 }
 
 /// GET /api/deployment/list - List all deployments
-async fn list_deployments(
-    State(state): State<DeploymentState>,
-) -> Json<Vec<DeploymentInfo>> {
+async fn list_deployments(State(state): State<DeploymentState>) -> Json<Vec<DeploymentInfo>> {
     let deployments = state.deployments.read().await;
     Json(deployments.values().cloned().collect())
 }
@@ -645,13 +642,13 @@ mod tests {
         let state = DeploymentState::new();
         assert!(state.deployments.try_read().is_ok());
     }
-    
+
     #[test]
     fn test_detect_network_type() {
         let network_type = detect_network_type();
         assert!(["lan", "vpn", "internet"].contains(&network_type.as_str()));
     }
-    
+
     #[test]
     fn test_calculate_max_concurrent() {
         assert_eq!(calculate_max_concurrent(0), 1);

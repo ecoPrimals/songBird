@@ -32,7 +32,11 @@ pub use error_helpers::{OptionElimination, SafeEnv, SafeParse, UnwrapElimination
 
 // Re-export response types
 pub use response::{
-    AIFirstResponse, BoolResponse, JsonResponse, PaginatedResponse, ResponseError,
+    AIFirstResponse,
+    BoolResponse,
+    JsonResponse,
+    PaginatedResponse,
+    ResponseError,
     StringResponse, // ✅ REMOVED: SongbirdResult (duplicate import from errors module)
 };
 
@@ -61,8 +65,8 @@ pub use constants::*;
 pub mod adapters;
 pub mod config;
 pub mod constants;
-pub mod errors;
 pub mod error_helpers;
+pub mod errors;
 pub mod health;
 pub mod memory_optimized;
 // pub mod performance;  // Temporarily disabled - syntax errors need fixing

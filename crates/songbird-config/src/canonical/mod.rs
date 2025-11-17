@@ -23,37 +23,63 @@ pub mod service;
 
 // Re-export canonical constants for easy access (Phase 4: Enhanced Nov 8, 2025)
 pub use constants::{
-    // Network configuration
-    get_bind_address, get_canonical_bind_address, get_default_bind_address, default_bind_address,
-    default_discovery_port, external_address, default_subnet, node_id,
-    // Port configuration
-    get_port_range_start, get_port_range_end, get_dashboard_port,
-    // Endpoint configuration
-    get_canonical_endpoint, get_canonical_discovery_endpoint, get_canonical_security_endpoint,
-    get_canonical_orchestrator_endpoint, get_canonical_gaming_endpoint,
-    // Primal configuration
-    get_primal_endpoint, get_configured_primal_names, get_common_primal_ports,
-    find_primals_with_capability,
-    // Timeout configuration
-    get_connection_timeout_ms,
-    // Resource management
-    get_max_connections, get_worker_threads, get_buffer_pool_size, get_batch_size,
+    default_bind_address,
+    default_discovery_port,
+    default_subnet,
     enable_zero_copy,
-    // Directory configuration
-    get_log_dir, get_cache_dir, get_data_dir, get_config_dir, get_temp_dir,
-    // Logging configuration
-    get_log_level,
-    // Environment checks
-    is_development_environment, is_production_environment,
+    external_address,
+    find_primals_with_capability,
+    get_batch_size,
+    // Network configuration
+    get_bind_address,
+    get_buffer_pool_size,
+    get_cache_dir,
+    get_canonical_bind_address,
     // CORS configuration
     get_canonical_cors_origins,
+    get_canonical_discovery_endpoint,
+    // Endpoint configuration
+    get_canonical_endpoint,
+    get_canonical_gaming_endpoint,
+    get_canonical_orchestrator_endpoint,
+    get_canonical_security_endpoint,
+    get_common_primal_ports,
+    get_config_dir,
+    get_configured_primal_names,
+    // Timeout configuration
+    get_connection_timeout_ms,
+    get_dashboard_port,
+    get_data_dir,
+    get_default_bind_address,
+    // Directory configuration
+    get_log_dir,
+    // Logging configuration
+    get_log_level,
+    // Resource management
+    get_max_connections,
+    get_port_range_end,
+    // Port configuration
+    get_port_range_start,
+    // Primal configuration
+    get_primal_endpoint,
+    get_temp_dir,
+    get_worker_threads,
+    // Environment checks
+    is_development_environment,
+    is_production_environment,
+    node_id,
     // Protocol configuration
     protocol_port_mappings,
-    // Constants
-    DEFAULT_CONFIG_PATH, LOCALHOST_IPV4, DEFAULT_BIND_ADDRESS, DEFAULT_LOCALHOST,
-    DEFAULT_CACHE_TTL, DEFAULT_EVALUATION_TIMEOUT, DEFAULT_METRICS_INTERVAL,
     // Structured exports (note: submodules accessible via constants::network::, etc.)
     CanonicalNetworkDefaults,
+    DEFAULT_BIND_ADDRESS,
+    DEFAULT_CACHE_TTL,
+    // Constants
+    DEFAULT_CONFIG_PATH,
+    DEFAULT_EVALUATION_TIMEOUT,
+    DEFAULT_LOCALHOST,
+    DEFAULT_METRICS_INTERVAL,
+    LOCALHOST_IPV4,
 };
 
 // Re-export all canonical types
@@ -61,19 +87,15 @@ pub use discovery::*;
 pub use environment::*;
 pub use load_balancing::*;
 
-// Network exports  
-pub use network::{
-    NetworkConfig, GamingScale,
-};
+// Network exports
+pub use network::{GamingScale, NetworkConfig};
 
 pub use observability::*;
 pub use performance::*;
 pub use primals::*;
 
 // Resilience exports
-pub use resilience::{
-    RetryConfig, CircuitBreakerConfig, RateLimitingConfig,
-};
+pub use resilience::{CircuitBreakerConfig, RateLimitingConfig, RetryConfig};
 
 pub use security::*;
 

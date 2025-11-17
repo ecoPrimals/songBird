@@ -96,9 +96,8 @@ async fn test_discover_services_empty_response() -> SongbirdResult<()> {
 
     // ASSERT: Should return OK with empty list (graceful degradation)
     assert!(result.is_ok());
-    let services = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let services = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(services.len(), 0, "Should return empty list when no services found");
     Ok(())
 }
@@ -120,9 +119,8 @@ async fn test_discover_services_network_timeout() -> SongbirdResult<()> {
 
     // ASSERT: Should handle timeout gracefully
     assert!(result.is_ok(), "Discovery should not panic on timeout");
-    let services = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let services = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(services.len(), 0, "Timeout should result in no discovered services");
     Ok(())
 }
@@ -140,12 +138,7 @@ async fn test_find_capability_providers_empty_registry() -> SongbirdResult<()> {
     // ASSERT: Should return empty list, not error
     assert!(result.is_ok());
     assert_eq!(
-        result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .len(),
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
         0
     );
     Ok(())
@@ -288,9 +281,8 @@ async fn test_discover_services_graceful_failure_handling() -> SongbirdResult<()
 
     // ASSERT: Should succeed with empty list (all endpoints failed gracefully)
     assert!(result.is_ok(), "Discovery should handle all failures gracefully");
-    let services = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let services = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(services.len(), 0, "No services expected when all endpoints fail");
     Ok(())
 }
@@ -377,12 +369,7 @@ async fn test_discovery_with_empty_endpoints() -> SongbirdResult<()> {
     // ASSERT: Should return empty list, not error
     assert!(result.is_ok());
     assert_eq!(
-        result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .len(),
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
         0
     );
     Ok(())
@@ -440,12 +427,7 @@ async fn test_very_long_capability_name() -> SongbirdResult<()> {
     // ASSERT: Handles gracefully
     assert!(result.is_ok());
     assert_eq!(
-        result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .len(),
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
         0
     );
     Ok(())
@@ -511,12 +493,7 @@ async fn test_find_providers_with_empty_string() -> SongbirdResult<()> {
     // ASSERT: Should handle gracefully
     assert!(result.is_ok());
     assert_eq!(
-        result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .len(),
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
         0
     );
     Ok(())

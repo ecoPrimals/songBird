@@ -96,4 +96,3 @@ impl Default for ConnectionPoolConfig {
         }
     }
 }
-

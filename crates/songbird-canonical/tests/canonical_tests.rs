@@ -20,7 +20,6 @@ use songbird_test_utils::test_bind_address;
 use songbird_test_utils::test_dashboard_port;
 use songbird_test_utils::test_orchestrator_port;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 #[test]
 fn test_canonical_type_creation() {

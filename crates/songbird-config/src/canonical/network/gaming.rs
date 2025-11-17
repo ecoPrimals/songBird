@@ -104,4 +104,3 @@ impl std::fmt::Display for GamingScale {
         }
     }
 }
-

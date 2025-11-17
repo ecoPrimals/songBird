@@ -236,9 +236,7 @@ pub fn get_worker_threads() -> usize {
     SafeEnv::parse("SONGBIRD_WORKER_THREADS", {
         // Use CPU count or container limits
         // Fallback to 4 threads
-        std::thread::available_parallelism()
-            .map(std::num::NonZero::get)
-            .unwrap_or(4)
+        std::thread::available_parallelism().map(std::num::NonZero::get).unwrap_or(4)
     })
 }
 
@@ -452,9 +450,9 @@ pub fn get_common_primal_ports() -> Vec<u16> {
 
         ports.into_iter().map(|p| p.to_string()).collect::<Vec<_>>().join(",")
     })
-        .split(',')
-        .filter_map(|s| s.trim().parse().ok())
-        .collect()
+    .split(',')
+    .filter_map(|s| s.trim().parse().ok())
+    .collect()
 }
 
 /// Universal capability query - works with any capability name
@@ -476,17 +474,13 @@ pub fn get_canonical_endpoint(service_name: &str, default_port: u16) -> String {
             format!("https://{}:8443", get_canonical_bind_address()),
         ),
         "staging" => SafeEnv::get_or_default("SONGBIRD_BASE_URL", "http://staging.internal:8080"),
-        _ => SafeEnv::get_or_default(
-            "SONGBIRD_BASE_URL",
-            format!("http://127.0.0.1:{default_port}"),
-        ),
+        _ => {
+            SafeEnv::get_or_default("SONGBIRD_BASE_URL", format!("http://127.0.0.1:{default_port}"))
+        }
     };
 
     // Service-specific endpoint override
-    SafeEnv::get_or_default(
-        &format!("SONGBIRD_{}_ENDPOINT", service_name.to_uppercase()),
-        base_url,
-    )
+    SafeEnv::get_or_default(&format!("SONGBIRD_{}_ENDPOINT", service_name.to_uppercase()), base_url)
 }
 
 /// Get canonical discovery endpoint
@@ -545,10 +539,7 @@ pub fn get_cache_dir() -> String {
                 SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!(
-                "{}/.cache/songbird",
-                SafeEnv::get_or_default("HOME", "/tmp".to_string()),
-            )
+            format!("{}/.cache/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
         }
     })
 }
@@ -564,10 +555,7 @@ pub fn get_data_dir() -> String {
                 SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!(
-                "{}/.local/share/songbird",
-                SafeEnv::get_or_default("HOME", "/tmp".to_string()),
-            )
+            format!("{}/.local/share/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
         }
     })
 }
@@ -583,10 +571,7 @@ pub fn get_config_dir() -> String {
                 SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!(
-                "{}/.config/songbird",
-                SafeEnv::get_or_default("HOME", "/tmp".to_string()),
-            )
+            format!("{}/.config/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
         }
     })
 }
@@ -594,10 +579,7 @@ pub fn get_config_dir() -> String {
 /// Get temporary directory from environment or use system default
 #[must_use]
 pub fn get_temp_dir() -> String {
-    SafeEnv::get_or_default(
-        "SONGBIRD_TEMP_DIR",
-        std::env::temp_dir().to_string_lossy().to_string(),
-    )
+    SafeEnv::get_or_default("SONGBIRD_TEMP_DIR", std::env::temp_dir().to_string_lossy().to_string())
 }
 
 // ==================== LOGGING CONFIGURATION ====================

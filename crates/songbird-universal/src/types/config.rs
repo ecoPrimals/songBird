@@ -64,7 +64,7 @@ impl Default for LoadBalancingConfig {
 }
 
 /// **CONSOLIDATED**: Re-export of canonical RetryConfig (Nov 10, 2025)
-/// 
+///
 /// Field mapping: All fields match canonical 1:1
 /// Default implementation provided by canonical::resilience::RetryConfig
 pub use songbird_config::canonical::resilience::RetryConfig;

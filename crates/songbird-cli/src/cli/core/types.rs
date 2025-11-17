@@ -198,7 +198,8 @@ mod tests {
 
     #[test]
     fn test_cli_result_error() {
-        let result: SongbirdResult<String> = SongbirdResult::error("Something failed".to_string(), 50);
+        let result: SongbirdResult<String> =
+            SongbirdResult::error("Something failed".to_string(), 50);
 
         assert!(!result.success);
         assert!(result.data.is_none());
@@ -224,13 +225,8 @@ mod tests {
         let serialized = serde_json::to_string(&result).map_err(|e| {
             SongbirdError::configuration(format!("Missing performance configuration: {}", e))
         })?;
-        let deserialized: SongbirdResult<Vec<String>> =
-            serde_json::from_str(&serialized).map_err(|e| {
-                SongbirdError::configuration(format!(
-                    "Error: {}",
-                    e
-                ))
-            })?;
+        let deserialized: SongbirdResult<Vec<String>> = serde_json::from_str(&serialized)
+            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?;
 
         assert_eq!(result.success, deserialized.success);
         assert_eq!(result.execution_time_ms, deserialized.execution_time_ms);

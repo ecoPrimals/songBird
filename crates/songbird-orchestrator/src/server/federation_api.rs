@@ -21,13 +21,12 @@ use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 // Import capability registry types
-use crate::core::registry::CapabilityRegistry;
 use crate::core::registry::types::{
-    CapabilityRegistrationRequest, CapabilityRegistrationResponse,
-    HeartbeatRequest as CapabilityHeartbeatRequest,
-    ProviderListResponse, RegistrationData, HeartbeatData,
-    ProviderListData, ProviderSummary,
+    CapabilityRegistrationRequest, CapabilityRegistrationResponse, HeartbeatData,
+    HeartbeatRequest as CapabilityHeartbeatRequest, ProviderListData, ProviderListResponse,
+    ProviderSummary, RegistrationData,
 };
+use crate::core::registry::CapabilityRegistry;
 
 /// Shared application state for federation
 #[derive(Debug, Clone)]
@@ -205,7 +204,9 @@ async fn register_capability_provider(
         request.capabilities.len()
     );
 
-    let capability_registry = if let Some(registry) = &state.capability_registry { registry } else {
+    let capability_registry = if let Some(registry) = &state.capability_registry {
+        registry
+    } else {
         warn!("Capability registry not initialized");
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -242,10 +243,7 @@ async fn register_capability_provider(
             )
         }
         Err(e) => {
-            warn!(
-                "❌ Failed to register provider '{}': {}",
-                request.provider_id, e
-            );
+            warn!("❌ Failed to register provider '{}': {}", request.provider_id, e);
 
             (
                 StatusCode::BAD_REQUEST,
@@ -265,10 +263,7 @@ async fn capability_provider_heartbeat(
     State(state): State<Arc<FederationAppState>>,
     Json(request): Json<CapabilityHeartbeatRequest>,
 ) -> impl IntoResponse {
-    debug!(
-        "💓 Heartbeat from provider '{}'",
-        request.provider_id
-    );
+    debug!("💓 Heartbeat from provider '{}'", request.provider_id);
 
     let capability_registry = match &state.capability_registry {
         Some(registry) => registry,
@@ -287,8 +282,8 @@ async fn capability_provider_heartbeat(
 
     // Convert heartbeat status to ProviderHealth if provided
     let health = request.health_status.map(|status| {
-        use crate::core::registry::types::{ProviderHealth, HealthStatus, ResourceUsage};
-        
+        use crate::core::registry::types::{HealthStatus, ProviderHealth, ResourceUsage};
+
         ProviderHealth {
             status: match status.status.as_str() {
                 "healthy" => HealthStatus::Healthy,
@@ -310,10 +305,7 @@ async fn capability_provider_heartbeat(
         .await
     {
         Ok(()) => {
-            debug!(
-                "✅ Heartbeat acknowledged from '{}'",
-                request.provider_id
-            );
+            debug!("✅ Heartbeat acknowledged from '{}'", request.provider_id);
 
             (
                 StatusCode::OK,
@@ -329,10 +321,7 @@ async fn capability_provider_heartbeat(
             )
         }
         Err(e) => {
-            warn!(
-                "❌ Heartbeat failed from '{}': {}",
-                request.provider_id, e
-            );
+            warn!("❌ Heartbeat failed from '{}': {}", request.provider_id, e);
 
             (
                 StatusCode::BAD_REQUEST,
@@ -577,7 +566,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore] // DISABLED: FederationState API refactoring in progress
-    // Re-enable after: Federation API stabilization (tracked in COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md)
+              // Re-enable after: Federation API stabilization (tracked in COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md)
     async fn test_federation_app_state_creation() {
         let _state = create_test_state();
         // Temporarily disabled - API under refactoring
@@ -586,7 +575,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore] // DISABLED: FederationState API refactoring in progress
-    // Re-enable after: Federation API stabilization (tracked in COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md)
+              // Re-enable after: Federation API stabilization (tracked in COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md)
     async fn test_federation_app_state_clone() {
         let state = create_test_state();
         let _cloned = state.clone();

@@ -263,14 +263,15 @@ impl CapabilityEndpointResolver {
 
         // Query registry for services providing this capability
         // Supports Consul, Eureka, and other HTTP-based registries
-        
+
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
-        
+
         // Try Consul-style query first
-        let consul_url = format!("{}/v1/catalog/service/{}", _registry_endpoint, capability.as_str());
+        let consul_url =
+            format!("{}/v1/catalog/service/{}", _registry_endpoint, capability.as_str());
         match client.get(&consul_url).send().await {
             Ok(response) if response.status().is_success() => {
                 // Parse Consul service catalog response
@@ -278,21 +279,31 @@ impl CapabilityEndpointResolver {
                     if let Some(service) = services.first() {
                         // Extract service endpoint
                         if let (Some(address), Some(port)) = (
-                            service.get("ServiceAddress").and_then(|v| v.as_str()).or_else(|| service.get("Address").and_then(|v| v.as_str())),
-                            service.get("ServicePort").and_then(serde_json::Value::as_u64).or_else(|| service.get("Port").and_then(serde_json::Value::as_u64))
+                            service
+                                .get("ServiceAddress")
+                                .and_then(|v| v.as_str())
+                                .or_else(|| service.get("Address").and_then(|v| v.as_str())),
+                            service.get("ServicePort").and_then(serde_json::Value::as_u64).or_else(
+                                || service.get("Port").and_then(serde_json::Value::as_u64),
+                            ),
                         ) {
                             let endpoint = if address.contains("://") {
                                 format!("{address}:{port}")
                             } else {
                                 format!("http://{address}:{port}")
                             };
-                            
-                            debug!("Found {} capability at {} via registry", capability.as_str(), endpoint);
-                            
+
+                            debug!(
+                                "Found {} capability at {} via registry",
+                                capability.as_str(),
+                                endpoint
+                            );
+
                             return Ok(Some(CapabilityEndpoint {
                                 capability: capability.clone(),
                                 endpoint,
-                                provider_id: service.get("ServiceName")
+                                provider_id: service
+                                    .get("ServiceName")
                                     .and_then(|v| v.as_str())
                                     .map(String::from),
                                 discovery_method: DiscoveryMethod::ServiceRegistry,
@@ -325,30 +336,41 @@ impl CapabilityEndpointResolver {
 
         // Query container orchestrator for services providing this capability
         // Supports Kubernetes, Docker Swarm, Nomad, etc.
-        
+
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
-        
+
         // Try Kubernetes service discovery
         let service_name = format!("{}-service", capability.as_str().to_lowercase());
         let k8s_url = format!("{_metadata_api}/api/v1/services/{service_name}");
-        
+
         match client.get(&k8s_url).send().await {
             Ok(response) if response.status().is_success() => {
                 // Parse Kubernetes service response
                 if let Ok(service) = response.json::<serde_json::Value>().await {
                     // Extract cluster IP and port
                     if let (Some(cluster_ip), Some(ports)) = (
-                        service.get("spec").and_then(|s| s.get("clusterIP")).and_then(|v| v.as_str()),
-                        service.get("spec").and_then(|s| s.get("ports")).and_then(|v| v.as_array())
+                        service
+                            .get("spec")
+                            .and_then(|s| s.get("clusterIP"))
+                            .and_then(|v| v.as_str()),
+                        service.get("spec").and_then(|s| s.get("ports")).and_then(|v| v.as_array()),
                     ) {
-                        if let Some(first_port) = ports.first().and_then(|p| p.get("port")).and_then(serde_json::Value::as_u64) {
+                        if let Some(first_port) = ports
+                            .first()
+                            .and_then(|p| p.get("port"))
+                            .and_then(serde_json::Value::as_u64)
+                        {
                             let endpoint = format!("http://{cluster_ip}:{first_port}");
-                            
-                            debug!("Found {} capability at {} via container metadata", capability.as_str(), endpoint);
-                            
+
+                            debug!(
+                                "Found {} capability at {} via container metadata",
+                                capability.as_str(),
+                                endpoint
+                            );
+
                             return Ok(Some(CapabilityEndpoint {
                                 capability: capability.clone(),
                                 endpoint,
@@ -383,17 +405,17 @@ impl CapabilityEndpointResolver {
 
         // Query DNS SRV records for services providing this capability
         // Format: _capability._tcp.domain (RFC 2782)
-        
+
         let service_name = format!("_{}._tcp.{}", capability.as_str().to_lowercase(), _dns_domain);
-        
+
         // Use tokio's DNS resolver for SRV record lookup
         match tokio::net::lookup_host(service_name.as_str()).await {
             Ok(mut addrs) => {
                 if let Some(addr) = addrs.next() {
                     let endpoint = format!("http://{addr}");
-                    
+
                     debug!("Found {} capability at {} via DNS SRV", capability.as_str(), endpoint);
-                    
+
                     return Ok(Some(CapabilityEndpoint {
                         capability: capability.clone(),
                         endpoint,

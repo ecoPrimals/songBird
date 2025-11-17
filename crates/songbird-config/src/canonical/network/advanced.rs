@@ -201,11 +201,22 @@ impl Default for ProxyConfig {
     fn default() -> Self {
         use std::env;
         Self {
-            enabled: env::var("SONGBIRD_PROXY_ENABLED").ok().and_then(|v| v.parse().ok()).unwrap_or(false),
-            bind_address: env::var("SONGBIRD_PROXY_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string()),
-            bind_port: env::var("SONGBIRD_PROXY_BIND_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080),
-            target_address: env::var("SONGBIRD_PROXY_TARGET_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string()),
-            target_port: env::var("SONGBIRD_PROXY_TARGET_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8000),
+            enabled: env::var("SONGBIRD_PROXY_ENABLED")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(false),
+            bind_address: env::var("SONGBIRD_PROXY_BIND_ADDRESS")
+                .unwrap_or_else(|_| "0.0.0.0".to_string()),
+            bind_port: env::var("SONGBIRD_PROXY_BIND_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(8080),
+            target_address: env::var("SONGBIRD_PROXY_TARGET_ADDRESS")
+                .unwrap_or_else(|_| "127.0.0.1".to_string()),
+            target_port: env::var("SONGBIRD_PROXY_TARGET_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(8000),
             connection_timeout_ms: 5000,
         }
     }
@@ -390,8 +401,8 @@ pub struct SocketBufferConfig {
 impl Default for SocketBufferConfig {
     fn default() -> Self {
         Self {
-            recv_buffer_size: 65536,  // 64KB
-            send_buffer_size: 65536,   // 64KB
+            recv_buffer_size: 65536, // 64KB
+            send_buffer_size: 65536, // 64KB
         }
     }
 }
@@ -433,4 +444,3 @@ impl Default for NetworkInterfaceConfig {
         }
     }
 }
-

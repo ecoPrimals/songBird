@@ -49,16 +49,16 @@ impl Default for NetworkTimeouts {
 pub struct TimeoutConfig {
     /// Default operation timeout in seconds
     pub default_timeout_secs: u64,
-    
+
     /// Connection establishment timeout in seconds
     pub connection_timeout_secs: u64,
-    
+
     /// Health check timeout in seconds
     pub health_check_timeout_secs: u64,
-    
+
     /// Service registration timeout in seconds
     pub registration_timeout_secs: u64,
-    
+
     /// Service discovery timeout in seconds
     pub discovery_timeout_secs: u64,
 }
@@ -74,4 +74,3 @@ impl Default for TimeoutConfig {
         }
     }
 }
-

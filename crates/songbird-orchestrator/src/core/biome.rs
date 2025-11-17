@@ -20,32 +20,38 @@ impl ServiceRegistry {
             services: HashMap::new(),
         }
     }
-    
+
     pub async fn initialize(&mut self) -> songbird_types::SongbirdResult<()> {
         Ok(())
     }
-    
+
     pub async fn start(&mut self) -> songbird_types::SongbirdResult<()> {
         Ok(())
     }
-    
+
     pub async fn stop(&mut self) -> songbird_types::SongbirdResult<()> {
         Ok(())
     }
-    
-    pub async fn health_check(&self) -> songbird_types::SongbirdResult<crate::core::ComponentHealth> {
+
+    pub async fn health_check(
+        &self,
+    ) -> songbird_types::SongbirdResult<crate::core::ComponentHealth> {
         Ok(crate::core::ComponentHealth {
             status: crate::core::HealthStatus::Healthy,
             message: None,
             last_check: None,
         })
     }
-    
+
     pub fn get_services(&self) -> Vec<serde_json::Value> {
         self.services.values().cloned().collect()
     }
-    
-    pub async fn register_service(&mut self, _id: String, _service: serde_json::Value) -> songbird_types::SongbirdResult<()> {
+
+    pub async fn register_service(
+        &mut self,
+        _id: String,
+        _service: serde_json::Value,
+    ) -> songbird_types::SongbirdResult<()> {
         Ok(())
     }
 }

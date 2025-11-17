@@ -8,7 +8,8 @@ use std::time::Duration;
 
 /// Unified robustness configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct RobustnessConfig  {/// Circuit breaker configuration
+pub struct RobustnessConfig {
+    /// Circuit breaker configuration
     #[serde(default)]
     pub circuit_breaker: CircuitBreakerConfig,
 
@@ -43,7 +44,8 @@ pub use crate::canonical::resilience::CircuitBreakerConfig;
 
 /// Rate limiting configuration (consolidated from `RateLimitingConfig` structs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RateLimitingConfig  {/// Enable rate limiting
+pub struct RateLimitingConfig {
+    /// Enable rate limiting
     pub enabled: bool,
 
     /// Maximum requests per second
@@ -90,7 +92,8 @@ pub enum RateLimitAlgorithm {
 
 /// Bulkhead configuration (consolidated from `BulkheadConfig` structs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BulkheadConfig  {/// Enable bulkhead pattern
+pub struct BulkheadConfig {
+    /// Enable bulkhead pattern
     pub enabled: bool,
 
     /// Maximum concurrent operations
@@ -131,7 +134,7 @@ pub enum IsolationStrategy {
 }
 
 /// **CONSOLIDATED**: Re-export of canonical `RetryConfig` (Nov 10, 2025)
-/// 
+///
 /// Note: `enabled`, `backoff_strategy`, `jitter_enabled`, `retryable_errors` were unified-specific
 ///       These are now handled at usage site or via builder patterns
 /// Default implementation provided by `canonical::resilience::RetryConfig`
@@ -148,7 +151,8 @@ pub enum BackoffStrategy {
 
 /// Load balancer configuration (consolidated from `LoadBalancerConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoadBalancerConfig  {/// Load balancing algorithm
+pub struct LoadBalancerConfig {
+    /// Load balancing algorithm
     pub algorithm: LoadBalancingAlgorithm,
 
     /// Health check configuration
@@ -200,7 +204,7 @@ pub enum LoadBalancingAlgorithm {
 ///
 /// **CONSOLIDATED**: This is now a re-export of the canonical version.
 /// Use `songbird_config::canonical::resilience::HealthCheckConfig` directly.
-/// 
+///
 /// **Migration Note** (Week 2, Nov 10 2025):
 /// This duplicate definition has been replaced with canonical version.
 /// The canonical uses `u64` for intervals instead of `Duration` for consistency.
@@ -208,7 +212,8 @@ pub use crate::canonical::resilience::HealthCheckConfig;
 
 /// Zero-cost router configuration (consolidated from `ZeroCostRouterConfig`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ZeroCostRouterConfig  {/// Enable zero-cost routing
+pub struct ZeroCostRouterConfig {
+    /// Enable zero-cost routing
     pub enabled: bool,
 
     /// Route cache size
@@ -235,7 +240,7 @@ impl Default for ZeroCostRouterConfig {
             route_cache_ttl: Duration::from_secs(300),
             optimize_routes: true,
             max_route_depth: 10,
-            discovery_timeout: Duration::from_secs(30)
+            discovery_timeout: Duration::from_secs(30),
         }
     }
 }

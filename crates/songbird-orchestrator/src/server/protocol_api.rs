@@ -1,6 +1,6 @@
 // Protocol Discovery & Negotiation API
 // Progressive Protocol Enhancement - Phase 1
-// 
+//
 // This module implements the protocol capability discovery and negotiation
 // endpoints that enable clients to discover available protocols and upgrade
 // from HTTP/REST to faster protocols like tarpc.
@@ -77,18 +77,20 @@ impl Default for AvailableProtocols {
                     ("rpc".to_string(), "http://[::]:8080/jsonrpc".to_string()),
                     ("alternate".to_string(), "http://[::]:8080/jsonrpc/rpc".to_string()),
                 ]),
-                features: vec!["universal".to_string(), "language-agnostic".to_string(), "simple".to_string()],
+                features: vec![
+                    "universal".to_string(),
+                    "language-agnostic".to_string(),
+                    "simple".to_string(),
+                ],
                 performance: Some(PerformanceInfo {
-                    latency_us: 2000,  // ~2ms
+                    latency_us: 2000, // ~2ms
                     throughput_mbps: 500,
                 }),
             }),
             // tarpc: Phase 3 IMPLEMENTED! ✅ (Nov 11, 2025)
             tarpc: Some(ProtocolInfo {
                 version: "0.34".to_string(),
-                endpoints: HashMap::from([
-                    ("rpc".to_string(), "tarpc://[::]:8091".to_string()),
-                ]),
+                endpoints: HashMap::from([("rpc".to_string(), "tarpc://[::]:8091".to_string())]),
                 features: vec![
                     "binary".to_string(),
                     "high-performance".to_string(),
@@ -96,8 +98,8 @@ impl Default for AvailableProtocols {
                     "type-safe".to_string(),
                 ],
                 performance: Some(PerformanceInfo {
-                    latency_us: 50,  // ~50μs (100x faster than JSON-RPC!)
-                    throughput_mbps: 10000,  // 10 GB/s
+                    latency_us: 50,         // ~50μs (100x faster than JSON-RPC!)
+                    throughput_mbps: 10000, // 10 GB/s
                 }),
             }),
             // websocket: Not yet implemented - will be added in Phase 4 (Week 5)
@@ -124,42 +126,42 @@ pub struct PerformanceInfo {
 }
 
 /// GET /api/protocol/capabilities
-/// 
+///
 /// Returns information about available protocols, endpoints, and features.
 /// This is the entry point for progressive protocol enhancement.
 async fn get_capabilities(
     State(state): State<ProtocolApiState>,
 ) -> Result<Json<CapabilitiesResponse>, StatusCode> {
     info!("📋 Protocol capabilities requested");
-    
+
     // Build response with available protocols
     let mut protocols = HashMap::new();
-    
+
     // HTTP is always available
     protocols.insert("http".to_string(), state.available_protocols.http.clone());
-    
+
     // Add tarpc if available
     if let Some(tarpc) = &state.available_protocols.tarpc {
         protocols.insert("tarpc".to_string(), tarpc.clone());
     }
-    
+
     // Add JSON-RPC if available
     if let Some(json_rpc) = &state.available_protocols.json_rpc {
         protocols.insert("json-rpc".to_string(), json_rpc.clone());
     }
-    
+
     // Add WebSocket if available
     if let Some(websocket) = &state.available_protocols.websocket {
         protocols.insert("websocket".to_string(), websocket.clone());
     }
-    
+
     let response = CapabilitiesResponse {
         songbird_version: env!("CARGO_PKG_VERSION").to_string(),
         protocols,
         preferred_protocol: "tarpc".to_string(), // ✅ tarpc now available!
         fallback_protocol: "http".to_string(),
     };
-    
+
     Ok(Json(response))
 }
 
@@ -173,7 +175,7 @@ pub struct CapabilitiesResponse {
 }
 
 /// POST /api/protocol/negotiate
-/// 
+///
 /// Negotiates protocol upgrade based on client capabilities.
 /// Returns upgrade instructions if a better protocol is available.
 async fn negotiate_protocol(
@@ -184,10 +186,10 @@ async fn negotiate_protocol(
         "🤝 Protocol negotiation requested by client '{}' (preferred: {})",
         request.client_id, request.preferred
     );
-    
+
     // Phase 1: Currently only HTTP is available, so we cannot upgrade
     // In future phases, this will select the best available protocol
-    
+
     if request.preferred == "http" || request.client_protocols.is_empty() {
         // Client wants HTTP or doesn't support anything else
         let response = NegotiateResponse {
@@ -198,19 +200,22 @@ async fn negotiate_protocol(
             endpoints: None,
             session: None,
             reinforcement: None,
-            message: Some("HTTP is currently the only available protocol. tarpc and JSON-RPC coming soon!".to_string()),
+            message: Some(
+                "HTTP is currently the only available protocol. tarpc and JSON-RPC coming soon!"
+                    .to_string(),
+            ),
         };
-        
+
         return Ok(Json(response));
     }
-    
+
     // Check if client wants a protocol we don't have yet
     if request.client_protocols.iter().any(|p| p == "tarpc" || p == "json-rpc") {
         warn!(
             "⚠️  Client '{}' requested {} but it's not yet implemented",
             request.client_id, request.preferred
         );
-        
+
         let response = NegotiateResponse {
             negotiation_id: generate_negotiation_id(),
             selected_protocol: "http".to_string(),
@@ -224,10 +229,10 @@ async fn negotiate_protocol(
                 request.preferred
             )),
         };
-        
+
         return Ok(Json(response));
     }
-    
+
     // Default: HTTP only for now
     let response = NegotiateResponse {
         negotiation_id: generate_negotiation_id(),
@@ -239,7 +244,7 @@ async fn negotiate_protocol(
         reinforcement: None,
         message: Some("Using HTTP. Protocol enhancement coming in future phases!".to_string()),
     };
-    
+
     Ok(Json(response))
 }
 
@@ -299,27 +304,25 @@ pub struct ReinforcementConfig {
 }
 
 /// POST /api/protocol/upgrade
-/// 
+///
 /// Performs the actual protocol upgrade using an upgrade token.
 /// This endpoint will be fully implemented in Phase 3 (tarpc integration).
 async fn upgrade_connection(
     State(_state): State<ProtocolApiState>,
     Json(request): Json<UpgradeRequest>,
 ) -> Result<Json<UpgradeResponse>, StatusCode> {
-    info!(
-        "🔄 Protocol upgrade requested to {}",
-        request.target_protocol
-    );
-    
+    info!("🔄 Protocol upgrade requested to {}", request.target_protocol);
+
     // Phase 1: Not yet implemented
     // This will be completed when tarpc server is added
-    
+
     let response = UpgradeResponse {
         success: false,
-        message: "Protocol upgrade not yet implemented. Coming in Phase 3 (tarpc integration)!".to_string(),
+        message: "Protocol upgrade not yet implemented. Coming in Phase 3 (tarpc integration)!"
+            .to_string(),
         upgraded_endpoint: None,
     };
-    
+
     Ok(Json(response))
 }
 
@@ -342,45 +345,41 @@ pub struct UpgradeResponse {
 /// Generate a unique negotiation ID
 fn generate_negotiation_id() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
-    
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_micros();
-    
+
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_micros();
+
     format!("nego_{}", timestamp)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_default_available_protocols() {
         let protocols = AvailableProtocols::default();
-        
+
         // HTTP should always be available
         assert_eq!(protocols.http.version, "1.1");
         assert!(protocols.http.endpoints.contains_key("federation"));
         assert!(protocols.http.features.contains(&"rest".to_string()));
-        
+
         // Others not yet implemented
         assert!(protocols.tarpc.is_none());
         assert!(protocols.json_rpc.is_none());
         assert!(protocols.websocket.is_none());
     }
-    
+
     #[test]
     fn test_negotiation_id_generation() {
         let id1 = generate_negotiation_id();
         let id2 = generate_negotiation_id();
-        
+
         // IDs should be different
         assert_ne!(id1, id2);
-        
+
         // IDs should start with "nego_"
         assert!(id1.starts_with("nego_"));
         assert!(id2.starts_with("nego_"));
     }
 }
-

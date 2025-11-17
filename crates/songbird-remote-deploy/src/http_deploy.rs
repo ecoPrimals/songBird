@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 use tokio::fs;
-use tracing::{info, debug, warn};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeploymentResponse {
@@ -114,8 +114,12 @@ pub struct DeploymentPreferences {
 /// Selected deployment method
 #[derive(Debug, Clone)]
 pub enum SelectedMethod {
-    Single { max_size_mb: u32 },
-    Chunked { chunk_size_mb: u32 },
+    Single {
+        max_size_mb: u32,
+    },
+    Chunked {
+        chunk_size_mb: u32,
+    },
     Streaming,
     Fallback, // Use if capabilities unavailable
 }
@@ -155,35 +159,36 @@ struct FinalizeRequest {
 /// Query deployment capabilities from a tower
 pub async fn query_capabilities(tower_endpoint: &str) -> Result<DeploymentCapabilities> {
     debug!("📊 Querying capabilities from {}", tower_endpoint);
-    
+
     let client = Client::new();
     let url = format!("{}/api/deployment/capabilities", tower_endpoint);
-    
+
     let response = client
         .get(&url)
         .timeout(std::time::Duration::from_secs(5))
         .send()
         .await
         .map_err(|e| anyhow!("Failed to query capabilities: {}", e))?;
-    
+
     if !response.status().is_success() {
         return Err(anyhow!("Capabilities query failed with status {}", response.status()));
     }
-    
-    let capabilities: DeploymentCapabilities = response
-        .json()
-        .await
-        .map_err(|e| anyhow!("Failed to parse capabilities: {}", e))?;
-    
+
+    let capabilities: DeploymentCapabilities =
+        response.json().await.map_err(|e| anyhow!("Failed to parse capabilities: {}", e))?;
+
     info!("✅ Capabilities received from {}", capabilities.node_id);
-    debug!("   Network: {} ({} Mbps up/down)", 
-        capabilities.network.network_type,
-        capabilities.network.bandwidth_estimate.upload_mbps);
-    debug!("   Resources: {} cores, {}GB RAM, {}GB storage",
+    debug!(
+        "   Network: {} ({} Mbps up/down)",
+        capabilities.network.network_type, capabilities.network.bandwidth_estimate.upload_mbps
+    );
+    debug!(
+        "   Resources: {} cores, {}GB RAM, {}GB storage",
         capabilities.resources.cpu_cores,
         capabilities.resources.available_memory_gb,
-        capabilities.resources.available_storage_gb);
-    
+        capabilities.resources.available_storage_gb
+    );
+
     Ok(capabilities)
 }
 
@@ -197,33 +202,39 @@ pub fn select_deployment_method(
         warn!("⚠️  Capabilities unavailable, using fallback method");
         return SelectedMethod::Fallback;
     };
-    
+
     // Check if binary fits in single upload
-    if binary_size_mb < (caps.deployment_methods.single.max_size_mb as f64) && 
-       caps.deployment_methods.single.enabled {
-        info!("✓ Selected: Single upload ({:.2}MB < {}MB limit)", 
-            binary_size_mb, caps.deployment_methods.single.max_size_mb);
-        return SelectedMethod::Single { 
-            max_size_mb: caps.deployment_methods.single.max_size_mb 
+    if binary_size_mb < (caps.deployment_methods.single.max_size_mb as f64)
+        && caps.deployment_methods.single.enabled
+    {
+        info!(
+            "✓ Selected: Single upload ({:.2}MB < {}MB limit)",
+            binary_size_mb, caps.deployment_methods.single.max_size_mb
+        );
+        return SelectedMethod::Single {
+            max_size_mb: caps.deployment_methods.single.max_size_mb,
         };
     }
-    
+
     // Check if chunked is available
-    if binary_size_mb < (caps.deployment_methods.chunked.max_total_size_mb as f64) && 
-       caps.deployment_methods.chunked.enabled {
-        info!("✓ Selected: Chunked upload ({:.2}MB, chunks of {}MB)", 
-            binary_size_mb, caps.deployment_methods.chunked.chunk_size_mb);
-        return SelectedMethod::Chunked { 
-            chunk_size_mb: caps.deployment_methods.chunked.chunk_size_mb 
+    if binary_size_mb < (caps.deployment_methods.chunked.max_total_size_mb as f64)
+        && caps.deployment_methods.chunked.enabled
+    {
+        info!(
+            "✓ Selected: Chunked upload ({:.2}MB, chunks of {}MB)",
+            binary_size_mb, caps.deployment_methods.chunked.chunk_size_mb
+        );
+        return SelectedMethod::Chunked {
+            chunk_size_mb: caps.deployment_methods.chunked.chunk_size_mb,
         };
     }
-    
+
     // Check if streaming is available
     if caps.deployment_methods.streaming.enabled {
         info!("✓ Selected: Streaming upload ({:.2}MB)", binary_size_mb);
         return SelectedMethod::Streaming;
     }
-    
+
     // Fallback
     warn!("⚠️  No suitable method found, using fallback");
     SelectedMethod::Fallback
@@ -237,19 +248,17 @@ pub async fn deploy_via_http_adaptive(
     env_vars: HashMap<String, String>,
 ) -> Result<DeploymentResponse> {
     info!("📤 Adaptive deployment to {}", tower_endpoint);
-    
+
     // Get binary size
     let metadata = tokio::fs::metadata(binary_path).await?;
     let binary_size_bytes = metadata.len();
     let binary_size_mb = binary_size_bytes as f64 / 1024.0 / 1024.0;
-    
-    let binary_name = Path::new(binary_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown-binary");
-    
+
+    let binary_name =
+        Path::new(binary_path).file_name().and_then(|n| n.to_str()).unwrap_or("unknown-binary");
+
     info!("   Binary: {} ({:.2} MB)", binary_name, binary_size_mb);
-    
+
     // Query capabilities
     let capabilities = match query_capabilities(tower_endpoint).await {
         Ok(caps) => Some(caps),
@@ -259,19 +268,31 @@ pub async fn deploy_via_http_adaptive(
             None
         }
     };
-    
+
     // Select method
     let method = select_deployment_method(capabilities.as_ref(), binary_size_mb);
-    
+
     // Execute deployment based on selected method
     match method {
-        SelectedMethod::Single { .. } | SelectedMethod::Fallback => {
+        SelectedMethod::Single {
+            ..
+        }
+        | SelectedMethod::Fallback => {
             // Use existing single upload
             deploy_via_http(tower_endpoint, binary_path, service_name, env_vars).await
         }
-        SelectedMethod::Chunked { chunk_size_mb } => {
+        SelectedMethod::Chunked {
+            chunk_size_mb,
+        } => {
             // Phase 3: Use chunked upload
-            deploy_via_http_chunked(tower_endpoint, binary_path, service_name, env_vars, chunk_size_mb).await
+            deploy_via_http_chunked(
+                tower_endpoint,
+                binary_path,
+                service_name,
+                env_vars,
+                chunk_size_mb,
+            )
+            .await
         }
         SelectedMethod::Streaming => {
             // PHASE 4 FEATURE: Streaming upload implementation planned
@@ -292,44 +313,52 @@ async fn deploy_via_http_chunked(
     chunk_size_mb: u32,
 ) -> Result<DeploymentResponse> {
     info!("🧩 Deploying '{}' via chunked upload ({}MB chunks)", service_name, chunk_size_mb);
-    
+
     // Read binary
     let binary_data = fs::read(binary_path).await?;
     let binary_size_mb = binary_data.len() as f64 / 1024.0 / 1024.0;
-    
+
     info!("   Binary size: {:.2}MB", binary_size_mb);
-    
+
     let client = Client::new();
-    
+
     // Step 1: Negotiate
     info!("🤝 Step 1: Negotiating chunked upload...");
-    let negotiation = negotiate_chunked_upload(&client, tower_endpoint, binary_size_mb, service_name).await?;
-    
-    info!("✅ Negotiation complete: {} chunks of {}MB", 
-        negotiation.total_chunks, negotiation.chunk_size_mb);
-    
+    let negotiation =
+        negotiate_chunked_upload(&client, tower_endpoint, binary_size_mb, service_name).await?;
+
+    info!(
+        "✅ Negotiation complete: {} chunks of {}MB",
+        negotiation.total_chunks, negotiation.chunk_size_mb
+    );
+
     // Step 2: Split into chunks
     let chunk_size_bytes = (chunk_size_mb as usize) * 1024 * 1024;
     let chunks: Vec<&[u8]> = binary_data.chunks(chunk_size_bytes).collect();
-    
+
     info!("📦 Step 2: Uploading {} chunks...", chunks.len());
-    
+
     // Step 3: Upload chunks
     for (index, chunk) in chunks.iter().enumerate() {
         upload_chunk(&client, tower_endpoint, &negotiation.negotiation_id, index, chunk).await?;
-        info!("   ✓ Chunk {}/{} uploaded ({} bytes)", 
-            index + 1, chunks.len(), chunk.len());
+        info!("   ✓ Chunk {}/{} uploaded ({} bytes)", index + 1, chunks.len(), chunk.len());
     }
-    
+
     info!("✅ All chunks uploaded");
-    
+
     // Step 4: Finalize
     info!("🎯 Step 3: Finalizing deployment...");
-    let deployment = finalize_chunked_upload(&client, tower_endpoint, &negotiation.negotiation_id, 
-        service_name, env_vars).await?;
-    
+    let deployment = finalize_chunked_upload(
+        &client,
+        tower_endpoint,
+        &negotiation.negotiation_id,
+        service_name,
+        env_vars,
+    )
+    .await?;
+
     info!("🎉 Chunked deployment complete: {}", deployment.deployment_id);
-    
+
     Ok(deployment)
 }
 
@@ -341,31 +370,31 @@ async fn negotiate_chunked_upload(
     service_name: &str,
 ) -> Result<NegotiationResponse> {
     let url = format!("{}/api/deployment/negotiate", tower_endpoint);
-    
+
     let request = NegotiationRequest {
         binary_size_mb,
         service_name: service_name.to_string(),
         compression: None,
     };
-    
+
     let response = client
         .post(&url)
         .json(&request)
         .send()
         .await
         .map_err(|e| anyhow!("Negotiation request failed: {}", e))?;
-    
+
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         return Err(anyhow!("Negotiation failed with status {}: {}", status, error_text));
     }
-    
+
     let negotiation: NegotiationResponse = response
         .json()
         .await
         .map_err(|e| anyhow!("Failed to parse negotiation response: {}", e))?;
-    
+
     Ok(negotiation)
 }
 
@@ -377,29 +406,31 @@ async fn upload_chunk(
     chunk_index: usize,
     chunk_data: &[u8],
 ) -> Result<()> {
-    let url = format!("{}/api/deployment/chunk/{}/{}", 
-        tower_endpoint, negotiation_id, chunk_index);
-    
-    let form = multipart::Form::new()
-        .part(
-            "chunk",
-            multipart::Part::bytes(chunk_data.to_vec())
-                .file_name(format!("chunk-{:04}", chunk_index)),
-        );
-    
+    let url = format!("{}/api/deployment/chunk/{}/{}", tower_endpoint, negotiation_id, chunk_index);
+
+    let form = multipart::Form::new().part(
+        "chunk",
+        multipart::Part::bytes(chunk_data.to_vec()).file_name(format!("chunk-{:04}", chunk_index)),
+    );
+
     let response = client
         .post(&url)
         .multipart(form)
         .send()
         .await
         .map_err(|e| anyhow!("Chunk upload failed: {}", e))?;
-    
+
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-        return Err(anyhow!("Chunk {} upload failed with status {}: {}", chunk_index, status, error_text));
+        return Err(anyhow!(
+            "Chunk {} upload failed with status {}: {}",
+            chunk_index,
+            status,
+            error_text
+        ));
     }
-    
+
     Ok(())
 }
 
@@ -412,31 +443,29 @@ async fn finalize_chunked_upload(
     env_vars: HashMap<String, String>,
 ) -> Result<DeploymentResponse> {
     let url = format!("{}/api/deployment/finalize/{}", tower_endpoint, negotiation_id);
-    
+
     let request = FinalizeRequest {
         service_name: service_name.to_string(),
         env_vars,
         auto_start: true,
     };
-    
+
     let response = client
         .post(&url)
         .json(&request)
         .send()
         .await
         .map_err(|e| anyhow!("Finalize request failed: {}", e))?;
-    
+
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         return Err(anyhow!("Finalize failed with status {}: {}", status, error_text));
     }
-    
-    let deployment: DeploymentResponse = response
-        .json()
-        .await
-        .map_err(|e| anyhow!("Failed to parse deployment response: {}", e))?;
-    
+
+    let deployment: DeploymentResponse =
+        response.json().await.map_err(|e| anyhow!("Failed to parse deployment response: {}", e))?;
+
     Ok(deployment)
 }
 
@@ -454,10 +483,8 @@ pub async fn deploy_via_http(
         .await
         .map_err(|e| anyhow!("Failed to read binary '{}': {}", binary_path, e))?;
 
-    let binary_filename = Path::new(binary_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("service");
+    let binary_filename =
+        Path::new(binary_path).file_name().and_then(|n| n.to_str()).unwrap_or("service");
 
     info!("   Binary: {} ({} bytes)", binary_filename, binary_data.len());
     info!("   Service name: {}", service_name);
@@ -468,10 +495,7 @@ pub async fn deploy_via_http(
         .text("service_name", service_name.to_string())
         .text("env_vars", serde_json::to_string(&env_vars)?)
         .text("auto_start", "true")
-        .part(
-            "binary",
-            multipart::Part::bytes(binary_data).file_name(binary_filename.to_string()),
-        );
+        .part("binary", multipart::Part::bytes(binary_data).file_name(binary_filename.to_string()));
 
     // Send deployment request
     let client = Client::new();
@@ -492,10 +516,8 @@ pub async fn deploy_via_http(
         return Err(anyhow!("Deployment failed with status {}: {}", status, error_text));
     }
 
-    let deployment_response: DeploymentResponse = response
-        .json()
-        .await
-        .map_err(|e| anyhow!("Failed to parse response: {}", e))?;
+    let deployment_response: DeploymentResponse =
+        response.json().await.map_err(|e| anyhow!("Failed to parse response: {}", e))?;
 
     info!("✅ Deployment successful: {}", deployment_response.deployment_id);
     if let Some(ref url) = deployment_response.service_url {
@@ -513,20 +535,15 @@ pub async fn get_deployment_status(
     let client = Client::new();
     let url = format!("{}/api/deployment/status/{}", tower_endpoint, deployment_id);
 
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+    let response =
+        client.get(&url).send().await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
     if !response.status().is_success() {
         return Err(anyhow!("Failed to get deployment status: {}", response.status()));
     }
 
-    let deployment_info: DeploymentInfo = response
-        .json()
-        .await
-        .map_err(|e| anyhow!("Failed to parse response: {}", e))?;
+    let deployment_info: DeploymentInfo =
+        response.json().await.map_err(|e| anyhow!("Failed to parse response: {}", e))?;
 
     Ok(deployment_info)
 }
@@ -536,11 +553,8 @@ pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Resul
     let client = Client::new();
     let url = format!("{}/api/deployment/{}", tower_endpoint, deployment_id);
 
-    let response = client
-        .delete(&url)
-        .send()
-        .await
-        .map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+    let response =
+        client.delete(&url).send().await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
     if !response.status().is_success() {
         return Err(anyhow!("Failed to stop deployment: {}", response.status()));
@@ -556,21 +570,15 @@ pub async fn list_deployments(tower_endpoint: &str) -> Result<Vec<DeploymentInfo
     let client = Client::new();
     let url = format!("{}/api/deployment/list", tower_endpoint);
 
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+    let response =
+        client.get(&url).send().await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
     if !response.status().is_success() {
         return Err(anyhow!("Failed to list deployments: {}", response.status()));
     }
 
-    let deployments: Vec<DeploymentInfo> = response
-        .json()
-        .await
-        .map_err(|e| anyhow!("Failed to parse response: {}", e))?;
+    let deployments: Vec<DeploymentInfo> =
+        response.json().await.map_err(|e| anyhow!("Failed to parse response: {}", e))?;
 
     Ok(deployments)
 }
-

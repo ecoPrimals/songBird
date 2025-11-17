@@ -32,10 +32,7 @@ async fn test_discover_by_single_capability() -> SongbirdResult<()> {
 
     assert!(providers.is_ok());
     assert!(!providers
-        .ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?
+        .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
         .is_empty());
     Ok(())
 }
@@ -66,15 +63,17 @@ async fn test_discover_multiple_capabilities() -> SongbirdResult<()> {
         .ok();
 
     // Discover compute providers
-    let compute_providers = discovery.discover_by_capability("compute").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let compute_providers = discovery
+        .discover_by_capability("compute")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(compute_providers.len(), 2);
 
     // Discover storage providers
-    let storage_providers = discovery.discover_by_capability("storage").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let storage_providers = discovery
+        .discover_by_capability("storage")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(storage_providers.len(), 1);
     Ok(())
 }
@@ -88,10 +87,7 @@ async fn test_capability_not_found() -> SongbirdResult<()> {
     // Should return empty list, not error
     assert!(providers.is_ok());
     assert!(providers
-        .ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?
+        .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
         .is_empty());
     Ok(())
 }
@@ -101,9 +97,10 @@ async fn test_dynamic_capability_registration() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
     // Initially no providers
-    let initial = discovery.discover_by_capability("ai").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let initial = discovery
+        .discover_by_capability("ai")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert!(initial.is_empty());
 
     // Register new provider
@@ -118,9 +115,10 @@ async fn test_dynamic_capability_registration() -> SongbirdResult<()> {
         .ok();
 
     // Now should find provider
-    let after = discovery.discover_by_capability("ai").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let after = discovery
+        .discover_by_capability("ai")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(after.len(), 1);
     Ok(())
 }
@@ -143,9 +141,10 @@ async fn test_capability_deregistration() -> SongbirdResult<()> {
     discovery.deregister("temp-service").await.ok();
 
     // Should no longer be discoverable
-    let providers = discovery.discover_by_capability("temp").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let providers = discovery
+        .discover_by_capability("temp")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert!(providers.is_empty());
     Ok(())
 }
@@ -167,9 +166,10 @@ async fn test_multiple_providers_same_capability() -> SongbirdResult<()> {
             .ok();
     }
 
-    let providers = discovery.discover_by_capability("compute").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let providers = discovery
+        .discover_by_capability("compute")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(providers.len(), 5);
     Ok(())
 }
@@ -192,9 +192,10 @@ async fn test_capability_with_metadata() -> SongbirdResult<()> {
         .await
         .ok();
 
-    let providers = discovery.discover_by_capability("compute").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let providers = discovery
+        .discover_by_capability("compute")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert!(!providers.is_empty());
     assert!(providers[0].metadata.contains_key("gpu"));
     Ok(())
@@ -314,9 +315,10 @@ async fn test_concurrent_capability_registration() {
     }
 
     // Should have all 10 services
-    let providers = discovery.discover_by_capability("test").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let providers = discovery
+        .discover_by_capability("test")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(providers.len(), 10);
 }
 
@@ -335,9 +337,10 @@ async fn test_capability_cache_invalidation() -> SongbirdResult<()> {
         .ok();
 
     // First discovery (caches)
-    let first = discovery.discover_by_capability("cache-test").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let first = discovery
+        .discover_by_capability("cache-test")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(first.len(), 1);
 
     // Deregister
@@ -347,9 +350,10 @@ async fn test_capability_cache_invalidation() -> SongbirdResult<()> {
     tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
 
     // Should reflect deregistration
-    let after = discovery.discover_by_capability("cache-test").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let after = discovery
+        .discover_by_capability("cache-test")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert!(after.is_empty());
     Ok(())
 }
@@ -373,10 +377,7 @@ async fn test_wildcard_capability_discovery() -> SongbirdResult<()> {
     assert!(all_capabilities.is_ok());
     assert!(
         all_capabilities
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
             .len()
             >= 3
     );
@@ -451,9 +452,10 @@ async fn test_duplicate_capability_registration() -> SongbirdResult<()> {
     discovery.register(service).await.ok();
 
     // Should handle duplicates (either dedupe or allow)
-    let providers = discovery.discover_by_capability("duplicate").await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let providers = discovery
+        .discover_by_capability("duplicate")
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert!(providers.len() >= 1);
     Ok(())
 }

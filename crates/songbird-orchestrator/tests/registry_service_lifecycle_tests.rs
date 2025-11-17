@@ -67,9 +67,9 @@ async fn test_service_registration() -> SongbirdResult<()> {
     let services = registry.get_services();
     assert!(services.contains_key(&service_id), "Service should be in registry");
 
-    let retrieved = services.get(&service_id).or_else(|_| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    let retrieved = services
+        .get(&service_id)
+        .or_else(|_| SongbirdError::configuration("Failed to register service".to_string()))?;
     assert_eq!(retrieved.name, "Test Service");
     assert_eq!(retrieved.address, test_bind_address());
     assert_eq!(retrieved.port, 8080);
@@ -93,9 +93,10 @@ async fn test_service_unregistration() -> SongbirdResult<()> {
     };
 
     // Register service
-    registry.register_service(service).await.map_err(|e| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    registry
+        .register_service(service)
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
 
     // Unregister service
     let result = registry.unregister_service(&service_id).await;
@@ -124,9 +125,10 @@ async fn test_multiple_service_registrations() -> SongbirdResult<()> {
             metadata: HashMap::new(),
         };
 
-        registry.register_service(service).await.map_err(|e| {
-            SongbirdError::configuration("Failed to register service".to_string())
-        })?;
+        registry
+            .register_service(service)
+            .await
+            .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
     }
 
     // Verify all services are registered
@@ -143,9 +145,8 @@ async fn test_service_health_check() -> SongbirdResult<()> {
     let health = registry.health_check().await;
     assert!(health.is_ok(), "Health check should succeed");
 
-    let health_status = health.ok_or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let health_status =
+        health.ok_or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
     assert_eq!(health_status.status, HealthStatus::Healthy);
     Ok(())
 }
@@ -170,15 +171,16 @@ async fn test_service_metadata_storage() -> SongbirdResult<()> {
         metadata,
     };
 
-    registry.register_service(service).await.map_err(|e| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    registry
+        .register_service(service)
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
 
     // Retrieve and verify metadata
     let services = registry.get_services();
-    let retrieved = services.get(&service_id).or_else(|_| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    let retrieved = services
+        .get(&service_id)
+        .or_else(|_| SongbirdError::configuration("Failed to register service".to_string()))?;
 
     assert_eq!(retrieved.metadata.get("version"), Some(&"1.0.0".to_string()));
     assert_eq!(retrieved.metadata.get("environment"), Some(&"production".to_string()));
@@ -232,9 +234,10 @@ async fn test_registry_get_services_immutable() -> SongbirdResult<()> {
         metadata: HashMap::new(),
     };
 
-    registry.register_service(service).await.map_err(|e| {
-        SongbirdError::configuration("Failed to register service".to_string())
-    })?;
+    registry
+        .register_service(service)
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to register service".to_string()))?;
 
     // Get services returns immutable reference
     let services = registry.get_services();

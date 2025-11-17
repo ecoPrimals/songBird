@@ -44,14 +44,7 @@ fn test_global_config_thread_safety() -> SongbirdResult<()> {
                 host
             })
         })
-        .map(|h| {
-            h.join().or_else(|_| {
-                SongbirdError::configuration(format!(
-                    "Error: {}",
-                    e
-                ))
-            })?
-        })
+        .map(|h| h.join().or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?)
         .collect();
 
     // All threads should see the same value

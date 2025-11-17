@@ -170,10 +170,9 @@ async fn test_federation_config_with_bootstrap() -> SongbirdResult<()> {
 
     assert!(config.bootstrap_address.is_some());
     assert_eq!(
-        config.bootstrap_address.ok_or_else(|_| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        config
+            .bootstrap_address
+            .ok_or_else(|_| SongbirdError::configuration(format!("Error: {}", e)))?,
         format!("http://bootstrap:{}", test_orchestrator_port())
     );
     Ok(())
@@ -292,9 +291,7 @@ async fn test_federation_state_concurrent_access() {
 
     // Wait for all tasks to complete
     for handle in handles {
-        handle.await.map_err(|e| {
-            SongbirdError::configuration("Failed to register".to_string())
-        })?;
+        handle.await.map_err(|e| SongbirdError::configuration("Failed to register".to_string()))?;
     }
 
     assert_eq!(state.get_node_count().await, 10);

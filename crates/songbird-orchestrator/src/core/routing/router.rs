@@ -18,7 +18,7 @@ use tracing::{debug, info, warn};
 pub enum RoutingDecision {
     /// Execute the task locally on this Songbird instance
     ExecuteLocally,
-    
+
     /// Route to another Songbird instance in the federation
     RouteToSongbird {
         /// ID of the target node
@@ -26,7 +26,7 @@ pub enum RoutingDecision {
         /// RPC endpoint of the target node
         endpoint: String,
     },
-    
+
     /// Route to a specialized capability provider
     RouteToCapability {
         /// Type of capability (Compute, Security, AI, Storage)
@@ -34,7 +34,7 @@ pub enum RoutingDecision {
         /// Endpoint of the capability provider
         provider_endpoint: String,
     },
-    
+
     /// Route to an external provider registered in capability registry
     RouteToExternalProvider {
         /// Provider ID
@@ -50,13 +50,13 @@ pub enum RoutingDecision {
 pub struct CapabilityRouter {
     /// Federation state for peer discovery
     federation_state: Arc<FederationState>,
-    
+
     /// Service registry for capability discovery
     service_registry: Arc<FederatedServiceRegistry>,
-    
+
     /// Capability endpoint resolver
     capability_resolver: CapabilityEndpointResolver,
-    
+
     /// Capability registry for external providers (optional)
     capability_registry: Option<Arc<CapabilityRegistry>>,
 }
@@ -74,7 +74,7 @@ impl CapabilityRouter {
             capability_registry: None,
         }
     }
-    
+
     /// Create a new capability router with external provider registry
     pub fn with_capability_registry(
         federation_state: Arc<FederationState>,
@@ -88,7 +88,7 @@ impl CapabilityRouter {
             capability_registry: Some(capability_registry),
         }
     }
-    
+
     /// Route a task to the optimal execution location
     ///
     /// # Routing Strategy
@@ -106,47 +106,41 @@ impl CapabilityRouter {
     /// ```
     pub async fn route_task(&self, task: &Task) -> SongbirdResult<RoutingDecision> {
         info!("Routing task: {}", task.task_type);
-        
+
         // 1. Analyze task complexity
         let complexity = TaskComplexityAnalyzer::analyze(task);
         debug!("Task complexity: {:?}", complexity);
-        
+
         // 2. Route based on complexity
         match complexity {
-            TaskComplexity::Lightweight => {
-                self.route_lightweight_task(task).await
-            }
-            
-            TaskComplexity::Moderate => {
-                self.route_moderate_task(task).await
-            }
-            
-            TaskComplexity::Heavy => {
-                self.route_heavy_task(task).await
-            }
+            TaskComplexity::Lightweight => self.route_lightweight_task(task).await,
+
+            TaskComplexity::Moderate => self.route_moderate_task(task).await,
+
+            TaskComplexity::Heavy => self.route_heavy_task(task).await,
         }
     }
-    
+
     /// Route a lightweight task (execute locally or on peer)
     async fn route_lightweight_task(&self, _task: &Task) -> SongbirdResult<RoutingDecision> {
         debug!("Routing lightweight task");
-        
+
         // Check if we have local capacity
         // For now, assume we always have capacity for lightweight tasks
         if self.has_local_capacity().await {
             debug!("Executing lightweight task locally");
             return Ok(RoutingDecision::ExecuteLocally);
         }
-        
+
         // Otherwise, route to a peer Songbird
         debug!("Routing lightweight task to peer");
         self.route_to_peer_songbird().await
     }
-    
+
     /// Route a moderate task (prefer peer, fallback to capability)
     async fn route_moderate_task(&self, task: &Task) -> SongbirdResult<RoutingDecision> {
         debug!("Routing moderate task");
-        
+
         // Try to route to a peer Songbird first
         match self.route_to_peer_songbird().await {
             Ok(decision) => {
@@ -160,43 +154,45 @@ impl CapabilityRouter {
             }
         }
     }
-    
+
     /// Route a heavy task (always to specialized capability)
     async fn route_heavy_task(&self, task: &Task) -> SongbirdResult<RoutingDecision> {
         debug!("Routing heavy task to specialized capability");
         self.route_to_specialized_capability(task).await
     }
-    
+
     /// Route to a specialized capability (Toadstool, BearDog, etc.)
-    async fn route_to_specialized_capability(&self, task: &Task) -> SongbirdResult<RoutingDecision> {
+    async fn route_to_specialized_capability(
+        &self,
+        task: &Task,
+    ) -> SongbirdResult<RoutingDecision> {
         // Determine required capability type
         let capability_type = self.determine_capability_type(task);
         debug!("Task requires capability: {:?}", capability_type);
-        
+
         // Format capability type for logging and error messages
         let capability_type_str = format!("{:?}", capability_type);
-        
+
         // NEW: First try to find an external provider in the capability registry
         if let Some(registry) = &self.capability_registry {
             let capability_name = Self::capability_type_to_name(&capability_type);
-            
+
             match registry.find_providers_with_capability(&capability_name).await {
                 Ok(providers) if !providers.is_empty() => {
                     // Select best provider (for now, use first healthy one)
                     let provider = &providers[0];
                     let execution_endpoint = format!(
                         "{}{}",
-                        provider.registration.endpoint,
-                        provider.registration.workload_endpoint
+                        provider.registration.endpoint, provider.registration.workload_endpoint
                     );
-                    
+
                     info!(
                         "Routing to external provider '{}' ({}) at: {}",
                         provider.registration.provider_name,
                         provider.registration.provider_id,
                         execution_endpoint
                     );
-                    
+
                     return Ok(RoutingDecision::RouteToExternalProvider {
                         provider_id: provider.registration.provider_id.clone(),
                         execution_endpoint,
@@ -211,24 +207,27 @@ impl CapabilityRouter {
                 }
             }
         }
-        
+
         // Fallback to static capability endpoint resolver
-        let endpoint = self.capability_resolver
-            .get_endpoint(capability_type.clone())  // Clone for the async call
+        let endpoint = self
+            .capability_resolver
+            .get_endpoint(capability_type.clone()) // Clone for the async call
             .await
-            .map_err(|e| SongbirdError::service(
-                capability_type_str.clone(),
-                format!("No capability provider found: {}", e)
-            ))?;
-        
+            .map_err(|e| {
+                SongbirdError::service(
+                    capability_type_str.clone(),
+                    format!("No capability provider found: {}", e),
+                )
+            })?;
+
         info!("Routing to {} capability at: {}", capability_type_str, endpoint);
-        
+
         Ok(RoutingDecision::RouteToCapability {
             capability_type,
             provider_endpoint: endpoint,
         })
     }
-    
+
     /// Execute a task on an external provider
     ///
     /// Sends the task to the provider's execution endpoint and waits for results
@@ -238,9 +237,9 @@ impl CapabilityRouter {
         task: &Task,
     ) -> SongbirdResult<serde_json::Value> {
         info!("Executing task on external provider: {}", endpoint);
-        
+
         let client = reqwest::Client::new();
-        
+
         let response = client
             .post(endpoint)
             .json(task)
@@ -252,7 +251,7 @@ impl CapabilityRouter {
                 interface: Some(endpoint.to_string()),
                 suggestion: Some("Check provider endpoint and network connectivity".to_string()),
             })?;
-        
+
         if !response.status().is_success() {
             return Err(SongbirdError::Service {
                 service: "external_provider".to_string(),
@@ -261,20 +260,17 @@ impl CapabilityRouter {
                 recovery_actions: vec!["retry".to_string(), "route_to_fallback".to_string()],
             });
         }
-        
-        let result = response
-            .json()
-            .await
-            .map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
-                message: format!("Failed to parse provider response: {}", e),
-                debug_info: None,
-            })?;
-        
+
+        let result = response.json().await.map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: format!("Failed to parse provider response: {}", e),
+            debug_info: None,
+        })?;
+
         info!("Task execution completed successfully on external provider");
         Ok(result)
     }
-    
+
     /// Convert CapabilityType enum to capability name string
     fn capability_type_to_name(cap_type: &CapabilityType) -> String {
         match cap_type {
@@ -288,11 +284,11 @@ impl CapabilityRouter {
             CapabilityType::Custom(name) => name.clone(),
         }
     }
-    
+
     /// Route to a peer Songbird instance
     async fn route_to_peer_songbird(&self) -> SongbirdResult<RoutingDecision> {
         let nodes = self.federation_state.nodes.read().await;
-        
+
         // Find a healthy, available peer
         for (node_id, registration) in nodes.iter() {
             if registration.status == NodeStatus::Active {
@@ -303,50 +299,38 @@ impl CapabilityRouter {
                 });
             }
         }
-        
-        Err(SongbirdError::service(
-            "federation",
-            "No available peer Songbirds found in federation"
-        ))
+
+        Err(SongbirdError::service("federation", "No available peer Songbirds found in federation"))
     }
-    
+
     /// Determine required capability type from task
     fn determine_capability_type(&self, task: &Task) -> CapabilityType {
         // GPU required → Compute (Toadstool)
-        if task.resource_requirements
-            .as_ref()
-            .is_some_and(|r| r.gpu_required) 
-        {
+        if task.resource_requirements.as_ref().is_some_and(|r| r.gpu_required) {
             return CapabilityType::Compute;
         }
-        
+
         // Match on task type
         match task.task_type.as_str() {
             // Compute tasks (Toadstool)
             "ml_training" | "gpu_compute" | "batch_processing" | "video_processing" => {
                 CapabilityType::Compute
             }
-            
+
             // Security tasks (BearDog)
-            "encrypt" | "decrypt" | "sign" | "verify" | "auth" => {
-                CapabilityType::Security
-            }
-            
+            "encrypt" | "decrypt" | "sign" | "verify" | "auth" => CapabilityType::Security,
+
             // AI tasks (Squirrel)
-            "inference" | "ai_query" | "model_serve" => {
-                CapabilityType::Ai
-            }
-            
+            "inference" | "ai_query" | "model_serve" => CapabilityType::Ai,
+
             // Storage tasks (NestGate)
-            "store" | "retrieve" | "backup" => {
-                CapabilityType::Storage
-            }
-            
+            "store" | "retrieve" | "backup" => CapabilityType::Storage,
+
             // Default to Compute for unknown heavy tasks
             _ => CapabilityType::Compute,
         }
     }
-    
+
     /// Check if local Songbird instance has capacity
     ///
     /// FUTURE ENHANCEMENT: Implement resource-aware capacity checking
@@ -409,4 +393,3 @@ mod tests {
         CapabilityRouter::new(federation_state, service_registry)
     }
 }
-

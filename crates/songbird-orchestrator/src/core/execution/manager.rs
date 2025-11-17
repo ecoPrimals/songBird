@@ -20,13 +20,13 @@ impl ExecutionManager {
             broadcast: Arc::new(RwLock::new(BroadcastExecutor::new())),
         }
     }
-    
+
     /// Register a tower for execution
     pub async fn register_tower(&self, tower_id: String, endpoint: String) {
         let mut broadcast = self.broadcast.write().await;
         broadcast.register_tower(tower_id, endpoint);
     }
-    
+
     /// Execute command on a single tower
     pub async fn execute_on_tower(
         &self,
@@ -36,7 +36,7 @@ impl ExecutionManager {
         info!("Executing command on tower: {}", tower_endpoint);
         self.client.execute_command(tower_endpoint, request).await
     }
-    
+
     /// Execute command across multiple towers (broadcast)
     pub async fn execute_broadcast(
         &self,
@@ -66,7 +66,7 @@ mod tests {
         // Just verify it constructs
         assert!(true);
     }
-    
+
     #[tokio::test]
     async fn test_register_tower() {
         let manager = ExecutionManager::new();
@@ -75,4 +75,3 @@ mod tests {
         assert!(true);
     }
 }
-

@@ -13,7 +13,6 @@
 ///
 /// Version: 0.2.1
 /// Last Updated: November 11, 2025 - Phase 4
-
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -38,10 +37,10 @@ use crate::server::events::EventBroadcaster;
 pub struct WebSocketApiState {
     /// Federation state for status queries
     pub federation_state: Arc<FederationState>,
-    
+
     /// Service registry for discovery
     pub service_registry: Arc<FederatedServiceRegistry>,
-    
+
     /// Event broadcaster for real-time events
     pub event_broadcaster: Arc<EventBroadcaster>,
 }
@@ -70,89 +69,89 @@ pub enum WsMessage {
         /// Event types to subscribe to
         events: Vec<String>,
     },
-    
+
     /// Client unsubscribes from events
     Unsubscribe {
         /// Event types to unsubscribe from
         events: Vec<String>,
     },
-    
+
     /// Ping message for keep-alive
     Ping {
         /// Optional data
         #[serde(skip_serializing_if = "Option::is_none")]
         data: Option<String>,
     },
-    
+
     /// Pong response
     Pong {
         /// Optional data
         #[serde(skip_serializing_if = "Option::is_none")]
         data: Option<String>,
     },
-    
+
     /// Query federation status
     QueryStatus,
-    
+
     /// Query services by capability
     QueryServices {
         /// Required capabilities
         capabilities: Vec<String>,
     },
-    
+
     /// Server sends service update event
     ServiceUpdate {
         /// Service name
         service_name: String,
-        
+
         /// Service status
         status: String,
-        
+
         /// Service address
         address: String,
     },
-    
+
     /// Server sends health status event
     HealthUpdate {
         /// Service name
         service_name: String,
-        
+
         /// Is healthy
         healthy: bool,
-        
+
         /// Optional message
         #[serde(skip_serializing_if = "Option::is_none")]
         message: Option<String>,
     },
-    
+
     /// Server sends federation status
     FederationStatus {
         /// Total services
         total_services: usize,
-        
+
         /// Total peers
         total_peers: usize,
-        
+
         /// Uptime in seconds
         uptime_seconds: u64,
     },
-    
+
     /// Server sends service list
     ServiceList {
         /// List of services
         services: Vec<ServiceSummary>,
     },
-    
+
     /// Error response
     Error {
         /// Error message
         message: String,
-        
+
         /// Error code
         #[serde(skip_serializing_if = "Option::is_none")]
         code: Option<String>,
     },
-    
+
     /// Success acknowledgment
     Ack {
         /// Optional message
@@ -166,13 +165,13 @@ pub enum WsMessage {
 pub struct ServiceSummary {
     /// Service name
     pub name: String,
-    
+
     /// Service address
     pub address: String,
-    
+
     /// Service port
     pub port: u16,
-    
+
     /// Service capabilities
     pub capabilities: Vec<String>,
 }
@@ -185,28 +184,28 @@ pub async fn websocket_handler(
     State(state): State<WebSocketApiState>,
 ) -> Response {
     info!("WebSocket connection requested");
-    
+
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
 /// Handle WebSocket connection
 async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
     let (mut sender, mut receiver) = socket.split();
-    
+
     info!("🔌 WebSocket connection established");
-    
+
     // Send welcome message
     let welcome = WsMessage::Ack {
         message: Some("Connected to Songbird WebSocket API".to_string()),
     };
-    
+
     if let Ok(json) = serde_json::to_string(&welcome) {
         if let Err(e) = sender.send(Message::Text(json)).await {
             error!("Failed to send welcome message: {}", e);
             return;
         }
     }
-    
+
     // Handle incoming messages
     while let Some(msg) = receiver.next().await {
         match msg {
@@ -265,34 +264,37 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
             }
         }
     }
-    
+
     info!("🔌 WebSocket connection closed");
 }
 
 /// Handle a parsed WebSocket message
-async fn handle_ws_message(
-    msg: WsMessage,
-    state: &WebSocketApiState,
-) -> Option<WsMessage> {
+async fn handle_ws_message(msg: WsMessage, state: &WebSocketApiState) -> Option<WsMessage> {
     match msg {
-        WsMessage::Subscribe { events } => {
+        WsMessage::Subscribe {
+            events,
+        } => {
             info!("Client subscribed to events: {:?}", events);
             Some(WsMessage::Ack {
                 message: Some(format!("Subscribed to {} event(s)", events.len())),
             })
         }
-        
-        WsMessage::Unsubscribe { events } => {
+
+        WsMessage::Unsubscribe {
+            events,
+        } => {
             info!("Client unsubscribed from events: {:?}", events);
             Some(WsMessage::Ack {
                 message: Some(format!("Unsubscribed from {} event(s)", events.len())),
             })
         }
-        
-        WsMessage::Ping { data } => {
-            Some(WsMessage::Pong { data })
-        }
-        
+
+        WsMessage::Ping {
+            data,
+        } => Some(WsMessage::Pong {
+            data,
+        }),
+
         WsMessage::QueryStatus => {
             // Get current federation status
             let stats = state.federation_state.get_stats().await;
@@ -302,8 +304,10 @@ async fn handle_ws_message(
                 uptime_seconds: 0, // TODO: Calculate uptime
             })
         }
-        
-        WsMessage::QueryServices { capabilities } => {
+
+        WsMessage::QueryServices {
+            capabilities,
+        } => {
             // Query services by capability
             // For now, return empty list (would integrate with service registry)
             info!("Querying services with capabilities: {:?}", capabilities);
@@ -311,28 +315,38 @@ async fn handle_ws_message(
                 services: vec![],
             })
         }
-        
+
         // Server-to-client messages shouldn't come from client
-        WsMessage::ServiceUpdate { .. }
-        | WsMessage::HealthUpdate { .. }
-        | WsMessage::FederationStatus { .. }
-        | WsMessage::ServiceList { .. } => {
-            Some(WsMessage::Error {
-                message: "This message type can only be sent by server".to_string(),
-                code: Some("INVALID_DIRECTION".to_string()),
-            })
+        WsMessage::ServiceUpdate {
+            ..
         }
-        
+        | WsMessage::HealthUpdate {
+            ..
+        }
+        | WsMessage::FederationStatus {
+            ..
+        }
+        | WsMessage::ServiceList {
+            ..
+        } => Some(WsMessage::Error {
+            message: "This message type can only be sent by server".to_string(),
+            code: Some("INVALID_DIRECTION".to_string()),
+        }),
+
         // These don't need responses
-        WsMessage::Pong { .. }
-        | WsMessage::Error { .. }
-        | WsMessage::Ack { .. } => None,
+        WsMessage::Pong {
+            ..
+        }
+        | WsMessage::Error {
+            ..
+        }
+        | WsMessage::Ack {
+            ..
+        } => None,
     }
 }
 
 /// Create WebSocket routes
 pub fn websocket_routes() -> Router<WebSocketApiState> {
-    Router::new()
-        .route("/ws", get(websocket_handler))
+    Router::new().route("/ws", get(websocket_handler))
 }
-

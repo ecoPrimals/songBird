@@ -294,4 +294,3 @@ impl From<&RegisteredProvider> for ProviderSummary {
         }
     }
 }
-

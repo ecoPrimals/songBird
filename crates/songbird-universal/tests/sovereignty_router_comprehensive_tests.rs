@@ -45,12 +45,7 @@ fn create_test_request() -> UniversalRequest {
         action: "execute".to_string(),
         parameters: json!({})
             .as_object()
-            .ok_or_else(|| {
-                SongbirdError::configuration(format!(
-                    "Error: {}",
-                    e
-                ))
-            })?
+            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
             .iter()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect(),

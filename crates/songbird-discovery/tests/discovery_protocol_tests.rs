@@ -132,12 +132,7 @@ fn test_service_find_by_type() -> SongbirdResult<()> {
 
     assert!(storage.is_some());
     assert_eq!(
-        storage
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .0,
+        storage.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.0,
         "storage-1"
     );
     Ok(())
@@ -151,10 +146,7 @@ fn test_ttl_expiration_logic() -> SongbirdResult<()> {
     let remaining = ttl.checked_sub(elapsed);
     assert!(remaining.is_some());
     assert_eq!(
-        remaining.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        remaining.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         Duration::from_secs(20)
     );
     Ok(())

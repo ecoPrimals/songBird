@@ -32,8 +32,7 @@ impl CanonicalMigrator {
         let mut error_patterns = HashMap::new();
         let _ = error_patterns
             .insert("service_error!(".to_string(), "SongbirdError::service_error(".to_string());
-        let _ =
-            error_patterns.insert("Ok(()".to_string(), "Ok(SongbirdResult::unit()".to_string());
+        let _ = error_patterns.insert("Ok(()".to_string(), "Ok(SongbirdResult::unit()".to_string());
 
         let mut config_field_patterns = HashMap::new();
         let _ = config_field_patterns

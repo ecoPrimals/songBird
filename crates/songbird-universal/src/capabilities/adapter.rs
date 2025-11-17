@@ -49,8 +49,10 @@ impl UniversalCapabilityAdapter {
 
         // Get primal endpoint
         let capability_host = SafeEnv::get_or_default("UNIVERSAL_CAPABILITY_HOST", "127.0.0.1");
-        let capability_port = SafeEnv::get_port("UNIVERSAL_CAPABILITY_PORT",
-            songbird_config::defaults::ports::orchestrator_port());
+        let capability_port = SafeEnv::get_port(
+            "UNIVERSAL_CAPABILITY_PORT",
+            songbird_config::defaults::ports::orchestrator_port(),
+        );
         let endpoint = format!("http://{capability_host}:{capability_port}/{primal_name}");
 
         // Attempt capability discovery via HTTP

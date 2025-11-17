@@ -579,9 +579,9 @@ mod tests {
 
     #[test]
     fn test_load_balancing_config_custom() {
-        use songbird_config::unified::robustness::{LoadBalancingAlgorithm, HealthCheckConfig};
+        use songbird_config::unified::robustness::{HealthCheckConfig, LoadBalancingAlgorithm};
         use std::time::Duration;
-        
+
         let config = CanonicalLoadBalancerConfig {
             algorithm: LoadBalancingAlgorithm::HealthBased,
             health_check: HealthCheckConfig::default(),

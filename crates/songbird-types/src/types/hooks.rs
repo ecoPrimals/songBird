@@ -72,4 +72,3 @@ mod tests {
         assert!(!HookErrorHandling::Continue.retries_on_error());
     }
 }
-

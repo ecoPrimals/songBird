@@ -8,7 +8,7 @@
 //! ```rust
 //! // OLD (deprecated):
 //! use songbird_config::config::universal_primals::QosMetrics;
-//! 
+//!
 //! // NEW (canonical):
 //! use songbird_config::canonical::primals::QosMetrics;
 //! ```
@@ -33,7 +33,7 @@ use tracing::debug;
 // use songbird_config; // FIXED: Circular import removed
 
 // ✅ Import types from canonical (Nov 9, 2025)
-use crate::canonical::primals::{QosMetrics, ConnectionSettings, HealthCheckConfig};
+use crate::canonical::primals::{ConnectionSettings, HealthCheckConfig, QosMetrics};
 
 // ============================================================================
 // ============================================================================
@@ -174,7 +174,7 @@ pub struct PrimalCapability {
 // #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 // pub struct QosMetrics { ... }
 
-// /// Connection settings for primal communication  
+// /// Connection settings for primal communication
 // /// **MOVED TO**: `crate::canonical::primals::ConnectionSettings`
 // #[derive(Debug, Clone, Serialize, Deserialize)]
 // pub struct ConnectionSettings { ... }

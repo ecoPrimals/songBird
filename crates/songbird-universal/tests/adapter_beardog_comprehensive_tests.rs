@@ -34,9 +34,8 @@ fn test_beardog_adapter_new_success() -> SongbirdResult<()> {
 
     // Assert
     assert!(adapter.is_ok());
-    let adapter = adapter.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let adapter = adapter
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(adapter.endpoint(), format!("http://example.com:{}", test_discovery_port()));
     Ok(())
 }
@@ -324,10 +323,7 @@ async fn test_beardog_verify_auth_authorized() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         AuthResult::Authorized
     );
     mock.assert_async().await;
@@ -350,10 +346,7 @@ async fn test_beardog_verify_auth_unauthorized() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         AuthResult::Unauthorized
     );
     mock.assert_async().await;
@@ -382,10 +375,7 @@ async fn test_beardog_verify_auth_expired() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         AuthResult::Expired
     );
     mock.assert_async().await;
@@ -414,10 +404,7 @@ async fn test_beardog_verify_auth_invalid() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         AuthResult::Invalid
     );
     mock.assert_async().await;
@@ -467,9 +454,8 @@ async fn test_beardog_check_health_healthy() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = SecurityAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -477,10 +463,7 @@ async fn test_beardog_check_health_healthy() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityHealth::Healthy
     );
     mock.assert_async().await;
@@ -507,9 +490,8 @@ async fn test_beardog_check_health_warning() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = SecurityAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -517,10 +499,7 @@ async fn test_beardog_check_health_warning() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityHealth::Warning
     );
     mock.assert_async().await;
@@ -547,9 +526,8 @@ async fn test_beardog_check_health_critical() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).or_else(|_| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let adapter = SecurityAdapter::new(server.url())
+        .or_else(|_| SongbirdError::configuration("Failed health check".to_string()))?;
 
     // Act
     let result = adapter.check_health().await;
@@ -557,10 +535,7 @@ async fn test_beardog_check_health_critical() -> SongbirdResult<()> {
     // Assert
     assert!(result.is_ok());
     assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?,
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?,
         SecurityHealth::Critical
     );
     mock.assert_async().await;

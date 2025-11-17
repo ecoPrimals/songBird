@@ -59,8 +59,7 @@ use std::collections::HashMap;
 
 // Import canonical configs for consolidation (Nov 10, 2025)
 use songbird_types::config::consolidated_canonical::network::{
-    CanonicalRateLimitConfig,
-    CanonicalTlsConfig,
+    CanonicalRateLimitConfig, CanonicalTlsConfig,
 };
 
 // Archived modules (moved to _archived_q2_2026/ on November 8, 2025):
@@ -273,7 +272,8 @@ impl Default for NetworkConfig {
                 start: SafeEnv::get_port("SONGBIRD_PORT_START", 8000),
                 end: SafeEnv::get_port("SONGBIRD_PORT_END", 9000),
             },
-            connection_timeout_ms: SafeEnv::get_usize("SONGBIRD_CONNECTION_TIMEOUT_MS", 30000) as u64,
+            connection_timeout_ms: SafeEnv::get_usize("SONGBIRD_CONNECTION_TIMEOUT_MS", 30000)
+                as u64,
             max_connections: SafeEnv::get_usize("SONGBIRD_MAX_CONNECTIONS", 1000),
             enable_ipv6: SafeEnv::get_bool("SONGBIRD_ENABLE_IPV6", true),
             tls: None,   // Configured separately if needed (now uses CanonicalTlsConfig)
@@ -522,7 +522,7 @@ pub enum DiscoveryMechanism {
 ///
 /// **CONSOLIDATED**: Re-export of canonical version.
 /// **Migration** (Week 2, Nov 10 2025): This duplicate replaced with canonical.
-/// 
+///
 /// **Field Mappings**:
 /// - `endpoint` → `path` (renamed for consistency)
 /// - `interval_seconds` → `interval_secs`

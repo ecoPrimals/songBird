@@ -18,7 +18,6 @@
 use serde_json::json;
 use songbird_canonical::types::*;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 
 // ========== ServiceId Tests ==========
 

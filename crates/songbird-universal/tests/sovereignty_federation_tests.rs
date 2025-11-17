@@ -3,7 +3,6 @@
 //! Comprehensive tests for the sovereignty-aware federation system
 
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::sovereignty::federation::SovereigntyFederationManager;
 use songbird_universal::sovereignty::types::FederationCapability;
 use songbird_universal::types::UniversalRequest;

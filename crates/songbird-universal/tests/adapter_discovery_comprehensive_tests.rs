@@ -34,9 +34,8 @@ async fn test_ai_adapter_discovery_from_environment() {
 
     // Should succeed with environment discovery
     assert!(result.is_ok());
-    let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let adapter = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(adapter.endpoint(), format!("http://ai-provider:{}", test_orchestrator_port()));
 }
 
@@ -53,9 +52,8 @@ async fn test_compute_adapter_discovery_from_environment() {
     env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
 
     assert!(result.is_ok());
-    let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let adapter = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(adapter.endpoint(), format!("http://compute-provider:{}", test_metrics_port()));
 }
 
@@ -69,9 +67,8 @@ async fn test_security_adapter_discovery_from_environment() {
     env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
 
     assert!(result.is_ok());
-    let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let adapter = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(adapter.endpoint(), "https://security-provider:8443");
 }
 
@@ -85,9 +82,8 @@ async fn test_storage_adapter_discovery_from_environment() {
     env::remove_var("CAPABILITY_STORAGE_ENDPOINT");
 
     assert!(result.is_ok());
-    let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let adapter = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(adapter.endpoint(), "http://storage-provider:9000");
 }
 
@@ -110,9 +106,8 @@ async fn test_adapter_discovery_fallback_to_default() {
     // Discovery should succeed with fallback to default endpoint
     // This is by design - fail-safe with sensible defaults
     assert!(result.is_ok(), "Discovery should succeed with fallback, but got: {:?}", result);
-    let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let adapter = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     // Default fallback uses DEFAULT_HOST and port 8083
     assert!(
         adapter.endpoint().contains(test_bind_address())
@@ -160,29 +155,18 @@ async fn test_multiple_adapter_discovery_independence() {
     assert!(storage_result.is_ok());
 
     assert_eq!(
-        ai_result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .endpoint(),
+        ai_result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.endpoint(),
         format!("http://ai:{}", test_orchestrator_port())
     );
     assert_eq!(
         compute_result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
             .endpoint(),
         format!("http://compute:{}", test_metrics_port())
     );
     assert_eq!(
         storage_result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
+            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
             .endpoint(),
         "http://storage:9000"
     );
@@ -220,12 +204,7 @@ async fn test_adapter_discovery_priority_order() {
     assert!(result.is_ok());
     // Environment variable should take priority
     assert_eq!(
-        result
-            .ok_or_else(|| SongbirdError::configuration(format!(
-                "Error: {}",
-                e
-            )))?
-            .endpoint(),
+        result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.endpoint(),
         format!("http://env-endpoint:{}", test_orchestrator_port())
     );
 }
@@ -261,12 +240,7 @@ async fn test_adapter_endpoint_formats() {
 
         assert!(result.is_ok(), "Failed for endpoint: {}", endpoint);
         assert_eq!(
-            result
-                .ok_or_else(|| SongbirdError::configuration(format!(
-                    "Error: {}",
-                    e
-                )))?
-                .endpoint(),
+            result.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.endpoint(),
             endpoint
         );
     }
@@ -336,9 +310,8 @@ async fn test_adapter_discovery_with_explicit_host_port() {
         "Discovery should succeed with custom host/port, but got: {:?}",
         result
     );
-    let adapter = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed to discover services".to_string())
-    })?;
+    let adapter = result
+        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert_eq!(adapter.endpoint(), "http://custom-host:9999");
 
     // Clean up

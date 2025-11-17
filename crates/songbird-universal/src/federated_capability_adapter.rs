@@ -280,12 +280,7 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(
-            result
-                .map_err(|e| SongbirdError::configuration(format!(
-                    "Error: {}",
-                    e
-                )))?
-                .len(),
+            result.map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
             0
         );
         Ok(())
@@ -344,12 +339,7 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(
-            result
-                .map_err(|e| SongbirdError::configuration(format!(
-                    "Error: {}",
-                    e
-                )))?
-                .len(),
+            result.map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
             2
         );
         Ok(())

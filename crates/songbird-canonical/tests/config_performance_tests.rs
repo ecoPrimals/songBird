@@ -201,13 +201,12 @@ fn test_memory_config_extreme_values() -> SongbirdResult<()> {
 
     assert!(minimal.pool_size < maximal.pool_size);
     assert!(
-        minimal.memory_limit_mb.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))? < maximal.memory_limit_mb.ok_or_else(|| SongbirdError::configuration(format!(
-            "Error: {}",
-            e
-        )))?
+        minimal
+            .memory_limit_mb
+            .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
+            < maximal
+                .memory_limit_mb
+                .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
     );
     Ok(())
 }

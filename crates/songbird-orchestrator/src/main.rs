@@ -3,8 +3,8 @@
 //! Main entry point for the modular gaming network bridge
 
 use anyhow::Result;
-use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_orchestrator::app;
+use songbird_types::config::CanonicalSongbirdConfig;
 
 /// Main entry point for the Songbird Orchestrator
 #[tokio::main]

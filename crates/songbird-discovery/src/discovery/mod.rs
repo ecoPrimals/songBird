@@ -98,8 +98,8 @@ pub mod migration_examples {
     ///
     /// # Errors
     /// Returns an error if the auto-detection or creation of the discovery service fails.
-    pub async fn migrate_to_canonical_providers() -> Result<crate::discovery::factory::UniversalServiceDiscoveryAdapter>
-    {
+    pub async fn migrate_to_canonical_providers(
+    ) -> Result<crate::discovery::factory::UniversalServiceDiscoveryAdapter> {
         crate::discovery::factory::UniversalDiscoveryFactory::create_auto_detect().await
     }
 

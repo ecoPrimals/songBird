@@ -3,13 +3,13 @@
 //! Tests the complete flow:
 //! External Provider → Register → Heartbeat → Task Routing → Execution
 
-use songbird_orchestrator::core::registry::{CapabilityRegistry, HeartbeatConfig};
+use songbird_network_federation::service_registry::FederatedServiceRegistry;
+use songbird_network_federation::state::FederationState;
 use songbird_orchestrator::core::registry::types::{
     CapabilityDescriptor, CapabilityRegistrationRequest,
 };
-use songbird_orchestrator::core::routing::{CapabilityRouter, Task, RoutingDecision};
-use songbird_network_federation::service_registry::FederatedServiceRegistry;
-use songbird_network_federation::state::FederationState;
+use songbird_orchestrator::core::registry::{CapabilityRegistry, HeartbeatConfig};
+use songbird_orchestrator::core::routing::{CapabilityRouter, RoutingDecision, Task};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -17,9 +17,9 @@ use std::time::Duration;
 /// Create a test capability registry with short timeouts for testing
 fn create_test_registry() -> Arc<CapabilityRegistry> {
     let config = HeartbeatConfig {
-        interval_ms: 100,           // 100ms between heartbeats
+        interval_ms: 100,            // 100ms between heartbeats
         unhealthy_threshold_secs: 1, // 1 second to mark unhealthy
-        removal_threshold_secs: 2,  // 2 seconds to remove
+        removal_threshold_secs: 2,   // 2 seconds to remove
     };
     Arc::new(CapabilityRegistry::with_config(config))
 }
@@ -113,23 +113,14 @@ async fn test_find_providers_by_capability() {
     registry.register(request).await.unwrap();
 
     // Find providers with specific capability
-    let gpu_providers = registry
-        .find_providers_with_capability("compute_gpu")
-        .await
-        .unwrap();
+    let gpu_providers = registry.find_providers_with_capability("compute_gpu").await.unwrap();
     assert_eq!(gpu_providers.len(), 1, "Should find one GPU provider");
 
-    let heavy_providers = registry
-        .find_providers_with_capability("compute_heavy")
-        .await
-        .unwrap();
+    let heavy_providers = registry.find_providers_with_capability("compute_heavy").await.unwrap();
     assert_eq!(heavy_providers.len(), 1, "Should find one heavy compute provider");
 
     // Non-existent capability should return empty
-    let no_providers = registry
-        .find_providers_with_capability("nonexistent")
-        .await
-        .unwrap();
+    let no_providers = registry.find_providers_with_capability("nonexistent").await.unwrap();
     assert_eq!(no_providers.len(), 0, "Should find no providers for nonexistent capability");
 }
 
@@ -141,21 +132,15 @@ async fn test_heartbeat_updates() {
     let registration_id = registry.register(request.clone()).await.unwrap();
 
     // Send heartbeat
-    let result = registry
-        .update_heartbeat(&request.provider_id, &registration_id, None)
-        .await;
+    let result = registry.update_heartbeat(&request.provider_id, &registration_id, None).await;
     assert!(result.is_ok(), "Heartbeat should succeed");
 
     // Wrong registration ID should fail
-    let result = registry
-        .update_heartbeat(&request.provider_id, "wrong-id", None)
-        .await;
+    let result = registry.update_heartbeat(&request.provider_id, "wrong-id", None).await;
     assert!(result.is_err(), "Heartbeat with wrong ID should fail");
 
     // Unknown provider should fail
-    let result = registry
-        .update_heartbeat("unknown-provider", &registration_id, None)
-        .await;
+    let result = registry.update_heartbeat("unknown-provider", &registration_id, None).await;
     assert!(result.is_err(), "Heartbeat for unknown provider should fail");
 }
 
@@ -191,10 +176,7 @@ async fn test_heartbeat_timeout() {
     let registration_id = registry.register(request.clone()).await.unwrap();
 
     // Initial heartbeat
-    registry
-        .update_heartbeat(&request.provider_id, &registration_id, None)
-        .await
-        .unwrap();
+    registry.update_heartbeat(&request.provider_id, &registration_id, None).await.unwrap();
 
     // Verify provider is healthy
     let providers = registry.list_providers().await;
@@ -210,7 +192,7 @@ async fn test_heartbeat_timeout() {
     // Provider should still be registered but unhealthy
     let providers = registry.list_providers().await;
     assert_eq!(providers.len(), 1, "Provider should still be registered");
-    
+
     // Wait for removal (> 2 seconds total)
     tokio::time::sleep(Duration::from_millis(1000)).await;
 
@@ -245,7 +227,10 @@ async fn test_routing_with_external_provider() {
 
     // Should route to external provider
     match decision.unwrap() {
-        RoutingDecision::RouteToExternalProvider { provider_id, .. } => {
+        RoutingDecision::RouteToExternalProvider {
+            provider_id,
+            ..
+        } => {
             assert_eq!(provider_id, "gpu-provider-1");
         }
         other => panic!("Expected RouteToExternalProvider, got {:?}", other),
@@ -259,21 +244,20 @@ async fn test_routing_falls_back_without_provider() {
     let service_registry = Arc::new(FederatedServiceRegistry::new());
 
     // Create router with empty registry (no providers registered)
-    let router = CapabilityRouter::with_capability_registry(
-        federation_state,
-        service_registry,
-        registry,
-    );
+    let router =
+        CapabilityRouter::with_capability_registry(federation_state, service_registry, registry);
 
     // Create a GPU task
     let task = Task::builder("ml_training").with_gpu().build();
 
     // Route the task - should fall back to capability resolver
     let decision = router.route_task(&task).await;
-    
+
     // Should either find a capability provider or fail gracefully
     match decision {
-        Ok(RoutingDecision::RouteToCapability { .. }) => {
+        Ok(RoutingDecision::RouteToCapability {
+            ..
+        }) => {
             // Fallback to static capability provider (if configured)
         }
         Err(_) => {
@@ -299,36 +283,24 @@ async fn test_provider_selection_prefers_healthy() {
     registry_clone.start_health_monitor();
 
     // Send initial heartbeat for provider-1
-    registry
-        .update_heartbeat(&request1.provider_id, &reg_id_1, None)
-        .await
-        .unwrap();
+    registry.update_heartbeat(&request1.provider_id, &reg_id_1, None).await.unwrap();
 
     // Find providers - both should be available initially
-    let providers = registry
-        .find_providers_with_capability("compute_gpu")
-        .await
-        .unwrap();
+    let providers = registry.find_providers_with_capability("compute_gpu").await.unwrap();
     assert_eq!(providers.len(), 2, "Should find both providers");
 
     // Wait for provider-2 to become unhealthy (but keep provider-1 alive with heartbeats)
     for _ in 0..3 {
         tokio::time::sleep(Duration::from_millis(400)).await;
-        
+
         // Send heartbeat for provider-1 to keep it healthy
-        registry
-            .update_heartbeat(&request1.provider_id, &reg_id_1, None)
-            .await
-            .unwrap();
+        registry.update_heartbeat(&request1.provider_id, &reg_id_1, None).await.unwrap();
     }
 
     // By now, provider-2 has been without heartbeat for >1s, should be unhealthy
     // Provider-1 should still be healthy
-    let providers = registry
-        .find_providers_with_capability("compute_gpu")
-        .await
-        .unwrap();
-    
+    let providers = registry.find_providers_with_capability("compute_gpu").await.unwrap();
+
     // find_providers_with_capability filters out unhealthy providers
     assert_eq!(providers.len(), 1, "Should find only healthy provider");
     assert_eq!(providers[0].registration.provider_id, "provider-1");
@@ -363,7 +335,7 @@ async fn test_concurrent_registrations() {
 #[tokio::test]
 async fn test_registry_health_monitor_lifecycle() {
     let registry = create_test_registry();
-    
+
     // Register a provider
     let request = create_test_registration_request("test-provider");
     let reg_id = registry.register(request.clone()).await.unwrap();
@@ -375,10 +347,7 @@ async fn test_registry_health_monitor_lifecycle() {
     // Send periodic heartbeats
     for _ in 0..5 {
         tokio::time::sleep(Duration::from_millis(50)).await;
-        registry
-            .update_heartbeat(&request.provider_id, &reg_id, None)
-            .await
-            .unwrap();
+        registry.update_heartbeat(&request.provider_id, &reg_id, None).await.unwrap();
     }
 
     // Provider should remain healthy
@@ -392,4 +361,3 @@ async fn test_registry_health_monitor_lifecycle() {
     let providers = registry.list_providers().await;
     assert_eq!(providers.len(), 0, "Provider should be removed after timeout");
 }
-

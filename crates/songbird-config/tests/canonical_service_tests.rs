@@ -5,7 +5,6 @@
 
 use songbird_config::canonical::service::*;
 use songbird_types::{SongbirdError, SongbirdResult};
-use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
 // ========== ServiceConfig Tests ==========
@@ -54,9 +53,9 @@ fn test_service_config_with_health_check() -> SongbirdResult<()> {
     };
 
     assert!(config.health_check.is_some());
-    let hc = config.health_check.ok_or_else(|| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let hc = config
+        .health_check
+        .ok_or_else(|| SongbirdError::configuration("Failed health check".to_string()))?;
     assert_eq!(hc.endpoint, "/api/health");
     assert_eq!(hc.interval, 60);
     Ok(())
@@ -101,9 +100,8 @@ fn test_service_config_deserialization() -> SongbirdResult<()> {
     let result: Result<ServiceConfig, _> = serde_json::from_str(json);
     assert!(result.is_ok());
 
-    let config = result.ok_or_else(|| {
-        SongbirdError::configuration("Failed health check".to_string())
-    })?;
+    let config =
+        result.ok_or_else(|| SongbirdError::configuration("Failed health check".to_string()))?;
     assert_eq!(config.name, "test-service");
     assert_eq!(config.port, 3000);
     Ok(())

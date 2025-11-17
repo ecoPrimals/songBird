@@ -19,13 +19,13 @@ impl BroadcastExecutor {
             tower_registry: HashMap::new(),
         }
     }
-    
+
     /// Register a tower endpoint
     pub fn register_tower(&mut self, tower_id: String, endpoint: String) {
         info!("Registering tower: {} at {}", tower_id, endpoint);
         self.tower_registry.insert(tower_id, endpoint);
     }
-    
+
     /// Execute command on multiple towers in parallel
     pub async fn broadcast(
         &self,
@@ -35,22 +35,24 @@ impl BroadcastExecutor {
     ) -> BroadcastResult {
         let broadcast_id = uuid::Uuid::new_v4().to_string();
         info!("Starting broadcast {} to {} towers", broadcast_id, tower_ids.len());
-        
+
         let mut tasks = Vec::new();
-        
+
         for tower_id in tower_ids {
-            let endpoint = if let Some(ep) = self.tower_registry.get(&tower_id) { ep.clone() } else {
+            let endpoint = if let Some(ep) = self.tower_registry.get(&tower_id) {
+                ep.clone()
+            } else {
                 warn!("Tower not found in registry: {}", tower_id);
                 continue;
             };
-            
+
             let client = self.client.clone();
             let request_clone = request.clone();
             let tower_id_clone = tower_id.clone();
-            
+
             let task = tokio::spawn(async move {
                 let start = std::time::Instant::now();
-                
+
                 match client.execute_command(&endpoint, request_clone).await {
                     Ok(response) => TowerExecutionResult {
                         tower_id: tower_id_clone,
@@ -72,15 +74,15 @@ impl BroadcastExecutor {
                     },
                 }
             });
-            
+
             tasks.push(task);
         }
-        
+
         // Wait for all tasks to complete
         let mut results = Vec::new();
         let mut success_count = 0;
         let mut failure_count = 0;
-        
+
         for task in tasks {
             match task.await {
                 Ok(result) => {
@@ -97,12 +99,12 @@ impl BroadcastExecutor {
                 }
             }
         }
-        
+
         info!(
             "Broadcast {} completed: {} successes, {} failures",
             broadcast_id, success_count, failure_count
         );
-        
+
         // Check if we should fail fast
         if options.fail_fast && failure_count > 0 {
             return BroadcastResult {
@@ -112,7 +114,7 @@ impl BroadcastExecutor {
                 error: Some(format!("{} towers failed execution", failure_count)),
             };
         }
-        
+
         // Check minimum success threshold
         let success_rate = f64::from(success_count) / f64::from(success_count + failure_count);
         if success_rate < options.min_success_rate {
@@ -127,7 +129,7 @@ impl BroadcastExecutor {
                 )),
             };
         }
-        
+
         BroadcastResult {
             broadcast_id,
             success: failure_count == 0,
@@ -148,10 +150,10 @@ impl Default for BroadcastExecutor {
 pub struct BroadcastOptions {
     /// Fail immediately if any tower fails
     pub fail_fast: bool,
-    
+
     /// Minimum success rate required (0.0 - 1.0)
     pub min_success_rate: f64,
-    
+
     /// Wait for all towers to complete
     pub wait_for_completion: bool,
 }
@@ -196,7 +198,7 @@ mod tests {
         let executor = BroadcastExecutor::new();
         assert!(executor.tower_registry.is_empty());
     }
-    
+
     #[test]
     fn test_register_tower() {
         let mut executor = BroadcastExecutor::new();
@@ -204,4 +206,3 @@ mod tests {
         assert_eq!(executor.tower_registry.len(), 1);
     }
 }
-

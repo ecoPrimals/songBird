@@ -17,31 +17,33 @@ impl SecurityValidator {
             auth_token,
         }
     }
-    
+
     /// Validate authentication token
     pub fn validate_auth(&self, provided_token: Option<&str>) -> SongbirdResult<()> {
         if !self.enable_auth {
             return Ok(());
         }
-        
-        let expected = self.auth_token.as_deref()
-            .ok_or_else(|| SongbirdError::Security(SecurityError {
+
+        let expected = self.auth_token.as_deref().ok_or_else(|| {
+            SongbirdError::Security(SecurityError {
                 message: "No auth token configured".to_string(),
                 operation: Some("authentication".to_string()),
                 required_permission: None,
                 context: None,
                 remediation: Some("Configure auth token in agent config".to_string()),
-            }))?;
-        
-        let provided = provided_token
-            .ok_or_else(|| SongbirdError::Security(SecurityError {
+            })
+        })?;
+
+        let provided = provided_token.ok_or_else(|| {
+            SongbirdError::Security(SecurityError {
                 message: "No auth token provided".to_string(),
                 operation: Some("authentication".to_string()),
                 required_permission: Some("valid_auth_token".to_string()),
                 context: None,
                 remediation: Some("Provide auth token in request".to_string()),
-            }))?;
-        
+            })
+        })?;
+
         if provided != expected {
             warn!("Invalid authentication token provided");
             return Err(SongbirdError::Security(SecurityError {
@@ -52,10 +54,10 @@ impl SecurityValidator {
                 remediation: Some("Use correct auth token".to_string()),
             }));
         }
-        
+
         Ok(())
     }
-    
+
     /// Validate command for security risks
     pub fn validate_command(&self, command: &str) -> SongbirdResult<()> {
         // Check for empty command
@@ -66,7 +68,7 @@ impl SecurityValidator {
                 suggestion: Some("Provide a valid command".to_string()),
             });
         }
-        
+
         // Check for dangerous patterns (basic check - can be enhanced)
         let dangerous_patterns = [
             "rm -rf /",
@@ -74,7 +76,7 @@ impl SecurityValidator {
             "mkfs",
             "dd if=/dev/zero",
         ];
-        
+
         for pattern in &dangerous_patterns {
             if command.contains(pattern) {
                 warn!("Potentially dangerous command detected: {}", command);
@@ -83,11 +85,13 @@ impl SecurityValidator {
                     operation: Some("command_validation".to_string()),
                     required_permission: None,
                     context: Some(format!("command: {}", command)),
-                    remediation: Some("Avoid dangerous commands that could harm the system".to_string()),
+                    remediation: Some(
+                        "Avoid dangerous commands that could harm the system".to_string(),
+                    ),
                 }));
             }
         }
-        
+
         Ok(())
     }
 }
@@ -101,37 +105,37 @@ mod tests {
         let validator = SecurityValidator::new(false, None);
         assert!(validator.validate_auth(None).is_ok());
     }
-    
+
     #[test]
     fn test_auth_valid_token() {
         let validator = SecurityValidator::new(true, Some("secret123".to_string()));
         assert!(validator.validate_auth(Some("secret123")).is_ok());
     }
-    
+
     #[test]
     fn test_auth_invalid_token() {
         let validator = SecurityValidator::new(true, Some("secret123".to_string()));
         assert!(validator.validate_auth(Some("wrong")).is_err());
     }
-    
+
     #[test]
     fn test_auth_missing_token() {
         let validator = SecurityValidator::new(true, Some("secret123".to_string()));
         assert!(validator.validate_auth(None).is_err());
     }
-    
+
     #[test]
     fn test_validate_safe_command() {
         let validator = SecurityValidator::new(false, None);
         assert!(validator.validate_command("echo hello").is_ok());
     }
-    
+
     #[test]
     fn test_validate_dangerous_command() {
         let validator = SecurityValidator::new(false, None);
         assert!(validator.validate_command("rm -rf /").is_err());
     }
-    
+
     #[test]
     fn test_validate_empty_command() {
         let validator = SecurityValidator::new(false, None);

@@ -9,8 +9,7 @@ use std::time::Duration;
 
 // Import canonical configs (Nov 10, 2025 consolidation)
 use crate::config::consolidated_canonical::network::{
-    CanonicalConnectionPoolConfig,
-    CanonicalTlsConfig,
+    CanonicalConnectionPoolConfig, CanonicalTlsConfig,
 };
 
 /// **CANONICAL**: Communication Configuration - Single Source of Truth
@@ -384,14 +383,14 @@ impl Default for PerformanceConfig {
 // ============================================================================
 // NOTE: ConnectionPoolingConfig has been CONSOLIDATED
 // ============================================================================
-// 
+//
 // ConnectionPoolingConfig was removed and replaced with CanonicalConnectionPoolConfig
 // from crate::config::consolidated_canonical::network
 //
 // Migration: Use CanonicalConnectionPoolConfig instead
 // - enabled field → check if max_size > 0
 // - max_pool_size → max_size
-// - min_pool_size → min_size  
+// - min_pool_size → min_size
 // - idle_timeout → idle_timeout (same)
 // - NEW: connect_timeout, max_lifetime, health_check_query (use defaults)
 //

@@ -133,9 +133,7 @@ impl ServiceEndpoints {
     #[must_use]
     pub fn get_by_capability(capability_type: &str, default_port: u16) -> String {
         SafeEnv::get_required(&format!("{}_ENDPOINT", capability_type.to_uppercase()))
-            .unwrap_or_else(|_| {
-                format!("http://127.0.0.1:{default_port}")
-            })
+            .unwrap_or_else(|_| format!("http://127.0.0.1:{default_port}"))
     }
 }
 
@@ -144,20 +142,14 @@ impl Default for ServiceEndpoints {
         Self {
             orchestrator_endpoint: SafeEnv::get_or_default(
                 "SONGBIRD_ENDPOINT",
-                "http://127.0.0.1:8080"
+                "http://127.0.0.1:8080",
             ),
             discovery_endpoint: SafeEnv::get_or_default(
                 "DISCOVERY_ENDPOINT",
-                "http://127.0.0.1:8001"
+                "http://127.0.0.1:8001",
             ),
-            health_endpoint: SafeEnv::get_or_default(
-                "HEALTH_ENDPOINT",
-                "http://127.0.0.1:8002"
-            ),
-            metrics_endpoint: SafeEnv::get_or_default(
-                "METRICS_ENDPOINT",
-                "http://127.0.0.1:8004"
-            ),
+            health_endpoint: SafeEnv::get_or_default("HEALTH_ENDPOINT", "http://127.0.0.1:8002"),
+            metrics_endpoint: SafeEnv::get_or_default("METRICS_ENDPOINT", "http://127.0.0.1:8004"),
         }
     }
 }
@@ -209,12 +201,8 @@ impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
             max_connections: SafeEnv::get_port("MAX_CONNECTIONS", 50) as usize,
-            max_memory_mb: std::env::var("MAX_MEMORY_MB")
-                .ok()
-                .and_then(|s| s.parse().ok()),
-            max_cpu_cores: std::env::var("MAX_CPU_CORES")
-                .ok()
-                .and_then(|s| s.parse().ok()),
+            max_memory_mb: std::env::var("MAX_MEMORY_MB").ok().and_then(|s| s.parse().ok()),
+            max_cpu_cores: std::env::var("MAX_CPU_CORES").ok().and_then(|s| s.parse().ok()),
             max_file_descriptors: std::env::var("MAX_FILE_DESCRIPTORS")
                 .ok()
                 .and_then(|s| s.parse().ok()),
