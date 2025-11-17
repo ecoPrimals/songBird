@@ -177,6 +177,7 @@ impl Default for CircuitBreaker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn test_circuit_breaker_starts_closed() {
