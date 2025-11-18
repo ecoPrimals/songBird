@@ -198,8 +198,21 @@ impl LoadBalancer {
     }
 
     /// Get all endpoints with their status
+    ///
+    /// **Note**: This method clones the entire endpoints vec. For read-only access
+    /// in hot paths, consider adding a method that provides a read lock guard instead.
     pub async fn get_endpoints(&self) -> Vec<LoadBalancedEndpoint> {
         self.endpoints.read().await.clone()
+    }
+
+    /// Get count of healthy endpoints (zero-clone)
+    pub async fn healthy_count(&self) -> usize {
+        self.endpoints
+            .read()
+            .await
+            .iter()
+            .filter(|e| e.available && e.health_score > 0.5)
+            .count()
     }
 
     /// Get count of available endpoints

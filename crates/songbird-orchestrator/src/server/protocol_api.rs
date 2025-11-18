@@ -364,9 +364,11 @@ mod tests {
         assert!(protocols.http.endpoints.contains_key("federation"));
         assert!(protocols.http.features.contains(&"rest".to_string()));
 
-        // Others not yet implemented
-        assert!(protocols.tarpc.is_none());
-        assert!(protocols.json_rpc.is_none());
+        // TarPC and JSON-RPC are now available by default
+        assert!(protocols.tarpc.is_some());
+        assert!(protocols.json_rpc.is_some());
+        
+        // WebSocket not yet implemented
         assert!(protocols.websocket.is_none());
     }
 

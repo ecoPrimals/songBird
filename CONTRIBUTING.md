@@ -33,12 +33,13 @@ cargo test -p songbird-universal --lib
 ## 📋 **Development Guidelines**
 
 ### Code Quality Standards
-- **Compilation**: All code must compile without errors or warnings
+- **Compilation**: All code must compile without errors
 - **Real Implementations Only**: No mocks or placeholders in production code
-- **Testing**: New features require comprehensive tests
+- **Testing**: New features require comprehensive tests (target: 90% coverage)
 - **Documentation**: Public APIs must be documented
 - **Formatting**: Use `cargo fmt` before committing
-- **Linting**: Address all `cargo clippy` warnings
+- **Linting**: Address all `cargo clippy` warnings (zero tolerance)
+- **Safety**: No `unsafe` code in production (use `#![forbid(unsafe_code)]`)
 
 ### Error Handling
 - Use `SongbirdResult<T>` for all fallible operations
