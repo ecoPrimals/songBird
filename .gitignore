@@ -86,10 +86,14 @@ pkg/
 # Test coverage and reports
 coverage/
 coverage-report/
+coverage.json
+*.coverage
 tarpaulin-report.html
 *.lcov
 *.gcda
 *.gcno
+*.profdata
+llvm-cov-target/
 
 # Memory dumps and core files
 *.dmp
