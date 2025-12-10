@@ -272,7 +272,7 @@ async fn test_get_active_connections_empty() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
 
-    let connections = adapter.get_active_connections().await;
+    let connections = adapter.get_all_connections().await;
     assert!(connections.is_empty());
 }
 
